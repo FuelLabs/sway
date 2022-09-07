@@ -13,6 +13,7 @@ pub enum Intrinsic {
     StateStoreWord,
     StateLoadQuad,
     StateStoreQuad,
+    Log,
 }
 
 impl fmt::Display for Intrinsic {
@@ -29,6 +30,7 @@ impl fmt::Display for Intrinsic {
             Intrinsic::StateStoreWord => "state_store_word",
             Intrinsic::StateLoadQuad => "state_load_quad",
             Intrinsic::StateStoreQuad => "state_store_quad",
+            Intrinsic::Log => "log",
         };
         write!(f, "{}", s)
     }
@@ -49,6 +51,7 @@ impl Intrinsic {
             "__state_store_word" => StateStoreWord,
             "__state_load_quad" => StateLoadQuad,
             "__state_store_quad" => StateStoreQuad,
+            "__log" => Log,
             _ => return None,
         })
     }

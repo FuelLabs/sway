@@ -21,6 +21,7 @@ use std::{
 };
 use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypedProgram, TypedProgramKind};
 use sway_types::{Ident, Spanned};
+use swayfmt::Formatter;
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionParams, GotoDefinitionResponse, Location, Position,
     Range, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
@@ -350,7 +351,8 @@ impl Session {
             match self.config.read() {
                 std::sync::LockResult::Ok(config) => {
                     let config: SwayConfig = *config;
-                    get_format_text_edits(Arc::from(document.get_text()), config.into())
+                    let mut formatter = Formatter::from(config);
+                    get_format_text_edits(Arc::from(document.get_text()), &mut formatter)
                 }
                 _ => None,
             }

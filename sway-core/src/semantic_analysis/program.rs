@@ -15,13 +15,17 @@ use crate::{
 };
 use fuel_tx::StorageSlot;
 use sway_ir::{Context, Module};
-use sway_types::{span::Span, Ident, JsonABIProgram, JsonTypeDeclaration, Spanned};
+use sway_types::{
+    span::Span, Ident, JsonABIProgram, JsonLoggedType, JsonTypeApplication, JsonTypeDeclaration,
+    Spanned,
+};
 
 #[derive(Debug)]
 pub struct TypedProgram {
     pub kind: TypedProgramKind,
     pub root: TypedModule,
     pub storage_slots: Vec<StorageSlot>,
+    pub logged_types: Vec<TypeId>,
 }
 
 impl TypedProgram {
@@ -44,6 +48,7 @@ impl TypedProgram {
                 kind,
                 root,
                 storage_slots: vec![],
+                logged_types: vec![],
             })
         })
     }
@@ -196,14 +201,16 @@ impl TypedProgram {
                 }
             }
         };
-        // check if no arguments passed to a `main()` in a `script` or `predicate`.
+        // check if no ref mut arguments passed to a `main()` in a `script` or `predicate`.
         match &typed_program_kind {
             TypedProgramKind::Script { main_function, .. }
             | TypedProgramKind::Predicate { main_function, .. } => {
-                if !main_function.parameters.is_empty() {
-                    errors.push(CompileError::MainArgsNotYetSupported {
-                        span: main_function.span.clone(),
-                    })
+                for param in &main_function.parameters {
+                    if param.is_reference && param.is_mutable {
+                        errors.push(CompileError::RefMutableNotAllowedInMain {
+                            param_name: param.name.clone(),
+                        })
+                    }
                 }
             }
             _ => (),
@@ -212,42 +219,51 @@ impl TypedProgram {
     }
 
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.
-    pub(crate) fn finalize_types(&self) -> CompileResult<()> {
+    pub(crate) fn collect_types_metadata(&mut self) -> CompileResult<Vec<TypeMetadata>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         // Get all of the entry points for this tree type. For libraries, that's everything
         // public. For contracts, ABI entries. For scripts and predicates, any function named `main`.
-        let errors: Vec<_> = match &self.kind {
-            TypedProgramKind::Library { .. } => self
-                .root
-                .all_nodes
-                .iter()
-                .filter(|x| x.is_public())
-                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                .collect(),
+        let metadata = match &self.kind {
+            TypedProgramKind::Library { .. } => {
+                let mut ret = vec![];
+                for node in self.root.all_nodes.iter() {
+                    let public = check!(
+                        node.is_public(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if public {
+                        ret.append(&mut node.collect_types_metadata());
+                    }
+                }
+                ret
+            }
             TypedProgramKind::Script { .. } => self
                 .root
                 .all_nodes
                 .iter()
                 .filter(|x| x.is_main_function(TreeType::Script))
-                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                .flat_map(CollectTypesMetadata::collect_types_metadata)
                 .collect(),
             TypedProgramKind::Predicate { .. } => self
                 .root
                 .all_nodes
                 .iter()
                 .filter(|x| x.is_main_function(TreeType::Predicate))
-                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                .flat_map(CollectTypesMetadata::collect_types_metadata)
                 .collect(),
             TypedProgramKind::Contract { abi_entries, .. } => abi_entries
                 .iter()
                 .map(TypedAstNode::from)
-                .flat_map(|x| x.check_for_unresolved_types())
+                .flat_map(|x| x.collect_types_metadata())
                 .collect(),
         };
-
         if errors.is_empty() {
-            ok((), vec![], errors)
+            ok(metadata, warnings, errors)
         } else {
-            err(vec![], errors)
+            err(warnings, errors)
         }
     }
 
@@ -288,6 +304,7 @@ impl TypedProgram {
                                 kind: self.kind.clone(),
                                 root: self.root.clone(),
                                 storage_slots,
+                                logged_types: self.logged_types.clone(),
                             },
                             warnings,
                             errors,
@@ -298,6 +315,7 @@ impl TypedProgram {
                             kind: self.kind.clone(),
                             root: self.root.clone(),
                             storage_slots: vec![],
+                            logged_types: self.logged_types.clone(),
                         },
                         warnings,
                         errors,
@@ -309,11 +327,80 @@ impl TypedProgram {
                     kind: self.kind.clone(),
                     root: self.root.clone(),
                     storage_slots: vec![],
+                    logged_types: self.logged_types.clone(),
                 },
                 warnings,
                 errors,
             ),
         }
+    }
+
+    pub fn generate_json_abi_program(
+        &self,
+        types: &mut Vec<JsonTypeDeclaration>,
+    ) -> JsonABIProgram {
+        match &self.kind {
+            TypedProgramKind::Contract { abi_entries, .. } => {
+                let functions = abi_entries
+                    .iter()
+                    .map(|x| x.generate_json_abi_function(types))
+                    .collect();
+                let logged_types = self.generate_json_logged_types(types);
+                JsonABIProgram {
+                    types: types.to_vec(),
+                    functions,
+                    logged_types,
+                }
+            }
+            TypedProgramKind::Script { main_function, .. }
+            | TypedProgramKind::Predicate { main_function, .. } => {
+                let functions = vec![main_function.generate_json_abi_function(types)];
+                let logged_types = self.generate_json_logged_types(types);
+                JsonABIProgram {
+                    types: types.to_vec(),
+                    functions,
+                    logged_types,
+                }
+            }
+            _ => JsonABIProgram {
+                types: vec![],
+                functions: vec![],
+                logged_types: vec![],
+            },
+        }
+    }
+
+    fn generate_json_logged_types(
+        &self,
+        types: &mut Vec<JsonTypeDeclaration>,
+    ) -> Vec<JsonLoggedType> {
+        // A list of all `JsonTypeDeclaration`s needed for the logged types
+        let logged_types = self
+            .logged_types
+            .iter()
+            .map(|x| JsonTypeDeclaration {
+                type_id: **x,
+                type_field: x.get_json_type_str(*x),
+                components: x.get_json_type_components(types, *x),
+                type_parameters: x.get_json_type_parameters(types, *x),
+            })
+            .collect::<Vec<_>>();
+
+        // Add the new types to `types`
+        types.extend(logged_types);
+
+        // Generate the JSON data for the logged types
+        self.logged_types
+            .iter()
+            .map(|x| JsonLoggedType {
+                log_id: **x,
+                logged_type: JsonTypeApplication {
+                    name: "".to_string(),
+                    type_id: **x,
+                    type_arguments: x.get_json_type_arguments(types, *x),
+                },
+            })
+            .collect()
     }
 }
 
@@ -344,35 +431,6 @@ impl TypedProgramKind {
             TypedProgramKind::Library { name } => TreeType::Library { name: name.clone() },
             TypedProgramKind::Predicate { .. } => TreeType::Predicate,
             TypedProgramKind::Script { .. } => TreeType::Script,
-        }
-    }
-
-    pub fn generate_json_abi_program(
-        &self,
-        types: &mut Vec<JsonTypeDeclaration>,
-    ) -> JsonABIProgram {
-        match self {
-            TypedProgramKind::Contract { abi_entries, .. } => {
-                let result = abi_entries
-                    .iter()
-                    .map(|x| x.generate_json_abi_function(types))
-                    .collect();
-                JsonABIProgram {
-                    types: types.to_vec(),
-                    functions: result,
-                }
-            }
-            TypedProgramKind::Script { main_function, .. } => {
-                let result = vec![main_function.generate_json_abi_function(types)];
-                JsonABIProgram {
-                    types: types.to_vec(),
-                    functions: result,
-                }
-            }
-            _ => JsonABIProgram {
-                types: vec![],
-                functions: vec![],
-            },
         }
     }
 }

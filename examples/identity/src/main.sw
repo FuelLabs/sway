@@ -3,18 +3,30 @@ contract;
 dep r#abi;
 dep errors;
 
-use r#abi::IdentityExample;
+use abi::IdentityExample;
 use errors::MyError;
 
 use std::{
     address::Address,
-    chain::auth::{AuthError, msg_sender},
-    constants::{BASE_ASSET_ID, ZERO_B256},
+    chain::auth::{
+        AuthError,
+        msg_sender,
+    },
+    constants::{
+        BASE_ASSET_ID,
+        ZERO_B256,
+    },
     contract_id::ContractId,
     identity::Identity,
     result::Result,
-    revert::{require, revert},
-    token::{force_transfer_to_contract, transfer_to_output}
+    revert::{
+        require,
+        revert,
+    },
+    token::{
+        force_transfer_to_contract,
+        transfer_to_output,
+    },
 };
 
 storage {
@@ -58,7 +70,8 @@ impl IdentityExample for Contract {
         // ANCHOR_END: different_executions
     }
 
-    #[storage(read)]fn access_control_with_identity() {
+    #[storage(read)]
+    fn access_control_with_identity() {
         // ANCHOR: access_control_with_identity
         let sender: Result<Identity, AuthError> = msg_sender();
         require(sender.unwrap() == storage.owner, MyError::UnauthorizedUser);

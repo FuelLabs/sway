@@ -13,9 +13,14 @@ pub(crate) use mode::*;
 pub(crate) use return_statement::*;
 
 use crate::{
-    declaration_engine::declaration_engine::de_insert_storage, error::*, parse_tree::*,
-    semantic_analysis::*, style::*, type_system::*, types::DeterministicallyAborts, AstNode,
-    AstNodeContent, Ident, ReturnStatement,
+    declaration_engine::declaration_engine::{de_insert_storage, de_insert_trait},
+    error::*,
+    parse_tree::*,
+    semantic_analysis::*,
+    style::*,
+    type_system::*,
+    types::DeterministicallyAborts,
+    AstNode, AstNodeContent, Ident, ReturnStatement,
 };
 
 use sway_types::{span::Span, state::StateIndex, Spanned};
@@ -40,14 +45,14 @@ pub enum TypedAstNodeContent {
     SideEffect,
 }
 
-impl UnresolvedTypeCheck for TypedAstNodeContent {
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+impl CollectTypesMetadata for TypedAstNodeContent {
+    fn collect_types_metadata(&self) -> Vec<TypeMetadata> {
         use TypedAstNodeContent::*;
         match self {
-            ReturnStatement(stmt) => stmt.expr.check_for_unresolved_types(),
-            Declaration(decl) => decl.check_for_unresolved_types(),
-            Expression(expr) => expr.check_for_unresolved_types(),
-            ImplicitReturnExpression(expr) => expr.check_for_unresolved_types(),
+            ReturnStatement(stmt) => stmt.expr.collect_types_metadata(),
+            Declaration(decl) => decl.collect_types_metadata(),
+            Expression(expr) => expr.collect_types_metadata(),
+            ImplicitReturnExpression(expr) => expr.collect_types_metadata(),
             SideEffect => vec![],
         }
     }
@@ -93,9 +98,9 @@ impl CopyTypes for TypedAstNode {
     }
 }
 
-impl UnresolvedTypeCheck for TypedAstNode {
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
-        self.content.check_for_unresolved_types()
+impl CollectTypesMetadata for TypedAstNode {
+    fn collect_types_metadata(&self) -> Vec<TypeMetadata> {
+        self.content.collect_types_metadata()
     }
 }
 
@@ -113,12 +118,23 @@ impl DeterministicallyAborts for TypedAstNode {
 
 impl TypedAstNode {
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
-    pub(crate) fn is_public(&self) -> bool {
+    pub(crate) fn is_public(&self) -> CompileResult<bool> {
         use TypedAstNodeContent::*;
-        match &self.content {
-            Declaration(decl) => decl.visibility().is_public(),
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let public = match &self.content {
+            Declaration(decl) => {
+                let visibility = check!(
+                    decl.visibility(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                visibility.is_public()
+            }
             ReturnStatement(_) | Expression(_) | SideEffect | ImplicitReturnExpression(_) => false,
-        }
+        };
+        ok(public, warnings, errors)
     }
 
     /// Naive check to see if this node is a function declaration of a function called `main` if
@@ -312,7 +328,8 @@ impl TypedAstNode {
                                 errors
                             );
                             let name = trait_decl.name.clone();
-                            let decl = TypedDeclaration::TraitDeclaration(trait_decl);
+                            let decl_id = de_insert_trait(trait_decl);
+                            let decl = TypedDeclaration::TraitDeclaration(decl_id);
                             ctx.namespace.insert_symbol(name, decl.clone());
                             decl
                         }

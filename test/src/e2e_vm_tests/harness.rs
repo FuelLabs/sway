@@ -61,6 +61,7 @@ pub(crate) fn runs_on_node(
         silent_mode: !verbose,
         contract: Some(contracts),
         locked,
+        unsigned: true,
         ..Default::default()
     };
     tokio::runtime::Runtime::new()
@@ -71,23 +72,29 @@ pub(crate) fn runs_on_node(
 
 /// Very basic check that code does indeed run in the VM.
 /// `true` if it does, `false` if not.
-pub(crate) fn runs_in_vm(file_name: &str, locked: bool) -> (ProgramState, Compiled) {
+pub(crate) fn runs_in_vm(
+    file_name: &str,
+    script_data: Option<Vec<u8>>,
+    locked: bool,
+) -> (ProgramState, Compiled) {
     let storage = MemoryStorage::default();
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let script = compile_to_bytes(file_name, locked).unwrap();
     let maturity = 1;
+    let script_data = script_data.unwrap_or_default();
     let block_height = (u32::MAX >> 1) as u64;
     let params = &ConsensusParameters::DEFAULT;
 
-    let tx = TransactionBuilder::script(script.bytecode.clone(), Default::default())
+    let tx = TransactionBuilder::script(script.bytecode.clone(), script_data)
         .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
         .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
         .maturity(maturity)
         .finalize_checked(block_height as Word, params);
 
     let mut i = Interpreter::with_storage(storage, Default::default());
-    (*i.transact(tx).unwrap().state(), script)
+    let transition = i.transact(tx).unwrap();
+    (*transition.state(), script)
 }
 
 /// Compiles the code and captures the output of forc and the compilation.
