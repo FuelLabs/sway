@@ -1,6 +1,6 @@
 use crate::{
     formatter::{
-        shape::{ExprKind, LineStyle},
+        shape::{CodeLine, ExprKind, LineStyle, Shape},
         *,
     },
     utils::{
@@ -18,37 +18,44 @@ impl Format for IfExpr {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        formatter
-            .shape
-            .code_line
-            .update_expr_kind(ExprKind::Conditional);
-        // check if the entire expression could fit into a single line
-        let full_width_line_style = get_full_width_line_style(self, formatter)?;
-        if full_width_line_style == LineStyle::Inline && self.else_opt.is_some() {
-            formatter
-                .shape
-                .code_line
-                .update_line_style(full_width_line_style);
-            format_if_expr(self, formatted_code, formatter)?;
-        } else {
-            // if it can't then we must format one expression at a time
-            let if_cond_width = get_if_condition_width(self)?;
-            formatter
-                .shape
-                .get_line_style(None, Some(if_cond_width), &formatter.config);
-            if formatter.shape.code_line.line_style == LineStyle::Inline {
-                formatter
-                    .shape
-                    .code_line
-                    .update_line_style(LineStyle::Normal)
-            }
-            format_if_condition(self, formatted_code, formatter)?;
-            format_then_block(self, formatted_code, formatter)?;
+        formatter.with_shape(
+            Shape::from(
+                &formatter.shape,
+                Some(0),
+                Some(CodeLine::new(LineStyle::Normal, ExprKind::Conditional)),
+            ),
+            |formatter| -> Result<(), FormatterError> {
+                // check if the entire expression could fit into a single line
+                let full_width_line_style = get_full_width_line_style(self, formatter)?;
+                if full_width_line_style == LineStyle::Inline && self.else_opt.is_some() {
+                    formatter
+                        .shape
+                        .code_line
+                        .update_line_style(full_width_line_style);
+                    format_if_expr(self, formatted_code, formatter)?;
+                } else {
+                    // if it can't then we must format one expression at a time
+                    let if_cond_width = get_if_condition_width(self)?;
+                    formatter
+                        .shape
+                        .get_line_style(None, Some(if_cond_width), &formatter.config);
+                    if formatter.shape.code_line.line_style == LineStyle::Inline {
+                        formatter
+                            .shape
+                            .code_line
+                            .update_line_style(LineStyle::Normal)
+                    }
+                    format_if_condition(self, formatted_code, formatter)?;
+                    format_then_block(self, formatted_code, formatter)?;
 
-            if self.else_opt.is_some() {
-                format_else_opt(self, formatted_code, formatter)?;
-            }
-        }
+                    if self.else_opt.is_some() {
+                        format_else_opt(self, formatted_code, formatter)?;
+                    }
+                }
+
+                Ok(())
+            },
+        )?;
 
         Ok(())
     }
