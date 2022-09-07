@@ -10,35 +10,12 @@
       }
     }
   ],
-  "loggedTypes": [
-    {
-      "logId": 1018134,
-      "loggedType": {
-        "name": "",
-        "type": 1,
-        "typeArguments": null
-      }
-    },
-    {
-      "logId": 1018153,
-      "loggedType": {
-        "name": "",
-        "type": 1,
-        "typeArguments": null
-      }
-    }
-  ],
+  "loggedTypes": [],
   "types": [
     {
       "components": [],
       "type": "()",
       "typeId": 0,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 1,
       "typeParameters": null
     }
   ]
