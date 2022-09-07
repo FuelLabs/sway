@@ -143,22 +143,19 @@
 <p>This example script calls a contract:</p>
 <pre><code class="language-sway">script;
 
-use example_contract::MyContract;
+use std::{address::Address, constants::ZERO_B256};
+use wallet_abi::Wallet;
 
-struct InputStruct {
-    field_1: bool,
-    field_2: u64,
-}
-
-// All scripts require a main function.
-fn main () {
-    let x = abi(MyContract, 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861);
-    let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
-    let input = InputStruct {
-        field_1: true,
-        field_2: 3,
-    };
-    x.foo(5000, 0, asset_id, input);
+fn main() {
+    let contract_address = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
+    let caller = abi(Wallet, contract_address);
+    let amount_to_send = 200;
+    let recipient_address = ~Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
+    caller.send_funds {
+        gas: 10000,
+        coins: 0,
+        asset_id: ZERO_B256,
+    }(amount_to_send, recipient_address);
 }
 </code></pre>
 <p>Scripts, similar to predicates, rely on a <code>main()</code> function as an entry point. You can call other functions defined in a script from the <code>main()</code> function or call another contract via an <a href="./smart_contracts.html#calling-a-smart-contract-from-a-script">abi cast</a>.</p>
