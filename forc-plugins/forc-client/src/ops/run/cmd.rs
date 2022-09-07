@@ -67,6 +67,10 @@ pub struct RunCommand {
     #[clap(long)]
     pub time_phases: bool,
 
+    /// Include logged types in the JSON ABI.
+    #[clap(long)]
+    pub generate_logged_types: bool,
+
     /// Pretty-print the outputs from the node.
     #[clap(long = "pretty-print", short = 'r')]
     pub pretty_print: bool,
