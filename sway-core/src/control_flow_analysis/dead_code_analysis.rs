@@ -164,13 +164,9 @@ impl ControlFlowGraph {
                                     decl_id,
                                 )),
                             ..
-                        }) => {
-                            let trait_decl = de_get_trait(decl_id.clone(), &decl_id.span())?;
-                            match trait_decl.visibility {
-                                Visibility::Private => true,
-                                Visibility::Public => false,
-                            }
-                        }
+                        }) => de_get_trait(decl_id.clone(), &decl_id.span())?
+                            .visibility
+                            .is_public(),
                         ControlFlowGraphNode::ProgramNode(TypedAstNode {
                             content:
                                 TypedAstNodeContent::Declaration(TypedDeclaration::StructDeclaration(
