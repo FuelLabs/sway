@@ -161,6 +161,20 @@ impl Block {
         })
     }
 
+    /// Get a mut reference to the block terminator.
+    ///
+    /// Returns `None` if block is empty.
+    pub fn get_terminator_mut<'a>(&self, context: &'a mut Context) -> Option<&'a mut Instruction> {
+        context.blocks[self.0].instructions.last().and_then(|val| {
+            // It's guaranteed to be an instruction value.
+            if let ValueDatum::Instruction(term_inst) = &mut context.values[val.0].value {
+                Some(term_inst)
+            } else {
+                None
+            }
+        })
+    }
+
     /// Get the CFG successors of this block.
     pub(super) fn successors<'a>(&'a self, context: &'a Context) -> Vec<Block> {
         match self.get_terminator(context) {
@@ -173,6 +187,51 @@ impl Block {
             Some(Instruction::Branch(block)) => vec![*block],
 
             _otherwise => Vec::new(),
+        }
+    }
+
+    /// Replace successor `old_succ` with `new_succ`
+    pub(super) fn replace_successors(
+        &self,
+        context: &mut Context,
+        old_succ: Block,
+        new_succ: Block,
+    ) {
+        if let Some(term) = self.get_terminator_mut(context) {
+            match term {
+                Instruction::ConditionalBranch {
+                    true_block,
+                    false_block,
+                    cond_value,
+                } => {
+                    let (new_true_block, new_false_block) = (
+                        if old_succ == *true_block {
+                            new_succ
+                        } else {
+                            *true_block
+                        },
+                        if old_succ == *false_block {
+                            new_succ
+                        } else {
+                            *false_block
+                        },
+                    );
+                    if new_true_block != *true_block || new_false_block != *false_block {
+                        *term = Instruction::ConditionalBranch {
+                            cond_value: *cond_value,
+                            true_block: new_true_block,
+                            false_block: new_false_block,
+                        };
+                    }
+                }
+
+                Instruction::Branch(block) => {
+                    if *block == old_succ {
+                        *term = Instruction::Branch(new_succ);
+                    }
+                }
+                _ => (),
+            }
         }
     }
 
