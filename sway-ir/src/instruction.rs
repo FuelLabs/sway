@@ -356,10 +356,9 @@ impl Instruction {
     }
 
     pub fn may_have_side_effect(&self) -> bool {
-        matches!(
-            self,
+        match self {
             Instruction::AsmBlock(_, _)
-                | Instruction::Call(_, _)
+                | Instruction::Call(..)
                 | Instruction::ContractCall { .. }
                 | Instruction::Log { .. }
                 | Instruction::StateLoadQuadWord { .. }
@@ -369,8 +368,25 @@ impl Instruction {
                 // Insert(Element/Value), unlike those in LLVM
                 // do not have SSA semantics. They are like stores.
                 | Instruction::InsertElement { .. }
-                | Instruction::InsertValue { .. }
-        )
+                | Instruction::InsertValue { .. } => true,
+                | Instruction::AddrOf(_)
+                | Instruction::BitCast(..)
+                | Instruction::Cmp(..)
+                | Instruction::ExtractElement {  .. }
+                | Instruction::ExtractValue { .. }
+                | Instruction::GetStorageKey
+                | Instruction::Gtf { .. }
+                | Instruction::Load(_)
+                | Instruction::ReadRegister(_)
+                | Instruction::StateLoadWord(_)
+                | Instruction::Phi(_)
+                | Instruction::GetPointer { .. }
+                | Instruction::IntToPtr(..)
+                | Instruction::Branch(_)
+                | Instruction::ConditionalBranch { .. }
+                | Instruction::Ret(..)
+                | Instruction::Nop => false,
+        }
     }
 
     pub fn is_terminator(&self) -> bool {
