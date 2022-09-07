@@ -124,7 +124,11 @@ fn connect_node(
 ) -> Result<(NodeConnection, ReturnStatementNodes), CompileError> {
     let span = node.span.clone();
     match &node.content {
-        TypedAstNodeContent::ImplicitReturnExpression(_) => {
+        TypedAstNodeContent::Expression(TypedExpression {
+            expression: TypedExpressionVariant::Return(..),
+            ..
+        })
+        | TypedAstNodeContent::ImplicitReturnExpression(_) => {
             let this_index = graph.add_node(node.into());
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());
