@@ -976,6 +976,12 @@ pub enum CompileError {
         attrs: String,
         span: Span,
     },
+    #[error(
+        "Parameter mutability mismatch between the trait function declaration and its implementation."
+    )]
+    ParameterMutabilityMismatch { span: Span },
+    #[error("Ref mutable parameter is not supported for contract ABI function.")]
+    RefMutParameterInContract { span: Span },
     #[error("Literal value is too large for type {ty}.")]
     IntegerTooLarge { span: Span, ty: String },
     #[error("Literal value underflows type {ty}.")]
@@ -1212,6 +1218,8 @@ impl Spanned for CompileError {
             DeclIsNotStorage { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             ImpureInPureContext { span, .. } => span.clone(),
+            ParameterMutabilityMismatch { span, .. } => span.clone(),
+            RefMutParameterInContract { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
             IntegerTooSmall { span, .. } => span.clone(),
             IntegerContainsInvalidDigit { span, .. } => span.clone(),
