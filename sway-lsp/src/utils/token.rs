@@ -1,4 +1,5 @@
 use crate::core::token::{AstToken, SymbolKind, Token, TokenMap, TypedAstToken};
+use sway_core::declaration_engine;
 use sway_core::semantic_analysis::ast_node::{
     declaration::TypedStructDeclaration, TypedDeclaration,
 };
@@ -105,7 +106,10 @@ pub(crate) fn type_id(token_type: &Token) -> Option<TypeId> {
         Some(typed_ast_token) => match typed_ast_token {
             TypedAstToken::TypedDeclaration(dec) => match dec {
                 TypedDeclaration::VariableDeclaration(var_decl) => Some(var_decl.type_ascription),
-                TypedDeclaration::ConstantDeclaration(const_decl) => {
+                TypedDeclaration::ConstantDeclaration(decl_id) => {
+                    let const_decl =
+                        declaration_engine::de_get_constant(decl_id.clone(), &decl_id.span())
+                            .unwrap();
                     Some(const_decl.value.return_type)
                 }
                 _ => None,

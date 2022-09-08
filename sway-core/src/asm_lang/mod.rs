@@ -877,6 +877,15 @@ impl Op {
                     );
                     VirtualOp::SWWQ(r1, r2)
                 }
+                "time" => {
+                    let (r1, r2) = check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::TIME(r1, r2)
+                }
                 "tr" => {
                     let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
@@ -1351,6 +1360,7 @@ impl fmt::Display for Op {
                 SRWQ(a, b) => format!("srwq {} {}", a, b),
                 SWW(a, b) => format!("sww {} {}", a, b),
                 SWWQ(a, b) => format!("swwq {} {}", a, b),
+                TIME(a, b) => format!("time {} {}", a, b),
                 TR(a, b, c) => format!("tr {} {} {}", a, b, c),
                 TRO(a, b, c, d) => format!("tro {} {} {} {}", a, b, c, d),
                 ECR(a, b, c) => format!("ecr {} {} {}", a, b, c),

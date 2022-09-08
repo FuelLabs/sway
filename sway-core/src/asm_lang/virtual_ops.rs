@@ -127,6 +127,7 @@ pub(crate) enum VirtualOp {
     SRWQ(VirtualRegister, VirtualRegister),
     SWW(VirtualRegister, VirtualRegister),
     SWWQ(VirtualRegister, VirtualRegister),
+    TIME(VirtualRegister, VirtualRegister),
     TR(VirtualRegister, VirtualRegister, VirtualRegister),
     TRO(
         VirtualRegister,
@@ -217,6 +218,7 @@ impl VirtualOp {
             SRWQ(r1, r2) => vec![r1, r2],
             SWW(r1, r2) => vec![r1, r2],
             SWWQ(r1, r2) => vec![r1, r2],
+            TIME(r1, r2) => vec![r1, r2],
             TR(r1, r2, r3) => vec![r1, r2, r3],
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             ECR(r1, r2, r3) => vec![r1, r2, r3],
@@ -307,6 +309,7 @@ impl VirtualOp {
             SRWQ(r1, r2) => vec![r1, r2],
             SWW(r1, r2) => vec![r1, r2],
             SWWQ(r1, r2) => vec![r1, r2],
+            TIME(_r1, r2) => vec![r2],
             TR(r1, r2, r3) => vec![r1, r2, r3],
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             ECR(r1, r2, r3) => vec![r1, r2, r3],
@@ -397,6 +400,7 @@ impl VirtualOp {
             SRWQ(_r1, _r2) => vec![],
             SWW(_r1, _r2) => vec![],
             SWWQ(_r1, _r2) => vec![],
+            TIME(r1, _r2) => vec![r1],
             TR(_r1, _r2, _r3) => vec![],
             TRO(_r1, _r2, _r3, _r4) => vec![],
             ECR(_r1, _r2, _r3) => vec![],
@@ -753,6 +757,10 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
             ),
             SWWQ(r1, r2) => Self::SWWQ(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
+            TIME(r1, r2) => Self::TIME(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
             ),
@@ -1131,6 +1139,9 @@ impl VirtualOp {
             }
             SWWQ(reg1, reg2) => {
                 AllocatedOpcode::SWWQ(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            TIME(reg1, reg2) => {
+                AllocatedOpcode::TIME(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }
             TR(reg1, reg2, reg3) => AllocatedOpcode::TR(
                 map_reg(&mapping, reg1),
