@@ -24,10 +24,13 @@ storage {
 abi StorageVecContract {
     #[storage(read, write)]
     fn push_to_storage_vec();
+
     #[storage(read)]
     fn read_from_storage_vec();
+
     #[storage(read)]
     fn iterate_over_a_storage_vec();
+
     #[storage(read, write)]
     fn push_to_multiple_types_storage_vec();
 }
@@ -47,12 +50,8 @@ impl StorageVecContract for Contract {
     fn read_from_storage_vec() {
         let third = storage.v.get(2);
         match third {
-            Option::Some(third) => {
-                log(third)
-            },
-            Option::None => {
-                revert(42)
-            },
+            Option::Some(third) => log(third),
+            Option::None => revert(42),
         }
     }
     // ANCHOR_END: storage_vec_get

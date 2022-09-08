@@ -17,7 +17,7 @@ pub use storage::*;
 pub use variable::*;
 
 use crate::{
-    declaration_engine::{declaration_engine::de_get_storage, declaration_id::DeclarationId},
+    declaration_engine::{declaration_engine::*, declaration_id::DeclarationId},
     error::*,
     parse_tree::*,
     semantic_analysis::*,
@@ -32,11 +32,11 @@ pub enum TypedDeclaration {
     VariableDeclaration(TypedVariableDeclaration),
     ConstantDeclaration(TypedConstantDeclaration),
     FunctionDeclaration(TypedFunctionDeclaration),
-    TraitDeclaration(TypedTraitDeclaration),
+    TraitDeclaration(DeclarationId),
     StructDeclaration(TypedStructDeclaration),
     EnumDeclaration(TypedEnumDeclaration),
     ImplTrait(TypedImplTrait),
-    AbiDeclaration(TypedAbiDeclaration),
+    AbiDeclaration(DeclarationId),
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
     GenericTypeForFunctionScope { name: Ident, type_id: TypeId },
@@ -73,10 +73,10 @@ impl Spanned for TypedDeclaration {
             VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span(),
             ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span(),
             FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
-            TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span(),
+            TraitDeclaration(decl_id) => decl_id.span(),
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span(),
             EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
-            AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
+            AbiDeclaration(decl_id) => decl_id.span(),
             ImplTrait(TypedImplTrait { span, .. }) => span.clone(),
             StorageDeclaration(decl) => decl.span(),
             ErrorRecovery | GenericTypeForFunctionScope { .. } => {
@@ -121,8 +121,12 @@ impl fmt::Display for TypedDeclaration {
                 }) => {
                     name.as_str().into()
                 }
-                TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { name, .. }) =>
-                    name.as_str().into(),
+                TypedDeclaration::TraitDeclaration(decl_id) => {
+                    match de_get_trait(decl_id.clone(), &decl_id.span()) {
+                        Ok(TypedTraitDeclaration { name, .. }) => name.as_str().into(),
+                        Err(_) => "unknown trait".into(),
+                    }
+                }
                 TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) =>
                     name.as_str().into(),
                 TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
@@ -260,18 +264,18 @@ impl TypedDeclaration {
     /// Retrieves the declaration as an Abi declaration.
     ///
     /// Returns an error if `self` is not a `TypedAbiDeclaration`.
-    pub(crate) fn expect_abi(&self) -> CompileResult<&TypedAbiDeclaration> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn expect_abi(&self, access_span: &Span) -> CompileResult<TypedAbiDeclaration> {
         match self {
-            TypedDeclaration::AbiDeclaration(decl) => ok(decl, warnings, errors),
-            decl => {
-                errors.push(CompileError::DeclIsNotAnAbi {
+            TypedDeclaration::AbiDeclaration(decl_id) => {
+                CompileResult::from(de_get_abi(decl_id.clone(), access_span))
+            }
+            decl => err(
+                vec![],
+                vec![CompileError::DeclIsNotAnAbi {
                     actually: decl.friendly_name().to_string(),
                     span: decl.span(),
-                });
-                err(warnings, errors)
-            }
+                }],
+            ),
         }
     }
 
@@ -335,9 +339,20 @@ impl TypedDeclaration {
         ok(type_id, warnings, errors)
     }
 
-    pub(crate) fn visibility(&self) -> Visibility {
+    pub(crate) fn visibility(&self) -> CompileResult<Visibility> {
         use TypedDeclaration::*;
-        match self {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let visibility = match self {
+            TraitDeclaration(decl_id) => {
+                let TypedTraitDeclaration { visibility, .. } = check!(
+                    CompileResult::from(de_get_trait(decl_id.clone(), &decl_id.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                visibility
+            }
             GenericTypeForFunctionScope { .. }
             | ImplTrait { .. }
             | StorageDeclaration { .. }
@@ -350,9 +365,9 @@ impl TypedDeclaration {
             EnumDeclaration(TypedEnumDeclaration { visibility, .. })
             | ConstantDeclaration(TypedConstantDeclaration { visibility, .. })
             | FunctionDeclaration(TypedFunctionDeclaration { visibility, .. })
-            | TraitDeclaration(TypedTraitDeclaration { visibility, .. })
             | StructDeclaration(TypedStructDeclaration { visibility, .. }) => *visibility,
-        }
+        };
+        ok(visibility, warnings, errors)
     }
 }
 
