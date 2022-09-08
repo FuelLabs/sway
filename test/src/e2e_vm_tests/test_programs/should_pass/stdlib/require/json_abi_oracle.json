@@ -5,100 +5,17 @@
       "name": "main",
       "output": {
         "name": "",
-        "type": 1,
+        "type": 0,
         "typeArguments": null
       }
     }
   ],
-  "loggedTypes": [
-    {
-      "logId": 1013072,
-      "loggedType": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
-    },
-    {
-      "logId": 1013701,
-      "loggedType": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
-    },
-    {
-      "logId": 1013809,
-      "loggedType": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
-    },
-    {
-      "logId": 1013917,
-      "loggedType": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
-    },
-    {
-      "logId": 1014259,
-      "loggedType": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
-    },
-    {
-      "logId": 1014595,
-      "loggedType": {
-        "name": "",
-        "type": 2,
-        "typeArguments": null
-      }
-    }
-  ],
+  "loggedTypes": [],
   "types": [
     {
       "components": null,
-      "type": "b256",
-      "typeId": 0,
-      "typeParameters": null
-    },
-    {
-      "components": null,
       "type": "bool",
-      "typeId": 1,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "val_1",
-          "type": 1,
-          "typeArguments": null
-        },
-        {
-          "name": "val_2",
-          "type": 0,
-          "typeArguments": null
-        },
-        {
-          "name": "val_3",
-          "type": 3,
-          "typeArguments": null
-        }
-      ],
-      "type": "struct CustomError",
-      "typeId": 2,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 3,
+      "typeId": 0,
       "typeParameters": null
     }
   ]

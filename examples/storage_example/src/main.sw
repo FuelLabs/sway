@@ -5,6 +5,7 @@ use std::storage::{get, store};
 abi StorageExample {
     #[storage(write)]
     fn store_something(amount: u64);
+
     #[storage(read)]
     fn get_something() -> u64;
 }

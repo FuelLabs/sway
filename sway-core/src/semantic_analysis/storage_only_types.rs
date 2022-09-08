@@ -7,13 +7,12 @@ use crate::{error::ok, semantic_analysis, CompileError, CompileResult, CompileWa
 use crate::{TypedDeclaration, TypedFunctionDeclaration};
 
 use crate::semantic_analysis::{
-    TypedAbiDeclaration, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
-    TypedIntrinsicFunctionKind, TypedReassignment, TypedReturnStatement,
+    TypedAstNodeContent, TypedExpression, TypedExpressionVariant, TypedIntrinsicFunctionKind,
+    TypedReassignment, TypedReturnStatement,
 };
 
 use super::{
     TypedEnumDeclaration, TypedImplTrait, TypedStorageDeclaration, TypedStructDeclaration,
-    TypedTraitDeclaration,
 };
 
 fn ast_node_validate(x: &TypedAstNodeContent) -> CompileResult<()> {
@@ -206,8 +205,7 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TypedDeclaration::AbiDeclaration(TypedAbiDeclaration { methods: _, .. })
-        | TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { methods: _, .. }) => {
+        TypedDeclaration::AbiDeclaration(_) | TypedDeclaration::TraitDeclaration(_) => {
             // These methods are not typed. They are however handled from ImplTrait.
         }
         TypedDeclaration::ImplTrait(TypedImplTrait { methods, .. }) => {

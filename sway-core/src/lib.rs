@@ -235,6 +235,7 @@ pub enum BytecodeCompilationResult {
 pub fn parsed_to_ast(
     parse_program: &ParseProgram,
     initial_namespace: namespace::Module,
+    generate_logged_types: bool,
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -256,18 +257,34 @@ pub fn parsed_to_ast(
     };
 
     // Collect information about the types used in this program
-    let types_metadata = typed_program.collect_types_metadata();
+    let CompileResult {
+        value: types_metadata_result,
+        warnings: new_warnings,
+        errors: new_errors,
+    } = typed_program.collect_types_metadata();
+    warnings.extend(new_warnings);
+    errors.extend(new_errors);
+    let types_metadata = match types_metadata_result {
+        Some(types_metadata) => types_metadata,
+        None => {
+            errors = dedup_unsorted(errors);
+            warnings = dedup_unsorted(warnings);
+            return CompileAstResult::Failure { errors, warnings };
+        }
+    };
 
     // Collect all the types of logged values. These are required when generating the JSON ABI.
-    typed_program.logged_types.extend(
-        types_metadata
-            .iter()
-            .filter_map(|m| match m {
-                TypeMetadata::LoggedType(type_id) => Some(*type_id),
-                _ => None,
-            })
-            .collect::<Vec<_>>(),
-    );
+    if generate_logged_types {
+        typed_program.logged_types.extend(
+            types_metadata
+                .iter()
+                .filter_map(|m| match m {
+                    TypeMetadata::LoggedType(type_id) => Some(*type_id),
+                    _ => None,
+                })
+                .collect::<Vec<_>>(),
+        );
+    }
 
     let mut cfa_res = perform_control_flow_analysis(&typed_program);
 
@@ -369,7 +386,13 @@ pub fn compile_to_ast(
         }
     };
 
-    match parsed_to_ast(&parse_program, initial_namespace) {
+    let generate_logged_types = if let Some(build_config) = build_config {
+        build_config.generate_logged_types
+    } else {
+        false
+    };
+
+    match parsed_to_ast(&parse_program, initial_namespace, generate_logged_types) {
         CompileAstResult::Success {
             typed_program,
             warnings: new_warnings,
