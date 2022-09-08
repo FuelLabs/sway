@@ -47,13 +47,13 @@ The `Log` receipt is generated for _non-reference_ types, namely `bool`, `u8`, `
   "is": 10352,
   "pc": 10404,
   "ra": 42,
-  "rb": 0,
+  "rb": 1018205,
   "rc": 0,
   "rd": 0
 }
 ```
 
-Note that `ra` will include the value being logged. The additional registers `rb` to `rd` will be zero when using `log(x)`.
+Note that `ra` will include the value being logged. The additional registers `rc` and `rd` will be zero when using `log` while `rb` may include a non-zero value representing a unique ID for the `log` instance. The unique ID is not meaningful on its own but allows the Rust and the TS SDKs to know the type of the data being logged, by looking up the log ID in the JSON ABI file.
 
 ### `LogData` Receipt
 
@@ -69,8 +69,8 @@ Note that `ra` will include the value being logged. The additional registers `rb
   "pc": 10444,
   "ptr": 10468,
   "ra": 0,
-  "rb": 0
+  "rb": 1018194
 }
 ```
 
-Note that `data` in the receipt above will include the value being logged as a hexadecimal.
+Note that `data` in the receipt above will include the value being logged as a hexadecimal. Similarly to the `Log` receipt, additional registers are written: `ra` will always be zero when using `log`, while `rb` will contain a unique ID for the `log` instance.

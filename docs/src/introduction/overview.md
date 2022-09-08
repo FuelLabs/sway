@@ -109,7 +109,7 @@ impl Counter for Contract {
       return storage.counter;
     }
     #[storage(read, write)]
-    fn increment(){
+    fn increment() {
         storage.counter = storage.counter + 1;
     }
 }
@@ -150,12 +150,12 @@ You should see something like this output:
 Compiled library "core".
   Compiled library "std".
   Compiled contract "counter_contract".
-  Bytecode size is 240 bytes.
+  Bytecode size is 224 bytes.
 ```
 
 ### Deploy the Contract
 
-It's now time to deploy the contract and call it on a Fuel node. We will show how to do this using `forc` from the command line, but you can also do it using the [Rust SDK](https://github.com/FuelLabs/fuels-rs#deploying-a-sway-contract) or the [TypeScript SDK](https://github.com/FuelLabs/fuels-ts/#deploying-contracts)
+It's now time to deploy the contract and call it on a Fuel node. We will show how to do this using `forc` from the command line, but you can also do it using the [Rust SDK](https://fuellabs.github.io/fuels-rs/master/getting-started/contracts.html) or the [TypeScript SDK](https://fuellabs.github.io/fuels-ts/#deploying-contracts)
 
 ### Spin Up a Fuel node
 
@@ -172,7 +172,7 @@ This starts a Fuel node with a volatile database that will be cleared when shut 
 To deploy `counter_contract` on your local Fuel node, open a new terminal tab and run the following command from the root of the `wallet_contract` directory:
 
 ```sh
-forc deploy
+forc deploy --unsigned
 ```
 
 > **Note**
@@ -181,14 +181,14 @@ forc deploy
 This should produce some output in `stdout` that looks like this:
 
 ```console
-$ forc deploy
+$ forc deploy --unsigned
   Compiled library "core".
   Compiled library "std".
   Compiled contract "counter_contract".
-  Bytecode size is 208 bytes.
-Contract id: 0x1d64105ed60f22f3def36ebbda45d58513e69bcbc4b2fcce0875898b0468d276
+  Bytecode size is 224 bytes.
+Contract id: 0xaf94c0a707756caae667ee43ca18bace441b25998c668010192444a19674dc4f
 Logs:
-TransactionId(HexFormatted(69a1c45f31892f61ae6b67edd8524550769b1432b7f1984ca0a456ea0de18da7))
+TransactionId(HexFormatted(7cef24ea33513733ab78c5daa5328d622d4b38187d0f0d1857b272090d99f96a))
 ```
 
 Note the contract ID—you will need it if you want to build out a frontend to interact with this contract.
@@ -202,10 +202,12 @@ At the bottom of the file, define the body of `can_get_contract_instance`. Here 
 ```sway
 #[tokio::test]
 async fn can_get_contract_id() {
-    let (instance, _id) = get_contract_instance().await;
-    // Now you have an instance of your contract you can use to test each function
-    let result = instance.increment().call().await.unwrap();
-    assert!(result.value > 0)
+    // Increment the counter
+    let _result = instance.increment().call().await.unwrap();
+
+    // Get the current value of the counter
+    let result = instance.counter().call().await.unwrap();
+    assert!(result.value > 0);
 }
 ```
 
@@ -214,18 +216,18 @@ Run the following command in the terminal: `forc test`.
 You'll see something like this as your output:
 
 ```console
- Compiled library "core".
+  Compiled library "core".
   Compiled library "std".
   Compiled contract "counter_contract".
-  Bytecode size is 208 bytes.
-  Compiling counter_contract v0.1.0 (</path/to/counter_contract>)
-  Finished test [unoptimized + debuginfo] target(s) in 11.71s
-  Running tests/harness.rs (target/debug/deps/integration_tests-6a600a6a87f48edb)
+  Bytecode size is 224 bytes.
+   Compiling counter_contract v0.1.0 (<path/to/counter_contract>)
+    Finished test [unoptimized + debuginfo] target(s) in 4.55s
+     Running tests/harness.rs (target/debug/deps/integration_tests-7a2922c770587b45)
 
 running 1 test
 test can_get_contract_id ... ok
 
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
 ```
 
 Congratulations, you've just created and tested your first Sway smart contract 🎉. Now you can build a frontend to interact with your contract using the TypeScript SDK. You can find a step-by-step guide to building a front end for your project [here](https://fuellabs.github.io/fuels-ts/QUICKSTART.html).
