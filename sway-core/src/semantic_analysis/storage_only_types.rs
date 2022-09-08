@@ -1,17 +1,18 @@
 use sway_types::{Span, Spanned};
 
+use crate::declaration_engine::declaration_engine::de_get_storage;
+use crate::error::err;
 use crate::type_system::{is_type_info_storage_only, resolve_type, TypeId};
 use crate::{error::ok, semantic_analysis, CompileError, CompileResult, CompileWarning};
 use crate::{TypedDeclaration, TypedFunctionDeclaration};
 
 use crate::semantic_analysis::{
-    TypedAbiDeclaration, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
-    TypedIntrinsicFunctionKind, TypedReassignment, TypedReturnStatement,
+    TypedAstNodeContent, TypedExpression, TypedExpressionVariant, TypedIntrinsicFunctionKind,
+    TypedReassignment, TypedReturnStatement,
 };
 
 use super::{
     TypedEnumDeclaration, TypedImplTrait, TypedStorageDeclaration, TypedStructDeclaration,
-    TypedTraitDeclaration,
 };
 
 fn ast_node_validate(x: &TypedAstNodeContent) -> CompileResult<()> {
@@ -204,8 +205,7 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TypedDeclaration::AbiDeclaration(TypedAbiDeclaration { methods: _, .. })
-        | TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { methods: _, .. }) => {
+        TypedDeclaration::AbiDeclaration(_) | TypedDeclaration::TraitDeclaration(_) => {
             // These methods are not typed. They are however handled from ImplTrait.
         }
         TypedDeclaration::ImplTrait(TypedImplTrait { methods, .. }) => {
@@ -238,7 +238,13 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TypedDeclaration::StorageDeclaration(TypedStorageDeclaration { fields, .. }) => {
+        TypedDeclaration::StorageDeclaration(decl_id) => {
+            let TypedStorageDeclaration { fields, .. } = check!(
+                CompileResult::from(de_get_storage(decl_id.clone(), &decl.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             for field in fields {
                 check!(
                     check_type(field.type_id, field.name.span().clone(), true),

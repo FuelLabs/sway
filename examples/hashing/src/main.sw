@@ -16,9 +16,8 @@ struct Person {
     alive: bool,
     location: Location,
     stats: Stats,
-    some_tuple: (bool,
-    u64), some_array: [u64;
-    2],
+    some_tuple: (bool, u64),
+    some_array: [u64; 2],
     some_b256: b256,
 }
 
@@ -55,10 +54,23 @@ fn main() {
 
     // Complex structs are not a problem
     let sha_hashed_struct = sha256(Person {
-        name: "John", age: 9000, alive: true, location: Location::Mars, stats: Stats {
-            strength: 10, agility: 9
+        name: "John",
+        age: 9000,
+        alive: true,
+        location: Location::Mars,
+        stats: Stats {
+            strength: 10,
+            agility: 9,
         },
-        some_tuple: (true, 8), some_array: [17, 76], some_b256: zero
+        some_tuple: (
+            true,
+            8,
+        ),
+        some_array: [
+            17,
+            76,
+        ],
+        some_b256: zero,
     });
 
     log(sha_hashed_u8);
@@ -99,10 +111,23 @@ fn main() {
 
     // Complex structs are not a problem
     let keccak_hashed_struct = keccak256(Person {
-        name: "John", age: 9000, alive: true, location: Location::Mars, stats: Stats {
-            strength: 10, agility: 9
+        name: "John",
+        age: 9000,
+        alive: true,
+        location: Location::Mars,
+        stats: Stats {
+            strength: 10,
+            agility: 9,
         },
-        some_tuple: (true, 8), some_array: [17, 76], some_b256: zero
+        some_tuple: (
+            true,
+            8,
+        ),
+        some_array: [
+            17,
+            76,
+        ],
+        some_b256: zero,
     });
 
     log(keccak_hashed_u8);

@@ -1,6 +1,6 @@
 [package]
 name = "forc-fmt"
-version = "0.21.0"
+version = "0.24.1"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -11,10 +11,10 @@ description = "A `forc` plugin for running the Sway code formatter."
 [dependencies]
 anyhow = "1"
 clap = { version = "3", features = ["derive"] }
-forc-util = { version = "0.21.0", path = "../../forc-util" }
+forc-util = { version = "0.24.1", path = "../../forc-util" }
 prettydiff = "0.5"
-sway-core = { version = "0.21.0", path = "../../sway-core" }
-sway-fmt = { version = "0.21.0", path = "../../sway-fmt" }
-sway-utils = { version = "0.21.0", path = "../../sway-utils" }
+sway-core = { version = "0.24.1", path = "../../sway-core" }
+sway-utils = { version = "0.24.1", path = "../../sway-utils" }
+swayfmt = { version = "0.24.1", path = "../../swayfmt" }
 taplo = "0.7"
 tracing = "0.1"

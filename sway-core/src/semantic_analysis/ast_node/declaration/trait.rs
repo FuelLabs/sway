@@ -2,6 +2,7 @@ use derivative::Derivative;
 use sway_types::{Ident, Spanned};
 
 use crate::{
+    declaration_engine::declaration_engine::de_get_trait,
     error::{err, ok},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
@@ -117,12 +118,19 @@ fn handle_supertraits(
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
-                ref interface_surface,
-                ref methods,
-                ref supertraits,
-                ..
-            })) => {
+            Some(TypedDeclaration::TraitDeclaration(decl_id)) => {
+                let TypedTraitDeclaration {
+                    ref interface_surface,
+                    ref methods,
+                    ref supertraits,
+                    ..
+                } = check!(
+                    CompileResult::from(de_get_trait(decl_id.clone(), &supertrait.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
                 // insert dummy versions of the interfaces for all of the supertraits
                 trait_namespace.insert_trait_implementation(
                     supertrait.name.clone(),

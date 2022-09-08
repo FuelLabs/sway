@@ -1,5 +1,6 @@
 use super::*;
 use crate::{
+    declaration_engine::declaration_engine::*,
     parse_tree::{CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
@@ -142,59 +143,63 @@ impl ControlFlowGraph {
                         .unwrap(),
                 ]
             }
-            TreeType::Contract | TreeType::Library { .. } => graph
-                .graph
-                .node_indices()
-                .filter(|i| match graph.graph[*i] {
-                    ControlFlowGraphNode::OrganizationalDominator(_) => false,
-                    ControlFlowGraphNode::ProgramNode(TypedAstNode {
-                        content:
-                            TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
-                                TypedFunctionDeclaration {
-                                    visibility: Visibility::Public,
-                                    ..
-                                },
-                            )),
-                        ..
-                    }) => true,
-                    ControlFlowGraphNode::ProgramNode(TypedAstNode {
-                        content:
-                            TypedAstNodeContent::Declaration(TypedDeclaration::TraitDeclaration(
-                                TypedTraitDeclaration {
-                                    visibility: Visibility::Public,
-                                    ..
-                                },
-                            )),
-                        ..
-                    }) => true,
-                    ControlFlowGraphNode::ProgramNode(TypedAstNode {
-                        content:
-                            TypedAstNodeContent::Declaration(TypedDeclaration::StructDeclaration(
-                                TypedStructDeclaration {
-                                    visibility: Visibility::Public,
-                                    ..
-                                },
-                            )),
-                        ..
-                    }) => true,
-                    ControlFlowGraphNode::ProgramNode(TypedAstNode {
-                        content:
-                            TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait { .. }),
-                        ..
-                    }) => true,
-                    ControlFlowGraphNode::ProgramNode(TypedAstNode {
-                        content:
-                            TypedAstNodeContent::Declaration(TypedDeclaration::ConstantDeclaration(
-                                TypedConstantDeclaration {
-                                    visibility: Visibility::Public,
-                                    ..
-                                },
-                            )),
-                        ..
-                    }) => true,
-                    _ => false,
-                })
-                .collect(),
+            TreeType::Contract | TreeType::Library { .. } => {
+                let mut ret = vec![];
+                for i in graph.graph.node_indices() {
+                    let count_it = match &graph.graph[i] {
+                        ControlFlowGraphNode::OrganizationalDominator(_) => false,
+                        ControlFlowGraphNode::ProgramNode(TypedAstNode {
+                            content:
+                                TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
+                                    TypedFunctionDeclaration {
+                                        visibility: Visibility::Public,
+                                        ..
+                                    },
+                                )),
+                            ..
+                        }) => true,
+                        ControlFlowGraphNode::ProgramNode(TypedAstNode {
+                            content:
+                                TypedAstNodeContent::Declaration(TypedDeclaration::TraitDeclaration(
+                                    decl_id,
+                                )),
+                            ..
+                        }) => de_get_trait(decl_id.clone(), &decl_id.span())?
+                            .visibility
+                            .is_public(),
+                        ControlFlowGraphNode::ProgramNode(TypedAstNode {
+                            content:
+                                TypedAstNodeContent::Declaration(TypedDeclaration::StructDeclaration(
+                                    TypedStructDeclaration {
+                                        visibility: Visibility::Public,
+                                        ..
+                                    },
+                                )),
+                            ..
+                        }) => true,
+                        ControlFlowGraphNode::ProgramNode(TypedAstNode {
+                            content:
+                                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait { .. }),
+                            ..
+                        }) => true,
+                        ControlFlowGraphNode::ProgramNode(TypedAstNode {
+                            content:
+                                TypedAstNodeContent::Declaration(TypedDeclaration::ConstantDeclaration(
+                                    TypedConstantDeclaration {
+                                        visibility: Visibility::Public,
+                                        ..
+                                    },
+                                )),
+                            ..
+                        }) => true,
+                        _ => false,
+                    };
+                    if count_it {
+                        ret.push(i);
+                    }
+                }
+                ret
+            }
         };
         Ok(())
     }
@@ -350,12 +355,14 @@ fn connect_declaration(
             connect_typed_fn_decl(fn_decl, graph, entry_node, span, exit_node, tree_type)?;
             Ok(leaves.to_vec())
         }
-        TraitDeclaration(trait_decl) => {
-            connect_trait_declaration(trait_decl, graph, entry_node);
+        TraitDeclaration(decl_id) => {
+            let trait_decl = de_get_trait(decl_id.clone(), &span)?;
+            connect_trait_declaration(&trait_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
-        AbiDeclaration(abi_decl) => {
-            connect_abi_declaration(abi_decl, graph, entry_node);
+        AbiDeclaration(decl_id) => {
+            let abi_decl = de_get_abi(decl_id.clone(), &span)?;
+            connect_abi_declaration(&abi_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
         StructDeclaration(struct_decl) => {
@@ -374,8 +381,9 @@ fn connect_declaration(
             connect_impl_trait(trait_name, graph, methods, entry_node, tree_type)?;
             Ok(leaves.to_vec())
         }
-        StorageDeclaration(storage) => {
-            connect_storage_declaration(storage, graph, entry_node, tree_type);
+        StorageDeclaration(decl_id) => {
+            let storage = de_get_storage(decl_id.clone(), &span)?;
+            connect_storage_declaration(&storage, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
         ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
@@ -1255,15 +1263,18 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
             warning_content: Warning::DeadStructDeclaration,
         },
         TypedAstNode {
-            content:
-                TypedAstNodeContent::Declaration(TypedDeclaration::TraitDeclaration(
-                    TypedTraitDeclaration { name, .. },
-                )),
+            content: TypedAstNodeContent::Declaration(TypedDeclaration::TraitDeclaration(decl_id)),
             ..
-        } => CompileWarning {
-            span: name.span(),
-            warning_content: Warning::DeadTrait,
-        },
+        } => {
+            let span = match de_get_trait(decl_id.clone(), &decl_id.span()) {
+                Ok(TypedTraitDeclaration { name, .. }) => name.span(),
+                Err(_) => node.span.clone(),
+            };
+            CompileWarning {
+                span,
+                warning_content: Warning::DeadTrait,
+            }
+        }
         TypedAstNode {
             content:
                 TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {

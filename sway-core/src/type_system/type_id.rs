@@ -1,9 +1,6 @@
-use std::fmt;
-use sway_types::{JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
-
-use crate::types::*;
-
 use super::*;
+use std::fmt;
+use sway_types::{JsonTypeApplication, JsonTypeDeclaration, Span};
 
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
@@ -34,8 +31,8 @@ impl From<usize> for TypeId {
     }
 }
 
-impl UnresolvedTypeCheck for TypeId {
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+impl CollectTypesMetadata for TypeId {
+    fn collect_types_metadata(&self) -> Vec<TypeMetadata> {
         use TypeInfo::*;
         let span_override = if let TypeInfo::Ref(_, span) = look_up_type_id_raw(*self) {
             Some(span)
@@ -43,45 +40,11 @@ impl UnresolvedTypeCheck for TypeId {
             None
         };
         match look_up_type_id(*self) {
-            UnknownGeneric { name } => vec![CompileError::UnableToInferGeneric {
-                ty: name.as_str().to_string(),
-                span: span_override.unwrap_or_else(|| name.span()),
+            UnknownGeneric { name } => vec![TypeMetadata::UnresolvedType {
+                name,
+                span_override,
             }],
             _ => vec![],
-        }
-    }
-}
-
-impl JsonAbiString for TypeId {
-    fn json_abi_str(&self) -> String {
-        look_up_type_id(*self).json_abi_str()
-    }
-}
-
-impl ToJsonAbi for TypeId {
-    type Output = Option<Vec<Property>>;
-
-    fn generate_json_abi(&self) -> Self::Output {
-        match look_up_type_id(*self) {
-            TypeInfo::Array(type_id, _, _) => Some(vec![Property {
-                name: "__array_element".to_string(),
-                type_field: type_id.json_abi_str(),
-                components: type_id.generate_json_abi(),
-                type_arguments: type_id
-                    .get_type_parameters()
-                    .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
-            }]),
-            TypeInfo::Enum { variant_types, .. } => Some(
-                variant_types
-                    .iter()
-                    .map(|x| x.generate_json_abi())
-                    .collect(),
-            ),
-            TypeInfo::Struct { fields, .. } => {
-                Some(fields.iter().map(|x| x.generate_json_abi()).collect())
-            }
-            TypeInfo::Tuple(fields) => Some(fields.iter().map(|x| x.generate_json_abi()).collect()),
-            _ => None,
         }
     }
 }
@@ -155,6 +118,10 @@ impl ReplaceSelfType for TypeId {
 }
 
 impl TypeId {
+    pub(super) fn new(index: usize) -> TypeId {
+        TypeId(index)
+    }
+
     pub(crate) fn update_type(&mut self, type_mapping: &TypeMapping, span: &Span) {
         *self = match look_up_type_id(*self).matches_type_parameter(type_mapping) {
             Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, span.clone())),
@@ -425,6 +392,10 @@ impl TypeId {
             }),
             _ => None,
         }
+    }
+
+    pub fn json_abi_str(&self) -> String {
+        look_up_type_id(*self).json_abi_str()
     }
 
     /// Gives back a string that represents the type, considering what it resolves to

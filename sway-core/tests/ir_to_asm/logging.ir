@@ -1,0 +1,18 @@
+script {
+    fn main() -> () {
+        local ptr { u64 } test_enum
+
+        entry:
+        v0 = get_ptr ptr { u64 } test_enum, ptr { u64 }, 0
+        v1 = const { u64 } { u64 1 }
+        store v1, ptr v0
+        v2 = const u64 42
+        v3 = const u64 1018142
+        log u64 v2, v3
+        v4 = get_ptr ptr { u64 } test_enum, ptr { u64 }, 0
+        v5 = const u64 1018147
+        log { u64 } v4, v5
+        v6 = const unit ()
+        ret () v6
+    }
+}

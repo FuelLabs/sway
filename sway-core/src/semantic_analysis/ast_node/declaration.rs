@@ -16,7 +16,13 @@ pub use r#trait::*;
 pub use storage::*;
 pub use variable::*;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*};
+use crate::{
+    declaration_engine::{declaration_engine::*, declaration_id::DeclarationId},
+    error::*,
+    parse_tree::*,
+    semantic_analysis::*,
+    type_system::*,
+};
 use derivative::Derivative;
 use std::{borrow::Cow, fmt};
 use sway_types::{Ident, Span, Spanned};
@@ -26,16 +32,16 @@ pub enum TypedDeclaration {
     VariableDeclaration(TypedVariableDeclaration),
     ConstantDeclaration(TypedConstantDeclaration),
     FunctionDeclaration(TypedFunctionDeclaration),
-    TraitDeclaration(TypedTraitDeclaration),
+    TraitDeclaration(DeclarationId),
     StructDeclaration(TypedStructDeclaration),
     EnumDeclaration(TypedEnumDeclaration),
     ImplTrait(TypedImplTrait),
-    AbiDeclaration(TypedAbiDeclaration),
+    AbiDeclaration(DeclarationId),
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
     GenericTypeForFunctionScope { name: Ident, type_id: TypeId },
     ErrorRecovery,
-    StorageDeclaration(TypedStorageDeclaration),
+    StorageDeclaration(DeclarationId),
 }
 
 impl CopyTypes for TypedDeclaration {
@@ -67,10 +73,10 @@ impl Spanned for TypedDeclaration {
             VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span(),
             ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span(),
             FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
-            TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span(),
+            TraitDeclaration(decl_id) => decl_id.span(),
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span(),
             EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
-            AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
+            AbiDeclaration(decl_id) => decl_id.span(),
             ImplTrait(TypedImplTrait { span, .. }) => span.clone(),
             StorageDeclaration(decl) => decl.span(),
             ErrorRecovery | GenericTypeForFunctionScope { .. } => {
@@ -115,8 +121,12 @@ impl fmt::Display for TypedDeclaration {
                 }) => {
                     name.as_str().into()
                 }
-                TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { name, .. }) =>
-                    name.as_str().into(),
+                TypedDeclaration::TraitDeclaration(decl_id) => {
+                    match de_get_trait(decl_id.clone(), &decl_id.span()) {
+                        Ok(TypedTraitDeclaration { name, .. }) => name.as_str().into(),
+                        Err(_) => "unknown trait".into(),
+                    }
+                }
                 TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) =>
                     name.as_str().into(),
                 TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
@@ -127,30 +137,30 @@ impl fmt::Display for TypedDeclaration {
     }
 }
 
-impl UnresolvedTypeCheck for TypedDeclaration {
+impl CollectTypesMetadata for TypedDeclaration {
     // this is only run on entry nodes, which must have all well-formed types
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+    fn collect_types_metadata(&self) -> Vec<TypeMetadata> {
         use TypedDeclaration::*;
         match self {
             VariableDeclaration(decl) => {
-                let mut body = decl.body.check_for_unresolved_types();
-                body.append(&mut decl.type_ascription.check_for_unresolved_types());
+                let mut body = decl.body.collect_types_metadata();
+                body.append(&mut decl.type_ascription.collect_types_metadata());
                 body
             }
             FunctionDeclaration(decl) => {
-                let mut body: Vec<CompileError> = decl
+                let mut body: Vec<TypeMetadata> = decl
                     .body
                     .contents
                     .iter()
-                    .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                    .flat_map(CollectTypesMetadata::collect_types_metadata)
                     .collect();
-                body.append(&mut decl.return_type.check_for_unresolved_types());
+                body.append(&mut decl.return_type.collect_types_metadata());
                 body.append(
                     &mut decl
                         .type_parameters
                         .iter()
                         .map(|x| &x.type_id)
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .flat_map(CollectTypesMetadata::collect_types_metadata)
                         .collect(),
                 );
                 body.append(
@@ -158,13 +168,13 @@ impl UnresolvedTypeCheck for TypedDeclaration {
                         .parameters
                         .iter()
                         .map(|x| &x.type_id)
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .flat_map(CollectTypesMetadata::collect_types_metadata)
                         .collect(),
                 );
                 body
             }
             ConstantDeclaration(TypedConstantDeclaration { value, .. }) => {
-                value.check_for_unresolved_types()
+                value.collect_types_metadata()
             }
             ErrorRecovery
             | StorageDeclaration(_)
@@ -254,18 +264,18 @@ impl TypedDeclaration {
     /// Retrieves the declaration as an Abi declaration.
     ///
     /// Returns an error if `self` is not a `TypedAbiDeclaration`.
-    pub(crate) fn expect_abi(&self) -> CompileResult<&TypedAbiDeclaration> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn expect_abi(&self, access_span: &Span) -> CompileResult<TypedAbiDeclaration> {
         match self {
-            TypedDeclaration::AbiDeclaration(decl) => ok(decl, warnings, errors),
-            decl => {
-                errors.push(CompileError::DeclIsNotAnAbi {
+            TypedDeclaration::AbiDeclaration(decl_id) => {
+                CompileResult::from(de_get_abi(decl_id.clone(), access_span))
+            }
+            decl => err(
+                vec![],
+                vec![CompileError::DeclIsNotAnAbi {
                     actually: decl.friendly_name().to_string(),
                     span: decl.span(),
-                });
-                err(warnings, errors)
-            }
+                }],
+            ),
         }
     }
 
@@ -288,44 +298,61 @@ impl TypedDeclaration {
     }
 
     pub(crate) fn return_type(&self) -> CompileResult<TypeId> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         let type_id = match self {
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration { body, .. }) => {
                 body.return_type
             }
             TypedDeclaration::FunctionDeclaration { .. } => {
-                return err(
-                    vec![],
-                    vec![CompileError::Unimplemented(
-                        "Function pointers have not yet been implemented.",
-                        self.span(),
-                    )],
-                )
+                errors.push(CompileError::Unimplemented(
+                    "Function pointers have not yet been implemented.",
+                    self.span(),
+                ));
+                return err(warnings, errors);
             }
             TypedDeclaration::StructDeclaration(decl) => decl.create_type_id(),
             TypedDeclaration::EnumDeclaration(decl) => decl.create_type_id(),
-            TypedDeclaration::StorageDeclaration(decl) => insert_type(TypeInfo::Storage {
-                fields: decl.fields_as_typed_struct_fields(),
-            }),
+            TypedDeclaration::StorageDeclaration(decl_id) => {
+                let storage_decl = check!(
+                    CompileResult::from(de_get_storage(decl_id.clone(), &self.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                insert_type(TypeInfo::Storage {
+                    fields: storage_decl.fields_as_typed_struct_fields(),
+                })
+            }
             TypedDeclaration::GenericTypeForFunctionScope { name, type_id } => {
                 insert_type(TypeInfo::Ref(*type_id, name.span()))
             }
             decl => {
-                return err(
-                    vec![],
-                    vec![CompileError::NotAType {
-                        span: decl.span(),
-                        name: decl.to_string(),
-                        actually_is: decl.friendly_name(),
-                    }],
-                )
+                errors.push(CompileError::NotAType {
+                    span: decl.span(),
+                    name: decl.to_string(),
+                    actually_is: decl.friendly_name(),
+                });
+                return err(warnings, errors);
             }
         };
-        ok(type_id, vec![], vec![])
+        ok(type_id, warnings, errors)
     }
 
-    pub(crate) fn visibility(&self) -> Visibility {
+    pub(crate) fn visibility(&self) -> CompileResult<Visibility> {
         use TypedDeclaration::*;
-        match self {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let visibility = match self {
+            TraitDeclaration(decl_id) => {
+                let TypedTraitDeclaration { visibility, .. } = check!(
+                    CompileResult::from(de_get_trait(decl_id.clone(), &decl_id.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                visibility
+            }
             GenericTypeForFunctionScope { .. }
             | ImplTrait { .. }
             | StorageDeclaration { .. }
@@ -338,9 +365,9 @@ impl TypedDeclaration {
             EnumDeclaration(TypedEnumDeclaration { visibility, .. })
             | ConstantDeclaration(TypedConstantDeclaration { visibility, .. })
             | FunctionDeclaration(TypedFunctionDeclaration { visibility, .. })
-            | TraitDeclaration(TypedTraitDeclaration { visibility, .. })
             | StructDeclaration(TypedStructDeclaration { visibility, .. }) => *visibility,
-        }
+        };
+        ok(visibility, warnings, errors)
     }
 }
 

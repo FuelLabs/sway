@@ -10,7 +10,7 @@ use ::result::Result;
 #[storage(write)]pub fn store<T>(key: b256, value: T) {
     if !__is_reference_type::<T>() {
         // If copy type, then it's a single word
-        let value = asm (v: value) {
+        let value = asm(v: value) {
             v: u64
         };
         __state_store_word(key, value);
@@ -49,7 +49,7 @@ use ::result::Result;
     if !__is_reference_type::<T>() {
         // If copy type, then it's a single word
         let loaded_word = __state_load_word(key);
-        asm (l: loaded_word) {
+        asm(l: loaded_word) {
             l: T
         }
     } else {
