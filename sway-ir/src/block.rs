@@ -225,10 +225,8 @@ impl Block {
                     }
                 }
 
-                Instruction::Branch(block) => {
-                    if *block == old_succ {
-                        *term = Instruction::Branch(new_succ);
-                    }
+                Instruction::Branch(block) if *block == old_succ => {
+                    *term = Instruction::Branch(new_succ);
                 }
                 _ => (),
             }

@@ -35,59 +35,59 @@ pub fn simplify_cfg(context: &mut Context, function: &Function) -> Result<bool, 
 
 fn unlink_empty_blocks(context: &mut Context, function: &Function) -> Result<bool, IrError> {
     let mut modified = false;
-    for block in function.block_iter(context).skip(1) {
-        // Except for a PHI and a branch, we don't want anything else.
-        // num_instructions doesn't count PHI though.
-        if block.num_instructions(context) > 1 {
-            continue;
-        }
-        if let Some(Instruction::Branch(to_block)) = block.get_terminator(context) {
-            let to_block = *to_block;
-            let block_phi = block.get_phi(context);
-            let to_block_phi = to_block.get_phi(context);
-            let mut cur_phi_pairs = if let ValueDatum::Instruction(Instruction::Phi(pairs)) =
-                context.values[block_phi.0].value.clone()
-            {
-                pairs
-            } else {
-                vec![]
-            };
-            let preds: Vec<_> = context.blocks[block.0].predecessors(context).collect();
-            if let ValueDatum::Instruction(Instruction::Phi(to_phi_pairs)) =
-                &mut context.values[to_block_phi.0].value
-            {
-                // In `to_block`, we want to re-route all values coming in from `block`
-                // to be coming in from all of `preds`. If there's already a value coming
-                // in from any of `pred`, then there's a conflict. We bail out.
-                if to_phi_pairs.iter().any(|(block, _)| preds.contains(block)) {
-                    continue;
+    let candidates: Vec<_> = function
+        .block_iter(context)
+        .skip(1)
+        .filter_map(|block| {
+            match block.get_terminator(context) {
+                // Except for a PHI and a branch, we don't want anything else.
+                // num_instructions doesn't count PHI though.
+                Some(Instruction::Branch(to_block)) if block.num_instructions(context) > 1 => {
+                    Some((block, *to_block))
                 }
-                let from_block_pair_idx = to_phi_pairs.iter().position(|(b, _)| *b == block);
-                match from_block_pair_idx {
-                    Some(idx) => {
-                        // dbg!(to_block.get_label(context), idx);
-                        let (_, v) = to_phi_pairs[idx];
-                        to_phi_pairs.swap_remove(idx);
-                        if v == block_phi {
-                            // If the value coming to `to_phi` is `block_phi`, we replace it
-                            // with all the incoming values to `block_phi` itself.
-                            to_phi_pairs.append(&mut cur_phi_pairs);
-                        } else {
-                            // Otherwise, it gets `v` from every `pred`.
-                            let mut v_pred_pairs: Vec<_> = preds.iter().map(|b| (*b, v)).collect();
-                            to_phi_pairs.append(&mut v_pred_pairs);
-                        }
-                        modified = true;
-                    }
-                    None => {
-                        // Nothing to take care of.
-                    }
-                }
+                _ => None,
             }
-            for pred in preds {
-                pred.replace_successors(context, block, to_block);
+        })
+        .collect();
+    for (block, to_block) in candidates {
+        let block_phi = block.get_phi(context);
+        let to_block_phi = to_block.get_phi(context);
+        let mut cur_phi_pairs = if let ValueDatum::Instruction(Instruction::Phi(pairs)) =
+            context.values[block_phi.0].value.clone()
+        {
+            pairs
+        } else {
+            vec![]
+        };
+        let preds: Vec<_> = context.blocks[block.0].predecessors(context).collect();
+        if let ValueDatum::Instruction(Instruction::Phi(to_phi_pairs)) =
+            &mut context.values[to_block_phi.0].value
+        {
+            // In `to_block`, we want to re-route all values coming in from `block`
+            // to be coming in from all of `preds`. If there's already a value coming
+            // in from any of `pred`, then there's a conflict. We bail out.
+            if to_phi_pairs.iter().any(|(block, _)| preds.contains(block)) {
+                continue;
+            }
+            let from_block_pair_idx = to_phi_pairs.iter().position(|(b, _)| *b == block);
+            if let Some(idx) = from_block_pair_idx {
+                let (_, v) = to_phi_pairs[idx];
+                to_phi_pairs.swap_remove(idx);
+                if v == block_phi {
+                    // If the value coming to `to_phi` is `block_phi`, we replace it
+                    // with all the incoming values to `block_phi` itself.
+                    to_phi_pairs.append(&mut cur_phi_pairs);
+                } else {
+                    // Otherwise, it gets `v` from every `pred`.
+                    let v_pred_pairs = preds.iter().map(|b| (*b, v));
+                    to_phi_pairs.extend(v_pred_pairs);
+                }
                 modified = true;
-            }
+            } // We don't need to bother if there is no value coming in from block.
+        }
+        for pred in preds {
+            pred.replace_successors(context, block, to_block);
+            modified = true;
         }
     }
     Ok(modified)
