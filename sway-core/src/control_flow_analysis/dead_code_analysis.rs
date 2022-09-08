@@ -1,7 +1,6 @@
 use super::*;
 use crate::{
-    declaration_engine::declaration_engine::de_get_storage,
-    declaration_engine::declaration_engine::de_get_trait,
+    declaration_engine::declaration_engine::*,
     parse_tree::{CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
@@ -361,8 +360,9 @@ fn connect_declaration(
             connect_trait_declaration(&trait_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
-        AbiDeclaration(abi_decl) => {
-            connect_abi_declaration(abi_decl, graph, entry_node);
+        AbiDeclaration(decl_id) => {
+            let abi_decl = de_get_abi(decl_id.clone(), &span)?;
+            connect_abi_declaration(&abi_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
         StructDeclaration(struct_decl) => {
