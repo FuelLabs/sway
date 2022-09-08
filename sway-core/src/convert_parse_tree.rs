@@ -1006,7 +1006,7 @@ fn fn_args_to_function_parameters(
                 name: Ident::new(self_token.span()),
                 is_reference: ref_self.is_some(),
                 is_mutable: mutable_self.is_some(),
-                mutability_span: mutability_span,
+                mutability_span,
                 type_id: insert_type(TypeInfo::SelfType),
                 type_span: self_token.span(),
             }];
@@ -2076,7 +2076,7 @@ fn fn_arg_to_function_parameter(
         name,
         is_reference: reference.is_some(),
         is_mutable: mutable.is_some(),
-        mutability_span: mutability_span,
+        mutability_span,
         type_id: insert_type(ty_to_type_info(ec, fn_arg.ty)?),
         type_span,
     };
