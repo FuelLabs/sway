@@ -69,6 +69,7 @@ fn unlink_empty_blocks(context: &mut Context, function: &Function) -> Result<boo
             if val_from_block == block_phi {
                 // If the value coming to `to_phi` is `block_phi`, we replace it
                 // with all the incoming values to `block_phi` itself.
+                #[allow(clippy::needless_collect)] // clippy doesn't see Context borrow
                 let cur_block_phis: Vec<_> = block.phi_iter(context).copied().collect();
                 to_block.add_phis_from_iter(context, cur_block_phis.into_iter());
             } else {
