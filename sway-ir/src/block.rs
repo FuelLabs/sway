@@ -94,6 +94,32 @@ impl Block {
         }
     }
 
+    /// Add PHI entries to this block from the given iterator.
+    pub fn add_phis_from_iter(
+        &self,
+        context: &mut Context,
+        iter: impl Iterator<Item = (Block, Value)>,
+    ) {
+        let phi_val = self.get_phi(context);
+        if let ValueDatum::Instruction(Instruction::Phi(pairs)) =
+            &mut context.values[phi_val.0].value
+        {
+            pairs.extend(iter);
+        } else {
+            unreachable!("Phi value must be a PHI instruction.");
+        }
+    }
+
+    /// Get an iterator over this block's PHI pairs.
+    pub fn phi_iter<'a>(&'a self, context: &'a Context) -> impl Iterator<Item = &(Block, Value)> {
+        let phi_val = self.get_phi(context);
+        if let ValueDatum::Instruction(Instruction::Phi(pairs)) = &context.values[phi_val.0].value {
+            pairs.iter()
+        } else {
+            unreachable!("Phi value must be a PHI instruction.");
+        }
+    }
+
     /// Get the value from the phi instruction which correlates to `from_block`.
     ///
     /// Returns `None` if `from_block` isn't found.
@@ -191,7 +217,7 @@ impl Block {
     }
 
     /// Replace successor `old_succ` with `new_succ`
-    pub(super) fn replace_successors(
+    pub(super) fn replace_successor(
         &self,
         context: &mut Context,
         old_succ: Block,
