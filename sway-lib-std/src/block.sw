@@ -18,7 +18,7 @@ pub fn timestamp() -> u64 {
     }
 }
 
-/// Get the timestamp of block at height `height`
+/// Get the timestamp of block at height `block_height`
 pub fn timestamp_of_block(block_height: u64) -> u64 {
     asm(timestamp, height: block_height) {
         time timestamp height;
