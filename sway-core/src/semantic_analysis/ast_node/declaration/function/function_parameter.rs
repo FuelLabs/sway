@@ -69,7 +69,7 @@ impl TypedFunctionParameter {
         }
         ctx.namespace.insert_symbol(
             parameter.name.clone(),
-            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+            TypedDeclaration::VariableDeclaration(Box::new(TypedVariableDeclaration {
                 name: parameter.name.clone(),
                 body: TypedExpression {
                     expression: TypedExpressionVariant::FunctionParameter,
@@ -80,7 +80,7 @@ impl TypedFunctionParameter {
                 mutability,
                 type_ascription: type_id,
                 type_ascription_span: None,
-            }),
+            })),
         );
         let parameter = TypedFunctionParameter {
             name: parameter.name,

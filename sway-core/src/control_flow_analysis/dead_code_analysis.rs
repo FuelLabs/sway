@@ -185,13 +185,13 @@ impl ControlFlowGraph {
                         ControlFlowGraphNode::ProgramNode(TypedAstNode {
                             content:
                                 TypedAstNodeContent::Declaration(TypedDeclaration::ConstantDeclaration(
-                                    TypedConstantDeclaration {
-                                        visibility: Visibility::Public,
-                                        ..
-                                    },
+                                    decl_id,
                                 )),
                             ..
-                        }) => true,
+                        }) => {
+                            let decl = de_get_constant(decl_id.clone(), &decl_id.span())?;
+                            decl.visibility.is_public()
+                        }
                         _ => false,
                     };
                     if count_it {
@@ -318,12 +318,13 @@ fn connect_declaration(
 ) -> Result<Vec<NodeIndex>, CompileError> {
     use TypedDeclaration::*;
     match decl {
-        VariableDeclaration(TypedVariableDeclaration {
-            name,
-            body,
-            mutability: is_mutable,
-            ..
-        }) => {
+        VariableDeclaration(var_decl) => {
+            let TypedVariableDeclaration {
+                name,
+                body,
+                mutability: is_mutable,
+                ..
+            } = &**var_decl;
             if matches!(is_mutable, VariableMutability::ExportedConst) {
                 graph.namespace.insert_constant(name.clone(), entry_node);
                 Ok(leaves.to_vec())
@@ -339,8 +340,10 @@ fn connect_declaration(
                 )
             }
         }
-        ConstantDeclaration(TypedConstantDeclaration { name, value, .. }) => {
-            graph.namespace.insert_constant(name.clone(), entry_node);
+        ConstantDeclaration(decl_id) => {
+            let TypedConstantDeclaration { name, value, .. } =
+                de_get_constant(decl_id.clone(), &span)?;
+            graph.namespace.insert_constant(name, entry_node);
             connect_expression(
                 &value.expression,
                 graph,
