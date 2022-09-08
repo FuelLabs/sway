@@ -14,7 +14,7 @@ $ tree .
     └── harness.rs
 ```
 
-Note that this is also a Rust package, hence the existence of a `Cargo.toml` (Rust manifest file) in the project root directory. The `Cargo.toml` in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our [Rust SDK](https://github.com/FuelLabs/fuels-rs), (`fuels-rs`).
+Note that this is also a Rust package, hence the existence of a `Cargo.toml` (Rust manifest file) in the project root directory. The `Cargo.toml` in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our [Rust SDK](https://fuellabs.github.io/fuels-rs/latest), (`fuels-rs`).
 
 These tests can be run using `forc test` which will look for Rust tests under the `tests/` directory (created automatically with `forc new` and prepopulated with boilerplate code).
 
@@ -36,7 +36,16 @@ abigen!(TestContract, "out/debug/my-fuel-project-abi.json");
 
 async fn get_contract_instance() -> (TestContract, ContractId) {
     // Launch a local network and deploy the contract
-    let wallet = launch_provider_and_get_wallet().await;
+    let mut wallets = launch_custom_provider_and_get_wallets(
+        WalletsConfig::new(
+            Some(1),             /* Single wallet */
+            Some(1),             /* Single coin (UTXO) */
+            Some(1_000_000_000), /* Amount per coin */
+        ),
+        None,
+    )
+    .await;
+    let wallet = wallets.pop().unwrap();
 
     let id = Contract::deploy(
         "./out/debug/my-fuel-project.bin",
@@ -49,9 +58,9 @@ async fn get_contract_instance() -> (TestContract, ContractId) {
     .await
     .unwrap();
 
-    let instance = TestContract::new(id.to_string(), wallet);
+    let instance = TestContractBuilder::new(id.to_string(), wallet).build();
 
-    (instance, id)
+    (instance, id.into())
 }
 
 #[tokio::test]
