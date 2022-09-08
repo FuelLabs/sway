@@ -129,6 +129,14 @@ impl Value {
         }
     }
 
+    pub fn get_instruction<'a>(&self, context: &'a Context) -> Option<&'a Instruction> {
+        if let ValueDatum::Instruction(instruction) = &context.values.get(self.0).unwrap().value {
+            Some(instruction)
+        } else {
+            None
+        }
+    }
+
     /// Get reference to the Constant inside this value, if it's one.
     pub fn get_constant<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
         if let ValueDatum::Constant(cn) = &context.values.get(self.0).unwrap().value {

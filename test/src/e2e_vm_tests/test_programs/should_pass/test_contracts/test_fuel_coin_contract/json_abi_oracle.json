@@ -1,88 +1,92 @@
-[
-  {
-    "inputs": [
-      {
-        "components": null,
-        "name": "mint_amount",
-        "type": "u64",
-        "typeArguments": null
-      }
-    ],
-    "name": "mint",
-    "outputs": [
-      {
-        "components": [],
+{
+  "functions": [
+    {
+      "inputs": [
+        {
+          "name": "mint_amount",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "name": "mint",
+      "output": {
         "name": "",
-        "type": "()",
+        "type": 0,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": null,
-        "name": "burn_amount",
-        "type": "u64",
-        "typeArguments": null
-      }
-    ],
-    "name": "burn",
-    "outputs": [
-      {
-        "components": [],
+    },
+    {
+      "inputs": [
+        {
+          "name": "burn_amount",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "name": "burn",
+      "output": {
         "name": "",
-        "type": "()",
+        "type": 0,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": null,
-        "name": "coins",
-        "type": "u64",
-        "typeArguments": null
-      },
-      {
-        "components": [
-          {
-            "components": null,
-            "name": "value",
-            "type": "b256",
-            "typeArguments": null
-          }
-        ],
-        "name": "asset_id",
-        "type": "struct ContractId",
-        "typeArguments": null
-      },
-      {
-        "components": [
-          {
-            "components": null,
-            "name": "value",
-            "type": "b256",
-            "typeArguments": null
-          }
-        ],
-        "name": "c_id",
-        "type": "struct ContractId",
-        "typeArguments": null
-      }
-    ],
-    "name": "force_transfer",
-    "outputs": [
-      {
-        "components": [],
+    },
+    {
+      "inputs": [
+        {
+          "name": "coins",
+          "type": 3,
+          "typeArguments": null
+        },
+        {
+          "name": "asset_id",
+          "type": 2,
+          "typeArguments": null
+        },
+        {
+          "name": "c_id",
+          "type": 2,
+          "typeArguments": null
+        }
+      ],
+      "name": "force_transfer",
+      "output": {
         "name": "",
-        "type": "()",
+        "type": 0,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  }
-]
+    }
+  ],
+  "loggedTypes": [],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "value",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct ContractId",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 3,
+      "typeParameters": null
+    }
+  ]
+}

@@ -1,4 +1,7 @@
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*};
+use crate::{
+    declaration_engine::declaration_engine::de_get_trait, error::*, parse_tree::*,
+    semantic_analysis::*, type_system::*,
+};
 
 use sway_types::{Ident, Spanned};
 
@@ -108,41 +111,69 @@ fn check_supertraits(
 ) -> Vec<CompileError> {
     let mut errors = vec![];
     for node in typed_tree_nodes {
-        if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
-            trait_name,
-            span,
-            implementing_for_type_id,
-            ..
-        })) = &node.content
+        if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(impl_trait)) =
+            &node.content
         {
+            let TypedImplTrait {
+                trait_name,
+                span,
+                implementing_for_type_id,
+                ..
+            } = impl_trait;
             if let CompileResult {
-                value: Some(TypedDeclaration::TraitDeclaration(tr)),
+                value: Some(TypedDeclaration::TraitDeclaration(decl_id)),
                 ..
             } = namespace.resolve_call_path(trait_name)
             {
+                let tr = match de_get_trait(decl_id.clone(), &trait_name.span()) {
+                    Ok(tr) => tr,
+                    Err(e) => {
+                        errors.push(e);
+                        return errors;
+                    }
+                };
                 for supertrait in &tr.supertraits {
                     if !typed_tree_nodes.iter().any(|search_node| {
                         if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(
-                            TypedImplTrait {
+                            impl_trait,
+                        )) = &search_node.content
+                        {
+                            let TypedImplTrait {
                                 trait_name: search_node_trait_name,
                                 implementing_for_type_id: search_node_type_implementing_for,
                                 ..
-                            },
-                        )) = &search_node.content
-                        {
+                            } = impl_trait;
                             if let (
                                 CompileResult {
-                                    value: Some(TypedDeclaration::TraitDeclaration(tr1)),
+                                    value: Some(TypedDeclaration::TraitDeclaration(decl_id1)),
                                     ..
                                 },
                                 CompileResult {
-                                    value: Some(TypedDeclaration::TraitDeclaration(tr2)),
+                                    value: Some(TypedDeclaration::TraitDeclaration(decl_id2)),
                                     ..
                                 },
                             ) = (
                                 namespace.resolve_call_path(search_node_trait_name),
                                 namespace.resolve_call_path(&supertrait.name),
                             ) {
+                                let tr1 = match de_get_trait(
+                                    decl_id1.clone(),
+                                    &search_node_trait_name.span(),
+                                ) {
+                                    Ok(tr) => tr,
+                                    Err(e) => {
+                                        errors.push(e);
+                                        return false;
+                                    }
+                                };
+                                let tr2 =
+                                    match de_get_trait(decl_id2.clone(), &supertrait.name.span()) {
+                                        Ok(tr) => tr,
+                                        Err(e) => {
+                                            errors.push(e);
+                                            return false;
+                                        }
+                                    };
                                 return (tr1.name == tr2.name)
                                     && (look_up_type_id(*implementing_for_type_id)
                                         == look_up_type_id(*search_node_type_implementing_for));

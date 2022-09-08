@@ -1,0 +1,4 @@
+category = "run"
+script_data = "73657400000000000000000000000000000000000000053a616464000000000000000000000000010000000000000001" # [("set", SignedNum::Positive(1338)), ("add", SignedNum::Negative(1))]
+expected_result = { action = "return", value = 1337 }
+validate_abi = true

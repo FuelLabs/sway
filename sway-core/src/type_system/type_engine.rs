@@ -11,21 +11,21 @@ lazy_static! {
 
 #[derive(Debug, Default)]
 pub(crate) struct TypeEngine {
-    slab: ConcurrentSlab<TypeId, TypeInfo>,
-    storage_only_types: ConcurrentSlab<TypeId, TypeInfo>,
+    slab: ConcurrentSlab<TypeInfo>,
+    storage_only_types: ConcurrentSlab<TypeInfo>,
 }
 
 impl TypeEngine {
     pub fn insert_type(&self, ty: TypeInfo) -> TypeId {
-        self.slab.insert(ty)
+        TypeId::new(self.slab.insert(ty))
     }
 
     pub fn look_up_type_id_raw(&self, id: TypeId) -> TypeInfo {
-        self.slab.get(id)
+        self.slab.get(*id)
     }
 
     pub fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
-        match self.slab.get(id) {
+        match self.slab.get(*id) {
             TypeInfo::Ref(other, _sp) => self.look_up_type_id(other),
             ty => ty,
         }
@@ -147,7 +147,7 @@ impl TypeEngine {
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         use TypeInfo::*;
         let help_text = help_text.into();
-        match (self.slab.get(received), self.slab.get(expected)) {
+        match (self.slab.get(*received), self.slab.get(*expected)) {
             // If the types are exactly the same, we are done.
             (Boolean, Boolean) => (vec![], vec![]),
             (SelfType, SelfType) => (vec![], vec![]),

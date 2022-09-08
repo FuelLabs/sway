@@ -13,7 +13,8 @@ pub(crate) use self::{
 };
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, type_system::*, types::DeterministicallyAborts,
+    declaration_engine::declaration_engine::de_get_abi, error::*, parse_tree::*,
+    semantic_analysis::*, type_system::*, types::DeterministicallyAborts,
 };
 
 use sway_ast::intrinsics::Intrinsic;
@@ -63,10 +64,10 @@ impl fmt::Display for TypedExpression {
     }
 }
 
-impl UnresolvedTypeCheck for TypedExpression {
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+impl CollectTypesMetadata for TypedExpression {
+    fn collect_types_metadata(&self) -> Vec<TypeMetadata> {
         use TypedExpressionVariant::*;
-        let mut res = self.return_type.check_for_unresolved_types();
+        let mut res = self.return_type.collect_types_metadata();
         match &self.expression {
             FunctionApplication {
                 arguments,
@@ -77,7 +78,7 @@ impl UnresolvedTypeCheck for TypedExpression {
                     &mut arguments
                         .iter()
                         .map(|x| &x.1)
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .flat_map(CollectTypesMetadata::collect_types_metadata)
                         .collect::<Vec<_>>(),
                 );
                 res.append(
@@ -85,7 +86,7 @@ impl UnresolvedTypeCheck for TypedExpression {
                         .body
                         .contents
                         .iter()
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .flat_map(CollectTypesMetadata::collect_types_metadata)
                         .collect(),
                 );
             }
@@ -93,7 +94,7 @@ impl UnresolvedTypeCheck for TypedExpression {
                 res.append(
                     &mut fields
                         .iter()
-                        .flat_map(|x| x.check_for_unresolved_types())
+                        .flat_map(|x| x.collect_types_metadata())
                         .collect(),
                 );
             }
@@ -102,7 +103,7 @@ impl UnresolvedTypeCheck for TypedExpression {
                     &mut registers
                         .iter()
                         .filter_map(|x| x.initializer.as_ref())
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .flat_map(CollectTypesMetadata::collect_types_metadata)
                         .collect::<Vec<_>>(),
                 );
             }
@@ -110,32 +111,32 @@ impl UnresolvedTypeCheck for TypedExpression {
                 res.append(
                     &mut fields
                         .iter()
-                        .flat_map(|x| x.value.check_for_unresolved_types())
+                        .flat_map(|x| x.value.collect_types_metadata())
                         .collect(),
                 );
             }
             LazyOperator { lhs, rhs, .. } => {
-                res.append(&mut lhs.check_for_unresolved_types());
-                res.append(&mut rhs.check_for_unresolved_types());
+                res.append(&mut lhs.collect_types_metadata());
+                res.append(&mut rhs.collect_types_metadata());
             }
             Array { contents } => {
                 res.append(
                     &mut contents
                         .iter()
-                        .flat_map(|x| x.check_for_unresolved_types())
+                        .flat_map(|x| x.collect_types_metadata())
                         .collect(),
                 );
             }
             ArrayIndex { prefix, index } => {
-                res.append(&mut prefix.check_for_unresolved_types());
-                res.append(&mut index.check_for_unresolved_types());
+                res.append(&mut prefix.collect_types_metadata());
+                res.append(&mut index.collect_types_metadata());
             }
             CodeBlock(block) => {
                 res.append(
                     &mut block
                         .contents
                         .iter()
-                        .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
+                        .flat_map(CollectTypesMetadata::collect_types_metadata)
                         .collect(),
                 );
             }
@@ -144,10 +145,10 @@ impl UnresolvedTypeCheck for TypedExpression {
                 then,
                 r#else,
             } => {
-                res.append(&mut condition.check_for_unresolved_types());
-                res.append(&mut then.check_for_unresolved_types());
+                res.append(&mut condition.collect_types_metadata());
+                res.append(&mut then.collect_types_metadata());
                 if let Some(r#else) = r#else {
-                    res.append(&mut r#else.check_for_unresolved_types());
+                    res.append(&mut r#else.collect_types_metadata());
                 }
             }
             StructFieldAccess {
@@ -155,16 +156,16 @@ impl UnresolvedTypeCheck for TypedExpression {
                 resolved_type_of_parent,
                 ..
             } => {
-                res.append(&mut prefix.check_for_unresolved_types());
-                res.append(&mut resolved_type_of_parent.check_for_unresolved_types());
+                res.append(&mut prefix.collect_types_metadata());
+                res.append(&mut resolved_type_of_parent.collect_types_metadata());
             }
             TupleElemAccess {
                 prefix,
                 resolved_type_of_parent,
                 ..
             } => {
-                res.append(&mut prefix.check_for_unresolved_types());
-                res.append(&mut resolved_type_of_parent.check_for_unresolved_types());
+                res.append(&mut prefix.collect_types_metadata());
+                res.append(&mut resolved_type_of_parent.collect_types_metadata());
             }
             EnumInstantiation {
                 enum_decl,
@@ -172,43 +173,43 @@ impl UnresolvedTypeCheck for TypedExpression {
                 ..
             } => {
                 if let Some(contents) = contents {
-                    res.append(&mut contents.check_for_unresolved_types().into_iter().collect());
+                    res.append(&mut contents.collect_types_metadata().into_iter().collect());
                 }
                 res.append(
                     &mut enum_decl
                         .variants
                         .iter()
-                        .flat_map(|x| x.type_id.check_for_unresolved_types())
+                        .flat_map(|x| x.type_id.collect_types_metadata())
                         .collect(),
                 );
                 res.append(
                     &mut enum_decl
                         .type_parameters
                         .iter()
-                        .flat_map(|x| x.type_id.check_for_unresolved_types())
+                        .flat_map(|x| x.type_id.collect_types_metadata())
                         .collect(),
                 );
             }
             AbiCast { address, .. } => {
-                res.append(&mut address.check_for_unresolved_types());
+                res.append(&mut address.collect_types_metadata());
             }
             IntrinsicFunction(kind) => {
-                res.append(&mut kind.check_for_unresolved_types());
+                res.append(&mut kind.collect_types_metadata());
             }
             EnumTag { exp } => {
-                res.append(&mut exp.check_for_unresolved_types());
+                res.append(&mut exp.collect_types_metadata());
             }
             UnsafeDowncast { exp, variant } => {
-                res.append(&mut exp.check_for_unresolved_types());
-                res.append(&mut variant.type_id.check_for_unresolved_types());
+                res.append(&mut exp.collect_types_metadata());
+                res.append(&mut variant.type_id.collect_types_metadata());
             }
             WhileLoop { condition, body } => {
-                res.append(&mut condition.check_for_unresolved_types());
+                res.append(&mut condition.collect_types_metadata());
                 res.append(
                     &mut body
                         .contents
                         .iter()
-                        .flat_map(TypedAstNode::check_for_unresolved_types)
+                        .flat_map(TypedAstNode::collect_types_metadata)
                         .collect(),
                 );
             }
@@ -223,17 +224,17 @@ impl UnresolvedTypeCheck for TypedExpression {
             | Continue
             | FunctionParameter => {}
             Reassignment(reassignment) => {
-                res.append(&mut reassignment.rhs.check_for_unresolved_types())
+                res.append(&mut reassignment.rhs.collect_types_metadata())
             }
             StorageReassignment(storage_reassignment) => res.extend(
                 storage_reassignment
                     .fields
                     .iter()
-                    .flat_map(|x| x.type_id.check_for_unresolved_types())
+                    .flat_map(|x| x.type_id.collect_types_metadata())
                     .chain(
                         storage_reassignment
                             .rhs
-                            .check_for_unresolved_types()
+                            .collect_types_metadata()
                             .into_iter(),
                     ),
             ),
@@ -713,6 +714,7 @@ impl TypedExpression {
         name: Ident,
         span: Span,
     ) -> CompileResult<TypedExpression> {
+        let mut warnings = vec![];
         let mut errors = vec![];
         let exp = match namespace.resolve_symbol(&name).value {
             Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -746,14 +748,20 @@ impl TypedExpression {
                 },
                 span,
             },
-            Some(TypedDeclaration::AbiDeclaration(decl)) => TypedExpression {
-                return_type: decl.create_type_id(),
-                is_constant: IsConstant::Yes,
-                expression: TypedExpressionVariant::AbiName(AbiName::Known(
-                    decl.name.clone().into(),
-                )),
-                span,
-            },
+            Some(TypedDeclaration::AbiDeclaration(decl_id)) => {
+                let decl = check!(
+                    CompileResult::from(de_get_abi(decl_id.clone(), &span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                TypedExpression {
+                    return_type: decl.create_type_id(),
+                    is_constant: IsConstant::Yes,
+                    expression: TypedExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
+                    span,
+                }
+            }
             Some(a) => {
                 errors.push(CompileError::NotAVariable {
                     name: name.clone(),
@@ -768,7 +776,7 @@ impl TypedExpression {
                 error_recovery_expr(name.span())
             }
         };
-        ok(exp, vec![], errors)
+        ok(exp, warnings, errors)
     }
 
     fn type_check_function_application(
@@ -1259,7 +1267,7 @@ impl TypedExpression {
         }
 
         let storage_fields = check!(
-            ctx.namespace.get_storage_field_descriptors(),
+            ctx.namespace.get_storage_field_descriptors(span),
             return err(warnings, errors),
             warnings,
             errors
@@ -1267,7 +1275,8 @@ impl TypedExpression {
 
         // Do all namespace checking here!
         let (storage_access, return_type) = check!(
-            ctx.namespace.apply_storage_load(checkee, &storage_fields),
+            ctx.namespace
+                .apply_storage_load(checkee, &storage_fields, span),
             return err(warnings, errors),
             warnings,
             errors
@@ -1458,7 +1467,14 @@ impl TypedExpression {
             errors
         );
         let abi = match abi {
-            TypedDeclaration::AbiDeclaration(abi) => abi,
+            TypedDeclaration::AbiDeclaration(decl_id) => {
+                check!(
+                    CompileResult::from(de_get_abi(decl_id, &span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 body: ref expr,
                 ..
@@ -1484,12 +1500,11 @@ impl TypedExpression {
                             errors
                         );
                         check!(
-                            unknown_decl.expect_abi(),
+                            unknown_decl.expect_abi(&span),
                             return err(warnings, errors),
                             warnings,
                             errors
                         )
-                        .clone()
                     }
                     AbiName::Deferred => {
                         return ok(
@@ -1981,15 +1996,11 @@ impl TypedExpression {
 
 #[cfg(test)]
 mod tests {
-    use crate::declaration_engine::declaration_engine::DeclarationEngine;
-
     use super::*;
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
-        let mut declaration_engine = DeclarationEngine::new();
         let mut namespace = Namespace::init_root(namespace::Module::default());
-        let ctx = TypeCheckContext::from_root(&mut namespace, &mut declaration_engine)
-            .with_type_annotation(type_annotation);
+        let ctx = TypeCheckContext::from_root(&mut namespace).with_type_annotation(type_annotation);
         TypedExpression::type_check(ctx, expr)
     }
 

@@ -38,7 +38,6 @@
 - [Advanced Concepts](./advanced/index.md)
   - [Generic Types](./advanced/generic_types.md)
   - [Traits](./advanced/traits.md)
-  - [Trait Constraints](./advanced/trait_constraints.md)
   - [Assembly](./advanced/assembly.md)
 - [Common Collections](./common-collections/index.md)
   - [Vectors on the Heap](./common-collections/vec.md)

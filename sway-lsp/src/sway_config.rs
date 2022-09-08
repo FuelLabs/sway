@@ -1,10 +1,18 @@
 use serde_json::Value;
-use sway_fmt::FormattingOptions;
+use swayfmt::{
+    config::{
+        manifest::Config,
+        user_def::{FieldAlignment, Structures},
+        whitespace::Whitespace,
+    },
+    Formatter,
+};
 
 const ALIGN_FIELDS_FIELD: &str = "alignFields";
 const TAB_SIZE_FIELD: &str = "tabSize";
 const TAB_SIZE: u64 = 4;
 const ALIGN_FIELDS: bool = true;
+const DEFAULT_FIELD_ALIGNMENT: usize = 50;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SwayConfig {
@@ -34,11 +42,24 @@ impl SwayConfig {
 // note `FormattingOptions` and `SwayConfig` may be similar at this moment,
 // but they are not the same thing, `SwayConfig` contains all the data related to the LanguageServer
 // while `FormattingOptions` is only the part that is necessary for 'formating'
-impl From<SwayConfig> for FormattingOptions {
+impl From<SwayConfig> for Formatter {
     fn from(config: SwayConfig) -> Self {
-        FormattingOptions {
-            align_fields: config.align_fields,
-            tab_size: config.tab_size as u32,
+        Self {
+            config: Config {
+                whitespace: Whitespace {
+                    tab_spaces: config.tab_size as usize,
+                    ..Default::default()
+                },
+                structures: Structures {
+                    field_alignment: match config.align_fields {
+                        true => FieldAlignment::AlignFields(DEFAULT_FIELD_ALIGNMENT),
+                        false => FieldAlignment::Off,
+                    },
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            shape: Default::default(),
         }
     }
 }

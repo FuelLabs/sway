@@ -9,7 +9,9 @@ use crate::{
         token::to_ident_key,
     },
 };
-use sway_core::{semantic_analysis::ast_node::TypedDeclaration, Declaration, Visibility};
+use sway_core::{
+    declaration_engine, semantic_analysis::ast_node::TypedDeclaration, Declaration, Visibility,
+};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Hover, HoverContents, HoverParams, MarkupContent, MarkupKind};
 
@@ -63,7 +65,10 @@ fn hover_format(token: &Token, ident: &Ident) -> Hover {
                 TypedDeclaration::StructDeclaration(ref struct_decl) => {
                     format_visibility_hover(struct_decl.visibility, decl.friendly_name())
                 }
-                TypedDeclaration::TraitDeclaration(ref trait_decl) => {
+                TypedDeclaration::TraitDeclaration(ref decl_id) => {
+                    // TODO: do not use unwrap
+                    let trait_decl =
+                        declaration_engine::de_get_trait(decl_id.clone(), &decl_id.span()).unwrap();
                     format_visibility_hover(trait_decl.visibility, decl.friendly_name())
                 }
                 TypedDeclaration::EnumDeclaration(ref enum_decl) => {

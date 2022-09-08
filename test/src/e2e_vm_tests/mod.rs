@@ -31,10 +31,10 @@ enum TestResult {
 struct TestDescription {
     name: String,
     category: TestCategory,
+    script_data: Option<Vec<u8>>,
     expected_result: Option<TestResult>,
     contract_paths: Vec<String>,
     validate_abi: bool,
-    validate_abi_flat: bool,
     validate_storage_slots: bool,
     checker: filecheck::Checker,
 }
@@ -55,10 +55,10 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
     for TestDescription {
         name,
         category,
+        script_data,
         expected_result,
         contract_paths,
         validate_abi,
-        validate_abi_flat,
         validate_storage_slots,
         checker,
     } in configured_tests
@@ -83,15 +83,10 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
                     ),
                 };
 
-                let result = crate::e2e_vm_tests::harness::runs_in_vm(&name, locked);
+                let result = crate::e2e_vm_tests::harness::runs_in_vm(&name, script_data, locked);
                 assert_eq!(result.0, res);
                 if validate_abi {
                     assert!(crate::e2e_vm_tests::harness::test_json_abi(&name, &result.1).is_ok());
-                }
-                if validate_abi_flat {
-                    assert!(
-                        crate::e2e_vm_tests::harness::test_json_abi_flat(&name, &result.1).is_ok()
-                    );
                 }
                 number_of_tests_executed += 1;
             }
@@ -106,11 +101,6 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
                 let compiled = result.unwrap();
                 if validate_abi {
                     assert!(crate::e2e_vm_tests::harness::test_json_abi(&name, &compiled).is_ok());
-                }
-                if validate_abi_flat {
-                    assert!(
-                        crate::e2e_vm_tests::harness::test_json_abi_flat(&name, &compiled).is_ok()
-                    );
                 }
                 if validate_storage_slots {
                     assert!(crate::e2e_vm_tests::harness::test_json_storage_slots(
@@ -294,6 +284,23 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
         return Err("'fail' tests must contain some FileCheck verification directives.".to_owned());
     }
 
+    let script_data = match &category {
+        TestCategory::Runs | TestCategory::RunsWithContract => {
+            match toml_content.get("script_data") {
+                Some(toml::Value::String(v)) => {
+                    let decoded = hex::decode(v)
+                        .map_err(|e| format!("Invalid hex value for 'script_data': {}", e))?;
+                    Some(decoded)
+                }
+                Some(_) => {
+                    return Err("Expected 'script_data' to be a hex string.".to_owned());
+                }
+                _ => None,
+            }
+        }
+        TestCategory::Compiles | TestCategory::FailsToCompile | TestCategory::Disabled => None,
+    };
+
     let expected_result = match &category {
         TestCategory::Runs | TestCategory::RunsWithContract => {
             Some(get_expected_result(&toml_content)?)
@@ -322,11 +329,6 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
         .map(|v| v.as_bool().unwrap_or(false))
         .unwrap_or(false);
 
-    let validate_abi_flat = toml_content
-        .get("validate_abi_flat")
-        .map(|v| v.as_bool().unwrap_or(false))
-        .unwrap_or(false);
-
     let validate_storage_slots = toml_content
         .get("validate_storage_slots")
         .map(|v| v.as_bool().unwrap_or(false))
@@ -350,10 +352,10 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
     Ok(TestDescription {
         name,
         category,
+        script_data,
         expected_result,
         contract_paths,
         validate_abi,
-        validate_abi_flat,
         validate_storage_slots,
         checker,
     })

@@ -1,7 +1,5 @@
 use super::*;
-
-use crate::{semantic_analysis::*, types::*, CallPath, Ident};
-
+use crate::{semantic_analysis::*, CallPath, Ident};
 use sway_types::{span::Span, Spanned};
 
 use derivative::Derivative;
@@ -336,8 +334,8 @@ impl fmt::Display for TypeInfo {
     }
 }
 
-impl JsonAbiString for TypeInfo {
-    fn json_abi_str(&self) -> String {
+impl TypeInfo {
+    pub fn json_abi_str(&self) -> String {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
@@ -363,7 +361,7 @@ impl JsonAbiString for TypeInfo {
             SelfType => "Self".into(),
             Byte => "byte".into(),
             B256 => "b256".into(),
-            Numeric => "numeric".into(),
+            Numeric => "u64".into(), // u64 is the default
             Contract => "contract".into(),
             ErrorRecovery => "unknown due to error".into(),
             Enum { name, .. } => {
@@ -379,9 +377,6 @@ impl JsonAbiString for TypeInfo {
             Storage { .. } => "contract storage".into(),
         }
     }
-}
-
-impl TypeInfo {
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(&self, error_msg_span: &Span) -> CompileResult<String> {
         use TypeInfo::*;
