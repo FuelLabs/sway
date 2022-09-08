@@ -32,20 +32,21 @@ impl From<usize> for TypeId {
 }
 
 impl CollectTypesMetadata for TypeId {
-    fn collect_types_metadata(&self) -> Vec<TypeMetadata> {
+    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
         use TypeInfo::*;
         let span_override = if let TypeInfo::Ref(_, span) = look_up_type_id_raw(*self) {
             Some(span)
         } else {
             None
         };
-        match look_up_type_id(*self) {
+        let res = match look_up_type_id(*self) {
             UnknownGeneric { name } => vec![TypeMetadata::UnresolvedType {
                 name,
                 span_override,
             }],
             _ => vec![],
-        }
+        };
+        ok(res, vec![], vec![])
     }
 }
 

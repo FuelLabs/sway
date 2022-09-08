@@ -235,30 +235,56 @@ impl TypedProgram {
                         errors
                     );
                     if public {
-                        ret.append(&mut node.collect_types_metadata());
+                        ret.append(&mut check!(
+                            node.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
                     }
                 }
                 ret
             }
-            TypedProgramKind::Script { .. } => self
-                .root
-                .all_nodes
-                .iter()
-                .filter(|x| x.is_main_function(TreeType::Script))
-                .flat_map(CollectTypesMetadata::collect_types_metadata)
-                .collect(),
-            TypedProgramKind::Predicate { .. } => self
-                .root
-                .all_nodes
-                .iter()
-                .filter(|x| x.is_main_function(TreeType::Predicate))
-                .flat_map(CollectTypesMetadata::collect_types_metadata)
-                .collect(),
-            TypedProgramKind::Contract { abi_entries, .. } => abi_entries
-                .iter()
-                .map(TypedAstNode::from)
-                .flat_map(|x| x.collect_types_metadata())
-                .collect(),
+            TypedProgramKind::Script { .. } => {
+                let mut data = vec![];
+                for node in self.root.all_nodes.iter() {
+                    if node.is_main_function(TreeType::Script) {
+                        data.append(&mut check!(
+                            node.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                }
+                data
+            }
+            TypedProgramKind::Predicate { .. } => {
+                let mut data = vec![];
+                for node in self.root.all_nodes.iter() {
+                    if node.is_main_function(TreeType::Predicate) {
+                        data.append(&mut check!(
+                            node.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                }
+                data
+            }
+            TypedProgramKind::Contract { abi_entries, .. } => {
+                let mut data = vec![];
+                for entry in abi_entries.iter() {
+                    data.append(&mut check!(
+                        TypedAstNode::from(entry).collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                data
+            }
         };
         if errors.is_empty() {
             ok(metadata, warnings, errors)
