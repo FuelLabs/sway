@@ -5,8 +5,8 @@ use sway_types::{Span, Spanned};
 use crate::{
     concurrent_slab::ConcurrentSlab,
     semantic_analysis::{
-        TypedAbiDeclaration, TypedImplTrait, TypedStorageDeclaration, TypedStructDeclaration,
-        TypedTraitDeclaration, TypedTraitFn,
+        TypedAbiDeclaration, TypedConstantDeclaration, TypedImplTrait, TypedStorageDeclaration,
+        TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
     },
     CompileError, TypedFunctionDeclaration,
 };
@@ -205,6 +205,23 @@ impl DeclarationEngine {
     ) -> Result<TypedAbiDeclaration, CompileError> {
         self.slab.get(*index).expect_abi(span)
     }
+
+    fn insert_constant(&self, constant: TypedConstantDeclaration) -> DeclarationId {
+        let span = constant.name.span();
+        DeclarationId::new(
+            self.slab
+                .insert(DeclarationWrapper::Constant(Box::new(constant))),
+            span,
+        )
+    }
+
+    fn get_constant(
+        &self,
+        index: DeclarationId,
+        span: &Span,
+    ) -> Result<TypedConstantDeclaration, CompileError> {
+        self.slab.get(*index).expect_constant(span)
+    }
 }
 
 pub(crate) fn de_clear() {
@@ -315,4 +332,15 @@ pub(crate) fn de_insert_abi(abi: TypedAbiDeclaration) -> DeclarationId {
 
 pub fn de_get_abi(index: DeclarationId, span: &Span) -> Result<TypedAbiDeclaration, CompileError> {
     DECLARATION_ENGINE.get_abi(index, span)
+}
+
+pub(crate) fn de_insert_constant(constant: TypedConstantDeclaration) -> DeclarationId {
+    DECLARATION_ENGINE.insert_constant(constant)
+}
+
+pub fn de_get_constant(
+    index: DeclarationId,
+    span: &Span,
+) -> Result<TypedConstantDeclaration, CompileError> {
+    DECLARATION_ENGINE.get_constant(index, span)
 }

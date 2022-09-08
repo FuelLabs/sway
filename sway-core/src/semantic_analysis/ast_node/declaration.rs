@@ -29,8 +29,8 @@ use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypedDeclaration {
-    VariableDeclaration(TypedVariableDeclaration),
-    ConstantDeclaration(TypedConstantDeclaration),
+    VariableDeclaration(Box<TypedVariableDeclaration>),
+    ConstantDeclaration(DeclarationId),
     FunctionDeclaration(TypedFunctionDeclaration),
     TraitDeclaration(DeclarationId),
     StructDeclaration(TypedStructDeclaration),
@@ -51,7 +51,6 @@ impl CopyTypes for TypedDeclaration {
         use TypedDeclaration::*;
         match self {
             VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
-            ConstantDeclaration(ref mut const_decl) => const_decl.copy_types(type_mapping),
             FunctionDeclaration(ref mut fn_decl) => fn_decl.copy_types(type_mapping),
             TraitDeclaration(ref mut trait_decl) => trait_decl.copy_types(type_mapping),
             StructDeclaration(ref mut struct_decl) => struct_decl.copy_types(type_mapping),
@@ -59,6 +58,7 @@ impl CopyTypes for TypedDeclaration {
             ImplTrait(impl_trait) => impl_trait.copy_types(type_mapping),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
+            | ConstantDeclaration(_)
             | StorageDeclaration(..)
             | GenericTypeForFunctionScope { .. }
             | ErrorRecovery => (),
@@ -70,8 +70,8 @@ impl Spanned for TypedDeclaration {
     fn span(&self) -> Span {
         use TypedDeclaration::*;
         match self {
-            VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span(),
-            ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span(),
+            VariableDeclaration(decl) => decl.name.span(),
+            ConstantDeclaration(decl_id) => decl_id.span(),
             FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
             TraitDeclaration(decl_id) => decl_id.span(),
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span(),
@@ -93,13 +93,14 @@ impl fmt::Display for TypedDeclaration {
             "{} declaration ({})",
             self.friendly_name(),
             match self {
-                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                    mutability,
-                    name,
-                    type_ascription,
-                    body,
-                    ..
-                }) => {
+                TypedDeclaration::VariableDeclaration(decl) => {
+                    let TypedVariableDeclaration {
+                        mutability,
+                        name,
+                        type_ascription,
+                        body,
+                        ..
+                    } = &**decl;
                     let mut builder = String::new();
                     match mutability {
                         VariableMutability::Mutable => builder.push_str("mut"),
@@ -139,42 +140,75 @@ impl fmt::Display for TypedDeclaration {
 
 impl CollectTypesMetadata for TypedDeclaration {
     // this is only run on entry nodes, which must have all well-formed types
-    fn collect_types_metadata(&self) -> Vec<TypeMetadata> {
+    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
         use TypedDeclaration::*;
-        match self {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let metadata = match self {
             VariableDeclaration(decl) => {
-                let mut body = decl.body.collect_types_metadata();
-                body.append(&mut decl.type_ascription.collect_types_metadata());
+                let mut body = check!(
+                    decl.body.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                body.append(&mut check!(
+                    decl.type_ascription.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
                 body
             }
             FunctionDeclaration(decl) => {
-                let mut body: Vec<TypeMetadata> = decl
-                    .body
-                    .contents
-                    .iter()
-                    .flat_map(CollectTypesMetadata::collect_types_metadata)
-                    .collect();
-                body.append(&mut decl.return_type.collect_types_metadata());
-                body.append(
-                    &mut decl
-                        .type_parameters
-                        .iter()
-                        .map(|x| &x.type_id)
-                        .flat_map(CollectTypesMetadata::collect_types_metadata)
-                        .collect(),
-                );
-                body.append(
-                    &mut decl
-                        .parameters
-                        .iter()
-                        .map(|x| &x.type_id)
-                        .flat_map(CollectTypesMetadata::collect_types_metadata)
-                        .collect(),
-                );
+                let mut body = vec![];
+                for content in decl.body.contents.iter() {
+                    body.append(&mut check!(
+                        content.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                body.append(&mut check!(
+                    decl.return_type.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                for type_param in decl.type_parameters.iter() {
+                    body.append(&mut check!(
+                        type_param.type_id.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                for param in decl.parameters.iter() {
+                    body.append(&mut check!(
+                        param.type_id.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
                 body
             }
-            ConstantDeclaration(TypedConstantDeclaration { value, .. }) => {
-                value.collect_types_metadata()
+            ConstantDeclaration(decl_id) => {
+                match de_get_constant(decl_id.clone(), &decl_id.span()) {
+                    Ok(TypedConstantDeclaration { value, .. }) => {
+                        check!(
+                            value.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        )
+                    }
+                    Err(e) => {
+                        errors.push(e);
+                        return err(warnings, errors);
+                    }
+                }
             }
             ErrorRecovery
             | StorageDeclaration(_)
@@ -184,6 +218,11 @@ impl CollectTypesMetadata for TypedDeclaration {
             | ImplTrait { .. }
             | AbiDeclaration(_)
             | GenericTypeForFunctionScope { .. } => vec![],
+        };
+        if errors.is_empty() {
+            ok(metadata, warnings, errors)
+        } else {
+            err(warnings, errors)
         }
     }
 }
@@ -301,9 +340,7 @@ impl TypedDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_id = match self {
-            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration { body, .. }) => {
-                body.return_type
-            }
+            TypedDeclaration::VariableDeclaration(decl) => decl.body.return_type,
             TypedDeclaration::FunctionDeclaration { .. } => {
                 errors.push(CompileError::Unimplemented(
                     "Function pointers have not yet been implemented.",
@@ -353,17 +390,22 @@ impl TypedDeclaration {
                 );
                 visibility
             }
+            ConstantDeclaration(decl_id) => {
+                let TypedConstantDeclaration { visibility, .. } = check!(
+                    CompileResult::from(de_get_constant(decl_id.clone(), &decl_id.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                visibility
+            }
             GenericTypeForFunctionScope { .. }
             | ImplTrait { .. }
             | StorageDeclaration { .. }
             | AbiDeclaration(..)
             | ErrorRecovery => Visibility::Public,
-            VariableDeclaration(TypedVariableDeclaration {
-                mutability: is_mutable,
-                ..
-            }) => is_mutable.visibility(),
+            VariableDeclaration(decl) => decl.mutability.visibility(),
             EnumDeclaration(TypedEnumDeclaration { visibility, .. })
-            | ConstantDeclaration(TypedConstantDeclaration { visibility, .. })
             | FunctionDeclaration(TypedFunctionDeclaration { visibility, .. })
             | StructDeclaration(TypedStructDeclaration { visibility, .. }) => *visibility,
         };
@@ -376,12 +418,6 @@ pub struct TypedConstantDeclaration {
     pub name: Ident,
     pub value: TypedExpression,
     pub(crate) visibility: Visibility,
-}
-
-impl CopyTypes for TypedConstantDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.value.copy_types(type_mapping);
-    }
 }
 
 #[derive(Clone, Debug, Derivative)]

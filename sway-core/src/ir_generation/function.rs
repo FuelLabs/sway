@@ -8,7 +8,7 @@ use super::{
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
-    declaration_engine::declaration_engine::de_get_impl_trait,
+    declaration_engine::declaration_engine,
     error::{CompileError, Hint},
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -122,9 +122,10 @@ impl FnCompiler {
                     }
                     TypedAstNodeContent::Declaration(td) => match td {
                         TypedDeclaration::VariableDeclaration(tvd) => {
-                            self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
+                            self.compile_var_decl(context, md_mgr, *tvd, span_md_idx)
                         }
-                        TypedDeclaration::ConstantDeclaration(tcd) => {
+                        TypedDeclaration::ConstantDeclaration(decl_id) => {
+                            let tcd = declaration_engine::de_get_constant(decl_id, &ast_node.span)?;
                             self.compile_const_decl(context, md_mgr, tcd, span_md_idx)
                         }
                         TypedDeclaration::FunctionDeclaration(_) => {
@@ -157,7 +158,7 @@ impl FnCompiler {
                             // This is obviously not really correct, and eventually we want to
                             // compile and then call these properly.
                             let TypedImplTrait { span, .. } =
-                                de_get_impl_trait(decl_id, &ast_node.span)?;
+                                declaration_engine::de_get_impl_trait(decl_id, &ast_node.span)?;
                             let span_md_idx = md_mgr.span_to_md(context, &span);
                             Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
                         }

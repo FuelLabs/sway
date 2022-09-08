@@ -1,14 +1,14 @@
 use sway_types::{Span, Spanned};
 
-use crate::declaration_engine::declaration_engine::{de_get_impl_trait, de_get_storage};
+use crate::declaration_engine::declaration_engine::*;
 use crate::error::err;
 use crate::type_system::{is_type_info_storage_only, resolve_type, TypeId};
 use crate::{error::ok, semantic_analysis, CompileError, CompileResult, CompileWarning};
 use crate::{TypedDeclaration, TypedFunctionDeclaration};
 
 use crate::semantic_analysis::{
-    TypedAstNodeContent, TypedExpression, TypedExpressionVariant, TypedIntrinsicFunctionKind,
-    TypedReassignment, TypedReturnStatement,
+    TypedAstNodeContent, TypedConstantDeclaration, TypedExpression, TypedExpressionVariant,
+    TypedIntrinsicFunctionKind, TypedReassignment, TypedReturnStatement,
 };
 
 use super::{
@@ -167,23 +167,31 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut errors: Vec<CompileError> = vec![];
     match decl {
-        TypedDeclaration::VariableDeclaration(semantic_analysis::TypedVariableDeclaration {
-            body: expr,
-            name,
-            ..
-        })
-        | TypedDeclaration::ConstantDeclaration(semantic_analysis::TypedConstantDeclaration {
-            value: expr,
-            name,
-            ..
-        }) => {
+        TypedDeclaration::VariableDeclaration(decl) => {
+            check!(
+                check_type(decl.body.return_type, decl.name.span(), false),
+                (),
+                warnings,
+                errors
+            );
+            check!(expr_validate(&decl.body), (), warnings, errors)
+        }
+        TypedDeclaration::ConstantDeclaration(decl_id) => {
+            let TypedConstantDeclaration {
+                value: expr, name, ..
+            } = check!(
+                CompileResult::from(de_get_constant(decl_id.clone(), &decl_id.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             check!(
                 check_type(expr.return_type, name.span(), false),
                 (),
                 warnings,
                 errors
             );
-            check!(expr_validate(expr), (), warnings, errors)
+            check!(expr_validate(&expr), (), warnings, errors)
         }
         TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
             body,
