@@ -31,9 +31,10 @@ async fn can_get_block_height() {
     let block_1 = instance.get_block_height().call().await.unwrap();
     let block_2 = instance.get_block_height().call().await.unwrap();
 
-    // Consecutive blocks
-    assert_eq!(block_1.value, block_0.value + 1);
-    assert_eq!(block_2.value, block_1.value + 1);
+    // Probably consecutive blocks but we may have multiple tx per block so be conservative to
+    // guarantee the stability of the test
+    assert!(block_1.value <= block_0.value + 1);
+    assert!(block_2.value <= block_1.value + 1);
 }
 
 #[tokio::test]
@@ -44,25 +45,30 @@ async fn can_get_timestamp() {
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards");
 
-    // This should really be zero in most cases, but be conservative to guarantee stability of the
-    // test
+    // This should really be zero in most cases, but be conservative to guarantee the stability of
+    // the test
     assert!(now.as_secs() - block_0_time.value <= 1);
 
     // Wait 1 seconds and request another block
     sleep(Duration::from_secs(1)).await;
     let block_1_time = instance.get_timestamp().call().await.unwrap();
 
-    // The difference should be 1 second in most cases, but be conservative to guarantee stability
-    // of the test
-    assert!(block_1_time.value - block_0_time.value <= 2);
-
+    // The difference should be 1 second in most cases, but be conservative to guarantee the
+    // stability of the test
+    assert!(
+        1 <= block_1_time.value - block_0_time.value
+            && block_1_time.value - block_0_time.value <= 2
+    );
     // Wait 2 seconds and request another block
     sleep(Duration::from_secs(2)).await;
     let block_2_time = instance.get_timestamp().call().await.unwrap();
 
-    // The difference should be 2 seconds in most cases, but be conservative to guarantee stability
-    // of the test
-    assert!(block_2_time.value - block_1_time.value <= 3);
+    // The difference should be 2 seconds in most cases, but be conservative to guarantee the
+    // stability of the test
+    assert!(
+        2 <= block_2_time.value - block_1_time.value
+            && block_2_time.value - block_1_time.value <= 3
+    );
 }
 
 #[tokio::test]

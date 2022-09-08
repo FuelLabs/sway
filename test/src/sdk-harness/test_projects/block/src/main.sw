@@ -1,7 +1,7 @@
 contract;
 
-use std::block::*;
-use block_test_abi::*;
+use std::block::{height, timestamp, timestamp_of_block};
+use block_test_abi::BlockTest;
 
 impl BlockTest for Contract {
     fn get_block_height() -> u64 {
@@ -17,6 +17,9 @@ impl BlockTest for Contract {
     }
 
     fn get_block_and_timestamp() -> (u64, u64) {
-        (height(), timestamp())
+        (
+            height(),
+            timestamp(),
+        )
     }
 }
