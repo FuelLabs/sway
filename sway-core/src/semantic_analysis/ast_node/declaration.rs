@@ -36,7 +36,7 @@ pub enum TypedDeclaration {
     StructDeclaration(TypedStructDeclaration),
     EnumDeclaration(DeclarationId),
     ImplTrait(TypedImplTrait),
-    AbiDeclaration(TypedAbiDeclaration),
+    AbiDeclaration(DeclarationId),
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
     GenericTypeForFunctionScope { name: Ident, type_id: TypeId },
@@ -76,7 +76,7 @@ impl Spanned for TypedDeclaration {
             TraitDeclaration(decl_id) => decl_id.span(),
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span(),
             EnumDeclaration(decl_id) => decl_id.span(),
-            AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
+            AbiDeclaration(decl_id) => decl_id.span(),
             ImplTrait(TypedImplTrait { span, .. }) => span.clone(),
             StorageDeclaration(decl) => decl.span(),
             ErrorRecovery | GenericTypeForFunctionScope { .. } => {
@@ -268,18 +268,18 @@ impl TypedDeclaration {
     /// Retrieves the declaration as an Abi declaration.
     ///
     /// Returns an error if `self` is not a `TypedAbiDeclaration`.
-    pub(crate) fn expect_abi(&self) -> CompileResult<&TypedAbiDeclaration> {
-        let warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn expect_abi(&self, access_span: &Span) -> CompileResult<TypedAbiDeclaration> {
         match self {
-            TypedDeclaration::AbiDeclaration(decl) => ok(decl, warnings, errors),
-            decl => {
-                errors.push(CompileError::DeclIsNotAnAbi {
+            TypedDeclaration::AbiDeclaration(decl_id) => {
+                CompileResult::from(de_get_abi(decl_id.clone(), access_span))
+            }
+            decl => err(
+                vec![],
+                vec![CompileError::DeclIsNotAnAbi {
                     actually: decl.friendly_name().to_string(),
                     span: decl.span(),
-                });
-                err(warnings, errors)
-            }
+                }],
+            ),
         }
     }
 

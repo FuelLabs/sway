@@ -154,7 +154,9 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 collect_typed_fn_decl(method, tokens);
             }
         }
-        TypedDeclaration::AbiDeclaration(abi_decl) => {
+        TypedDeclaration::AbiDeclaration(decl_id) => {
+            let abi_decl =
+                declaration_engine::de_get_abi(decl_id.clone(), &decl_id.span()).unwrap();
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&abi_decl.name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }
