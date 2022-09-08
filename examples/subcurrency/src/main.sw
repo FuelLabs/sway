@@ -21,8 +21,8 @@ use std::{
 ////////////////////////////////////////
 // Events allow clients to react to changes in the contract.
 // Unlike Solidity, events are simply structs.
-// Note: Logging of arbitrary stack types is supported, however they cannot yet
-//  be decoded on the SDK side.
+// Note: Logging of arbitrary stack types is supported, however they cannot yet be decoded on the 
+// SDK side.
 /// Emitted when a token is sent.
 struct Sent {
     from: Address,
@@ -50,7 +50,7 @@ abi Token {
 // Constants
 ////////////////////////////////////////
 /// Address of contract creator.
-const MINTER: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
+const MINTER = ~Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
 
 ////////////////////////////////////////
 // Contract storage
@@ -72,12 +72,10 @@ impl Token for Contract {
         let sender: Result<Identity, AuthError> = msg_sender();
         let sender: Address = match sender.unwrap() {
             Identity::Address(addr) => {
-                assert(addr == ~Address::from(MINTER));
+                assert(addr == MINTER);
                 addr
             },
-            _ => {
-                revert(0);
-            },
+            _ => revert(0),
         };
 
         // Increase the balance of receiver
@@ -89,13 +87,9 @@ impl Token for Contract {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
         let sender: Result<Identity, AuthError> = msg_sender();
-        let sender: Address = match sender.unwrap() {
-            Identity::Address(addr) => {
-                addr
-            },
-            _ => {
-                revert(0);
-            },
+        let sender = match sender.unwrap() {
+            Identity::Address(addr) => addr,
+            _ => revert(0),
         };
 
         // Reduce the balance of sender
