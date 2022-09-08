@@ -4,8 +4,8 @@ use sway_types::Span;
 
 use crate::{
     semantic_analysis::{
-        TypedAbiDeclaration, TypedImplTrait, TypedStorageDeclaration, TypedStructDeclaration,
-        TypedTraitDeclaration, TypedTraitFn,
+        TypedAbiDeclaration, TypedConstantDeclaration, TypedImplTrait, TypedStorageDeclaration,
+        TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
     },
     type_system::{CopyTypes, TypeMapping},
     CompileError, TypedFunctionDeclaration,
@@ -24,6 +24,7 @@ pub(crate) enum DeclarationWrapper {
     Struct(TypedStructDeclaration),
     Storage(TypedStorageDeclaration),
     Abi(TypedAbiDeclaration),
+    Constant(Box<TypedConstantDeclaration>),
 }
 
 impl Default for DeclarationWrapper {
@@ -46,6 +47,7 @@ impl PartialEq for DeclarationWrapper {
             (DeclarationWrapper::Struct(l), DeclarationWrapper::Struct(r)) => l == r,
             (DeclarationWrapper::Storage(l), DeclarationWrapper::Storage(r)) => l == r,
             (DeclarationWrapper::Abi(l), DeclarationWrapper::Abi(r)) => l == r,
+            (DeclarationWrapper::Constant(l), DeclarationWrapper::Constant(r)) => l == r,
             _ => false,
         }
     }
@@ -68,6 +70,7 @@ impl CopyTypes for DeclarationWrapper {
             DeclarationWrapper::Struct(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::Storage(_) => {}
             DeclarationWrapper::Abi(_) => {}
+            DeclarationWrapper::Constant(_) => {}
         }
     }
 }
@@ -84,6 +87,7 @@ impl DeclarationWrapper {
             DeclarationWrapper::TraitFn(_) => "trait function",
             DeclarationWrapper::Storage(_) => "storage",
             DeclarationWrapper::Abi(_) => "abi",
+            DeclarationWrapper::Constant(_) => "constant",
         }
     }
 
@@ -186,6 +190,23 @@ impl DeclarationWrapper {
             )),
             _ => Err(CompileError::Internal(
                 "expected ABI definition",
+                span.clone(),
+            )),
+        }
+    }
+
+    pub(super) fn expect_constant(
+        self,
+        span: &Span,
+    ) -> Result<TypedConstantDeclaration, CompileError> {
+        match self {
+            DeclarationWrapper::Constant(decl) => Ok(*decl),
+            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+                "did not expect to find unknown declaration",
+                span.clone(),
+            )),
+            _ => Err(CompileError::Internal(
+                "expected to find constant definition",
                 span.clone(),
             )),
         }

@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::declaration_engine::de_get_constant,
     error::CompileError,
     metadata::MetadataManager,
     parse_tree::Visibility,
@@ -93,7 +94,8 @@ fn compile_declarations(
 ) -> Result<(), CompileError> {
     for declaration in declarations {
         match declaration {
-            TypedDeclaration::ConstantDeclaration(decl) => {
+            TypedDeclaration::ConstantDeclaration(ref decl_id) => {
+                let decl = de_get_constant(decl_id.clone(), &declaration.span())?;
                 compile_const_decl(
                     &mut LookupEnv {
                         context,
