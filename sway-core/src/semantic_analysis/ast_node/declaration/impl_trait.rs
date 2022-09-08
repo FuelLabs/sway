@@ -142,11 +142,19 @@ impl TypedImplTrait {
                 );
                 (impl_trait, implementing_for_type_id)
             }
-            Some(TypedDeclaration::AbiDeclaration(abi)) => {
+            Some(TypedDeclaration::AbiDeclaration(decl_id)) => {
                 // if you are comparing this with the `impl_trait` branch above, note that
                 // there are no type arguments here because we don't support generic types
                 // in contract ABIs yet (or ever?) due to the complexity of communicating
                 // the ABI layout in the descriptor file.
+
+                let abi = check!(
+                    CompileResult::from(de_get_abi(decl_id, &trait_name.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
                 if look_up_type_id(implementing_for_type_id) != TypeInfo::Contract {
                     errors.push(CompileError::ImplAbiForNonContract {
                         span: type_implementing_for_span.clone(),

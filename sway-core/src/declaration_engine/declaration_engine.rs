@@ -5,8 +5,8 @@ use sway_types::{Span, Spanned};
 use crate::{
     concurrent_slab::ConcurrentSlab,
     semantic_analysis::{
-        TypedConstantDeclaration, TypedImplTrait, TypedStorageDeclaration, TypedStructDeclaration,
-        TypedTraitDeclaration, TypedTraitFn,
+        TypedAbiDeclaration, TypedConstantDeclaration, TypedImplTrait, TypedStorageDeclaration,
+        TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
     },
     CompileError, TypedFunctionDeclaration,
 };
@@ -193,6 +193,19 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_storage(span)
     }
 
+    fn insert_abi(&self, abi: TypedAbiDeclaration) -> DeclarationId {
+        let span = abi.span.clone();
+        DeclarationId::new(self.slab.insert(DeclarationWrapper::Abi(abi)), span)
+    }
+
+    fn get_abi(
+        &self,
+        index: DeclarationId,
+        span: &Span,
+    ) -> Result<TypedAbiDeclaration, CompileError> {
+        self.slab.get(*index).expect_abi(span)
+    }
+
     fn insert_constant(&self, constant: TypedConstantDeclaration) -> DeclarationId {
         let span = constant.name.span();
         DeclarationId::new(
@@ -311,6 +324,14 @@ pub fn de_get_storage(
     span: &Span,
 ) -> Result<TypedStorageDeclaration, CompileError> {
     DECLARATION_ENGINE.get_storage(index, span)
+}
+
+pub(crate) fn de_insert_abi(abi: TypedAbiDeclaration) -> DeclarationId {
+    DECLARATION_ENGINE.insert_abi(abi)
+}
+
+pub fn de_get_abi(index: DeclarationId, span: &Span) -> Result<TypedAbiDeclaration, CompileError> {
+    DECLARATION_ENGINE.get_abi(index, span)
 }
 
 pub(crate) fn de_insert_constant(constant: TypedConstantDeclaration) -> DeclarationId {
