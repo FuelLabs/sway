@@ -42,7 +42,7 @@ fn unlink_empty_blocks(context: &mut Context, function: &Function) -> Result<boo
             match block.get_terminator(context) {
                 // Except for a PHI and a branch, we don't want anything else.
                 // num_instructions doesn't count PHI though.
-                Some(Instruction::Branch(to_block)) if block.num_instructions(context) > 1 => {
+                Some(Instruction::Branch(to_block)) if block.num_instructions(context) <= 1 => {
                     Some((block, *to_block))
                 }
                 _ => None,
