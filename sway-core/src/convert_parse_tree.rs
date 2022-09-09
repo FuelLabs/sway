@@ -996,10 +996,17 @@ fn fn_args_to_function_parameters(
             mutable_self,
             args_opt,
         } => {
+            let mutability_span = match (&ref_self, &mutable_self) {
+                (None, None) => Span::dummy(),
+                (None, Some(mutable)) => mutable.span(),
+                (Some(reference), None) => reference.span(),
+                (Some(reference), Some(mutable)) => Span::join(reference.span(), mutable.span()),
+            };
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
                 is_reference: ref_self.is_some(),
                 is_mutable: mutable_self.is_some(),
+                mutability_span,
                 type_id: insert_type(TypeInfo::SelfType),
                 type_span: self_token.span(),
             }];
@@ -2059,10 +2066,17 @@ fn fn_arg_to_function_parameter(
             return Err(ec.error(error));
         }
     };
+    let mutability_span = match (&reference, &mutable) {
+        (None, None) => Span::dummy(),
+        (None, Some(mutable)) => mutable.span(),
+        (Some(reference), None) => reference.span(),
+        (Some(reference), Some(mutable)) => Span::join(reference.span(), mutable.span()),
+    };
     let function_parameter = FunctionParameter {
         name,
         is_reference: reference.is_some(),
         is_mutable: mutable.is_some(),
+        mutability_span,
         type_id: insert_type(ty_to_type_info(ec, fn_arg.ty)?),
         type_span,
     };

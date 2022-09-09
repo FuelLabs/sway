@@ -53,23 +53,32 @@ impl DeterministicallyAborts for TypedIntrinsicFunctionKind {
 }
 
 impl CollectTypesMetadata for TypedIntrinsicFunctionKind {
-    fn collect_types_metadata(&self) -> Vec<TypeMetadata> {
-        let mut types_metadata = self
-            .type_arguments
-            .iter()
-            .flat_map(|targ| targ.type_id.collect_types_metadata())
-            .chain(
-                self.arguments
-                    .iter()
-                    .flat_map(CollectTypesMetadata::collect_types_metadata),
-            )
-            .collect::<Vec<_>>();
+    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut types_metadata = vec![];
+        for type_arg in self.type_arguments.iter() {
+            types_metadata.append(&mut check!(
+                type_arg.type_id.collect_types_metadata(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        for arg in self.arguments.iter() {
+            types_metadata.append(&mut check!(
+                arg.collect_types_metadata(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
 
         if matches!(self.kind, Intrinsic::Log) {
             types_metadata.push(TypeMetadata::LoggedType(self.arguments[0].return_type));
         }
 
-        types_metadata
+        ok(types_metadata, warnings, errors)
     }
 }
 

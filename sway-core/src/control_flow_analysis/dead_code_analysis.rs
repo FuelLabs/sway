@@ -185,13 +185,13 @@ impl ControlFlowGraph {
                         ControlFlowGraphNode::ProgramNode(TypedAstNode {
                             content:
                                 TypedAstNodeContent::Declaration(TypedDeclaration::ConstantDeclaration(
-                                    TypedConstantDeclaration {
-                                        visibility: Visibility::Public,
-                                        ..
-                                    },
+                                    decl_id,
                                 )),
                             ..
-                        }) => true,
+                        }) => {
+                            let decl = de_get_constant(decl_id.clone(), &decl_id.span())?;
+                            decl.visibility.is_public()
+                        }
                         _ => false,
                     };
                     if count_it {
@@ -318,12 +318,13 @@ fn connect_declaration(
 ) -> Result<Vec<NodeIndex>, CompileError> {
     use TypedDeclaration::*;
     match decl {
-        VariableDeclaration(TypedVariableDeclaration {
-            name,
-            body,
-            mutability: is_mutable,
-            ..
-        }) => {
+        VariableDeclaration(var_decl) => {
+            let TypedVariableDeclaration {
+                name,
+                body,
+                mutability: is_mutable,
+                ..
+            } = &**var_decl;
             if matches!(is_mutable, VariableMutability::ExportedConst) {
                 graph.namespace.insert_constant(name.clone(), entry_node);
                 Ok(leaves.to_vec())
@@ -339,8 +340,10 @@ fn connect_declaration(
                 )
             }
         }
-        ConstantDeclaration(TypedConstantDeclaration { name, value, .. }) => {
-            graph.namespace.insert_constant(name.clone(), entry_node);
+        ConstantDeclaration(decl_id) => {
+            let TypedConstantDeclaration { name, value, .. } =
+                de_get_constant(decl_id.clone(), &span)?;
+            graph.namespace.insert_constant(name, entry_node);
             connect_expression(
                 &value.expression,
                 graph,
@@ -373,12 +376,13 @@ fn connect_declaration(
             connect_enum_declaration(enum_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
-        ImplTrait(TypedImplTrait {
-            trait_name,
-            methods,
-            ..
-        }) => {
-            connect_impl_trait(trait_name, graph, methods, entry_node, tree_type)?;
+        ImplTrait(decl_id) => {
+            let TypedImplTrait {
+                trait_name,
+                methods,
+                ..
+            } = de_get_impl_trait(decl_id.clone(), &span)?;
+            connect_impl_trait(&trait_name, graph, &methods, entry_node, tree_type)?;
             Ok(leaves.to_vec())
         }
         StorageDeclaration(decl_id) => {
@@ -1276,13 +1280,15 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
             }
         }
         TypedAstNode {
-            content:
-                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
-                    methods,
-                    ..
-                })),
-            ..
-        } if methods.is_empty() => return None,
+            content: TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(decl_id)),
+            span,
+        } => match de_get_impl_trait(decl_id.clone(), span) {
+            Ok(TypedImplTrait { methods, .. }) if methods.is_empty() => return None,
+            _ => CompileWarning {
+                span: span.clone(),
+                warning_content: Warning::DeadDeclaration,
+            },
+        },
         TypedAstNode {
             content: TypedAstNodeContent::Declaration(TypedDeclaration::AbiDeclaration { .. }),
             ..
