@@ -342,7 +342,7 @@ impl TypedAstNode {
                                 implementing_for_type_id,
                                 impl_trait.methods.clone(),
                             );
-                            TypedDeclaration::ImplTrait(impl_trait)
+                            TypedDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
                         }
                         Declaration::ImplSelf(impl_self) => {
                             let impl_trait = check!(
@@ -356,7 +356,7 @@ impl TypedAstNode {
                                 impl_trait.implementing_for_type_id,
                                 impl_trait.methods.clone(),
                             );
-                            TypedDeclaration::ImplTrait(impl_trait)
+                            TypedDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
                         }
                         Declaration::StructDeclaration(decl) => {
                             let decl = check!(

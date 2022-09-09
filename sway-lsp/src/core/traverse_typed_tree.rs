@@ -5,7 +5,7 @@ use crate::{
     utils::token::{struct_declaration_of_type_id, to_ident_key},
 };
 use sway_core::{
-    declaration_engine,
+    declaration_engine::{self, de_get_impl_trait},
     semantic_analysis::ast_node::{
         code_block::TypedCodeBlock,
         expression::{
@@ -124,13 +124,14 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 }
             }
         }
-        TypedDeclaration::ImplTrait(TypedImplTrait {
-            trait_name,
-            methods,
-            implementing_for_type_id,
-            type_implementing_for_span,
-            ..
-        }) => {
+        TypedDeclaration::ImplTrait(decl_id) => {
+            let TypedImplTrait {
+                trait_name,
+                methods,
+                implementing_for_type_id,
+                type_implementing_for_span,
+                ..
+            } = de_get_impl_trait(decl_id.clone(), &decl_id.span()).unwrap();
             for ident in &trait_name.prefixes {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(ident)) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
@@ -139,18 +140,18 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
 
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_name.suffix)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                token.type_def = Some(TypeDefinition::TypeId(*implementing_for_type_id));
+                token.type_def = Some(TypeDefinition::TypeId(implementing_for_type_id));
             }
 
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(
-                type_implementing_for_span.clone(),
-            ))) {
+            if let Some(mut token) =
+                tokens.get_mut(&to_ident_key(&Ident::new(type_implementing_for_span)))
+            {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                token.type_def = Some(TypeDefinition::TypeId(*implementing_for_type_id));
+                token.type_def = Some(TypeDefinition::TypeId(implementing_for_type_id));
             }
 
             for method in methods {
-                collect_typed_fn_decl(method, tokens);
+                collect_typed_fn_decl(&method, tokens);
             }
         }
         TypedDeclaration::AbiDeclaration(decl_id) => {
