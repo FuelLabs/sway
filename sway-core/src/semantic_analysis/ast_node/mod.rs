@@ -342,7 +342,7 @@ impl TypedAstNode {
                                 implementing_for_type_id,
                                 impl_trait.methods.clone(),
                             );
-                            TypedDeclaration::ImplTrait(impl_trait)
+                            TypedDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
                         }
                         Declaration::ImplSelf(impl_self) => {
                             let impl_trait = check!(
@@ -356,7 +356,7 @@ impl TypedAstNode {
                                 impl_trait.implementing_for_type_id,
                                 impl_trait.methods.clone(),
                             );
-                            TypedDeclaration::ImplTrait(impl_trait)
+                            TypedDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
                         }
                         Declaration::StructDeclaration(decl) => {
                             let decl = check!(
@@ -543,12 +543,14 @@ fn type_check_interface_surface(
                              name,
                              is_reference,
                              is_mutable,
+                             mutability_span,
                              type_id,
                              type_span,
                          }| TypedFunctionParameter {
                             name,
                             is_reference,
                             is_mutable,
+                            mutability_span,
                             type_id: check!(
                                 namespace.resolve_type_with_self(
                                     type_id,
@@ -688,12 +690,14 @@ fn type_check_trait_methods(
                      type_id,
                      is_reference,
                      is_mutable,
+                     mutability_span,
                      type_span,
                  }| {
                     TypedFunctionParameter {
                         name,
                         is_reference,
                         is_mutable,
+                        mutability_span,
                         type_id: check!(
                             sig_ctx.resolve_type_with_self(
                                 type_id,
