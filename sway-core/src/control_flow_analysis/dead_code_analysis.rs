@@ -377,12 +377,13 @@ fn connect_declaration(
             connect_enum_declaration(&enum_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
-        ImplTrait(TypedImplTrait {
-            trait_name,
-            methods,
-            ..
-        }) => {
-            connect_impl_trait(trait_name, graph, methods, entry_node, tree_type)?;
+        ImplTrait(decl_id) => {
+            let TypedImplTrait {
+                trait_name,
+                methods,
+                ..
+            } = de_get_impl_trait(decl_id.clone(), &span)?;
+            connect_impl_trait(&trait_name, graph, &methods, entry_node, tree_type)?;
             Ok(leaves.to_vec())
         }
         StorageDeclaration(decl_id) => {
@@ -1280,13 +1281,15 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
             }
         }
         TypedAstNode {
-            content:
-                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
-                    methods,
-                    ..
-                })),
-            ..
-        } if methods.is_empty() => return None,
+            content: TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(decl_id)),
+            span,
+        } => match de_get_impl_trait(decl_id.clone(), span) {
+            Ok(TypedImplTrait { methods, .. }) if methods.is_empty() => return None,
+            _ => CompileWarning {
+                span: span.clone(),
+                warning_content: Warning::DeadDeclaration,
+            },
+        },
         TypedAstNode {
             content: TypedAstNodeContent::Declaration(TypedDeclaration::AbiDeclaration { .. }),
             ..

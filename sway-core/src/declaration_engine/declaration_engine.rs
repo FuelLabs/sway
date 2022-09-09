@@ -129,20 +129,20 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_trait_fn(span)
     }
 
-    fn insert_trait_impl(&self, trait_impl: TypedImplTrait) -> DeclarationId {
-        let span = trait_impl.span.clone();
+    fn insert_impl_trait(&self, impl_trait: TypedImplTrait) -> DeclarationId {
+        let span = impl_trait.span.clone();
         DeclarationId::new(
-            self.slab.insert(DeclarationWrapper::TraitImpl(trait_impl)),
+            self.slab.insert(DeclarationWrapper::ImplTrait(impl_trait)),
             span,
         )
     }
 
-    fn get_trait_impl(
+    fn get_impl_trait(
         &self,
         index: DeclarationId,
         span: &Span,
     ) -> Result<TypedImplTrait, CompileError> {
-        self.slab.get(*index).expect_trait_impl(span)
+        self.slab.get(*index).expect_impl_trait(span)
     }
 
     fn insert_struct(&self, r#struct: TypedStructDeclaration) -> DeclarationId {
@@ -306,15 +306,15 @@ pub(crate) fn de_get_trait_fn(
     DECLARATION_ENGINE.get_trait_fn(index, span)
 }
 
-pub(crate) fn insert_trait_impl(trait_impl: TypedImplTrait) -> DeclarationId {
-    DECLARATION_ENGINE.insert_trait_impl(trait_impl)
+pub(crate) fn de_insert_impl_trait(impl_trait: TypedImplTrait) -> DeclarationId {
+    DECLARATION_ENGINE.insert_impl_trait(impl_trait)
 }
 
-pub(crate) fn de_get_trait_impl(
+pub fn de_get_impl_trait(
     index: DeclarationId,
     span: &Span,
 ) -> Result<TypedImplTrait, CompileError> {
-    DECLARATION_ENGINE.get_trait_impl(index, span)
+    DECLARATION_ENGINE.get_impl_trait(index, span)
 }
 
 pub(crate) fn de_insert_struct(r#struct: TypedStructDeclaration) -> DeclarationId {

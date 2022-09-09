@@ -152,12 +152,14 @@ impl FnCompiler {
                             create_enum_aggregate(context, ted.variants).map(|_| ())?;
                             Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
                         }
-                        TypedDeclaration::ImplTrait(TypedImplTrait { span, .. }) => {
+                        TypedDeclaration::ImplTrait(decl_id) => {
                             // XXX What if we ignore the trait implementation???  Potentially since
                             // we currently inline everything and below we 'recreate' the functions
                             // lazily as they are called, nothing needs to be done here.  BUT!
                             // This is obviously not really correct, and eventually we want to
                             // compile and then call these properly.
+                            let TypedImplTrait { span, .. } =
+                                declaration_engine::de_get_impl_trait(decl_id, &ast_node.span)?;
                             let span_md_idx = md_mgr.span_to_md(context, &span);
                             Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
                         }

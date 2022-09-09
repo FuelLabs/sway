@@ -216,7 +216,13 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
         TypedDeclaration::AbiDeclaration(_) | TypedDeclaration::TraitDeclaration(_) => {
             // These methods are not typed. They are however handled from ImplTrait.
         }
-        TypedDeclaration::ImplTrait(TypedImplTrait { methods, .. }) => {
+        TypedDeclaration::ImplTrait(decl_id) => {
+            let TypedImplTrait { methods, .. } = check!(
+                CompileResult::from(de_get_impl_trait(decl_id.clone(), &decl_id.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             for method in methods {
                 check!(
                     validate_decls_for_storage_only_types_in_codeblock(&method.body),
