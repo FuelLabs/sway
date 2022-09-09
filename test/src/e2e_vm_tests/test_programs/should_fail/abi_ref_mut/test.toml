@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Ref mutable parameter is not supported for contract ABI function.

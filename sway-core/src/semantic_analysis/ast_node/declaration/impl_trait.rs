@@ -119,6 +119,7 @@ impl TypedImplTrait {
                         &trait_name,
                         &type_implementing_for_span,
                         &block_span,
+                        false,
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -173,6 +174,7 @@ impl TypedImplTrait {
                         &trait_name,
                         &type_implementing_for_span,
                         &block_span,
+                        true
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -487,6 +489,7 @@ fn type_check_trait_implementation(
     trait_name: &CallPath,
     self_type_span: &Span,
     block_span: &Span,
+    is_contract: bool,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -560,6 +563,20 @@ fn type_check_trait_implementation(
             // implement trait constraint solver */
             let fn_decl_param_type = fn_decl_param.type_id;
             let fn_signature_param_type = fn_signature_param.type_id;
+
+            // check if the mutability of the parameters is incompatible
+            if fn_decl_param.is_mutable != fn_signature_param.is_mutable {
+                errors.push(CompileError::ParameterMutabilityMismatch {
+                    span: fn_decl_param.mutability_span.clone(),
+                });
+            }
+
+            if (fn_decl_param.is_reference || fn_signature_param.is_reference) && is_contract {
+                errors.push(CompileError::RefMutParameterInContract {
+                    span: fn_decl_param.mutability_span.clone(),
+                });
+            }
+
             let (mut new_warnings, new_errors) = unify_with_self(
                 fn_decl_param_type,
                 fn_signature_param_type,
