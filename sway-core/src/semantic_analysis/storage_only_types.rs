@@ -242,7 +242,13 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { variants, .. }) => {
+        TypedDeclaration::EnumDeclaration(decl_id) => {
+            let TypedEnumDeclaration { variants, .. } = check!(
+                CompileResult::from(de_get_enum(decl_id.clone(), &decl.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             for variant in variants {
                 check!(
                     check_type(variant.type_id, variant.span.clone(), false),

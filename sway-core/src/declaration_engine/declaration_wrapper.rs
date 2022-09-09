@@ -4,8 +4,8 @@ use sway_types::Span;
 
 use crate::{
     semantic_analysis::{
-        TypedAbiDeclaration, TypedConstantDeclaration, TypedImplTrait, TypedStorageDeclaration,
-        TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
+        TypedAbiDeclaration, TypedConstantDeclaration, TypedEnumDeclaration, TypedImplTrait,
+        TypedStorageDeclaration, TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
     },
     type_system::{CopyTypes, TypeMapping},
     CompileError, TypedFunctionDeclaration,
@@ -25,6 +25,7 @@ pub(crate) enum DeclarationWrapper {
     Storage(TypedStorageDeclaration),
     Abi(TypedAbiDeclaration),
     Constant(Box<TypedConstantDeclaration>),
+    Enum(TypedEnumDeclaration),
 }
 
 impl Default for DeclarationWrapper {
@@ -48,6 +49,7 @@ impl PartialEq for DeclarationWrapper {
             (DeclarationWrapper::Storage(l), DeclarationWrapper::Storage(r)) => l == r,
             (DeclarationWrapper::Abi(l), DeclarationWrapper::Abi(r)) => l == r,
             (DeclarationWrapper::Constant(l), DeclarationWrapper::Constant(r)) => l == r,
+            (DeclarationWrapper::Enum(l), DeclarationWrapper::Enum(r)) => l == r,
             _ => false,
         }
     }
@@ -71,6 +73,7 @@ impl CopyTypes for DeclarationWrapper {
             DeclarationWrapper::Storage(_) => {}
             DeclarationWrapper::Abi(_) => {}
             DeclarationWrapper::Constant(_) => {}
+            DeclarationWrapper::Enum(decl) => decl.copy_types(type_mapping),
         }
     }
 }
@@ -88,6 +91,7 @@ impl DeclarationWrapper {
             DeclarationWrapper::Storage(_) => "storage",
             DeclarationWrapper::Abi(_) => "abi",
             DeclarationWrapper::Constant(_) => "constant",
+            DeclarationWrapper::Enum(_) => "enum",
         }
     }
 
@@ -209,6 +213,20 @@ impl DeclarationWrapper {
                 "expected to find constant definition",
                 span.clone(),
             )),
+        }
+    }
+
+    pub(super) fn expect_enum(self, span: &Span) -> Result<TypedEnumDeclaration, CompileError> {
+        match self {
+            DeclarationWrapper::Enum(decl) => Ok(decl),
+            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+                "did not expect to find unknown declaration",
+                span.clone(),
+            )),
+            actually => Err(CompileError::DeclIsNotAnEnum {
+                actually: actually.friendly_name().to_string(),
+                span: span.clone(),
+            }),
         }
     }
 }
