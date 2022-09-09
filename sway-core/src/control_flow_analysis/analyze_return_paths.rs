@@ -2,7 +2,8 @@
 //! execution.
 
 use crate::{
-    control_flow_analysis::*, error::*, parse_tree::*, semantic_analysis::*, type_system::*,
+    control_flow_analysis::*, declaration_engine::declaration_engine::de_get_impl_trait, error::*,
+    parse_tree::*, semantic_analysis::*, type_system::*,
 };
 use petgraph::prelude::NodeIndex;
 use sway_types::{ident::Ident, span::Span};
@@ -217,16 +218,17 @@ fn connect_declaration(
             connect_typed_fn_decl(fn_decl, graph, entry_node, span)?;
             Ok(leaves.to_vec())
         }
-        ImplTrait(TypedImplTrait {
-            trait_name,
-            methods,
-            ..
-        }) => {
+        ImplTrait(decl_id) => {
+            let TypedImplTrait {
+                trait_name,
+                methods,
+                ..
+            } = de_get_impl_trait(decl_id.clone(), &span)?;
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
-            connect_impl_trait(trait_name, graph, methods, entry_node)?;
+            connect_impl_trait(&trait_name, graph, &methods, entry_node)?;
             Ok(leaves.to_vec())
         }
         ErrorRecovery => Ok(leaves.to_vec()),
