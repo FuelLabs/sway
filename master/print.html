@@ -336,7 +336,7 @@ $ tree .
 <p>It's now time to deploy the contract and call it on a Fuel node. We will show how to do this using <code>forc</code> from the command line, but you can also do it using the <a href="https://fuellabs.github.io/fuels-rs/master/getting-started/contracts.html">Rust SDK</a> or the <a href="https://fuellabs.github.io/fuels-ts/#deploying-contracts">TypeScript SDK</a></p>
 <h3 id="spin-up-a-fuel-node"><a class="header" href="#spin-up-a-fuel-node">Spin Up a Fuel node</a></h3>
 <p>In a separate tab in your terminal, spin up a local Fuel node:</p>
-<pre><code class="language-sh">fuel-core --db-type in-memory
+<pre><code class="language-sh">fuel-core run --db-type in-memory
 </code></pre>
 <p>This starts a Fuel node with a volatile database that will be cleared when shut down (good for testing purposes).</p>
 <h3 id="deploy-counter_contract-to-your-local-fuel-node"><a class="header" href="#deploy-counter_contract-to-your-local-fuel-node">Deploy <code>counter_contract</code> To Your Local Fuel Node</a></h3>
