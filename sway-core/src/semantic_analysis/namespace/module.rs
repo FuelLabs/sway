@@ -295,7 +295,7 @@ impl Module {
                         return ok((), warnings, errors);
                     }
                 }
-                let a = decl.return_type().value;
+                let a = decl.return_type(&item.span()).value;
                 //  if this is an enum or struct, import its implementations
                 let mut res = match a {
                     Some(a) => src_ns.implemented_traits.get_call_path_and_type_info(a),

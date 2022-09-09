@@ -1,6 +1,7 @@
 use sway_types::{Span, Spanned};
 
 use crate::{
+    declaration_engine::declaration_engine::*,
     error::{err, ok},
     semantic_analysis::TypeCheckContext,
     type_system::{insert_type, EnforceTypeArguments},
@@ -147,7 +148,7 @@ impl TypeBinding<CallPath> {
         }
 
         // monomorphize the declaration, if needed
-        match unknown_decl {
+        let new_decl = match unknown_decl {
             TypedDeclaration::FunctionDeclaration(ref mut decl) => {
                 check!(
                     ctx.monomorphize(
@@ -159,12 +160,22 @@ impl TypeBinding<CallPath> {
                     return err(warnings, errors),
                     warnings,
                     errors
-                )
+                );
+                unknown_decl
             }
-            TypedDeclaration::EnumDeclaration(ref mut decl) => {
+            TypedDeclaration::EnumDeclaration(original_id) => {
+                // get the copy from the declaration engine
+                let mut new_copy = check!(
+                    CompileResult::from(de_get_enum(original_id.clone(), &self.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                // monomorphize the copy, in place
                 check!(
                     ctx.monomorphize(
-                        decl,
+                        &mut new_copy,
                         &mut self.type_arguments,
                         EnforceTypeArguments::No,
                         &self.span
@@ -172,7 +183,15 @@ impl TypeBinding<CallPath> {
                     return err(warnings, errors),
                     warnings,
                     errors
-                )
+                );
+
+                // insert the new copy into the declaration engine
+                let new_id = de_insert_enum(new_copy);
+
+                // add the new copy as a monomorphized copy of the original id
+                de_add_monomorphized_copy(original_id, new_id.clone());
+
+                TypedDeclaration::EnumDeclaration(new_id)
             }
             TypedDeclaration::StructDeclaration(ref mut decl) => {
                 check!(
@@ -185,10 +204,11 @@ impl TypeBinding<CallPath> {
                     return err(warnings, errors),
                     warnings,
                     errors
-                )
+                );
+                unknown_decl
             }
-            _ => {}
-        }
-        ok(unknown_decl, warnings, errors)
+            _ => unknown_decl,
+        };
+        ok(new_decl, warnings, errors)
     }
 }

@@ -71,7 +71,9 @@ fn hover_format(token: &Token, ident: &Ident) -> Hover {
                         declaration_engine::de_get_trait(decl_id.clone(), &decl_id.span()).unwrap();
                     format_visibility_hover(trait_decl.visibility, decl.friendly_name())
                 }
-                TypedDeclaration::EnumDeclaration(ref enum_decl) => {
+                TypedDeclaration::EnumDeclaration(decl_id) => {
+                    let enum_decl =
+                        declaration_engine::de_get_enum(decl_id.clone(), &decl_id.span()).unwrap();
                     format_visibility_hover(enum_decl.visibility, decl.friendly_name())
                 }
                 _ => token_name,

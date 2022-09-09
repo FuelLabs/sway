@@ -206,7 +206,7 @@ impl Items {
             }
         };
         let mut symbol = check!(
-            symbol.return_type(),
+            symbol.return_type(&base_name.span()),
             return err(warnings, errors),
             warnings,
             errors
