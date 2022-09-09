@@ -20,7 +20,7 @@ pub(crate) enum DeclarationWrapper {
     Function(TypedFunctionDeclaration),
     Trait(TypedTraitDeclaration),
     TraitFn(TypedTraitFn),
-    TraitImpl(TypedImplTrait),
+    ImplTrait(TypedImplTrait),
     Struct(TypedStructDeclaration),
     Storage(TypedStorageDeclaration),
     Abi(TypedAbiDeclaration),
@@ -43,7 +43,7 @@ impl PartialEq for DeclarationWrapper {
             (DeclarationWrapper::Function(l), DeclarationWrapper::Function(r)) => l == r,
             (DeclarationWrapper::Trait(l), DeclarationWrapper::Trait(r)) => l == r,
             (DeclarationWrapper::TraitFn(l), DeclarationWrapper::TraitFn(r)) => l == r,
-            (DeclarationWrapper::TraitImpl(l), DeclarationWrapper::TraitImpl(r)) => l == r,
+            (DeclarationWrapper::ImplTrait(l), DeclarationWrapper::ImplTrait(r)) => l == r,
             (DeclarationWrapper::Struct(l), DeclarationWrapper::Struct(r)) => l == r,
             (DeclarationWrapper::Storage(l), DeclarationWrapper::Storage(r)) => l == r,
             (DeclarationWrapper::Abi(l), DeclarationWrapper::Abi(r)) => l == r,
@@ -66,7 +66,7 @@ impl CopyTypes for DeclarationWrapper {
             DeclarationWrapper::Function(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::Trait(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::TraitFn(decl) => decl.copy_types(type_mapping),
-            DeclarationWrapper::TraitImpl(decl) => decl.copy_types(type_mapping),
+            DeclarationWrapper::ImplTrait(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::Struct(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::Storage(_) => {}
             DeclarationWrapper::Abi(_) => {}
@@ -83,7 +83,7 @@ impl DeclarationWrapper {
             DeclarationWrapper::Function(_) => "function",
             DeclarationWrapper::Trait(_) => "trait",
             DeclarationWrapper::Struct(_) => "struct",
-            DeclarationWrapper::TraitImpl(_) => "impl trait",
+            DeclarationWrapper::ImplTrait(_) => "impl trait",
             DeclarationWrapper::TraitFn(_) => "trait function",
             DeclarationWrapper::Storage(_) => "storage",
             DeclarationWrapper::Abi(_) => "abi",
@@ -136,9 +136,9 @@ impl DeclarationWrapper {
         }
     }
 
-    pub(super) fn expect_trait_impl(self, span: &Span) -> Result<TypedImplTrait, CompileError> {
+    pub(super) fn expect_impl_trait(self, span: &Span) -> Result<TypedImplTrait, CompileError> {
         match self {
-            DeclarationWrapper::TraitImpl(decl) => Ok(decl),
+            DeclarationWrapper::ImplTrait(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(
                 "did not expect to find unknown declaration",
                 span.clone(),

@@ -88,6 +88,7 @@ define_op_codes!(
     (Srwq, SrwqOpcode, "srwq", (addr, state_addr)),
     (Sww, SwwOpcode, "sww", (state_addr, value)),
     (Swwq, SwwqOpcode, "swwq", (state_addr, addr)),
+    (Time, TimeOpcode, "time", (ret, height)),
     (Tr, TrOpcode, "tr", (contract, coins, asset)),
     (Tro, TroOpcode, "tro", (addr, output, coins, asset)),
     (Ecr, EcrOpcode, "ecr", (addr, sig, hash)),
