@@ -193,10 +193,19 @@ impl TypeBinding<CallPath> {
 
                 TypedDeclaration::EnumDeclaration(new_id)
             }
-            TypedDeclaration::StructDeclaration(ref mut decl) => {
+            TypedDeclaration::StructDeclaration(original_id) => {
+                // get the copy from the declaration engine
+                let mut new_copy = check!(
+                    CompileResult::from(de_get_struct(original_id.clone(), &self.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                // monomorphize the copy, in place
                 check!(
                     ctx.monomorphize(
-                        decl,
+                        &mut new_copy,
                         &mut self.type_arguments,
                         EnforceTypeArguments::No,
                         &self.span
@@ -205,7 +214,14 @@ impl TypeBinding<CallPath> {
                     warnings,
                     errors
                 );
-                unknown_decl
+
+                // insert the new copy into the declaration engine
+                let new_id = de_insert_struct(new_copy);
+
+                // add the new copy as a monomorphized copy of the original id
+                de_add_monomorphized_copy(original_id, new_id.clone());
+
+                TypedDeclaration::StructDeclaration(new_id)
             }
             _ => unknown_decl,
         };

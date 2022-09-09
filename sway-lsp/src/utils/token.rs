@@ -62,7 +62,9 @@ pub(crate) fn struct_declaration_of_type_id(
     tokens: &TokenMap,
 ) -> Option<TypedStructDeclaration> {
     declaration_of_type_id(type_id, tokens).and_then(|decl| match decl {
-        TypedDeclaration::StructDeclaration(struct_decl) => Some(struct_decl),
+        TypedDeclaration::StructDeclaration(ref decl_id) => {
+            Some(declaration_engine::de_get_struct(decl_id.clone(), &decl.span()).unwrap())
+        }
         _ => None,
     })
 }
