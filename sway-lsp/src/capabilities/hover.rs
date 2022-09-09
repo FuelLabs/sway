@@ -62,7 +62,10 @@ fn hover_format(token: &Token, ident: &Ident) -> Hover {
                     format_variable_hover(var_decl.mutability.is_mutable(), type_name)
                 }
                 TypedDeclaration::FunctionDeclaration(func) => extract_fn_signature(&func.span()),
-                TypedDeclaration::StructDeclaration(ref struct_decl) => {
+                TypedDeclaration::StructDeclaration(decl_id) => {
+                    // TODO: do not use unwrap
+                    let struct_decl =
+                        declaration_engine::de_get_struct(decl_id.clone(), &decl.span()).unwrap();
                     format_visibility_hover(struct_decl.visibility, decl.friendly_name())
                 }
                 TypedDeclaration::TraitDeclaration(ref decl_id) => {

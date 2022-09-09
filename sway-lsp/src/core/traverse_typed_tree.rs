@@ -5,7 +5,7 @@ use crate::{
     utils::token::{struct_declaration_of_type_id, to_ident_key},
 };
 use sway_core::{
-    declaration_engine::{self, de_get_impl_trait},
+    declaration_engine,
     semantic_analysis::ast_node::{
         code_block::TypedCodeBlock,
         expression::{
@@ -72,12 +72,15 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 collect_typed_trait_fn_token(trait_fn, tokens);
             }
         }
-        TypedDeclaration::StructDeclaration(struct_dec) => {
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&struct_dec.name)) {
+        TypedDeclaration::StructDeclaration(decl_id) => {
+            // TODO: do not use unwrap
+            let struct_decl =
+                declaration_engine::de_get_struct(decl_id.clone(), &declaration.span()).unwrap();
+            if let Some(mut token) = tokens.get_mut(&to_ident_key(&struct_decl.name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }
 
-            for field in &struct_dec.fields {
+            for field in &struct_decl.fields {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
                     token.typed = Some(TypedAstToken::TypedStructField(field.clone()));
                     token.type_def = Some(TypeDefinition::TypeId(field.type_id));
@@ -91,7 +94,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 }
             }
 
-            for type_param in &struct_dec.type_parameters {
+            for type_param in &struct_decl.type_parameters {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&type_param.name_ident)) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
                     token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
@@ -134,7 +137,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 implementing_for_type_id,
                 type_implementing_for_span,
                 ..
-            } = de_get_impl_trait(decl_id.clone(), &decl_id.span()).unwrap();
+            } = declaration_engine::de_get_impl_trait(decl_id.clone(), &decl_id.span()).unwrap();
             for ident in &trait_name.prefixes {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(ident)) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));

@@ -1,5 +1,8 @@
 use crate::{
-    declaration_engine::declaration_engine::{de_add_monomorphized_enum_copy, de_get_enum},
+    declaration_engine::{
+        de_add_monomorphized_struct_copy,
+        declaration_engine::{de_add_monomorphized_enum_copy, de_get_enum, de_get_struct},
+    },
     error::*,
     semantic_analysis::*,
     type_system::*,
@@ -110,10 +113,19 @@ impl Root {
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(TypedDeclaration::StructDeclaration(mut decl)) => {
+                    Some(TypedDeclaration::StructDeclaration(original_id)) => {
+                        // get the copy from the declaration engine
+                        let mut new_copy = check!(
+                            CompileResult::from(de_get_struct(original_id.clone(), &name.span())),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+
+                        // monomorphize the copy, in place
                         check!(
                             monomorphize(
-                                &mut decl,
+                                &mut new_copy,
                                 &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
                                 span,
@@ -122,9 +134,17 @@ impl Root {
                             ),
                             return err(warnings, errors),
                             warnings,
-                            errors
+                            errors,
                         );
-                        decl.create_type_id()
+
+                        // create the type id from the copy
+                        let type_id = new_copy.create_type_id();
+
+                        // add the new copy as a monomorphized copy of the original id
+                        de_add_monomorphized_struct_copy(original_id, new_copy);
+
+                        // return the id
+                        type_id
                     }
                     Some(TypedDeclaration::EnumDeclaration(original_id)) => {
                         // get the copy from the declaration engine

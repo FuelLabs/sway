@@ -232,7 +232,13 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
                 )
             }
         }
-        TypedDeclaration::StructDeclaration(TypedStructDeclaration { fields, .. }) => {
+        TypedDeclaration::StructDeclaration(decl_id) => {
+            let TypedStructDeclaration { fields, .. } = check!(
+                CompileResult::from(de_get_struct(decl_id.clone(), &decl_id.span())),
+                return err(warnings, errors),
+                warnings,
+                errors,
+            );
             for field in fields {
                 check!(
                     check_type(field.type_id, field.span.clone(), false),
