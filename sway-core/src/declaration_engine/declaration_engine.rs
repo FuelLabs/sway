@@ -5,8 +5,8 @@ use sway_types::{Span, Spanned};
 use crate::{
     concurrent_slab::ConcurrentSlab,
     semantic_analysis::{
-        TypedAbiDeclaration, TypedConstantDeclaration, TypedImplTrait, TypedStorageDeclaration,
-        TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
+        TypedAbiDeclaration, TypedConstantDeclaration, TypedEnumDeclaration, TypedImplTrait,
+        TypedStorageDeclaration, TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
     },
     CompileError, TypedFunctionDeclaration,
 };
@@ -222,6 +222,29 @@ impl DeclarationEngine {
     ) -> Result<TypedConstantDeclaration, CompileError> {
         self.slab.get(*index).expect_constant(span)
     }
+
+    fn insert_enum(&self, enum_decl: TypedEnumDeclaration) -> DeclarationId {
+        let span = enum_decl.span();
+        DeclarationId::new(self.slab.insert(DeclarationWrapper::Enum(enum_decl)), span)
+    }
+
+    fn get_enum(
+        &self,
+        index: DeclarationId,
+        span: &Span,
+    ) -> Result<TypedEnumDeclaration, CompileError> {
+        self.slab.get(*index).expect_enum(span)
+    }
+
+    fn add_monomorphized_enum_copy(
+        &self,
+        original_id: DeclarationId,
+        new_copy: TypedEnumDeclaration,
+    ) {
+        let span = new_copy.span();
+        let new_id = DeclarationId::new(self.slab.insert(DeclarationWrapper::Enum(new_copy)), span);
+        self.add_monomorphized_copy(original_id, new_id)
+    }
 }
 
 pub(crate) fn de_clear() {
@@ -230,6 +253,10 @@ pub(crate) fn de_clear() {
 
 pub(crate) fn de_look_up_decl_id(index: DeclarationId) -> DeclarationWrapper {
     DECLARATION_ENGINE.look_up_decl_id(index)
+}
+
+pub(crate) fn de_add_monomorphized_copy(original_id: DeclarationId, new_id: DeclarationId) {
+    DECLARATION_ENGINE.add_monomorphized_copy(original_id, new_id);
 }
 
 pub(crate) fn de_insert_function(function: TypedFunctionDeclaration) -> DeclarationId {
@@ -343,4 +370,22 @@ pub fn de_get_constant(
     span: &Span,
 ) -> Result<TypedConstantDeclaration, CompileError> {
     DECLARATION_ENGINE.get_constant(index, span)
+}
+
+pub(crate) fn de_insert_enum(enum_decl: TypedEnumDeclaration) -> DeclarationId {
+    DECLARATION_ENGINE.insert_enum(enum_decl)
+}
+
+pub fn de_get_enum(
+    index: DeclarationId,
+    span: &Span,
+) -> Result<TypedEnumDeclaration, CompileError> {
+    DECLARATION_ENGINE.get_enum(index, span)
+}
+
+pub(crate) fn de_add_monomorphized_enum_copy(
+    original_id: DeclarationId,
+    new_copy: TypedEnumDeclaration,
+) {
+    DECLARATION_ENGINE.add_monomorphized_enum_copy(original_id, new_copy);
 }

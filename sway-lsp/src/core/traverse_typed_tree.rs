@@ -98,7 +98,10 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 }
             }
         }
-        TypedDeclaration::EnumDeclaration(enum_decl) => {
+        TypedDeclaration::EnumDeclaration(decl_id) => {
+            // TODO: do not use unwrap
+            let enum_decl =
+                declaration_engine::de_get_enum(decl_id.clone(), &decl_id.span()).unwrap();
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&enum_decl.name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }

@@ -372,8 +372,9 @@ fn connect_declaration(
             connect_struct_declaration(struct_decl, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        EnumDeclaration(enum_decl) => {
-            connect_enum_declaration(enum_decl, graph, entry_node);
+        EnumDeclaration(decl_id) => {
+            let enum_decl = de_get_enum(decl_id.clone(), &span)?;
+            connect_enum_declaration(&enum_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
         ImplTrait(decl_id) => {

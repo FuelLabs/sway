@@ -295,7 +295,7 @@ impl TypedAstNode {
                                 errors
                             );
                             let name = enum_decl.name.clone();
-                            let decl = TypedDeclaration::EnumDeclaration(enum_decl);
+                            let decl = TypedDeclaration::EnumDeclaration(de_insert_enum(enum_decl));
                             check!(
                                 ctx.namespace.insert_symbol(name, decl.clone()),
                                 return err(warnings, errors),
