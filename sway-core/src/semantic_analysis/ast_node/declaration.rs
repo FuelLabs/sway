@@ -33,7 +33,7 @@ pub enum TypedDeclaration {
     ConstantDeclaration(DeclarationId),
     FunctionDeclaration(TypedFunctionDeclaration),
     TraitDeclaration(DeclarationId),
-    StructDeclaration(TypedStructDeclaration),
+    StructDeclaration(DeclarationId),
     EnumDeclaration(DeclarationId),
     ImplTrait(DeclarationId),
     AbiDeclaration(DeclarationId),
@@ -53,7 +53,7 @@ impl CopyTypes for TypedDeclaration {
             VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
             FunctionDeclaration(ref mut fn_decl) => fn_decl.copy_types(type_mapping),
             TraitDeclaration(ref mut trait_decl) => trait_decl.copy_types(type_mapping),
-            StructDeclaration(ref mut struct_decl) => struct_decl.copy_types(type_mapping),
+            StructDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping),
             EnumDeclaration(ref mut enum_decl) => enum_decl.copy_types(type_mapping),
             ImplTrait(impl_trait) => impl_trait.copy_types(type_mapping),
             // generics in an ABI is unsupported by design
@@ -74,7 +74,7 @@ impl Spanned for TypedDeclaration {
             ConstantDeclaration(decl_id) => decl_id.span(),
             FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
             TraitDeclaration(decl_id) => decl_id.span(),
-            StructDeclaration(TypedStructDeclaration { name, .. }) => name.span(),
+            StructDeclaration(decl_id) => decl_id.span(),
             EnumDeclaration(decl_id) => decl_id.span(),
             AbiDeclaration(decl_id) => decl_id.span(),
             ImplTrait(decl_id) => decl_id.span(),
@@ -128,8 +128,12 @@ impl fmt::Display for TypedDeclaration {
                         Err(_) => "unknown trait".into(),
                     }
                 }
-                TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) =>
-                    name.as_str().into(),
+                TypedDeclaration::StructDeclaration(decl_id) => {
+                    match de_get_struct(decl_id.clone(), &decl_id.span()) {
+                        Ok(TypedStructDeclaration { name, .. }) => name.as_str().into(),
+                        Err(_) => "unknown struct".into(),
+                    }
+                }
                 TypedDeclaration::EnumDeclaration(decl_id) => {
                     match de_get_enum(decl_id.clone(), &decl_id.span()) {
                         Ok(TypedEnumDeclaration { name, .. }) => name.as_str().into(),
@@ -253,11 +257,22 @@ impl TypedDeclaration {
     /// Retrieves the declaration as a struct declaration.
     ///
     /// Returns an error if `self` is not a `TypedStructDeclaration`.
-    pub(crate) fn expect_struct(&self) -> CompileResult<&TypedStructDeclaration> {
-        let warnings = vec![];
+    pub(crate) fn expect_struct(
+        &self,
+        access_span: &Span,
+    ) -> CompileResult<TypedStructDeclaration> {
+        let mut warnings = vec![];
         let mut errors = vec![];
         match self {
-            TypedDeclaration::StructDeclaration(decl) => ok(decl, warnings, errors),
+            TypedDeclaration::StructDeclaration(decl_id) => {
+                let decl = check!(
+                    CompileResult::from(de_get_struct(decl_id.clone(), access_span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                ok(decl, warnings, errors)
+            }
             decl => {
                 errors.push(CompileError::DeclIsNotAStruct {
                     actually: decl.friendly_name().to_string(),
@@ -352,7 +367,15 @@ impl TypedDeclaration {
                 ));
                 return err(warnings, errors);
             }
-            TypedDeclaration::StructDeclaration(decl) => decl.create_type_id(),
+            TypedDeclaration::StructDeclaration(decl_id) => {
+                let decl = check!(
+                    CompileResult::from(de_get_struct(decl_id.clone(), &self.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                decl.create_type_id()
+            }
             TypedDeclaration::EnumDeclaration(decl_id) => {
                 let decl = check!(
                     CompileResult::from(de_get_enum(decl_id.clone(), access_span)),
@@ -411,6 +434,15 @@ impl TypedDeclaration {
                 );
                 visibility
             }
+            StructDeclaration(decl_id) => {
+                let TypedStructDeclaration { visibility, .. } = check!(
+                    CompileResult::from(de_get_struct(decl_id.clone(), &decl_id.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                visibility
+            }
             EnumDeclaration(decl_id) => {
                 let TypedEnumDeclaration { visibility, .. } = check!(
                     CompileResult::from(de_get_enum(decl_id.clone(), &decl_id.span())),
@@ -426,8 +458,7 @@ impl TypedDeclaration {
             | AbiDeclaration(..)
             | ErrorRecovery => Visibility::Public,
             VariableDeclaration(decl) => decl.mutability.visibility(),
-            FunctionDeclaration(TypedFunctionDeclaration { visibility, .. })
-            | StructDeclaration(TypedStructDeclaration { visibility, .. }) => *visibility,
+            FunctionDeclaration(TypedFunctionDeclaration { visibility, .. }) => *visibility,
         };
         ok(visibility, warnings, errors)
     }

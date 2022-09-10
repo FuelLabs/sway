@@ -321,7 +321,7 @@ pub(crate) fn de_insert_struct(r#struct: TypedStructDeclaration) -> DeclarationI
     DECLARATION_ENGINE.insert_struct(r#struct)
 }
 
-pub(crate) fn de_get_struct(
+pub fn de_get_struct(
     index: DeclarationId,
     span: &Span,
 ) -> Result<TypedStructDeclaration, CompileError> {

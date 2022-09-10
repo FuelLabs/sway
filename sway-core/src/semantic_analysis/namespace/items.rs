@@ -95,7 +95,7 @@ impl Items {
         let mut warnings = vec![];
         let mut errors = vec![];
         // purposefully do not preemptively return errors so that the
-        // new definiton allows later usages to compile
+        // new definition allows later usages to compile
         if self.symbols.get(&name).is_some() {
             match item {
                 TypedDeclaration::EnumDeclaration { .. }
