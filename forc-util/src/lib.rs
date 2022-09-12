@@ -388,7 +388,7 @@ fn construct_window<'a>(
 
 const LOG_FILTER: &str = "RUST_LOG";
 
-// This allows us to write ERROR and WARN level logs to stderr and everything else to stdout.
+// This allows us to write ERROR level logs to stderr and everything else to stdout.
 // https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
 struct StdioTracingWriter;
 impl<'a> MakeWriter<'a> for StdioTracingWriter {
@@ -403,9 +403,9 @@ impl<'a> MakeWriter<'a> for StdioTracingWriter {
 
     fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
         // Here's where we can implement our special behavior. We'll
-        // check if the metadata's verbosity level is WARN or ERROR,
-        // and return stderr in that case.
-        if meta.level() <= &Level::WARN {
+        // check if the metadata's verbosity level is ERROR, and return
+        // stderr in that case.
+        if meta.level() == &Level::ERROR {
             return Box::new(io::stderr());
         }
 
