@@ -13,7 +13,8 @@ pub(crate) use self::{
 };
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, type_system::*, types::DeterministicallyAborts,
+    declaration_engine::declaration_engine::*, error::*, parse_tree::*, semantic_analysis::*,
+    type_system::*, types::DeterministicallyAborts,
 };
 
 use sway_ast::intrinsics::Intrinsic;
@@ -64,90 +65,143 @@ impl fmt::Display for TypedExpression {
 }
 
 impl CollectTypesMetadata for TypedExpression {
-    fn collect_types_metadata(&self) -> Vec<TypeMetadata> {
+    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
         use TypedExpressionVariant::*;
-        let mut res = self.return_type.collect_types_metadata();
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut res = check!(
+            self.return_type.collect_types_metadata(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
         match &self.expression {
             FunctionApplication {
                 arguments,
                 function_decl,
                 ..
             } => {
-                res.append(
-                    &mut arguments
-                        .iter()
-                        .map(|x| &x.1)
-                        .flat_map(CollectTypesMetadata::collect_types_metadata)
-                        .collect::<Vec<_>>(),
-                );
-                res.append(
-                    &mut function_decl
-                        .body
-                        .contents
-                        .iter()
-                        .flat_map(CollectTypesMetadata::collect_types_metadata)
-                        .collect(),
-                );
+                for arg in arguments.iter() {
+                    res.append(&mut check!(
+                        arg.1.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                for content in function_decl.body.contents.iter() {
+                    res.append(&mut check!(
+                        content.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
             }
             Tuple { fields } => {
-                res.append(
-                    &mut fields
-                        .iter()
-                        .flat_map(|x| x.collect_types_metadata())
-                        .collect(),
-                );
+                for field in fields.iter() {
+                    res.append(&mut check!(
+                        field.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
             }
             AsmExpression { registers, .. } => {
-                res.append(
-                    &mut registers
-                        .iter()
-                        .filter_map(|x| x.initializer.as_ref())
-                        .flat_map(CollectTypesMetadata::collect_types_metadata)
-                        .collect::<Vec<_>>(),
-                );
+                for register in registers.iter() {
+                    if let Some(init) = register.initializer.as_ref() {
+                        res.append(&mut check!(
+                            init.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                }
             }
             StructExpression { fields, .. } => {
-                res.append(
-                    &mut fields
-                        .iter()
-                        .flat_map(|x| x.value.collect_types_metadata())
-                        .collect(),
-                );
+                for field in fields.iter() {
+                    res.append(&mut check!(
+                        field.value.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
             }
             LazyOperator { lhs, rhs, .. } => {
-                res.append(&mut lhs.collect_types_metadata());
-                res.append(&mut rhs.collect_types_metadata());
+                res.append(&mut check!(
+                    lhs.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                res.append(&mut check!(
+                    rhs.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             Array { contents } => {
-                res.append(
-                    &mut contents
-                        .iter()
-                        .flat_map(|x| x.collect_types_metadata())
-                        .collect(),
-                );
+                for content in contents.iter() {
+                    res.append(&mut check!(
+                        content.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
             }
             ArrayIndex { prefix, index } => {
-                res.append(&mut prefix.collect_types_metadata());
-                res.append(&mut index.collect_types_metadata());
+                res.append(&mut check!(
+                    (**prefix).collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                res.append(&mut check!(
+                    (**index).collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             CodeBlock(block) => {
-                res.append(
-                    &mut block
-                        .contents
-                        .iter()
-                        .flat_map(CollectTypesMetadata::collect_types_metadata)
-                        .collect(),
-                );
+                for content in block.contents.iter() {
+                    res.append(&mut check!(
+                        content.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
             }
             IfExp {
                 condition,
                 then,
                 r#else,
             } => {
-                res.append(&mut condition.collect_types_metadata());
-                res.append(&mut then.collect_types_metadata());
+                res.append(&mut check!(
+                    condition.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                res.append(&mut check!(
+                    then.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
                 if let Some(r#else) = r#else {
-                    res.append(&mut r#else.collect_types_metadata());
+                    res.append(&mut check!(
+                        r#else.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
                 }
             }
             StructFieldAccess {
@@ -155,16 +209,36 @@ impl CollectTypesMetadata for TypedExpression {
                 resolved_type_of_parent,
                 ..
             } => {
-                res.append(&mut prefix.collect_types_metadata());
-                res.append(&mut resolved_type_of_parent.collect_types_metadata());
+                res.append(&mut check!(
+                    prefix.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                res.append(&mut check!(
+                    resolved_type_of_parent.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             TupleElemAccess {
                 prefix,
                 resolved_type_of_parent,
                 ..
             } => {
-                res.append(&mut prefix.collect_types_metadata());
-                res.append(&mut resolved_type_of_parent.collect_types_metadata());
+                res.append(&mut check!(
+                    prefix.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                res.append(&mut check!(
+                    resolved_type_of_parent.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             EnumInstantiation {
                 enum_decl,
@@ -172,45 +246,83 @@ impl CollectTypesMetadata for TypedExpression {
                 ..
             } => {
                 if let Some(contents) = contents {
-                    res.append(&mut contents.collect_types_metadata().into_iter().collect());
+                    res.append(&mut check!(
+                        contents.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
                 }
-                res.append(
-                    &mut enum_decl
-                        .variants
-                        .iter()
-                        .flat_map(|x| x.type_id.collect_types_metadata())
-                        .collect(),
-                );
-                res.append(
-                    &mut enum_decl
-                        .type_parameters
-                        .iter()
-                        .flat_map(|x| x.type_id.collect_types_metadata())
-                        .collect(),
-                );
+                for variant in enum_decl.variants.iter() {
+                    res.append(&mut check!(
+                        variant.type_id.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                for type_param in enum_decl.type_parameters.iter() {
+                    res.append(&mut check!(
+                        type_param.type_id.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
             }
             AbiCast { address, .. } => {
-                res.append(&mut address.collect_types_metadata());
+                res.append(&mut check!(
+                    address.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             IntrinsicFunction(kind) => {
-                res.append(&mut kind.collect_types_metadata());
+                res.append(&mut check!(
+                    kind.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             EnumTag { exp } => {
-                res.append(&mut exp.collect_types_metadata());
+                res.append(&mut check!(
+                    exp.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             UnsafeDowncast { exp, variant } => {
-                res.append(&mut exp.collect_types_metadata());
-                res.append(&mut variant.type_id.collect_types_metadata());
+                res.append(&mut check!(
+                    exp.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                res.append(&mut check!(
+                    variant.type_id.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             WhileLoop { condition, body } => {
-                res.append(&mut condition.collect_types_metadata());
-                res.append(
-                    &mut body
-                        .contents
-                        .iter()
-                        .flat_map(TypedAstNode::collect_types_metadata)
-                        .collect(),
-                );
+                res.append(&mut check!(
+                    condition.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                for content in body.contents.iter() {
+                    res.append(&mut check!(
+                        content.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
             }
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
@@ -223,22 +335,31 @@ impl CollectTypesMetadata for TypedExpression {
             | Continue
             | FunctionParameter => {}
             Reassignment(reassignment) => {
-                res.append(&mut reassignment.rhs.collect_types_metadata())
+                res.append(&mut check!(
+                    reassignment.rhs.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
-            StorageReassignment(storage_reassignment) => res.extend(
-                storage_reassignment
-                    .fields
-                    .iter()
-                    .flat_map(|x| x.type_id.collect_types_metadata())
-                    .chain(
-                        storage_reassignment
-                            .rhs
-                            .collect_types_metadata()
-                            .into_iter(),
-                    ),
-            ),
+            StorageReassignment(storage_reassignment) => {
+                for field in storage_reassignment.fields.iter() {
+                    res.append(&mut check!(
+                        field.type_id.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                res.append(&mut check!(
+                    storage_reassignment.rhs.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+            }
         }
-        res
+        ok(res, warnings, errors)
     }
 }
 
@@ -713,47 +834,65 @@ impl TypedExpression {
         name: Ident,
         span: Span,
     ) -> CompileResult<TypedExpression> {
+        let mut warnings = vec![];
         let mut errors = vec![];
         let exp = match namespace.resolve_symbol(&name).value {
-            Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                name: decl_name,
-                body,
-                mutability,
-                ..
-            })) => TypedExpression {
-                return_type: body.return_type,
-                is_constant: body.is_constant,
-                expression: TypedExpressionVariant::VariableExpression {
-                    name: decl_name.clone(),
-                    span: name.span(),
-                    mutability: *mutability,
-                },
-                span,
-            },
-            Some(TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                name: decl_name,
-                value,
-                ..
-            })) => TypedExpression {
-                return_type: value.return_type,
-                is_constant: IsConstant::Yes,
-                // Although this isn't strictly a 'variable' expression we can treat it as one for
-                // this context.
-                expression: TypedExpressionVariant::VariableExpression {
-                    name: decl_name.clone(),
-                    span: name.span(),
-                    mutability: VariableMutability::Immutable,
-                },
-                span,
-            },
-            Some(TypedDeclaration::AbiDeclaration(decl)) => TypedExpression {
-                return_type: decl.create_type_id(),
-                is_constant: IsConstant::Yes,
-                expression: TypedExpressionVariant::AbiName(AbiName::Known(
-                    decl.name.clone().into(),
-                )),
-                span,
-            },
+            Some(TypedDeclaration::VariableDeclaration(decl)) => {
+                let TypedVariableDeclaration {
+                    name: decl_name,
+                    body,
+                    mutability,
+                    ..
+                } = &**decl;
+                TypedExpression {
+                    return_type: body.return_type,
+                    is_constant: body.is_constant,
+                    expression: TypedExpressionVariant::VariableExpression {
+                        name: decl_name.clone(),
+                        span: name.span(),
+                        mutability: *mutability,
+                    },
+                    span,
+                }
+            }
+            Some(TypedDeclaration::ConstantDeclaration(decl_id)) => {
+                let TypedConstantDeclaration {
+                    name: decl_name,
+                    value,
+                    ..
+                } = check!(
+                    CompileResult::from(de_get_constant(decl_id.clone(), &span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                TypedExpression {
+                    return_type: value.return_type,
+                    is_constant: IsConstant::Yes,
+                    // Although this isn't strictly a 'variable' expression we can treat it as one for
+                    // this context.
+                    expression: TypedExpressionVariant::VariableExpression {
+                        name: decl_name,
+                        span: name.span(),
+                        mutability: VariableMutability::Immutable,
+                    },
+                    span,
+                }
+            }
+            Some(TypedDeclaration::AbiDeclaration(decl_id)) => {
+                let decl = check!(
+                    CompileResult::from(de_get_abi(decl_id.clone(), &span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                TypedExpression {
+                    return_type: decl.create_type_id(),
+                    is_constant: IsConstant::Yes,
+                    expression: TypedExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
+                    span,
+                }
+            }
             Some(a) => {
                 errors.push(CompileError::NotAVariable {
                     name: name.clone(),
@@ -768,7 +907,7 @@ impl TypedExpression {
                 error_recovery_expr(name.span())
             }
         };
-        ok(exp, vec![], errors)
+        ok(exp, warnings, errors)
     }
 
     fn type_check_function_application(
@@ -1366,7 +1505,7 @@ impl TypedExpression {
                 span: call_path_binding.span,
             };
             TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx)
-                .flat_map(|unknown_decl| unknown_decl.expect_enum().cloned())
+                .flat_map(|unknown_decl| unknown_decl.expect_enum(&call_path_binding.span()))
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
                 .map(|enum_decl| (enum_decl, enum_name, variant_name))
         };
@@ -1459,11 +1598,16 @@ impl TypedExpression {
             errors
         );
         let abi = match abi {
-            TypedDeclaration::AbiDeclaration(abi) => abi,
-            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                body: ref expr,
-                ..
-            }) => {
+            TypedDeclaration::AbiDeclaration(decl_id) => {
+                check!(
+                    CompileResult::from(de_get_abi(decl_id, &span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            TypedDeclaration::VariableDeclaration(ref decl) => {
+                let TypedVariableDeclaration { body: expr, .. } = &**decl;
                 let ret_ty = look_up_type_id(expr.return_type);
                 let abi_name = match ret_ty {
                     TypeInfo::ContractCaller { abi_name, .. } => abi_name,
@@ -1485,12 +1629,11 @@ impl TypedExpression {
                             errors
                         );
                         check!(
-                            unknown_decl.expect_abi(),
+                            unknown_decl.expect_abi(&span),
                             return err(warnings, errors),
                             warnings,
                             errors
                         )
-                        .clone()
                     }
                     AbiName::Deferred => {
                         return ok(

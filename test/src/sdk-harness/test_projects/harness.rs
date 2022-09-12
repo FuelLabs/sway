@@ -1,6 +1,7 @@
 // Add test modules here:
 
 mod auth;
+mod block;
 mod call_frames;
 mod context;
 mod evm;

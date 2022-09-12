@@ -3,3 +3,6 @@ category = "fail"
 # check: fn foo(s: str[7]) -> str[7] {
 # nextln: $()Expected: u64
 # nextln: $()found:    str[7]. The definition of this function must match the one in the trait declaration.
+
+# check: fn bar(ref mut variable: u64) -> bool {
+# nextln: $()Parameter mutability mismatch between the trait function declaration and its implementation.

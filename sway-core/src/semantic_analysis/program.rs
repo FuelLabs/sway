@@ -3,7 +3,7 @@ use super::{
     TypedFunctionDeclaration, TypedImplTrait, TypedStorageDeclaration,
 };
 use crate::{
-    declaration_engine::declaration_engine::de_get_storage,
+    declaration_engine::declaration_engine::{de_get_impl_trait, de_get_storage},
     error::*,
     metadata::MetadataManager,
     parse_tree::{ParseProgram, Purity, TreeType},
@@ -88,20 +88,27 @@ impl TypedProgram {
                 TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(func))
                     if func.name.as_str() == "main" =>
                 {
-                    mains.push(func.clone())
+                    mains.push(func.clone());
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself.
-                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
-                    methods,
-                    implementing_for_type_id,
-                    ..
-                })) if matches!(
-                    look_up_type_id(*implementing_for_type_id),
-                    TypeInfo::Contract
-                ) =>
-                {
-                    abi_entries.extend(methods.clone())
+                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(decl_id)) => {
+                    let TypedImplTrait {
+                        methods,
+                        implementing_for_type_id,
+                        ..
+                    } = check!(
+                        CompileResult::from(de_get_impl_trait(decl_id.clone(), &node.span)),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if matches!(
+                        look_up_type_id(implementing_for_type_id),
+                        TypeInfo::Contract
+                    ) {
+                        abi_entries.extend(methods.clone());
+                    }
                 }
                 // XXX we're excluding the above ABI methods, is that OK?
                 TypedAstNodeContent::Declaration(decl) => {
@@ -113,9 +120,9 @@ impl TypedProgram {
                             errors.push(CompileError::MultipleDefinitionsOfFunction { name });
                         }
                     }
-                    declarations.push(decl.clone())
+                    declarations.push(decl.clone());
                 }
-                _ => (),
+                _ => {}
             };
         }
 
@@ -219,36 +226,77 @@ impl TypedProgram {
     }
 
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.
-    pub(crate) fn collect_types_metadata(&mut self) -> Vec<TypeMetadata> {
+    pub(crate) fn collect_types_metadata(&mut self) -> CompileResult<Vec<TypeMetadata>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         // Get all of the entry points for this tree type. For libraries, that's everything
         // public. For contracts, ABI entries. For scripts and predicates, any function named `main`.
-        match &self.kind {
-            TypedProgramKind::Library { .. } => self
-                .root
-                .all_nodes
-                .iter()
-                .filter(|x| x.is_public())
-                .flat_map(CollectTypesMetadata::collect_types_metadata)
-                .collect(),
-            TypedProgramKind::Script { .. } => self
-                .root
-                .all_nodes
-                .iter()
-                .filter(|x| x.is_main_function(TreeType::Script))
-                .flat_map(CollectTypesMetadata::collect_types_metadata)
-                .collect(),
-            TypedProgramKind::Predicate { .. } => self
-                .root
-                .all_nodes
-                .iter()
-                .filter(|x| x.is_main_function(TreeType::Predicate))
-                .flat_map(CollectTypesMetadata::collect_types_metadata)
-                .collect(),
-            TypedProgramKind::Contract { abi_entries, .. } => abi_entries
-                .iter()
-                .map(TypedAstNode::from)
-                .flat_map(|x| x.collect_types_metadata())
-                .collect(),
+        let metadata = match &self.kind {
+            TypedProgramKind::Library { .. } => {
+                let mut ret = vec![];
+                for node in self.root.all_nodes.iter() {
+                    let public = check!(
+                        node.is_public(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if public {
+                        ret.append(&mut check!(
+                            node.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                }
+                ret
+            }
+            TypedProgramKind::Script { .. } => {
+                let mut data = vec![];
+                for node in self.root.all_nodes.iter() {
+                    if node.is_main_function(TreeType::Script) {
+                        data.append(&mut check!(
+                            node.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                }
+                data
+            }
+            TypedProgramKind::Predicate { .. } => {
+                let mut data = vec![];
+                for node in self.root.all_nodes.iter() {
+                    if node.is_main_function(TreeType::Predicate) {
+                        data.append(&mut check!(
+                            node.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                }
+                data
+            }
+            TypedProgramKind::Contract { abi_entries, .. } => {
+                let mut data = vec![];
+                for entry in abi_entries.iter() {
+                    data.append(&mut check!(
+                        TypedAstNode::from(entry).collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                data
+            }
+        };
+        if errors.is_empty() {
+            ok(metadata, warnings, errors)
+        } else {
+            err(warnings, errors)
         }
     }
 

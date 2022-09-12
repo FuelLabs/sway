@@ -23,6 +23,7 @@ pub struct FunctionParameter {
     pub name: Ident,
     pub is_reference: bool,
     pub is_mutable: bool,
+    pub mutability_span: Span,
     pub type_id: TypeId,
     pub type_span: Span,
 }
