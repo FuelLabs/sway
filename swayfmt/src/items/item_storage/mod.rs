@@ -1,7 +1,7 @@
 use crate::{
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
     formatter::{
-        shape::{CodeLine, ExprKind, LineStyle, Shape},
+        shape::{ExprKind, LineStyle},
         *,
     },
     utils::{
@@ -23,11 +23,9 @@ impl Format for ItemStorage {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.with_shape(
-            Shape::from(
-                &formatter.shape,
-                Some(0),
-                Some(CodeLine::new(LineStyle::Multiline, ExprKind::Undetermined)),
-            ),
+            formatter
+                .shape
+                .with_code_line_from(LineStyle::Multiline, ExprKind::default()),
             |formatter| -> Result<(), FormatterError> {
                 // Add storage token
                 write!(formatted_code, "{}", self.storage_token.span().as_str())?;

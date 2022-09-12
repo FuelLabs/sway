@@ -1,6 +1,6 @@
 use crate::{
     formatter::{
-        shape::{CodeLine, ExprKind, LineStyle, Shape},
+        shape::{ExprKind, LineStyle},
         *,
     },
     utils::{
@@ -25,11 +25,9 @@ impl Format for ItemUse {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.with_shape(
-            Shape::from(
-                &formatter.shape,
-                Some(0), // In some cases we will want to update parts of Shape
-                Some(CodeLine::new(LineStyle::Multiline, ExprKind::Import)),
-            ),
+            formatter
+                .shape
+                .with_code_line_from(LineStyle::Multiline, ExprKind::Import),
             |formatter| -> Result<(), FormatterError> {
                 // get the length in chars of the code_line in a single line format,
                 // this include the path
@@ -38,11 +36,11 @@ impl Format for ItemUse {
                 temp_formatter
                     .shape
                     .code_line
-                    .update_line_style(LineStyle::Normal);
+                    .with_line_style(LineStyle::Normal);
                 format_use_stmt(self, &mut buf, &mut temp_formatter)?;
 
                 let expr_width = buf.chars().count() as usize;
-                formatter.shape.add_width(expr_width);
+                formatter.shape.code_line.add_width(expr_width);
                 formatter
                     .shape
                     .get_line_style(None, None, &formatter.config);

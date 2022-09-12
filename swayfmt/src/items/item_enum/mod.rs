@@ -1,7 +1,7 @@
 use crate::{
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
     formatter::{
-        shape::{CodeLine, ExprKind, LineStyle, Shape},
+        shape::{ExprKind, LineStyle},
         *,
     },
     utils::{
@@ -23,11 +23,9 @@ impl Format for ItemEnum {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.with_shape(
-            Shape::from(
-                &formatter.shape,
-                Some(0), // In some cases we will want to update parts of Shape
-                Some(CodeLine::new(LineStyle::Multiline, ExprKind::Undetermined)),
-            ),
+            formatter
+                .shape
+                .with_code_line_from(LineStyle::Multiline, ExprKind::default()),
             |formatter| -> Result<(), FormatterError> {
                 // If there is a visibility token add it to the formatted_code with a ` ` after it.
                 if let Some(visibility) = &self.visibility {

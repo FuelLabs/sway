@@ -1,7 +1,7 @@
 use crate::{
     config::items::ItemBraceStyle,
     formatter::{
-        shape::{CodeLine, ExprKind, LineStyle, Shape},
+        shape::{ExprKind, LineStyle},
         *,
     },
     utils::{
@@ -27,11 +27,9 @@ impl Format for ItemFn {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.with_shape(
-            Shape::from(
-                &formatter.shape,
-                Some(0), // In some cases we will want to update parts of Shape
-                Some(CodeLine::new(LineStyle::Normal, ExprKind::Function)),
-            ),
+            formatter
+                .shape
+                .with_code_line_from(LineStyle::Normal, ExprKind::Function),
             |formatter| -> Result<(), FormatterError> {
                 self.fn_signature.format(formatted_code, formatter)?;
                 let body = self.body.get();
@@ -64,10 +62,10 @@ impl CurlyBrace for ItemFn {
                 writeln!(line, "\n{}", open_brace)?;
                 formatter.shape.block_indent(&formatter.config);
             }
-            ItemBraceStyle::SameLineWhere => match formatter.shape.has_where_clause {
+            ItemBraceStyle::SameLineWhere => match formatter.shape.code_line.has_where_clause {
                 true => {
                     write!(line, "{}", open_brace)?;
-                    formatter.shape.update_where_clause();
+                    formatter.shape.code_line.update_where_clause();
                     formatter.shape.block_indent(&formatter.config);
                 }
                 false => {
@@ -107,7 +105,7 @@ impl Format for FnSignature {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        formatter.shape.has_where_clause = formatter.with_shape(
+        formatter.shape.code_line.has_where_clause = formatter.with_shape(
             formatter.shape,
             |formatter| -> Result<bool, FormatterError> {
                 let mut fn_sig = FormattedCode::new();
@@ -119,14 +117,14 @@ impl Format for FnSignature {
                 let fn_sig_width = fn_sig.chars().count() as usize + 2; // add two for opening brace + space
                 let fn_args_width = fn_args.chars().count() as usize;
 
-                formatter.shape.update_width(fn_sig_width);
+                formatter.shape.code_line.update_width(fn_sig_width);
                 formatter
                     .shape
                     .get_line_style(None, Some(fn_args_width), &formatter.config);
 
                 format_fn_sig(self, formatted_code, formatter)?;
 
-                Ok(formatter.shape.has_where_clause)
+                Ok(formatter.shape.code_line.has_where_clause)
             },
         )?;
 
@@ -169,7 +167,7 @@ fn format_fn_sig(
     if let Some(where_clause) = &fn_sig.where_clause_opt {
         writeln!(formatted_code)?;
         where_clause.format(formatted_code, formatter)?;
-        formatter.shape.update_where_clause();
+        formatter.shape.code_line.update_where_clause();
     }
 
     Ok(())

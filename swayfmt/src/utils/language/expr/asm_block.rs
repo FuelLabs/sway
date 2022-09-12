@@ -1,8 +1,5 @@
 use crate::{
-    formatter::{
-        shape::{CodeLine, LineStyle, Shape},
-        *,
-    },
+    formatter::{shape::LineStyle, *},
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
         CurlyBrace, Parenthesis,
@@ -25,15 +22,12 @@ impl Format for AsmBlock {
         formatter.with_shape(formatter.shape, |formatter| -> Result<(), FormatterError> {
             let contents = self.contents.get();
             if contents.instructions.is_empty() && contents.final_expr_opt.is_some() {
-                formatter
-                    .shape
-                    .code_line
-                    .update_line_style(LineStyle::Inline)
+                formatter.shape.code_line.with_line_style(LineStyle::Inline)
             } else {
                 formatter
                     .shape
                     .code_line
-                    .update_line_style(LineStyle::Multiline)
+                    .with_line_style(LineStyle::Multiline)
             }
             format_asm_block(self, formatted_code, formatter)?;
 
@@ -52,7 +46,7 @@ fn format_asm_block(
     write!(formatted_code, "{}", asm_block.asm_token.span().as_str())?;
 
     formatter.with_shape(
-        Shape::from(&formatter.shape, None, Some(CodeLine::default())),
+        formatter.shape.with_default_code_line(),
         |formatter| -> Result<(), FormatterError> {
             AsmBlock::open_parenthesis(formatted_code, formatter)?;
             asm_block

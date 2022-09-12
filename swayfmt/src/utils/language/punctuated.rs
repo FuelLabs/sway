@@ -1,9 +1,6 @@
 use crate::{
     constants::RAW_MODIFIER,
-    formatter::{
-        shape::{CodeLine, ExprKind, LineStyle, Shape},
-        *,
-    },
+    formatter::{shape::LineStyle, *},
     utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
@@ -162,11 +159,7 @@ impl Format for StorageField {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.with_shape(
-            Shape::from(
-                &formatter.shape,
-                Some(0),
-                Some(CodeLine::new(LineStyle::Normal, ExprKind::Undetermined)),
-            ),
+            formatter.shape.with_default_code_line(),
             |formatter| -> Result<(), FormatterError> {
                 write!(
                     formatted_code,

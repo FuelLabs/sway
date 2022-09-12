@@ -1,8 +1,5 @@
 use crate::{
-    formatter::{
-        shape::{CodeLine, ExprKind, LineStyle, Shape},
-        *,
-    },
+    formatter::*,
     utils::{close_angle_bracket, open_angle_bracket},
 };
 use sway_ast::{GenericArgs, GenericParams};
@@ -15,11 +12,7 @@ impl Format for GenericParams {
     ) -> Result<(), FormatterError> {
         let params = self.parameters.clone().into_inner();
         formatter.with_shape(
-            Shape::from(
-                &formatter.shape,
-                Some(0),
-                Some(CodeLine::new(LineStyle::Normal, ExprKind::Undetermined)),
-            ),
+            formatter.shape.with_default_code_line(),
             |formatter| -> Result<(), FormatterError> {
                 // `<`
                 open_angle_bracket(formatted_code)?;
@@ -44,11 +37,7 @@ impl Format for GenericArgs {
     ) -> Result<(), FormatterError> {
         let params = self.parameters.clone().into_inner();
         formatter.with_shape(
-            Shape::from(
-                &formatter.shape,
-                Some(0),
-                Some(CodeLine::new(LineStyle::Normal, ExprKind::Undetermined)),
-            ),
+            formatter.shape.with_default_code_line(),
             |formatter| -> Result<(), FormatterError> {
                 // `<`
                 open_angle_bracket(formatted_code)?;

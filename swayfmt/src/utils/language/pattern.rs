@@ -1,8 +1,5 @@
 use crate::{
-    formatter::{
-        shape::{CodeLine, ExprKind, LineStyle, Shape},
-        *,
-    },
+    formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
         {CurlyBrace, Parenthesis},
@@ -40,11 +37,7 @@ impl Format for Pattern {
             Self::Constructor { path, args } => {
                 // TODO: add a check for width of whether to be normal or multiline
                 formatter.with_shape(
-                    Shape::from(
-                        &formatter.shape,
-                        Some(0),
-                        Some(CodeLine::new(LineStyle::Normal, ExprKind::Undetermined)),
-                    ),
+                    formatter.shape.with_default_code_line(),
                     |formatter| -> Result<(), FormatterError> {
                         path.format(formatted_code, formatter)?;
                         Self::open_parenthesis(formatted_code, formatter)?;

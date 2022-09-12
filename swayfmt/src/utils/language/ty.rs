@@ -1,8 +1,5 @@
 use crate::{
-    formatter::{
-        shape::{CodeLine, ExprKind, LineStyle, Shape},
-        *,
-    },
+    formatter::*,
     utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
@@ -94,11 +91,7 @@ impl Format for TyTupleDescriptor {
         } = self
         {
             formatter.with_shape(
-                Shape::from(
-                    &formatter.shape,
-                    Some(0),
-                    Some(CodeLine::new(LineStyle::Normal, ExprKind::Undetermined)),
-                ),
+                formatter.shape.with_default_code_line(),
                 |formatter| -> Result<(), FormatterError> {
                     head.format(formatted_code, formatter)?;
                     write!(formatted_code, "{} ", comma_token.ident().as_str())?;

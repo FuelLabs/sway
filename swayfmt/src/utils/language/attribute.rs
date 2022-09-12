@@ -1,8 +1,5 @@
 use crate::{
-    formatter::{
-        shape::{CodeLine, ExprKind, LineStyle, Shape},
-        *,
-    },
+    formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
         {Parenthesis, SquareBracket},
@@ -54,11 +51,7 @@ impl Format for AttributeDecl {
             }
         } else {
             formatter.with_shape(
-                Shape::from(
-                    &formatter.shape,
-                    Some(0),
-                    Some(CodeLine::new(LineStyle::Normal, ExprKind::Undetermined)),
-                ),
+                formatter.shape.with_default_code_line(),
                 |formatter| -> Result<(), FormatterError> {
                     // `#`
                     write!(formatted_code, "{}", self.hash_token.span().as_str())?;

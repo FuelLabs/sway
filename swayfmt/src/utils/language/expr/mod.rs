@@ -1,6 +1,6 @@
 use crate::{
     formatter::{
-        shape::{CodeLine, ExprKind, LineStyle, Shape},
+        shape::{ExprKind, LineStyle},
         *,
     },
     utils::{
@@ -44,11 +44,9 @@ impl Format for Expr {
             }
             Self::Struct { path, fields } => {
                 formatter.with_shape(
-                    Shape::from(
-                        &formatter.shape,
-                        Some(0),
-                        Some(CodeLine::new(LineStyle::Normal, ExprKind::Struct)),
-                    ),
+                    formatter
+                        .shape
+                        .with_code_line_from(LineStyle::default(), ExprKind::Struct),
                     |formatter| -> Result<(), FormatterError> {
                         // get the length in chars of the code_line in a single line format,
                         // this include the path
@@ -57,7 +55,7 @@ impl Format for Expr {
                         temp_formatter
                             .shape
                             .code_line
-                            .update_line_style(LineStyle::Inline);
+                            .with_line_style(LineStyle::Inline);
                         format_expr_struct(path, fields, &mut buf, &mut temp_formatter)?;
 
                         // get the largest field size and the size of the body
@@ -66,7 +64,7 @@ impl Format for Expr {
 
                         // changes to the actual formatter
                         let expr_width = buf.chars().count() as usize;
-                        formatter.shape.add_width(expr_width);
+                        formatter.shape.code_line.add_width(expr_width);
                         formatter.shape.get_line_style(
                             Some(field_width),
                             Some(body_width),
@@ -81,11 +79,9 @@ impl Format for Expr {
             }
             Self::Tuple(tuple_descriptor) => {
                 formatter.with_shape(
-                    Shape::from(
-                        &formatter.shape,
-                        Some(0),
-                        Some(CodeLine::new(LineStyle::Normal, ExprKind::Collection)),
-                    ),
+                    formatter
+                        .shape
+                        .with_code_line_from(LineStyle::default(), ExprKind::Collection),
                     |formatter| -> Result<(), FormatterError> {
                         // get the length in chars of the code_line in a normal line format
                         let mut buf = FormattedCode::new();
@@ -94,7 +90,7 @@ impl Format for Expr {
                         tuple_descriptor.format(&mut buf, &mut temp_formatter)?;
                         let body_width = buf.chars().count() as usize;
 
-                        formatter.shape.add_width(body_width);
+                        formatter.shape.code_line.add_width(body_width);
                         formatter
                             .shape
                             .get_line_style(None, Some(body_width), &formatter.config);
@@ -117,11 +113,9 @@ impl Format for Expr {
             }
             Self::Array(array_descriptor) => {
                 formatter.with_shape(
-                    Shape::from(
-                        &formatter.shape,
-                        Some(0),
-                        Some(CodeLine::new(LineStyle::Normal, ExprKind::Collection)),
-                    ),
+                    formatter
+                        .shape
+                        .with_code_line_from(LineStyle::default(), ExprKind::Collection),
                     |formatter| -> Result<(), FormatterError> {
                         // get the length in chars of the code_line in a normal line format
                         let mut buf = FormattedCode::new();
@@ -130,7 +124,7 @@ impl Format for Expr {
                         array_descriptor.format(&mut buf, &mut temp_formatter)?;
                         let body_width = buf.chars().count() as usize;
 
-                        formatter.shape.add_width(body_width);
+                        formatter.shape.code_line.add_width(body_width);
                         formatter
                             .shape
                             .get_line_style(None, Some(body_width), &formatter.config);
@@ -187,11 +181,7 @@ impl Format for Expr {
             }
             Self::FuncApp { func, args } => {
                 formatter.with_shape(
-                    Shape::from(
-                        &formatter.shape,
-                        Some(0),
-                        Some(CodeLine::new(LineStyle::Normal, ExprKind::Undetermined)),
-                    ),
+                    formatter.shape.with_default_code_line(),
                     |formatter| -> Result<(), FormatterError> {
                         // don't indent unless on new line
                         if formatted_code.ends_with('\n') {
@@ -224,11 +214,7 @@ impl Format for Expr {
                 args,
             } => {
                 formatter.with_shape(
-                    Shape::from(
-                        &formatter.shape,
-                        Some(0),
-                        Some(CodeLine::new(LineStyle::Normal, ExprKind::Undetermined)),
-                    ),
+                    formatter.shape.with_default_code_line(),
                     |formatter| -> Result<(), FormatterError> {
                         // get the length in chars of the code_line in a single line format
                         let mut buf = FormattedCode::new();
@@ -236,7 +222,7 @@ impl Format for Expr {
                         temp_formatter
                             .shape
                             .code_line
-                            .update_line_style(LineStyle::Inline);
+                            .with_line_style(LineStyle::Inline);
                         format_method_call(
                             target,
                             dot_token,
@@ -256,8 +242,8 @@ impl Format for Expr {
 
                         // changes to the actual formatter
                         let expr_width = buf.chars().count() as usize;
-                        formatter.shape.add_width(expr_width);
-                        formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
+                        formatter.shape.code_line.add_width(expr_width);
+                        formatter.shape.code_line.with_expr_kind(ExprKind::Struct);
                         formatter.shape.get_line_style(
                             Some(field_width),
                             Some(body_width),
@@ -607,7 +593,7 @@ pub(super) fn debug_expr(
 ) {
     println!(
         "DEBUG:\nline: {buf}\nfield: {:?}, body: {:?}, expr: {expr_width}, Shape::width: {}",
-        field_width, body_width, formatter.shape.width
+        field_width, body_width, formatter.shape.code_line.width
     );
     println!("{:?}", formatter.shape.code_line);
     println!("{:?}\n", formatter.shape.width_heuristics);
@@ -665,10 +651,16 @@ fn format_method_call(
         }
         ExprStructField::close_curly_brace(formatted_code, formatter)?;
     }
-    Expr::open_parenthesis(formatted_code, formatter)?;
-    formatter.shape.reset_line_settings();
-    args.get().format(formatted_code, formatter)?;
-    Expr::close_parenthesis(formatted_code, formatter)?;
+    formatter.with_shape(
+        formatter.shape.with_default_code_line(),
+        |formatter| -> Result<(), FormatterError> {
+            Expr::open_parenthesis(formatted_code, formatter)?;
+            args.get().format(formatted_code, formatter)?;
+            Expr::close_parenthesis(formatted_code, formatter)?;
+
+            Ok(())
+        },
+    )?;
 
     Ok(())
 }

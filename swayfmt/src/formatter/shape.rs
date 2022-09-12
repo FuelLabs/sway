@@ -103,26 +103,51 @@ impl Sub for Indent {
         Indent::new(self.block_indent - rhs.block_indent)
     }
 }
-
+/// Information about the line of code currently being evaluated.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub(crate) struct CodeLine {
+    /// The current number of characters in the given code line.
+    pub(crate) width: usize,
     pub(crate) line_style: LineStyle,
     pub(crate) expr_kind: ExprKind,
+    /// Used in determining `SameLineWhere` formatting.
+    pub(crate) has_where_clause: bool,
 }
 
 impl CodeLine {
-    /// Update `CodeLine::line_style` with a given LineStyle.
-    pub(crate) fn update_line_style(&mut self, line_style: LineStyle) {
-        self.line_style = line_style
-    }
-    /// Update `CodeLine::expr_kind` with a given ExprKind.
-    pub(crate) fn update_expr_kind(&mut self, expr_kind: ExprKind) {
-        self.expr_kind = expr_kind
-    }
-    pub(crate) fn new(line_style: LineStyle, expr_kind: ExprKind) -> Self {
+    pub(crate) fn from(line_style: LineStyle, expr_kind: ExprKind) -> Self {
         Self {
+            width: Default::default(),
             line_style,
             expr_kind,
+            has_where_clause: Default::default(),
+        }
+    }
+    pub(crate) fn reset_width(&mut self) {
+        self.width = 0;
+    }
+    pub(crate) fn update_width(&mut self, new_width: usize) {
+        self.width = new_width;
+    }
+    pub(crate) fn add_width(&mut self, extra_width: usize) {
+        self.width += extra_width;
+    }
+    pub(crate) fn sub_width(&mut self, extra_width: usize) {
+        self.width -= extra_width;
+    }
+    /// Update `CodeLine::line_style` with a given LineStyle.
+    pub(crate) fn with_line_style(&mut self, line_style: LineStyle) {
+        self.line_style = line_style;
+    }
+    /// Update `CodeLine::expr_kind` with a given ExprKind.
+    pub(crate) fn with_expr_kind(&mut self, expr_kind: ExprKind) {
+        self.expr_kind = expr_kind;
+    }
+    /// Update the value of `has_where_clause`.
+    pub(crate) fn update_where_clause(&mut self) {
+        match self.has_where_clause {
+            true => self.has_where_clause = false,
+            false => self.has_where_clause = true,
         }
     }
 }
@@ -162,8 +187,6 @@ impl Default for ExprKind {
 /// The current shape of the formatter.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub struct Shape {
-    /// The current number of characters in the given code line.
-    pub(crate) width: usize,
     /// The current indentation of code.
     pub(crate) indent: Indent,
     /// Used in determining which heuristics settings to use from the config
@@ -171,9 +194,6 @@ pub struct Shape {
     pub(crate) code_line: CodeLine,
     /// The definitive width settings from the `Config`.
     pub(crate) width_heuristics: WidthHeuristics,
-    /// Used in determining `SameLineWhere` formatting.
-    /// Default is false.
-    pub(crate) has_where_clause: bool,
 }
 
 impl Shape {
@@ -194,22 +214,9 @@ impl Shape {
     // |<---->|          indent
     //        |<--->|    width
     //
-    /// Create a copy of
-    pub(crate) fn from(shape: &Shape, width: Option<usize>, code_line: Option<CodeLine>) -> Self {
-        let mut new_shape = *shape;
-        if width.is_some() {
-            new_shape.update_width(width.unwrap_or_default());
-        }
-        if let Some(code_line) = code_line {
-            new_shape.update_line_settings(code_line)
-        }
-
-        new_shape
-    }
     /// A wrapper for `to_width_heuristics()` that also checks if the settings are default.
     pub(crate) fn apply_width_heuristics(&mut self, width_heuristics: WidthHeuristics) {
-        if width_heuristics == WidthHeuristics::default() {
-        } else {
+        if width_heuristics != WidthHeuristics::default() {
             self.width_heuristics = width_heuristics
         }
     }
@@ -226,22 +233,8 @@ impl Shape {
     pub(crate) fn block_unindent(&mut self, config: &Config) {
         self.indent.block_unindent(config)
     }
-    /// Updates `Shape::width` to the current width of the `Item`.
-    pub(crate) fn update_width(&mut self, len_chars: usize) {
-        self.width = len_chars
-    }
-    pub(crate) fn add_width(&mut self, len_chars: usize) {
-        self.width += len_chars
-    }
-    pub(crate) fn sub_width(&mut self, len_chars: usize) {
-        self.width -= len_chars
-    }
-    pub(crate) fn reset_width(&mut self) {
-        self.update_width(0)
-    }
-    /// Checks the config, and if `small_structure_single_line` is enabled,
-    /// determines whether the `Shape::width` is greater than the `structure_lit_width`
-    /// threshold. If it isn't, the `Shape::line_style` is updated to `Inline`.
+    /// Checks the current status of a `CodeLine` against the `Shape::width_heuristics` to determine which
+    /// `LineStyle` should be applied.
     pub(crate) fn get_line_style(
         &mut self,
         field_width: Option<usize>,
@@ -252,68 +245,67 @@ impl Shape {
             ExprKind::Struct => {
                 // Get the width limit of a structure to be formatted into single line if `allow_inline_style` is true.
                 if config.structures.small_structures_single_line {
-                    if self.width > config.whitespace.max_width
+                    if self.code_line.width > config.whitespace.max_width
                         || field_width.unwrap_or(0) > self.width_heuristics.structure_field_width
                         || body_width.unwrap_or(0) > self.width_heuristics.structure_lit_width
                     {
-                        self.code_line.update_line_style(LineStyle::Multiline)
+                        self.code_line.with_line_style(LineStyle::Multiline)
                     } else {
-                        self.code_line.update_line_style(LineStyle::Inline)
+                        self.code_line.with_line_style(LineStyle::Inline)
                     }
                 } else {
-                    self.code_line.update_line_style(LineStyle::Multiline)
+                    self.code_line.with_line_style(LineStyle::Multiline)
                 }
             }
             ExprKind::Collection => {
-                if self.width > config.whitespace.max_width
+                if self.code_line.width > config.whitespace.max_width
                     || body_width.unwrap_or(0) > self.width_heuristics.structure_lit_width
                 {
-                    self.code_line.update_line_style(LineStyle::Multiline)
+                    self.code_line.with_line_style(LineStyle::Multiline)
                 } else {
-                    self.code_line.update_line_style(LineStyle::Normal)
+                    self.code_line.with_line_style(LineStyle::Normal)
                 }
             }
             ExprKind::Import => {
-                if self.width > config.whitespace.max_width {
-                    self.code_line.update_line_style(LineStyle::Multiline)
+                if self.code_line.width > config.whitespace.max_width {
+                    self.code_line.with_line_style(LineStyle::Multiline)
                 } else {
-                    self.code_line.update_line_style(LineStyle::Normal)
+                    self.code_line.with_line_style(LineStyle::Normal)
                 }
             }
             ExprKind::Function => {
-                if self.width > config.whitespace.max_width
+                if self.code_line.width > config.whitespace.max_width
                     || body_width.unwrap_or(0) > self.width_heuristics.fn_call_width
                 {
-                    self.code_line.update_line_style(LineStyle::Multiline)
+                    self.code_line.with_line_style(LineStyle::Multiline)
                 } else {
-                    self.code_line.update_line_style(LineStyle::Normal)
+                    self.code_line.with_line_style(LineStyle::Normal)
                 }
             }
             ExprKind::Conditional => {
-                if self.width < self.width_heuristics.single_line_if_else_max_width {
-                    self.code_line.update_line_style(LineStyle::Inline)
+                if self.code_line.width < self.width_heuristics.single_line_if_else_max_width {
+                    self.code_line.with_line_style(LineStyle::Inline)
                 } else if body_width.unwrap_or(0) > self.width_heuristics.chain_width {
-                    self.code_line.update_line_style(LineStyle::Multiline)
+                    self.code_line.with_line_style(LineStyle::Multiline)
                 } else {
-                    self.code_line.update_line_style(LineStyle::Normal)
+                    self.code_line.with_line_style(LineStyle::Normal)
                 }
             }
-            _ => self.code_line.update_line_style(LineStyle::default()),
+            _ => self.code_line.with_line_style(LineStyle::default()),
         }
     }
-    /// Update `Shape::code_line` with the provided settings.
-    pub(crate) fn update_line_settings(&mut self, line_settings: CodeLine) {
-        self.code_line = line_settings
+    /// Create a new `Shape` with a new `CodeLine` from a given `LineStyle` and `ExprKind`.
+    pub(crate) fn with_code_line_from(self, line_style: LineStyle, expr_kind: ExprKind) -> Self {
+        Self {
+            code_line: CodeLine::from(line_style, expr_kind),
+            ..self
+        }
     }
-    /// Reset `Shape::code_line` to default.
-    pub(crate) fn reset_line_settings(&mut self) {
-        self.update_line_settings(CodeLine::default())
-    }
-    /// Update the value of `has_where_clause`.
-    pub(crate) fn update_where_clause(&mut self) {
-        match self.has_where_clause {
-            true => self.has_where_clause = false,
-            false => self.has_where_clause = true,
+    /// Create a new `Shape` with default `CodeLine`.
+    pub(crate) fn with_default_code_line(self) -> Self {
+        Self {
+            code_line: CodeLine::default(),
+            ..self
         }
     }
 }
@@ -361,17 +353,17 @@ mod test {
         let mut formatter = Formatter::default();
         formatter.config.whitespace.tab_spaces = 24;
         let max_width = formatter.config.whitespace.max_width;
-        formatter.shape.update_width(max_width);
+        formatter.shape.code_line.width = max_width;
         formatter.shape.block_indent(&formatter.config);
 
-        assert_eq!(max_width, formatter.shape.width);
+        assert_eq!(max_width, formatter.shape.code_line.width);
         assert_eq!(24, formatter.shape.indent.block_indent);
     }
 
     #[test]
     fn test_get_line_style_struct() {
         let mut formatter = Formatter::default();
-        formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
+        formatter.shape.code_line.with_expr_kind(ExprKind::Struct);
         formatter
             .shape
             .get_line_style(Some(9), Some(18), &formatter.config);
@@ -381,23 +373,5 @@ mod test {
             .shape
             .get_line_style(Some(10), Some(19), &formatter.config);
         assert_eq!(LineStyle::Multiline, formatter.shape.code_line.line_style);
-    }
-
-    #[test]
-    fn test_reset_line_style() {
-        let mut formatter = Formatter::default();
-        formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
-        formatter
-            .shape
-            .code_line
-            .update_line_style(LineStyle::Inline);
-
-        formatter
-            .shape
-            .get_line_style(Some(8), Some(18), &formatter.config);
-        assert_eq!(LineStyle::Inline, formatter.shape.code_line.line_style);
-
-        formatter.shape.reset_line_settings();
-        assert_eq!(LineStyle::Normal, formatter.shape.code_line.line_style);
     }
 }

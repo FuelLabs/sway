@@ -1,6 +1,6 @@
 use crate::{
     formatter::{
-        shape::{CodeLine, ExprKind, LineStyle, Shape},
+        shape::{ExprKind, LineStyle},
         *,
     },
     utils::{
@@ -19,11 +19,9 @@ impl Format for IfExpr {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.with_shape(
-            Shape::from(
-                &formatter.shape,
-                Some(0),
-                Some(CodeLine::new(LineStyle::Normal, ExprKind::Conditional)),
-            ),
+            formatter
+                .shape
+                .with_code_line_from(LineStyle::default(), ExprKind::Conditional),
             |formatter| -> Result<(), FormatterError> {
                 // check if the entire expression could fit into a single line
                 let full_width_line_style = get_full_width_line_style(self, formatter)?;
@@ -31,7 +29,7 @@ impl Format for IfExpr {
                     formatter
                         .shape
                         .code_line
-                        .update_line_style(full_width_line_style);
+                        .with_line_style(full_width_line_style);
                     format_if_expr(self, formatted_code, formatter)?;
                 } else {
                     // if it can't then we must format one expression at a time
@@ -40,10 +38,7 @@ impl Format for IfExpr {
                         .shape
                         .get_line_style(None, Some(if_cond_width), &formatter.config);
                     if formatter.shape.code_line.line_style == LineStyle::Inline {
-                        formatter
-                            .shape
-                            .code_line
-                            .update_line_style(LineStyle::Normal)
+                        formatter.shape.code_line.with_line_style(LineStyle::Normal)
                     }
                     format_if_condition(self, formatted_code, formatter)?;
                     format_then_block(self, formatted_code, formatter)?;
@@ -66,26 +61,26 @@ fn get_full_width_line_style(
     formatter: &mut Formatter,
 ) -> Result<LineStyle, FormatterError> {
     let mut temp_formatter = Formatter::default();
-    temp_formatter
-        .shape
-        .code_line
-        .update_expr_kind(ExprKind::Conditional);
-    temp_formatter
-        .shape
-        .code_line
-        .update_line_style(LineStyle::Inline);
+    let line_style = temp_formatter.with_shape(
+        temp_formatter
+            .shape
+            .with_code_line_from(LineStyle::Inline, ExprKind::Conditional),
+        |temp_formatter| -> Result<LineStyle, FormatterError> {
+            let mut if_expr_str = FormattedCode::new();
+            format_if_expr(if_expr, &mut if_expr_str, temp_formatter)?;
+            let if_expr_width = if_expr_str.chars().count();
 
-    let mut if_expr_str = FormattedCode::new();
-    format_if_expr(if_expr, &mut if_expr_str, &mut temp_formatter)?;
-    let if_expr_width = if_expr_str.chars().count();
+            temp_formatter.shape.code_line.update_width(if_expr_width);
+            formatter.shape.code_line.update_width(if_expr_width);
+            temp_formatter
+                .shape
+                .get_line_style(None, None, &temp_formatter.config);
 
-    temp_formatter.shape.update_width(if_expr_width);
-    formatter.shape.update_width(if_expr_width);
-    temp_formatter
-        .shape
-        .get_line_style(None, None, &temp_formatter.config);
+            Ok(temp_formatter.shape.code_line.line_style)
+        },
+    )?;
 
-    Ok(temp_formatter.shape.code_line.line_style)
+    Ok(line_style)
 }
 
 fn get_if_condition_width(if_expr: &IfExpr) -> Result<usize, FormatterError> {
@@ -93,7 +88,7 @@ fn get_if_condition_width(if_expr: &IfExpr) -> Result<usize, FormatterError> {
     temp_formatter
         .shape
         .code_line
-        .update_expr_kind(ExprKind::Conditional);
+        .with_expr_kind(ExprKind::Conditional);
 
     let mut if_cond_str = FormattedCode::new();
     format_if_condition(if_expr, &mut if_cond_str, &mut temp_formatter)?;
@@ -184,16 +179,13 @@ impl CurlyBrace for IfExpr {
         let open_brace = Delimiter::Brace.as_open_char();
         match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
-                formatter.shape.reset_width();
+                formatter.shape.code_line.reset_width();
                 write!(
                     line,
                     "\n{}{open_brace}",
                     formatter.shape.indent.to_string(&formatter.config)?
                 )?;
-                formatter
-                    .shape
-                    .code_line
-                    .update_line_style(LineStyle::Normal);
+                formatter.shape.code_line.with_line_style(LineStyle::Normal);
             }
             _ => {
                 write!(line, " {open_brace}")?;
