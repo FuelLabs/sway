@@ -10,12 +10,12 @@ description = "Utility items shared between forc crates."
 
 [dependencies]
 annotate-snippets = { version = "0.9", features = ["color"] }
+ansi_term = "0.12"
 anyhow = "1"
 dirs = "3.0.2"
 sway-core = { version = "0.24.2", path = "../sway-core" }
 sway-types = { version = "0.24.2", path = "../sway-types" }
 sway-utils = { version = "0.24.2", path = "../sway-utils" }
-termcolor = "1.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["ansi", "env-filter", "json"] }
 unicode-xid = "0.2.2"
