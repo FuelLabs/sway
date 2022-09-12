@@ -213,6 +213,7 @@ impl Module {
             warnings,
             errors
         );
+
         let implemented_traits = src_ns.implemented_traits.clone();
         let mut symbols = vec![];
         for (symbol, decl) in src_ns.symbols.iter() {
@@ -237,6 +238,66 @@ impl Module {
             }
             dst_ns.use_synonyms.insert(symbol, src.to_vec());
         }
+
+        ok((), warnings, errors)
+    }
+
+    /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
+    /// `dst` module.
+    ///
+    /// This is used when an import path contains an asterisk.
+    ///
+    /// Paths are assumed to be relative to `self`.
+    pub fn star_import_with_reexports(&mut self, src: &Path, dst: &Path) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let src_ns = check!(
+            self.check_submodule(src),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        let implemented_traits = src_ns.implemented_traits.clone();
+        let use_synonyms = src_ns.use_synonyms.clone();
+        let mut symbols = src_ns.use_synonyms.keys().cloned().collect::<Vec<_>>();
+        for (symbol, decl) in src_ns.symbols.iter() {
+            let visibility = check!(
+                decl.visibility(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            if visibility == Visibility::Public {
+                symbols.push(symbol.clone());
+            }
+        }
+
+        let dst_ns = &mut self[dst];
+        dst_ns.implemented_traits.extend(implemented_traits);
+        let mut try_add = |symbol, path| {
+            if dst_ns.use_synonyms.contains_key(&symbol) {
+                errors.push(CompileError::StarImportShadowsOtherSymbol {
+                    name: symbol.clone(),
+                });
+            }
+            dst_ns.use_synonyms.insert(symbol, path);
+        };
+
+        for symbol in symbols {
+            try_add(symbol, src.to_vec());
+        }
+        for (symbol, mod_path) in use_synonyms {
+            // N.B. We had a path like `::bar::baz`, which makes the module `bar` "crate-relative".
+            // Given that `bar`'s "crate" is `foo`, we'll need `foo::bar::baz` outside of it.
+            //
+            // FIXME(Centril): Seems like the compiler has no way of
+            // distinguishing between external and crate-relative paths?
+            let mut src = src[..1].to_vec();
+            src.extend(mod_path);
+            try_add(symbol, src);
+        }
+
         ok((), warnings, errors)
     }
 

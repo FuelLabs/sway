@@ -1,7 +1,7 @@
 use crate::{
     lock::Lock,
     manifest::{BuildProfile, ConfigTimeConstant, Dependency, Manifest, ManifestFile},
-    CORE, STD,
+    CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
@@ -29,7 +29,7 @@ use sway_core::{
     semantic_analysis::namespace, source_map::SourceMap, BytecodeCompilationResult,
     CompileAstResult, CompileError, CompileResult, ParseProgram, TreeType,
 };
-use sway_types::{JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
+use sway_types::{Ident, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
 use sway_utils::constants;
 use tracing::{info, warn};
 use url::Url;
@@ -1483,6 +1483,9 @@ pub fn sway_build_config(
 ///
 /// This function ensures that if `core` exists in the graph (the vastly common case) it is also
 /// present within the namespace. This is a necessity for operators to work for example.
+///
+/// This function also ensures that if `std` exists in the graph,
+/// then the std prelude will also be added.
 pub fn dependency_namespace(
     namespace_map: &HashMap<NodeIx, namespace::Module>,
     graph: &Graph,
@@ -1512,7 +1515,27 @@ pub fn dependency_namespace(
         }
     }
 
+    if has_std_dep(graph, node) {
+        namespace.star_import_with_reexports(&[STD, PRELUDE].map(Ident::new_no_span), &[]);
+    }
+
     Ok(namespace)
+}
+
+/// Find the `std` dependency, if it is a direct one, of the given node.
+fn has_std_dep(graph: &Graph, node: NodeIx) -> bool {
+    // If we are `std`, do nothing.
+    let pkg = &graph[node];
+    if pkg.name == STD {
+        return false;
+    }
+
+    // If we have `std` as a direct dep, use it.
+    graph.edges_directed(node, Direction::Outgoing).any(|edge| {
+        let dep_node = edge.target();
+        let dep = &graph[dep_node];
+        matches!(&dep.name[..], STD)
+    })
 }
 
 /// Find the `core` dependency (whether direct or transitive) for the given node if it exists.
@@ -1531,7 +1554,7 @@ fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
         match &dep.name[..] {
             CORE => return Some(dep_node),
             STD => maybe_std = Some(dep_node),
-            _ => (),
+            _ => {}
         }
     }
 
