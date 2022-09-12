@@ -10,7 +10,7 @@ use crate::{
 };
 
 use super::{
-    items::{Items, SymbolMap},
+    items::{Items, PreludeImport, SymbolMap},
     root::Root,
     ModuleName, Path,
 };
@@ -236,7 +236,9 @@ impl Module {
                     name: symbol.clone(),
                 });
             }
-            dst_ns.use_synonyms.insert(symbol, src.to_vec());
+            dst_ns
+                .use_synonyms
+                .insert(symbol, (src.to_vec(), PreludeImport::No));
         }
 
         ok((), warnings, errors)
@@ -281,13 +283,15 @@ impl Module {
                     name: symbol.clone(),
                 });
             }
-            dst_ns.use_synonyms.insert(symbol, path);
+            dst_ns
+                .use_synonyms
+                .insert(symbol, (path, PreludeImport::Yes));
         };
 
         for symbol in symbols {
             try_add(symbol, src.to_vec());
         }
-        for (symbol, mod_path) in use_synonyms {
+        for (symbol, (mod_path, _)) in use_synonyms {
             // N.B. We had a path like `::bar::baz`, which makes the module `bar` "crate-relative".
             // Given that `bar`'s "crate" is `foo`, we'll need `foo::bar::baz` outside of it.
             //
@@ -365,24 +369,22 @@ impl Module {
                 impls_to_insert.append(&mut res);
                 // no matter what, import it this way though.
                 let dst_ns = &mut self[dst];
+                let mut add_synonym = |name| {
+                    if let Some((_, PreludeImport::No)) = dst_ns.use_synonyms.get(name) {
+                        errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
+                    }
+                    dst_ns
+                        .use_synonyms
+                        .insert(name.clone(), (src.to_vec(), PreludeImport::No));
+                };
                 match alias {
                     Some(alias) => {
-                        if dst_ns.use_synonyms.contains_key(&alias) {
-                            errors.push(CompileError::ShadowsOtherSymbol {
-                                name: alias.clone(),
-                            });
-                        }
-                        dst_ns.use_synonyms.insert(alias.clone(), src.to_vec());
+                        add_synonym(&alias);
                         dst_ns
                             .use_aliases
                             .insert(alias.as_str().to_string(), item.clone());
                     }
-                    None => {
-                        if dst_ns.use_synonyms.contains_key(item) {
-                            errors.push(CompileError::ShadowsOtherSymbol { name: item.clone() });
-                        }
-                        dst_ns.use_synonyms.insert(item.clone(), src.to_vec());
-                    }
+                    None => add_synonym(item),
                 };
             }
             None => {
