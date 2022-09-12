@@ -12,7 +12,7 @@ abi TestFuelCoin {
     fn mint_and_send_to_address(amount: u64, to: Address);
     fn generic_mint_to(amount: u64, to: Identity);
     fn generic_transfer(amount: u64, asset_id: ContractId, to: Identity);
-    fn send_message(recipient: b256, msg_len: u64, output: u64, coins: u64);
+    fn send_message(coins: u64, msg_len: u64, output: u64, recipient: b256);
 }
 
 impl TestFuelCoin for Contract {
