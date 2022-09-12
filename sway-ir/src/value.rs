@@ -114,11 +114,33 @@ impl Value {
         }
     }
 
+    /// Replace this value with another one, in-place.
+    pub fn replace(&self, context: &mut Context, other: ValueDatum) {
+        context.values[self.0].value = other;
+    }
+
     pub fn get_instruction_mut<'a>(&self, context: &'a mut Context) -> Option<&'a mut Instruction> {
         if let ValueDatum::Instruction(instruction) =
             &mut context.values.get_mut(self.0).unwrap().value
         {
             Some(instruction)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_instruction<'a>(&self, context: &'a Context) -> Option<&'a Instruction> {
+        if let ValueDatum::Instruction(instruction) = &context.values.get(self.0).unwrap().value {
+            Some(instruction)
+        } else {
+            None
+        }
+    }
+
+    /// Get reference to the Constant inside this value, if it's one.
+    pub fn get_constant<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
+        if let ValueDatum::Constant(cn) = &context.values.get(self.0).unwrap().value {
+            Some(cn)
         } else {
             None
         }

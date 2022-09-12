@@ -1,11 +1,6 @@
-use crate::{
-    error::*,
-    semantic_analysis::*,
-    type_system::*,
-    types::{JsonAbiString, ToJsonAbi},
-};
+use crate::{error::*, semantic_analysis::*, type_system::*};
 
-use sway_types::{ident::Ident, span::Span, Spanned};
+use sway_types::{ident::Ident, span::Span, JsonTypeDeclaration, Spanned};
 
 use std::{
     fmt,
@@ -14,8 +9,9 @@ use std::{
 
 #[derive(Debug, Clone, Eq)]
 pub struct TypeParameter {
-    pub(crate) type_id: TypeId,
-    pub(crate) name_ident: Ident,
+    pub type_id: TypeId,
+    pub(crate) initial_type_id: TypeId,
+    pub name_ident: Ident,
     pub(crate) trait_constraints: Vec<TraitConstraint>,
 }
 
@@ -71,22 +67,6 @@ impl fmt::Display for TypeParameter {
     }
 }
 
-impl ToJsonAbi for TypeParameter {
-    type Output = Property;
-
-    fn generate_json_abi(&self) -> Self::Output {
-        Property {
-            name: self.name_ident.to_string(),
-            type_field: self.type_id.json_abi_str(),
-            components: self.type_id.generate_json_abi(),
-            type_arguments: self
-                .type_id
-                .get_type_parameters()
-                .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
-        }
-    }
-}
-
 impl TypeParameter {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
@@ -114,8 +94,24 @@ impl TypeParameter {
         let type_parameter = TypeParameter {
             name_ident: type_parameter.name_ident,
             type_id,
+            initial_type_id: type_parameter.initial_type_id,
             trait_constraints: type_parameter.trait_constraints,
         };
         ok(type_parameter, warnings, errors)
+    }
+
+    /// Returns the initial type ID of a TypeParameter. Also updates the provided list of types to
+    /// append the current TypeParameter as a `JsonTypeDeclaration`.
+    pub(crate) fn get_json_type_parameter(&self, types: &mut Vec<JsonTypeDeclaration>) -> usize {
+        let type_parameter = JsonTypeDeclaration {
+            type_id: *self.initial_type_id,
+            type_field: self.initial_type_id.get_json_type_str(self.type_id),
+            components: self
+                .initial_type_id
+                .get_json_type_components(types, self.type_id),
+            type_parameters: None,
+        };
+        types.push(type_parameter);
+        *self.initial_type_id
     }
 }

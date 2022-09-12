@@ -84,6 +84,8 @@ fn play_game_with_deck<T>(a: Vec<T>) where T: Card {
 }
 ```
 
+> **Note** Trait constraints (i.e. using the `where` keyword) [have not yet been implemented](https://github.com/FuelLabs/sway/issues/970)
+
 Now, if you want to use the function `play_game_with_deck` with your struct, you must implement `Card` for your struct. Note that the following code example assumes a dependency _games_ has been included in the `Forc.toml` file.
 
 ```sway

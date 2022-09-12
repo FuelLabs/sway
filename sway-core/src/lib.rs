@@ -8,6 +8,7 @@ mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
+pub mod declaration_engine;
 pub mod ir_generation;
 mod metadata;
 pub mod parse_tree;
@@ -21,10 +22,12 @@ pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
+use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_ast::Dependency;
+use sway_ir::{Kind, Module};
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
@@ -37,7 +40,7 @@ pub use crate::parse_tree::{
 
 pub use error::{CompileError, CompileResult, CompileWarning};
 use sway_types::{ident::Ident, span, Spanned};
-pub use type_system::TypeInfo;
+pub use type_system::*;
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
@@ -232,6 +235,7 @@ pub enum BytecodeCompilationResult {
 pub fn parsed_to_ast(
     parse_program: &ParseProgram,
     initial_namespace: namespace::Module,
+    generate_logged_types: bool,
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -243,7 +247,7 @@ pub fn parsed_to_ast(
     } = TypedProgram::type_check(parse_program, initial_namespace);
     warnings.extend(new_warnings);
     errors.extend(new_errors);
-    let typed_program = match typed_program_result {
+    let mut typed_program = match typed_program_result {
         Some(typed_program) => typed_program,
         None => {
             errors = dedup_unsorted(errors);
@@ -251,6 +255,36 @@ pub fn parsed_to_ast(
             return CompileAstResult::Failure { errors, warnings };
         }
     };
+
+    // Collect information about the types used in this program
+    let CompileResult {
+        value: types_metadata_result,
+        warnings: new_warnings,
+        errors: new_errors,
+    } = typed_program.collect_types_metadata();
+    warnings.extend(new_warnings);
+    errors.extend(new_errors);
+    let types_metadata = match types_metadata_result {
+        Some(types_metadata) => types_metadata,
+        None => {
+            errors = dedup_unsorted(errors);
+            warnings = dedup_unsorted(warnings);
+            return CompileAstResult::Failure { errors, warnings };
+        }
+    };
+
+    // Collect all the types of logged values. These are required when generating the JSON ABI.
+    if generate_logged_types {
+        typed_program.logged_types.extend(
+            types_metadata
+                .iter()
+                .filter_map(|m| match m {
+                    TypeMetadata::LoggedType(type_id) => Some(*type_id),
+                    _ => None,
+                })
+                .collect::<Vec<_>>(),
+        );
+    }
 
     let mut cfa_res = perform_control_flow_analysis(&typed_program);
 
@@ -262,12 +296,34 @@ pub fn parsed_to_ast(
         return CompileAstResult::Failure { errors, warnings };
     }
 
+    // Evaluate const declarations,
+    // to allow storage slots initializion with consts.
+    let mut ctx = Context::default();
+    let mut md_mgr = MetadataManager::default();
+    let module = Module::new(&mut ctx, Kind::Contract);
+    match ir_generation::compile::compile_constants(
+        &mut ctx,
+        &mut md_mgr,
+        module,
+        &typed_program.root.namespace,
+    ) {
+        Ok(()) => (),
+        Err(e) => {
+            errors.push(e);
+            return CompileAstResult::Failure { warnings, errors };
+        }
+    }
+
     // Check that all storage initializers can be evaluated at compile time.
     let CompileResult {
         value: typed_program_with_storage_slots_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = typed_program.get_typed_program_with_initialized_storage_slots();
+    } = typed_program.get_typed_program_with_initialized_storage_slots(
+        &mut ctx,
+        &mut md_mgr,
+        module,
+    );
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let typed_program_with_storage_slots = match typed_program_with_storage_slots_result {
@@ -278,6 +334,26 @@ pub fn parsed_to_ast(
             return CompileAstResult::Failure { errors, warnings };
         }
     };
+
+    // All unresolved types lead to compile errors
+    let unresolved_types_errors = types_metadata
+        .iter()
+        .filter_map(|m| match m {
+            TypeMetadata::UnresolvedType {
+                name,
+                span_override,
+            } => Some(CompileError::UnableToInferGeneric {
+                ty: name.as_str().to_string(),
+                span: span_override.clone().unwrap_or_else(|| name.span()),
+            }),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    errors.extend(unresolved_types_errors);
+    if !errors.is_empty() {
+        errors = dedup_unsorted(errors);
+        return CompileAstResult::Failure { errors, warnings };
+    }
 
     CompileAstResult::Success {
         typed_program: Box::new(typed_program_with_storage_slots),
@@ -310,7 +386,13 @@ pub fn compile_to_ast(
         }
     };
 
-    match parsed_to_ast(&parse_program, initial_namespace) {
+    let generate_logged_types = if let Some(build_config) = build_config {
+        build_config.generate_logged_types
+    } else {
+        false
+    };
+
+    match parsed_to_ast(&parse_program, initial_namespace, generate_logged_types) {
         CompileAstResult::Success {
             typed_program,
             warnings: new_warnings,
@@ -402,13 +484,6 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // errors and then hold as a runtime invariant that none of the types will be unresolved in the
     // IR phase.
 
-    check!(
-        program.finalize_types(),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
     let tree_type = program.kind.tree_type();
     let mut ir = match ir_generation::compile_program(program) {
         Ok(ir) => ir,
@@ -456,10 +531,38 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors
     );
 
-    // The only other optimisation we have at the moment is constant combining.  In lieu of a
-    // forthcoming pass manager we can just call it here now.
+    // TODO: Experiment with putting combine-constants and simplify-cfg
+    // in a loop, but per function.
     check!(
         combine_constants(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    check!(
+        simplify_cfg(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    // Simplify-CFG helps combine constants.
+    check!(
+        combine_constants(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    // And that in-turn enables more simplify-cfg.
+    check!(
+        simplify_cfg(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // Remove dead definitions.
+    check!(
+        dce(&mut ir, &entry_point_functions),
         return err(warnings, errors),
         warnings,
         errors
@@ -490,6 +593,36 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
 fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
     for function in functions {
         if let Err(ir_error) = sway_ir::optimize::combine_constants(ir, function) {
+            return err(
+                Vec::new(),
+                vec![CompileError::InternalOwned(
+                    ir_error.to_string(),
+                    span::Span::dummy(),
+                )],
+            );
+        }
+    }
+    ok((), Vec::new(), Vec::new())
+}
+
+fn dce(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+    for function in functions {
+        if let Err(ir_error) = sway_ir::optimize::dce(ir, function) {
+            return err(
+                Vec::new(),
+                vec![CompileError::InternalOwned(
+                    ir_error.to_string(),
+                    span::Span::dummy(),
+                )],
+            );
+        }
+    }
+    ok((), Vec::new(), Vec::new())
+}
+
+fn simplify_cfg(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+    for function in functions {
+        if let Err(ir_error) = sway_ir::optimize::simplify_cfg(ir, function) {
             return err(
                 Vec::new(),
                 vec![CompileError::InternalOwned(
@@ -553,6 +686,7 @@ pub fn asm_to_bytecode(
 
 pub fn clear_lazy_statics() {
     type_system::clear_type_engine();
+    declaration_engine::declaration_engine::de_clear();
 }
 
 /// Given a [TypedProgram], which is type-checked Sway source, construct a graph to analyze

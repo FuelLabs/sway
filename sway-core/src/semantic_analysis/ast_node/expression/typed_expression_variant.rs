@@ -3,7 +3,7 @@ use crate::{parse_tree::*, semantic_analysis::*, type_system::*};
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
 use derivative::Derivative;
-use std::{collections::HashMap, fmt};
+use std::{collections::HashMap, fmt, fmt::Write};
 
 #[derive(Clone, Debug)]
 pub struct ContractCallParams {
@@ -35,6 +35,8 @@ pub enum TypedExpressionVariant {
     },
     VariableExpression {
         name: Ident,
+        span: Span,
+        mutability: VariableMutability,
     },
     Tuple {
         fields: Vec<TypedExpression>,
@@ -116,6 +118,10 @@ pub enum TypedExpressionVariant {
         condition: Box<TypedExpression>,
         body: TypedCodeBlock,
     },
+    Break,
+    Continue,
+    Reassignment(Box<TypedReassignment>),
+    StorageReassignment(Box<TypeCheckedStorageReassignment>),
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -156,9 +162,17 @@ impl PartialEq for TypedExpressionVariant {
                 },
             ) => l_op == r_op && (**l_lhs) == (**r_lhs) && (**l_rhs) == (**r_rhs),
             (
-                Self::VariableExpression { name: l_name },
-                Self::VariableExpression { name: r_name },
-            ) => l_name == r_name,
+                Self::VariableExpression {
+                    name: l_name,
+                    span: l_span,
+                    mutability: l_mutability,
+                },
+                Self::VariableExpression {
+                    name: r_name,
+                    span: r_span,
+                    mutability: r_mutability,
+                },
+            ) => l_name == r_name && l_span == r_span && l_mutability == r_mutability,
             (Self::Tuple { fields: l_fields }, Self::Tuple { fields: r_fields }) => {
                 l_fields == r_fields
             }
@@ -441,6 +455,10 @@ impl CopyTypes for TypedExpressionVariant {
                 condition.copy_types(type_mapping);
                 body.copy_types(type_mapping);
             }
+            Break => (),
+            Continue => (),
+            Reassignment(reassignment) => reassignment.copy_types(type_mapping),
+            StorageReassignment(..) => (),
         }
     }
 }
@@ -529,6 +547,31 @@ impl fmt::Display for TypedExpressionVariant {
             }
             TypedExpressionVariant::WhileLoop { condition, .. } => {
                 format!("while loop on {}", condition)
+            }
+            TypedExpressionVariant::Break => "break".to_string(),
+            TypedExpressionVariant::Continue => "continue".to_string(),
+            TypedExpressionVariant::Reassignment(reassignment) => {
+                let mut place = reassignment.lhs_base_name.to_string();
+                for index in &reassignment.lhs_indices {
+                    place.push('.');
+                    match index {
+                        ProjectionKind::StructField { name } => place.push_str(name.as_str()),
+                        ProjectionKind::TupleField { index, .. } => {
+                            write!(&mut place, "{}", index).unwrap();
+                        }
+                    }
+                }
+                format!("reassignment to {}", place)
+            }
+            TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
+                let place: String = {
+                    storage_reassignment
+                        .fields
+                        .iter()
+                        .map(|field| field.name.as_str())
+                        .collect()
+                };
+                format!("storage reassignment to {}", place)
             }
         };
         write!(f, "{}", s)

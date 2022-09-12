@@ -9,6 +9,7 @@ use std::{
 };
 
 use sway_core::{parse, TreeType};
+pub use sway_types::ConfigTimeConstant;
 use sway_utils::constants;
 
 type PatchMap = BTreeMap<String, Dependency>;
@@ -30,6 +31,8 @@ pub struct Manifest {
     pub network: Option<Network>,
     pub dependencies: Option<BTreeMap<String, Dependency>>,
     pub patch: Option<BTreeMap<String, PatchMap>>,
+    /// A list of [configuration-time constants](https://github.com/FuelLabs/sway/issues/1498).
+    pub constants: Option<BTreeMap<String, ConfigTimeConstant>>,
     build_profile: Option<BTreeMap<String, BuildProfile>>,
 }
 
@@ -87,6 +90,7 @@ pub struct BuildProfile {
     pub print_intermediate_asm: bool,
     pub silent: bool,
     pub time_phases: bool,
+    pub generate_logged_types: bool,
 }
 
 impl Dependency {
@@ -221,6 +225,10 @@ impl ManifestFile {
                 false => dir.join(path).canonicalize().ok(),
             }
         })
+    }
+    /// Getter for the config time constants on the manifest.
+    pub fn config_time_constants(&self) -> BTreeMap<String, ConfigTimeConstant> {
+        self.constants.as_ref().cloned().unwrap_or_default()
     }
 }
 
@@ -397,6 +405,7 @@ impl BuildProfile {
             print_intermediate_asm: false,
             silent: false,
             time_phases: false,
+            generate_logged_types: false,
         }
     }
 
@@ -408,6 +417,7 @@ impl BuildProfile {
             print_intermediate_asm: false,
             silent: false,
             time_phases: false,
+            generate_logged_types: false,
         }
     }
 }

@@ -6,16 +6,15 @@ use crate::{
         insert_type, look_up_type_id, CopyTypes, CreateTypeId, EnforceTypeArguments,
         MonomorphizeHelper, ReplaceSelfType, TypeId, TypeMapping, TypeParameter,
     },
-    types::{JsonAbiString, ToJsonAbi},
     TypeInfo,
 };
 use std::hash::{Hash, Hasher};
-use sway_types::{Ident, Property, Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedEnumDeclaration {
     pub name: Ident,
-    pub(crate) type_parameters: Vec<TypeParameter>,
+    pub type_parameters: Vec<TypeParameter>,
     pub variants: Vec<TypedEnumVariant>,
     pub(crate) span: Span,
     pub visibility: Visibility,
@@ -149,6 +148,8 @@ impl TypedEnumDeclaration {
 pub struct TypedEnumVariant {
     pub name: Ident,
     pub type_id: TypeId,
+    pub initial_type_id: TypeId,
+    pub type_span: Span,
     pub(crate) tag: usize,
     pub(crate) span: Span,
 }
@@ -181,22 +182,6 @@ impl CopyTypes for TypedEnumVariant {
     }
 }
 
-impl ToJsonAbi for TypedEnumVariant {
-    type Output = Property;
-
-    fn generate_json_abi(&self) -> Self::Output {
-        Property {
-            name: self.name.to_string(),
-            type_field: self.type_id.json_abi_str(),
-            components: self.type_id.generate_json_abi(),
-            type_arguments: self
-                .type_id
-                .get_type_parameters()
-                .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
-        }
-    }
-}
-
 impl ReplaceSelfType for TypedEnumVariant {
     fn replace_self_type(&mut self, self_type: TypeId) {
         self.type_id.replace_self_type(self_type);
@@ -210,9 +195,10 @@ impl TypedEnumVariant {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let initial_type_id = insert_type(variant.type_info);
         let enum_variant_type = check!(
             ctx.resolve_type_with_self(
-                insert_type(variant.type_info),
+                initial_type_id,
                 &variant.span,
                 EnforceTypeArguments::Yes,
                 None
@@ -225,6 +211,8 @@ impl TypedEnumVariant {
             TypedEnumVariant {
                 name: variant.name.clone(),
                 type_id: enum_variant_type,
+                initial_type_id,
+                type_span: variant.type_span.clone(),
                 tag: variant.tag,
                 span: variant.span,
             },

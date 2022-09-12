@@ -43,7 +43,6 @@ pub enum IrError {
     VerifyIntToPtrToCopyType(String),
     VerifyIntToPtrUnknownSourceType,
     VerifyLoadFromNonPointer,
-    VerifyLoadNonExistentPointer,
     VerifyMismatchedReturnTypes(String),
     VerifyPhiFromMissingBlock(String),
     VerifyPhiInconsistentTypes,
@@ -56,6 +55,8 @@ pub enum IrError {
     VerifyStoreToNonPointer,
     VerifyUntypedValuePassedToFunction,
     VerifyInvalidGtfIndexType,
+    VerifyLogId,
+    VerifyMismatchedLoggedTypes,
 }
 
 impl std::error::Error for IrError {}
@@ -239,10 +240,6 @@ impl fmt::Display for IrError {
             IrError::VerifyLoadFromNonPointer => {
                 write!(f, "Verification failed: Load must be from a pointer.")
             }
-            IrError::VerifyLoadNonExistentPointer => write!(
-                f,
-                "Verification failed: Attempt to load from a pointer not found in function locals."
-            ),
             IrError::VerifyMismatchedReturnTypes(fn_str) => write!(
                 f,
                 "Verification failed: Function {fn_str} return type must match its RET \
@@ -297,6 +294,15 @@ impl fmt::Display for IrError {
                 f,
                 "Verification failed: An non-integer value has been passed to a 'gtf' instruction."
             ),
+            IrError::VerifyLogId => {
+                write!(f, "Verification failed: log ID must be an integer.")
+            }
+            IrError::VerifyMismatchedLoggedTypes => {
+                write!(
+                    f,
+                    "Verification failed: log type must match the type of the value being logged."
+                )
+            }
         }
     }
 }

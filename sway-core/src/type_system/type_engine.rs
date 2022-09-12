@@ -17,15 +17,15 @@ pub(crate) struct TypeEngine {
 
 impl TypeEngine {
     pub fn insert_type(&self, ty: TypeInfo) -> TypeId {
-        self.slab.insert(ty)
+        TypeId::new(self.slab.insert(ty))
     }
 
     pub fn look_up_type_id_raw(&self, id: TypeId) -> TypeInfo {
-        self.slab.get(id)
+        self.slab.get(*id)
     }
 
     pub fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
-        match self.slab.get(id) {
+        match self.slab.get(*id) {
             TypeInfo::Ref(other, _sp) => self.look_up_type_id(other),
             ty => ty,
         }
@@ -147,7 +147,7 @@ impl TypeEngine {
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         use TypeInfo::*;
         let help_text = help_text.into();
-        match (self.slab.get(received), self.slab.get(expected)) {
+        match (self.slab.get(*received), self.slab.get(*expected)) {
             // If the types are exactly the same, we are done.
             (Boolean, Boolean) => (vec![], vec![]),
             (SelfType, SelfType) => (vec![], vec![]),
@@ -373,7 +373,7 @@ impl TypeEngine {
                 }
             }
 
-            (Array(a_elem, a_count), Array(b_elem, b_count)) if a_count == b_count => {
+            (Array(a_elem, a_count, _), Array(b_elem, b_count, _)) if a_count == b_count => {
                 let (warnings, new_errors) = self.unify(a_elem, b_elem, span, help_text.clone());
 
                 // If there was an error then we want to report the array types as mismatching, not

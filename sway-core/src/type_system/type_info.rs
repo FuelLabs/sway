@@ -1,7 +1,5 @@
 use super::*;
-
-use crate::{semantic_analysis::*, types::*, CallPath, Ident};
-
+use crate::{semantic_analysis::*, CallPath, Ident};
 use sway_types::{span::Span, Spanned};
 
 use derivative::Derivative;
@@ -11,7 +9,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum AbiName {
     Deferred,
     Known(CallPath),
@@ -78,8 +76,10 @@ pub enum TypeInfo {
     Contract,
     // used for recovering from errors in the ast
     ErrorRecovery,
-    // Static, constant size arrays.
-    Array(TypeId, usize),
+    // Static, constant size arrays. The second `TypeId` below contains the initial type ID
+    // which could be generic.
+    // TODO: change this to a struct instead of a tuple
+    Array(TypeId, usize, TypeId),
     /// Represents the entire storage declaration struct
     /// Stored without initializers here, as typed struct fields,
     /// so type checking is able to treat it as a struct with fields.
@@ -175,7 +175,7 @@ impl Hash for TypeInfo {
                 state.write_u8(17);
                 look_up_type_id(*id).hash(state);
             }
-            TypeInfo::Array(elem_ty, count) => {
+            TypeInfo::Array(elem_ty, count, _) => {
                 state.write_u8(18);
                 look_up_type_id(*elem_ty).hash(state);
                 count.hash(state);
@@ -259,7 +259,7 @@ impl PartialEq for TypeInfo {
                     address: r_address,
                 },
             ) => l_abi_name == r_abi_name && l_address == r_address,
-            (Self::Array(l0, l1), Self::Array(r0, r1)) => {
+            (Self::Array(l0, l1, _), Self::Array(r0, r1, _)) => {
                 look_up_type_id(*l0) == look_up_type_id(*r0) && l1 == r1
             }
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
@@ -327,15 +327,15 @@ impl fmt::Display for TypeInfo {
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name)
             }
-            Array(elem_ty, count) => format!("[{}; {}]", elem_ty, count),
+            Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty, count),
             Storage { .. } => "contract storage".into(),
         };
         write!(f, "{}", s)
     }
 }
 
-impl JsonAbiString for TypeInfo {
-    fn json_abi_str(&self) -> String {
+impl TypeInfo {
+    pub fn json_abi_str(&self) -> String {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
@@ -349,7 +349,7 @@ impl JsonAbiString for TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { name, .. } => format!("unresolved {}", name.as_str()),
+            Custom { name, .. } => name.to_string(),
             Ref(id, _sp) => format!("T{} ({})", id, (*id).json_abi_str()),
             Tuple(fields) => {
                 let field_strs = fields
@@ -361,7 +361,7 @@ impl JsonAbiString for TypeInfo {
             SelfType => "Self".into(),
             Byte => "byte".into(),
             B256 => "b256".into(),
-            Numeric => "numeric".into(),
+            Numeric => "u64".into(), // u64 is the default
             Contract => "contract".into(),
             ErrorRecovery => "unknown due to error".into(),
             Enum { name, .. } => {
@@ -373,13 +373,10 @@ impl JsonAbiString for TypeInfo {
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name)
             }
-            Array(elem_ty, count) => format!("[{}; {}]", elem_ty.json_abi_str(), count),
+            Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty.json_abi_str(), count),
             Storage { .. } => "contract storage".into(),
         }
     }
-}
-
-impl TypeInfo {
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(&self, error_msg_span: &Span) -> CompileResult<String> {
         use TypeInfo::*;
@@ -530,7 +527,7 @@ impl TypeInfo {
                     )
                 }
             }
-            Array(type_id, size) => {
+            Array(type_id, size, _) => {
                 let name = look_up_type_id(*type_id).to_selector_name(error_msg_span);
                 let name = match name.value {
                     Some(name) => name,
@@ -672,7 +669,7 @@ impl TypeInfo {
             | TypeInfo::Numeric
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
-            | TypeInfo::Array(_, _)
+            | TypeInfo::Array(_, _, _)
             | TypeInfo::Storage { .. } => {
                 errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
                 err(warnings, errors)
@@ -757,9 +754,11 @@ impl TypeInfo {
                     name: name.clone(),
                 }))
             }
-            TypeInfo::Array(ary_ty_id, count) => look_up_type_id(*ary_ty_id)
+            TypeInfo::Array(ary_ty_id, count, initial_elem_ty) => look_up_type_id(*ary_ty_id)
                 .matches_type_parameter(mapping)
-                .map(|matching_id| insert_type(TypeInfo::Array(matching_id, *count))),
+                .map(|matching_id| {
+                    insert_type(TypeInfo::Array(matching_id, *count, *initial_elem_ty))
+                }),
             TypeInfo::Tuple(fields) => {
                 let mut new_fields = Vec::new();
                 let mut index = 0;
@@ -768,11 +767,11 @@ impl TypeInfo {
                         look_up_type_id(fields[index].type_id).matches_type_parameter(mapping);
                     if let Some(new_field_id) = new_field_id_opt {
                         new_fields.extend(fields[..index].iter().cloned());
+                        let type_id =
+                            insert_type(TypeInfo::Ref(new_field_id, fields[index].span.clone()));
                         new_fields.push(TypeArgument {
-                            type_id: insert_type(TypeInfo::Ref(
-                                new_field_id,
-                                fields[index].span.clone(),
-                            )),
+                            type_id,
+                            initial_type_id: fields[index].initial_type_id,
                             span: fields[index].span.clone(),
                         });
                         index += 1;
@@ -784,13 +783,17 @@ impl TypeInfo {
                     let new_field = match look_up_type_id(fields[index].type_id)
                         .matches_type_parameter(mapping)
                     {
-                        Some(new_field_id) => TypeArgument {
-                            type_id: insert_type(TypeInfo::Ref(
+                        Some(new_field_id) => {
+                            let type_id = insert_type(TypeInfo::Ref(
                                 new_field_id,
                                 fields[index].span.clone(),
-                            )),
-                            span: fields[index].span.clone(),
-                        },
+                            ));
+                            TypeArgument {
+                                type_id,
+                                initial_type_id: fields[index].initial_type_id,
+                                span: fields[index].span.clone(),
+                            }
+                        }
                         None => fields[index].clone(),
                     };
                     new_fields.push(new_field);
@@ -846,7 +849,7 @@ impl TypeInfo {
             | TypeInfo::Str(_)
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
-            | TypeInfo::Array(_, _)
+            | TypeInfo::Array(_, _, _)
             | TypeInfo::Storage { .. } => {
                 errors.push(CompileError::Unimplemented(
                     "matching on this type is unsupported right now",
@@ -932,7 +935,7 @@ impl TypeInfo {
                     all_nested_types.append(&mut nested_types);
                 }
             }
-            TypeInfo::Array(type_id, _) => {
+            TypeInfo::Array(type_id, _, _) => {
                 let mut nested_types = check!(
                     look_up_type_id(type_id).extract_nested_types(span),
                     return err(warnings, errors),
@@ -1062,7 +1065,7 @@ impl TypeInfo {
             (Self::Ref(l, _), Self::Ref(r, _)) => {
                 look_up_type_id(*l).is_subset_of(&look_up_type_id(*r))
             }
-            (Self::Array(l0, l1), Self::Array(r0, r1)) => {
+            (Self::Array(l0, l1, _), Self::Array(r0, r1, _)) => {
                 look_up_type_id(*l0).is_subset_of(&look_up_type_id(*r0)) && l1 == r1
             }
             (

@@ -9,6 +9,7 @@ pub struct BuildConfig {
     pub(crate) print_intermediate_asm: bool,
     pub(crate) print_finalized_asm: bool,
     pub(crate) print_ir: bool,
+    pub(crate) generate_logged_types: bool,
 }
 
 impl BuildConfig {
@@ -46,6 +47,7 @@ impl BuildConfig {
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
+            generate_logged_types: false,
         }
     }
 
@@ -66,6 +68,13 @@ impl BuildConfig {
     pub fn print_ir(self, a: bool) -> Self {
         Self {
             print_ir: a,
+            ..self
+        }
+    }
+
+    pub fn generate_logged_types(self, a: bool) -> Self {
+        Self {
+            generate_logged_types: a,
             ..self
         }
     }

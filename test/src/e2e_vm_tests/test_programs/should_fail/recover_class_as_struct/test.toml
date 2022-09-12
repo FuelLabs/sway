@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()Use the `struct` keyword to define records, instead of `class`.
+# check: $()Mismatched types.

@@ -7,6 +7,7 @@
 // But this is not ideal and needs to be refactored:
 // - AsmNamespace is tied to data structures from other stages like Ident and Literal.
 
+use fuel_asm::GTFArgs;
 use fuel_crypto::Hasher;
 use std::{collections::HashMap, sync::Arc};
 
@@ -237,10 +238,8 @@ impl<'ir> AsmBuilder<'ir> {
 
     // Handle loading the arguments of a contract call
     fn compile_fn_args(&mut self, function: Function) {
-        // Do this only for contract methods. Contract methods have selectors.
-        if !function.has_selector(self.context) {
-            return;
-        }
+        // We treat contract methods differently. Contract methods have selectors.
+        let is_contract_method = function.has_selector(self.context);
 
         match function.args_iter(self.context).count() {
             // Nothing to do if there are no arguments
@@ -251,13 +250,35 @@ impl<'ir> AsmBuilder<'ir> {
             1 => {
                 let (_, val) = function.args_iter(self.context).next().unwrap();
                 let single_arg_reg = self.value_to_register(val);
-                self.read_args_value_from_frame(&single_arg_reg);
+
+                if is_contract_method {
+                    self.read_args_value_from_frame(&single_arg_reg);
+                } else {
+                    self.read_args_value_from_script_data(&single_arg_reg);
+
+                    if val.get_type(self.context).unwrap().is_copy_type() {
+                        self.bytecode.push(Op {
+                            opcode: either::Either::Left(VirtualOp::LW(
+                                single_arg_reg.clone(),
+                                single_arg_reg.clone(),
+                                VirtualImmediate12 { value: 0 },
+                            )),
+                            comment: "Load main fn parameter".into(),
+                            owning_span: None,
+                        });
+                    }
+                }
             }
 
             // Otherwise, the args are bundled together and pointed to by the base register.
             _ => {
                 let args_base_reg = self.reg_seqr.next();
-                self.read_args_value_from_frame(&args_base_reg);
+
+                if is_contract_method {
+                    self.read_args_value_from_frame(&args_base_reg);
+                } else {
+                    self.read_args_value_from_script_data(&args_base_reg);
+                }
 
                 // Successively load each argument. The asm generated depends on the arg type size
                 // and whether the offset fits in a 12-bit immediate.
@@ -342,6 +363,21 @@ impl<'ir> AsmBuilder<'ir> {
                 VirtualImmediate12 { value: 74 },
             )),
             comment: "Base register for method parameter".into(),
+            owning_span: None,
+        });
+    }
+
+    // Read the argument(s) base from the script data.
+    fn read_args_value_from_script_data(&mut self, reg: &VirtualRegister) {
+        self.bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::GTF(
+                reg.clone(),
+                VirtualRegister::Constant(ConstantRegister::Zero),
+                VirtualImmediate12 {
+                    value: GTFArgs::ScriptData as u16,
+                },
+            )),
+            comment: "Base register for main fn parameter".into(),
             owning_span: None,
         });
     }
@@ -553,6 +589,11 @@ impl<'ir> AsmBuilder<'ir> {
                     warnings,
                     errors
                 ),
+                Instruction::Log {
+                    log_val,
+                    log_ty,
+                    log_id,
+                } => self.compile_log(instr_val, log_val, log_ty, log_id),
                 Instruction::Nop => (),
                 Instruction::Phi(_) => (), // Managing the phi value is done in br and cbr compilation.
                 Instruction::ReadRegister(reg) => self.compile_read_register(instr_val, reg),
@@ -880,6 +921,16 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Index value is the array element index, not byte nor word offset.
         let index_reg = self.value_to_register(index_val);
+        let rel_offset_reg = match index_reg {
+            VirtualRegister::Virtual(_) => {
+                // We can reuse the register.
+                index_reg.clone()
+            }
+            VirtualRegister::Constant(_) => {
+                // We have a constant register, cannot reuse it.
+                self.reg_seqr.next()
+            }
+        };
 
         // We could put the OOB check here, though I'm now thinking it would be too wasteful.
         // See compile_bounds_assertion() in expression/array.rs (or look in Git history).
@@ -891,8 +942,8 @@ impl<'ir> AsmBuilder<'ir> {
         if elem_type.is_copy_type() {
             self.bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::MULI(
-                    index_reg.clone(),
-                    index_reg.clone(),
+                    rel_offset_reg.clone(),
+                    index_reg,
                     VirtualImmediate12 { value: 8 },
                 )),
                 comment: "extract_element relative offset".into(),
@@ -900,7 +951,11 @@ impl<'ir> AsmBuilder<'ir> {
             });
             let elem_offs_reg = self.reg_seqr.next();
             self.bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::ADD(elem_offs_reg.clone(), base_reg, index_reg)),
+                opcode: Either::Left(VirtualOp::ADD(
+                    elem_offs_reg.clone(),
+                    base_reg,
+                    rel_offset_reg,
+                )),
                 comment: "extract_element absolute offset".into(),
                 owning_span: owning_span.clone(),
             });
@@ -1148,7 +1203,7 @@ impl<'ir> AsmBuilder<'ir> {
         let index_reg = self.value_to_register(index);
         self.bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::GTF(
-                instr_reg,
+                instr_reg.clone(),
                 index_reg,
                 VirtualImmediate12 {
                     value: tx_field_id as u16,
@@ -1157,6 +1212,7 @@ impl<'ir> AsmBuilder<'ir> {
             comment: "get transaction field".into(),
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
+        self.reg_map.insert(*instr_val, instr_reg);
     }
 
     fn compile_insert_element(
@@ -1173,6 +1229,16 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Index value is the array element index, not byte nor word offset.
         let index_reg = self.value_to_register(index_val);
+        let rel_offset_reg = match index_reg {
+            VirtualRegister::Virtual(_) => {
+                // We can reuse the register.
+                index_reg.clone()
+            }
+            VirtualRegister::Constant(_) => {
+                // We have a constant register, cannot reuse it.
+                self.reg_seqr.next()
+            }
+        };
 
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
 
@@ -1181,8 +1247,8 @@ impl<'ir> AsmBuilder<'ir> {
         if elem_type.is_copy_type() {
             self.bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::MULI(
-                    index_reg.clone(),
-                    index_reg.clone(),
+                    rel_offset_reg.clone(),
+                    index_reg,
                     VirtualImmediate12 { value: 8 },
                 )),
                 comment: "insert_element relative offset".into(),
@@ -1193,7 +1259,7 @@ impl<'ir> AsmBuilder<'ir> {
                 opcode: Either::Left(VirtualOp::ADD(
                     elem_offs_reg.clone(),
                     base_reg.clone(),
-                    index_reg,
+                    rel_offset_reg,
                 )),
                 comment: "insert_element absolute offset".into(),
                 owning_span: owning_span.clone(),
@@ -1471,6 +1537,50 @@ impl<'ir> AsmBuilder<'ir> {
         ok((), Vec::new(), Vec::new())
     }
 
+    fn compile_log(&mut self, instr_val: &Value, log_val: &Value, log_ty: &Type, log_id: &Value) {
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+        let log_val_reg = self.value_to_register(log_val);
+        let log_id_reg = self.value_to_register(log_id);
+
+        if log_ty.is_copy_type() {
+            self.bytecode.push(Op {
+                owning_span,
+                opcode: Either::Left(VirtualOp::LOG(
+                    log_val_reg,
+                    log_id_reg,
+                    VirtualRegister::Constant(ConstantRegister::Zero),
+                    VirtualRegister::Constant(ConstantRegister::Zero),
+                )),
+                comment: "".into(),
+            });
+        } else {
+            // If the type not a reference type then we use LOGD to log the data. First put the
+            // size into the data section, then add a LW to get it, then add a LOGD which uses
+            // it.
+            let size_reg = self.reg_seqr.next();
+            let size_in_bytes = ir_type_size_in_bytes(self.context, log_ty);
+            let size_data_id = self
+                .data_section
+                .insert_data_value(&Literal::U64(size_in_bytes));
+
+            self.bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
+                owning_span: owning_span.clone(),
+                comment: "loading size for LOGD".into(),
+            });
+            self.bytecode.push(Op {
+                owning_span,
+                opcode: Either::Left(VirtualOp::LOGD(
+                    VirtualRegister::Constant(ConstantRegister::Zero),
+                    log_id_reg,
+                    log_val_reg,
+                    size_reg,
+                )),
+                comment: "".into(),
+            });
+        }
+    }
+
     fn compile_read_register(&mut self, instr_val: &Value, reg: &sway_ir::Register) {
         let instr_reg = self.reg_seqr.next();
         self.bytecode.push(Op {
@@ -1598,6 +1708,7 @@ impl<'ir> AsmBuilder<'ir> {
             key.get_stripped_ptr_type(self.context),
             Some(Type::B256)
         ));
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
 
         let key_ptr = self.resolve_ptr(key);
         if key_ptr.value.is_none() {
@@ -1609,39 +1720,50 @@ impl<'ir> AsmBuilder<'ir> {
         assert!(offset == 0);
         assert!(ptr_ty.get_type(self.context).eq(self.context, &Type::B256));
 
-        // Expect ptr_ty here to also be b256 and offset to be whatever...
-        let val_ptr = self.resolve_ptr(val);
-        if val_ptr.value.is_none() {
-            return val_ptr.map(|_| ());
-        }
-        let (val_ptr, ptr_ty, offset) = val_ptr.value.unwrap();
+        let val_reg = if matches!(
+            &self.context.values[val.0].value,
+            ValueDatum::Instruction(Instruction::IntToPtr(..))
+        ) {
+            match self.reg_map.get(val) {
+                Some(vreg) => vreg.clone(),
+                None => unreachable!("int_to_ptr instruction doesn't have vreg mapped"),
+            }
+        } else {
+            // Expect ptr_ty here to also be b256 and offset to be whatever...
+            let val_ptr = self.resolve_ptr(val);
+            if val_ptr.value.is_none() {
+                return val_ptr.map(|_| ());
+            }
+            let (val_ptr, ptr_ty, offset) = val_ptr.value.unwrap();
+            // Expect the ptr_ty for val to also be B256
+            assert!(ptr_ty.get_type(self.context).eq(self.context, &Type::B256));
+            match self.ptr_map.get(&val_ptr) {
+                Some(Storage::Stack(val_offset)) => {
+                    let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
+                    let val_offset_in_bytes = val_offset * 8 + offset * 32;
+                    self.offset_reg(&base_reg, val_offset_in_bytes, owning_span.clone())
+                }
+                _ => unreachable!("Unexpected storage locations for key and val"),
+            }
+        };
 
-        // Expect the ptr_ty for val to also be B256
-        assert!(ptr_ty.get_type(self.context).eq(self.context, &Type::B256));
-
-        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-        match (self.ptr_map.get(&val_ptr), self.ptr_map.get(&key_ptr)) {
-            (Some(Storage::Stack(val_offset)), Some(Storage::Stack(key_offset))) => {
+        let key_reg = match self.ptr_map.get(&key_ptr) {
+            Some(Storage::Stack(key_offset)) => {
                 let base_reg = self.stack_base_reg.as_ref().unwrap().clone();
-                let val_offset_in_bytes = val_offset * 8 + offset * 32;
                 let key_offset_in_bytes = key_offset * 8;
-
-                let val_reg = self.offset_reg(&base_reg, val_offset_in_bytes, owning_span.clone());
-
-                let key_reg = self.offset_reg(&base_reg, key_offset_in_bytes, owning_span.clone());
-
-                self.bytecode.push(Op {
-                    opcode: Either::Left(match access_type {
-                        StateAccessType::Read => VirtualOp::SRWQ(val_reg, key_reg),
-                        StateAccessType::Write => VirtualOp::SWWQ(key_reg, val_reg),
-                    }),
-                    comment: "quad word state access".into(),
-                    owning_span,
-                });
+                self.offset_reg(&base_reg, key_offset_in_bytes, owning_span.clone())
             }
             _ => unreachable!("Unexpected storage locations for key and val"),
-        }
+        };
 
+        self.bytecode.push(Op {
+            opcode: Either::Left(match access_type {
+                StateAccessType::Read => VirtualOp::SRWQ(val_reg, key_reg),
+                StateAccessType::Write => VirtualOp::SWWQ(key_reg, val_reg),
+            }),
+            comment: "quad word state access".into(),
+            owning_span,
+        });
         ok((), Vec::new(), Vec::new())
     }
 
@@ -1906,6 +2028,20 @@ impl<'ir> AsmBuilder<'ir> {
         constant: &Constant,
         span: Option<Span>,
     ) -> VirtualRegister {
+        let value_size = ir_type_size_in_bytes(self.context, &constant.ty);
+        if size_bytes_in_words!(value_size) == 1 {
+            match constant.value {
+                ConstantValue::Unit | ConstantValue::Bool(false) | ConstantValue::Uint(0) => {
+                    return VirtualRegister::Constant(ConstantRegister::Zero)
+                }
+
+                ConstantValue::Bool(true) | ConstantValue::Uint(1) => {
+                    return VirtualRegister::Constant(ConstantRegister::One)
+                }
+                _ => (),
+            }
+        }
+
         // Get the constant into the namespace.
         let lit = ir_constant_to_ast_literal(constant);
         let data_id = self.data_section.insert_data_value(&lit);

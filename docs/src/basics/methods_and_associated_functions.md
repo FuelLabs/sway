@@ -38,28 +38,14 @@ fn main() {
 Note the syntax of the associated function call: `~Foo::new_foo(42, true);`. This bit of syntax is unique to Sway: when referring to a type directly, you preface the type with a tilde (`~`). To call an associated function, refer to the type and then the function name.
 To call a method, simply use dot syntax: `foo.iz_baz_true()`.
 
-## Syntax Examples
+Similarly to [free functions](functions.md), methods and associated functions may accept `ref mut` parameters. For example:
 
 ```sway
-enum Color {
-    Blue: (),
-    Green: (),
-    Red: (),
-    Silver: (),
-    Grey: (),
-    // etc...
-}
+{{#include ../../../examples/ref_mut_params/src/main.sw:move_right}}
+```
 
-enum Make {
-    Ford: (),
-    Toyota: (),
-    Mazda: (),
-    Chevrolet: (),
-    BMW: (),
-    // etc...
-}
-struct Car {
-    make: CarMake,
-    color: Color,
-}
+and when called:
+
+```sway
+{{#include ../../../examples/ref_mut_params/src/main.sw:call_move_right}}
 ```

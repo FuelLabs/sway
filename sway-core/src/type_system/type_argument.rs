@@ -1,13 +1,14 @@
-use crate::{type_system::*, types::*};
+use crate::type_system::*;
 use std::{
     fmt,
     hash::{Hash, Hasher},
 };
-use sway_types::{Property, Span};
+use sway_types::Span;
 
 #[derive(Debug, Clone)]
 pub struct TypeArgument {
     pub type_id: TypeId,
+    pub initial_type_id: TypeId,
     pub span: Span,
 }
 
@@ -31,8 +32,10 @@ impl PartialEq for TypeArgument {
 
 impl Default for TypeArgument {
     fn default() -> Self {
+        let initial_type_id = insert_type(TypeInfo::Unknown);
         TypeArgument {
-            type_id: insert_type(TypeInfo::Unknown),
+            type_id: initial_type_id,
+            initial_type_id,
             span: Span::dummy(),
         }
     }
@@ -44,25 +47,9 @@ impl fmt::Display for TypeArgument {
     }
 }
 
-impl JsonAbiString for TypeArgument {
-    fn json_abi_str(&self) -> String {
+impl TypeArgument {
+    pub fn json_abi_str(&self) -> String {
         look_up_type_id(self.type_id).json_abi_str()
-    }
-}
-
-impl ToJsonAbi for TypeArgument {
-    type Output = Property;
-
-    fn generate_json_abi(&self) -> Self::Output {
-        Property {
-            name: "__tuple_element".to_string(),
-            type_field: self.type_id.json_abi_str(),
-            components: self.type_id.generate_json_abi(),
-            type_arguments: self
-                .type_id
-                .get_type_parameters()
-                .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
-        }
     }
 }
 

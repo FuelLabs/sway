@@ -1,17 +1,18 @@
 use sway_types::{Span, Spanned};
 
+use crate::declaration_engine::declaration_engine::*;
+use crate::error::err;
 use crate::type_system::{is_type_info_storage_only, resolve_type, TypeId};
 use crate::{error::ok, semantic_analysis, CompileError, CompileResult, CompileWarning};
 use crate::{TypedDeclaration, TypedFunctionDeclaration};
 
 use crate::semantic_analysis::{
-    TypedAbiDeclaration, TypedAstNodeContent, TypedExpression, TypedExpressionVariant,
-    TypedIntrinsicFunctionKind, TypedReturnStatement,
+    TypedAstNodeContent, TypedConstantDeclaration, TypedExpression, TypedExpressionVariant,
+    TypedIntrinsicFunctionKind, TypedReassignment, TypedReturnStatement,
 };
 
 use super::{
     TypedEnumDeclaration, TypedImplTrait, TypedStorageDeclaration, TypedStructDeclaration,
-    TypedTraitDeclaration,
 };
 
 fn ast_node_validate(x: &TypedAstNodeContent) -> CompileResult<()> {
@@ -108,6 +109,31 @@ fn expr_validate(expr: &TypedExpression) -> CompileResult<()> {
                 errors
             );
         }
+        TypedExpressionVariant::Break => (),
+        TypedExpressionVariant::Continue => (),
+        TypedExpressionVariant::Reassignment(reassignment) => {
+            let TypedReassignment {
+                lhs_base_name, rhs, ..
+            } = &**reassignment;
+            check!(
+                check_type(rhs.return_type, lhs_base_name.span(), false),
+                (),
+                warnings,
+                errors,
+            );
+            check!(expr_validate(rhs), (), warnings, errors)
+        }
+        TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
+            let span = storage_reassignment.span();
+            let rhs = &storage_reassignment.rhs;
+            check!(
+                check_type(rhs.return_type, span, false),
+                (),
+                warnings,
+                errors,
+            );
+            check!(expr_validate(rhs), (), warnings, errors)
+        }
     }
     ok((), warnings, errors)
 }
@@ -141,28 +167,31 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut errors: Vec<CompileError> = vec![];
     match decl {
-        TypedDeclaration::VariableDeclaration(semantic_analysis::TypedVariableDeclaration {
-            body: expr,
-            name,
-            ..
-        })
-        | TypedDeclaration::ConstantDeclaration(semantic_analysis::TypedConstantDeclaration {
-            value: expr,
-            name,
-            ..
-        })
-        | TypedDeclaration::Reassignment(semantic_analysis::TypedReassignment {
-            rhs: expr,
-            lhs_base_name: name,
-            ..
-        }) => {
+        TypedDeclaration::VariableDeclaration(decl) => {
+            check!(
+                check_type(decl.body.return_type, decl.name.span(), false),
+                (),
+                warnings,
+                errors
+            );
+            check!(expr_validate(&decl.body), (), warnings, errors)
+        }
+        TypedDeclaration::ConstantDeclaration(decl_id) => {
+            let TypedConstantDeclaration {
+                value: expr, name, ..
+            } = check!(
+                CompileResult::from(de_get_constant(decl_id.clone(), &decl_id.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             check!(
                 check_type(expr.return_type, name.span(), false),
                 (),
                 warnings,
                 errors
             );
-            check!(expr_validate(expr), (), warnings, errors)
+            check!(expr_validate(&expr), (), warnings, errors)
         }
         TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
             body,
@@ -184,11 +213,16 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TypedDeclaration::AbiDeclaration(TypedAbiDeclaration { methods: _, .. })
-        | TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { methods: _, .. }) => {
+        TypedDeclaration::AbiDeclaration(_) | TypedDeclaration::TraitDeclaration(_) => {
             // These methods are not typed. They are however handled from ImplTrait.
         }
-        TypedDeclaration::ImplTrait(TypedImplTrait { methods, .. }) => {
+        TypedDeclaration::ImplTrait(decl_id) => {
+            let TypedImplTrait { methods, .. } = check!(
+                CompileResult::from(de_get_impl_trait(decl_id.clone(), &decl_id.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             for method in methods {
                 check!(
                     validate_decls_for_storage_only_types_in_codeblock(&method.body),
@@ -198,7 +232,13 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
                 )
             }
         }
-        TypedDeclaration::StructDeclaration(TypedStructDeclaration { fields, .. }) => {
+        TypedDeclaration::StructDeclaration(decl_id) => {
+            let TypedStructDeclaration { fields, .. } = check!(
+                CompileResult::from(de_get_struct(decl_id.clone(), &decl_id.span())),
+                return err(warnings, errors),
+                warnings,
+                errors,
+            );
             for field in fields {
                 check!(
                     check_type(field.type_id, field.span.clone(), false),
@@ -208,7 +248,13 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { variants, .. }) => {
+        TypedDeclaration::EnumDeclaration(decl_id) => {
+            let TypedEnumDeclaration { variants, .. } = check!(
+                CompileResult::from(de_get_enum(decl_id.clone(), &decl.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             for variant in variants {
                 check!(
                     check_type(variant.type_id, variant.span.clone(), false),
@@ -218,7 +264,13 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TypedDeclaration::StorageDeclaration(TypedStorageDeclaration { fields, .. }) => {
+        TypedDeclaration::StorageDeclaration(decl_id) => {
+            let TypedStorageDeclaration { fields, .. } = check!(
+                CompileResult::from(de_get_storage(decl_id.clone(), &decl.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             for field in fields {
                 check!(
                     check_type(field.type_id, field.name.span().clone(), true),
@@ -228,11 +280,7 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TypedDeclaration::GenericTypeForFunctionScope { .. }
-        | TypedDeclaration::ErrorRecovery
-        | TypedDeclaration::StorageReassignment(_)
-        | TypedDeclaration::Break { .. }
-        | TypedDeclaration::Continue { .. } => {}
+        TypedDeclaration::GenericTypeForFunctionScope { .. } | TypedDeclaration::ErrorRecovery => {}
     }
     ok((), warnings, errors)
 }

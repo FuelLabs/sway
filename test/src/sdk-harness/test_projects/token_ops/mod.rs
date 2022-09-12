@@ -1,5 +1,4 @@
 use fuels::prelude::*;
-use fuels::signers::wallet::Wallet;
 use fuels::tx::{AssetId, ContractId};
 
 abigen!(
@@ -346,7 +345,7 @@ async fn can_send_message() {
     );
 }
 
-async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract, ContractId) {
+async fn get_fuelcoin_instance(wallet: WalletUnlocked) -> (TestFuelCoinContract, ContractId) {
     let fuelcoin_id = Contract::deploy(
         "test_projects/token_ops/out/debug/token_ops.bin",
         &wallet,
@@ -364,7 +363,7 @@ async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract, Contrac
     (fuelcoin_instance, fuelcoin_id.into())
 }
 
-async fn get_balance_contract_id(wallet: Wallet) -> ContractId {
+async fn get_balance_contract_id(wallet: WalletUnlocked) -> ContractId {
     let balance_id = Contract::deploy(
         "test_artifacts/balance_contract/out/debug/balance_contract.bin",
         &wallet,

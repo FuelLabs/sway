@@ -91,6 +91,12 @@ pub enum Instruction {
     IntToPtr(Value, Type),
     /// Read a value from a memory pointer.
     Load(Value),
+    /// Logs a value along with an identifier.
+    Log {
+        log_val: Value,
+        log_ty: Type,
+        log_id: Value,
+    },
     /// No-op, handy as a placeholder instruction.
     Nop,
     /// Choose a value from a list depending on the preceding block.
@@ -184,13 +190,14 @@ impl Instruction {
             Instruction::Gtf { .. } => Some(Type::Uint(64)),
             Instruction::InsertElement { array, .. } => array.get_type(context),
             Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
-            Instruction::Load(ptr_val) => {
-                if let ValueDatum::Instruction(ins) = &context.values[ptr_val.0].value {
+            Instruction::Load(ptr_val) => match &context.values[ptr_val.0].value {
+                ValueDatum::Argument(ty) => Some(ty.strip_ptr_type(context)),
+                ValueDatum::Constant(cons) => Some(cons.ty.strip_ptr_type(context)),
+                ValueDatum::Instruction(ins) => {
                     ins.get_type(context).map(|f| f.strip_ptr_type(context))
-                } else {
-                    None
                 }
-            }
+            },
+            Instruction::Log { .. } => Some(Type::Unit),
             Instruction::ReadRegister(_) => Some(Type::Uint(64)),
             Instruction::StateLoadWord(_) => Some(Type::Uint(64)),
             Instruction::Phi(alts) => {
@@ -210,11 +217,10 @@ impl Instruction {
             Instruction::ConditionalBranch { .. } => None,
             Instruction::Ret(..) => None,
 
-            // These write values but don't return one.  If we're explicit we could return Unit.
-            Instruction::StateLoadQuadWord { .. } => None,
-            Instruction::StateStoreQuadWord { .. } => None,
-            Instruction::StateStoreWord { .. } => None,
-            Instruction::Store { .. } => None,
+            Instruction::StateLoadQuadWord { .. } => Some(Type::Unit),
+            Instruction::StateStoreQuadWord { .. } => Some(Type::Unit),
+            Instruction::StateStoreWord { .. } => Some(Type::Unit),
+            Instruction::Store { .. } => Some(Type::Unit),
 
             // No-op is also no-type.
             Instruction::Nop => None,
@@ -318,6 +324,12 @@ impl Instruction {
             Instruction::Gtf { index, .. } => replace(index),
             Instruction::IntToPtr(value, _) => replace(value),
             Instruction::Load(_) => (),
+            Instruction::Log {
+                log_val, log_id, ..
+            } => {
+                replace(log_val);
+                replace(log_id);
+            }
             Instruction::Nop => (),
             Instruction::Phi(pairs) => pairs.iter_mut().for_each(|(_, val)| replace(val)),
             Instruction::ReadRegister { .. } => (),
@@ -341,6 +353,47 @@ impl Instruction {
                 replace(stored_val);
             }
         }
+    }
+
+    pub fn may_have_side_effect(&self) -> bool {
+        match self {
+            Instruction::AsmBlock(_, _)
+                | Instruction::Call(..)
+                | Instruction::ContractCall { .. }
+                | Instruction::Log { .. }
+                | Instruction::StateLoadQuadWord { .. }
+                | Instruction::StateStoreQuadWord { .. }
+                | Instruction::StateStoreWord { .. }
+                | Instruction::Store { .. }
+                // Insert(Element/Value), unlike those in LLVM
+                // do not have SSA semantics. They are like stores.
+                | Instruction::InsertElement { .. }
+                | Instruction::InsertValue { .. } => true,
+                | Instruction::AddrOf(_)
+                | Instruction::BitCast(..)
+                | Instruction::Cmp(..)
+                | Instruction::ExtractElement {  .. }
+                | Instruction::ExtractValue { .. }
+                | Instruction::GetStorageKey
+                | Instruction::Gtf { .. }
+                | Instruction::Load(_)
+                | Instruction::ReadRegister(_)
+                | Instruction::StateLoadWord(_)
+                | Instruction::Phi(_)
+                | Instruction::GetPointer { .. }
+                | Instruction::IntToPtr(..)
+                | Instruction::Branch(_)
+                | Instruction::ConditionalBranch { .. }
+                | Instruction::Ret(..)
+                | Instruction::Nop => false,
+        }
+    }
+
+    pub fn is_terminator(&self) -> bool {
+        matches!(
+            self,
+            Instruction::Branch(_) | Instruction::ConditionalBranch { .. } | Instruction::Ret(..)
+        )
     }
 }
 
@@ -629,6 +682,21 @@ impl<'a> InstructionInserter<'a> {
             .instructions
             .push(load_val);
         load_val
+    }
+
+    pub fn log(self, log_val: Value, log_ty: Type, log_id: Value) -> Value {
+        let log_instr_val = Value::new_instruction(
+            self.context,
+            Instruction::Log {
+                log_val,
+                log_ty,
+                log_id,
+            },
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(log_instr_val);
+        log_instr_val
     }
 
     pub fn nop(self) -> Value {

@@ -1,4 +1,5 @@
-use crate::core::token::{AstToken, Token, TokenMap, TypedAstToken};
+use crate::core::token::{AstToken, SymbolKind, Token, TokenMap, TypedAstToken};
+use sway_core::declaration_engine;
 use sway_core::semantic_analysis::ast_node::{
     declaration::TypedStructDeclaration, TypedDeclaration,
 };
@@ -61,7 +62,9 @@ pub(crate) fn struct_declaration_of_type_id(
     tokens: &TokenMap,
 ) -> Option<TypedStructDeclaration> {
     declaration_of_type_id(type_id, tokens).and_then(|decl| match decl {
-        TypedDeclaration::StructDeclaration(struct_decl) => Some(struct_decl),
+        TypedDeclaration::StructDeclaration(ref decl_id) => {
+            Some(declaration_engine::de_get_struct(decl_id.clone(), &decl.span()).unwrap())
+        }
         _ => None,
     })
 }
@@ -78,12 +81,37 @@ pub(crate) fn ident_of_type_id(type_id: &TypeId) -> Option<Ident> {
     }
 }
 
+pub(crate) fn type_info_to_symbol_kind(type_info: &TypeInfo) -> SymbolKind {
+    match type_info {
+        TypeInfo::UnsignedInteger(..)
+        | TypeInfo::Boolean
+        | TypeInfo::Str(..)
+        | TypeInfo::B256
+        | TypeInfo::Byte => SymbolKind::BuiltinType,
+        TypeInfo::Numeric => SymbolKind::NumericLiteral,
+        TypeInfo::Custom { .. } | TypeInfo::Struct { .. } => SymbolKind::Struct,
+        TypeInfo::Enum { .. } => SymbolKind::Enum,
+        TypeInfo::Ref(type_id, ..) => {
+            let type_info = sway_core::type_system::look_up_type_id(*type_id);
+            type_info_to_symbol_kind(&type_info)
+        }
+        TypeInfo::Array(type_id, ..) => {
+            let type_info = sway_core::type_system::look_up_type_id(*type_id);
+            type_info_to_symbol_kind(&type_info)
+        }
+        _ => SymbolKind::Unknown,
+    }
+}
+
 pub(crate) fn type_id(token_type: &Token) -> Option<TypeId> {
     match &token_type.typed {
         Some(typed_ast_token) => match typed_ast_token {
             TypedAstToken::TypedDeclaration(dec) => match dec {
                 TypedDeclaration::VariableDeclaration(var_decl) => Some(var_decl.type_ascription),
-                TypedDeclaration::ConstantDeclaration(const_decl) => {
+                TypedDeclaration::ConstantDeclaration(decl_id) => {
+                    let const_decl =
+                        declaration_engine::de_get_constant(decl_id.clone(), &decl_id.span())
+                            .unwrap();
                     Some(const_decl.value.return_type)
                 }
                 _ => None,

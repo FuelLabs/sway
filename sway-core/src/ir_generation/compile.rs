@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::declaration_engine::de_get_constant,
     error::CompileError,
     metadata::MetadataManager,
     parse_tree::Visibility,
@@ -49,7 +50,7 @@ pub(super) fn compile_contract(
     Ok(module)
 }
 
-fn compile_constants(
+pub(crate) fn compile_constants(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -84,7 +85,6 @@ fn compile_constants(
 // And for structs and enums in particular, we must ignore those with embedded generic types as
 // they are monomorphised only at the instantation site.  We must ignore the generic declarations
 // altogether anyway.
-
 fn compile_declarations(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
@@ -94,7 +94,8 @@ fn compile_declarations(
 ) -> Result<(), CompileError> {
     for declaration in declarations {
         match declaration {
-            TypedDeclaration::ConstantDeclaration(decl) => {
+            TypedDeclaration::ConstantDeclaration(ref decl_id) => {
+                let decl = de_get_constant(decl_id.clone(), &declaration.span())?;
                 compile_const_decl(
                     &mut LookupEnv {
                         context,
@@ -129,14 +130,10 @@ fn compile_declarations(
             | TypedDeclaration::EnumDeclaration(_)
             | TypedDeclaration::TraitDeclaration(_)
             | TypedDeclaration::VariableDeclaration(_)
-            | TypedDeclaration::Reassignment(_)
-            | TypedDeclaration::StorageReassignment(_)
             | TypedDeclaration::AbiDeclaration(_)
             | TypedDeclaration::GenericTypeForFunctionScope { .. }
             | TypedDeclaration::StorageDeclaration(_)
-            | TypedDeclaration::ErrorRecovery
-            | TypedDeclaration::Break { .. }
-            | TypedDeclaration::Continue { .. } => (),
+            | TypedDeclaration::ErrorRecovery => (),
         }
     }
     Ok(())
