@@ -31,7 +31,7 @@ use sway_types::{Ident, Span, Spanned};
 pub enum TypedDeclaration {
     VariableDeclaration(Box<TypedVariableDeclaration>),
     ConstantDeclaration(DeclarationId),
-    FunctionDeclaration(TypedFunctionDeclaration),
+    FunctionDeclaration(DeclarationId),
     TraitDeclaration(DeclarationId),
     StructDeclaration(DeclarationId),
     EnumDeclaration(DeclarationId),
@@ -72,7 +72,7 @@ impl Spanned for TypedDeclaration {
         match self {
             VariableDeclaration(decl) => decl.name.span(),
             ConstantDeclaration(decl_id) => decl_id.span(),
-            FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
+            FunctionDeclaration(decl_id) => decl_id.span(),
             TraitDeclaration(decl_id) => decl_id.span(),
             StructDeclaration(decl_id) => decl_id.span(),
             EnumDeclaration(decl_id) => decl_id.span(),
@@ -117,10 +117,11 @@ impl fmt::Display for TypedDeclaration {
                     builder.push_str(&body.to_string());
                     builder
                 }
-                TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
-                    name, ..
-                }) => {
-                    name.as_str().into()
+                TypedDeclaration::FunctionDeclaration(decl_id) => {
+                    match de_get_function(decl_id.clone(), &decl_id.span()) {
+                        Ok(TypedFunctionDeclaration { name, .. }) => name.as_str().into(),
+                        Err(_) => "unknown function".into(),
+                    }
                 }
                 TypedDeclaration::TraitDeclaration(decl_id) => {
                     match de_get_trait(decl_id.clone(), &decl_id.span()) {
@@ -168,40 +169,47 @@ impl CollectTypesMetadata for TypedDeclaration {
                 ));
                 body
             }
-            FunctionDeclaration(decl) => {
-                let mut body = vec![];
-                for content in decl.body.contents.iter() {
+            FunctionDeclaration(decl_id) => match de_get_function(decl_id.clone(), &decl_id.span())
+            {
+                Ok(decl) => {
+                    let mut body = vec![];
+                    for content in decl.body.contents.iter() {
+                        body.append(&mut check!(
+                            content.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
                     body.append(&mut check!(
-                        content.collect_types_metadata(),
+                        decl.return_type.collect_types_metadata(),
                         return err(warnings, errors),
                         warnings,
                         errors
                     ));
+                    for type_param in decl.type_parameters.iter() {
+                        body.append(&mut check!(
+                            type_param.type_id.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                    for param in decl.parameters.iter() {
+                        body.append(&mut check!(
+                            param.type_id.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                    body
                 }
-                body.append(&mut check!(
-                    decl.return_type.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-                for type_param in decl.type_parameters.iter() {
-                    body.append(&mut check!(
-                        type_param.type_id.collect_types_metadata(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
+                Err(e) => {
+                    errors.push(e);
+                    return err(warnings, errors);
                 }
-                for param in decl.parameters.iter() {
-                    body.append(&mut check!(
-                        param.type_id.collect_types_metadata(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-                body
-            }
+            },
             ConstantDeclaration(decl_id) => {
                 match de_get_constant(decl_id.clone(), &decl_id.span()) {
                     Ok(TypedConstantDeclaration { value, .. }) => {
@@ -286,11 +294,22 @@ impl TypedDeclaration {
     /// Retrieves the declaration as a function declaration.
     ///
     /// Returns an error if `self` is not a `TypedFunctionDeclaration`.
-    pub(crate) fn expect_function(&self) -> CompileResult<&TypedFunctionDeclaration> {
-        let warnings = vec![];
+    pub(crate) fn expect_function(
+        &self,
+        access_span: &Span,
+    ) -> CompileResult<TypedFunctionDeclaration> {
+        let mut warnings = vec![];
         let mut errors = vec![];
         match self {
-            TypedDeclaration::FunctionDeclaration(decl) => ok(decl, warnings, errors),
+            TypedDeclaration::FunctionDeclaration(decl_id) => {
+                let decl = check!(
+                    CompileResult::from(de_get_function(decl_id.clone(), access_span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors,
+                );
+                ok(decl, warnings, errors)
+            }
             decl => {
                 errors.push(CompileError::DeclIsNotAFunction {
                     actually: decl.friendly_name().to_string(),
@@ -452,13 +471,21 @@ impl TypedDeclaration {
                 );
                 visibility
             }
+            FunctionDeclaration(decl_id) => {
+                let TypedFunctionDeclaration { visibility, .. } = check!(
+                    CompileResult::from(de_get_function(decl_id.clone(), &decl_id.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                visibility
+            }
             GenericTypeForFunctionScope { .. }
             | ImplTrait { .. }
             | StorageDeclaration { .. }
             | AbiDeclaration(..)
             | ErrorRecovery => Visibility::Public,
             VariableDeclaration(decl) => decl.mutability.visibility(),
-            FunctionDeclaration(TypedFunctionDeclaration { visibility, .. }) => *visibility,
         };
         ok(visibility, warnings, errors)
     }

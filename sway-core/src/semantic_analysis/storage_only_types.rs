@@ -193,13 +193,17 @@ fn decl_validate(decl: &TypedDeclaration) -> CompileResult<()> {
             );
             check!(expr_validate(&expr), (), warnings, errors)
         }
-        TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
-            body,
-            parameters,
-            ..
-        }) => {
+        TypedDeclaration::FunctionDeclaration(decl_id) => {
+            let TypedFunctionDeclaration {
+                body, parameters, ..
+            } = check!(
+                CompileResult::from(de_get_function(decl_id.clone(), &decl.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             check!(
-                validate_decls_for_storage_only_types_in_codeblock(body),
+                validate_decls_for_storage_only_types_in_codeblock(&body),
                 (),
                 warnings,
                 errors

@@ -57,8 +57,11 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             }
             handle_expression(&const_decl.value, tokens);
         }
-        TypedDeclaration::FunctionDeclaration(func_decl) => {
-            collect_typed_fn_decl(func_decl, tokens);
+        TypedDeclaration::FunctionDeclaration(decl_id) => {
+            // TODO: do not use unwrap
+            let func_decl =
+                declaration_engine::de_get_function(decl_id.clone(), &decl_id.span()).unwrap();
+            collect_typed_fn_decl(&func_decl, tokens);
         }
         TypedDeclaration::TraitDeclaration(decl_id) => {
             // TODO: do not use unwrap

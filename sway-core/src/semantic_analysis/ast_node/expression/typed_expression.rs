@@ -914,7 +914,7 @@ impl TypedExpression {
         ctx: TypeCheckContext,
         mut call_path_binding: TypeBinding<CallPath>,
         arguments: Vec<Expression>,
-        _span: Span,
+        span: Span,
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -929,7 +929,7 @@ impl TypedExpression {
 
         // check that the decl is a function decl
         let function_decl = check!(
-            unknown_decl.expect_function().cloned(),
+            unknown_decl.expect_function(&span),
             return err(warnings, errors),
             warnings,
             errors
@@ -1487,7 +1487,7 @@ impl TypedExpression {
         let maybe_function = {
             let mut call_path_binding = call_path_binding.clone();
             TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx)
-                .flat_map(|unknown_decl| unknown_decl.expect_function().cloned())
+                .flat_map(|unknown_decl| unknown_decl.expect_function(&span))
                 .ok(&mut function_probe_warnings, &mut function_probe_errors)
         };
 
