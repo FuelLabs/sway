@@ -10,7 +10,7 @@ use crate::{
 };
 
 use super::{
-    items::{Items, PreludeImport, SymbolMap},
+    items::{GlobImport, Items, SymbolMap},
     root::Root,
     ModuleName, Path,
 };
@@ -231,14 +231,9 @@ impl Module {
         let dst_ns = &mut self[dst];
         dst_ns.implemented_traits.extend(implemented_traits);
         for symbol in symbols {
-            if dst_ns.use_synonyms.contains_key(&symbol) {
-                errors.push(CompileError::StarImportShadowsOtherSymbol {
-                    name: symbol.clone(),
-                });
-            }
             dst_ns
                 .use_synonyms
-                .insert(symbol, (src.to_vec(), PreludeImport::No));
+                .insert(symbol, (src.to_vec(), GlobImport::Yes));
         }
 
         ok((), warnings, errors)
@@ -278,14 +273,7 @@ impl Module {
         let dst_ns = &mut self[dst];
         dst_ns.implemented_traits.extend(implemented_traits);
         let mut try_add = |symbol, path| {
-            if dst_ns.use_synonyms.contains_key(&symbol) {
-                errors.push(CompileError::StarImportShadowsOtherSymbol {
-                    name: symbol.clone(),
-                });
-            }
-            dst_ns
-                .use_synonyms
-                .insert(symbol, (path, PreludeImport::Yes));
+            dst_ns.use_synonyms.insert(symbol, (path, GlobImport::Yes));
         };
 
         for symbol in symbols {
@@ -370,12 +358,12 @@ impl Module {
                 // no matter what, import it this way though.
                 let dst_ns = &mut self[dst];
                 let mut add_synonym = |name| {
-                    if let Some((_, PreludeImport::No)) = dst_ns.use_synonyms.get(name) {
+                    if let Some((_, GlobImport::No)) = dst_ns.use_synonyms.get(name) {
                         errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
                     }
                     dst_ns
                         .use_synonyms
-                        .insert(name.clone(), (src.to_vec(), PreludeImport::No));
+                        .insert(name.clone(), (src.to_vec(), GlobImport::No));
                 };
                 match alias {
                     Some(alias) => {

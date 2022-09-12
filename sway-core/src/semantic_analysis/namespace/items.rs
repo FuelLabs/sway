@@ -13,15 +13,15 @@ use sway_types::{span::Span, Spanned};
 
 use std::sync::Arc;
 
-/// Is this a prelude import?
+/// Is this a glob (`use foo::*;`) import?
 #[derive(Clone, Copy, PartialEq, Debug)]
-pub(crate) enum PreludeImport {
+pub(crate) enum GlobImport {
     Yes,
     No,
 }
 
 pub(super) type SymbolMap = im::OrdMap<Ident, TypedDeclaration>;
-pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, PreludeImport)>;
+pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 
 /// The set of items that exist within some lexical scope via declaration or importing.
