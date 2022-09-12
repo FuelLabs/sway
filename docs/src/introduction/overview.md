@@ -162,7 +162,7 @@ It's now time to deploy the contract and call it on a Fuel node. We will show ho
 In a separate tab in your terminal, spin up a local Fuel node:
 
 ```sh
-fuel-core --db-type in-memory
+fuel-core run --db-type in-memory
 ```
 
 This starts a Fuel node with a volatile database that will be cleared when shut down (good for testing purposes).

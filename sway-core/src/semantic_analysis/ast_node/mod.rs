@@ -295,7 +295,7 @@ impl TypedAstNode {
                                 errors
                             );
                             let name = enum_decl.name.clone();
-                            let decl = TypedDeclaration::EnumDeclaration(enum_decl);
+                            let decl = TypedDeclaration::EnumDeclaration(de_insert_enum(enum_decl));
                             check!(
                                 ctx.namespace.insert_symbol(name, decl.clone()),
                                 return err(warnings, errors),
@@ -312,6 +312,7 @@ impl TypedAstNode {
                                 warnings,
                                 errors
                             );
+
                             let name = fn_decl.name.clone();
                             let decl = TypedDeclaration::FunctionDeclaration(fn_decl);
                             ctx.namespace.insert_symbol(name, decl.clone());
@@ -366,7 +367,8 @@ impl TypedAstNode {
                                 errors
                             );
                             let name = decl.name.clone();
-                            let decl = TypedDeclaration::StructDeclaration(decl);
+                            let decl_id = de_insert_struct(decl);
+                            let decl = TypedDeclaration::StructDeclaration(decl_id);
                             // insert the struct decl into namespace
                             check!(
                                 ctx.namespace.insert_symbol(name, decl.clone()),

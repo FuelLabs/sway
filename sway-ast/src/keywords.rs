@@ -54,6 +54,7 @@ define_keyword!(PubToken, "pub");
 define_keyword!(UseToken, "use");
 define_keyword!(AsToken, "as");
 define_keyword!(StructToken, "struct");
+define_keyword!(ClassToken, "class"); // Not in the language! Exists for recovery.
 define_keyword!(EnumToken, "enum");
 define_keyword!(SelfToken, "self");
 define_keyword!(FnToken, "fn");

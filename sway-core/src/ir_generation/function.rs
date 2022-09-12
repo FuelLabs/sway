@@ -146,7 +146,8 @@ impl FnCompiler {
                                 span: ast_node.span,
                             })
                         }
-                        TypedDeclaration::EnumDeclaration(ted) => {
+                        TypedDeclaration::EnumDeclaration(decl_id) => {
+                            let ted = declaration_engine::de_get_enum(decl_id, &ast_node.span)?;
                             let span_md_idx = md_mgr.span_to_md(context, &ted.span);
                             create_enum_aggregate(context, ted.variants).map(|_| ())?;
                             Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
