@@ -1,7 +1,7 @@
 use crate::{
     config::items::ItemBraceStyle,
     formatter::{
-        shape::{ExprKind, LineStyle},
+        shape::{CodeLine, ExprKind, LineStyle, Shape},
         *,
     },
     utils::{
@@ -26,15 +26,26 @@ impl Format for ItemFn {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        self.fn_signature.format(formatted_code, formatter)?;
-        let body = self.body.get();
-        if !body.statements.is_empty() || body.final_expr_opt.is_some() {
-            Self::open_curly_brace(formatted_code, formatter)?;
-            self.body.get().format(formatted_code, formatter)?;
-            Self::close_curly_brace(formatted_code, formatter)?;
-        } else {
-            write!(formatted_code, " {{}}")?;
-        }
+        formatter.with_shape(
+            Shape::from(
+                &formatter.shape,
+                Some(0), // In some cases we will want to update parts of Shape
+                Some(CodeLine::new(LineStyle::Normal, ExprKind::Function)),
+            ),
+            |formatter| -> Result<(), FormatterError> {
+                self.fn_signature.format(formatted_code, formatter)?;
+                let body = self.body.get();
+                if !body.statements.is_empty() || body.final_expr_opt.is_some() {
+                    Self::open_curly_brace(formatted_code, formatter)?;
+                    body.format(formatted_code, formatter)?;
+                    Self::close_curly_brace(formatted_code, formatter)?;
+                } else {
+                    write!(formatted_code, " {{}}")?;
+                }
+
+                Ok(())
+            },
+        )?;
 
         Ok(())
     }
@@ -96,29 +107,28 @@ impl Format for FnSignature {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let prev_state = formatter.shape.code_line;
-        formatter
-            .shape
-            .code_line
-            .update_expr_kind(ExprKind::Function);
+        formatter.shape.has_where_clause = formatter.with_shape(
+            formatter.shape,
+            |formatter| -> Result<bool, FormatterError> {
+                let mut fn_sig = FormattedCode::new();
+                let mut fn_args = FormattedCode::new();
+                let mut temp_formatter = Formatter::default();
+                format_fn_sig(self, &mut fn_sig, &mut temp_formatter)?;
+                format_fn_args(self.arguments.get(), &mut fn_args, &mut temp_formatter)?;
 
-        let mut fn_sig = FormattedCode::new();
-        let mut fn_args = FormattedCode::new();
-        let mut temp_formatter = Formatter::default();
-        format_fn_sig(self, &mut fn_sig, &mut temp_formatter)?;
-        format_fn_args(self.arguments.get(), &mut fn_args, &mut temp_formatter)?;
+                let fn_sig_width = fn_sig.chars().count() as usize + 2; // add two for opening brace + space
+                let fn_args_width = fn_args.chars().count() as usize;
 
-        let fn_sig_width = fn_sig.chars().count() as usize + 2; // add two for opening brace + space
-        let fn_args_width = fn_args.chars().count() as usize;
+                formatter.shape.update_width(fn_sig_width);
+                formatter
+                    .shape
+                    .get_line_style(None, Some(fn_args_width), &formatter.config);
 
-        formatter.shape.update_width(fn_sig_width);
-        formatter
-            .shape
-            .get_line_style(None, Some(fn_args_width), &formatter.config);
+                format_fn_sig(self, formatted_code, formatter)?;
 
-        format_fn_sig(self, formatted_code, formatter)?;
-
-        formatter.shape.update_line_settings(prev_state);
+                Ok(formatter.shape.has_where_clause)
+            },
+        )?;
 
         Ok(())
     }

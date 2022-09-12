@@ -1,6 +1,6 @@
 use crate::{
     formatter::{
-        shape::{ExprKind, LineStyle},
+        shape::{CodeLine, ExprKind, LineStyle, Shape},
         *,
     },
     utils::{
@@ -10,12 +10,11 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{
-    brackets::{Parens, SquareBrackets},
+    brackets::Parens,
     keywords::{CommaToken, DotToken},
     punctuated::Punctuated,
     token::Delimiter,
-    Braces, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor,
-    MatchBranch, PathExpr,
+    Braces, CodeBlockContents, Expr, ExprStructField, MatchBranch, PathExpr,
 };
 use sway_types::{Ident, Spanned};
 
@@ -44,63 +43,67 @@ impl Format for Expr {
                 args.get().format(formatted_code, formatter)?;
             }
             Self::Struct { path, fields } => {
-                // store previous state and update expr kind
-                let prev_state = formatter.shape.code_line;
-                formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
+                formatter.with_shape(
+                    Shape::from(
+                        &formatter.shape,
+                        Some(0),
+                        Some(CodeLine::new(LineStyle::Normal, ExprKind::Struct)),
+                    ),
+                    |formatter| -> Result<(), FormatterError> {
+                        // get the length in chars of the code_line in a single line format,
+                        // this include the path
+                        let mut buf = FormattedCode::new();
+                        let mut temp_formatter = Formatter::default();
+                        temp_formatter
+                            .shape
+                            .code_line
+                            .update_line_style(LineStyle::Inline);
+                        format_expr_struct(path, fields, &mut buf, &mut temp_formatter)?;
 
-                // get the length in chars of the code_line in a single line format,
-                // this include the path
-                let mut buf = FormattedCode::new();
-                let mut temp_formatter = Formatter::default();
-                temp_formatter
-                    .shape
-                    .code_line
-                    .update_line_style(LineStyle::Inline);
-                format_expr_struct(path, fields, &mut buf, &mut temp_formatter)?;
+                        // get the largest field size and the size of the body
+                        let (field_width, body_width) =
+                            get_field_width(fields.get(), &mut formatter.clone())?;
 
-                // get the largest field size and the size of the body
-                let (field_width, body_width) =
-                    get_field_width(fields.get(), &mut formatter.clone())?;
+                        // changes to the actual formatter
+                        let expr_width = buf.chars().count() as usize;
+                        formatter.shape.add_width(expr_width);
+                        formatter.shape.get_line_style(
+                            Some(field_width),
+                            Some(body_width),
+                            &formatter.config,
+                        );
 
-                // changes to the actual formatter
-                let expr_width = buf.chars().count() as usize;
-                formatter.shape.add_width(expr_width);
-                formatter.shape.get_line_style(
-                    Some(field_width),
-                    Some(body_width),
-                    &formatter.config,
-                );
+                        format_expr_struct(path, fields, formatted_code, formatter)?;
 
-                format_expr_struct(path, fields, formatted_code, formatter)?;
-
-                // revert to previous state
-                formatter.shape.sub_width(expr_width);
-                formatter.shape.update_line_settings(prev_state);
+                        Ok(())
+                    },
+                )?;
             }
             Self::Tuple(tuple_descriptor) => {
-                // store previous state and update expr kind
-                let prev_state = formatter.shape.code_line;
-                formatter
-                    .shape
-                    .code_line
-                    .update_expr_kind(ExprKind::Collection);
+                formatter.with_shape(
+                    Shape::from(
+                        &formatter.shape,
+                        Some(0),
+                        Some(CodeLine::new(LineStyle::Normal, ExprKind::Collection)),
+                    ),
+                    |formatter| -> Result<(), FormatterError> {
+                        // get the length in chars of the code_line in a normal line format
+                        let mut buf = FormattedCode::new();
+                        let mut temp_formatter = Formatter::default();
+                        let tuple_descriptor = tuple_descriptor.get();
+                        tuple_descriptor.format(&mut buf, &mut temp_formatter)?;
+                        let body_width = buf.chars().count() as usize;
 
-                // get the length in chars of the code_line in a normal line format
-                let mut buf = FormattedCode::new();
-                let mut temp_formatter = Formatter::default();
-                format_tuple(tuple_descriptor, &mut buf, &mut temp_formatter)?;
-                let body_width = buf.chars().count() as usize;
+                        formatter.shape.add_width(body_width);
+                        formatter
+                            .shape
+                            .get_line_style(None, Some(body_width), &formatter.config);
 
-                formatter.shape.add_width(body_width);
-                formatter
-                    .shape
-                    .get_line_style(None, Some(body_width), &formatter.config);
+                        tuple_descriptor.format(formatted_code, formatter)?;
 
-                format_tuple(tuple_descriptor, formatted_code, formatter)?;
-
-                // revert to previous state
-                formatter.shape.sub_width(body_width);
-                formatter.shape.update_line_settings(prev_state);
+                        Ok(())
+                    },
+                )?;
             }
             Self::Parens(expr) => {
                 Self::open_parenthesis(formatted_code, formatter)?;
@@ -113,29 +116,30 @@ impl Format for Expr {
                 CodeBlockContents::close_curly_brace(formatted_code, formatter)?;
             }
             Self::Array(array_descriptor) => {
-                // store previous state and update expr kind
-                let prev_state = formatter.shape.code_line;
-                formatter
-                    .shape
-                    .code_line
-                    .update_expr_kind(ExprKind::Collection);
+                formatter.with_shape(
+                    Shape::from(
+                        &formatter.shape,
+                        Some(0),
+                        Some(CodeLine::new(LineStyle::Normal, ExprKind::Collection)),
+                    ),
+                    |formatter| -> Result<(), FormatterError> {
+                        // get the length in chars of the code_line in a normal line format
+                        let mut buf = FormattedCode::new();
+                        let mut temp_formatter = Formatter::default();
+                        let array_descriptor = array_descriptor.get();
+                        array_descriptor.format(&mut buf, &mut temp_formatter)?;
+                        let body_width = buf.chars().count() as usize;
 
-                // get the length in chars of the code_line in a normal line format
-                let mut buf = FormattedCode::new();
-                let mut temp_formatter = Formatter::default();
-                format_array(array_descriptor, &mut buf, &mut temp_formatter)?;
-                let body_width = buf.chars().count() as usize;
+                        formatter.shape.add_width(body_width);
+                        formatter
+                            .shape
+                            .get_line_style(None, Some(body_width), &formatter.config);
 
-                formatter.shape.add_width(body_width);
-                formatter
-                    .shape
-                    .get_line_style(None, Some(body_width), &formatter.config);
+                        array_descriptor.format(formatted_code, formatter)?;
 
-                format_array(array_descriptor, formatted_code, formatter)?;
-
-                // revert to previous state
-                formatter.shape.sub_width(body_width);
-                formatter.shape.update_line_settings(prev_state);
+                        Ok(())
+                    },
+                )?;
             }
             Self::Asm(asm_block) => asm_block.format(formatted_code, formatter)?,
             Self::Return {
@@ -182,24 +186,29 @@ impl Format for Expr {
                 CodeBlockContents::close_curly_brace(formatted_code, formatter)?;
             }
             Self::FuncApp { func, args } => {
-                let prev_state = formatter.shape.code_line;
-                formatter
-                    .shape
-                    .code_line
-                    .update_line_style(LineStyle::Normal);
-                // don't indent unless on new line
-                if formatted_code.ends_with('\n') {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        formatter.shape.indent.to_string(&formatter.config)?
-                    )?;
-                }
-                func.format(formatted_code, formatter)?;
-                Self::open_parenthesis(formatted_code, formatter)?;
-                args.get().format(formatted_code, formatter)?;
-                Self::close_parenthesis(formatted_code, formatter)?;
-                formatter.shape.update_line_settings(prev_state);
+                formatter.with_shape(
+                    Shape::from(
+                        &formatter.shape,
+                        Some(0),
+                        Some(CodeLine::new(LineStyle::Normal, ExprKind::Undetermined)),
+                    ),
+                    |formatter| -> Result<(), FormatterError> {
+                        // don't indent unless on new line
+                        if formatted_code.ends_with('\n') {
+                            write!(
+                                formatted_code,
+                                "{}",
+                                formatter.shape.indent.to_string(&formatter.config)?
+                            )?;
+                        }
+                        func.format(formatted_code, formatter)?;
+                        Self::open_parenthesis(formatted_code, formatter)?;
+                        args.get().format(formatted_code, formatter)?;
+                        Self::close_parenthesis(formatted_code, formatter)?;
+
+                        Ok(())
+                    },
+                )?;
             }
             Self::Index { target, arg } => {
                 target.format(formatted_code, formatter)?;
@@ -214,54 +223,60 @@ impl Format for Expr {
                 contract_args_opt,
                 args,
             } => {
-                let prev_state = formatter.shape.code_line;
-                // get the length in chars of the code_line in a single line format
-                let mut buf = FormattedCode::new();
-                let mut temp_formatter = Formatter::default();
-                temp_formatter
-                    .shape
-                    .code_line
-                    .update_line_style(LineStyle::Inline);
-                format_method_call(
-                    target,
-                    dot_token,
-                    name,
-                    contract_args_opt,
-                    args,
-                    &mut buf,
-                    &mut temp_formatter,
+                formatter.with_shape(
+                    Shape::from(
+                        &formatter.shape,
+                        Some(0),
+                        Some(CodeLine::new(LineStyle::Normal, ExprKind::Undetermined)),
+                    ),
+                    |formatter| -> Result<(), FormatterError> {
+                        // get the length in chars of the code_line in a single line format
+                        let mut buf = FormattedCode::new();
+                        let mut temp_formatter = Formatter::default();
+                        temp_formatter
+                            .shape
+                            .code_line
+                            .update_line_style(LineStyle::Inline);
+                        format_method_call(
+                            target,
+                            dot_token,
+                            name,
+                            contract_args_opt,
+                            args,
+                            &mut buf,
+                            &mut temp_formatter,
+                        )?;
+
+                        // get the largest field size
+                        let (mut field_width, mut body_width): (usize, usize) = (0, 0);
+                        if let Some(contract_args) = &contract_args_opt {
+                            (field_width, body_width) =
+                                get_field_width(contract_args.get(), &mut formatter.clone())?;
+                        }
+
+                        // changes to the actual formatter
+                        let expr_width = buf.chars().count() as usize;
+                        formatter.shape.add_width(expr_width);
+                        formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
+                        formatter.shape.get_line_style(
+                            Some(field_width),
+                            Some(body_width),
+                            &formatter.config,
+                        );
+
+                        format_method_call(
+                            target,
+                            dot_token,
+                            name,
+                            contract_args_opt,
+                            args,
+                            formatted_code,
+                            formatter,
+                        )?;
+
+                        Ok(())
+                    },
                 )?;
-
-                // get the largest field size
-                let (mut field_width, mut body_width): (usize, usize) = (0, 0);
-                if let Some(contract_args) = &contract_args_opt {
-                    (field_width, body_width) =
-                        get_field_width(contract_args.get(), &mut formatter.clone())?;
-                }
-
-                // changes to the actual formatter
-                let expr_width = buf.chars().count() as usize;
-                formatter.shape.add_width(expr_width);
-                formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
-                formatter.shape.get_line_style(
-                    Some(field_width),
-                    Some(body_width),
-                    &formatter.config,
-                );
-
-                format_method_call(
-                    target,
-                    dot_token,
-                    name,
-                    contract_args_opt,
-                    args,
-                    formatted_code,
-                    formatter,
-                )?;
-
-                // revert to previous state
-                formatter.shape.sub_width(expr_width);
-                formatter.shape.update_line_settings(prev_state);
             }
             Self::FieldProjection {
                 target,
@@ -613,26 +628,6 @@ fn format_expr_struct(
         _ => fields.format(formatted_code, formatter)?,
     }
     ExprStructField::close_curly_brace(formatted_code, formatter)?;
-
-    Ok(())
-}
-
-fn format_tuple(
-    tuple_descriptor: &Parens<ExprTupleDescriptor>,
-    formatted_code: &mut FormattedCode,
-    formatter: &mut Formatter,
-) -> Result<(), FormatterError> {
-    tuple_descriptor.get().format(formatted_code, formatter)?;
-
-    Ok(())
-}
-
-fn format_array(
-    array_descriptor: &SquareBrackets<ExprArrayDescriptor>,
-    formatted_code: &mut FormattedCode,
-    formatter: &mut Formatter,
-) -> Result<(), FormatterError> {
-    array_descriptor.get().format(formatted_code, formatter)?;
 
     Ok(())
 }

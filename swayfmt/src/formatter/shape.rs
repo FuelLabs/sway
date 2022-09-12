@@ -195,21 +195,13 @@ impl Shape {
     //        |<--->|    width
     //
     /// Create a copy of
-    pub(crate) fn from(
-        shape: &Shape,
-        width: Option<usize>,
-        code_line: Option<CodeLine>,
-        has_where_clause: Option<bool>,
-    ) -> Self {
+    pub(crate) fn from(shape: &Shape, width: Option<usize>, code_line: Option<CodeLine>) -> Self {
         let mut new_shape = *shape;
         if width.is_some() {
             new_shape.update_width(width.unwrap_or_default());
         }
         if let Some(code_line) = code_line {
             new_shape.update_line_settings(code_line)
-        }
-        if has_where_clause.is_some() {
-            new_shape.has_where_clause = has_where_clause.unwrap_or_default();
         }
 
         new_shape

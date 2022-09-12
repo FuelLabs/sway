@@ -1,5 +1,8 @@
 use crate::{
-    formatter::{shape::LineStyle, *},
+    formatter::{
+        shape::{CodeLine, LineStyle, Shape},
+        *,
+    },
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
         CurlyBrace, Parenthesis,
@@ -19,22 +22,23 @@ impl Format for AsmBlock {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let prev_state = formatter.shape.code_line;
-        let contents = self.contents.get();
-        if contents.instructions.is_empty() && contents.final_expr_opt.is_some() {
-            formatter
-                .shape
-                .code_line
-                .update_line_style(LineStyle::Inline)
-        } else {
-            formatter
-                .shape
-                .code_line
-                .update_line_style(LineStyle::Multiline)
-        }
-        format_asm_block(self, formatted_code, formatter)?;
+        formatter.with_shape(formatter.shape, |formatter| -> Result<(), FormatterError> {
+            let contents = self.contents.get();
+            if contents.instructions.is_empty() && contents.final_expr_opt.is_some() {
+                formatter
+                    .shape
+                    .code_line
+                    .update_line_style(LineStyle::Inline)
+            } else {
+                formatter
+                    .shape
+                    .code_line
+                    .update_line_style(LineStyle::Multiline)
+            }
+            format_asm_block(self, formatted_code, formatter)?;
 
-        formatter.shape.update_line_settings(prev_state);
+            Ok(())
+        })?;
 
         Ok(())
     }
@@ -46,18 +50,21 @@ fn format_asm_block(
     formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
     write!(formatted_code, "{}", asm_block.asm_token.span().as_str())?;
-    let prev_state = formatter.shape.code_line;
-    formatter
-        .shape
-        .code_line
-        .update_line_style(LineStyle::Normal);
-    AsmBlock::open_parenthesis(formatted_code, formatter)?;
-    asm_block
-        .registers
-        .get()
-        .format(formatted_code, formatter)?;
-    AsmBlock::close_parenthesis(formatted_code, formatter)?;
-    formatter.shape.update_line_settings(prev_state);
+
+    formatter.with_shape(
+        Shape::from(&formatter.shape, None, Some(CodeLine::default())),
+        |formatter| -> Result<(), FormatterError> {
+            AsmBlock::open_parenthesis(formatted_code, formatter)?;
+            asm_block
+                .registers
+                .get()
+                .format(formatted_code, formatter)?;
+            AsmBlock::close_parenthesis(formatted_code, formatter)?;
+
+            Ok(())
+        },
+    )?;
+
     AsmBlock::open_curly_brace(formatted_code, formatter)?;
     asm_block.contents.get().format(formatted_code, formatter)?;
     AsmBlock::close_curly_brace(formatted_code, formatter)?;
