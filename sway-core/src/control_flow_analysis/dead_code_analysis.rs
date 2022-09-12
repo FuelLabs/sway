@@ -170,13 +170,13 @@ impl ControlFlowGraph {
                         ControlFlowGraphNode::ProgramNode(TypedAstNode {
                             content:
                                 TypedAstNodeContent::Declaration(TypedDeclaration::StructDeclaration(
-                                    TypedStructDeclaration {
-                                        visibility: Visibility::Public,
-                                        ..
-                                    },
+                                    decl_id,
                                 )),
                             ..
-                        }) => true,
+                        }) => {
+                            let struct_decl = de_get_struct(decl_id.clone(), &decl_id.span())?;
+                            struct_decl.visibility == Visibility::Public
+                        }
                         ControlFlowGraphNode::ProgramNode(TypedAstNode {
                             content:
                                 TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait { .. }),
@@ -368,12 +368,14 @@ fn connect_declaration(
             connect_abi_declaration(&abi_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
-        StructDeclaration(struct_decl) => {
-            connect_struct_declaration(struct_decl, graph, entry_node, tree_type);
+        StructDeclaration(decl_id) => {
+            let struct_decl = de_get_struct(decl_id.clone(), &span)?;
+            connect_struct_declaration(&struct_decl, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        EnumDeclaration(enum_decl) => {
-            connect_enum_declaration(enum_decl, graph, entry_node);
+        EnumDeclaration(decl_id) => {
+            let enum_decl = de_get_enum(decl_id.clone(), &span)?;
+            connect_enum_declaration(&enum_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
         ImplTrait(decl_id) => {
