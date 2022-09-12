@@ -74,6 +74,8 @@ pub enum ParseErrorKind {
     UnnecessaryVisibilityQualifier { visibility: Ident },
     #[error("Expected a doc comment.")]
     ExpectedDocComment,
+    #[error("Use the `struct` keyword to define records, instead of `class`.")]
+    UnexpectedClass,
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Eq, Hash)]
