@@ -3,7 +3,7 @@ use super::{
     TypedFunctionDeclaration, TypedImplTrait, TypedStorageDeclaration,
 };
 use crate::{
-    declaration_engine::declaration_engine::{de_get_impl_trait, de_get_storage},
+    declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait, de_get_storage},
     error::*,
     metadata::MetadataManager,
     parse_tree::{ParseProgram, Purity, TreeType},
@@ -80,15 +80,31 @@ impl TypedProgram {
         }
 
         let mut mains = Vec::new();
-        let mut declarations = Vec::new();
+        let mut declarations = Vec::<TypedDeclaration>::new();
         let mut abi_entries = Vec::new();
         let mut fn_declarations = std::collections::HashSet::new();
         for node in &root.all_nodes {
             match &node.content {
-                TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(func))
-                    if func.name.as_str() == "main" =>
-                {
-                    mains.push(func.clone());
+                TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
+                    decl_id,
+                )) => {
+                    let func = check!(
+                        CompileResult::from(de_get_function(decl_id.clone(), &node.span)),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+
+                    if func.name.as_str() == "main" {
+                        mains.push(func.clone());
+                    }
+
+                    if !fn_declarations.insert(func.name.clone()) {
+                        errors
+                            .push(CompileError::MultipleDefinitionsOfFunction { name: func.name });
+                    }
+
+                    declarations.push(TypedDeclaration::FunctionDeclaration(decl_id.clone()));
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself.
@@ -112,14 +128,6 @@ impl TypedProgram {
                 }
                 // XXX we're excluding the above ABI methods, is that OK?
                 TypedAstNodeContent::Declaration(decl) => {
-                    // Variable and constant declarations don't need a duplicate check.
-                    // Type declarations are checked elsewhere. That leaves functions.
-                    if let TypedDeclaration::FunctionDeclaration(func) = &decl {
-                        let name = func.name.clone();
-                        if !fn_declarations.insert(name.clone()) {
-                            errors.push(CompileError::MultipleDefinitionsOfFunction { name });
-                        }
-                    }
                     declarations.push(decl.clone());
                 }
                 _ => {}
@@ -255,7 +263,13 @@ impl TypedProgram {
             TypedProgramKind::Script { .. } => {
                 let mut data = vec![];
                 for node in self.root.all_nodes.iter() {
-                    if node.is_main_function(TreeType::Script) {
+                    let is_main = check!(
+                        node.is_main_function(TreeType::Script),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if is_main {
                         data.append(&mut check!(
                             node.collect_types_metadata(),
                             return err(warnings, errors),
@@ -269,7 +283,13 @@ impl TypedProgram {
             TypedProgramKind::Predicate { .. } => {
                 let mut data = vec![];
                 for node in self.root.all_nodes.iter() {
-                    if node.is_main_function(TreeType::Predicate) {
+                    let is_main = check!(
+                        node.is_main_function(TreeType::Predicate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if is_main {
                         data.append(&mut check!(
                             node.collect_types_metadata(),
                             return err(warnings, errors),
@@ -472,20 +492,31 @@ fn disallow_impure_functions(
     declarations: &[TypedDeclaration],
     mains: &[TypedFunctionDeclaration],
 ) -> Vec<CompileError> {
+    let mut errs: Vec<CompileError> = vec![];
     let fn_decls = declarations
         .iter()
         .filter_map(|decl| match decl {
-            TypedDeclaration::FunctionDeclaration(decl) => Some(decl),
+            TypedDeclaration::FunctionDeclaration(decl_id) => {
+                match de_get_function(decl_id.clone(), &decl.span()) {
+                    Ok(fn_decl) => Some(fn_decl),
+                    Err(err) => {
+                        errs.push(err);
+                        None
+                    }
+                }
+            }
             _ => None,
         })
-        .chain(mains);
-    fn_decls
+        .chain(mains.to_owned());
+    let mut err_purity = fn_decls
         .filter_map(|TypedFunctionDeclaration { purity, name, .. }| {
-            if *purity != Purity::Pure {
+            if purity != Purity::Pure {
                 Some(CompileError::ImpureInNonContract { span: name.span() })
             } else {
                 None
             }
         })
-        .collect()
+        .collect::<Vec<_>>();
+    errs.append(&mut err_purity);
+    errs
 }

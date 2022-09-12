@@ -263,7 +263,7 @@ pub(crate) fn de_insert_function(function: TypedFunctionDeclaration) -> Declarat
     DECLARATION_ENGINE.insert_function(function)
 }
 
-pub(crate) fn de_get_function(
+pub fn de_get_function(
     index: DeclarationId,
     span: &Span,
 ) -> Result<TypedFunctionDeclaration, CompileError> {
