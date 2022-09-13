@@ -391,37 +391,37 @@ impl TypeEngine {
             }
 
             (
-                TypeInfo::ContractCaller {
-                    abi_name: ref abi_name_a,
-                    address,
+                ref r @ TypeInfo::ContractCaller {
+                    abi_name: ref abi_name_received,
+                    ref address,
                 },
-                ref e @ TypeInfo::ContractCaller {
-                    abi_name: ref abi_name_b,
+                TypeInfo::ContractCaller {
+                    abi_name: ref abi_name_expected,
                     ..
                 },
-            ) if (abi_name_a == abi_name_b && address.is_none())
-                || matches!(abi_name_a, AbiName::Deferred) =>
+            ) if (abi_name_received == abi_name_expected && address.is_none())
+                || matches!(abi_name_received, AbiName::Deferred) =>
             {
                 // if one address is empty, coerce to the other one
-                match self.slab.replace(expected, e, look_up_type_id(expected)) {
+                match self.slab.replace(received, r, look_up_type_id(expected)) {
                     None => (vec![], vec![]),
                     Some(_) => self.unify(received, expected, span, help_text),
                 }
             }
             (
-                ref r @ TypeInfo::ContractCaller {
-                    abi_name: ref abi_name_a,
+                TypeInfo::ContractCaller {
+                    abi_name: ref abi_name_received,
                     ..
                 },
-                TypeInfo::ContractCaller {
-                    abi_name: ref abi_name_b,
-                    address,
+                ref e @ TypeInfo::ContractCaller {
+                    abi_name: ref abi_name_expected,
+                    ref address,
                 },
-            ) if (abi_name_a == abi_name_b && address.is_none())
-                || matches!(abi_name_b, AbiName::Deferred) =>
+            ) if (abi_name_received == abi_name_expected && address.is_none())
+                || matches!(abi_name_expected, AbiName::Deferred) =>
             {
                 // if one address is empty, coerce to the other one
-                match self.slab.replace(received, r, look_up_type_id(expected)) {
+                match self.slab.replace(expected, e, look_up_type_id(received)) {
                     None => (vec![], vec![]),
                     Some(_) => self.unify(received, expected, span, help_text),
                 }
