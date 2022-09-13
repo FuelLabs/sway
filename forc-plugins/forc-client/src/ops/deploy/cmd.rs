@@ -2,7 +2,7 @@ use clap::Parser;
 use forc_util::long_version;
 use once_cell::sync::Lazy;
 
-static LONG_VERSION: Lazy<String> = Lazy::new(|| long_version(clap::crate_version!()).to_string());
+static LONG_VERSION: Lazy<String> = Lazy::new(|| long_version(clap::crate_version!()));
 
 fn long_version_static() -> &'static str {
     &LONG_VERSION
