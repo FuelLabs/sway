@@ -1,22 +1,12 @@
 script;
 
 use std::assert::assert;
-use std::result::*;
-use std::u128::*;
-use std::logging::*;
+use std::u128::U128;
 
 fn main() -> bool {
     let zero = ~U128::from(0, 0);
     let one = ~U128::from(0, 1);
     let two = ~U128::from(0, 2);
-
-
-    let up = ~U128::max();
-    let down = ~U128::from(4, 0);
-    let mut res = up / down;
-
-    log(res.upper);
-    log(res.lower);
 
     let max_u64 = ~U128::from(0, ~u64::max());
     let one_upper = ~U128::from(1, 0);
