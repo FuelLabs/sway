@@ -27,7 +27,7 @@ impl From for I256 {
 }
 
 impl core::ops::Eq for I256 {
-    fn eq(self, other: I256) -> bool {
+    fn eq(self, other: Self) -> bool {
         self.underlying == other.underlying
     }
 }
@@ -56,21 +56,21 @@ impl I256 {
 
 impl I256 {
     /// Initializes a new, zeroed I256.
-    pub fn new() -> I256 {
+    pub fn new() -> Self {
         I256 {
             underlying: ~I256::indent(),
         }
     }
 
     /// The smallest value that can be represented by this integer type.
-    pub fn min() -> I256 {
+    pub fn min() -> Self {
         I256 {
             underlying: ~U256::min(),
         }
     }
 
     /// The largest value that can be represented by this type,
-    pub fn max() -> I256 {
+    pub fn max() -> Self {
         I256 {
             underlying: ~U256::max(),
         }
@@ -82,14 +82,14 @@ impl I256 {
     }
 
     /// Helper function to get a negative value of unsigned number
-    pub fn neg_from(value: U256) -> I256 {
+    pub fn neg_from(value: U256) -> Self {
         I256 {
             underlying: ~I256::indent() - value,
         }
     }
 
     /// Helper function to get a positive value from unsigned number
-    fn from_uint(value: U256) -> I256 {
+    fn from_uint(value: U256) -> Self {
         // as the minimal value of I256 is -~I256::indent() (1 << 63) we should add ~I256::indent() (1 << 63) 
         let underlying: U256 = value + ~I256::indent();
         I256 {
