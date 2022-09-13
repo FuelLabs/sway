@@ -120,12 +120,12 @@ impl core::ops::Multiply for I32 {
     fn multiply(self, other: Self) -> Self {
         let mut res = ~I32::new();
         if self.underlying >= ~I32::indent() && other.underlying >= ~I32::indent() {
-            res = ~Self::from((self.underlying - ~I32::indent()) * (other.underlying -~I32::indent()) + ~I32::indent());
-        } else if self.underlying < ~I32::indent() && other.underlying < ~I32::indent() {
+            res = ~Self::from((self.underlying - ~Self::indent()) * (other.underlying -~Self::indent()) + ~I32::indent());
+        } else if self.underlying < ~Self::indent() && other.underlying < ~Self::indent() {
             res = ~Self::from((~I32::indent() - self.underlying) * (~I32::indent() - other.underlying) + ~I32::indent());
-        } else if self.underlying >= ~I32::indent() && other.underlying < ~I32::indent() {
+        } else if self.underlying >= ~I32::indent() && other.underlying < ~Self::indent() {
             res = ~Self::from(~I32::indent() - (self.underlying - ~I32::indent()) * (~I32::indent() - other.underlying));
-        } else if self.underlying < ~I32::indent() && other.underlying >= ~I32::indent() {
+        } else if self.underlying < ~I32::indent() && other.underlying >= ~Self::indent() {
             res = ~Self::from(~I32::indent() - (other.underlying - ~I32::indent()) * (~I32::indent() - self.underlying));
         }
         res
@@ -135,16 +135,16 @@ impl core::ops::Multiply for I32 {
 impl core::ops::Divide for I32 {
     /// Divide a I32 by a I32. Panics if divisor is zero.
     fn divide(self, divisor: Self) -> Self {
-        assert(divisor != ~I32::new());
-        let mut res = ~I32::new();
-        if self.underlying >= ~I32::indent() && divisor.underlying > ~I32::indent() {
-            res = ~I32::from((self.underlying - ~I32::indent()) / (divisor.underlying -~I32::indent()) + ~I32::indent());
-        } else if self.underlying < ~I32::indent() && divisor.underlying < ~I32::indent() {
-            res = ~I32::from((~I32::indent() - self.underlying) / (~I32::indent() - divisor.underlying) + ~I32::indent());
-        } else if self.underlying >= ~I32::indent() && divisor.underlying < ~I32::indent() {
-            res = ~I32::from(~I32::indent() - (self.underlying - ~I32::indent()) / (~I32::indent() - divisor.underlying));
-        } else if self.underlying < ~I32::indent() && divisor.underlying > ~I32::indent() {
-            res = ~I32::from(~I32::indent() - (~I32::indent() - self.underlying) / (divisor.underlying - ~I32::indent()));
+        assert(divisor != ~Self::new());
+        let mut res = ~Self::new();
+        if self.underlying >= ~Self::indent() && divisor.underlying > ~Self::indent() {
+            res = ~Self::from((self.underlying - ~Self::indent()) / (divisor.underlying -~Self::indent()) + ~Self::indent());
+        } else if self.underlying < ~Self::indent() && divisor.underlying < ~Self::indent() {
+            res = ~Self::from((~Self::indent() - self.underlying) / (~Self::indent() - divisor.underlying) + ~Self::indent());
+        } else if self.underlying >= ~Self::indent() && divisor.underlying < ~Self::indent() {
+            res = ~Self::from(~Self::indent() - (self.underlying - ~Self::indent()) / (~Self::indent() - divisor.underlying));
+        } else if self.underlying < ~Self::indent() && divisor.underlying > ~Self::indent() {
+            res = ~Self::from(~Self::indent() - (~Self::indent() - self.underlying) / (divisor.underlying - ~Self::indent()));
         }
         res
     }
