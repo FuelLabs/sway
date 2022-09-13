@@ -1,7 +1,6 @@
 script;
 
-use std::assert::assert;
-use std::ufp64::UFP64;
+use std::{assert::assert, ufp64::UFP64};
 
 fn main() -> bool {
     let one = ~UFP64::from_uint(1);
