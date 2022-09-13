@@ -1,8 +1,9 @@
 use crate::{Parse, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::keywords::{
-    AbiToken, ConstToken, EnumToken, FnToken, ImplToken, MutToken, OpenAngleBracketToken, RefToken,
-    SelfToken, StorageToken, StructToken, TraitToken, UseToken, WhereToken,
+    AbiToken, ClassToken, ConstToken, EnumToken, FnToken, ImplToken, MutToken,
+    OpenAngleBracketToken, RefToken, SelfToken, StorageToken, StructToken, TraitToken, UseToken,
+    WhereToken,
 };
 use sway_ast::{
     FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait,
@@ -30,6 +31,9 @@ impl Parse for ItemKind {
         let kind = if let Some(mut item) = parser.guarded_parse::<UseToken, ItemUse>()? {
             item.visibility = visibility.take();
             ItemKind::Use(item)
+        } else if let Some(mut item) = parser.guarded_parse::<ClassToken, ItemStruct>()? {
+            item.visibility = visibility.take();
+            ItemKind::Struct(item)
         } else if let Some(mut item) = parser.guarded_parse::<StructToken, ItemStruct>()? {
             item.visibility = visibility.take();
             ItemKind::Struct(item)

@@ -270,6 +270,7 @@ define_op_codes!(
     (Srwq, SrwqOpcode, "srwq", (addr: reg, state_addr: reg)),
     (Sww, SwwOpcode, "sww", (state_addr: reg, value: reg)),
     (Swwq, SwwqOpcode, "swwq", (state_addr: reg, addr: reg)),
+    (Time, TimeOpcode, "time", (ret: reg, height: reg)),
     (Tr, TrOpcode, "tr", (contract: reg, coins: reg, asset: reg)),
     (
         Tro,

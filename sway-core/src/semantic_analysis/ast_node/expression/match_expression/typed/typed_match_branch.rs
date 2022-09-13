@@ -63,13 +63,14 @@ impl TypedMatchBranch {
         for (left_decl, right_decl) in match_decl_map.into_iter() {
             let type_ascription = right_decl.return_type;
             let span = left_decl.span().clone();
-            let var_decl = TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                name: left_decl.clone(),
-                body: right_decl,
-                mutability: VariableMutability::Immutable,
-                type_ascription,
-                type_ascription_span: None,
-            });
+            let var_decl =
+                TypedDeclaration::VariableDeclaration(Box::new(TypedVariableDeclaration {
+                    name: left_decl.clone(),
+                    body: right_decl,
+                    mutability: VariableMutability::Immutable,
+                    type_ascription,
+                    type_ascription_span: None,
+                }));
             ctx.namespace.insert_symbol(left_decl, var_decl.clone());
             code_block_contents.push(TypedAstNode {
                 content: TypedAstNodeContent::Declaration(var_decl),

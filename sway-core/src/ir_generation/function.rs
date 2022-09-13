@@ -8,6 +8,7 @@ use super::{
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
+    declaration_engine::declaration_engine,
     error::{CompileError, Hint},
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -117,9 +118,10 @@ impl FnCompiler {
             }
             TypedAstNodeContent::Declaration(td) => match td {
                 TypedDeclaration::VariableDeclaration(tvd) => {
-                    self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
+                    self.compile_var_decl(context, md_mgr, *tvd, span_md_idx)
                 }
-                TypedDeclaration::ConstantDeclaration(tcd) => {
+                TypedDeclaration::ConstantDeclaration(decl_id) => {
+                    let tcd = declaration_engine::de_get_constant(decl_id, &ast_node.span)?;
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
                 }
@@ -139,11 +141,12 @@ impl FnCompiler {
                         span: ast_node.span,
                     })
                 }
-                TypedDeclaration::EnumDeclaration(ted) => {
+                TypedDeclaration::EnumDeclaration(decl_id) => {
+                    let ted = declaration_engine::de_get_enum(decl_id, &ast_node.span)?;
                     create_enum_aggregate(context, ted.variants).map(|_| ())?;
                     Ok(None)
                 }
-                TypedDeclaration::ImplTrait(TypedImplTrait { .. }) => {
+                TypedDeclaration::ImplTrait(_) => {
                     // XXX What if we ignore the trait implementation???  Potentially since
                     // we currently inline everything and below we 'recreate' the functions
                     // lazily as they are called, nothing needs to be done here.  BUT!

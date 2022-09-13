@@ -1408,7 +1408,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.24.0"
+version = "0.24.3"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1437,7 +1437,7 @@ dependencies = [
 
 [[package]]
 name = "forc-client"
-version = "0.24.0"
+version = "0.24.3"
 dependencies = [
  "anyhow",
  "clap 3.2.20",
@@ -1463,7 +1463,7 @@ dependencies = [
 
 [[package]]
 name = "forc-explore"
-version = "0.24.0"
+version = "0.24.3"
 dependencies = [
  "anyhow",
  "clap 3.2.20",
@@ -1478,7 +1478,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.24.0"
+version = "0.24.3"
 dependencies = [
  "anyhow",
  "clap 3.2.20",
@@ -1493,7 +1493,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.24.0"
+version = "0.24.3"
 dependencies = [
  "anyhow",
  "clap 3.2.20",
@@ -1503,7 +1503,7 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.24.0"
+version = "0.24.3"
 dependencies = [
  "anyhow",
  "forc-util",
@@ -1527,7 +1527,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.24.0"
+version = "0.24.3"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -2520,8 +2520,9 @@ checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
 
 [[package]]
 name = "mdbook"
-version = "0.4.20"
-source = "git+https://github.com/mitchmindtree/mdBook?branch=nightly-borrowcheck-err-workaround#13035baeae417e41ce98f49c072220de0e6e4075"
+version = "0.4.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23f3e133c6d515528745ffd3b9f0c7d975ae039f0b6abb099f2168daa2afb4f9"
 dependencies = [
  "anyhow",
  "chrono",
@@ -4095,7 +4096,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ast"
-version = "0.24.0"
+version = "0.24.3"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -4105,7 +4106,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.24.0"
+version = "0.24.3"
 dependencies = [
  "clap 3.2.20",
  "derivative",
@@ -4138,7 +4139,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.24.0"
+version = "0.24.3"
 dependencies = [
  "anyhow",
  "filecheck",
@@ -4150,7 +4151,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.24.0"
+version = "0.24.3"
 dependencies = [
  "itertools",
  "proc-macro2",
@@ -4160,7 +4161,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.24.0"
+version = "0.24.3"
 dependencies = [
  "async-trait",
  "dashmap",
@@ -4182,7 +4183,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.24.0"
+version = "0.24.3"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -4197,7 +4198,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.24.0"
+version = "0.24.3"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -4208,11 +4209,11 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.24.0"
+version = "0.24.3"
 
 [[package]]
 name = "swayfmt"
-version = "0.24.0"
+version = "0.24.3"
 dependencies = [
  "anyhow",
  "forc-util",
