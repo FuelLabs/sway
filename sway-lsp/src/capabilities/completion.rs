@@ -38,6 +38,7 @@ pub(crate) fn completion_item_kind(symbol_kind: &SymbolKind) -> Option<Completio
         | SymbolKind::StringLiteral
         | SymbolKind::NumericLiteral => Some(CompletionItemKind::VALUE),
         SymbolKind::Variable => Some(CompletionItemKind::VARIABLE),
+        SymbolKind::BuiltinAttr => Some(CompletionItemKind::FUNCTION),
         SymbolKind::Unknown => None,
     }
 }

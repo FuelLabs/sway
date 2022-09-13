@@ -7,7 +7,7 @@ use crate::{
     core::{
         document::{DocumentError, TextDocument},
         token::{Token, TokenMap, TypeDefinition},
-        {traverse_parse_tree, traverse_typed_tree},
+        {parse_items, traverse_parse_tree, traverse_typed_tree},
     },
     sway_config::SwayConfig,
     utils,
@@ -158,17 +158,29 @@ impl Session {
         let locked = false;
         let offline = false;
 
+        let profile = pkg::BuildProfile {
+            silent: silent_mode,
+            ..pkg::BuildProfile::debug()
+        };
+
         // TODO: match on any errors and report them back to the user in a future PR
         if let Ok(manifest) = pkg::ManifestFile::from_dir(&manifest_dir) {
             if let Ok(plan) = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline) {
+                // First, parse items to collect keyword tokens
+                if let Ok(source) = manifest.entry_string() {
+                    if let Ok(sway_build_config) =
+                        pkg::sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)
+                    {
+                        parse_items::parse(source, Some(&sway_build_config), &self.token_map);
+                    }
+                }
+
                 //we can then use them directly to convert them to a Vec<Diagnostic>
                 if let Ok((parsed_res, ast_res)) = pkg::check(&plan, silent_mode) {
-                    // First, populate our token_map with un-typed ast nodes
+                    // Secondly, populate our token_map with un-typed ast nodes
                     let _ = self.parse_ast_to_tokens(parsed_res);
-                    // Next, populate our token_map with typed ast nodes
-                    let res = self.parse_ast_to_typed_tokens(ast_res);
-                    //self.test_typed_parse(ast_res);
-                    return res;
+                    // Finally, populate our token_map with typed ast nodes
+                    return self.parse_ast_to_typed_tokens(ast_res);
                 }
             }
         }
@@ -249,31 +261,6 @@ impl Session {
 
                 Ok(capabilities::diagnostic::get_diagnostics(warnings, vec![]))
             }
-        }
-    }
-
-    pub fn _test_typed_parse(&mut self, _ast_res: CompileAstResult, uri: &Url) {
-        for item in self.token_map.iter() {
-            let ((ident, _span), token) = item.pair();
-            utils::debug::debug_print_ident_and_token(ident, token);
-        }
-
-        //let cursor_position = Position::new(25, 14); //Cursor's hovered over the position var decl in main()
-        let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
-
-        if let Some((_, token)) = self.token_at_position(uri, cursor_position) {
-            // Look up the tokens TypeId
-            if let Some(type_id) = utils::token::type_id(&token) {
-                tracing::info!("type_id = {:#?}", type_id);
-
-                // Use the TypeId to look up the actual type
-                let type_info = sway_core::type_system::look_up_type_id(type_id);
-                tracing::info!("type_info = {:#?}", type_info);
-            }
-
-            // Find the ident / span on the returned type
-
-            // Contruct a go_to LSP request from the declarations span
         }
     }
 

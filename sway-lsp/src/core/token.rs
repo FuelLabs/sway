@@ -40,6 +40,7 @@ impl Token {
 
 #[derive(Debug, Clone)]
 pub enum AstToken {
+    Keyword(Ident),
     Declaration(Declaration),
     Expression(Expression),
     StructExpressionField(StructExpressionField),
@@ -83,6 +84,7 @@ pub enum SymbolKind {
     NumericLiteral,
     Variable,
     BuiltinType,
+    BuiltinAttr,
     Module,
     TypeParameter,
     Unknown,
