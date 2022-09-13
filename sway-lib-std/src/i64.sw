@@ -19,14 +19,14 @@ pub trait From {
 impl From for I64 {
     /// Helper function to get a signed number from with an underlying
     fn from(underlying: u64) -> Self {
-        I64 {
+        Self {
             underlying,
         }
     }
 }
 
 impl core::ops::Eq for I64 {
-    fn eq(self, other: I64) -> bool {
+    fn eq(self, other: Self) -> bool {
         self.underlying == other.underlying
     }
 }
@@ -50,22 +50,22 @@ impl I64 {
 
 impl I64 {
     /// Initializes a new, zeroed I64.
-    pub fn new() -> I64 {
-        I64 {
+    pub fn new() -> Self {
+        Self {
             underlying: ~I64::indent(),
         }
     }
 
     /// The smallest value that can be represented by this integer type.
-    pub fn min() -> I64 {
-        I64 {
+    pub fn min() -> Self {
+        Self {
             underlying: ~u64::min(),
         }
     }
 
     /// The largest value that can be represented by this type,
-    pub fn max() -> I64 {
-        I64 {
+    pub fn max() -> Self {
+        Self {
             underlying: ~u64::max(),
         }
     }
@@ -76,17 +76,17 @@ impl I64 {
     }
 
     /// Helper function to get a negative value of unsigned number
-    pub fn neg_from(value: u64) -> I64 {
-        I64 {
+    pub fn neg_from(value: u64) -> Self {
+        Self {
             underlying: ~I64::indent() - value,
         }
     }
 
     /// Helper function to get a positive value from unsigned number
-    fn from_uint(value: u64) -> I64 {
+    fn from_uint(value: u64) -> Self {
         // as the minimal value of I64 is -~I64::indent() (1 << 63) we should add ~I64::indent() (1 << 63) 
         let underlying: u64 = value + ~I64::indent();
-        I64 {
+        Self {
             underlying
         }
     }

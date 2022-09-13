@@ -44,8 +44,8 @@ impl core::ops::Ord for I128 {
 
 impl I128 {
     /// The underlying value that corresponds to zero signed value
-    pub fn indent() -> U128 {
-        U128 {
+    pub fn indent() -> Self {
+        Self {
             upper: 1,
             lower: 0,
         }
@@ -55,21 +55,21 @@ impl I128 {
 impl I128 {
     /// Initializes a new, zeroed I128.
     pub fn new() -> Self {
-        I128 {
+        Self {
             underlying: ~I128::indent(),
         }
     }
 
     /// The smallest value that can be represented by this integer type.
     pub fn min() -> Self {
-        I128 {
+        Self {
             underlying: ~U128::min(),
         }
     }
 
     /// The largest value that can be represented by this type,
     pub fn max() -> Self {
-        I128 {
+        Self {
             underlying: ~U128::max(),
         }
     }
@@ -81,7 +81,7 @@ impl I128 {
 
     /// Helper function to get a negative value of unsigned number
     pub fn neg_from(value: U128) -> Self {
-        I128 {
+        Self {
             underlying: ~I128::indent() - value,
         }
     }
@@ -90,7 +90,7 @@ impl I128 {
     fn from_uint(value: U128) -> Self {
         // as the minimal value of I128 is -~I128::indent() (1 << 63) we should add ~I128::indent() (1 << 63) 
         let underlying: U128 = value + ~I128::indent();
-        I128 {
+        Self {
             underlying
         }
     }

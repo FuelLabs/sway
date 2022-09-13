@@ -26,7 +26,7 @@ impl From for I32 {
 }
 
 impl core::ops::Eq for I32 {
-    fn eq(self, other: I32) -> bool {
+    fn eq(self, other: Self) -> bool {
         self.underlying == other.underlying
     }
 }
@@ -50,22 +50,22 @@ impl I32 {
 
 impl I32 {
     /// Initializes a new, zeroed I32.
-    pub fn new() -> I32 {
-        I32 {
+    pub fn new() -> Self {
+        Self {
             underlying: ~I32::indent(),
         }
     }
 
     /// The smallest value that can be represented by this integer type.
-    pub fn min() -> I32 {
-        I32 {
+    pub fn min() -> Self {
+        Self {
             underlying: ~u32::min(),
         }
     }
 
     /// The largest value that can be represented by this type,
-    pub fn max() -> I32 {
-        I32 {
+    pub fn max() -> Self {
+        Self {
             underlying: ~u32::max(),
         }
     }
@@ -76,17 +76,17 @@ impl I32 {
     }
 
     /// Helper function to get a negative value of unsigned numbers
-    pub fn neg_from(value: u32) -> I32 {
-        I32 {
+    pub fn neg_from(value: u32) -> Self {
+        Self {
             underlying: ~I32::indent() - value,
         }
     }
 
     /// Helper function to get a positive value from unsigned number
-    fn from_uint(value: u32) -> I32 {
+    fn from_uint(value: u32) -> Self {
         // as the minimal value of I32 is 2147483648 (1 << 31) we should add ~I32::indent() (1 << 31) 
         let underlying: u32 = value + ~I32::indent();
-        I32 {
+        Self {
             underlying
         }
     }

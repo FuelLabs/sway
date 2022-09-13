@@ -19,14 +19,14 @@ pub trait From {
 impl From for I8 {
     /// Helper function to get a signed number from with an underlying
     fn from(underlying: u8) -> Self {
-        I8 {
+        Self {
             underlying
         }
     }
 }
 
 impl core::ops::Eq for I8 {
-    fn eq(self, other: I8) -> bool {
+    fn eq(self, other: Self) -> bool {
         self.underlying == other.underlying
     }
 }
@@ -50,22 +50,22 @@ impl I8 {
 
 impl I8 {
     /// Initializes a new, zeroed I8.
-    pub fn new() -> I8 {
-        I8 {
+    pub fn new() -> Self {
+        Self {
             underlying: ~I8::indent(),
         }
     }
 
     /// The smallest value that can be represented by this integer type.
-    pub fn min() -> I8 {
-        I8 {
+    pub fn min() -> Self {
+        Self {
             underlying: ~u8::min(),
         }
     }
 
     /// The largest value that can be represented by this type,
-    pub fn max() -> I8 {
-        I8 {
+    pub fn max() -> Self {
+        Self {
             underlying: ~u8::max(),
         }
     }
@@ -76,16 +76,16 @@ impl I8 {
     }
 
     /// Helper function to get a negative value of unsigned number
-    pub fn neg_from(value: u8) -> I8 {
-        I8 {
+    pub fn neg_from(value: u8) -> Self {
+        Self {
             underlying: ~I8::indent() - value,
         }
     }
 
     /// Helper function to get a positive value from unsigned number
-    fn from_uint(value: u8) -> I8 {
+    fn from_uint(value: u8) -> Self {
         let underlying: u8 = value + ~I8::indent(); // as the minimal value of I8 is -~I8::indent() (1 << 7) we should add ~I8::indent() (1 << 7) 
-        I8 {
+        Self {
             underlying
         }
     }

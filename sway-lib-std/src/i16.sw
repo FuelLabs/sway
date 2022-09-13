@@ -19,14 +19,14 @@ pub trait From {
 impl From for I16 {
     /// Helper function to get a signed number from with an underlying
     fn from(underlying: u16) -> Self {
-        I16 {
+        Self {
             underlying
         }
     }
 }
 
 impl core::ops::Eq for I16 {
-    fn eq(self, other: I16) -> bool {
+    fn eq(self, other: Self) -> bool {
         self.underlying == other.underlying
     }
 }
@@ -50,22 +50,22 @@ impl I16 {
 
 impl I16 {
     /// Initializes a new, zeroed I16.
-    pub fn new() -> I16 {
-        I16 {
+    pub fn new() -> Self {
+        Self {
             underlying: ~I16::indent(),
         }
     }
 
     /// The smallest value that can be represented by this integer type.
-    pub fn min() -> I16 {
-        I16 {
+    pub fn min() -> Self {
+        Self {
             underlying: ~u16::min(),
         }
     }
 
     /// The largest value that can be represented by this type,
-    pub fn max() -> I16 {
-        I16 {
+    pub fn max() -> Self {
+        Self {
             underlying: ~u16::max(),
         }
     }
@@ -76,17 +76,17 @@ impl I16 {
     }
 
     /// Helper function to get a negative value of unsigned number
-    pub fn neg_from(value: u16) -> I16 {
-        I16 {
+    pub fn neg_from(value: u16) -> Self {
+        Self {
             underlying: ~I16::indent() - value,
         }
     }
 
     /// Helper function to get a positive value from unsigned number
-    fn from_uint(value: u16) -> I16 {
+    fn from_uint(value: u16) -> Self {
         // as the minimal value of I16 is -~I16::indent() (1 << 15) we should add ~I16::indent() (1 << 15)
         let underlying: u16 = value + ~I16::indent(); 
-        I16 {
+        Self {
             underlying
         }
     }
