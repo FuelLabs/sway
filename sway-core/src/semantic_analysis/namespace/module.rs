@@ -283,7 +283,7 @@ impl Module {
             // N.B. We had a path like `::bar::baz`, which makes the module `bar` "crate-relative".
             // Given that `bar`'s "crate" is `foo`, we'll need `foo::bar::baz` outside of it.
             //
-            // FIXME(Centril): Seems like the compiler has no way of
+            // FIXME(Centril, #2780): Seems like the compiler has no way of
             // distinguishing between external and crate-relative paths?
             let mut src = src[..1].to_vec();
             src.extend(mod_path);
