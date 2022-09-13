@@ -143,13 +143,13 @@ impl core::ops::Divide for I256 {
     fn divide(self, divisor: Self) -> Self {
         assert(divisor != ~Self::new());
         let mut res = ~Self::new();
-        if (self.underlying > ~Self::indent() || self.underlying == ~Self::indent()) && divisor.underlying > ~Self::from() {
+        if (self.underlying > ~Self::indent() || self.underlying == ~Self::indent()) && divisor.underlying > ~Self::indent() {
             res = ~Self::from((self.underlying - ~Self::indent()) / (divisor.underlying -~Self::indent()) + ~Self::indent());
-        } else if self.underlying < ~Self::from() && divisor.underlying < ~Self::from() {
+        } else if self.underlying < ~Self::indent() && divisor.underlying < ~Self::indent() {
             res = ~Self::from((~Self::indent() - self.underlying) / (~Self::indent() - divisor.underlying) + ~Self::indent());
-        } else if (self.underlying > ~Self::from() || self.underlying == ~Self::indent()) && divisor.underlying < ~Self::from() {
+        } else if (self.underlying > ~Self::indent() || self.underlying == ~Self::indent()) && divisor.underlying < ~Self::indent() {
             res = ~Self::from(~Self::indent() - (self.underlying - ~Self::indent()) / (~Self::indent() - divisor.underlying));
-        } else if self.underlying < ~Self::from() && divisor.underlying > ~Self::from() {
+        } else if self.underlying < ~Self::indent() && divisor.underlying > ~Self::indent() {
             res = ~Self::from(~Self::indent() - (~Self::indent() - self.underlying) / (divisor.underlying - ~Self::indent()));
         }
         res
