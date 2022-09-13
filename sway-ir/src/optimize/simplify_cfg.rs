@@ -27,6 +27,63 @@ pub fn simplify_cfg(context: &mut Context, function: &Function) -> Result<bool, 
         }
         break;
     }
+
+    modified |= unlink_empty_blocks(context, function)?;
+
+    Ok(modified)
+}
+
+fn unlink_empty_blocks(context: &mut Context, function: &Function) -> Result<bool, IrError> {
+    let mut modified = false;
+    let candidates: Vec<_> = function
+        .block_iter(context)
+        .skip(1)
+        .filter_map(|block| {
+            match block.get_terminator(context) {
+                // Except for a PHI and a branch, we don't want anything else.
+                // num_instructions doesn't count PHI though.
+                Some(Instruction::Branch(to_block)) if block.num_instructions(context) <= 1 => {
+                    Some((block, *to_block))
+                }
+                _ => None,
+            }
+        })
+        .collect();
+    for (block, to_block) in candidates {
+        let block_phi = block.get_phi(context);
+        let preds: Vec<_> = context.blocks[block.0].predecessors(context).collect();
+
+        // In `to_block`, we want to re-route all values coming in from `block`
+        // to be coming in from all of `preds`. If there's already a value coming
+        // in from any of `pred`, then there's a conflict. We bail out.
+        if preds
+            .iter()
+            .any(|pred| to_block.get_phi_val_coming_from(context, pred).is_some())
+        {
+            continue;
+        }
+
+        let val_from_block = to_block.get_phi_val_coming_from(context, &block);
+        if let Some(val_from_block) = val_from_block {
+            to_block.remove_phi_val_coming_from(context, &block);
+            if val_from_block == block_phi {
+                // If the value coming to `to_phi` is `block_phi`, we replace it
+                // with all the incoming values to `block_phi` itself.
+                #[allow(clippy::needless_collect)] // clippy doesn't see Context borrow
+                let cur_block_phis: Vec<_> = block.phi_iter(context).copied().collect();
+                to_block.add_phis_from_iter(context, cur_block_phis.into_iter());
+            } else {
+                // Otherwise, it gets `val_from_block` from every `pred`.
+                let v_pred_pairs = preds.iter().map(|b| (*b, val_from_block));
+                to_block.add_phis_from_iter(context, v_pred_pairs);
+            }
+            modified = true;
+        } // We don't need to bother if there is no value coming in from block.
+        for pred in preds {
+            pred.replace_successor(context, block, to_block);
+            modified = true;
+        }
+    }
     Ok(modified)
 }
 

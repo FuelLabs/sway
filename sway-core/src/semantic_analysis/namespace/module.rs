@@ -1,7 +1,6 @@
 use crate::{
-    declaration_engine::declaration_engine::DeclarationEngine,
     error::*,
-    parse_tree::{Declaration, Visibility},
+    parse_tree::{Declaration, ExpressionKind, Visibility},
     semantic_analysis::{
         ast_node::{TypedAstNode, TypedAstNodeContent, TypedVariableDeclaration},
         declaration::VariableMutability,
@@ -110,13 +109,21 @@ impl Module {
                         return err(warnings, errors);
                     }
                 };
+
+            // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.
+            if !matches!(const_decl.value.kind, ExpressionKind::Literal(_)) {
+                errors.push(CompileError::ConfigTimeConstantNotALiteral {
+                    span: const_item_span,
+                });
+                return err(warnings, errors);
+            }
+
             let ast_node = AstNode {
                 content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl)),
                 span: const_item_span.clone(),
             };
-            let mut declaration_engine = DeclarationEngine::new();
             let mut ns = Namespace::init_root(Default::default());
-            let type_check_ctx = TypeCheckContext::from_root(&mut ns, &mut declaration_engine);
+            let type_check_ctx = TypeCheckContext::from_root(&mut ns);
             let typed_node =
                 TypedAstNode::type_check(type_check_ctx, ast_node).unwrap(&mut vec![], &mut vec![]);
             // get the decl out of the typed node:
@@ -207,17 +214,18 @@ impl Module {
             errors
         );
         let implemented_traits = src_ns.implemented_traits.clone();
-        let symbols = src_ns
-            .symbols
-            .iter()
-            .filter_map(|(symbol, decl)| {
-                if decl.visibility() == Visibility::Public {
-                    Some(symbol.clone())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
+        let mut symbols = vec![];
+        for (symbol, decl) in src_ns.symbols.iter() {
+            let visibility = check!(
+                decl.visibility(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            if visibility == Visibility::Public {
+                symbols.push(symbol.clone());
+            }
+        }
 
         let dst_ns = &mut self[dst];
         dst_ns.implemented_traits.extend(implemented_traits);
@@ -267,20 +275,27 @@ impl Module {
         let mut impls_to_insert = vec![];
         match src_ns.symbols.get(item).cloned() {
             Some(decl) => {
-                if decl.visibility() != Visibility::Public {
+                let visibility = check!(
+                    decl.visibility(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                if visibility != Visibility::Public {
                     errors.push(CompileError::ImportPrivateSymbol { name: item.clone() });
                 }
                 // if this is a const, insert it into the local namespace directly
-                if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                    mutability: VariableMutability::ExportedConst,
-                    ref name,
-                    ..
-                }) = decl
-                {
-                    self[dst].insert_symbol(alias.unwrap_or_else(|| name.clone()), decl.clone());
-                    return ok((), warnings, errors);
+                if let TypedDeclaration::VariableDeclaration(ref var_decl) = decl {
+                    let TypedVariableDeclaration {
+                        mutability, name, ..
+                    } = &**var_decl;
+                    if mutability == &VariableMutability::ExportedConst {
+                        self[dst]
+                            .insert_symbol(alias.unwrap_or_else(|| name.clone()), decl.clone());
+                        return ok((), warnings, errors);
+                    }
                 }
-                let a = decl.return_type().value;
+                let a = decl.return_type(&item.span()).value;
                 //  if this is an enum or struct, import its implementations
                 let mut res = match a {
                     Some(a) => src_ns.implemented_traits.get_call_path_and_type_info(a),

@@ -686,6 +686,14 @@ pub enum CompileError {
     DeclIsNotAVariable { actually: String, span: Span },
     #[error("This is a {actually}, not an ABI.")]
     DeclIsNotAnAbi { actually: String, span: Span },
+    #[error("This is a {actually}, not a trait.")]
+    DeclIsNotATrait { actually: String, span: Span },
+    #[error("This is a {actually}, not an impl block.")]
+    DeclIsNotAnImplTrait { actually: String, span: Span },
+    #[error("This is a {actually}, not a trait function.")]
+    DeclIsNotATraitFn { actually: String, span: Span },
+    #[error("This is a {actually}, not storage.")]
+    DeclIsNotStorage { actually: String, span: Span },
     #[error(
         "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
          {available_fields}"
@@ -968,6 +976,12 @@ pub enum CompileError {
         attrs: String,
         span: Span,
     },
+    #[error(
+        "Parameter mutability mismatch between the trait function declaration and its implementation."
+    )]
+    ParameterMutabilityMismatch { span: Span },
+    #[error("Ref mutable parameter is not supported for contract ABI function.")]
+    RefMutParameterInContract { span: Span },
     #[error("Literal value is too large for type {ty}.")]
     IntegerTooLarge { span: Span, ty: String },
     #[error("Literal value underflows type {ty}.")]
@@ -1058,10 +1072,12 @@ pub enum CompileError {
     BreakOutsideLoop { span: Span },
     #[error("\"continue\" used outside of a loop")]
     ContinueOutsideLoop { span: Span },
-    #[error("arguments to \"main()\" are not yet supported. See the issue here: github.com/FuelLabs/sway/issues/845")]
-    MainArgsNotYetSupported { span: Span },
     #[error("Configuration-time constant value is not a constant item.")]
     ConfigTimeConstantNotAConstDecl { span: Span },
+    #[error("Configuration-time constant value is not a literal.")]
+    ConfigTimeConstantNotALiteral { span: Span },
+    #[error("ref mut parameter not allowed for main()")]
+    RefMutableNotAllowedInMain { param_name: Ident },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1196,8 +1212,14 @@ impl Spanned for CompileError {
             DeclIsNotAFunction { span, .. } => span.clone(),
             DeclIsNotAVariable { span, .. } => span.clone(),
             DeclIsNotAnAbi { span, .. } => span.clone(),
+            DeclIsNotATrait { span, .. } => span.clone(),
+            DeclIsNotAnImplTrait { span, .. } => span.clone(),
+            DeclIsNotATraitFn { span, .. } => span.clone(),
+            DeclIsNotStorage { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             ImpureInPureContext { span, .. } => span.clone(),
+            ParameterMutabilityMismatch { span, .. } => span.clone(),
+            RefMutParameterInContract { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
             IntegerTooSmall { span, .. } => span.clone(),
             IntegerContainsInvalidDigit { span, .. } => span.clone(),
@@ -1229,8 +1251,9 @@ impl Spanned for CompileError {
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
-            MainArgsNotYetSupported { span } => span.clone(),
             ConfigTimeConstantNotAConstDecl { span } => span.clone(),
+            ConfigTimeConstantNotALiteral { span } => span.clone(),
+            RefMutableNotAllowedInMain { param_name } => param_name.span(),
         }
     }
 }

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-//! The [DeclarationEngine](declaration_engine::DeclarationEngine) allows the compiler add a layer of
+//! The [DeclarationEngine](declaration_engine::DeclarationEngine) allows the compiler to add a layer of
 //! separation between [AST nodes](crate::semantic_analysis::ast_node) and declarations.
 //!
 //! As an interface, you can think of the [DeclarationEngine](declaration_engine::DeclarationEngine)
@@ -16,3 +16,5 @@
 pub(crate) mod declaration_engine;
 pub(crate) mod declaration_id;
 pub(crate) mod declaration_wrapper;
+
+pub use declaration_engine::*;

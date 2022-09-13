@@ -1,4 +1,11 @@
-use crate::{error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_system::*};
+use crate::{
+    declaration_engine::{declaration_engine::de_get_storage, declaration_id::DeclarationId},
+    error::*,
+    namespace::*,
+    parse_tree::*,
+    semantic_analysis::*,
+    type_system::*,
+};
 
 use super::TraitMap;
 
@@ -27,7 +34,7 @@ pub struct Items {
     /// alias for `bar`.
     pub(crate) use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
-    pub(crate) declared_storage: Option<TypedStorageDeclaration>,
+    pub(crate) declared_storage: Option<DeclarationId>,
 }
 
 impl Items {
@@ -40,26 +47,39 @@ impl Items {
         &self,
         fields: Vec<Ident>,
         storage_fields: &[TypedStorageField],
+        access_span: &Span,
     ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         match self.declared_storage {
-            Some(ref storage) => storage.apply_storage_load(fields, storage_fields),
-            None => err(
-                vec![],
-                vec![CompileError::NoDeclaredStorage {
+            Some(ref decl_id) => {
+                let storage = check!(
+                    CompileResult::from(de_get_storage(decl_id.clone(), access_span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                storage.apply_storage_load(fields, storage_fields)
+            }
+            None => {
+                errors.push(CompileError::NoDeclaredStorage {
                     span: fields[0].span(),
-                }],
-            ),
+                });
+                err(warnings, errors)
+            }
         }
     }
 
-    pub fn set_storage_declaration(&mut self, decl: TypedStorageDeclaration) -> CompileResult<()> {
+    pub fn set_storage_declaration(&mut self, decl_id: DeclarationId) -> CompileResult<()> {
         if self.declared_storage.is_some() {
             return err(
                 vec![],
-                vec![CompileError::MultipleStorageDeclarations { span: decl.span() }],
+                vec![CompileError::MultipleStorageDeclarations {
+                    span: decl_id.span(),
+                }],
             );
         }
-        self.declared_storage = Some(decl);
+        self.declared_storage = Some(decl_id);
         ok((), vec![], vec![])
     }
 
@@ -75,7 +95,7 @@ impl Items {
         let mut warnings = vec![];
         let mut errors = vec![];
         // purposefully do not preemptively return errors so that the
-        // new definiton allows later usages to compile
+        // new definition allows later usages to compile
         if self.symbols.get(&name).is_some() {
             match item {
                 TypedDeclaration::EnumDeclaration { .. }
@@ -142,13 +162,28 @@ impl Items {
         self.declared_storage.is_some()
     }
 
-    pub(crate) fn get_storage_field_descriptors(&self) -> CompileResult<Vec<TypedStorageField>> {
-        if let Some(fields) = self.declared_storage.as_ref().map(|ds| ds.fields.clone()) {
-            ok(fields, vec![], vec![])
-        } else {
-            let msg = "unknown source location";
-            let span = Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
-            err(vec![], vec![CompileError::NoDeclaredStorage { span }])
+    pub(crate) fn get_storage_field_descriptors(
+        &self,
+        access_span: &Span,
+    ) -> CompileResult<Vec<TypedStorageField>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match self.declared_storage {
+            Some(ref decl_id) => {
+                let storage = check!(
+                    CompileResult::from(de_get_storage(decl_id.clone(), access_span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                ok(storage.fields, warnings, errors)
+            }
+            None => {
+                let msg = "unknown source location";
+                let span = Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
+                errors.push(CompileError::NoDeclaredStorage { span });
+                err(warnings, errors)
+            }
         }
     }
 
@@ -171,7 +206,7 @@ impl Items {
             }
         };
         let mut symbol = check!(
-            symbol.return_type(),
+            symbol.return_type(&base_name.span()),
             return err(warnings, errors),
             warnings,
             errors

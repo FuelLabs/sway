@@ -2,6 +2,7 @@ use derivative::Derivative;
 use sway_types::{Ident, Spanned};
 
 use crate::{
+    declaration_engine::declaration_engine::de_get_trait,
     error::{err, ok},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
@@ -117,12 +118,19 @@ fn handle_supertraits(
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
-                ref interface_surface,
-                ref methods,
-                ref supertraits,
-                ..
-            })) => {
+            Some(TypedDeclaration::TraitDeclaration(decl_id)) => {
+                let TypedTraitDeclaration {
+                    ref interface_surface,
+                    ref methods,
+                    ref supertraits,
+                    ..
+                } = check!(
+                    CompileResult::from(de_get_trait(decl_id.clone(), &supertrait.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
                 // insert dummy versions of the interfaces for all of the supertraits
                 trait_namespace.insert_trait_implementation(
                     supertrait.name.clone(),
@@ -199,12 +207,14 @@ fn convert_trait_methods_to_dummy_funcs(
                                  name,
                                  is_reference,
                                  is_mutable,
+                                 mutability_span,
                                  type_id,
                                  type_span,
                              }| TypedFunctionParameter {
                                 name: name.clone(),
                                 is_reference: *is_reference,
                                 is_mutable: *is_mutable,
+                                mutability_span: mutability_span.clone(),
                                 type_id: check!(
                                     trait_namespace.resolve_type_with_self(
                                         *type_id,

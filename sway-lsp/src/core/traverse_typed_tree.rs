@@ -4,16 +4,19 @@ use crate::{
     core::token::{TokenMap, TypeDefinition, TypedAstToken},
     utils::token::{struct_declaration_of_type_id, to_ident_key},
 };
-use sway_core::semantic_analysis::ast_node::{
-    code_block::TypedCodeBlock,
-    expression::{
-        typed_expression::TypedExpression, typed_expression_variant::TypedExpressionVariant,
-        TypedIntrinsicFunctionKind,
+use sway_core::{
+    declaration_engine,
+    semantic_analysis::ast_node::{
+        code_block::TypedCodeBlock,
+        expression::{
+            typed_expression::TypedExpression, typed_expression_variant::TypedExpressionVariant,
+            TypedIntrinsicFunctionKind,
+        },
+        ProjectionKind, TypedFunctionDeclaration, TypedFunctionParameter, TypedImplTrait,
+        TypedTraitFn, {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
     },
-    ProjectionKind, TypedFunctionDeclaration, TypedFunctionParameter, TypedImplTrait, TypedTraitFn,
-    {TypedAstNode, TypedAstNodeContent, TypedDeclaration},
 };
-use sway_types::ident::Ident;
+use sway_types::{ident::Ident, Spanned};
 
 pub fn traverse_node(node: &TypedAstNode, tokens: &TokenMap) {
     match &node.content {
@@ -46,16 +49,24 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
 
             handle_expression(&variable.body, tokens);
         }
-        TypedDeclaration::ConstantDeclaration(const_decl) => {
+        TypedDeclaration::ConstantDeclaration(decl_id) => {
+            let const_decl =
+                declaration_engine::de_get_constant(decl_id.clone(), &decl_id.span()).unwrap();
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&const_decl.name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }
             handle_expression(&const_decl.value, tokens);
         }
-        TypedDeclaration::FunctionDeclaration(func_decl) => {
-            collect_typed_fn_decl(func_decl, tokens);
+        TypedDeclaration::FunctionDeclaration(decl_id) => {
+            // TODO: do not use unwrap
+            let func_decl =
+                declaration_engine::de_get_function(decl_id.clone(), &decl_id.span()).unwrap();
+            collect_typed_fn_decl(&func_decl, tokens);
         }
-        TypedDeclaration::TraitDeclaration(trait_decl) => {
+        TypedDeclaration::TraitDeclaration(decl_id) => {
+            // TODO: do not use unwrap
+            let trait_decl =
+                declaration_engine::de_get_trait(decl_id.clone(), &decl_id.span()).unwrap();
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_decl.name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }
@@ -64,12 +75,15 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 collect_typed_trait_fn_token(trait_fn, tokens);
             }
         }
-        TypedDeclaration::StructDeclaration(struct_dec) => {
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&struct_dec.name)) {
+        TypedDeclaration::StructDeclaration(decl_id) => {
+            // TODO: do not use unwrap
+            let struct_decl =
+                declaration_engine::de_get_struct(decl_id.clone(), &declaration.span()).unwrap();
+            if let Some(mut token) = tokens.get_mut(&to_ident_key(&struct_decl.name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }
 
-            for field in &struct_dec.fields {
+            for field in &struct_decl.fields {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
                     token.typed = Some(TypedAstToken::TypedStructField(field.clone()));
                     token.type_def = Some(TypeDefinition::TypeId(field.type_id));
@@ -83,14 +97,17 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 }
             }
 
-            for type_param in &struct_dec.type_parameters {
+            for type_param in &struct_decl.type_parameters {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&type_param.name_ident)) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
                     token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
                 }
             }
         }
-        TypedDeclaration::EnumDeclaration(enum_decl) => {
+        TypedDeclaration::EnumDeclaration(decl_id) => {
+            // TODO: do not use unwrap
+            let enum_decl =
+                declaration_engine::de_get_enum(decl_id.clone(), &decl_id.span()).unwrap();
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&enum_decl.name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }
@@ -116,13 +133,14 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 }
             }
         }
-        TypedDeclaration::ImplTrait(TypedImplTrait {
-            trait_name,
-            methods,
-            implementing_for_type_id,
-            type_implementing_for_span,
-            ..
-        }) => {
+        TypedDeclaration::ImplTrait(decl_id) => {
+            let TypedImplTrait {
+                trait_name,
+                methods,
+                implementing_for_type_id,
+                type_implementing_for_span,
+                ..
+            } = declaration_engine::de_get_impl_trait(decl_id.clone(), &decl_id.span()).unwrap();
             for ident in &trait_name.prefixes {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(ident)) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
@@ -131,21 +149,23 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
 
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_name.suffix)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                token.type_def = Some(TypeDefinition::TypeId(*implementing_for_type_id));
+                token.type_def = Some(TypeDefinition::TypeId(implementing_for_type_id));
             }
 
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(
-                type_implementing_for_span.clone(),
-            ))) {
+            if let Some(mut token) =
+                tokens.get_mut(&to_ident_key(&Ident::new(type_implementing_for_span)))
+            {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                token.type_def = Some(TypeDefinition::TypeId(*implementing_for_type_id));
+                token.type_def = Some(TypeDefinition::TypeId(implementing_for_type_id));
             }
 
             for method in methods {
-                collect_typed_fn_decl(method, tokens);
+                collect_typed_fn_decl(&method, tokens);
             }
         }
-        TypedDeclaration::AbiDeclaration(abi_decl) => {
+        TypedDeclaration::AbiDeclaration(decl_id) => {
+            let abi_decl =
+                declaration_engine::de_get_abi(decl_id.clone(), &decl_id.span()).unwrap();
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&abi_decl.name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }
@@ -160,7 +180,9 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
             }
         }
         TypedDeclaration::ErrorRecovery => {}
-        TypedDeclaration::StorageDeclaration(storage_decl) => {
+        TypedDeclaration::StorageDeclaration(decl_id) => {
+            let storage_decl =
+                declaration_engine::de_get_storage(decl_id.clone(), &decl_id.span()).unwrap();
             for field in &storage_decl.fields {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
                     token.typed = Some(TypedAstToken::TypedStorageField(field.clone()));

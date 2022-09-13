@@ -1,15 +1,22 @@
-[
-  {
-    "inputs": [],
-    "name": "foo",
-    "outputs": [
-      {
-        "components": [],
+{
+  "functions": [
+    {
+      "inputs": [],
+      "name": "foo",
+      "output": {
         "name": "",
-        "type": "()",
+        "type": 0,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  }
-]
+    }
+  ],
+  "loggedTypes": [],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}

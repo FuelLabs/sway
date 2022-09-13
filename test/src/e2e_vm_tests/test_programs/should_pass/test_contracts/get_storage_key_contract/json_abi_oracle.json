@@ -1,92 +1,85 @@
-[
-  {
-    "inputs": [],
-    "name": "from_f1",
-    "outputs": [
-      {
-        "components": null,
+{
+  "functions": [
+    {
+      "inputs": [],
+      "name": "from_f1",
+      "output": {
         "name": "",
-        "type": "b256",
+        "type": 1,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "from_f2",
-    "outputs": [
-      {
-        "components": null,
+    },
+    {
+      "inputs": [],
+      "name": "from_f2",
+      "output": {
         "name": "",
-        "type": "b256",
+        "type": 1,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "from_f3",
-    "outputs": [
-      {
-        "components": null,
+    },
+    {
+      "inputs": [],
+      "name": "from_f3",
+      "output": {
         "name": "",
-        "type": "b256",
+        "type": 1,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "from_f4",
-    "outputs": [
-      {
-        "components": null,
+    },
+    {
+      "inputs": [],
+      "name": "from_f4",
+      "output": {
         "name": "",
-        "type": "b256",
+        "type": 1,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "from_callers",
-    "outputs": [
-      {
-        "components": [
-          {
-            "components": null,
-            "name": "__tuple_element",
-            "type": "b256",
-            "typeArguments": null
-          },
-          {
-            "components": null,
-            "name": "__tuple_element",
-            "type": "b256",
-            "typeArguments": null
-          },
-          {
-            "components": null,
-            "name": "__tuple_element",
-            "type": "b256",
-            "typeArguments": null
-          },
-          {
-            "components": null,
-            "name": "__tuple_element",
-            "type": "b256",
-            "typeArguments": null
-          }
-        ],
+    },
+    {
+      "inputs": [],
+      "name": "from_callers",
+      "output": {
         "name": "",
-        "type": "(b256, b256, b256, b256)",
+        "type": 0,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  }
-]
+    }
+  ],
+  "loggedTypes": [],
+  "types": [
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "type": "(_, _, _, _)",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 1,
+      "typeParameters": null
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+[package]
+name = "swayfmt"
+version = "0.24.3"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "Sway language formatter."
+
+[dependencies]
+anyhow = "1"
+forc-util = { version = "0.24.3", path = "../forc-util" }
+ropey = "1.5"
+serde = { version = "1.0", features = ["derive"] }
+serde_ignored = "0.1"
+sway-ast = { version = "0.24.3", path = "../sway-ast" }
+sway-core = { version = "0.24.3", path = "../sway-core" }
+sway-parse = { version = "0.24.3", path = "../sway-parse" }
+sway-types = { version = "0.24.3", path = "../sway-types" }
+thiserror = "1.0.30"
+toml = "0.5"
+
+[dev-dependencies]
+forc-util = { path = "../forc-util" }
+paste = "1.0"
+prettydiff = "0.6"

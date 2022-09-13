@@ -15,6 +15,7 @@ fn main() -> Result<(), anyhow::Error> {
     pass_mgr.register::<ConstCombinePass>();
     pass_mgr.register::<InlinePass>();
     pass_mgr.register::<SimplifyCfgPass>();
+    pass_mgr.register::<DCEPass>();
 
     // Build the config from the command line.
     let config = ConfigBuilder::build(&pass_mgr, std::env::args())?;
@@ -176,6 +177,24 @@ impl NamedPass for SimplifyCfgPass {
 
     fn run(ir: &mut Context) -> Result<bool, IrError> {
         Self::run_on_all_fns(ir, optimize::simplify_cfg)
+    }
+}
+
+// -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
+
+struct DCEPass;
+
+impl NamedPass for DCEPass {
+    fn name() -> &'static str {
+        "dce"
+    }
+
+    fn descr() -> &'static str {
+        "Dead code elimination."
+    }
+
+    fn run(ir: &mut Context) -> Result<bool, IrError> {
+        Self::run_on_all_fns(ir, optimize::dce)
     }
 }
 

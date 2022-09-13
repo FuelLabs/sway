@@ -1,3 +1,4 @@
+mod collect_types_metadata;
 mod copy_types;
 mod create_type_id;
 mod integer_bits;
@@ -11,8 +12,8 @@ mod type_id;
 mod type_info;
 mod type_mapping;
 mod type_parameter;
-mod unresolved_type_check;
 
+pub(crate) use collect_types_metadata::*;
 pub(crate) use copy_types::*;
 pub(crate) use create_type_id::*;
 pub use integer_bits::*;
@@ -26,11 +27,9 @@ pub use type_id::*;
 pub use type_info::*;
 pub(crate) use type_mapping::*;
 pub use type_parameter::*;
-pub(crate) use unresolved_type_check::*;
 
 use crate::error::*;
 use std::fmt::Debug;
-use sway_types::Property;
 
 #[test]
 fn generic_enum_resolution() {

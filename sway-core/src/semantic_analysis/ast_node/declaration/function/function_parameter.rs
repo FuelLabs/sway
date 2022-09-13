@@ -15,6 +15,7 @@ pub struct TypedFunctionParameter {
     pub name: Ident,
     pub is_reference: bool,
     pub is_mutable: bool,
+    pub mutability_span: Span,
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
     pub type_span: Span,
@@ -69,7 +70,7 @@ impl TypedFunctionParameter {
         }
         ctx.namespace.insert_symbol(
             parameter.name.clone(),
-            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+            TypedDeclaration::VariableDeclaration(Box::new(TypedVariableDeclaration {
                 name: parameter.name.clone(),
                 body: TypedExpression {
                     expression: TypedExpressionVariant::FunctionParameter,
@@ -80,12 +81,13 @@ impl TypedFunctionParameter {
                 mutability,
                 type_ascription: type_id,
                 type_ascription_span: None,
-            }),
+            })),
         );
         let parameter = TypedFunctionParameter {
             name: parameter.name,
             is_reference: parameter.is_reference,
             is_mutable: parameter.is_mutable,
+            mutability_span: parameter.mutability_span,
             type_id,
             initial_type_id: parameter.type_id,
             type_span: parameter.type_span,

@@ -1,40 +1,37 @@
-use std::{marker::PhantomData, sync::RwLock};
+use std::sync::RwLock;
 
 use crate::{type_system::TypeId, TypeInfo};
 
 #[derive(Debug)]
-pub(crate) struct ConcurrentSlab<I, T> {
-    indexer: PhantomData<I>,
+pub(crate) struct ConcurrentSlab<T> {
     inner: RwLock<Vec<T>>,
 }
 
-impl<I, T> Default for ConcurrentSlab<I, T>
+impl<T> Default for ConcurrentSlab<T>
 where
     T: Default,
 {
     fn default() -> Self {
         Self {
-            indexer: PhantomData,
             inner: Default::default(),
         }
     }
 }
 
-impl<I, T> ConcurrentSlab<I, T>
+impl<T> ConcurrentSlab<T>
 where
     T: Clone,
-    I: From<usize> + std::ops::Deref<Target = usize>,
 {
-    pub fn insert(&self, value: T) -> I {
+    pub fn insert(&self, value: T) -> usize {
         let mut inner = self.inner.write().unwrap();
         let ret = inner.len();
         inner.push(value);
-        ret.into()
+        ret
     }
 
-    pub fn get(&self, index: I) -> T {
+    pub fn get(&self, index: usize) -> T {
         let inner = self.inner.read().unwrap();
-        inner[*index].clone()
+        inner[index].clone()
     }
 
     pub fn clear(&self) {
@@ -48,7 +45,7 @@ where
     }
 }
 
-impl ConcurrentSlab<TypeId, TypeInfo> {
+impl ConcurrentSlab<TypeInfo> {
     pub fn replace(
         &self,
         index: TypeId,

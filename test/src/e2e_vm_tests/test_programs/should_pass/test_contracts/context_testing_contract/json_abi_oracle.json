@@ -1,148 +1,111 @@
-[
-  {
-    "inputs": [],
-    "name": "get_id",
-    "outputs": [
-      {
-        "components": [
-          {
-            "components": null,
-            "name": "value",
-            "type": "b256",
-            "typeArguments": null
-          }
-        ],
+{
+  "functions": [
+    {
+      "inputs": [],
+      "name": "get_id",
+      "output": {
         "name": "",
-        "type": "struct ContractId",
+        "type": 1,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": [
-          {
-            "components": null,
-            "name": "value",
-            "type": "b256",
-            "typeArguments": null
-          }
-        ],
-        "name": "asset_id",
-        "type": "struct ContractId",
-        "typeArguments": null
-      }
-    ],
-    "name": "get_this_balance",
-    "outputs": [
-      {
-        "components": null,
+    },
+    {
+      "inputs": [
+        {
+          "name": "asset_id",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "name": "get_this_balance",
+      "output": {
         "name": "",
-        "type": "u64",
+        "type": 2,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": [
-          {
-            "components": null,
-            "name": "value",
-            "type": "b256",
-            "typeArguments": null
-          }
-        ],
-        "name": "asset_id",
-        "type": "struct ContractId",
-        "typeArguments": null
-      },
-      {
-        "components": [
-          {
-            "components": null,
-            "name": "value",
-            "type": "b256",
-            "typeArguments": null
-          }
-        ],
-        "name": "cid",
-        "type": "struct ContractId",
-        "typeArguments": null
-      }
-    ],
-    "name": "get_balance_of_contract",
-    "outputs": [
-      {
-        "components": null,
+    },
+    {
+      "inputs": [
+        {
+          "name": "asset_id",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "cid",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "name": "get_balance_of_contract",
+      "output": {
         "name": "",
-        "type": "u64",
+        "type": 2,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "get_amount",
-    "outputs": [
-      {
-        "components": null,
+    },
+    {
+      "inputs": [],
+      "name": "get_amount",
+      "output": {
         "name": "",
-        "type": "u64",
+        "type": 2,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "get_asset_id",
-    "outputs": [
-      {
-        "components": [
-          {
-            "components": null,
-            "name": "value",
-            "type": "b256",
-            "typeArguments": null
-          }
-        ],
+    },
+    {
+      "inputs": [],
+      "name": "get_asset_id",
+      "output": {
         "name": "",
-        "type": "struct ContractId",
+        "type": 1,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "get_gas",
-    "outputs": [
-      {
-        "components": null,
+    },
+    {
+      "inputs": [],
+      "name": "get_gas",
+      "output": {
         "name": "",
-        "type": "u64",
+        "type": 2,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "get_global_gas",
-    "outputs": [
-      {
-        "components": null,
+    },
+    {
+      "inputs": [],
+      "name": "get_global_gas",
+      "output": {
         "name": "",
-        "type": "u64",
+        "type": 2,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  }
-]
+    }
+  ],
+  "loggedTypes": [],
+  "types": [
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "value",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct ContractId",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 2,
+      "typeParameters": null
+    }
+  ]
+}

@@ -1,41 +1,50 @@
-[
-  {
-    "inputs": [
-      {
-        "components": null,
-        "name": "a",
-        "type": "u64",
-        "typeArguments": null
-      },
-      {
-        "components": null,
-        "name": "b",
-        "type": "u64",
-        "typeArguments": null
-      }
-    ],
-    "name": "multiply_u64",
-    "outputs": [
-      {
-        "components": [
-          {
-            "components": null,
-            "name": "__tuple_element",
-            "type": "u64",
-            "typeArguments": null
-          },
-          {
-            "components": null,
-            "name": "__tuple_element",
-            "type": "u64",
-            "typeArguments": null
-          }
-        ],
+{
+  "functions": [
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "b",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "name": "multiply_u64",
+      "output": {
         "name": "",
-        "type": "(u64, u64)",
+        "type": 0,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  }
-]
+    }
+  ],
+  "loggedTypes": [],
+  "types": [
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "type": "(_, _)",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 1,
+      "typeParameters": null
+    }
+  ]
+}

@@ -386,6 +386,7 @@ pub struct Property {
 pub struct JsonABIProgram {
     pub types: Vec<JsonTypeDeclaration>,
     pub functions: Vec<JsonABIFunction>,
+    pub logged_types: Vec<JsonLoggedType>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -394,6 +395,13 @@ pub struct JsonABIFunction {
     pub inputs: Vec<JsonTypeApplication>,
     pub name: String,
     pub output: JsonTypeApplication,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonLoggedType {
+    pub log_id: usize,
+    pub logged_type: JsonTypeApplication,
 }
 
 #[derive(Default, Debug, Clone, Eq, Serialize, Deserialize)]

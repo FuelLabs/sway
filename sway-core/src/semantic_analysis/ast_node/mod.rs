@@ -13,8 +13,9 @@ pub(crate) use mode::*;
 pub(crate) use return_statement::*;
 
 use crate::{
-    error::*, parse_tree::*, semantic_analysis::*, style::*, type_system::*,
-    types::DeterministicallyAborts, AstNode, AstNodeContent, Ident, ReturnStatement,
+    declaration_engine::declaration_engine::*, error::*, parse_tree::*, semantic_analysis::*,
+    style::*, type_system::*, types::DeterministicallyAborts, AstNode, AstNodeContent, Ident,
+    ReturnStatement,
 };
 
 use sway_types::{span::Span, state::StateIndex, Spanned};
@@ -39,15 +40,15 @@ pub enum TypedAstNodeContent {
     SideEffect,
 }
 
-impl UnresolvedTypeCheck for TypedAstNodeContent {
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
+impl CollectTypesMetadata for TypedAstNodeContent {
+    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
         use TypedAstNodeContent::*;
         match self {
-            ReturnStatement(stmt) => stmt.expr.check_for_unresolved_types(),
-            Declaration(decl) => decl.check_for_unresolved_types(),
-            Expression(expr) => expr.check_for_unresolved_types(),
-            ImplicitReturnExpression(expr) => expr.check_for_unresolved_types(),
-            SideEffect => vec![],
+            ReturnStatement(stmt) => stmt.expr.collect_types_metadata(),
+            Declaration(decl) => decl.collect_types_metadata(),
+            Expression(expr) => expr.collect_types_metadata(),
+            ImplicitReturnExpression(expr) => expr.collect_types_metadata(),
+            SideEffect => ok(vec![], vec![], vec![]),
         }
     }
 }
@@ -92,9 +93,9 @@ impl CopyTypes for TypedAstNode {
     }
 }
 
-impl UnresolvedTypeCheck for TypedAstNode {
-    fn check_for_unresolved_types(&self) -> Vec<CompileError> {
-        self.content.check_for_unresolved_types()
+impl CollectTypesMetadata for TypedAstNode {
+    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
+        self.content.collect_types_metadata()
     }
 }
 
@@ -112,28 +113,48 @@ impl DeterministicallyAborts for TypedAstNode {
 
 impl TypedAstNode {
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
-    pub(crate) fn is_public(&self) -> bool {
+    pub(crate) fn is_public(&self) -> CompileResult<bool> {
         use TypedAstNodeContent::*;
-        match &self.content {
-            Declaration(decl) => decl.visibility().is_public(),
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let public = match &self.content {
+            Declaration(decl) => {
+                let visibility = check!(
+                    decl.visibility(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                visibility.is_public()
+            }
             ReturnStatement(_) | Expression(_) | SideEffect | ImplicitReturnExpression(_) => false,
-        }
+        };
+        ok(public, warnings, errors)
     }
 
     /// Naive check to see if this node is a function declaration of a function called `main` if
     /// the [TreeType] is Script or Predicate.
-    pub(crate) fn is_main_function(&self, tree_type: TreeType) -> bool {
+    pub(crate) fn is_main_function(&self, tree_type: TreeType) -> CompileResult<bool> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         match &self {
             TypedAstNode {
+                span,
                 content:
-                    TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
-                        TypedFunctionDeclaration { name, .. },
-                    )),
+                    TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(decl_id)),
                 ..
-            } if name.as_str() == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME => {
-                matches!(tree_type, TreeType::Script | TreeType::Predicate)
+            } => {
+                let TypedFunctionDeclaration { name, .. } = check!(
+                    CompileResult::from(de_get_function(decl_id.clone(), span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let is_main = name.as_str() == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME
+                    && matches!(tree_type, TreeType::Script | TreeType::Predicate);
+                ok(is_main, warnings, errors)
             }
-            _ => false,
+            _ => ok(false, warnings, errors),
         }
     }
 
@@ -148,9 +169,9 @@ impl TypedAstNode {
                 exp.gather_return_statements()
             }
             // assignments and  reassignments can happen during control flow and can abort
-            TypedAstNodeContent::Declaration(TypedDeclaration::VariableDeclaration(
-                TypedVariableDeclaration { body, .. },
-            )) => body.gather_return_statements(),
+            TypedAstNodeContent::Declaration(TypedDeclaration::VariableDeclaration(decl)) => {
+                decl.body.gather_return_statements()
+            }
             TypedAstNodeContent::Expression(exp) => exp.gather_return_statements(),
             TypedAstNodeContent::SideEffect | TypedAstNodeContent::Declaration(_) => vec![],
         }
@@ -241,14 +262,15 @@ impl TypedAstNode {
                             let result = TypedExpression::type_check(ctx.by_ref(), body);
                             let body =
                                 check!(result, error_recovery_expr(name.span()), warnings, errors);
-                            let typed_var_decl =
-                                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                            let typed_var_decl = TypedDeclaration::VariableDeclaration(Box::new(
+                                TypedVariableDeclaration {
                                     name: name.clone(),
                                     body,
                                     mutability: convert_to_variable_immutability(false, is_mutable),
                                     type_ascription,
                                     type_ascription_span,
-                                });
+                                },
+                            ));
                             ctx.namespace.insert_symbol(name, typed_var_decl.clone());
                             typed_var_decl
                         }
@@ -264,12 +286,13 @@ impl TypedAstNode {
                             is_screaming_snake_case(&name).ok(&mut warnings, &mut errors);
                             let value =
                                 check!(result, error_recovery_expr(name.span()), warnings, errors);
+                            let decl = TypedConstantDeclaration {
+                                name: name.clone(),
+                                value,
+                                visibility,
+                            };
                             let typed_const_decl =
-                                TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                                    name: name.clone(),
-                                    value,
-                                    visibility,
-                                });
+                                TypedDeclaration::ConstantDeclaration(de_insert_constant(decl));
                             ctx.namespace.insert_symbol(name, typed_const_decl.clone());
                             typed_const_decl
                         }
@@ -281,7 +304,7 @@ impl TypedAstNode {
                                 errors
                             );
                             let name = enum_decl.name.clone();
-                            let decl = TypedDeclaration::EnumDeclaration(enum_decl);
+                            let decl = TypedDeclaration::EnumDeclaration(de_insert_enum(enum_decl));
                             check!(
                                 ctx.namespace.insert_symbol(name, decl.clone()),
                                 return err(warnings, errors),
@@ -298,8 +321,10 @@ impl TypedAstNode {
                                 warnings,
                                 errors
                             );
+
                             let name = fn_decl.name.clone();
-                            let decl = TypedDeclaration::FunctionDeclaration(fn_decl);
+                            let decl =
+                                TypedDeclaration::FunctionDeclaration(de_insert_function(fn_decl));
                             ctx.namespace.insert_symbol(name, decl.clone());
                             decl
                         }
@@ -311,7 +336,8 @@ impl TypedAstNode {
                                 errors
                             );
                             let name = trait_decl.name.clone();
-                            let decl = TypedDeclaration::TraitDeclaration(trait_decl);
+                            let decl_id = de_insert_trait(trait_decl);
+                            let decl = TypedDeclaration::TraitDeclaration(decl_id);
                             ctx.namespace.insert_symbol(name, decl.clone());
                             decl
                         }
@@ -327,7 +353,7 @@ impl TypedAstNode {
                                 implementing_for_type_id,
                                 impl_trait.methods.clone(),
                             );
-                            TypedDeclaration::ImplTrait(impl_trait)
+                            TypedDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
                         }
                         Declaration::ImplSelf(impl_self) => {
                             let impl_trait = check!(
@@ -341,7 +367,7 @@ impl TypedAstNode {
                                 impl_trait.implementing_for_type_id,
                                 impl_trait.methods.clone(),
                             );
-                            TypedDeclaration::ImplTrait(impl_trait)
+                            TypedDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
                         }
                         Declaration::StructDeclaration(decl) => {
                             let decl = check!(
@@ -351,7 +377,8 @@ impl TypedAstNode {
                                 errors
                             );
                             let name = decl.name.clone();
-                            let decl = TypedDeclaration::StructDeclaration(decl);
+                            let decl_id = de_insert_struct(decl);
+                            let decl = TypedDeclaration::StructDeclaration(decl_id);
                             // insert the struct decl into namespace
                             check!(
                                 ctx.namespace.insert_symbol(name, decl.clone()),
@@ -369,7 +396,7 @@ impl TypedAstNode {
                                 errors
                             );
                             let name = abi_decl.name.clone();
-                            let decl = TypedDeclaration::AbiDeclaration(abi_decl);
+                            let decl = TypedDeclaration::AbiDeclaration(de_insert_abi(abi_decl));
                             ctx.namespace.insert_symbol(name, decl.clone());
                             decl
                         }
@@ -410,17 +437,18 @@ impl TypedAstNode {
                                 ));
                             }
                             let decl = TypedStorageDeclaration::new(fields_buf, span);
+                            let decl_id = de_insert_storage(decl);
                             // insert the storage declaration into the symbols
                             // if there already was one, return an error that duplicate storage
 
                             // declarations are not allowed
                             check!(
-                                ctx.namespace.set_storage_declaration(decl.clone()),
+                                ctx.namespace.set_storage_declaration(decl_id.clone()),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
-                            TypedDeclaration::StorageDeclaration(decl)
+                            TypedDeclaration::StorageDeclaration(decl_id)
                         }
                     })
                 }
@@ -527,12 +555,14 @@ fn type_check_interface_surface(
                              name,
                              is_reference,
                              is_mutable,
+                             mutability_span,
                              type_id,
                              type_span,
                          }| TypedFunctionParameter {
                             name,
                             is_reference,
                             is_mutable,
+                            mutability_span,
                             type_id: check!(
                                 namespace.resolve_type_with_self(
                                     type_id,
@@ -610,7 +640,7 @@ fn type_check_trait_methods(
                 );
                 sig_ctx.namespace.insert_symbol(
                     name.clone(),
-                    TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                    TypedDeclaration::VariableDeclaration(Box::new(TypedVariableDeclaration {
                         name: name.clone(),
                         body: TypedExpression {
                             expression: TypedExpressionVariant::FunctionParameter,
@@ -621,7 +651,7 @@ fn type_check_trait_methods(
                         mutability: convert_to_variable_immutability(is_reference, is_mutable),
                         type_ascription: r#type,
                         type_ascription_span: None,
-                    }),
+                    })),
                 );
             },
         );
@@ -672,12 +702,14 @@ fn type_check_trait_methods(
                      type_id,
                      is_reference,
                      is_mutable,
+                     mutability_span,
                      type_span,
                  }| {
                     TypedFunctionParameter {
                         name,
                         is_reference,
                         is_mutable,
+                        mutability_span,
                         type_id: check!(
                             sig_ctx.resolve_type_with_self(
                                 type_id,
@@ -832,7 +864,7 @@ pub(crate) fn reassign_storage_subfield(
     }
 
     let storage_fields = check!(
-        ctx.namespace.get_storage_field_descriptors(),
+        ctx.namespace.get_storage_field_descriptors(&span),
         return err(warnings, errors),
         warnings,
         errors

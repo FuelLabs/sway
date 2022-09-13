@@ -43,6 +43,7 @@ keyword_impls! {
     UseToken,
     AsToken,
     StructToken,
+    ClassToken,
     EnumToken,
     SelfToken,
     FnToken,

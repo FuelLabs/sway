@@ -67,6 +67,10 @@ pub struct RunCommand {
     #[clap(long)]
     pub time_phases: bool,
 
+    /// Include logged types in the JSON ABI.
+    #[clap(long)]
+    pub generate_logged_types: bool,
+
     /// Pretty-print the outputs from the node.
     #[clap(long = "pretty-print", short = 'r')]
     pub pretty_print: bool,
@@ -91,10 +95,6 @@ pub struct RunCommand {
     #[clap(long)]
     pub minify_json_storage_slots: bool,
 
-    /// Set the transaction byte price. Defaults to 0.
-    #[clap(long)]
-    pub byte_price: Option<u64>,
-
     /// Set the transaction gas limit. Defaults to the maximum gas limit.
     #[clap(long)]
     pub gas_limit: Option<u64>,
@@ -113,4 +113,8 @@ pub struct RunCommand {
     /// in the node's view of the blockchain, (i.e. it does not affect the chain state).
     #[clap(long)]
     pub simulate: bool,
+
+    /// Do not sign the transaction
+    #[clap(long)]
+    pub unsigned: bool,
 }

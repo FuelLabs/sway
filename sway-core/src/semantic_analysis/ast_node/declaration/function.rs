@@ -1,12 +1,12 @@
 mod function_parameter;
 pub use function_parameter::*;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, style::*, type_system::*, types::*};
-use sha2::{Digest, Sha256};
-use sway_types::{
-    Function, Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Property, Span,
-    Spanned,
+use crate::{
+    declaration_engine::declaration_engine::de_insert_function, error::*, parse_tree::*,
+    semantic_analysis::*, style::*, type_system::*,
 };
+use sha2::{Digest, Sha256};
+use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {
@@ -31,7 +31,7 @@ impl From<&TypedFunctionDeclaration> for TypedAstNode {
         let span = o.span.clone();
         TypedAstNode {
             content: TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
-                o.clone(),
+                de_insert_function(o.clone()),
             )),
             span,
         }
@@ -81,39 +81,6 @@ impl MonomorphizeHelper for TypedFunctionDeclaration {
 
     fn name(&self) -> &Ident {
         &self.name
-    }
-}
-
-impl ToJsonAbi for TypedFunctionDeclaration {
-    type Output = Function;
-
-    fn generate_json_abi(&self) -> Self::Output {
-        Function {
-            name: self.name.as_str().to_string(),
-            type_field: "function".to_string(),
-            inputs: self
-                .parameters
-                .iter()
-                .map(|x| Property {
-                    name: x.name.as_str().to_string(),
-                    type_field: x.type_id.json_abi_str(),
-                    components: x.type_id.generate_json_abi(),
-                    type_arguments: x
-                        .type_id
-                        .get_type_parameters()
-                        .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
-                })
-                .collect(),
-            outputs: vec![Property {
-                name: "".to_string(),
-                type_field: self.return_type.json_abi_str(),
-                components: self.return_type.generate_json_abi(),
-                type_arguments: self
-                    .return_type
-                    .get_type_parameters()
-                    .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
-            }],
-        }
     }
 }
 
@@ -394,6 +361,7 @@ fn test_function_selector_behavior() {
                 name: Ident::new_no_span("foo"),
                 is_reference: false,
                 is_mutable: false,
+                mutability_span: Span::dummy(),
                 type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
                 initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
@@ -402,6 +370,7 @@ fn test_function_selector_behavior() {
                 name: Ident::new_no_span("baz"),
                 is_reference: false,
                 is_mutable: false,
+                mutability_span: Span::dummy(),
                 type_id: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
                 initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),

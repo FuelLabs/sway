@@ -1,15 +1,22 @@
-[
-  {
-    "inputs": [],
-    "name": "returns_gm_one",
-    "outputs": [
-      {
-        "components": null,
+{
+  "functions": [
+    {
+      "inputs": [],
+      "name": "returns_gm_one",
+      "output": {
         "name": "",
-        "type": "bool",
+        "type": 0,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  }
-]
+    }
+  ],
+  "loggedTypes": [],
+  "types": [
+    {
+      "components": null,
+      "type": "bool",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}
