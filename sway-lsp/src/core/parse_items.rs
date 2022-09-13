@@ -10,16 +10,18 @@ pub(crate) fn parse(src: Arc<str>, build_config: Option<&BuildConfig>, tokens: &
     let path = build_config.map(|build_config| build_config.canonical_root_module());
     if let Ok(module) = sway_parse::parse_file_standalone(src, path) {
         for item in module.items {
-            if let ItemKind::Abi(abi) = &item.value {
-                for (fn_sig, _) in &abi.abi_items.inner {
-                    collect_storage_attribute(&fn_sig.attribute_list, tokens);
+            match &item.value {
+                ItemKind::Abi(abi) => {
+                    for (fn_sig, _) in &abi.abi_items.inner {
+                        collect_storage_attribute(&fn_sig.attribute_list, tokens);
+                    }
                 }
-            }
-
-            if let ItemKind::Impl(item_impl) = &item.value {
-                for item_fn in &item_impl.contents.inner {
-                    collect_storage_attribute(&item_fn.attribute_list, tokens);
+                ItemKind::Impl(item_impl) => {
+                    for item_fn in &item_impl.contents.inner {
+                        collect_storage_attribute(&item_fn.attribute_list, tokens);
+                    }
                 }
+                _ => (),
             }
         }
     }
