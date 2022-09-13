@@ -3,7 +3,7 @@ use super::{
     TypedFunctionDeclaration, TypedImplTrait, TypedStorageDeclaration,
 };
 use crate::{
-    declaration_engine::declaration_engine::de_get_storage,
+    declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait, de_get_storage},
     error::*,
     metadata::MetadataManager,
     parse_tree::{ParseProgram, Purity, TreeType},
@@ -80,42 +80,57 @@ impl TypedProgram {
         }
 
         let mut mains = Vec::new();
-        let mut declarations = Vec::new();
+        let mut declarations = Vec::<TypedDeclaration>::new();
         let mut abi_entries = Vec::new();
         let mut fn_declarations = std::collections::HashSet::new();
         for node in &root.all_nodes {
             match &node.content {
-                TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(func))
-                    if func.name.as_str() == "main" =>
-                {
-                    mains.push(func.clone())
+                TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
+                    decl_id,
+                )) => {
+                    let func = check!(
+                        CompileResult::from(de_get_function(decl_id.clone(), &node.span)),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+
+                    if func.name.as_str() == "main" {
+                        mains.push(func.clone());
+                    }
+
+                    if !fn_declarations.insert(func.name.clone()) {
+                        errors
+                            .push(CompileError::MultipleDefinitionsOfFunction { name: func.name });
+                    }
+
+                    declarations.push(TypedDeclaration::FunctionDeclaration(decl_id.clone()));
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself.
-                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
-                    methods,
-                    implementing_for_type_id,
-                    ..
-                })) if matches!(
-                    look_up_type_id(*implementing_for_type_id),
-                    TypeInfo::Contract
-                ) =>
-                {
-                    abi_entries.extend(methods.clone())
+                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(decl_id)) => {
+                    let TypedImplTrait {
+                        methods,
+                        implementing_for_type_id,
+                        ..
+                    } = check!(
+                        CompileResult::from(de_get_impl_trait(decl_id.clone(), &node.span)),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if matches!(
+                        look_up_type_id(implementing_for_type_id),
+                        TypeInfo::Contract
+                    ) {
+                        abi_entries.extend(methods.clone());
+                    }
                 }
                 // XXX we're excluding the above ABI methods, is that OK?
                 TypedAstNodeContent::Declaration(decl) => {
-                    // Variable and constant declarations don't need a duplicate check.
-                    // Type declarations are checked elsewhere. That leaves functions.
-                    if let TypedDeclaration::FunctionDeclaration(func) = &decl {
-                        let name = func.name.clone();
-                        if !fn_declarations.insert(name.clone()) {
-                            errors.push(CompileError::MultipleDefinitionsOfFunction { name });
-                        }
-                    }
-                    declarations.push(decl.clone())
+                    declarations.push(decl.clone());
                 }
-                _ => (),
+                _ => {}
             };
         }
 
@@ -235,30 +250,68 @@ impl TypedProgram {
                         errors
                     );
                     if public {
-                        ret.append(&mut node.collect_types_metadata());
+                        ret.append(&mut check!(
+                            node.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
                     }
                 }
                 ret
             }
-            TypedProgramKind::Script { .. } => self
-                .root
-                .all_nodes
-                .iter()
-                .filter(|x| x.is_main_function(TreeType::Script))
-                .flat_map(CollectTypesMetadata::collect_types_metadata)
-                .collect(),
-            TypedProgramKind::Predicate { .. } => self
-                .root
-                .all_nodes
-                .iter()
-                .filter(|x| x.is_main_function(TreeType::Predicate))
-                .flat_map(CollectTypesMetadata::collect_types_metadata)
-                .collect(),
-            TypedProgramKind::Contract { abi_entries, .. } => abi_entries
-                .iter()
-                .map(TypedAstNode::from)
-                .flat_map(|x| x.collect_types_metadata())
-                .collect(),
+            TypedProgramKind::Script { .. } => {
+                let mut data = vec![];
+                for node in self.root.all_nodes.iter() {
+                    let is_main = check!(
+                        node.is_main_function(TreeType::Script),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if is_main {
+                        data.append(&mut check!(
+                            node.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                }
+                data
+            }
+            TypedProgramKind::Predicate { .. } => {
+                let mut data = vec![];
+                for node in self.root.all_nodes.iter() {
+                    let is_main = check!(
+                        node.is_main_function(TreeType::Predicate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if is_main {
+                        data.append(&mut check!(
+                            node.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                }
+                data
+            }
+            TypedProgramKind::Contract { abi_entries, .. } => {
+                let mut data = vec![];
+                for entry in abi_entries.iter() {
+                    data.append(&mut check!(
+                        TypedAstNode::from(entry).collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                data
+            }
         };
         if errors.is_empty() {
             ok(metadata, warnings, errors)
@@ -439,20 +492,31 @@ fn disallow_impure_functions(
     declarations: &[TypedDeclaration],
     mains: &[TypedFunctionDeclaration],
 ) -> Vec<CompileError> {
+    let mut errs: Vec<CompileError> = vec![];
     let fn_decls = declarations
         .iter()
         .filter_map(|decl| match decl {
-            TypedDeclaration::FunctionDeclaration(decl) => Some(decl),
+            TypedDeclaration::FunctionDeclaration(decl_id) => {
+                match de_get_function(decl_id.clone(), &decl.span()) {
+                    Ok(fn_decl) => Some(fn_decl),
+                    Err(err) => {
+                        errs.push(err);
+                        None
+                    }
+                }
+            }
             _ => None,
         })
-        .chain(mains);
-    fn_decls
+        .chain(mains.to_owned());
+    let mut err_purity = fn_decls
         .filter_map(|TypedFunctionDeclaration { purity, name, .. }| {
-            if *purity != Purity::Pure {
+            if purity != Purity::Pure {
                 Some(CompileError::ImpureInNonContract { span: name.span() })
             } else {
                 None
             }
         })
-        .collect()
+        .collect::<Vec<_>>();
+    errs.append(&mut err_purity);
+    errs
 }

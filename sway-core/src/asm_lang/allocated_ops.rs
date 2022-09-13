@@ -153,6 +153,7 @@ pub(crate) enum AllocatedOpcode {
     SRWQ(AllocatedRegister, AllocatedRegister),
     SWW(AllocatedRegister, AllocatedRegister),
     SWWQ(AllocatedRegister, AllocatedRegister),
+    TIME(AllocatedRegister, AllocatedRegister),
     TR(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     TRO(
         AllocatedRegister,
@@ -252,6 +253,7 @@ impl fmt::Display for AllocatedOp {
             SRWQ(a, b)      => format!("srwq {} {}", a, b),
             SWW(a, b)       => format!("sww  {} {}", a, b),
             SWWQ(a, b)      => format!("swwq {} {}", a, b),
+            TIME(a, b)      => format!("time {} {}", a, b),
             TR(a, b, c)     => format!("tr   {} {} {}", a, b, c),
             TRO(a, b, c, d) => format!("tro  {} {} {} {}", a, b, c, d),
             ECR(a, b, c)    => format!("ecr  {} {} {}", a, b, c),
@@ -357,6 +359,7 @@ impl AllocatedOp {
             SRWQ(a, b)      => VmOp::SRWQ(a.to_register_id(), b.to_register_id()),
             SWW (a, b)      => VmOp::SWW (a.to_register_id(), b.to_register_id()),
             SWWQ(a, b)      => VmOp::SWWQ(a.to_register_id(), b.to_register_id()),
+            TIME(a, b)      => VmOp::TIME(a.to_register_id(), b.to_register_id()),
             TR  (a, b, c)   => VmOp::TR  (a.to_register_id(), b.to_register_id(), c.to_register_id()),
             TRO (a, b, c, d)=> VmOp::TRO (a.to_register_id(), b.to_register_id(), c.to_register_id(), d.to_register_id()),
             ECR (a, b, c)   => VmOp::ECR (a.to_register_id(), b.to_register_id(), c.to_register_id()),

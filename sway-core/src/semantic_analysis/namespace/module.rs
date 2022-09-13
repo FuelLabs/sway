@@ -285,16 +285,17 @@ impl Module {
                     errors.push(CompileError::ImportPrivateSymbol { name: item.clone() });
                 }
                 // if this is a const, insert it into the local namespace directly
-                if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                    mutability: VariableMutability::ExportedConst,
-                    ref name,
-                    ..
-                }) = decl
-                {
-                    self[dst].insert_symbol(alias.unwrap_or_else(|| name.clone()), decl.clone());
-                    return ok((), warnings, errors);
+                if let TypedDeclaration::VariableDeclaration(ref var_decl) = decl {
+                    let TypedVariableDeclaration {
+                        mutability, name, ..
+                    } = &**var_decl;
+                    if mutability == &VariableMutability::ExportedConst {
+                        self[dst]
+                            .insert_symbol(alias.unwrap_or_else(|| name.clone()), decl.clone());
+                        return ok((), warnings, errors);
+                    }
                 }
-                let a = decl.return_type().value;
+                let a = decl.return_type(&item.span()).value;
                 //  if this is an enum or struct, import its implementations
                 let mut res = match a {
                     Some(a) => src_ns.implemented_traits.get_call_path_and_type_info(a),

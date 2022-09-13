@@ -5,8 +5,8 @@ use sway_types::{Span, Spanned};
 use crate::{
     concurrent_slab::ConcurrentSlab,
     semantic_analysis::{
-        TypedAbiDeclaration, TypedImplTrait, TypedStorageDeclaration, TypedStructDeclaration,
-        TypedTraitDeclaration, TypedTraitFn,
+        TypedAbiDeclaration, TypedConstantDeclaration, TypedEnumDeclaration, TypedImplTrait,
+        TypedStorageDeclaration, TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
     },
     CompileError, TypedFunctionDeclaration,
 };
@@ -129,20 +129,20 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_trait_fn(span)
     }
 
-    fn insert_trait_impl(&self, trait_impl: TypedImplTrait) -> DeclarationId {
-        let span = trait_impl.span.clone();
+    fn insert_impl_trait(&self, impl_trait: TypedImplTrait) -> DeclarationId {
+        let span = impl_trait.span.clone();
         DeclarationId::new(
-            self.slab.insert(DeclarationWrapper::TraitImpl(trait_impl)),
+            self.slab.insert(DeclarationWrapper::ImplTrait(impl_trait)),
             span,
         )
     }
 
-    fn get_trait_impl(
+    fn get_impl_trait(
         &self,
         index: DeclarationId,
         span: &Span,
     ) -> Result<TypedImplTrait, CompileError> {
-        self.slab.get(*index).expect_trait_impl(span)
+        self.slab.get(*index).expect_impl_trait(span)
     }
 
     fn insert_struct(&self, r#struct: TypedStructDeclaration) -> DeclarationId {
@@ -205,6 +205,46 @@ impl DeclarationEngine {
     ) -> Result<TypedAbiDeclaration, CompileError> {
         self.slab.get(*index).expect_abi(span)
     }
+
+    fn insert_constant(&self, constant: TypedConstantDeclaration) -> DeclarationId {
+        let span = constant.name.span();
+        DeclarationId::new(
+            self.slab
+                .insert(DeclarationWrapper::Constant(Box::new(constant))),
+            span,
+        )
+    }
+
+    fn get_constant(
+        &self,
+        index: DeclarationId,
+        span: &Span,
+    ) -> Result<TypedConstantDeclaration, CompileError> {
+        self.slab.get(*index).expect_constant(span)
+    }
+
+    fn insert_enum(&self, enum_decl: TypedEnumDeclaration) -> DeclarationId {
+        let span = enum_decl.span();
+        DeclarationId::new(self.slab.insert(DeclarationWrapper::Enum(enum_decl)), span)
+    }
+
+    fn get_enum(
+        &self,
+        index: DeclarationId,
+        span: &Span,
+    ) -> Result<TypedEnumDeclaration, CompileError> {
+        self.slab.get(*index).expect_enum(span)
+    }
+
+    fn add_monomorphized_enum_copy(
+        &self,
+        original_id: DeclarationId,
+        new_copy: TypedEnumDeclaration,
+    ) {
+        let span = new_copy.span();
+        let new_id = DeclarationId::new(self.slab.insert(DeclarationWrapper::Enum(new_copy)), span);
+        self.add_monomorphized_copy(original_id, new_id)
+    }
 }
 
 pub(crate) fn de_clear() {
@@ -215,11 +255,15 @@ pub(crate) fn de_look_up_decl_id(index: DeclarationId) -> DeclarationWrapper {
     DECLARATION_ENGINE.look_up_decl_id(index)
 }
 
+pub(crate) fn de_add_monomorphized_copy(original_id: DeclarationId, new_id: DeclarationId) {
+    DECLARATION_ENGINE.add_monomorphized_copy(original_id, new_id);
+}
+
 pub(crate) fn de_insert_function(function: TypedFunctionDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.insert_function(function)
 }
 
-pub(crate) fn de_get_function(
+pub fn de_get_function(
     index: DeclarationId,
     span: &Span,
 ) -> Result<TypedFunctionDeclaration, CompileError> {
@@ -262,22 +306,22 @@ pub(crate) fn de_get_trait_fn(
     DECLARATION_ENGINE.get_trait_fn(index, span)
 }
 
-pub(crate) fn insert_trait_impl(trait_impl: TypedImplTrait) -> DeclarationId {
-    DECLARATION_ENGINE.insert_trait_impl(trait_impl)
+pub(crate) fn de_insert_impl_trait(impl_trait: TypedImplTrait) -> DeclarationId {
+    DECLARATION_ENGINE.insert_impl_trait(impl_trait)
 }
 
-pub(crate) fn de_get_trait_impl(
+pub fn de_get_impl_trait(
     index: DeclarationId,
     span: &Span,
 ) -> Result<TypedImplTrait, CompileError> {
-    DECLARATION_ENGINE.get_trait_impl(index, span)
+    DECLARATION_ENGINE.get_impl_trait(index, span)
 }
 
 pub(crate) fn de_insert_struct(r#struct: TypedStructDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.insert_struct(r#struct)
 }
 
-pub(crate) fn de_get_struct(
+pub fn de_get_struct(
     index: DeclarationId,
     span: &Span,
 ) -> Result<TypedStructDeclaration, CompileError> {
@@ -315,4 +359,33 @@ pub(crate) fn de_insert_abi(abi: TypedAbiDeclaration) -> DeclarationId {
 
 pub fn de_get_abi(index: DeclarationId, span: &Span) -> Result<TypedAbiDeclaration, CompileError> {
     DECLARATION_ENGINE.get_abi(index, span)
+}
+
+pub(crate) fn de_insert_constant(constant: TypedConstantDeclaration) -> DeclarationId {
+    DECLARATION_ENGINE.insert_constant(constant)
+}
+
+pub fn de_get_constant(
+    index: DeclarationId,
+    span: &Span,
+) -> Result<TypedConstantDeclaration, CompileError> {
+    DECLARATION_ENGINE.get_constant(index, span)
+}
+
+pub(crate) fn de_insert_enum(enum_decl: TypedEnumDeclaration) -> DeclarationId {
+    DECLARATION_ENGINE.insert_enum(enum_decl)
+}
+
+pub fn de_get_enum(
+    index: DeclarationId,
+    span: &Span,
+) -> Result<TypedEnumDeclaration, CompileError> {
+    DECLARATION_ENGINE.get_enum(index, span)
+}
+
+pub(crate) fn de_add_monomorphized_enum_copy(
+    original_id: DeclarationId,
+    new_copy: TypedEnumDeclaration,
+) {
+    DECLARATION_ENGINE.add_monomorphized_enum_copy(original_id, new_copy);
 }
