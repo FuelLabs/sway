@@ -5,7 +5,9 @@
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use forc_util::init_tracing_subscriber;
+use forc_util::long_version;
 use forc_util::println_green;
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::{
     fs::{self, File},
@@ -15,11 +17,18 @@ use tar::Archive;
 use tracing::{error, info};
 use warp::Filter;
 
+static LONG_VERSION: Lazy<String> = Lazy::new(|| long_version(clap::crate_version!()).to_string());
+
+fn long_version_static() -> &'static str {
+    &LONG_VERSION
+}
+
 #[derive(Debug, Parser)]
 #[clap(
     name = "forc-explore",
     about = "Forc plugin for running the Fuel Block Explorer.",
-    version
+    version,
+    long_version = long_version_static()
 )]
 struct App {
     /// The port number at which the explorer will run on localhost.

@@ -1419,12 +1419,14 @@ dependencies = [
  "fs_extra",
  "fuel-asm",
  "hex",
+ "once_cell",
  "serde",
  "serde_json",
  "sway-core",
  "sway-types",
  "sway-utils",
  "term-table",
+ "time 0.3.14",
  "tokio",
  "toml",
  "toml_edit",
@@ -1452,6 +1454,7 @@ dependencies = [
  "fuels-types",
  "futures",
  "hex",
+ "once_cell",
  "serde",
  "serde_json",
  "sway-core",
@@ -1468,6 +1471,7 @@ dependencies = [
  "anyhow",
  "clap 3.2.20",
  "forc-util",
+ "once_cell",
  "reqwest",
  "serde",
  "tar",
@@ -1483,6 +1487,7 @@ dependencies = [
  "anyhow",
  "clap 3.2.20",
  "forc-util",
+ "once_cell",
  "prettydiff 0.5.1",
  "sway-core",
  "sway-utils",
@@ -1497,6 +1502,8 @@ version = "0.24.3"
 dependencies = [
  "anyhow",
  "clap 3.2.20",
+ "forc-util",
+ "once_cell",
  "sway-lsp",
  "tokio",
 ]
@@ -1532,10 +1539,12 @@ dependencies = [
  "annotate-snippets",
  "anyhow",
  "dirs 3.0.2",
+ "once_cell",
  "sway-core",
  "sway-types",
  "sway-utils",
  "termcolor",
+ "time 0.3.14",
  "tracing",
  "tracing-subscriber",
  "unicode-xid",
@@ -2666,6 +2675,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19e64526ebdee182341572e50e9ad03965aa510cd94427a4549448f285e957a1"
 dependencies = [
  "hermit-abi",
+ "libc",
+]
+
+[[package]]
+name = "num_threads"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2819ce041d2ee131036f4fc9d6ae7ae125a3a40e97ba64d04fe799ad9dabbb44"
+dependencies = [
  "libc",
 ]
 
@@ -4422,9 +4440,20 @@ dependencies = [
  "libc",
  "standback",
  "stdweb",
- "time-macros",
+ "time-macros 0.1.1",
  "version_check",
  "winapi",
+]
+
+[[package]]
+name = "time"
+version = "0.3.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c3f9a28b618c3a6b9251b6908e9c99e04b9e5c02e6581ccbb67d59c34ef7f9b"
+dependencies = [
+ "libc",
+ "num_threads",
+ "time-macros 0.2.4",
 ]
 
 [[package]]
@@ -4436,6 +4465,12 @@ dependencies = [
  "proc-macro-hack",
  "time-macros-impl",
 ]
+
+[[package]]
+name = "time-macros"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42657b1a6f4d817cda8e7a0ace261fe0cc946cf3a80314390b22cc61ae080792"
 
 [[package]]
 name = "time-macros-impl"

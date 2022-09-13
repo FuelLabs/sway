@@ -2,13 +2,23 @@
 //!
 //! Once installed and available via `PATH`, can be executed via `forc lsp`.
 
+
 use clap::Parser;
+use once_cell::sync::Lazy;
+use forc_util::long_version;
+
+static LONG_VERSION: Lazy<String> = Lazy::new(|| long_version(clap::crate_version!()).to_string());
+
+fn long_version_static() -> &'static str {
+    &LONG_VERSION
+}
 
 #[derive(Debug, Parser)]
 #[clap(
     name = "forc-lsp",
     about = "Forc plugin for the Sway LSP (Language Server Protocol) implementation.",
-    version
+    version,
+    long_version = long_version_static()
 )]
 struct App {
     /// Instructs the client to draw squiggly lines under all of the tokens that our server managed

@@ -22,6 +22,7 @@ fuels-signers = "0.21"
 fuels-types = "0.21"
 futures = "0.3"
 hex = "0.4.3"
+once_cell = "1.14"
 serde = "1.0"
 serde_json = "1.0.73"
 sway-core = { version = "0.24.3", path = "../../sway-core" }

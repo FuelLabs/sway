@@ -10,6 +10,8 @@ description = "A simple `forc` plugin for starting the sway language server."
 
 [dependencies]
 anyhow = "1"
-clap = { version = "3", features = ["derive"] }
+clap = { version = "3", features = ["derive", "cargo"] }
+forc-util = { version = "0.24.3", path = "../../forc-util" }
+once_cell = "1.14"
 sway-lsp = { version = "0.24.3", path = "../../sway-lsp" }
 tokio = { version = "1.8" }

@@ -1,9 +1,17 @@
 use clap::Parser;
+use forc_util::long_version;
+use once_cell::sync::Lazy;
+
+static LONG_VERSION: Lazy<String> = Lazy::new(|| long_version(clap::crate_version!()).to_string());
+
+fn long_version_static() -> &'static str {
+    &LONG_VERSION
+}
 
 /// Run script project.
 /// Crafts a script transaction then sends it to a running node.
 #[derive(Debug, Default, Parser)]
-#[clap(bin_name = "forc run", version)]
+#[clap(bin_name = "forc run", version, long_version = long_version_static())]
 pub struct RunCommand {
     /// Hex string of data to input to script.
     #[clap(short, long)]

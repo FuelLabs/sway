@@ -5,6 +5,7 @@ use annotate_snippets::{
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
 use anyhow::{bail, Result};
+use once_cell::sync::OnceCell;
 use std::env;
 use std::ffi::OsStr;
 use std::io::Write;
@@ -14,11 +15,13 @@ use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
 use sway_types::Spanned;
 use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
+use time::{macros::format_description, Date};
 use tracing_subscriber::filter::EnvFilter;
 
 pub mod restricted;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
+pub static LONG_VERSION: OnceCell<String> = OnceCell::new();
 
 /// Continually go up in the file tree until a specified file is found.
 #[allow(clippy::branches_sharing_code)]
@@ -440,6 +443,20 @@ pub fn init_tracing_subscriber() {
         .without_time()
         .with_target(false)
         .init();
+}
+
+pub fn long_version(clap_version: &str) -> String {
+    if let (Some(commit_hash), Some(commit_date)) =
+        (option_env!("CI_COMMIT_HASH"), option_env!("CI_COMMIT_DATE"))
+    {
+        assert!(commit_hash.chars().all(|c| c.is_ascii_alphanumeric()));
+
+        if let Ok(date) = Date::parse(commit_date, format_description!("[year]-[month]-[day]")) {
+            return format!("{} ({} {})", clap_version, commit_hash, date);
+        };
+    }
+
+    clap_version.to_string()
 }
 
 #[cfg(all(feature = "uwu", any(target_arch = "x86", target_arch = "x86_64")))]

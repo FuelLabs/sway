@@ -12,16 +12,26 @@ use std::{
 use taplo::formatter as taplo_fmt;
 use tracing::{error, info};
 
-use forc_util::{find_manifest_dir, init_tracing_subscriber, println_green, println_red};
+use forc_util::{
+    find_manifest_dir, init_tracing_subscriber, long_version, println_green, println_red,
+};
+use once_cell::sync::Lazy;
 use sway_core::BuildConfig;
 use sway_utils::{constants, get_sway_files};
 use swayfmt::Formatter;
+
+static LONG_VERSION: Lazy<String> = Lazy::new(|| long_version(clap::crate_version!()).to_string());
+
+fn long_version_static() -> &'static str {
+    &LONG_VERSION
+}
 
 #[derive(Debug, Parser)]
 #[clap(
     name = "forc-fmt",
     about = "Forc plugin for running the Sway code formatter.",
-    version
+    version,
+    long_version = long_version_static()
 )]
 pub struct App {
     /// Run in 'check' mode.

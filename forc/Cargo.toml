@@ -23,9 +23,11 @@ clap = { version = "3.1", features = ["cargo", "derive", "env"] }
 clap_complete = "3.1"
 forc-pkg = { version = "0.24.3", path = "../forc-pkg" }
 forc-util = { version = "0.24.3", path = "../forc-util" }
+time = { version = "0.3", features = ["parsing"] }
 fs_extra = "1.2"
 fuel-asm = "0.8"
 hex = "0.4.3"
+once_cell = "1.14"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.73"
 sway-core = { version = "0.24.3", path = "../sway-core" }

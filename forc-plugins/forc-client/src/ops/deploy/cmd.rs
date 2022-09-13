@@ -1,7 +1,15 @@
 use clap::Parser;
+use forc_util::long_version;
+use once_cell::sync::Lazy;
+
+static LONG_VERSION: Lazy<String> = Lazy::new(|| long_version(clap::crate_version!()).to_string());
+
+fn long_version_static() -> &'static str {
+    &LONG_VERSION
+}
 
 #[derive(Debug, Default, Parser)]
-#[clap(bin_name = "forc deploy", version)]
+#[clap(bin_name = "forc deploy", version, long_version = long_version_static())]
 pub struct DeployCommand {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
