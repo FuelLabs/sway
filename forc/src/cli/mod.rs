@@ -9,19 +9,18 @@ pub use check::Command as CheckCommand;
 use clap::Parser;
 pub use clean::Command as CleanCommand;
 pub use completions::Command as CompletionsCommand;
+use forc_util::long_version;
 pub use init::Command as InitCommand;
 pub use new::Command as NewCommand;
+use once_cell::sync::Lazy;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use plugins::Command as PluginsCommand;
 pub use template::Command as TemplateCommand;
 use test::Command as TestCommand;
 pub use update::Command as UpdateCommand;
-use forc_util::long_version;
-use once_cell::sync::Lazy;
 
 mod commands;
 mod plugin;
-
 
 static LONG_VERSION: Lazy<String> = Lazy::new(|| long_version(clap::crate_version!()).to_string());
 

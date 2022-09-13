@@ -2,10 +2,9 @@
 //!
 //! Once installed and available via `PATH`, can be executed via `forc lsp`.
 
-
 use clap::Parser;
-use once_cell::sync::Lazy;
 use forc_util::long_version;
+use once_cell::sync::Lazy;
 
 static LONG_VERSION: Lazy<String> = Lazy::new(|| long_version(clap::crate_version!()).to_string());
 
