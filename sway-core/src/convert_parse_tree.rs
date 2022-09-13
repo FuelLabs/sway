@@ -306,7 +306,7 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
             ))]
         }
         ItemKind::Enum(item_enum) => {
-            let enum_declaration = item_enum_to_enum_declaration(ec, item_enum)?;
+            let enum_declaration = item_enum_to_enum_declaration(ec, item_enum, item.attribute_list.clone())?;
             vec![AstNodeContent::Declaration(Declaration::EnumDeclaration(
                 enum_declaration,
             ))]
@@ -387,7 +387,7 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
 //
 //   #[foo(bar, bar)]
 
-type AttributesMap<'a> = HashMap<&'a str, Vec<&'a Ident>>;
+pub type AttributesMap<'a> = HashMap<&'a str, Vec<&'a Ident>>;
 
 fn item_attrs_to_map<'a>(
     ec: &mut ErrorContext,
@@ -549,6 +549,7 @@ fn item_struct_to_struct_declaration(
 fn item_enum_to_enum_declaration(
     ec: &mut ErrorContext,
     item_enum: ItemEnum,
+    attributes: Vec<AttributeDecl>,
 ) -> Result<EnumDeclaration, ErrorEmitted> {
     let mut errors = Vec::new();
     let span = item_enum.span();
@@ -557,7 +558,7 @@ fn item_enum_to_enum_declaration(
         .into_inner()
         .into_iter()
         .enumerate()
-        .map(|(tag, type_field)| type_field_to_enum_variant(ec, type_field.value, tag))
+        .map(|(tag, type_field)| type_field_to_enum_variant(ec, type_field.value, type_field.attribute_list, tag))
         .collect::<Result<Vec<_>, _>>()?;
 
     if variants.iter().any(|variant| {
@@ -591,6 +592,7 @@ fn item_enum_to_enum_declaration(
         variants,
         span,
         visibility: pub_token_opt_to_visibility(item_enum.visibility),
+        attributes: attributes,
     };
     Ok(enum_declaration)
 }
@@ -935,6 +937,7 @@ fn pub_token_opt_to_visibility(pub_token_opt: Option<PubToken>) -> Visibility {
 fn type_field_to_enum_variant(
     ec: &mut ErrorContext,
     type_field: TypeField,
+    attributes: Vec<AttributeDecl>,
     tag: usize,
 ) -> Result<EnumVariant, ErrorEmitted> {
     let span = type_field.span();
@@ -950,6 +953,7 @@ fn type_field_to_enum_variant(
         type_span,
         tag,
         span,
+        attributes,
     };
     Ok(enum_variant)
 }

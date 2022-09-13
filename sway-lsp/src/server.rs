@@ -81,6 +81,7 @@ fn capabilities() -> ServerCapabilities {
         }),
         // document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
+        hover_provider: Some(HoverProviderCapability::Simple(true)),
         ..ServerCapabilities::default()
     }
 }
@@ -403,7 +404,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
-            .join("struct_field_access")
+            .join("doc_comments")
     }
 
     #[allow(dead_code)]
@@ -579,8 +580,8 @@ mod tests {
         assert_eq!(response, Ok(Some(err)));
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test]
+    //#[allow(dead_code)]
     async fn did_open() {
         let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
 
