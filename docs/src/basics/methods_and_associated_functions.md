@@ -49,30 +49,3 @@ and when called:
 ```sway
 {{#include ../../../examples/ref_mut_params/src/main.sw:call_move_right}}
 ```
-
-## Syntax Examples
-
-```sway
-enum Color {
-    Blue: (),
-    Green: (),
-    Red: (),
-    Silver: (),
-    Grey: (),
-    // etc...
-}
-
-enum Make {
-    Ford: (),
-    Toyota: (),
-    Mazda: (),
-    Chevrolet: (),
-    BMW: (),
-    // etc...
-}
-
-struct Car {
-    make: Make,
-    color: Color,
-}
-```

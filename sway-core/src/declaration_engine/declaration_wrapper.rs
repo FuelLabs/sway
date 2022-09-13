@@ -4,8 +4,8 @@ use sway_types::Span;
 
 use crate::{
     semantic_analysis::{
-        TypedImplTrait, TypedStorageDeclaration, TypedStructDeclaration, TypedTraitDeclaration,
-        TypedTraitFn,
+        TypedAbiDeclaration, TypedConstantDeclaration, TypedEnumDeclaration, TypedImplTrait,
+        TypedStorageDeclaration, TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
     },
     type_system::{CopyTypes, TypeMapping},
     CompileError, TypedFunctionDeclaration,
@@ -20,9 +20,12 @@ pub(crate) enum DeclarationWrapper {
     Function(TypedFunctionDeclaration),
     Trait(TypedTraitDeclaration),
     TraitFn(TypedTraitFn),
-    TraitImpl(TypedImplTrait),
+    ImplTrait(TypedImplTrait),
     Struct(TypedStructDeclaration),
     Storage(TypedStorageDeclaration),
+    Abi(TypedAbiDeclaration),
+    Constant(Box<TypedConstantDeclaration>),
+    Enum(TypedEnumDeclaration),
 }
 
 impl Default for DeclarationWrapper {
@@ -41,9 +44,12 @@ impl PartialEq for DeclarationWrapper {
             (DeclarationWrapper::Function(l), DeclarationWrapper::Function(r)) => l == r,
             (DeclarationWrapper::Trait(l), DeclarationWrapper::Trait(r)) => l == r,
             (DeclarationWrapper::TraitFn(l), DeclarationWrapper::TraitFn(r)) => l == r,
-            (DeclarationWrapper::TraitImpl(l), DeclarationWrapper::TraitImpl(r)) => l == r,
+            (DeclarationWrapper::ImplTrait(l), DeclarationWrapper::ImplTrait(r)) => l == r,
             (DeclarationWrapper::Struct(l), DeclarationWrapper::Struct(r)) => l == r,
             (DeclarationWrapper::Storage(l), DeclarationWrapper::Storage(r)) => l == r,
+            (DeclarationWrapper::Abi(l), DeclarationWrapper::Abi(r)) => l == r,
+            (DeclarationWrapper::Constant(l), DeclarationWrapper::Constant(r)) => l == r,
+            (DeclarationWrapper::Enum(l), DeclarationWrapper::Enum(r)) => l == r,
             _ => false,
         }
     }
@@ -62,9 +68,12 @@ impl CopyTypes for DeclarationWrapper {
             DeclarationWrapper::Function(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::Trait(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::TraitFn(decl) => decl.copy_types(type_mapping),
-            DeclarationWrapper::TraitImpl(decl) => decl.copy_types(type_mapping),
+            DeclarationWrapper::ImplTrait(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::Struct(decl) => decl.copy_types(type_mapping),
             DeclarationWrapper::Storage(_) => {}
+            DeclarationWrapper::Abi(_) => {}
+            DeclarationWrapper::Constant(_) => {}
+            DeclarationWrapper::Enum(decl) => decl.copy_types(type_mapping),
         }
     }
 }
@@ -77,9 +86,12 @@ impl DeclarationWrapper {
             DeclarationWrapper::Function(_) => "function",
             DeclarationWrapper::Trait(_) => "trait",
             DeclarationWrapper::Struct(_) => "struct",
-            DeclarationWrapper::TraitImpl(_) => "impl trait",
+            DeclarationWrapper::ImplTrait(_) => "impl trait",
             DeclarationWrapper::TraitFn(_) => "trait function",
             DeclarationWrapper::Storage(_) => "storage",
+            DeclarationWrapper::Abi(_) => "abi",
+            DeclarationWrapper::Constant(_) => "constant",
+            DeclarationWrapper::Enum(_) => "enum",
         }
     }
 
@@ -128,9 +140,9 @@ impl DeclarationWrapper {
         }
     }
 
-    pub(super) fn expect_trait_impl(self, span: &Span) -> Result<TypedImplTrait, CompileError> {
+    pub(super) fn expect_impl_trait(self, span: &Span) -> Result<TypedImplTrait, CompileError> {
         match self {
-            DeclarationWrapper::TraitImpl(decl) => Ok(decl),
+            DeclarationWrapper::ImplTrait(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(
                 "did not expect to find unknown declaration",
                 span.clone(),
@@ -167,6 +179,51 @@ impl DeclarationWrapper {
                 span.clone(),
             )),
             actually => Err(CompileError::DeclIsNotStorage {
+                actually: actually.friendly_name().to_string(),
+                span: span.clone(),
+            }),
+        }
+    }
+
+    pub(super) fn expect_abi(self, span: &Span) -> Result<TypedAbiDeclaration, CompileError> {
+        match self {
+            DeclarationWrapper::Abi(decl) => Ok(decl),
+            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+                "did not expect to find unknown declaration",
+                span.clone(),
+            )),
+            _ => Err(CompileError::Internal(
+                "expected ABI definition",
+                span.clone(),
+            )),
+        }
+    }
+
+    pub(super) fn expect_constant(
+        self,
+        span: &Span,
+    ) -> Result<TypedConstantDeclaration, CompileError> {
+        match self {
+            DeclarationWrapper::Constant(decl) => Ok(*decl),
+            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+                "did not expect to find unknown declaration",
+                span.clone(),
+            )),
+            _ => Err(CompileError::Internal(
+                "expected to find constant definition",
+                span.clone(),
+            )),
+        }
+    }
+
+    pub(super) fn expect_enum(self, span: &Span) -> Result<TypedEnumDeclaration, CompileError> {
+        match self {
+            DeclarationWrapper::Enum(decl) => Ok(decl),
+            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+                "did not expect to find unknown declaration",
+                span.clone(),
+            )),
+            actually => Err(CompileError::DeclIsNotAnEnum {
                 actually: actually.friendly_name().to_string(),
                 span: span.clone(),
             }),

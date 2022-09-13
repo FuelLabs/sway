@@ -28,8 +28,3 @@ exclude = [
 
 [profile.dev.package.sway-lsp]
 debug = 2
-
-[patch.crates-io]
-# A workaround for a bug in mdbook `0.4.20` introduced by some breakage in rustc 1.64.0-nightly (62b272d25 2022-07-21).
-# This should be removed when either this PR https://github.com/rust-lang/mdBook/pull/1861 or a related fix is published.
-mdbook = { git = "https://github.com/mitchmindtree/mdBook", branch = "nightly-borrowcheck-err-workaround" }

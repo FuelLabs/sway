@@ -8,6 +8,7 @@ use super::{
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     constants,
+    declaration_engine::declaration_engine,
     error::{CompileError, Hint},
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -121,9 +122,10 @@ impl FnCompiler {
                     }
                     TypedAstNodeContent::Declaration(td) => match td {
                         TypedDeclaration::VariableDeclaration(tvd) => {
-                            self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
+                            self.compile_var_decl(context, md_mgr, *tvd, span_md_idx)
                         }
-                        TypedDeclaration::ConstantDeclaration(tcd) => {
+                        TypedDeclaration::ConstantDeclaration(decl_id) => {
+                            let tcd = declaration_engine::de_get_constant(decl_id, &ast_node.span)?;
                             self.compile_const_decl(context, md_mgr, tcd, span_md_idx)
                         }
                         TypedDeclaration::FunctionDeclaration(_) => {
@@ -144,17 +146,20 @@ impl FnCompiler {
                                 span: ast_node.span,
                             })
                         }
-                        TypedDeclaration::EnumDeclaration(ted) => {
+                        TypedDeclaration::EnumDeclaration(decl_id) => {
+                            let ted = declaration_engine::de_get_enum(decl_id, &ast_node.span)?;
                             let span_md_idx = md_mgr.span_to_md(context, &ted.span);
                             create_enum_aggregate(context, ted.variants).map(|_| ())?;
                             Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
                         }
-                        TypedDeclaration::ImplTrait(TypedImplTrait { span, .. }) => {
+                        TypedDeclaration::ImplTrait(decl_id) => {
                             // XXX What if we ignore the trait implementation???  Potentially since
                             // we currently inline everything and below we 'recreate' the functions
                             // lazily as they are called, nothing needs to be done here.  BUT!
                             // This is obviously not really correct, and eventually we want to
                             // compile and then call these properly.
+                            let TypedImplTrait { span, .. } =
+                                declaration_engine::de_get_impl_trait(decl_id, &ast_node.span)?;
                             let span_md_idx = md_mgr.span_to_md(context, &span);
                             Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
                         }

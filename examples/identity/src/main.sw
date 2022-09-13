@@ -44,12 +44,8 @@ impl IdentityExample for Contract {
     fn identity_to_contract_id(my_identity: Identity) {
         // ANCHOR: identity_to_contract_id
         let my_contract_id: ContractId = match my_identity {
-            Identity::ContractId(identity) => {
-                identity
-            },
-            _ => {
-                revert(0);
-            }
+            Identity::ContractId(identity) => identity,
+            _ => revert(0),
         };
         // ANCHOR_END: identity_to_contract_id
     }
@@ -60,12 +56,8 @@ impl IdentityExample for Contract {
 
         // ANCHOR: different_executions
         match my_identity {
-            Identity::Address(identity) => {
-                transfer_to_output(amount, token_id, identity);
-            },
-            Identity::ContractId(identity) => {
-                force_transfer_to_contract(amount, token_id, identity);
-            },
+            Identity::Address(identity) => transfer_to_output(amount, token_id, identity),
+            Identity::ContractId(identity) => force_transfer_to_contract(amount, token_id, identity),
         };
         // ANCHOR_END: different_executions
     }

@@ -3,7 +3,7 @@
 //! as the IR assumes all types are well-formed and will throw an ICE (internal compiler error) if
 //! that is not the case.
 
-use crate::type_system::TypeId;
+use crate::{type_system::TypeId, CompileResult};
 use sway_types::{span::Span, Ident};
 
 /// If any types contained by this node are unresolved or have yet to be inferred, throw an
@@ -18,5 +18,5 @@ pub enum TypeMetadata {
 }
 
 pub(crate) trait CollectTypesMetadata {
-    fn collect_types_metadata(&self) -> Vec<TypeMetadata>;
+    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>>;
 }

@@ -41,6 +41,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         build_profile,
         release,
         time_phases,
+        generate_logged_types,
         unsigned,
         gas_limit,
         gas_price,
@@ -63,6 +64,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         build_profile,
         release,
         time_phases,
+        generate_logged_types,
     };
 
     let compiled = forc_pkg::build_with_options(build_options)?;
