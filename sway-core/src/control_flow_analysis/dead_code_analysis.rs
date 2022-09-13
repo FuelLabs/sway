@@ -123,25 +123,28 @@ impl ControlFlowGraph {
         graph.entry_points = match tree_type {
             TreeType::Predicate | TreeType::Script => {
                 // a predicate or script have a main function as the only entry point
-                vec![
-                    graph
-                        .graph
-                        .node_indices()
-                        .find(|i| match graph.graph[*i] {
-                            ControlFlowGraphNode::OrganizationalDominator(_) => false,
-                            ControlFlowGraphNode::ProgramNode(TypedAstNode {
-                                content:
-                                    TypedAstNodeContent::Declaration(
-                                        TypedDeclaration::FunctionDeclaration(
-                                            TypedFunctionDeclaration { ref name, .. },
-                                        ),
-                                    ),
-                                ..
-                            }) => name.as_str() == "main",
-                            _ => false,
-                        })
-                        .unwrap(),
-                ]
+                let mut ret = vec![];
+                for i in graph.graph.node_indices() {
+                    let count_it = match &graph.graph[i] {
+                        ControlFlowGraphNode::OrganizationalDominator(_) => false,
+                        ControlFlowGraphNode::ProgramNode(TypedAstNode {
+                            span,
+                            content:
+                                TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
+                                    decl_id,
+                                )),
+                            ..
+                        }) => {
+                            let decl = de_get_function(decl_id.clone(), span)?;
+                            decl.name.as_str() == "main"
+                        }
+                        _ => false,
+                    };
+                    if count_it {
+                        ret.push(i);
+                    }
+                }
+                ret
             }
             TreeType::Contract | TreeType::Library { .. } => {
                 let mut ret = vec![];
@@ -151,13 +154,13 @@ impl ControlFlowGraph {
                         ControlFlowGraphNode::ProgramNode(TypedAstNode {
                             content:
                                 TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
-                                    TypedFunctionDeclaration {
-                                        visibility: Visibility::Public,
-                                        ..
-                                    },
+                                    decl_id,
                                 )),
                             ..
-                        }) => true,
+                        }) => {
+                            let function_decl = de_get_function(decl_id.clone(), &decl_id.span())?;
+                            function_decl.visibility == Visibility::Public
+                        }
                         ControlFlowGraphNode::ProgramNode(TypedAstNode {
                             content:
                                 TypedAstNodeContent::Declaration(TypedDeclaration::TraitDeclaration(
@@ -354,8 +357,9 @@ fn connect_declaration(
                 value.span.clone(),
             )
         }
-        FunctionDeclaration(fn_decl) => {
-            connect_typed_fn_decl(fn_decl, graph, entry_node, span, exit_node, tree_type)?;
+        FunctionDeclaration(decl_id) => {
+            let fn_decl = de_get_function(decl_id.clone(), &decl.span())?;
+            connect_typed_fn_decl(&fn_decl, graph, entry_node, span, exit_node, tree_type)?;
             Ok(leaves.to_vec())
         }
         TraitDeclaration(decl_id) => {
@@ -1251,10 +1255,7 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
         // if this is a function, struct, or trait declaration that is never called, then it is dead
         // code.
         TypedAstNode {
-            content:
-                TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
-                    TypedFunctionDeclaration { .. },
-                )),
+            content: TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(_)),
             span,
             ..
         } => CompileWarning {
