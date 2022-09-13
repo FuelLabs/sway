@@ -5,7 +5,6 @@ use annotate_snippets::{
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
 use anyhow::{bail, Result};
-use once_cell::sync::OnceCell;
 use std::env;
 use std::ffi::OsStr;
 use std::io::Write;
@@ -21,7 +20,6 @@ use tracing_subscriber::filter::EnvFilter;
 pub mod restricted;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
-pub static LONG_VERSION: OnceCell<String> = OnceCell::new();
 
 /// Continually go up in the file tree until a specified file is found.
 #[allow(clippy::branches_sharing_code)]
