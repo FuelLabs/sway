@@ -19,7 +19,7 @@ pub trait From {
 impl From for I32 {
     /// Helper function to get a signed number from with an underlying
     fn from(underlying: u32) -> Self {
-        I32 {
+        Self {
             underlying,
         }
     }
@@ -96,7 +96,7 @@ impl core::ops::Add for I32 {
     /// Add a I32 to a I32. Panics on overflow.
     fn add(self, other: Self) -> Self {
         // subtract 1 << 31 to avoid double move
-        ~I32::from(self.underlying - ~I32::indent() + other.underlying)
+        ~Self::from(self.underlying - ~I32::indent() + other.underlying)
     }
 }
 
@@ -106,10 +106,10 @@ impl core::ops::Subtract for I32 {
         let mut res = ~I32::new();
         if self > other {
             // add 1 << 31 to avoid loosing the move
-            res = ~I32::from(self.underlying - other.underlying + ~I32::indent());
+            res = ~Self::from(self.underlying - other.underlying + ~I32::indent());
         } else {
             // subtract from 1 << 31 as we are getting a negative value
-            res = ~I32::from(~I32::indent() - (other.underlying - self.underlying));
+            res = ~Self::from(~I32::indent() - (other.underlying - self.underlying));
         }
         res
     }
@@ -120,13 +120,13 @@ impl core::ops::Multiply for I32 {
     fn multiply(self, other: Self) -> Self {
         let mut res = ~I32::new();
         if self.underlying >= ~I32::indent() && other.underlying >= ~I32::indent() {
-            res = ~I32::from((self.underlying - ~I32::indent()) * (other.underlying -~I32::indent()) + ~I32::indent());
+            res = ~Self::from((self.underlying - ~I32::indent()) * (other.underlying -~I32::indent()) + ~I32::indent());
         } else if self.underlying < ~I32::indent() && other.underlying < ~I32::indent() {
-            res = ~I32::from((~I32::indent() - self.underlying) * (~I32::indent() - other.underlying) + ~I32::indent());
+            res = ~Self::from((~I32::indent() - self.underlying) * (~I32::indent() - other.underlying) + ~I32::indent());
         } else if self.underlying >= ~I32::indent() && other.underlying < ~I32::indent() {
-            res = ~I32::from(~I32::indent() - (self.underlying - ~I32::indent()) * (~I32::indent() - other.underlying));
+            res = ~Self::from(~I32::indent() - (self.underlying - ~I32::indent()) * (~I32::indent() - other.underlying));
         } else if self.underlying < ~I32::indent() && other.underlying >= ~I32::indent() {
-            res = ~I32::from(~I32::indent() - (other.underlying - ~I32::indent()) * (~I32::indent() - self.underlying));
+            res = ~Self::from(~I32::indent() - (other.underlying - ~I32::indent()) * (~I32::indent() - self.underlying));
         }
         res
     }
