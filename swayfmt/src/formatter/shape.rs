@@ -136,19 +136,16 @@ impl CodeLine {
         self.width -= extra_width;
     }
     /// Update `CodeLine::line_style` with a given LineStyle.
-    pub(crate) fn with_line_style(&mut self, line_style: LineStyle) {
+    pub(crate) fn update_line_style(&mut self, line_style: LineStyle) {
         self.line_style = line_style;
     }
     /// Update `CodeLine::expr_kind` with a given ExprKind.
-    pub(crate) fn with_expr_kind(&mut self, expr_kind: ExprKind) {
+    pub(crate) fn update_expr_kind(&mut self, expr_kind: ExprKind) {
         self.expr_kind = expr_kind;
     }
     /// Update the value of `has_where_clause`.
-    pub(crate) fn update_where_clause(&mut self) {
-        match self.has_where_clause {
-            true => self.has_where_clause = false,
-            false => self.has_where_clause = true,
-        }
+    pub(crate) fn update_where_clause(&mut self, has_where_clause: bool) {
+        self.has_where_clause = has_where_clause;
     }
 }
 
@@ -249,49 +246,49 @@ impl Shape {
                         || field_width.unwrap_or(0) > self.width_heuristics.structure_field_width
                         || body_width.unwrap_or(0) > self.width_heuristics.structure_lit_width
                     {
-                        self.code_line.with_line_style(LineStyle::Multiline)
+                        self.code_line.update_line_style(LineStyle::Multiline)
                     } else {
-                        self.code_line.with_line_style(LineStyle::Inline)
+                        self.code_line.update_line_style(LineStyle::Inline)
                     }
                 } else {
-                    self.code_line.with_line_style(LineStyle::Multiline)
+                    self.code_line.update_line_style(LineStyle::Multiline)
                 }
             }
             ExprKind::Collection => {
                 if self.code_line.width > config.whitespace.max_width
                     || body_width.unwrap_or(0) > self.width_heuristics.structure_lit_width
                 {
-                    self.code_line.with_line_style(LineStyle::Multiline)
+                    self.code_line.update_line_style(LineStyle::Multiline)
                 } else {
-                    self.code_line.with_line_style(LineStyle::Normal)
+                    self.code_line.update_line_style(LineStyle::Normal)
                 }
             }
             ExprKind::Import => {
                 if self.code_line.width > config.whitespace.max_width {
-                    self.code_line.with_line_style(LineStyle::Multiline)
+                    self.code_line.update_line_style(LineStyle::Multiline)
                 } else {
-                    self.code_line.with_line_style(LineStyle::Normal)
+                    self.code_line.update_line_style(LineStyle::Normal)
                 }
             }
             ExprKind::Function => {
                 if self.code_line.width > config.whitespace.max_width
                     || body_width.unwrap_or(0) > self.width_heuristics.fn_call_width
                 {
-                    self.code_line.with_line_style(LineStyle::Multiline)
+                    self.code_line.update_line_style(LineStyle::Multiline)
                 } else {
-                    self.code_line.with_line_style(LineStyle::Normal)
+                    self.code_line.update_line_style(LineStyle::Normal)
                 }
             }
             ExprKind::Conditional => {
                 if self.code_line.width < self.width_heuristics.single_line_if_else_max_width {
-                    self.code_line.with_line_style(LineStyle::Inline)
+                    self.code_line.update_line_style(LineStyle::Inline)
                 } else if body_width.unwrap_or(0) > self.width_heuristics.chain_width {
-                    self.code_line.with_line_style(LineStyle::Multiline)
+                    self.code_line.update_line_style(LineStyle::Multiline)
                 } else {
-                    self.code_line.with_line_style(LineStyle::Normal)
+                    self.code_line.update_line_style(LineStyle::Normal)
                 }
             }
-            _ => self.code_line.with_line_style(LineStyle::default()),
+            _ => self.code_line.update_line_style(LineStyle::default()),
         }
     }
     /// Create a new `Shape` with a new `CodeLine` from a given `LineStyle` and `ExprKind`.
@@ -363,7 +360,7 @@ mod test {
     #[test]
     fn test_get_line_style_struct() {
         let mut formatter = Formatter::default();
-        formatter.shape.code_line.with_expr_kind(ExprKind::Struct);
+        formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
         formatter
             .shape
             .get_line_style(Some(9), Some(18), &formatter.config);

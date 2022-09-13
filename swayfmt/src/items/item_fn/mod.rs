@@ -65,7 +65,7 @@ impl CurlyBrace for ItemFn {
             ItemBraceStyle::SameLineWhere => match formatter.shape.code_line.has_where_clause {
                 true => {
                     write!(line, "{}", open_brace)?;
-                    formatter.shape.code_line.update_where_clause();
+                    formatter.shape.code_line.update_where_clause(false);
                     formatter.shape.block_indent(&formatter.config);
                 }
                 false => {
@@ -167,7 +167,7 @@ fn format_fn_sig(
     if let Some(where_clause) = &fn_sig.where_clause_opt {
         writeln!(formatted_code)?;
         where_clause.format(formatted_code, formatter)?;
-        formatter.shape.code_line.update_where_clause();
+        formatter.shape.code_line.update_where_clause(true);
     }
 
     Ok(())

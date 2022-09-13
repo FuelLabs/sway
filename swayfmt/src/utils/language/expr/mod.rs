@@ -55,7 +55,7 @@ impl Format for Expr {
                         temp_formatter
                             .shape
                             .code_line
-                            .with_line_style(LineStyle::Inline);
+                            .update_line_style(LineStyle::Inline);
                         format_expr_struct(path, fields, &mut buf, &mut temp_formatter)?;
 
                         // get the largest field size and the size of the body
@@ -222,7 +222,7 @@ impl Format for Expr {
                         temp_formatter
                             .shape
                             .code_line
-                            .with_line_style(LineStyle::Inline);
+                            .update_line_style(LineStyle::Inline);
                         format_method_call(
                             target,
                             dot_token,
@@ -243,7 +243,7 @@ impl Format for Expr {
                         // changes to the actual formatter
                         let expr_width = buf.chars().count() as usize;
                         formatter.shape.code_line.add_width(expr_width);
-                        formatter.shape.code_line.with_expr_kind(ExprKind::Struct);
+                        formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
                         formatter.shape.get_line_style(
                             Some(field_width),
                             Some(body_width),

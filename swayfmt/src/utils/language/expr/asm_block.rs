@@ -22,12 +22,15 @@ impl Format for AsmBlock {
         formatter.with_shape(formatter.shape, |formatter| -> Result<(), FormatterError> {
             let contents = self.contents.get();
             if contents.instructions.is_empty() && contents.final_expr_opt.is_some() {
-                formatter.shape.code_line.with_line_style(LineStyle::Inline)
+                formatter
+                    .shape
+                    .code_line
+                    .update_line_style(LineStyle::Inline)
             } else {
                 formatter
                     .shape
                     .code_line
-                    .with_line_style(LineStyle::Multiline)
+                    .update_line_style(LineStyle::Multiline)
             }
             format_asm_block(self, formatted_code, formatter)?;
 

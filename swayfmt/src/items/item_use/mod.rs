@@ -36,7 +36,7 @@ impl Format for ItemUse {
                 temp_formatter
                     .shape
                     .code_line
-                    .with_line_style(LineStyle::Normal);
+                    .update_line_style(LineStyle::Normal);
                 format_use_stmt(self, &mut buf, &mut temp_formatter)?;
 
                 let expr_width = buf.chars().count() as usize;

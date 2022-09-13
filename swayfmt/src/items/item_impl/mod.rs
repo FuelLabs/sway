@@ -32,7 +32,7 @@ impl Format for ItemImpl {
         if let Some(where_clause) = &self.where_clause_opt {
             write!(formatted_code, " ")?;
             where_clause.format(formatted_code, formatter)?;
-            formatter.shape.code_line.update_where_clause();
+            formatter.shape.code_line.update_where_clause(true);
         }
         Self::open_curly_brace(formatted_code, formatter)?;
         let contents = self.contents.get();
@@ -67,7 +67,7 @@ impl CurlyBrace for ItemImpl {
             ItemBraceStyle::SameLineWhere => match formatter.shape.code_line.has_where_clause {
                 true => {
                     writeln!(line, "{}", open_brace)?;
-                    formatter.shape.code_line.update_where_clause();
+                    formatter.shape.code_line.update_where_clause(false);
                 }
                 false => {
                     writeln!(line, " {}", open_brace)?;
