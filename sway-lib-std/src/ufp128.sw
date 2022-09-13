@@ -14,30 +14,30 @@ pub trait From {
 }
 
 impl From for UFP128 {
-    fn from(int_part: u64, fract_part: u64) -> UFP128 {
-        UFP128{
+    fn from(int_part: u64, fract_part: u64) -> Self {
+        Self{
             value: ~U128::from(int_part, fract_part)
         } 
     }
 }
 
 impl UFP128 {
-    pub fn zero() -> UFP128 {
-        UFP128 {
+    pub fn zero() -> Self {
+        Self {
             value: ~U128::from(0, 0),
         }
     }
 
     /// The smallest value that can be represented by this type.
-    pub fn min() -> UFP128 {
-        UFP128 {
+    pub fn min() -> Self {
+        Self {
             value: ~U128::min(),
         }
     }
 
     /// The largest value that can be represented by this type,
-    pub fn max() -> UFP128 {
-        UFP128 {
+    pub fn max() -> Self {
+        Self {
             value: ~U128::max(),
         }
     }
@@ -161,7 +161,7 @@ impl UFP128 {
     pub fn recip(number: UFP128) -> Self {
         let one = ~U128::from(0,1);
         
-        UFP128 {
+        Self {
             value: one / number.value
         }
     }
