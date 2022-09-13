@@ -1,7 +1,8 @@
 script;
 
 use std::assert::assert;
-use std::u128::U128;
+use std::u128::*;
+use std::result::*;
 
 fn main() -> bool {
     let zero = ~U128::from(0, 0);
