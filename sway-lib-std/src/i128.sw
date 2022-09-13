@@ -44,8 +44,8 @@ impl core::ops::Ord for I128 {
 
 impl I128 {
     /// The underlying value that corresponds to zero signed value
-    pub fn indent() -> Self {
-        Self {
+    pub fn indent() -> U128 {
+        U128 {
             upper: 1,
             lower: 0,
         }
