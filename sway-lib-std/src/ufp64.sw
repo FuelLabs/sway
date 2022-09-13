@@ -17,29 +17,29 @@ impl UFP64 {
         1 << 32
     }
 
-    pub fn zero() -> UFP64 {
-        UFP64 {
+    pub fn zero() -> Self {
+        Self {
             value: 0,
         }
     }
 
     /// Creates UFP64 from u64. Note that ~UFP64::from(1) is 1 / 2^32 and not 1.
-    pub fn from(value: u64) -> UFP64 {
-        UFP64 {
+    pub fn from(value: u64) -> Self {
+        Self {
             value, 
         }
     }
 
     /// The smallest value that can be represented by this type.
-    pub fn min() -> UFP64 {
-        UFP64 {
+    pub fn min() -> Self {
+        Self {
             value: ~u64::min(),
         }
     }
 
     /// The largest value that can be represented by this type,
-    pub fn max() -> UFP64 {
-        UFP64 {
+    pub fn max() -> Self {
+        Self {
             value: ~u64::max(),
         }
     }
@@ -69,7 +69,7 @@ impl core::ops::Ord for UFP64 {
 impl core::ops::Add for UFP64 {
     /// Add a UFP64 to a UFP64. Panics on overflow.
     fn add(self, other: Self) -> Self {
-        UFP64 {
+        Self {
             value: self.value + other.value,
         }
     }
@@ -81,7 +81,7 @@ impl core::ops::Subtract for UFP64 {
         // If trying to subtract a larger number, panic.
         assert(self.value >= other.value);
 
-        UFP64 {
+        Self {
             value: self.value - other.value,
         }
     }
@@ -100,7 +100,7 @@ impl core::ops::Multiply for UFP64 {
             revert(0);
         }
 
-        UFP64 {
+        Self {
             value: res_u128.lower,
         }
     }
@@ -127,7 +127,7 @@ impl core::ops::Divide for UFP64 {
             // panic on overflow
             revert(0);
         }
-        UFP64 {
+        Self {
             value: res_u128.lower,
         }
     }
@@ -135,8 +135,8 @@ impl core::ops::Divide for UFP64 {
 
 impl UFP64 {
     /// Creates UFP64 that correponds to a unsigned integer
-    pub fn from_uint(uint: u64) -> UFP64 {
-        UFP64 {
+    pub fn from_uint(uint: u64) -> Self {
+        Self {
             value: ~Self::denominator() * uint,
         }
     }
@@ -154,7 +154,7 @@ impl UFP64 {
     /// Returns the integer part of `self`.
     /// This means that non-integer numbers are always truncated towards zero.
     pub fn trunc(self) -> Self {
-        UFP64 {
+        Self {
             // first move to the right (divide by the denominator)
             // to get rid of fractional part, than move to the
             // left (multiply by th denominator), to ensure 
@@ -172,7 +172,7 @@ impl UFP64 {
 
     /// Returns the fractional part of `self`.
     pub fn fract(self) -> Self {
-        UFP64 {
+        Self {
             // first move to the left (multiply by the denominator)
             // to get rid of integer part, than move to the
             // right (divide by th denominator), to ensure 
@@ -217,7 +217,7 @@ impl Root for UFP64 {
         // Need to multiple over 2 ^ 16, as the sqare root of the denominator 
         // is also taken and we need to ensure that the denominator is constant
         let nominator = nominator_root << 16;
-        UFP64 {
+        Self {
             value: nominator,
         }
     }
@@ -239,7 +239,7 @@ impl Exponentiate for UFP64 {
             // panic on overflow
             revert(0);
         }
-        UFP64 {
+        Self {
             value: nominator.lower,
         }
     }
