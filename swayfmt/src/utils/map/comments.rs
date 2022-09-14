@@ -33,11 +33,11 @@ impl CommentRange for CommentMap {
         // since both beginning of the file and first byte span have their start = 0. If we are looking from STARTING_BYTE_SPAN to `to`, we need to collect all until `to` byte span.
         if from == &byte_span::STARTING_BYTE_SPAN {
             self.range(..to)
-                .map(|items| (items.0.clone(), items.1.clone()))
+                .map(|(byte_span, comment)| (byte_span.clone(), comment.clone()))
                 .collect()
         } else {
             self.range((Included(from), Excluded(to)))
-                .map(|items| (items.0.clone(), items.1.clone()))
+                .map(|(byte_span, comment)| (byte_span.clone(), comment.clone()))
                 .collect()
         }
     }
