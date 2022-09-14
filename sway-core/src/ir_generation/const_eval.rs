@@ -328,6 +328,9 @@ fn const_eval_typed_expr(
             }) => fields.get(*elem_to_access_num).cloned(),
             _ => None,
         },
+        TypedExpressionVariant::Return(stmt) => {
+            const_eval_typed_expr(lookup, known_consts, &stmt.expr)
+        }
         TypedExpressionVariant::ArrayIndex { .. }
         | TypedExpressionVariant::IntrinsicFunction(_)
         | TypedExpressionVariant::CodeBlock(_)
@@ -354,9 +357,6 @@ fn const_eval_typed_ast_node(
     expr: &TypedAstNode,
 ) -> Option<Constant> {
     match &expr.content {
-        TypedAstNodeContent::ReturnStatement(trs) => {
-            const_eval_typed_expr(lookup, known_consts, &trs.expr)
-        }
         TypedAstNodeContent::Declaration(_) => {
             // TODO: add the binding to known_consts (if it's a const) and proceed.
             None
