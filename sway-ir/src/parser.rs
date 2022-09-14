@@ -121,11 +121,18 @@ mod ir_builder {
                     mdi
                 }
 
+            rule binary_op_kind() -> BinaryOpKind
+                = "add" _ { BinaryOpKind::Add }
+                / "sub" _ { BinaryOpKind::Sub }
+                / "mul" _ { BinaryOpKind::Mul }
+                / "div" _ { BinaryOpKind::Div }
+
             rule operation() -> IrAstOperation
                 = op_addr_of()
                 / op_asm()
                 / op_branch()
                 / op_bitcast()
+                / op_binary()
                 / op_call()
                 / op_cbr()
                 / op_cmp()
@@ -172,6 +179,11 @@ mod ir_builder {
             rule op_bitcast() -> IrAstOperation
                 = "bitcast" _ val:id() "to" _ ty:ast_ty() {
                     IrAstOperation::BitCast(val, ty)
+                }
+
+            rule op_binary() -> IrAstOperation
+                = op: binary_op_kind() arg1:id() comma() arg2:id() {
+                    IrAstOperation::BinaryOp(op, arg1, arg2)
                 }
 
             rule op_branch() -> IrAstOperation
@@ -559,6 +571,7 @@ mod ir_builder {
         module::{Kind, Module},
         pointer::Pointer,
         value::Value,
+        BinaryOpKind,
     };
 
     #[derive(Debug)]
@@ -603,6 +616,7 @@ mod ir_builder {
             Option<MdIdxRef>,
         ),
         BitCast(String, IrAstTy),
+        BinaryOp(BinaryOpKind, String, String),
         Br(String),
         Call(String, Vec<String>),
         Cbr(String, String, String),
@@ -940,6 +954,14 @@ mod ir_builder {
                             .bitcast(*val_map.get(&val).unwrap(), to_ty)
                             .add_metadatum(context, opt_metadata)
                     }
+                    IrAstOperation::BinaryOp(op, arg1, arg2) => block
+                        .ins(context)
+                        .binary_op(
+                            op,
+                            *val_map.get(&arg1).unwrap(),
+                            *val_map.get(&arg2).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::Br(to_block_name) => {
                         let to_block = named_blocks.get(&to_block_name).unwrap();
                         block

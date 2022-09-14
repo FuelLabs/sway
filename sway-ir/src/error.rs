@@ -28,6 +28,7 @@ pub enum IrError {
     VerifyBitcastFromNonCopyType(String),
     VerifyBitcastToNonCopyType(String),
     VerifyBitcastBetweenInvalidTypes(String, String),
+    VerifyBinaryOpIncorrectArgType,
     VerifyBranchToMissingBlock(String),
     VerifyCallArgTypeMismatch(String),
     VerifyCallToMissingFunction(String),
@@ -158,6 +159,12 @@ impl fmt::Display for IrError {
                 f,
                 "Verification failed: Bitcast not allowed from a {from_ty} to a {to_ty}."
             ),
+            IrError::VerifyBinaryOpIncorrectArgType => {
+                write!(
+                    f,
+                    "Verification failed: Incorrect argument type(s) for binary op"
+                )
+            }
             IrError::VerifyBranchToMissingBlock(label) => {
                 write!(
                     f,
