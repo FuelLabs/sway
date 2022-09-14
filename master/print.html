@@ -1379,10 +1379,7 @@ fn struct_destructuring() {
             42u64,
             (
                 42u32,
-                (
-                    true,
-                    &quot;ok&quot;,
-                ),
+                (true, &quot;ok&quot;),
             ),
         ),
     };
@@ -1392,7 +1389,7 @@ fn struct_destructuring() {
         Point { x: 2, y: 4 },
         Point { x: 3, y: 6 },
     );
-    let (Point{x:x0, y:y0, }, Point{x:x1, y:y1, }) = struct_in_tuple;
+    let (Point{x:x0, y:y0}, Point{x:x1, y:y1}) = struct_in_tuple;
 }
 </code></pre>
 <blockquote>
@@ -1849,14 +1846,8 @@ fn main() {
             strength: 10,
             agility: 9,
         },
-        some_tuple: (
-            true,
-            8,
-        ),
-        some_array: [
-            17,
-            76,
-        ],
+        some_tuple: (true, 8),
+        some_array: [17, 76],
         some_b256: zero,
     });
 
@@ -1906,14 +1897,8 @@ fn main() {
             strength: 10,
             agility: 9,
         },
-        some_tuple: (
-            true,
-            8,
-        ),
-        some_array: [
-            17,
-            76,
-        ],
+        some_tuple: (true, 8),
+        some_array: [17, 76],
         some_b256: zero,
     });
 
