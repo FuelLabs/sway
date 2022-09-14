@@ -121,7 +121,7 @@ mod ir_builder {
                     mdi
                 }
 
-            rule binary_op_kind() -> BinaryOpKind 
+            rule binary_op_kind() -> BinaryOpKind
                 = "add" { BinaryOpKind::Add }
                 / "sub" { BinaryOpKind::Sub }
                 / "mul" { BinaryOpKind::Mul }
