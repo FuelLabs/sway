@@ -121,15 +121,18 @@ mod ir_builder {
                     mdi
                 }
 
+            rule binary_op_kind() -> BinaryOpKind 
+                = "add" { BinaryOpKind::Add }
+                / "sub" { BinaryOpKind::Sub }
+                / "mul" { BinaryOpKind::Mul }
+                / "div" { BinaryOpKind::Div }
+
             rule operation() -> IrAstOperation
                 = op_addr_of()
                 / op_asm()
                 / op_branch()
                 / op_bitcast()
-                / op_binary_add()
-                / op_binary_sub()
-                / op_binary_mul()
-                / op_binary_div()
+                / op_binary()
                 / op_call()
                 / op_cbr()
                 / op_cmp()
@@ -178,24 +181,9 @@ mod ir_builder {
                     IrAstOperation::BitCast(val, ty)
                 }
 
-            rule op_binary_add() -> IrAstOperation
-                = "add" _ arg1:id() comma() arg2:id() {
-                    IrAstOperation::BinaryOp(BinaryOpKind::Add, arg1, arg2)
-                }
-
-            rule op_binary_sub() -> IrAstOperation
-                = "sub" _ arg1:id() comma() arg2:id() {
-                    IrAstOperation::BinaryOp(BinaryOpKind::Sub, arg1, arg2)
-                }
-
-            rule op_binary_mul() -> IrAstOperation
-                = "mul" _ arg1:id() comma() arg2:id() {
-                    IrAstOperation::BinaryOp(BinaryOpKind::Mul, arg1, arg2)
-                }
-
-            rule op_binary_div() -> IrAstOperation
-                = "div" _ arg1:id() comma() arg2:id() {
-                    IrAstOperation::BinaryOp(BinaryOpKind::Div, arg1, arg2)
+            rule op_binary() -> IrAstOperation
+                = op: binary_op_kind() _ arg1:id() comma() arg2:id() {
+                    IrAstOperation::BinaryOp(op, arg1, arg2)
                 }
 
             rule op_branch() -> IrAstOperation
