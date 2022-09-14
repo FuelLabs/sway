@@ -550,6 +550,15 @@ impl TypedIntrinsicFunctionKind {
                     });
                     return err(warnings, errors);
                 }
+                if type_arguments.len() != 0 {
+                    errors.push(CompileError::IntrinsicIncorrectNumTArgs {
+                        name: kind.to_string(),
+                        expected: 0,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+
                 let mut ctx = ctx
                     .by_ref()
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
