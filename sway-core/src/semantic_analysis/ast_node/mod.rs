@@ -134,18 +134,27 @@ impl TypedAstNode {
 
     /// Naive check to see if this node is a function declaration of a function called `main` if
     /// the [TreeType] is Script or Predicate.
-    pub(crate) fn is_main_function(&self, tree_type: TreeType) -> bool {
+    pub(crate) fn is_main_function(&self, tree_type: TreeType) -> CompileResult<bool> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         match &self {
             TypedAstNode {
+                span,
                 content:
-                    TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
-                        TypedFunctionDeclaration { name, .. },
-                    )),
+                    TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(decl_id)),
                 ..
-            } if name.as_str() == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME => {
-                matches!(tree_type, TreeType::Script | TreeType::Predicate)
+            } => {
+                let TypedFunctionDeclaration { name, .. } = check!(
+                    CompileResult::from(de_get_function(decl_id.clone(), span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let is_main = name.as_str() == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME
+                    && matches!(tree_type, TreeType::Script | TreeType::Predicate);
+                ok(is_main, warnings, errors)
             }
-            _ => false,
+            _ => ok(false, warnings, errors),
         }
     }
 
@@ -314,7 +323,8 @@ impl TypedAstNode {
                             );
 
                             let name = fn_decl.name.clone();
-                            let decl = TypedDeclaration::FunctionDeclaration(fn_decl);
+                            let decl =
+                                TypedDeclaration::FunctionDeclaration(de_insert_function(fn_decl));
                             ctx.namespace.insert_symbol(name, decl.clone());
                             decl
                         }
@@ -495,24 +505,19 @@ impl TypedAstNode {
         };
 
         if let TypedAstNode {
-            content: TypedAstNodeContent::Expression(TypedExpression { ref expression, .. }),
+            content: TypedAstNodeContent::Expression(TypedExpression { .. }),
             ..
         } = node
         {
-            if !matches!(
-                expression,
-                TypedExpressionVariant::Break | TypedExpressionVariant::Continue,
-            ) {
-                let warning = Warning::UnusedReturnValue {
-                    r#type: Box::new(node.type_info()),
-                };
-                assert_or_warn!(
-                    node.type_info().is_unit() || node.type_info() == TypeInfo::ErrorRecovery,
-                    warnings,
-                    node.span.clone(),
-                    warning
-                );
-            }
+            let warning = Warning::UnusedReturnValue {
+                r#type: Box::new(node.type_info()),
+            };
+            assert_or_warn!(
+                node.type_info().can_safely_ignore(),
+                warnings,
+                node.span.clone(),
+                warning
+            );
         }
 
         ok(node, warnings, errors)

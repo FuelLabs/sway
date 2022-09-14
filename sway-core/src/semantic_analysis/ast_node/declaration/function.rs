@@ -1,7 +1,10 @@
 mod function_parameter;
 pub use function_parameter::*;
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, style::*, type_system::*};
+use crate::{
+    declaration_engine::declaration_engine::de_insert_function, error::*, parse_tree::*,
+    semantic_analysis::*, style::*, type_system::*,
+};
 use sha2::{Digest, Sha256};
 use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
 
@@ -28,7 +31,7 @@ impl From<&TypedFunctionDeclaration> for TypedAstNode {
         let span = o.span.clone();
         TypedAstNode {
             content: TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
-                o.clone(),
+                de_insert_function(o.clone()),
             )),
             span,
         }
