@@ -16,6 +16,7 @@ use crate::{
     module::ModuleContent,
     pointer::Pointer,
     value::{Value, ValueDatum},
+    BinaryOpKind,
 };
 
 impl Context {
@@ -132,6 +133,9 @@ impl<'a> InstructionVerifier<'a> {
                     Instruction::AddrOf(arg) => self.verify_addr_of(arg)?,
                     Instruction::AsmBlock(..) => (),
                     Instruction::BitCast(value, ty) => self.verify_bitcast(value, ty)?,
+                    Instruction::BinaryOp { op, arg1, arg2 } => {
+                        self.verify_binary_op(op, arg1, arg2)?
+                    }
                     Instruction::Branch(block) => self.verify_br(block)?,
                     Instruction::Call(func, args) => self.verify_call(func, args)?,
                     Instruction::Cmp(pred, lhs_value, rhs_value) => {
@@ -266,6 +270,25 @@ impl<'a> InstructionVerifier<'a> {
         } else {
             Ok(())
         }
+    }
+
+    fn verify_binary_op(
+        &self,
+        _op: &BinaryOpKind,
+        arg1: &Value,
+        arg2: &Value,
+    ) -> Result<(), IrError> {
+        let arg1_ty = arg1
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
+        let arg2_ty = arg2
+            .get_type(self.context)
+            .ok_or(IrError::VerifyBinaryOpIncorrectArgType)?;
+        if !arg1_ty.eq(self.context, &arg2_ty) || !matches!(arg1_ty, Type::Uint(_)) {
+            return Err(IrError::VerifyBinaryOpIncorrectArgType);
+        }
+
+        Ok(())
     }
 
     fn verify_br(&self, dest_block: &Block) -> Result<(), IrError> {

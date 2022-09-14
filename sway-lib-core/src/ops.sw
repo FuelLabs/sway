@@ -6,37 +6,25 @@ pub trait Add {
 
 impl Add for u64 {
     fn add(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            add r3 r2 r1;
-            r3: u64
-        }
+        __add(self, other)
     }
 }
 
 impl Add for u32 {
     fn add(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            add r3 r2 r1;
-            r3: u32
-        }
+        __add(self, other)
     }
 }
 
 impl Add for u16 {
     fn add(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            add r3 r2 r1;
-            r3: u16
-        }
+        __add(self, other)
     }
 }
 
 impl Add for u8 {
     fn add(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            add r3 r2 r1;
-            r3: u8
-        }
+        __add(self, other)
     }
 }
 
@@ -46,37 +34,25 @@ pub trait Subtract {
 
 impl Subtract for u64 {
     fn subtract(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sub r3 r1 r2;
-            r3
-        }
+        __sub(self, other)
     }
 }
 
 impl Subtract for u32 {
     fn subtract(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sub r3 r1 r2;
-            r3: u32
-        }
+        __sub(self, other)
     }
 }
 
 impl Subtract for u16 {
     fn subtract(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sub r3 r1 r2;
-            r3: u16
-        }
+        __sub(self, other)
     }
 }
 
 impl Subtract for u8 {
     fn subtract(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sub r3 r1 r2;
-            r3: u8
-        }
+        __sub(self, other)
     }
 }
 
@@ -86,37 +62,25 @@ pub trait Multiply {
 
 impl Multiply for u64 {
     fn multiply(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            mul r3 r1 r2;
-            r3
-        }
+        __mul(self, other)
     }
 }
 
 impl Multiply for u32 {
     fn multiply(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            mul r3 r1 r2;
-            r3: u32
-        }
+        __mul(self, other)
     }
 }
 
 impl Multiply for u16 {
     fn multiply(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            mul r3 r1 r2;
-            r3: u16
-        }
+        __mul(self, other)
     }
 }
 
 impl Multiply for u8 {
     fn multiply(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            mul r3 r1 r2;
-            r3: u8
-        }
+        __mul(self, other)
     }
 }
 
@@ -126,37 +90,25 @@ pub trait Divide {
 
 impl Divide for u64 {
     fn divide(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            div r3 r1 r2;
-            r3
-        }
+        __div(self, other)
     }
 }
 
 impl Divide for u32 {
     fn divide(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            div r3 r1 r2;
-            r3: u32
-        }
+        __div(self, other)
     }
 }
 
 impl Divide for u16 {
     fn divide(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            div r3 r1 r2;
-            r3: u16
-        }
+        __div(self, other)
     }
 }
 
 impl Divide for u8 {
     fn divide(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            div r3 r1 r2;
-            r3: u8
-        }
+        __div(self, other)
     }
 }
 
