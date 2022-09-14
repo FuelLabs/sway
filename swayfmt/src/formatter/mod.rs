@@ -89,9 +89,19 @@ impl Formatter {
         if !formatted_code.ends_with('\n') {
             writeln!(formatted_code)?;
         }
-        self.shape.reset_width(); // bandaid shape reset TODO:(#2495)
 
         Ok(formatted_code)
+    }
+    pub(crate) fn with_shape<F, O>(&mut self, new_shape: Shape, f: F) -> O
+    where
+        F: FnOnce(&mut Self) -> O,
+    {
+        let prev_shape = self.shape;
+        self.shape = new_shape;
+        let output = f(self);
+        self.shape = prev_shape;
+
+        output // used to extract an output if needed
     }
 }
 

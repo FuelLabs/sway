@@ -2,11 +2,15 @@
 //! execution.
 
 use crate::{
-    control_flow_analysis::*, declaration_engine::declaration_engine::de_get_impl_trait, error::*,
-    parse_tree::*, semantic_analysis::*, type_system::*,
+    control_flow_analysis::*,
+    declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait},
+    error::*,
+    parse_tree::*,
+    semantic_analysis::*,
+    type_system::*,
 };
 use petgraph::prelude::NodeIndex;
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 impl ControlFlowGraph {
     pub(crate) fn construct_return_path_graph(
@@ -210,12 +214,13 @@ fn connect_declaration(
             }
             Ok(vec![entry_node])
         }
-        FunctionDeclaration(fn_decl) => {
+        FunctionDeclaration(decl_id) => {
+            let fn_decl = de_get_function(decl_id.clone(), &decl.span())?;
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
-            connect_typed_fn_decl(fn_decl, graph, entry_node, span)?;
+            connect_typed_fn_decl(&fn_decl, graph, entry_node, span)?;
             Ok(leaves.to_vec())
         }
         ImplTrait(decl_id) => {

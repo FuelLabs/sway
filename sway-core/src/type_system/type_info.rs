@@ -558,6 +558,10 @@ impl TypeInfo {
             TypeInfo::Tuple(fields) => fields
                 .iter()
                 .any(|field_type| look_up_type_id(field_type.type_id).is_uninhabited()),
+            TypeInfo::Ref(type_id, _) => look_up_type_id(*type_id).is_uninhabited(),
+            TypeInfo::Array(type_id, size, _) => {
+                *size > 0 && look_up_type_id(*type_id).is_uninhabited()
+            }
             _ => false,
         }
     }
@@ -605,6 +609,28 @@ impl TypeInfo {
                 }
                 all_zero_sized
             }
+            TypeInfo::Ref(type_id, _) => look_up_type_id(*type_id).is_zero_sized(),
+            TypeInfo::Array(type_id, size, _) => {
+                *size == 0 || look_up_type_id(*type_id).is_zero_sized()
+            }
+            _ => false,
+        }
+    }
+
+    pub fn can_safely_ignore(&self) -> bool {
+        if self.is_zero_sized() {
+            return true;
+        }
+        match self {
+            TypeInfo::Tuple(fields) => fields
+                .iter()
+                .all(|type_argument| look_up_type_id(type_argument.type_id).can_safely_ignore()),
+            TypeInfo::Array(type_id, size, _) => {
+                *size == 0 || look_up_type_id(*type_id).can_safely_ignore()
+            }
+            TypeInfo::Ref(type_id, _) => look_up_type_id(*type_id).can_safely_ignore(),
+            TypeInfo::ErrorRecovery => true,
+            TypeInfo::Unknown => true,
             _ => false,
         }
     }
@@ -790,7 +816,7 @@ impl TypeInfo {
                             ));
                             TypeArgument {
                                 type_id,
-                                initial_type_id: type_id,
+                                initial_type_id: fields[index].initial_type_id,
                                 span: fields[index].span.clone(),
                             }
                         }
