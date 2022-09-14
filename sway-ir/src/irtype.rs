@@ -9,9 +9,9 @@
 //! [`Aggregate`] is an abstract collection of [`Type`]s used for structs, unions and arrays,
 //! though see below for future improvements around splitting arrays into a different construct.
 
-use crate::{context::Context, Pointer};
+use crate::{context::Context, pretty::DebugWithContext, Pointer};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, DebugWithContext)]
 pub enum Type {
     Unit,
     Bool,
@@ -131,11 +131,11 @@ impl Type {
 /// that they represent the same collection of types.  Instead the `is_equivalent()` method is
 /// provided.  XXX Perhaps `Hash` should be impl'd directly without `Eq` if possible?
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct Aggregate(pub generational_arena::Index);
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
+pub struct Aggregate(#[in_context(aggregates)] pub generational_arena::Index);
 
 #[doc(hidden)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, DebugWithContext)]
 pub enum AggregateContent {
     ArrayType(Type, u64),
     FieldTypes(Vec<Type>),

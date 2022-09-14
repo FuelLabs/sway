@@ -4216,7 +4216,18 @@ dependencies = [
  "filecheck",
  "generational-arena",
  "peg",
+ "sway-ir-macros",
  "sway-types",
+]
+
+[[package]]
+name = "sway-ir-macros"
+version = "0.24.3"
+dependencies = [
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

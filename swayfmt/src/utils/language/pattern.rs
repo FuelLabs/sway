@@ -1,5 +1,5 @@
 use crate::{
-    formatter::{shape::LineStyle, *},
+    formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
         {CurlyBrace, Parenthesis},
@@ -36,16 +36,16 @@ impl Format for Pattern {
             Self::Constant(path) => path.format(formatted_code, formatter)?,
             Self::Constructor { path, args } => {
                 // TODO: add a check for width of whether to be normal or multiline
-                let prev_state = formatter.shape.code_line;
-                formatter
-                    .shape
-                    .code_line
-                    .update_line_style(LineStyle::Normal);
-                path.format(formatted_code, formatter)?;
-                Self::open_parenthesis(formatted_code, formatter)?;
-                args.get().format(formatted_code, formatter)?;
-                Self::close_parenthesis(formatted_code, formatter)?;
-                formatter.shape.update_line_settings(prev_state);
+                formatter.with_shape(
+                    formatter.shape.with_default_code_line(),
+                    |formatter| -> Result<(), FormatterError> {
+                        path.format(formatted_code, formatter)?;
+                        Self::open_parenthesis(formatted_code, formatter)?;
+                        args.get().format(formatted_code, formatter)?;
+                        Self::close_parenthesis(formatted_code, formatter)?;
+                        Ok(())
+                    },
+                )?;
             }
             Self::Struct { path, fields } => {
                 path.format(formatted_code, formatter)?;
