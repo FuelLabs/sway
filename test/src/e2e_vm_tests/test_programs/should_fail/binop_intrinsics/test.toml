@@ -1,0 +1,17 @@
+category = "fail"
+
+# check: $()error
+# check: $()__add(A { a: 32 }, 32);
+# nextln: $()Unsupported argument type to intrinsic "add"
+
+# check: $()error
+# check: $()__add("Hello", 22);
+# nextln: $()Unsupported argument type to intrinsic "add"
+
+# check: $()error
+# check: $()__add("Hello", "Hello")
+# nextln: $()Unsupported argument type to intrinsic "add"
+
+# check: $()error
+# check: $()__add(false, true)
+# nextln: $()Unsupported argument type to intrinsic "add"
