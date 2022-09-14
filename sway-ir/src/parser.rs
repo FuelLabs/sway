@@ -122,10 +122,10 @@ mod ir_builder {
                 }
 
             rule binary_op_kind() -> BinaryOpKind
-                = "add" { BinaryOpKind::Add }
-                / "sub" { BinaryOpKind::Sub }
-                / "mul" { BinaryOpKind::Mul }
-                / "div" { BinaryOpKind::Div }
+                = "add" _ { BinaryOpKind::Add }
+                / "sub" _ { BinaryOpKind::Sub }
+                / "mul" _ { BinaryOpKind::Mul }
+                / "div" _ { BinaryOpKind::Div }
 
             rule operation() -> IrAstOperation
                 = op_addr_of()
@@ -182,7 +182,7 @@ mod ir_builder {
                 }
 
             rule op_binary() -> IrAstOperation
-                = op: binary_op_kind() _ arg1:id() comma() arg2:id() {
+                = op: binary_op_kind() arg1:id() comma() arg2:id() {
                     IrAstOperation::BinaryOp(op, arg1, arg2)
                 }
 
