@@ -20,7 +20,7 @@ use sway_core::BuildConfig;
 use sway_utils::{constants, get_sway_files};
 use swayfmt::Formatter;
 
-static LONG_VERSION: Lazy<String> = Lazy::new(|| long_version(clap::crate_version!()));
+static LONG_VERSION: Lazy<String> = Lazy::new(|| long_version(env!("CARGO_PKG_VERSION")));
 
 fn long_version_static() -> &'static str {
     &LONG_VERSION

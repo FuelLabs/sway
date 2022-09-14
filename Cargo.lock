@@ -1452,7 +1452,6 @@ dependencies = [
  "sway-types",
  "sway-utils",
  "term-table",
- "time 0.3.14",
  "tokio",
  "toml",
  "toml_edit",

@@ -10,7 +10,7 @@ description = "A `forc` plugin for interacting with a Fuel node."
 
 [dependencies]
 anyhow = "1"
-clap = { version = "3", features = ["derive", "env", "cargo"] }
+clap = { version = "3", features = ["derive", "env"] }
 forc-pkg = { version = "0.24.3", path = "../../forc-pkg" }
 forc-util = { version = "0.24.3", path = "../../forc-util" }
 fuel-crypto = "0.6"

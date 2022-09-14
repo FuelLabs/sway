@@ -10,7 +10,7 @@ description = "A `forc` plugin for running the Sway code formatter."
 
 [dependencies]
 anyhow = "1"
-clap = { version = "3", features = ["derive", "cargo"] }
+clap = { version = "3", features = ["derive"] }
 forc-util = { version = "0.24.3", path = "../../forc-util" }
 once_cell = "1.14"
 prettydiff = "0.5"
