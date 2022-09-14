@@ -1,6 +1,7 @@
 use fuels::contract::script::Script;
 use fuels::prelude::*;
 use fuels::tx::{ConsensusParameters, Transaction};
+use fuels::core::constants::BASE_ASSET_ID;
 use hex;
 
 #[tokio::test]
@@ -10,7 +11,7 @@ async fn run_valid() {
     let wallet = launch_provider_and_get_wallet().await;
 
     let inputs = wallet
-        .get_asset_inputs_for_amount(BASE_ASSET_ID, DEFAULT_SPENDABLE_COIN_AMOUNT, 0)
+        .get_asset_inputs_for_amount(BASE_ASSET_ID.into(), 10000, 0)
         .await
         .unwrap();
 

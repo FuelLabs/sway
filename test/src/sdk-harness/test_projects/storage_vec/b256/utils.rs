@@ -31,34 +31,35 @@ pub mod setup {
 }
 
 pub mod wrappers {
+    use fuels::prelude::Bits256;
     use super::*;
 
     pub async fn push(instance: &MyContract, value: [u8; 32]) {
-        instance.b256_push(value).call().await.unwrap();
+        instance.b256_push(Bits256(value)).call().await.unwrap();
     }
 
     pub async fn get(instance: &MyContract, index: u64) -> [u8; 32] {
-        instance.b256_get(index).call().await.unwrap().value
+        instance.b256_get(index).call().await.unwrap().value.0
     }
 
     pub async fn pop(instance: &MyContract) -> [u8; 32] {
-        instance.b256_pop().call().await.unwrap().value
+        instance.b256_pop().call().await.unwrap().value.0
     }
 
     pub async fn remove(instance: &MyContract, index: u64) -> [u8; 32] {
-        instance.b256_remove(index).call().await.unwrap().value
+        instance.b256_remove(index).call().await.unwrap().value.0
     }
 
     pub async fn swap_remove(instance: &MyContract, index: u64) -> [u8; 32] {
-        instance.b256_swap_remove(index).call().await.unwrap().value
+        instance.b256_swap_remove(index).call().await.unwrap().value.0
     }
 
     pub async fn set(instance: &MyContract, index: u64, value: [u8; 32]) {
-        instance.b256_set(index, value).call().await.unwrap();
+        instance.b256_set(index, Bits256(value)).call().await.unwrap();
     }
 
     pub async fn insert(instance: &MyContract, index: u64, value: [u8; 32]) {
-        instance.b256_insert(index, value).call().await.unwrap();
+        instance.b256_insert(index, Bits256(value)).call().await.unwrap();
     }
 
     pub async fn len(instance: &MyContract) -> u64 {

@@ -34,19 +34,20 @@ pub mod wrappers {
     use super::*;
 
     pub async fn push(instance: &MyContract, value: Vec<u8>) {
-        instance.array_push(value).call().await.unwrap();
+        let a:[u8;3] = value.try_into().unwrap();
+        instance.array_push(a).call().await.unwrap();
     }
 
     pub async fn get(instance: &MyContract, index: u64) -> Vec<u8> {
-        instance.array_get(index).call().await.unwrap().value
+        instance.array_get(index).call().await.unwrap().value.to_vec()
     }
 
     pub async fn pop(instance: &MyContract) -> Vec<u8> {
-        instance.array_pop().call().await.unwrap().value
+        instance.array_pop().call().await.unwrap().value.to_vec()
     }
 
     pub async fn remove(instance: &MyContract, index: u64) -> Vec<u8> {
-        instance.array_remove(index).call().await.unwrap().value
+        instance.array_remove(index).call().await.unwrap().value.to_vec()
     }
 
     pub async fn swap_remove(instance: &MyContract, index: u64) -> Vec<u8> {
@@ -55,15 +56,17 @@ pub mod wrappers {
             .call()
             .await
             .unwrap()
-            .value
+            .value.to_vec()
     }
 
     pub async fn set(instance: &MyContract, index: u64, value: Vec<u8>) {
-        instance.array_set(index, value).call().await.unwrap();
+        let a:[u8;3] = value.try_into().unwrap();
+        instance.array_set(index, a).call().await.unwrap();
     }
 
     pub async fn insert(instance: &MyContract, index: u64, value: Vec<u8>) {
-        instance.array_insert(index, value).call().await.unwrap();
+        let a:[u8;3] = value.try_into().unwrap();
+        instance.array_insert(index, a).call().await.unwrap();
     }
 
     pub async fn len(instance: &MyContract) -> u64 {

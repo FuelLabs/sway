@@ -2,6 +2,7 @@ use assert_matches::assert_matches;
 use fuels::contract::script::Script;
 use fuels::prelude::*;
 use fuels::tx::{ConsensusParameters, Receipt, Transaction};
+use fuels::core::constants::BASE_ASSET_ID;
 
 async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>, fuels::prelude::Error> {
     let bin = std::fs::read("test_projects/script_data/out/debug/script_data.bin");
@@ -9,7 +10,7 @@ async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>, fuels::prelud
     let wallet = launch_provider_and_get_wallet().await;
 
     let inputs = wallet
-        .get_asset_inputs_for_amount(BASE_ASSET_ID, DEFAULT_SPENDABLE_COIN_AMOUNT, 0)
+        .get_asset_inputs_for_amount(BASE_ASSET_ID.into(), 10000, 0)
         .await
         .unwrap();
 

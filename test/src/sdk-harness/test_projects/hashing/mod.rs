@@ -156,8 +156,8 @@ mod sha256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -174,8 +174,8 @@ mod sha256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -189,11 +189,11 @@ mod sha256 {
         let call_2 = instance.sha256_u32(4294967294u32).call().await.unwrap();
         let call_3 = instance.sha256_u32(4294967293u32).call().await.unwrap();
 
-        assert_eq!(call_1.value, call_2.value);
-        assert_ne!(call_1.value, call_3.value);
+        assert_eq!(call_1.value.0, call_2.value.0);
+        assert_ne!(call_1.value.0, call_3.value.0);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -222,8 +222,8 @@ mod sha256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -240,8 +240,8 @@ mod sha256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -252,17 +252,17 @@ mod sha256 {
         let expected_2 = hash_str("Nick", Hash::Sha256);
 
         let call_1 = instance
-            .sha256_str(String::from("John"))
+            .sha256_str("John".try_into().unwrap())
             .call()
             .await
             .unwrap();
         let call_2 = instance
-            .sha256_str(String::from("John"))
+            .sha256_str("John".try_into().unwrap())
             .call()
             .await
             .unwrap();
         let call_3 = instance
-            .sha256_str(String::from("Nick"))
+            .sha256_str("Nick".try_into().unwrap())
             .call()
             .await
             .unwrap();
@@ -270,8 +270,8 @@ mod sha256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -290,15 +290,15 @@ mod sha256 {
         let expected_1 = hash_b256(address1, Hash::Sha256);
         let expected_2 = hash_b256(address2, Hash::Sha256);
 
-        let call_1 = instance.sha256_b256(address1).call().await.unwrap();
-        let call_2 = instance.sha256_b256(address1).call().await.unwrap();
-        let call_3 = instance.sha256_b256(address2).call().await.unwrap();
+        let call_1 = instance.sha256_b256(Bits256(address1)).call().await.unwrap();
+        let call_2 = instance.sha256_b256(Bits256(address1)).call().await.unwrap();
+        let call_3 = instance.sha256_b256(Bits256(address2)).call().await.unwrap();
 
-        assert_eq!(call_1.value, call_2.value);
-        assert_ne!(call_1.value, call_3.value);
+        assert_eq!(call_1.value.0, call_2.value.0);
+        assert_ne!(call_1.value.0, call_3.value.0);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -321,8 +321,8 @@ mod sha256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -345,8 +345,8 @@ mod sha256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -363,8 +363,8 @@ mod sha256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -395,8 +395,8 @@ mod sha256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 }
 
@@ -418,8 +418,8 @@ mod keccak256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -436,8 +436,8 @@ mod keccak256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -454,8 +454,8 @@ mod keccak256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -484,8 +484,8 @@ mod keccak256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -502,8 +502,8 @@ mod keccak256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -514,17 +514,17 @@ mod keccak256 {
         let expected_2 = hash_str("Nick", Hash::Keccak256);
 
         let call_1 = instance
-            .keccak256_str(String::from("John"))
+            .keccak256_str("John".try_into().unwrap())
             .call()
             .await
             .unwrap();
         let call_2 = instance
-            .keccak256_str(String::from("John"))
+            .keccak256_str("John".try_into().unwrap())
             .call()
             .await
             .unwrap();
         let call_3 = instance
-            .keccak256_str(String::from("Nick"))
+            .keccak256_str("Nick".try_into().unwrap())
             .call()
             .await
             .unwrap();
@@ -532,25 +532,25 @@ mod keccak256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
     async fn test_b256() {
         let (instance, _id) = get_hashing_instance().await;
 
-        let address1 = [
+        let address1 = Bits256([
             118, 64, 238, 245, 229, 5, 191, 187, 201, 174, 141, 75, 72, 119, 88, 252, 38, 62, 110,
             176, 51, 16, 126, 190, 233, 136, 54, 127, 90, 101, 230, 168,
-        ];
-        let address2 = [
+        ]);
+        let address2 = Bits256([
             8, 4, 28, 217, 200, 5, 161, 17, 20, 214, 54, 77, 72, 118, 90, 31, 225, 63, 110, 77,
             190, 190, 12, 1, 233, 48, 54, 72, 90, 253, 100, 103,
-        ];
+        ]);
 
-        let expected_1 = hash_b256(address1, Hash::Keccak256);
-        let expected_2 = hash_b256(address2, Hash::Keccak256);
+        let expected_1 = hash_b256(address1.0, Hash::Keccak256);
+        let expected_2 = hash_b256(address2.0, Hash::Keccak256);
 
         let call_1 = instance.keccak256_b256(address1).call().await.unwrap();
         let call_2 = instance.keccak256_b256(address1).call().await.unwrap();
@@ -559,8 +559,8 @@ mod keccak256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -583,8 +583,8 @@ mod keccak256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -607,8 +607,8 @@ mod keccak256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -625,8 +625,8 @@ mod keccak256 {
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 
     #[tokio::test]
@@ -654,10 +654,10 @@ mod keccak256 {
         let call_2 = instance.keccak256_struct(true).call().await.unwrap();
         let call_3 = instance.keccak256_struct(false).call().await.unwrap();
 
-        assert_eq!(call_1.value, call_2.value);
-        assert_ne!(call_1.value, call_3.value);
+        assert_eq!(call_1.value.0, call_2.value.0);
+        assert_ne!(call_1.value.0, call_3.value.0);
 
-        assert_eq!(expected_1, call_1.value);
-        assert_eq!(expected_2, call_3.value);
+        assert_eq!(expected_1, call_1.value.0);
+        assert_eq!(expected_2, call_3.value.0);
     }
 }
