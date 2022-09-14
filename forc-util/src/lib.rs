@@ -14,7 +14,6 @@ use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
 use sway_types::Spanned;
 use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
-use time::{macros::format_description, Date};
 use tracing_subscriber::filter::EnvFilter;
 
 pub mod restricted;
@@ -444,17 +443,10 @@ pub fn init_tracing_subscriber() {
 }
 
 pub fn long_version(clap_version: &str) -> String {
-    if let (Some(commit_hash), Some(commit_date)) =
-        (option_env!("CI_COMMIT_HASH"), option_env!("CI_COMMIT_DATE"))
-    {
-        assert!(commit_hash.chars().all(|c| c.is_ascii_alphanumeric()));
+    let commit_hash = env!("VERGEN_GIT_SHA_SHORT");
+    let commit_date = env!("VERGEN_GIT_COMMIT_DATE");
 
-        if let Ok(date) = Date::parse(commit_date, format_description!("[year]-[month]-[day]")) {
-            return format!("{} ({} {})", clap_version, commit_hash, date);
-        };
-    }
-
-    clap_version.to_string()
+    return format!("{} ({} {})", clap_version, commit_hash, commit_date);
 }
 
 #[cfg(all(feature = "uwu", any(target_arch = "x86", target_arch = "x86_64")))]
