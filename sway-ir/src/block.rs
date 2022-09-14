@@ -15,12 +15,13 @@ use crate::{
     error::IrError,
     function::Function,
     instruction::{Instruction, InstructionInserter, InstructionIterator},
+    pretty::DebugWithContext,
     value::{Value, ValueDatum},
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
 /// [`Context`].
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
 pub struct Block(pub generational_arena::Index);
 
 #[doc(hidden)]
