@@ -1,7 +1,5 @@
 script;
 
-use std::assert::assert;
-
 struct Foo {
     f1: u32,
     f2: b256,

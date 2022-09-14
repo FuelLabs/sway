@@ -1,16 +1,6 @@
 contract;
 
-use std::{
-    address::Address,
-    assert::assert,
-    chain::auth::{
-        AuthError,
-        msg_sender,
-    },
-    identity::Identity,
-    result::Result,
-    revert::revert,
-};
+use std::{chain::auth::{AuthError, msg_sender}, result::Result};
 
 abi MyOwnedContract {
     fn receive(field_1: u64) -> bool;
