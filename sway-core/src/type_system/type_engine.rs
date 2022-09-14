@@ -393,13 +393,13 @@ impl TypeEngine {
             (
                 ref r @ TypeInfo::ContractCaller {
                     abi_name: ref abi_name_received,
-                    ref address,
+                    address: ref received_address,
                 },
                 TypeInfo::ContractCaller {
                     abi_name: ref abi_name_expected,
                     ..
                 },
-            ) if (abi_name_received == abi_name_expected && address.is_none())
+            ) if (abi_name_received == abi_name_expected && received_address.is_none())
                 || matches!(abi_name_received, AbiName::Deferred) =>
             {
                 // if one address is empty, coerce to the other one
@@ -425,6 +425,12 @@ impl TypeEngine {
                     None => (vec![], vec![]),
                     Some(_) => self.unify(received, expected, span, help_text),
                 }
+            }
+            (ref r @ TypeInfo::ContractCaller { .. }, ref e @ TypeInfo::ContractCaller { .. })
+                if r == e =>
+            {
+                // if they are the same, then it's ok
+                (vec![], vec![])
             }
             // When unifying complex types, we must check their sub-types. This
             // can be trivially implemented for tuples, sum types, etc.

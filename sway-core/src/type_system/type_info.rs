@@ -324,8 +324,15 @@ impl fmt::Display for TypeInfo {
                 name.as_str().to_string(),
                 type_parameters.iter().map(|x| x.type_id),
             ),
-            ContractCaller { abi_name, .. } => {
-                format!("contract caller {}", abi_name)
+            ContractCaller { abi_name, address } => {
+                format!(
+                    "contract caller {} ( {} )",
+                    abi_name,
+                    address
+                        .as_ref()
+                        .map(|ref address| address.span.as_str().to_string())
+                        .unwrap_or("None".into())
+                )
             }
             Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty, count),
             Storage { .. } => "contract storage".into(),
