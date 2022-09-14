@@ -21,4 +21,6 @@ fn main() -> u64 {
 // check: $else_body:
 // check: $(else_val=$VAL) = const u64 1 
 // check: ret u64 $else_val
+
+// check: $(merge_block=$ID):
 // nextln: } 

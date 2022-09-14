@@ -158,21 +158,22 @@ impl Format for StorageField {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let prev_state = formatter.shape.code_line;
-        formatter
-            .shape
-            .code_line
-            .update_line_style(LineStyle::Normal);
-        write!(
-            formatted_code,
-            "{}{} ",
-            self.name.span().as_str(),
-            self.colon_token.span().as_str(),
-        )?;
-        self.ty.format(formatted_code, formatter)?;
-        write!(formatted_code, " {} ", self.eq_token.span().as_str())?;
+        formatter.with_shape(
+            formatter.shape.with_default_code_line(),
+            |formatter| -> Result<(), FormatterError> {
+                write!(
+                    formatted_code,
+                    "{}{} ",
+                    self.name.span().as_str(),
+                    self.colon_token.span().as_str(),
+                )?;
+                self.ty.format(formatted_code, formatter)?;
+                write!(formatted_code, " {} ", self.eq_token.span().as_str())?;
 
-        formatter.shape.update_line_settings(prev_state);
+                Ok(())
+            },
+        )?;
+
         self.initializer.format(formatted_code, formatter)?;
 
         Ok(())

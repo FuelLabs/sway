@@ -90,7 +90,7 @@ mod ir_builder {
                 }
 
             rule block_decl() -> IrAstBlock
-                = label:id() ":" _ instructions: instr_decl()+ {
+                = label:id() ":" _ instructions: instr_decl()* {
                     IrAstBlock {
                         label,
                         instructions

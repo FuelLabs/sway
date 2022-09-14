@@ -760,14 +760,11 @@ impl TypedExpression {
         let mut warnings = res.warnings;
         let mut errors = res.errors;
 
-        // if one of the expressions deterministically aborts, we don't want to type check it.
-        if !typed_expression.deterministically_aborts() {
-            // if the return type cannot be cast into the annotation type then it is a type error
-            let (mut new_warnings, new_errors) =
-                ctx.unify_with_self(typed_expression.return_type, &expr_span);
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-        }
+        // if the return type cannot be cast into the annotation type then it is a type error
+        let (mut new_warnings, new_errors) =
+            ctx.unify_with_self(typed_expression.return_type, &expr_span);
+        warnings.append(&mut new_warnings);
+        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
 
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = check!(
@@ -1155,17 +1152,25 @@ impl TypedExpression {
             .clone()
             .map(|x| x.1)
             .unwrap_or_else(|| asm.whole_block_span.clone());
-        let return_type = check!(
-            ctx.resolve_type_with_self(
-                insert_type(asm.return_type.clone()),
-                &asm_span,
-                EnforceTypeArguments::No,
-                None
-            ),
-            insert_type(TypeInfo::ErrorRecovery),
-            warnings,
-            errors,
-        );
+        let diverges = asm
+            .body
+            .iter()
+            .any(|asm_op| matches!(asm_op.op_name.as_str(), "rvrt" | "ret"));
+        let return_type = if diverges {
+            insert_type(TypeInfo::Unknown)
+        } else {
+            check!(
+                ctx.resolve_type_with_self(
+                    insert_type(asm.return_type.clone()),
+                    &asm_span,
+                    EnforceTypeArguments::No,
+                    None
+                ),
+                insert_type(TypeInfo::ErrorRecovery),
+                warnings,
+                errors,
+            )
+        };
         // type check the initializers
         let typed_registers = asm
             .registers
