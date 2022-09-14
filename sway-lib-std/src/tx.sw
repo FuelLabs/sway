@@ -5,6 +5,7 @@ use ::address::Address;
 use ::mem::read;
 use ::option::Option;
 use ::revert::revert;
+use ::constants::ZERO_B256;
 
 ////////////////////////////////////////
 // GTF Opcode const selectors
@@ -230,6 +231,29 @@ pub fn tx_script_data<T>() -> T {
 /// Bytecode will be padded to next whole word.
 pub fn tx_script_bytecode<T>() -> T {
     read::<T>(tx_script_start_pointer())
+}
+
+/// Get the hash of the script bytecode.
+/// Reverts if not a transaction-script
+pub fn tx_script_bytecode_hash() -> b256 {
+    let type = tx_type();
+    match type {
+        Transaction::Script => {
+            // Get the script memory details
+            let mut result_buffer: b256 = ZERO_B256;
+            let script_length = __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH);
+            let script_ptr = __gtf::<u64>(0, GTF_SCRIPT_SCRIPT);
+            
+            // Run the hash opcode for the script in memory
+            asm(hash: result_buffer, ptr: script_ptr, len: script_length) {
+                s256 hash ptr len;
+                hash: b256
+            }
+        },
+        _ => {
+            revert(0);
+        }
+    }
 }
 
 const TX_ID_OFFSET = 0;
