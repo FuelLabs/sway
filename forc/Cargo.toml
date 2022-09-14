@@ -33,7 +33,6 @@ sway-core = { version = "0.24.3", path = "../sway-core" }
 sway-types = { version = "0.24.3", path = "../sway-types" }
 sway-utils = { version = "0.24.3", path = "../sway-utils" }
 term-table = "1.3"
-time = { version = "0.3", features = ["parsing"] }
 tokio = { version = "1.8.0", features = ["macros", "rt-multi-thread"] }
 toml = "0.5"
 toml_edit = "0.13"
