@@ -328,6 +328,9 @@ fn const_eval_typed_expr(
             }) => fields.get(*elem_to_access_num).cloned(),
             _ => None,
         },
+        TypedExpressionVariant::Return(stmt) => {
+            const_eval_typed_expr(lookup, known_consts, &stmt.expr)
+        }
         TypedExpressionVariant::ArrayIndex { .. }
         | TypedExpressionVariant::IntrinsicFunction(_)
         | TypedExpressionVariant::CodeBlock(_)
@@ -344,7 +347,6 @@ fn const_eval_typed_expr(
         | TypedExpressionVariant::UnsafeDowncast { .. }
         | TypedExpressionVariant::Break
         | TypedExpressionVariant::Continue
-        | TypedExpressionVariant::Return(..)
         | TypedExpressionVariant::WhileLoop { .. } => None,
     }
 }
