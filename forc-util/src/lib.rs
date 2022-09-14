@@ -442,11 +442,13 @@ pub fn init_tracing_subscriber() {
         .init();
 }
 
-pub fn long_version(clap_version: &str) -> String {
-    let commit_hash = env!("VERGEN_GIT_SHA_SHORT");
-    let commit_date = env!("VERGEN_GIT_COMMIT_DATE");
-
-    return format!("{} ({} {})", clap_version, commit_hash, commit_date);
+pub fn long_version(short_version: &str) -> String {
+    format!(
+        "{} ({} {})",
+        short_version,
+        env!("VERGEN_GIT_SHA_SHORT"),
+        env!("VERGEN_GIT_COMMIT_DATE")
+    )
 }
 
 #[cfg(all(feature = "uwu", any(target_arch = "x86", target_arch = "x86_64")))]
