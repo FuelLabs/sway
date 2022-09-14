@@ -17,7 +17,9 @@ sway-core = { version = "0.24.3", path = "../sway-core" }
 sway-types = { version = "0.24.3", path = "../sway-types" }
 sway-utils = { version = "0.24.3", path = "../sway-utils" }
 termcolor = "1.1"
-time = { version = "0.3", default_features = false, features = ["parsing", "macros"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["ansi", "env-filter", "json"] }
 unicode-xid = "0.2.2"
+
+[build-dependencies]
+vergen = { version = "7", features = ["build", "git" ] }
