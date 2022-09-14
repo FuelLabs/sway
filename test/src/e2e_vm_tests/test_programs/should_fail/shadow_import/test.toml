@@ -2,5 +2,3 @@ category = "fail"
 
 # check: $()The name "Foo" shadows another symbol with the same name.
 # check: $()The name "Bar2" shadows another symbol with the same name.
-# check: $()The name "Bar1" imported through `*` shadows another symbol with the same name.
-# check: $()The name "Bar2" imported through `*` shadows another symbol with the same name.
