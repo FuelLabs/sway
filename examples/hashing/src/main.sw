@@ -62,14 +62,8 @@ fn main() {
             strength: 10,
             agility: 9,
         },
-        some_tuple: (
-            true,
-            8,
-        ),
-        some_array: [
-            17,
-            76,
-        ],
+        some_tuple: (true, 8),
+        some_array: [17, 76],
         some_b256: zero,
     });
 
@@ -119,14 +113,8 @@ fn main() {
             strength: 10,
             agility: 9,
         },
-        some_tuple: (
-            true,
-            8,
-        ),
-        some_array: [
-            17,
-            76,
-        ],
+        some_tuple: (true, 8),
+        some_array: [17, 76],
         some_b256: zero,
     });
 
