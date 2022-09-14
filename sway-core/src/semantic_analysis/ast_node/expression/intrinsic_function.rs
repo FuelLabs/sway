@@ -550,7 +550,7 @@ impl TypedIntrinsicFunctionKind {
                     });
                     return err(warnings, errors);
                 }
-                if type_arguments.len() != 0 {
+                if !type_arguments.is_empty() {
                     errors.push(CompileError::IntrinsicIncorrectNumTArgs {
                         name: kind.to_string(),
                         expected: 0,
