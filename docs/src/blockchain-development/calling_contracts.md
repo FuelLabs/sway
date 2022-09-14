@@ -33,6 +33,8 @@ fn return_45() -> u64 {
 // ./contract_b.sw
 contract;
 
+use contract_a::ContractA;
+
 abi ContractB {
     fn make_call();
 }
