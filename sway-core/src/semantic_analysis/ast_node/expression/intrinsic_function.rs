@@ -541,6 +541,69 @@ impl TypedIntrinsicFunctionKind {
                 let return_type = insert_type(TypeInfo::Tuple(vec![]));
                 (intrinsic_function, return_type)
             }
+            Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
+                if arguments.len() != 2 {
+                    errors.push(CompileError::IntrinsicIncorrectNumArgs {
+                        name: kind.to_string(),
+                        expected: 2,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                if !type_arguments.is_empty() {
+                    errors.push(CompileError::IntrinsicIncorrectNumTArgs {
+                        name: kind.to_string(),
+                        expected: 0,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+
+                let mut ctx = ctx
+                    .by_ref()
+                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+
+                let lhs = arguments[0].clone();
+                let lhs = check!(
+                    TypedExpression::type_check(ctx.by_ref(), lhs),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                // Check for supported argument types
+                let arg_ty = resolve_type(lhs.return_type, &lhs.span).unwrap();
+                let is_valid_arg_ty = matches!(arg_ty, TypeInfo::UnsignedInteger(_));
+                if !is_valid_arg_ty {
+                    errors.push(CompileError::IntrinsicUnsupportedArgType {
+                        name: kind.to_string(),
+                        span: lhs.span,
+                        hint: Hint::empty(),
+                    });
+                    return err(warnings, errors);
+                }
+
+                let rhs = arguments[1].clone();
+                let ctx = ctx
+                    .by_ref()
+                    .with_help_text("Incorrect argument type")
+                    .with_type_annotation(lhs.return_type);
+                let rhs = check!(
+                    TypedExpression::type_check(ctx, rhs),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                (
+                    TypedIntrinsicFunctionKind {
+                        kind,
+                        arguments: vec![lhs, rhs],
+                        type_arguments: vec![],
+                        span,
+                    },
+                    insert_type(arg_ty),
+                )
+            }
         };
         ok((intrinsic_function, return_type), warnings, errors)
     }

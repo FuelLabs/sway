@@ -627,6 +627,23 @@ impl FnCompiler {
                     }
                 }
             }
+            Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
+                let op = match kind {
+                    Intrinsic::Add => BinaryOpKind::Add,
+                    Intrinsic::Sub => BinaryOpKind::Sub,
+                    Intrinsic::Mul => BinaryOpKind::Mul,
+                    Intrinsic::Div => BinaryOpKind::Div,
+                    _ => unreachable!(),
+                };
+                let lhs = arguments[0].clone();
+                let rhs = arguments[1].clone();
+                let lhs_value = self.compile_expression(context, md_mgr, lhs)?;
+                let rhs_value = self.compile_expression(context, md_mgr, rhs)?;
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .binary_op(op, lhs_value, rhs_value))
+            }
         }
     }
 
