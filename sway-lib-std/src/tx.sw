@@ -250,9 +250,7 @@ pub fn tx_script_bytecode_hash() -> b256 {
                 hash: b256
             }
         },
-        _ => {
-            revert(0);
-        }
+        _ => revert(0),
     }
 }
 
