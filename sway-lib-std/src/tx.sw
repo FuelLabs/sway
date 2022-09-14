@@ -240,7 +240,7 @@ pub fn tx_script_bytecode_hash() -> b256 {
     match type {
         Transaction::Script => {
             // Get the script memory details
-            let mut result_buffer: b256 = ZERO_B256;
+            let mut result_buffer = ZERO_B256;
             let script_length = __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH);
             let script_ptr = __gtf::<u64>(0, GTF_SCRIPT_SCRIPT);
             
