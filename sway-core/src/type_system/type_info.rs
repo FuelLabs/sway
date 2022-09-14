@@ -330,8 +330,8 @@ impl fmt::Display for TypeInfo {
                     abi_name,
                     address
                         .as_ref()
-                        .map(|ref address| address.span.as_str().to_string())
-                        .unwrap_or("None".into())
+                        .map(|address| address.span.as_str().to_string())
+                        .unwrap_or_else(|| "None".into())
                 )
             }
             Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty, count),
