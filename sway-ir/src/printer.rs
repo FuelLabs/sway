@@ -346,7 +346,7 @@ fn instruction_to_doc<'a>(
                     .append(maybe_constant_to_doc(context, md_namer, namer, arg2))
                     .append(Doc::line(
                         Doc::text(format!(
-                            "{} = {op_str} {} {}",
+                            "{} = {op_str} {}, {}",
                             namer.name(context, ins_value),
                             namer.name(context, arg1),
                             namer.name(context, arg2),

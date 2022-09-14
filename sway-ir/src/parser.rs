@@ -179,22 +179,22 @@ mod ir_builder {
                 }
 
             rule op_binary_add() -> IrAstOperation
-                = "add" _ val:id() arg1:id() arg2:id() {
+                = "add" _ arg1:id() comma() arg2:id() {
                     IrAstOperation::BinaryOp(BinaryOpKind::Add, arg1, arg2)
                 }
 
             rule op_binary_sub() -> IrAstOperation
-                = "sub" _ val:id() arg1:id() arg2:id() {
+                = "sub" _ arg1:id() comma() arg2:id() {
                     IrAstOperation::BinaryOp(BinaryOpKind::Sub, arg1, arg2)
                 }
 
             rule op_binary_mul() -> IrAstOperation
-                = "mul" _ val:id() arg1:id() arg2:id() {
+                = "mul" _ arg1:id() comma() arg2:id() {
                     IrAstOperation::BinaryOp(BinaryOpKind::Mul, arg1, arg2)
                 }
 
             rule op_binary_div() -> IrAstOperation
-                = "div" _ val:id() arg1:id() arg2:id() {
+                = "div" _ arg1:id() comma() arg2:id() {
                     IrAstOperation::BinaryOp(BinaryOpKind::Div, arg1, arg2)
                 }
 
