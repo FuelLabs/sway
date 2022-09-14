@@ -1,4 +1,5 @@
 use crate::{
+    convert_parse_tree::AttributesMap,
     parse_tree::{Expression, Visibility},
     type_system::TypeInfo,
 };
@@ -12,4 +13,5 @@ pub struct ConstantDeclaration {
     pub type_ascription_span: Option<Span>,
     pub value: Expression,
     pub visibility: Visibility,
+    pub attributes: AttributesMap,
 }

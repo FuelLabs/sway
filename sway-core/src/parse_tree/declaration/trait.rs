@@ -1,6 +1,7 @@
 use super::{FunctionDeclaration, FunctionParameter};
 
 use crate::{
+    convert_parse_tree::AttributesMap,
     function::Purity,
     parse_tree::{CallPath, Visibility},
     type_system::TypeInfo,
@@ -15,6 +16,7 @@ pub struct TraitDeclaration {
     pub methods: Vec<FunctionDeclaration>,
     pub(crate) supertraits: Vec<Supertrait>,
     pub visibility: Visibility,
+    pub attributes: AttributesMap,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -31,6 +33,7 @@ impl Spanned for Supertrait {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TraitFn {
     pub name: Ident,
+    pub attributes: AttributesMap,
     pub purity: Purity,
     pub parameters: Vec<FunctionParameter>,
     pub return_type: TypeInfo,
