@@ -5,61 +5,7 @@
       "name": "main",
       "output": {
         "name": "",
-<<<<<<< HEAD
-        "type": 1,
-        "typeArguments": null
-      }
-    }
-  ],
-  "loggedTypes": [
-    {
-      "logId": 1019556,
-      "loggedType": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
-    },
-    {
-      "logId": 1020185,
-      "loggedType": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
-    },
-    {
-      "logId": 1020293,
-      "loggedType": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
-    },
-    {
-      "logId": 1020401,
-      "loggedType": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
-    },
-    {
-      "logId": 1020743,
-      "loggedType": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
-    },
-    {
-      "logId": 1021079,
-      "loggedType": {
-        "name": "",
-        "type": 2,
-=======
         "type": 0,
->>>>>>> master
         "typeArguments": null
       }
     }

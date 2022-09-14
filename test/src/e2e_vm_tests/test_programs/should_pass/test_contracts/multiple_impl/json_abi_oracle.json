@@ -10,28 +10,7 @@
       }
     }
   ],
-<<<<<<< HEAD
-  "loggedTypes": [
-    {
-      "logId": 1019501,
-      "loggedType": {
-        "name": "",
-        "type": 1,
-        "typeArguments": null
-      }
-    },
-    {
-      "logId": 1019520,
-      "loggedType": {
-        "name": "",
-        "type": 1,
-        "typeArguments": null
-      }
-    }
-  ],
-=======
   "loggedTypes": [],
->>>>>>> master
   "types": [
     {
       "components": [],
