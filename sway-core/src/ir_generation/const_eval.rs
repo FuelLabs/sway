@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::declaration_engine::de_get_constant,
     error::CompileError,
     metadata::MetadataManager,
     semantic_analysis::{
@@ -43,11 +44,11 @@ pub(crate) fn compile_const_decl(
             // See if we it's a global const and whether we can compile it *now*.
             let decl = module_ns.check_symbol(name)?;
             let decl_name_value = match decl {
-                TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                    name,
-                    value,
-                    ..
-                }) => Some((name, value)),
+                TypedDeclaration::ConstantDeclaration(decl_id) => {
+                    let TypedConstantDeclaration { name, value, .. } =
+                        de_get_constant(decl_id.clone(), &name.span())?;
+                    Some((name, value))
+                }
                 _otherwise => None,
             };
             if let Some((name, value)) = decl_name_value {
@@ -56,7 +57,7 @@ pub(crate) fn compile_const_decl(
                     env.md_mgr,
                     env.module,
                     env.module_ns,
-                    value,
+                    &value,
                 )?;
                 env.module
                     .add_global_constant(env.context, name.as_str().to_owned(), const_val);

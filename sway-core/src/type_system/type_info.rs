@@ -816,7 +816,7 @@ impl TypeInfo {
                             ));
                             TypeArgument {
                                 type_id,
-                                initial_type_id: type_id,
+                                initial_type_id: fields[index].initial_type_id,
                                 span: fields[index].span.clone(),
                             }
                         }

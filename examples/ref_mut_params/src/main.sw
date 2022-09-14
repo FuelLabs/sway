@@ -50,12 +50,8 @@ fn main() {
     let mut color = Color::Red;
     update_color(color, Color::Blue);
     assert(match color {
-        Color::Blue => {
-            true
-        }
-        _ => {
-            false
-        }
+        Color::Blue => true,
+        _ => false,
     }); // The function `update_color()` modifies the color to Blue
     // ANCHOR_END: call_tuple_and_enum
     // ANCHOR: call_move_right

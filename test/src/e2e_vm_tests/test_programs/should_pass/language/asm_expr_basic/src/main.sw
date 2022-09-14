@@ -61,7 +61,7 @@ fn main() -> u32 {
     let bal = asm() { bal };
 
     let is = asm() { is };
-    
+
     let ret = asm() { ret };
 
     let retl = asm() { retl };
