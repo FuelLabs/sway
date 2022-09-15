@@ -1530,12 +1530,12 @@ name = "forc-util"
 version = "0.24.3"
 dependencies = [
  "annotate-snippets",
+ "ansi_term",
  "anyhow",
  "dirs 3.0.2",
  "sway-core",
  "sway-types",
  "sway-utils",
- "termcolor",
  "tracing",
  "tracing-subscriber",
  "unicode-xid",
