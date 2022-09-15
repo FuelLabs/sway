@@ -70,8 +70,7 @@ pub fn tx_type() -> Transaction {
 /// Get the transaction gas price for either tx type
 /// (transaction-script or transaction-create).
 pub fn tx_gas_price() -> u64 {
-    let type = tx_type();
-    match type {
+    match tx_type() {
         Transaction::Script => {
             __gtf::<u64>(0, GTF_SCRIPT_GAS_PRICE)
         },
@@ -84,8 +83,7 @@ pub fn tx_gas_price() -> u64 {
 /// Get the transaction-script gas limit for either tx type
 /// (transaction-script or transaction-create).
 pub fn tx_gas_limit() -> u64 {
-    let type = tx_type();
-    match type {
+    match tx_type() {
         Transaction::Script => {
             __gtf::<u64>(0, GTF_SCRIPT_GAS_LIMIT)
         },
@@ -98,8 +96,7 @@ pub fn tx_gas_limit() -> u64 {
 /// Get the transaction maturity for either tx type
 /// (transaction-script or transaction-create).
 pub fn tx_maturity() -> u32 {
-    let type = tx_type();
-    match type {
+    match tx_type() {
         Transaction::Script => {
             __gtf::<u32>(0, GTF_SCRIPT_MATURITY)
         },
@@ -112,8 +109,7 @@ pub fn tx_maturity() -> u32 {
 /// Get the transaction-script script length.
 /// Reverts if not a transaction-script.
 pub fn tx_script_length() -> u64 {
-    let type = tx_type();
-    match type {
+    match tx_type() {
         Transaction::Script => {
             __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH)
         },
@@ -126,8 +122,7 @@ pub fn tx_script_length() -> u64 {
 /// Get the transaction script data length.
 /// Reverts if not a transaction-script.
 pub fn tx_script_data_length() -> u64 {
-    let type = tx_type();
-    match type {
+    match tx_type() {
         Transaction::Script => {
             __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA_LENGTH)
         },
@@ -140,8 +135,7 @@ pub fn tx_script_data_length() -> u64 {
 /// Get the transaction witnesses count for either tx type
 /// (transaction-script or transaction-create).
 pub fn tx_witnesses_count() -> u64 {
-    let type = tx_type();
-    match type {
+    match tx_type() {
         Transaction::Script => {
             __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT)
         },
@@ -154,8 +148,7 @@ pub fn tx_witnesses_count() -> u64 {
 // Get a pointer to the witness at index `index` for either tx type
 /// (transaction-script or transaction-create).
 pub fn tx_witness_pointer(index: u64) -> u64 {
-    let type = tx_type();
-    match type {
+    match tx_type() {
         Transaction::Script => {
             __gtf::<u64>(0, GTF_SCRIPT_WITNESS_AT_INDEX)
         },
@@ -178,8 +171,7 @@ pub fn tx_witness_data<T>(index: u64) -> T {
 /// Get the transaction receipts root.
 /// Reverts if not a transaction-script.
 pub fn tx_receipts_root() -> b256 {
-    let type = tx_type();
-    match type {
+    match tx_type() {
         Transaction::Script => {
             read::<b256>(__gtf::<u64>(0, GTF_SCRIPT_RECEIPTS_ROOT))
         },
@@ -192,8 +184,7 @@ pub fn tx_receipts_root() -> b256 {
 /// Get the transaction script start pointer.
 /// Reverts if not a transaction-script.
 pub fn tx_script_start_pointer() -> u64 {
-    let type = tx_type();
-    match type {
+    match tx_type() {
         Transaction::Script => {
             __gtf::<u64>(0, GTF_SCRIPT_SCRIPT)
         },
@@ -207,8 +198,7 @@ pub fn tx_script_start_pointer() -> u64 {
 /// Reverts if not a transaction-script
 /// (transaction-create has no script data length),
 pub fn tx_script_data_start_pointer() -> u64 {
-    let type = tx_type();
-    match type {
+    match tx_type() {
         Transaction::Script => {
             __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA)
         },
@@ -236,8 +226,7 @@ pub fn tx_script_bytecode<T>() -> T {
 /// Get the hash of the script bytecode.
 /// Reverts if not a transaction-script
 pub fn tx_script_bytecode_hash() -> b256 {
-    let type = tx_type();
-    match type {
+    match tx_type() {
         Transaction::Script => {
             // Get the script memory details
             let mut result_buffer = ZERO_B256;
