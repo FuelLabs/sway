@@ -2639,7 +2639,7 @@ mod tests {
 
         let asm_script = format!("{}", asm);
         if asm_script != expected {
-            print!("{}", prettydiff::diff_lines(&expected, &asm_script));
+            tracing::info!("{}", prettydiff::diff_lines(&expected, &asm_script));
             panic!();
         }
     }
