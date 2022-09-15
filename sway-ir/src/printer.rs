@@ -17,6 +17,7 @@ use crate::{
     metadata::{MetadataIndex, Metadatum},
     module::{Kind, ModuleContent},
     value::{Value, ValueContent, ValueDatum},
+    BinaryOpKind,
 };
 
 #[derive(Debug)]
@@ -333,6 +334,25 @@ fn instruction_to_doc<'a>(
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 ))
+            }
+            Instruction::BinaryOp { op, arg1, arg2 } => {
+                let op_str = match op {
+                    BinaryOpKind::Add => "add",
+                    BinaryOpKind::Sub => "sub",
+                    BinaryOpKind::Mul => "mul",
+                    BinaryOpKind::Div => "div",
+                };
+                maybe_constant_to_doc(context, md_namer, namer, arg1)
+                    .append(maybe_constant_to_doc(context, md_namer, namer, arg2))
+                    .append(Doc::line(
+                        Doc::text(format!(
+                            "{} = {op_str} {}, {}",
+                            namer.name(context, ins_value),
+                            namer.name(context, arg1),
+                            namer.name(context, arg2),
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    ))
             }
             Instruction::Branch(to_block) => maybe_constant_phi_to_doc(
                 context, md_namer, namer, block, to_block,

@@ -170,6 +170,7 @@ pub enum ExpressionKind {
     Break,
     Continue,
     Reassignment(ReassignmentExpression),
+    Return(Box<Expression>),
 }
 
 /// Represents the left hand side of a reassignment, which could either be a regular variable

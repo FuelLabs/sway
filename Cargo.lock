@@ -1530,12 +1530,12 @@ name = "forc-util"
 version = "0.24.3"
 dependencies = [
  "annotate-snippets",
+ "ansi_term",
  "anyhow",
  "dirs 3.0.2",
  "sway-core",
  "sway-types",
  "sway-utils",
- "termcolor",
  "tracing",
  "tracing-subscriber",
  "unicode-xid",
@@ -4145,7 +4145,18 @@ dependencies = [
  "filecheck",
  "generational-arena",
  "peg",
+ "sway-ir-macros",
  "sway-types",
+]
+
+[[package]]
+name = "sway-ir-macros"
+version = "0.24.3"
+dependencies = [
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

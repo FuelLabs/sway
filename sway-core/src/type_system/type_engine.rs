@@ -391,40 +391,46 @@ impl TypeEngine {
             }
 
             (
-                TypeInfo::ContractCaller {
-                    abi_name: ref abi_name_a,
-                    address,
-                },
-                ref e @ TypeInfo::ContractCaller {
-                    abi_name: ref abi_name_b,
-                    ..
-                },
-            ) if (abi_name_a == abi_name_b && address.is_none())
-                || matches!(abi_name_a, AbiName::Deferred) =>
-            {
-                // if one address is empty, coerce to the other one
-                match self.slab.replace(expected, e, look_up_type_id(expected)) {
-                    None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
-                }
-            }
-            (
                 ref r @ TypeInfo::ContractCaller {
-                    abi_name: ref abi_name_a,
-                    ..
+                    abi_name: ref abi_name_received,
+                    address: ref received_address,
                 },
                 TypeInfo::ContractCaller {
-                    abi_name: ref abi_name_b,
-                    address,
+                    abi_name: ref abi_name_expected,
+                    ..
                 },
-            ) if (abi_name_a == abi_name_b && address.is_none())
-                || matches!(abi_name_b, AbiName::Deferred) =>
+            ) if (abi_name_received == abi_name_expected && received_address.is_none())
+                || matches!(abi_name_received, AbiName::Deferred) =>
             {
                 // if one address is empty, coerce to the other one
                 match self.slab.replace(received, r, look_up_type_id(expected)) {
                     None => (vec![], vec![]),
                     Some(_) => self.unify(received, expected, span, help_text),
                 }
+            }
+            (
+                TypeInfo::ContractCaller {
+                    abi_name: ref abi_name_received,
+                    ..
+                },
+                ref e @ TypeInfo::ContractCaller {
+                    abi_name: ref abi_name_expected,
+                    ref address,
+                },
+            ) if (abi_name_received == abi_name_expected && address.is_none())
+                || matches!(abi_name_expected, AbiName::Deferred) =>
+            {
+                // if one address is empty, coerce to the other one
+                match self.slab.replace(expected, e, look_up_type_id(received)) {
+                    None => (vec![], vec![]),
+                    Some(_) => self.unify(received, expected, span, help_text),
+                }
+            }
+            (ref r @ TypeInfo::ContractCaller { .. }, ref e @ TypeInfo::ContractCaller { .. })
+                if r == e =>
+            {
+                // if they are the same, then it's ok
+                (vec![], vec![])
             }
             // When unifying complex types, we must check their sub-types. This
             // can be trivially implemented for tuples, sum types, etc.
