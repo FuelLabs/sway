@@ -2,10 +2,10 @@
 library tx;
 
 use ::address::Address;
+use ::constants::ZERO_B256;
 use ::mem::read;
 use ::option::Option;
 use ::revert::revert;
-use ::constants::ZERO_B256;
 
 ////////////////////////////////////////
 // GTF Opcode const selectors
@@ -241,8 +241,8 @@ pub fn tx_script_bytecode_hash() -> b256 {
         Transaction::Script => {
             // Get the script memory details
             let mut result_buffer = ZERO_B256;
-            let script_length = __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH);
-            let script_ptr = __gtf::<u64>(0, GTF_SCRIPT_SCRIPT);
+            let script_length = tx_script_length();
+            let script_ptr = tx_script_start_pointer();
             
             // Run the hash opcode for the script in memory
             asm(hash: result_buffer, ptr: script_ptr, len: script_length) {

@@ -183,7 +183,11 @@ async fn can_get_script_bytecode_hash() {
         .unwrap()
         .tx;
     let hash = match tx {
-        FuelTransaction::Script { script, .. } => Hasher::hash(&script),
+        FuelTransaction::Script { script, .. } => {
+            // Make sure script is actually something fairly substantial
+            assert!(script.len() > 1);
+            Hasher::hash(&script)
+        }
         _ => Hasher::hash(&vec![]),
     };
 
