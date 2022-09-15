@@ -151,20 +151,25 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
             }
         }
         Declaration::EnumDeclaration(enum_decl) => {
-            for attr_decl in &enum_decl.attributes {
-                let attr = attr_decl.attribute.get();
-                let name = attr.name.as_str();
-                if &name == &DOC_ATTRIBUTE_NAME {
-                    let mut args = attr
-                    .args
-                    .as_ref()
-                    .map(|parens| parens.get().into_iter().collect())
-                    .unwrap_or_else(Vec::new);
 
-                    eprintln!("{:#?}", args);
-
-                }
+            if let Some(attributes) = enum_decl.attributes.get(DOC_ATTRIBUTE_NAME) {
+                eprintln!("{:#?}", attributes);
             }
+
+            // for attr_decl in &enum_decl.attributes {
+            //     let attr = attr_decl.attribute.get();
+            //     let name = attr.name.as_str();
+            //     if &name == &DOC_ATTRIBUTE_NAME {
+            //         let mut args = attr
+            //         .args
+            //         .as_ref()
+            //         .map(|parens| parens.get().into_iter().collect())
+            //         .unwrap_or_else(Vec::new);
+
+            //         eprintln!("{:#?}", args);
+
+            //     }
+            // }
             tokens.insert(
                 to_ident_key(&enum_decl.name),
                 Token::from_parsed(AstToken::Declaration(declaration.clone()), SymbolKind::Enum),
