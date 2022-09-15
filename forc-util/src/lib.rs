@@ -4,17 +4,17 @@ use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
+use ansi_term::Colour;
 use anyhow::{bail, Result};
-use std::env;
 use std::ffi::OsStr;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str;
+use std::{env, io};
 use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
 use sway_types::Spanned;
 use sway_utils::constants;
-use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
-use tracing_subscriber::filter::EnvFilter;
+use tracing::{Level, Metadata};
+use tracing_subscriber::{filter::EnvFilter, fmt::MakeWriter};
 
 pub mod restricted;
 
@@ -201,65 +201,31 @@ pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: 
 }
 
 pub fn println_red(txt: &str) {
-    println_std_out(txt, TermColor::Red);
+    println_std_out(txt, Colour::Red);
 }
 
 pub fn println_green(txt: &str) {
-    println_std_out(txt, TermColor::Green);
-}
-
-pub fn print_blue_err(txt: &str) {
-    print_std_err(txt, TermColor::Blue);
+    println_std_out(txt, Colour::Green);
 }
 
 pub fn println_yellow_err(txt: &str) {
-    println_std_err(txt, TermColor::Yellow);
+    println_std_err(txt, Colour::Yellow);
 }
 
 pub fn println_red_err(txt: &str) {
-    println_std_err(txt, TermColor::Red);
+    println_std_err(txt, Colour::Red);
 }
 
 pub fn println_green_err(txt: &str) {
-    println_std_err(txt, TermColor::Green);
+    println_std_err(txt, Colour::Green);
 }
 
-pub fn print_std_out(txt: &str, color: TermColor) {
-    let stdout = StandardStream::stdout(ColorChoice::Always);
-    print_with_color(txt, color, stdout);
+fn println_std_out(txt: &str, color: Colour) {
+    tracing::info!("{}", color.paint(txt));
 }
 
-fn println_std_out(txt: &str, color: TermColor) {
-    let stdout = StandardStream::stdout(ColorChoice::Always);
-    println_with_color(txt, color, stdout);
-}
-
-fn print_std_err(txt: &str, color: TermColor) {
-    let stdout = StandardStream::stderr(ColorChoice::Always);
-    print_with_color(txt, color, stdout);
-}
-
-fn println_std_err(txt: &str, color: TermColor) {
-    let stdout = StandardStream::stderr(ColorChoice::Always);
-    println_with_color(txt, color, stdout);
-}
-
-fn print_with_color(txt: &str, color: TermColor, stream: StandardStream) {
-    let mut stream = stream;
-    stream
-        .set_color(ColorSpec::new().set_fg(Some(color)))
-        .expect("internal printing error");
-    write!(&mut stream, "{}", txt).expect("internal printing error");
-    stream.reset().expect("internal printing error");
-}
-
-fn println_with_color(txt: &str, color: TermColor, stream: StandardStream) {
-    let mut stream = stream;
-    stream
-        .set_color(ColorSpec::new().set_fg(Some(color)))
-        .expect("internal printing error");
-    writeln!(&mut stream, "{}", txt).expect("internal printing error");
-    stream.reset().expect("internal printing error");
+fn println_std_err(txt: &str, color: Colour) {
+    tracing::error!("{}", color.paint(txt));
 }
 
 fn format_err(err: &sway_core::CompileError) {
@@ -422,6 +388,32 @@ fn construct_window<'a>(
 
 const LOG_FILTER: &str = "RUST_LOG";
 
+// This allows us to write ERROR and WARN level logs to stderr and everything else to stdout.
+// https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
+struct StdioTracingWriter;
+impl<'a> MakeWriter<'a> for StdioTracingWriter {
+    type Writer = Box<dyn io::Write>;
+
+    fn make_writer(&'a self) -> Self::Writer {
+        // We must have an implementation of `make_writer` that makes
+        // a "default" writer without any configuring metadata. Let's
+        // just return stdout in that case.
+        Box::new(io::stdout())
+    }
+
+    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+        // Here's where we can implement our special behavior. We'll
+        // check if the metadata's verbosity level is WARN or ERROR,
+        // and return stderr in that case.
+        if meta.level() <= &Level::WARN {
+            return Box::new(io::stderr());
+        }
+
+        // Otherwise, we'll return stdout.
+        Box::new(io::stdout())
+    }
+}
+
 /// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
 ///
 /// `RUST_LOG` environment variable can be used to set different minimum level for the subscriber, default is `INFO`.
@@ -439,6 +431,7 @@ pub fn init_tracing_subscriber() {
         .with_line_number(false)
         .without_time()
         .with_target(false)
+        .with_writer(StdioTracingWriter)
         .init();
 }
 
