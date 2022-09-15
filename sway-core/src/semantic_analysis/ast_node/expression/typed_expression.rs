@@ -324,6 +324,12 @@ impl CollectTypesMetadata for TypedExpression {
                     ));
                 }
             }
+            Return(stmt) => res.append(&mut check!(
+                stmt.expr.collect_types_metadata(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )),
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
             // `TypedExpression::return_type`. Variable expressions are just names of variables.
@@ -439,6 +445,15 @@ impl DeterministicallyAborts for TypedExpression {
             StorageReassignment(storage_reassignment) => {
                 storage_reassignment.rhs.deterministically_aborts()
             }
+            // TODO: Is this correct?
+            // I'm not sure what this function is supposed to do exactly. It's called
+            // "deterministically_aborts" which I thought meant it checks for an abort/panic, but
+            // it's actually checking for returns.
+            //
+            // Also, is it necessary to check the expression to see if avoids the return? eg.
+            // someone could write `return break;` in a loop, which would mean the return never
+            // gets executed.
+            Return(..) => true,
         }
     }
 }
@@ -593,6 +608,9 @@ impl TypedExpression {
             TypedExpressionVariant::EnumTag { exp } => exp.gather_return_statements(),
             TypedExpressionVariant::UnsafeDowncast { exp, .. } => exp.gather_return_statements(),
 
+            TypedExpressionVariant::Return(stmt) => {
+                vec![stmt]
+            }
             // if it is impossible for an expression to contain a return _statement_ (not an
             // implicit return!), put it in the pattern below.
             TypedExpressionVariant::Literal(_)
@@ -752,6 +770,41 @@ impl TypedExpression {
             ExpressionKind::Reassignment(ReassignmentExpression { lhs, rhs }) => {
                 Self::type_check_reassignment(ctx.by_ref(), lhs, *rhs, span)
             }
+            ExpressionKind::Return(expr) => {
+                let ctx = ctx
+                    // we use "unknown" here because return statements do not
+                    // necessarily follow the type annotation of their immediate
+                    // surrounding context. Because a return statement is control flow
+                    // that breaks out to the nearest function, we need to type check
+                    // it against the surrounding function.
+                    // That is impossible here, as we don't have that information. It
+                    // is the responsibility of the function declaration to type check
+                    // all return statements contained within it.
+                    .by_ref()
+                    .with_type_annotation(insert_type(TypeInfo::Unknown))
+                    .with_help_text(
+                        "Returned value must match up with the function return type \
+                        annotation.",
+                    );
+                let mut warnings = vec![];
+                let mut errors = vec![];
+                let expr_span = expr.span();
+                let expr = check!(
+                    TypedExpression::type_check(ctx, *expr),
+                    error_recovery_expr(expr_span),
+                    warnings,
+                    errors,
+                );
+                let stmt = TypedReturnStatement { expr };
+                let typed_expr = TypedExpression {
+                    expression: TypedExpressionVariant::Return(Box::new(stmt)),
+                    return_type: insert_type(TypeInfo::Unknown),
+                    // FIXME: This should be Yes?
+                    is_constant: IsConstant::No,
+                    span,
+                };
+                ok(typed_expr, warnings, errors)
+            }
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -760,14 +813,11 @@ impl TypedExpression {
         let mut warnings = res.warnings;
         let mut errors = res.errors;
 
-        // if one of the expressions deterministically aborts, we don't want to type check it.
-        if !typed_expression.deterministically_aborts() {
-            // if the return type cannot be cast into the annotation type then it is a type error
-            let (mut new_warnings, new_errors) =
-                ctx.unify_with_self(typed_expression.return_type, &expr_span);
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-        }
+        // if the return type cannot be cast into the annotation type then it is a type error
+        let (mut new_warnings, new_errors) =
+            ctx.unify_with_self(typed_expression.return_type, &expr_span);
+        warnings.append(&mut new_warnings);
+        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
 
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = check!(
@@ -1155,17 +1205,25 @@ impl TypedExpression {
             .clone()
             .map(|x| x.1)
             .unwrap_or_else(|| asm.whole_block_span.clone());
-        let return_type = check!(
-            ctx.resolve_type_with_self(
-                insert_type(asm.return_type.clone()),
-                &asm_span,
-                EnforceTypeArguments::No,
-                None
-            ),
-            insert_type(TypeInfo::ErrorRecovery),
-            warnings,
-            errors,
-        );
+        let diverges = asm
+            .body
+            .iter()
+            .any(|asm_op| matches!(asm_op.op_name.as_str(), "rvrt" | "ret"));
+        let return_type = if diverges {
+            insert_type(TypeInfo::Unknown)
+        } else {
+            check!(
+                ctx.resolve_type_with_self(
+                    insert_type(asm.return_type.clone()),
+                    &asm_span,
+                    EnforceTypeArguments::No,
+                    None
+                ),
+                insert_type(TypeInfo::ErrorRecovery),
+                warnings,
+                errors,
+            )
+        };
         // type check the initializers
         let typed_registers = asm
             .registers

@@ -23,9 +23,6 @@ pub fn traverse_node(node: &AstNode, tokens: &TokenMap) {
         AstNodeContent::ImplicitReturnExpression(expression) => {
             handle_expression(expression, tokens)
         }
-        AstNodeContent::ReturnStatement(return_statement) => {
-            handle_expression(&return_statement.expr, tokens)
-        }
 
         // TODO
         // handle other content types
@@ -591,6 +588,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 }
             }
         }
+        ExpressionKind::Return(expr) => handle_expression(expr, tokens),
     }
 }
 

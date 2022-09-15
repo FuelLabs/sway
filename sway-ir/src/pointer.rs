@@ -2,15 +2,15 @@
 //!
 //! NOTE: much of this was hastily put together and can be streamlined or refactored altogether.
 
-use crate::{constant::Constant, context::Context, irtype::Type};
+use crate::{constant::Constant, context::Context, irtype::Type, pretty::DebugWithContext};
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
 /// [`Context`].
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct Pointer(pub generational_arena::Index);
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
+pub struct Pointer(#[in_context(pointers)] pub generational_arena::Index);
 
 #[doc(hidden)]
-#[derive(Clone)]
+#[derive(Clone, DebugWithContext)]
 pub struct PointerContent {
     pub ty: Type,
     pub is_mutable: bool,

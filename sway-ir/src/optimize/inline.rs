@@ -306,6 +306,11 @@ fn inline_instruction(
             }
             Instruction::AddrOf(arg) => new_block.ins(context).addr_of(map_value(arg)),
             Instruction::BitCast(value, ty) => new_block.ins(context).bitcast(map_value(value), ty),
+            Instruction::BinaryOp { op, arg1, arg2 } => {
+                new_block
+                    .ins(context)
+                    .binary_op(op, map_value(arg1), map_value(arg2))
+            }
             // For `br` and `cbr` below we don't need to worry about the phi values, they're
             // adjusted later in `inline_function_call()`.
             Instruction::Branch(b) => new_block.ins(context).branch(map_block(b), None),

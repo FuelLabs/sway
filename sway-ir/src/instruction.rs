@@ -17,15 +17,22 @@ use crate::{
     function::Function,
     irtype::{Aggregate, Type},
     pointer::Pointer,
+    pretty::DebugWithContext,
     value::{Value, ValueDatum},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, DebugWithContext)]
 pub enum Instruction {
     /// Address of a non-copy (memory) value
     AddrOf(Value),
     /// An opaque list of ASM instructions passed directly to codegen.
     AsmBlock(AsmBlock, Vec<AsmArg>),
+    /// Binary arithmetic operations
+    BinaryOp {
+        op: BinaryOpKind,
+        arg1: Value,
+        arg2: Value,
+    },
     /// Cast the type of a value without changing its actual content.
     BitCast(Value, Type),
     /// An unconditional jump.
@@ -138,6 +145,14 @@ pub enum Predicate {
     // More soon.  NotEqual, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual.
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum BinaryOpKind {
+    Add,
+    Sub,
+    Mul,
+    Div,
+}
+
 /// Special registers in the Fuel Virtual Machine.
 #[derive(Debug, Clone, Copy)]
 pub enum Register {
@@ -179,7 +194,8 @@ impl Instruction {
     pub fn get_type(&self, context: &Context) -> Option<Type> {
         match self {
             Instruction::AddrOf(_) => Some(Type::Uint(64)),
-            Instruction::AsmBlock(asm_block, _) => asm_block.get_type(context),
+            Instruction::AsmBlock(asm_block, _) => Some(asm_block.get_type(context)),
+            Instruction::BinaryOp { arg1, .. } => arg1.get_type(context),
             Instruction::BitCast(_, ty) => Some(*ty),
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
             Instruction::Cmp(..) => Some(Type::Bool),
@@ -277,6 +293,10 @@ impl Instruction {
                     .for_each(|init_val| replace(init_val))
             }),
             Instruction::BitCast(value, _) => replace(value),
+            Instruction::BinaryOp { op: _, arg1, arg2 } => {
+                replace(arg1);
+                replace(arg2);
+            }
             Instruction::Branch(_) => (),
             Instruction::Call(_, args) => args.iter_mut().for_each(replace),
             Instruction::Cmp(_, lhs_val, rhs_val) => {
@@ -371,6 +391,7 @@ impl Instruction {
                 | Instruction::InsertValue { .. } => true,
                 | Instruction::AddrOf(_)
                 | Instruction::BitCast(..)
+                | Instruction::BinaryOp { .. }
                 | Instruction::Cmp(..)
                 | Instruction::ExtractElement {  .. }
                 | Instruction::ExtractValue { .. }
@@ -488,6 +509,15 @@ impl<'a> InstructionInserter<'a> {
             .instructions
             .push(bitcast_val);
         bitcast_val
+    }
+
+    pub fn binary_op(self, op: BinaryOpKind, arg1: Value, arg2: Value) -> Value {
+        let binop_val =
+            Value::new_instruction(self.context, Instruction::BinaryOp { op, arg1, arg2 });
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(binop_val);
+        binop_val
     }
 
     pub fn int_to_ptr(self, value: Value, ty: Type) -> Value {

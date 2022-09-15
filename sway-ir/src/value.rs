@@ -12,22 +12,23 @@ use crate::{
     instruction::Instruction,
     irtype::Type,
     metadata::{combine, MetadataIndex},
+    pretty::DebugWithContext,
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
 /// [`Context`].
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct Value(pub generational_arena::Index);
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
+pub struct Value(#[in_context(values)] pub generational_arena::Index);
 
 #[doc(hidden)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, DebugWithContext)]
 pub struct ValueContent {
     pub value: ValueDatum,
     pub metadata: Option<MetadataIndex>,
 }
 
 #[doc(hidden)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, DebugWithContext)]
 pub enum ValueDatum {
     Argument(Type),
     Constant(Constant),
@@ -101,6 +102,20 @@ impl Value {
                     | Instruction::Ret(_, _)
             ),
             _ => false,
+        }
+    }
+
+    pub fn is_diverging(&self, context: &Context) -> bool {
+        match &context.values[self.0].value {
+            ValueDatum::Instruction(ins) => match ins {
+                Instruction::Branch(..)
+                | Instruction::ConditionalBranch { .. }
+                | Instruction::Ret(..) => true,
+                Instruction::Phi(alts) => alts.is_empty(),
+                Instruction::AsmBlock(asm_block, ..) => asm_block.is_diverging(context),
+                _ => false,
+            },
+            ValueDatum::Argument(..) | ValueDatum::Constant(..) => false,
         }
     }
 

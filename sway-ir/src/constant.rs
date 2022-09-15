@@ -3,18 +3,19 @@
 use crate::{
     context::Context,
     irtype::{Aggregate, Type},
+    pretty::DebugWithContext,
     value::Value,
 };
 
 /// A [`Type`] and constant value, including [`ConstantValue::Undef`] for uninitialized constants.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, DebugWithContext)]
 pub struct Constant {
     pub ty: Type,
     pub value: ConstantValue,
 }
 
 /// A constant representation of each of the supported [`Type`]s.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, DebugWithContext)]
 pub enum ConstantValue {
     Undef,
     Unit,

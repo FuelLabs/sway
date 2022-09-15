@@ -7,7 +7,7 @@ use crate::{
     parse_tree::*,
     type_system::{look_up_type_id, AbiName, IntegerBits},
     AstNode, AstNodeContent, CodeBlock, Declaration, Expression, IntrinsicFunctionExpression,
-    ReturnStatement, TypeInfo, WhileLoopExpression,
+    TypeInfo, WhileLoopExpression,
 };
 
 use sway_types::Spanned;
@@ -496,6 +496,7 @@ impl Dependencies {
             ExpressionKind::Break => self,
             ExpressionKind::Continue => self,
             ExpressionKind::Reassignment(reassignment) => self.gather_from_expr(&reassignment.rhs),
+            ExpressionKind::Return(expr) => self.gather_from_expr(expr),
         }
     }
 
@@ -525,9 +526,6 @@ impl Dependencies {
 
     fn gather_from_node(self, node: &AstNode) -> Self {
         match &node.content {
-            AstNodeContent::ReturnStatement(ReturnStatement { expr }) => {
-                self.gather_from_expr(expr)
-            }
             AstNodeContent::Expression(expr) => self.gather_from_expr(expr),
             AstNodeContent::ImplicitReturnExpression(expr) => self.gather_from_expr(expr),
             AstNodeContent::Declaration(decl) => self.gather_from_decl(decl),
