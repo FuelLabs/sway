@@ -232,14 +232,21 @@ fn insert_after_span(
     let iter = comments_to_insert.iter();
     let mut offset = offset;
     let mut comment_str = String::new();
+    let mut pre_module_comment = false;
     for comment_with_context in iter {
         let (comment_value, comment_context) = comment_with_context;
+        if comment_value.span.start() == 0 {
+            pre_module_comment = true;
+        }
         write!(
             comment_str,
             "{}{}",
             format_context(comment_context, 2),
             &format_comment(comment_value)
         )?;
+    }
+    if pre_module_comment {
+        writeln!(comment_str)?;
     }
     let mut src_rope = Rope::from_str(formatted_code);
     // If the position we are going to be inserting from + 1 is a \n we are moving that \n after
@@ -256,11 +263,7 @@ fn insert_after_span(
 /// Applies formatting to the comment.
 /// Currently does not apply any formatting and directly returns the raw comment str
 fn format_comment(comment: &Comment) -> String {
-    let mut comment_str = comment.span().str();
-    if comment.span.start() == 0 {
-        // If this comment is at the beginning we need to insert a `\n` after it so that program king go to the next line
-        comment_str.push('\n');
-    }
+    let comment_str = comment.span().str();
     comment_str
 }
 
