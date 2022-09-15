@@ -1,14 +1,23 @@
+#![allow(dead_code)]
 use crate::{
     core::token::{AstToken, TokenMap},
     utils::token::to_ident_key,
 };
+use std::collections::HashMap;
+use sway_ast::AttributeDecl;
 use sway_core::{
     constants::{DOC_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME},
-    AttributesMap, Declaration,
+    Declaration,
 };
 use sway_types::Ident;
 
-pub(crate) fn attributes(decl_ident: &Ident, tokens: &TokenMap) -> Option<AttributesMap> {
+#[derive(Clone, Debug)]
+pub struct Attribute {
+    pub name: Ident,
+    pub args: Vec<Ident>,
+}
+
+pub(crate) fn attribute_decls(decl_ident: &Ident, tokens: &TokenMap) -> Option<Vec<AttributeDecl>> {
     if let Some(item) = tokens.get(&to_ident_key(decl_ident)) {
         let token = item.value();
         return match &token.parsed {
@@ -30,11 +39,40 @@ pub(crate) fn attributes(decl_ident: &Ident, tokens: &TokenMap) -> Option<Attrib
     None
 }
 
-pub(crate) fn doc_attributes(decl_ident: &Ident, tokens: &TokenMap) -> Option<Vec<Ident>> {
-    attributes(decl_ident, tokens).and_then(|mut attributes| attributes.remove(DOC_ATTRIBUTE_NAME))
+pub(crate) fn doc_attributes(decl_ident: &Ident, tokens: &TokenMap) -> Option<Vec<Attribute>> {
+    attribute_decls(decl_ident, tokens)
+        .and_then(|attribute_list| attributes_to_map(&attribute_list).remove(DOC_ATTRIBUTE_NAME))
 }
 
-pub(crate) fn storage_attributes(decl_ident: &Ident, tokens: &TokenMap) -> Option<Vec<Ident>> {
-    attributes(decl_ident, tokens)
-        .and_then(|mut attributes| attributes.remove(STORAGE_PURITY_ATTRIBUTE_NAME))
+pub(crate) fn storage_attributes(decl_ident: &Ident, tokens: &TokenMap) -> Option<Vec<Attribute>> {
+    attribute_decls(decl_ident, tokens).and_then(|attribute_list| {
+        attributes_to_map(&attribute_list).remove(STORAGE_PURITY_ATTRIBUTE_NAME)
+    })
+}
+
+pub(crate) fn attributes_to_map(attribute_list: &[AttributeDecl]) -> HashMap<String, Vec<Attribute>> {
+    let mut attrs_map: HashMap<String, Vec<Attribute>> = HashMap::new();
+    for attr_decl in attribute_list {
+        let attr = attr_decl.attribute.get();
+        let args = attr
+            .args
+            .as_ref()
+            .map(|parens| parens.get().into_iter().cloned().collect())
+            .unwrap_or_else(Vec::new);
+
+        let attribute = Attribute {
+            name: attr.name.clone(),
+            args,
+        };
+        let name = attr.name.as_str();
+        match attrs_map.get_mut(name) {
+            Some(old_args) => {
+                old_args.push(attribute);
+            }
+            None => {
+                attrs_map.insert(name.to_string(), vec![attribute]);
+            }
+        }
+    }
+    attrs_map
 }

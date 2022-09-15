@@ -5,7 +5,7 @@ use crate::{
 };
 use sway_core::{
     constants::{
-        DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX,
+        DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX,
     },
     parse_tree::{Literal, MethodName},
     type_system::{TypeArgument, TypeParameter},
@@ -153,10 +153,6 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
             }
         }
         Declaration::EnumDeclaration(enum_decl) => {
-            if let Some(attributes) = enum_decl.attributes.get(DOC_ATTRIBUTE_NAME) {
-                eprintln!("{:#?}", attributes);
-            }
-
             tokens.insert(
                 to_ident_key(&enum_decl.name),
                 Token::from_parsed(AstToken::Declaration(declaration.clone()), SymbolKind::Enum),

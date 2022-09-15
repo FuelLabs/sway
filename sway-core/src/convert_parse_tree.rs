@@ -392,13 +392,12 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
 //
 //   #[foo(bar, bar)]
 
-// pub type AttributesMap<'a> = HashMap<&'a str, Vec<&'a Ident>>;
-pub type AttributesMap = HashMap<String, Vec<Ident>>;
+type AttributesMap<'a> = HashMap<&'a str, Vec<&'a Ident>>;
 
-fn item_attrs_to_map(
+fn item_attrs_to_map<'a>(
     ec: &mut ErrorContext,
-    attribute_list: &[AttributeDecl],
-) -> Result<AttributesMap, ErrorEmitted> {
+    attribute_list: &'a [AttributeDecl],
+) -> Result<AttributesMap<'a>, ErrorEmitted> {
     let mut attrs_map = AttributesMap::new();
     for attr_decl in attribute_list {
         let attr = attr_decl.attribute.get();
@@ -414,14 +413,14 @@ fn item_attrs_to_map(
         let mut args = attr
             .args
             .as_ref()
-            .map(|parens| parens.get().into_iter().cloned().collect())
+            .map(|parens| parens.get().into_iter().collect())
             .unwrap_or_else(Vec::new);
         match attrs_map.get_mut(name) {
             Some(old_args) => {
                 old_args.append(&mut args);
             }
             None => {
-                attrs_map.insert(name.to_string(), args);
+                attrs_map.insert(name, args);
             }
         }
     }
