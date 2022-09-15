@@ -263,8 +263,7 @@ fn insert_after_span(
 /// Applies formatting to the comment.
 /// Currently does not apply any formatting and directly returns the raw comment str
 fn format_comment(comment: &Comment) -> String {
-    let comment_str = comment.span().str();
-    comment_str
+    comment.span().str()
 }
 
 #[cfg(test)]
