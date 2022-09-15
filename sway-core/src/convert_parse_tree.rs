@@ -288,8 +288,6 @@ pub fn module_to_sway_parse_tree(
 }
 
 fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, ErrorEmitted> {
-    let attributes = item_attrs_to_map(ec, &item.attribute_list)?;
-
     let span = item.span();
     let contents = match item.value {
         ItemKind::Use(item_use) => {
@@ -301,19 +299,21 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
         }
         ItemKind::Struct(item_struct) => {
             let struct_declaration =
-                item_struct_to_struct_declaration(ec, item_struct, attributes)?;
+                item_struct_to_struct_declaration(ec, item_struct, item.attribute_list)?;
             vec![AstNodeContent::Declaration(Declaration::StructDeclaration(
                 struct_declaration,
             ))]
         }
         ItemKind::Enum(item_enum) => {
-            let enum_declaration = item_enum_to_enum_declaration(ec, item_enum, attributes)?;
+            let enum_declaration =
+                item_enum_to_enum_declaration(ec, item_enum, item.attribute_list)?;
             vec![AstNodeContent::Declaration(Declaration::EnumDeclaration(
                 enum_declaration,
             ))]
         }
         ItemKind::Fn(item_fn) => {
-            let function_declaration = item_fn_to_function_declaration(ec, item_fn, attributes)?;
+            let function_declaration =
+                item_fn_to_function_declaration(ec, item_fn, item.attribute_list)?;
             for param in &function_declaration.parameters {
                 if let Ok(ty) = resolve_type(param.type_id, &param.type_span) {
                     if matches!(ty, TypeInfo::SelfType) {
@@ -329,7 +329,8 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
             )]
         }
         ItemKind::Trait(item_trait) => {
-            let trait_declaration = item_trait_to_trait_declaration(ec, item_trait, attributes)?;
+            let trait_declaration =
+                item_trait_to_trait_declaration(ec, item_trait, item.attribute_list)?;
             vec![AstNodeContent::Declaration(Declaration::TraitDeclaration(
                 trait_declaration,
             ))]
@@ -346,14 +347,14 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
         }
         ItemKind::Const(item_const) => {
             let constant_declaration =
-                item_const_to_constant_declaration(ec, item_const, attributes)?;
+                item_const_to_constant_declaration(ec, item_const, item.attribute_list)?;
             vec![AstNodeContent::Declaration(
                 Declaration::ConstantDeclaration(constant_declaration),
             )]
         }
         ItemKind::Storage(item_storage) => {
             let storage_declaration =
-                item_storage_to_storage_declaration(ec, item_storage, attributes)?;
+                item_storage_to_storage_declaration(ec, item_storage, item.attribute_list)?;
             vec![AstNodeContent::Declaration(
                 Declaration::StorageDeclaration(storage_declaration),
             )]
@@ -506,7 +507,7 @@ fn use_tree_to_use_statements(
 fn item_struct_to_struct_declaration(
     ec: &mut ErrorContext,
     item_struct: ItemStruct,
-    attributes: AttributesMap,
+    attributes: Vec<AttributeDecl>,
 ) -> Result<StructDeclaration, ErrorEmitted> {
     let mut errors = Vec::new();
     let span = item_struct.span();
@@ -515,8 +516,7 @@ fn item_struct_to_struct_declaration(
         .into_inner()
         .into_iter()
         .map(|type_field| {
-            let attributes = item_attrs_to_map(ec, &type_field.attribute_list)?;
-            type_field_to_struct_field(ec, type_field.value, attributes)
+            type_field_to_struct_field(ec, type_field.value, type_field.attribute_list)
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -543,6 +543,7 @@ fn item_struct_to_struct_declaration(
 
     let struct_declaration = StructDeclaration {
         name: item_struct.name,
+        attributes,
         fields,
         type_parameters: generic_params_opt_to_type_parameters(
             ec,
@@ -551,7 +552,6 @@ fn item_struct_to_struct_declaration(
         )?,
         visibility: pub_token_opt_to_visibility(item_struct.visibility),
         span,
-        attributes,
     };
     Ok(struct_declaration)
 }
@@ -559,7 +559,7 @@ fn item_struct_to_struct_declaration(
 fn item_enum_to_enum_declaration(
     ec: &mut ErrorContext,
     item_enum: ItemEnum,
-    attributes: AttributesMap,
+    attributes: Vec<AttributeDecl>,
 ) -> Result<EnumDeclaration, ErrorEmitted> {
     let mut errors = Vec::new();
     let span = item_enum.span();
@@ -569,8 +569,7 @@ fn item_enum_to_enum_declaration(
         .into_iter()
         .enumerate()
         .map(|(tag, type_field)| {
-            let attributes = item_attrs_to_map(ec, &type_field.attribute_list)?;
-            type_field_to_enum_variant(ec, type_field.value, attributes, tag)
+            type_field_to_enum_variant(ec, type_field.value, type_field.attribute_list, tag)
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -613,7 +612,7 @@ fn item_enum_to_enum_declaration(
 fn item_fn_to_function_declaration(
     ec: &mut ErrorContext,
     item_fn: ItemFn,
-    attributes: AttributesMap,
+    attributes: Vec<AttributeDecl>,
 ) -> Result<FunctionDeclaration, ErrorEmitted> {
     let span = item_fn.span();
     let return_type_span = match &item_fn.fn_signature.return_type_opt {
@@ -646,8 +645,9 @@ fn item_fn_to_function_declaration(
 
 fn get_attributed_purity(
     ec: &mut ErrorContext,
-    attributes: &AttributesMap,
+    attribute_list: &[AttributeDecl],
 ) -> Result<Purity, ErrorEmitted> {
+    let attributes = item_attrs_to_map(ec, attribute_list)?;
     let mut purity = Purity::Pure;
     let mut add_impurity = |new_impurity, counter_impurity| {
         if purity == Purity::Pure {
@@ -679,7 +679,7 @@ fn get_attributed_purity(
 fn item_trait_to_trait_declaration(
     ec: &mut ErrorContext,
     item_trait: ItemTrait,
-    attributes: AttributesMap,
+    attributes: Vec<AttributeDecl>,
 ) -> Result<TraitDeclaration, ErrorEmitted> {
     let name = item_trait.name;
     let interface_surface = {
@@ -688,8 +688,7 @@ fn item_trait_to_trait_declaration(
             .into_inner()
             .into_iter()
             .map(|(fn_signature, _semicolon_token)| {
-                let attributes = item_attrs_to_map(ec, &fn_signature.attribute_list)?;
-                fn_signature_to_trait_fn(ec, fn_signature.value, attributes)
+                fn_signature_to_trait_fn(ec, fn_signature.value, fn_signature.attribute_list)
             })
             .collect::<Result<_, _>>()?
     };
@@ -699,8 +698,7 @@ fn item_trait_to_trait_declaration(
             .into_inner()
             .into_iter()
             .map(|item_fn| {
-                let attributes = item_attrs_to_map(ec, &item_fn.attribute_list)?;
-                item_fn_to_function_declaration(ec, item_fn.value, attributes)
+                item_fn_to_function_declaration(ec, item_fn.value, item_fn.attribute_list)
             })
             .collect::<Result<_, _>>()?,
     };
@@ -731,10 +729,7 @@ fn item_impl_to_declaration(
             .contents
             .into_inner()
             .into_iter()
-            .map(|item| {
-                let attributes = item_attrs_to_map(ec, &item.attribute_list)?;
-                item_fn_to_function_declaration(ec, item.value, attributes)
-            })
+            .map(|item| item_fn_to_function_declaration(ec, item.value, item.attribute_list))
             .collect::<Result<_, _>>()?
     };
 
@@ -782,8 +777,7 @@ fn item_abi_to_abi_declaration(
                 .into_inner()
                 .into_iter()
                 .map(|(fn_signature, _semicolon_token)| {
-                    let attributes = item_attrs_to_map(ec, &fn_signature.attribute_list)?;
-                    fn_signature_to_trait_fn(ec, fn_signature.value, attributes)
+                    fn_signature_to_trait_fn(ec, fn_signature.value, fn_signature.attribute_list)
                 })
                 .collect::<Result<_, _>>()?
         },
@@ -793,8 +787,7 @@ fn item_abi_to_abi_declaration(
                 .into_inner()
                 .into_iter()
                 .map(|item_fn| {
-                    let attributes = item_attrs_to_map(ec, &item_fn.attribute_list)?;
-                    item_fn_to_function_declaration(ec, item_fn.value, attributes)
+                    item_fn_to_function_declaration(ec, item_fn.value, item_fn.attribute_list)
                 })
                 .collect::<Result<_, _>>()?,
         },
@@ -805,7 +798,7 @@ fn item_abi_to_abi_declaration(
 pub(crate) fn item_const_to_constant_declaration(
     ec: &mut ErrorContext,
     item_const: ItemConst,
-    attributes: AttributesMap,
+    attributes: Vec<AttributeDecl>,
 ) -> Result<ConstantDeclaration, ErrorEmitted> {
     let (type_ascription, type_ascription_span) = match item_const.ty_opt {
         Some((_colon_token, ty)) => {
@@ -833,7 +826,7 @@ pub(crate) fn item_const_to_constant_declaration(
 fn item_storage_to_storage_declaration(
     ec: &mut ErrorContext,
     item_storage: ItemStorage,
-    attributes: AttributesMap,
+    attributes: Vec<AttributeDecl>,
 ) -> Result<StorageDeclaration, ErrorEmitted> {
     let mut errors = Vec::new();
     let span = item_storage.span();
@@ -842,8 +835,7 @@ fn item_storage_to_storage_declaration(
         .into_inner()
         .into_iter()
         .map(|storage_field| {
-            let attributes = item_attrs_to_map(ec, &storage_field.attribute_list)?;
-            storage_field_to_storage_field(ec, storage_field.value, attributes)
+            storage_field_to_storage_field(ec, storage_field.value, storage_field.attribute_list)
         })
         .collect::<Result<_, _>>()?;
 
@@ -873,16 +865,16 @@ fn item_storage_to_storage_declaration(
 fn type_field_to_struct_field(
     ec: &mut ErrorContext,
     type_field: TypeField,
-    attributes: AttributesMap,
+    attributes: Vec<AttributeDecl>,
 ) -> Result<StructField, ErrorEmitted> {
     let span = type_field.span();
     let type_span = type_field.ty.span();
     let struct_field = StructField {
         name: type_field.name,
+        attributes,
         type_info: ty_to_type_info(ec, type_field.ty)?,
         span,
         type_span,
-        attributes,
     };
     Ok(struct_field)
 }
@@ -965,7 +957,7 @@ fn pub_token_opt_to_visibility(pub_token_opt: Option<PubToken>) -> Visibility {
 fn type_field_to_enum_variant(
     ec: &mut ErrorContext,
     type_field: TypeField,
-    attributes: AttributesMap,
+    attributes: Vec<AttributeDecl>,
     tag: usize,
 ) -> Result<EnumVariant, ErrorEmitted> {
     let span = type_field.span();
@@ -977,11 +969,11 @@ fn type_field_to_enum_variant(
 
     let enum_variant = EnumVariant {
         name: type_field.name,
+        attributes,
         type_info: ty_to_type_info(ec, type_field.ty)?,
         type_span,
         tag,
         span,
-        attributes,
     };
     Ok(enum_variant)
 }
@@ -1119,7 +1111,7 @@ fn ty_to_type_argument(ec: &mut ErrorContext, ty: Ty) -> Result<TypeArgument, Er
 fn fn_signature_to_trait_fn(
     ec: &mut ErrorContext,
     fn_signature: FnSignature,
-    attributes: AttributesMap,
+    attributes: Vec<AttributeDecl>,
 ) -> Result<TraitFn, ErrorEmitted> {
     let return_type_span = match &fn_signature.return_type_opt {
         Some((_right_arrow_token, ty)) => ty.span(),
@@ -2023,7 +2015,7 @@ fn binary_op_call(
 fn storage_field_to_storage_field(
     ec: &mut ErrorContext,
     storage_field: sway_ast::StorageField,
-    attributes: AttributesMap,
+    attribute_list: Vec<AttributeDecl>,
 ) -> Result<StorageField, ErrorEmitted> {
     let type_info_span = if let Ty::Path(path_type) = &storage_field.ty {
         path_type.prefix.name.span()
@@ -2031,7 +2023,7 @@ fn storage_field_to_storage_field(
         storage_field.ty.span()
     };
     let storage_field = StorageField {
-        attributes,
+        attributes: attribute_list,
         name: storage_field.name,
         type_info: ty_to_type_info(ec, storage_field.ty)?,
         type_info_span,

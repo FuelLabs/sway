@@ -1,5 +1,5 @@
-use crate::{convert_parse_tree::AttributesMap, parse_tree::*, type_system::*};
-
+use crate::{parse_tree::*, type_system::*};
+use sway_ast::AttributeDecl;
 use sway_types::{ident::Ident, span::Span};
 
 mod purity;
@@ -8,7 +8,7 @@ pub use purity::{promote_purity, Purity};
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration {
     pub purity: Purity,
-    pub attributes: AttributesMap,
+    pub attributes: Vec<AttributeDecl>,
     pub name: Ident,
     pub visibility: Visibility,
     pub body: CodeBlock,

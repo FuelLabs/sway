@@ -1,22 +1,21 @@
 use super::{FunctionDeclaration, FunctionParameter};
 
 use crate::{
-    convert_parse_tree::AttributesMap,
     function::Purity,
     parse_tree::{CallPath, Visibility},
     type_system::TypeInfo,
 };
-
+use sway_ast::AttributeDecl;
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration {
     pub name: Ident,
+    pub attributes: Vec<AttributeDecl>,
     pub interface_surface: Vec<TraitFn>,
     pub methods: Vec<FunctionDeclaration>,
     pub(crate) supertraits: Vec<Supertrait>,
     pub visibility: Visibility,
-    pub attributes: AttributesMap,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -30,10 +29,10 @@ impl Spanned for Supertrait {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct TraitFn {
     pub name: Ident,
-    pub attributes: AttributesMap,
+    pub attributes: Vec<AttributeDecl>,
     pub purity: Purity,
     pub parameters: Vec<FunctionParameter>,
     pub return_type: TypeInfo,
