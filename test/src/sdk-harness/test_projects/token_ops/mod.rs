@@ -329,7 +329,7 @@ async fn can_send_message() {
     // TODO: how to check message, balance here?
 
     fuelcoin_instance
-        .send_message(amount, 0, 1, recipient_array)
+        .send_message(amount, 0, 0, recipient_array)
         .append_variable_outputs(1)
         .call()
         .await
