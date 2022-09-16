@@ -8,8 +8,8 @@ use crate::{
 use {
     crate::{
         constants::{
-            STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
-            VALID_ATTRIBUTE_NAMES, DOC_ATTRIBUTE_NAME,
+            DOC_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME,
+            STORAGE_PURITY_WRITE_NAME, VALID_ATTRIBUTE_NAMES,
         },
         error::{err, ok, CompileError, CompileResult, CompileWarning, Warning},
         type_system::{insert_type, AbiName, IntegerBits},
@@ -392,7 +392,7 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
 //   #[foo(bar, bar)]
 
 /// An attribute has a name (i.e "doc", "storage") and
-/// a vector of possible arguments. 
+/// a vector of possible arguments.
 #[derive(Clone, Debug)]
 pub struct Attribute {
     pub name: Ident,

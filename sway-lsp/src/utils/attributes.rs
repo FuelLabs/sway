@@ -3,9 +3,7 @@ use crate::{
     core::token::{AstToken, TokenMap},
     utils::token::to_ident_key,
 };
-use sway_core::{
-    Attribute, AttributesMap, AttributeKind, Declaration,
-};
+use sway_core::{Attribute, AttributeKind, AttributesMap, Declaration};
 use sway_types::Ident;
 
 pub(crate) fn attributes_map(decl_ident: &Ident, tokens: &TokenMap) -> Option<AttributesMap> {
