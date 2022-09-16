@@ -399,9 +399,9 @@ pub struct Attribute {
 
 pub type AttributesMap = HashMap<String, Vec<Attribute>>;
 
-fn item_attrs_to_map<'a>(
+fn item_attrs_to_map(
     ec: &mut ErrorContext,
-    attribute_list: &'a [AttributeDecl],
+    attribute_list: &[AttributeDecl],
 ) -> Result<AttributesMap, ErrorEmitted> {
     let mut attrs_map = AttributesMap::new();
     for attr_decl in attribute_list {
