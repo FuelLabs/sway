@@ -2,8 +2,6 @@
 contract;
 
 use std::{
-    address::Address,
-    assert::assert,
     chain::auth::{
         AuthError,
         msg_sender,
@@ -13,10 +11,7 @@ use std::{
         call_frames::msg_asset_id,
         msg_amount,
     },
-    contract_id::ContractId,
-    identity::Identity,
     result::Result,
-    revert::revert,
     token::transfer_to_output,
 };
 

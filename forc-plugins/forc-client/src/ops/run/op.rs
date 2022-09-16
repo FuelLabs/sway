@@ -100,7 +100,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     );
 
     if !command.unsigned {
-        println!("Tx id to sign {}", tx.id());
+        info!("Tx id to sign {}", tx.id());
         let mut signature = String::new();
         print!("Please provide the signature for this transaction:");
         std::io::stdout().flush()?;

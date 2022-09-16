@@ -1,9 +1,6 @@
 script;
 
-// ANCHOR: vec_import
-use std::vec::Vec;
-// ANCHOR_END: vec_import
-use std::{logging::log, option::Option, revert::revert};
+use std::{logging::log, option::Option};
 
 fn main() {
     // ANCHOR: vec_new

@@ -1,6 +1,6 @@
 contract;
 
-use std::{identity::Identity, option::Option};
+use std::option::Option;
 
 abi OwnershipExample {
     #[storage(write)]

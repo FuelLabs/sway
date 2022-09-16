@@ -112,10 +112,6 @@ impl FnCompiler {
     ) -> Result<Option<Value>, CompileError> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_node.span);
         match ast_node.content {
-            TypedAstNodeContent::ReturnStatement(trs) => {
-                let val = self.compile_return_statement(context, md_mgr, trs.expr)?;
-                Ok(Some(val))
-            }
             TypedAstNodeContent::Declaration(td) => match td {
                 TypedDeclaration::VariableDeclaration(tvd) => {
                     self.compile_var_decl(context, md_mgr, *tvd, span_md_idx)
@@ -375,6 +371,9 @@ impl FnCompiler {
                     &storage_reassignment.rhs,
                     span_md_idx,
                 ),
+            TypedExpressionVariant::Return(stmt) => {
+                self.compile_return_statement(context, md_mgr, stmt.expr)
+            }
         }
     }
 
@@ -626,6 +625,23 @@ impl FnCompiler {
                             .add_metadatum(context, span_md_idx))
                     }
                 }
+            }
+            Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
+                let op = match kind {
+                    Intrinsic::Add => BinaryOpKind::Add,
+                    Intrinsic::Sub => BinaryOpKind::Sub,
+                    Intrinsic::Mul => BinaryOpKind::Mul,
+                    Intrinsic::Div => BinaryOpKind::Div,
+                    _ => unreachable!(),
+                };
+                let lhs = arguments[0].clone();
+                let rhs = arguments[1].clone();
+                let lhs_value = self.compile_expression(context, md_mgr, lhs)?;
+                let rhs_value = self.compile_expression(context, md_mgr, rhs)?;
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .binary_op(op, lhs_value, rhs_value))
             }
         }
     }
