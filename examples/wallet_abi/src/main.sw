@@ -1,8 +1,6 @@
 // ANCHOR: abi_library
 library wallet_abi;
 
-use std::address::Address;
-
 // ANCHOR: abi
 abi Wallet {
     // ANCHOR: receive_funds

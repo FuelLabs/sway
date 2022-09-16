@@ -3,7 +3,7 @@ contract;
 // ANCHOR: storage_map_import
 use std::storage::StorageMap;
 // ANCHOR_END: storage_map_import
-use std::{address::Address, logging::log, option::Option, revert::revert};
+use std::{logging::log, option::Option};
 
 storage {
     // ANCHOR: storage_map_decl
