@@ -176,7 +176,7 @@ async fn create_signed_contract_tx(
         witnesses,
     );
 
-    tracing::info!("Tx id to sign {}", tx.id());
+    info!("Tx id to sign {}", tx.id());
     Ok((tx, contract_id))
 }
 
