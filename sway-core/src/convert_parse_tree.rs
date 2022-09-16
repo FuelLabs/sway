@@ -288,7 +288,7 @@ pub fn module_to_sway_parse_tree(
 }
 
 fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, ErrorEmitted> {
-    let attributes = attributes_to_map(ec, &item.attribute_list)?;
+    let attributes = item_attrs_to_map(ec, &item.attribute_list)?;
 
     let span = item.span();
     let contents = match item.value {
@@ -399,7 +399,7 @@ pub struct Attribute {
 
 pub type AttributesMap = HashMap<String, Vec<Attribute>>;
 
-fn attributes_to_map<'a>(
+fn item_attrs_to_map<'a>(
     ec: &mut ErrorContext,
     attribute_list: &'a [AttributeDecl],
 ) -> Result<AttributesMap, ErrorEmitted> {
@@ -526,7 +526,7 @@ fn item_struct_to_struct_declaration(
         .into_inner()
         .into_iter()
         .map(|type_field| {
-            let attributes = attributes_to_map(ec, &type_field.attribute_list)?;
+            let attributes = item_attrs_to_map(ec, &type_field.attribute_list)?;
             type_field_to_struct_field(ec, type_field.value, attributes)
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -580,7 +580,7 @@ fn item_enum_to_enum_declaration(
         .into_iter()
         .enumerate()
         .map(|(tag, type_field)| {
-            let attributes = attributes_to_map(ec, &type_field.attribute_list)?;
+            let attributes = item_attrs_to_map(ec, &type_field.attribute_list)?;
             type_field_to_enum_variant(ec, type_field.value, attributes, tag)
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -708,7 +708,7 @@ fn item_trait_to_trait_declaration(
             .into_inner()
             .into_iter()
             .map(|(fn_signature, _semicolon_token)| {
-                let attributes = attributes_to_map(ec, &fn_signature.attribute_list)?;
+                let attributes = item_attrs_to_map(ec, &fn_signature.attribute_list)?;
                 fn_signature_to_trait_fn(ec, fn_signature.value, attributes)
             })
             .collect::<Result<_, _>>()?
@@ -719,7 +719,7 @@ fn item_trait_to_trait_declaration(
             .into_inner()
             .into_iter()
             .map(|item_fn| {
-                let attributes = attributes_to_map(ec, &item_fn.attribute_list)?;
+                let attributes = item_attrs_to_map(ec, &item_fn.attribute_list)?;
                 item_fn_to_function_declaration(ec, item_fn.value, attributes)
             })
             .collect::<Result<_, _>>()?,
@@ -752,7 +752,7 @@ fn item_impl_to_declaration(
             .into_inner()
             .into_iter()
             .map(|item| {
-                let attributes = attributes_to_map(ec, &item.attribute_list)?;
+                let attributes = item_attrs_to_map(ec, &item.attribute_list)?;
                 item_fn_to_function_declaration(ec, item.value, attributes)
             })
             .collect::<Result<_, _>>()?
@@ -802,7 +802,7 @@ fn item_abi_to_abi_declaration(
                 .into_inner()
                 .into_iter()
                 .map(|(fn_signature, _semicolon_token)| {
-                    let attributes = attributes_to_map(ec, &fn_signature.attribute_list)?;
+                    let attributes = item_attrs_to_map(ec, &fn_signature.attribute_list)?;
                     fn_signature_to_trait_fn(ec, fn_signature.value, attributes)
                 })
                 .collect::<Result<_, _>>()?
@@ -813,7 +813,7 @@ fn item_abi_to_abi_declaration(
                 .into_inner()
                 .into_iter()
                 .map(|item_fn| {
-                    let attributes = attributes_to_map(ec, &item_fn.attribute_list)?;
+                    let attributes = item_attrs_to_map(ec, &item_fn.attribute_list)?;
                     item_fn_to_function_declaration(ec, item_fn.value, attributes)
                 })
                 .collect::<Result<_, _>>()?,
@@ -862,7 +862,7 @@ fn item_storage_to_storage_declaration(
         .into_inner()
         .into_iter()
         .map(|storage_field| {
-            let attributes = attributes_to_map(ec, &storage_field.attribute_list)?;
+            let attributes = item_attrs_to_map(ec, &storage_field.attribute_list)?;
             storage_field_to_storage_field(ec, storage_field.value, attributes)
         })
         .collect::<Result<_, _>>()?;
