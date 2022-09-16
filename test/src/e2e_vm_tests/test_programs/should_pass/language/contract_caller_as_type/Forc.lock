@@ -1,9 +1,0 @@
-[[package]]
-name = 'contract_caller_as_type'
-source = 'root'
-dependencies = ['core']
-
-[[package]]
-name = 'core'
-source = 'path+from-root-2FCDD40F7AA61941'
-dependencies = []

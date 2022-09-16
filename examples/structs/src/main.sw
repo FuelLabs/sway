@@ -71,10 +71,7 @@ fn struct_destructuring() {
             42u64,
             (
                 42u32,
-                (
-                    true,
-                    "ok",
-                ),
+                (true, "ok"),
             ),
         ),
     };
@@ -84,5 +81,5 @@ fn struct_destructuring() {
         Point { x: 2, y: 4 },
         Point { x: 3, y: 6 },
     );
-    let (Point{x:x0, y:y0, }, Point{x:x1, y:y1, }) = struct_in_tuple;
+    let (Point{x:x0, y:y0}, Point{x:x1, y:y1}) = struct_in_tuple;
 }

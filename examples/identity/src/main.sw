@@ -7,7 +7,6 @@ use abi::IdentityExample;
 use errors::MyError;
 
 use std::{
-    address::Address,
     chain::auth::{
         AuthError,
         msg_sender,
@@ -16,13 +15,7 @@ use std::{
         BASE_ASSET_ID,
         ZERO_B256,
     },
-    contract_id::ContractId,
-    identity::Identity,
     result::Result,
-    revert::{
-        require,
-        revert,
-    },
     token::{
         force_transfer_to_contract,
         transfer_to_output,

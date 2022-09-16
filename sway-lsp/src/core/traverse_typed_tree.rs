@@ -20,9 +20,6 @@ use sway_types::{ident::Ident, Spanned};
 
 pub fn traverse_node(node: &TypedAstNode, tokens: &TokenMap) {
     match &node.content {
-        TypedAstNodeContent::ReturnStatement(return_statement) => {
-            handle_expression(&return_statement.expr, tokens)
-        }
         TypedAstNodeContent::Declaration(declaration) => handle_declaration(declaration, tokens),
         TypedAstNodeContent::Expression(expression) => handle_expression(expression, tokens),
         TypedAstNodeContent::ImplicitReturnExpression(expression) => {
@@ -433,6 +430,7 @@ fn handle_expression(expression: &TypedExpression, tokens: &TokenMap) {
             }
             handle_expression(&storage_reassignment.rhs, tokens);
         }
+        TypedExpressionVariant::Return(stmt) => handle_expression(&stmt.expr, tokens),
     }
 }
 
