@@ -579,8 +579,8 @@ mod tests {
         assert_eq!(response, Ok(Some(err)));
     }
 
-    #[tokio::test]
-    //#[allow(dead_code)]
+    //#[tokio::test]
+    #[allow(dead_code)]
     async fn did_open() {
         let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
 
