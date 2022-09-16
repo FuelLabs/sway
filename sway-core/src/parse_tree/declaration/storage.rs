@@ -1,12 +1,11 @@
-use crate::{parse_tree::Expression, type_system::*};
-use sway_ast::AttributeDecl;
+use crate::{parse_tree::Expression, type_system::*, AttributesMap};
 use sway_types::{ident::Ident, span::Span};
 
 #[derive(Debug, Clone)]
 /// A declaration of contract storage. Only valid within contract contexts.
 /// All values in this struct are mutable and persistent among executions of the same contract deployment.
 pub struct StorageDeclaration {
-    pub attributes: Vec<AttributeDecl>,
+    pub attributes: AttributesMap,
     pub fields: Vec<StorageField>,
     pub span: Span,
 }
@@ -18,7 +17,7 @@ pub struct StorageDeclaration {
 #[derive(Debug, Clone)]
 pub struct StorageField {
     pub name: Ident,
-    pub attributes: Vec<AttributeDecl>,
+    pub attributes: AttributesMap,
     pub type_info: TypeInfo,
     pub type_info_span: Span,
     pub initializer: Expression,

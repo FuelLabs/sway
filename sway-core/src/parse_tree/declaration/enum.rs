@@ -1,11 +1,10 @@
-use crate::{parse_tree::Visibility, type_system::*};
-use sway_ast::AttributeDecl;
+use crate::{parse_tree::Visibility, type_system::*, AttributesMap};
 use sway_types::{ident::Ident, span::Span};
 
 #[derive(Debug, Clone)]
 pub struct EnumDeclaration {
     pub name: Ident,
-    pub attributes: Vec<AttributeDecl>,
+    pub attributes: AttributesMap,
     pub type_parameters: Vec<TypeParameter>,
     pub variants: Vec<EnumVariant>,
     pub(crate) span: Span,
@@ -15,7 +14,7 @@ pub struct EnumDeclaration {
 #[derive(Debug, Clone)]
 pub struct EnumVariant {
     pub name: Ident,
-    pub attributes: Vec<AttributeDecl>,
+    pub attributes: AttributesMap,
     pub type_info: TypeInfo,
     pub type_span: Span,
     pub(crate) tag: usize,
