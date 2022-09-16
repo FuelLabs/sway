@@ -4,8 +4,7 @@ use crate::{
     utils::token::to_ident_key,
 };
 use sway_core::{
-    constants::{DOC_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME},
-    Attribute, AttributesMap, Declaration,
+    Attribute, AttributesMap, AttributeKind, Declaration,
 };
 use sway_types::Ident;
 
@@ -33,10 +32,10 @@ pub(crate) fn attributes_map(decl_ident: &Ident, tokens: &TokenMap) -> Option<At
 
 pub(crate) fn doc_attributes(decl_ident: &Ident, tokens: &TokenMap) -> Option<Vec<Attribute>> {
     attributes_map(decl_ident, tokens)
-        .and_then(|mut attributes| attributes.remove(DOC_ATTRIBUTE_NAME))
+        .and_then(|mut attributes| attributes.remove(&AttributeKind::Doc))
 }
 
 pub(crate) fn storage_attributes(decl_ident: &Ident, tokens: &TokenMap) -> Option<Vec<Attribute>> {
     attributes_map(decl_ident, tokens)
-        .and_then(|mut attributes| attributes.remove(STORAGE_PURITY_ATTRIBUTE_NAME))
+        .and_then(|mut attributes| attributes.remove(&AttributeKind::Storage))
 }

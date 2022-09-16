@@ -9,7 +9,7 @@ use {
     crate::{
         constants::{
             STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
-            VALID_ATTRIBUTE_NAMES,
+            VALID_ATTRIBUTE_NAMES, DOC_ATTRIBUTE_NAME,
         },
         error::{err, ok, CompileError, CompileResult, CompileWarning, Warning},
         type_system::{insert_type, AbiName, IntegerBits},
@@ -391,13 +391,23 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
 //
 //   #[foo(bar, bar)]
 
+/// An attribute has a name (i.e "doc", "storage") and
+/// a vector of possible arguments. 
 #[derive(Clone, Debug)]
 pub struct Attribute {
     pub name: Ident,
     pub args: Vec<Ident>,
 }
 
-pub type AttributesMap = HashMap<String, Vec<Attribute>>;
+/// Valid kinds of attributes supported by the compiler
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum AttributeKind {
+    Doc,
+    Storage,
+}
+
+/// Stores the attributes associated with the type.
+pub type AttributesMap = HashMap<AttributeKind, Vec<Attribute>>;
 
 fn item_attrs_to_map(
     ec: &mut ErrorContext,
@@ -415,6 +425,7 @@ fn item_attrs_to_map(
                 },
             })
         }
+
         let args = attr
             .args
             .as_ref()
@@ -426,12 +437,18 @@ fn item_attrs_to_map(
             args,
         };
 
-        match attrs_map.get_mut(name) {
-            Some(old_args) => {
-                old_args.push(attribute);
-            }
-            None => {
-                attrs_map.insert(name.to_string(), vec![attribute]);
+        if let Some(attr_kind) = match name {
+            DOC_ATTRIBUTE_NAME => Some(AttributeKind::Doc),
+            STORAGE_PURITY_ATTRIBUTE_NAME => Some(AttributeKind::Storage),
+            _ => None,
+        } {
+            match attrs_map.get_mut(&attr_kind) {
+                Some(old_args) => {
+                    old_args.push(attribute);
+                }
+                None => {
+                    attrs_map.insert(attr_kind, vec![attribute]);
+                }
             }
         }
     }
@@ -667,7 +684,7 @@ fn get_attributed_purity(
             purity = Purity::ReadsWrites;
         }
     };
-    match attributes.get(STORAGE_PURITY_ATTRIBUTE_NAME) {
+    match attributes.get(&AttributeKind::Storage) {
         Some(attrs) if !attrs.is_empty() => {
             for attr in attrs {
                 if !attr.args.is_empty() {
