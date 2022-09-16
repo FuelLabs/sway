@@ -141,8 +141,6 @@
 <h2 id="abi-declaration"><a class="header" href="#abi-declaration">ABI Declaration</a></h2>
 <pre><code class="language-sway">library wallet_abi;
 
-use std::address::Address;
-
 abi Wallet {
     #[storage(read, write)]
     fn receive_funds();
@@ -155,8 +153,6 @@ abi Wallet {
 <pre><code class="language-sway">contract;
 
 use std::{
-    address::Address,
-    assert::assert,
     chain::auth::{
         AuthError,
         msg_sender,
@@ -166,10 +162,7 @@ use std::{
         call_frames::msg_asset_id,
         msg_amount,
     },
-    contract_id::ContractId,
-    identity::Identity,
     result::Result,
-    revert::revert,
     token::transfer_to_output,
 };
 

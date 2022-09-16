@@ -144,9 +144,22 @@
 <h2 id="using-the-standard-library"><a class="header" href="#using-the-standard-library">Using the Standard Library</a></h2>
 <p>The standard library is made implicitly available to all Forc projects created using <a href="../forc/commands/forc_new.html"><code>forc new</code></a>. In other words, it is not required to manually specify <code>std</code> as an explicit dependency. Forc will automagically use the version of <code>std</code> that matches its version.</p>
 <p>Importing items from the standard library can be done using the <code>use</code> keyword, just as importing items from any Sway project. For example:</p>
-<pre><code class="language-sway">use std::address::Address;
+<pre><code class="language-sway">use std::storage::StorageMap;
 </code></pre>
-<p>This imports the <code>Address</code> type into the current namespace.</p>
+<p>This imports the <code>StorageMap</code> type into the current namespace.</p>
+<h2 id="standard-library-prelude"><a class="header" href="#standard-library-prelude">Standard Library Prelude</a></h2>
+<p>Sway comes with a variety of things in its standard library. However, if you had to manually import every single thing that you used, it would be very verbose. But importing a lot of things that a program never uses isn't good either. A balance needs to be struck.</p>
+<p>The prelude is the list of things that Sway automatically imports into every Sway program. It's kept as small as possible, and is focused on things which are used in almost every single Sway program.</p>
+<p>The current version of the prelude lives in <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/prelude.sw"><code>std::prelude</code></a>, and re-exports the following:</p>
+<ul>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/address.sw"><code>std::address::Address</code></a>, a wrapper around the <code>b256</code> type representing a wallet address.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/contract_id.sw"><code>std::contract_id::ContractId</code></a>, a wrapper around the <code>b256</code> type representing the ID of a contract.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/identity.sw"><code>std::identity::Identity</code></a>, an enum with two possible variants: <code>Address: Address</code> and <code>ContractId: ContractId</code>.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw"><code>std::vec::Vec</code></a>, a growable, heap-allocated vector.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw"><code>std::assert::assert</code></a>, a function that reverts the VM if the condition provided to it is <code>false</code>.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw"><code>std::revert::require</code></a>, a function that reverts the VM and logs a given value if the condition provided to it is <code>false</code>.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw"><code>std::revert::revert</code></a>, a function that reverts the VM.</li>
+</ul>
 
                     </main>
 

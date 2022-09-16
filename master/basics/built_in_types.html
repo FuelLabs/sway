@@ -205,8 +205,6 @@ let w: (u64) = (42,);  // type error
 <p>Arrays can be iterated over, unlike tuples. An array's type is written as the type the array contains followed by the number of elements, semicolon-separated and within square brackets, e.g. <code>[u64; 5]</code>. To access an element in an array, use the <em>array indexing syntax</em>, i.e. square brackets.</p>
 <pre><code class="language-sway">script;
 
-use std::assert::assert;
-
 struct Foo {
     f1: u32,
     f2: b256,

@@ -143,8 +143,6 @@
 <p>As with any Sway program, the program starts with a declaration of what <a href="./index.html">program type</a> it is. A contract must also either define or import an <a href="#the-abi-declaration">ABI declaration</a> and implement it. It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract. Let's take a look at an ABI declaration in a library:</p>
 <pre><code class="language-sway">library wallet_abi;
 
-use std::address::Address;
-
 abi Wallet {
     #[storage(read, write)]
     fn receive_funds();
@@ -227,7 +225,7 @@ abi Wallet {
 <p>Now that we have defined our interface and implemented it for our contract, we need to know how to actually <em>call</em> our contract. Let's take a look at a contract call:</p>
 <pre><code class="language-sway">script;
 
-use std::{address::Address, constants::ZERO_B256};
+use std::constants::ZERO_B256;
 use wallet_abi::Wallet;
 
 fn main() {

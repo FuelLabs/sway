@@ -139,9 +139,7 @@
                     <main>
                         <h1 id="vectors-on-the-heap"><a class="header" href="#vectors-on-the-heap">Vectors on the Heap</a></h1>
 <p>The first collection type we’ll look at is <code>Vec&lt;T&gt;</code>, also known as a vector. Vectors allow you to store more than one value in a single data structure that puts all the values next to each other in memory. Vectors can only store values of the same type. They are useful when you have a list of items, such as the lines of text in a file or the prices of items in a shopping cart.</p>
-<p>In order to use <code>Vec&lt;T&gt;</code>, you must first import <code>Vec</code> as follows:</p>
-<pre><code class="language-sway">use std::vec::Vec;
-</code></pre>
+<p><code>Vec&lt;T&gt;</code> is included in the <a href="../introduction/standard_library.html#standard-library-prelude">standard library prelude</a> which means that there is no need to import it manually.</p>
 <h2 id="creating-a-new-vector"><a class="header" href="#creating-a-new-vector">Creating a New Vector</a></h2>
 <p>To create a new empty vector, we call the <code>Vec::new</code> function, as shown below:</p>
 <pre><code class="language-sway">    let v: Vec&lt;u64&gt; = ~Vec::new();

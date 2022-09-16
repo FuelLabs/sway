@@ -480,9 +480,22 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 <h2 id="using-the-standard-library"><a class="header" href="#using-the-standard-library">Using the Standard Library</a></h2>
 <p>The standard library is made implicitly available to all Forc projects created using <a href="introduction/../forc/commands/forc_new.html"><code>forc new</code></a>. In other words, it is not required to manually specify <code>std</code> as an explicit dependency. Forc will automagically use the version of <code>std</code> that matches its version.</p>
 <p>Importing items from the standard library can be done using the <code>use</code> keyword, just as importing items from any Sway project. For example:</p>
-<pre><code class="language-sway">use std::address::Address;
+<pre><code class="language-sway">use std::storage::StorageMap;
 </code></pre>
-<p>This imports the <code>Address</code> type into the current namespace.</p>
+<p>This imports the <code>StorageMap</code> type into the current namespace.</p>
+<h2 id="standard-library-prelude"><a class="header" href="#standard-library-prelude">Standard Library Prelude</a></h2>
+<p>Sway comes with a variety of things in its standard library. However, if you had to manually import every single thing that you used, it would be very verbose. But importing a lot of things that a program never uses isn't good either. A balance needs to be struck.</p>
+<p>The prelude is the list of things that Sway automatically imports into every Sway program. It's kept as small as possible, and is focused on things which are used in almost every single Sway program.</p>
+<p>The current version of the prelude lives in <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/prelude.sw"><code>std::prelude</code></a>, and re-exports the following:</p>
+<ul>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/address.sw"><code>std::address::Address</code></a>, a wrapper around the <code>b256</code> type representing a wallet address.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/contract_id.sw"><code>std::contract_id::ContractId</code></a>, a wrapper around the <code>b256</code> type representing the ID of a contract.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/identity.sw"><code>std::identity::Identity</code></a>, an enum with two possible variants: <code>Address: Address</code> and <code>ContractId: ContractId</code>.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw"><code>std::vec::Vec</code></a>, a growable, heap-allocated vector.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw"><code>std::assert::assert</code></a>, a function that reverts the VM if the condition provided to it is <code>false</code>.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw"><code>std::revert::require</code></a>, a function that reverts the VM and logs a given value if the condition provided to it is <code>false</code>.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw"><code>std::revert::revert</code></a>, a function that reverts the VM.</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="example"><a class="header" href="#example">Example</a></h1>
 <p>Some basic example contracts to see how Sway and Forc work.</p>
 <ul>
@@ -530,17 +543,13 @@ impl TestContract for Contract {
 <pre><code class="language-sway">contract;
 
 use std::{
-    address::Address,
-    assert::assert,
     chain::auth::{
         AuthError,
         msg_sender,
     },
     hash::sha256,
-    identity::Identity,
     logging::log,
     result::Result,
-    revert::revert,
     storage::StorageMap,
 };
 
@@ -670,8 +679,6 @@ impl FizzBuzz for Contract {
 <h2 id="abi-declaration"><a class="header" href="#abi-declaration">ABI Declaration</a></h2>
 <pre><code class="language-sway">library wallet_abi;
 
-use std::address::Address;
-
 abi Wallet {
     #[storage(read, write)]
     fn receive_funds();
@@ -684,8 +691,6 @@ abi Wallet {
 <pre><code class="language-sway">contract;
 
 use std::{
-    address::Address,
-    assert::assert,
     chain::auth::{
         AuthError,
         msg_sender,
@@ -695,10 +700,7 @@ use std::{
         call_frames::msg_asset_id,
         msg_amount,
     },
-    contract_id::ContractId,
-    identity::Identity,
     result::Result,
-    revert::revert,
     token::transfer_to_output,
 };
 
@@ -759,8 +761,6 @@ impl Wallet for Contract {
 <h2 id="syntax-of-a-smart-contract"><a class="header" href="#syntax-of-a-smart-contract">Syntax of a Smart Contract</a></h2>
 <p>As with any Sway program, the program starts with a declaration of what <a href="sway-program-types/./index.html">program type</a> it is. A contract must also either define or import an <a href="sway-program-types/smart_contracts.html#the-abi-declaration">ABI declaration</a> and implement it. It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract. Let's take a look at an ABI declaration in a library:</p>
 <pre><code class="language-sway">library wallet_abi;
-
-use std::address::Address;
 
 abi Wallet {
     #[storage(read, write)]
@@ -844,7 +844,7 @@ abi Wallet {
 <p>Now that we have defined our interface and implemented it for our contract, we need to know how to actually <em>call</em> our contract. Let's take a look at a contract call:</p>
 <pre><code class="language-sway">script;
 
-use std::{address::Address, constants::ZERO_B256};
+use std::constants::ZERO_B256;
 use wallet_abi::Wallet;
 
 fn main() {
@@ -952,7 +952,7 @@ dep constants;
 <p>This example script calls a contract:</p>
 <pre><code class="language-sway">script;
 
-use std::{address::Address, constants::ZERO_B256};
+use std::constants::ZERO_B256;
 use wallet_abi::Wallet;
 
 fn main() {
@@ -1122,8 +1122,6 @@ let w: (u64) = (42,);  // type error
 <p>Arrays are allocated on the stack since their size is known. An array's size is <em>always</em> static, i.e. it cannot change. An array of five elements cannot become an array of six elements.</p>
 <p>Arrays can be iterated over, unlike tuples. An array's type is written as the type the array contains followed by the number of elements, semicolon-separated and within square brackets, e.g. <code>[u64; 5]</code>. To access an element in an array, use the <em>array indexing syntax</em>, i.e. square brackets.</p>
 <pre><code class="language-sway">script;
-
-use std::assert::assert;
 
 struct Foo {
     f1: u32,
@@ -1918,12 +1916,16 @@ fn main() {
 <h2 id="signature-recovery"><a class="header" href="#signature-recovery">Signature Recovery</a></h2>
 <pre><code class="language-sway">script;
 
-use std::result::Result;
-use std::b512::B512;
-use std::revert::revert;
-use std::logging::log;
-use std::ecr::{ec_recover, ec_recover_address, EcRecoverError};
-use std::address::Address;
+use std::{
+    b512::B512,
+    ecr::{
+        ec_recover,
+        ec_recover_address,
+        EcRecoverError,
+    },
+    logging::log,
+    result::Result,
+};
 
 const MSG_HASH = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
 
@@ -2061,14 +2063,11 @@ fn increment_amount(increment: u64) -&gt; u64 {
 <pre><code class="language-sway">contract;
 
 use std::{
-    address::Address,
-    assert::assert,
     context::call_frames::{
         contract_id,
         msg_asset_id,
     },
     context::msg_amount,
-    contract_id::ContractId,
     token::{
         mint_to_address,
         transfer_to_output,
@@ -2110,7 +2109,7 @@ impl LiquidityPool for Contract {
 <p>In this example, we show a native token contract with more minting, burning and transferring capabilities.</p>
 <pre><code class="language-sway">contract;
 
-use std::{address::Address, assert::assert, context::*, contract_id::ContractId, token::*};
+use std::{context::*, token::*};
 
 abi NativeAssetToken {
     fn mint_coins(mint_amount: u64);
@@ -2171,17 +2170,7 @@ impl NativeAssetToken for Contract {
 <p>To deliver an experience akin to the EVM's access control, the <code>std</code> library provides a <code>msg_sender</code> function, which identifies a unique caller based upon the call and/or transaction input data.</p>
 <pre><code class="language-sway">contract;
 
-use std::{
-    address::Address,
-    assert::assert,
-    chain::auth::{
-        AuthError,
-        msg_sender,
-    },
-    identity::Identity,
-    result::Result,
-    revert::revert,
-};
+use std::{chain::auth::{AuthError, msg_sender}, result::Result};
 
 abi MyOwnedContract {
     fn receive(field_1: u64) -&gt; bool;
@@ -2540,8 +2529,6 @@ Here's an example showing what this might look like:</p>
 <p>An <code>asm</code> block can only return a single register. If you really need to return more than one value, you can modify a tuple. Here's an example showing how can implement this <code>(u64, u64)</code>:</p>
 <pre><code class="language-sway">script;
 
-use std::assert::assert;
-
 fn adder(a: u64, b: u64, c: u64) -&gt; (u64, u64) {
     let empty_tuple = (0u64, 0u64);
     asm(output: empty_tuple, r1: a, r2: b, r3: c, r4, r5) {
@@ -2587,9 +2574,7 @@ fn main() -&gt; bool {
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="vectors-on-the-heap"><a class="header" href="#vectors-on-the-heap">Vectors on the Heap</a></h1>
 <p>The first collection type we’ll look at is <code>Vec&lt;T&gt;</code>, also known as a vector. Vectors allow you to store more than one value in a single data structure that puts all the values next to each other in memory. Vectors can only store values of the same type. They are useful when you have a list of items, such as the lines of text in a file or the prices of items in a shopping cart.</p>
-<p>In order to use <code>Vec&lt;T&gt;</code>, you must first import <code>Vec</code> as follows:</p>
-<pre><code class="language-sway">use std::vec::Vec;
-</code></pre>
+<p><code>Vec&lt;T&gt;</code> is included in the <a href="common-collections/../introduction/standard_library.html#standard-library-prelude">standard library prelude</a> which means that there is no need to import it manually.</p>
 <h2 id="creating-a-new-vector"><a class="header" href="#creating-a-new-vector">Creating a New Vector</a></h2>
 <p>To create a new empty vector, we call the <code>Vec::new</code> function, as shown below:</p>
 <pre><code class="language-sway">    let v: Vec&lt;u64&gt; = ~Vec::new();
