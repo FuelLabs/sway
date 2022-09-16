@@ -392,13 +392,20 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
 //
 //   #[foo(bar, bar)]
 
-type AttributesMap<'a> = HashMap<&'a str, Vec<&'a Ident>>;
+#[derive(Clone, Debug)]
+pub struct Attribute {
+    pub name: Ident,
+    pub args: Vec<Ident>,
+}
 
-fn item_attrs_to_map<'a>(
+//type AttributesMap<'a> = HashMap<&'a str, Vec<&'a Ident>>;
+type AttributesMap = HashMap<String, Vec<Attribute>>;
+
+// pre function
+pub fn check_attributes<'a>(
     ec: &mut ErrorContext,
     attribute_list: &'a [AttributeDecl],
-) -> Result<AttributesMap<'a>, ErrorEmitted> {
-    let mut attrs_map = AttributesMap::new();
+) -> Result<&'a [AttributeDecl], ErrorEmitted> {
     for attr_decl in attribute_list {
         let attr = attr_decl.attribute.get();
         let name = attr.name.as_str();
@@ -410,21 +417,36 @@ fn item_attrs_to_map<'a>(
                 },
             })
         }
-        let mut args = attr
+    }
+    Ok(attribute_list)
+}
+
+pub fn attributes_to_map<'a>(attribute_list: &'a [AttributeDecl]) -> AttributesMap {
+    let mut attrs_map = AttributesMap::new();
+    for attr_decl in attribute_list {
+        let attr = attr_decl.attribute.get();
+        let name = attr.name.as_str();
+        let args = attr
             .args
             .as_ref()
-            .map(|parens| parens.get().into_iter().collect())
+            .map(|parens| parens.get().into_iter().cloned().collect())
             .unwrap_or_else(Vec::new);
+
+        let attribute = Attribute {
+            name: attr.name.clone(),
+            args,
+        };
+
         match attrs_map.get_mut(name) {
             Some(old_args) => {
-                old_args.append(&mut args);
+                old_args.push(attribute);
             }
             None => {
-                attrs_map.insert(name, args);
+                attrs_map.insert(name.to_string(), vec![attribute]);
             }
         }
     }
-    Ok(attrs_map)
+    attrs_map
 }
 
 fn item_use_to_use_statements(
@@ -646,7 +668,7 @@ fn get_attributed_purity(
     ec: &mut ErrorContext,
     attribute_list: &[AttributeDecl],
 ) -> Result<Purity, ErrorEmitted> {
-    let attributes = item_attrs_to_map(ec, attribute_list)?;
+    let attributes = attributes_to_map(check_attributes(ec, attribute_list)?);
     let mut purity = Purity::Pure;
     let mut add_impurity = |new_impurity, counter_impurity| {
         if purity == Purity::Pure {
@@ -656,19 +678,28 @@ fn get_attributed_purity(
         }
     };
     match attributes.get(STORAGE_PURITY_ATTRIBUTE_NAME) {
-        Some(args) if !args.is_empty() => {
-            for arg in args {
-                match arg.as_str() {
-                    STORAGE_PURITY_READ_NAME => add_impurity(Purity::Reads, Purity::Writes),
-                    STORAGE_PURITY_WRITE_NAME => add_impurity(Purity::Writes, Purity::Reads),
-                    _otherwise => {
-                        return Err(ec.error(ConvertParseTreeError::InvalidAttributeArgument {
-                            attribute: "storage".to_owned(),
-                            span: arg.span(),
-                        }));
+        Some(attrs) if !attrs.is_empty() => {
+            for attr in attrs {
+                if !attr.args.is_empty() {
+                    for arg in &attr.args {
+                        match arg.as_str() {
+                            STORAGE_PURITY_READ_NAME => add_impurity(Purity::Reads, Purity::Writes),
+                            STORAGE_PURITY_WRITE_NAME => {
+                                add_impurity(Purity::Writes, Purity::Reads)
+                            }
+                            _otherwise => {
+                                return Err(ec.error(
+                                    ConvertParseTreeError::InvalidAttributeArgument {
+                                        attribute: "storage".to_owned(),
+                                        span: arg.span(),
+                                    },
+                                ));
+                            }
+                        }
                     }
                 }
             }
+
             Ok(purity)
         }
         _otherwise => Ok(Purity::Pure),
