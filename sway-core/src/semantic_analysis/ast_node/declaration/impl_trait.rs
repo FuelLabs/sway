@@ -7,7 +7,7 @@ use crate::{
     error::{err, ok},
     semantic_analysis::{
         Mode, TypeCheckContext, TypedAstNodeContent, TypedConstantDeclaration, TypedExpression,
-        TypedExpressionVariant, TypedIntrinsicFunctionKind, TypedReturnStatement,
+        TypedExpressionVariant, TypedIntrinsicFunctionKind,
     },
     type_system::{
         insert_type, look_up_type_id, resolve_type, set_type_as_storage_only, unify_with_self,
@@ -214,8 +214,7 @@ impl TypedImplTrait {
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             match x {
-                TypedAstNodeContent::ReturnStatement(TypedReturnStatement { expr })
-                | TypedAstNodeContent::Expression(expr)
+                TypedAstNodeContent::Expression(expr)
                 | TypedAstNodeContent::ImplicitReturnExpression(expr) => {
                     expr_contains_get_storage_index(expr, access_span)
                 }
@@ -320,6 +319,9 @@ impl TypedImplTrait {
                 }
                 TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
                     expr_contains_get_storage_index(&storage_reassignment.rhs, access_span)?
+                }
+                TypedExpressionVariant::Return(stmt) => {
+                    expr_contains_get_storage_index(&stmt.expr, access_span)?
                 }
             };
             Ok(res)
