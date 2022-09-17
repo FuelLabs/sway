@@ -9,7 +9,7 @@ pub async fn main() {
     init_tracing_subscriber(None);
     let command = DeployCommand::parse();
     if let Err(err) = deploy(command).await {
-        eprintln!("Error: {:?}", err);
+        tracing::error!("Error: {:?}", err);
         process::exit(1);
     }
 }

@@ -2,17 +2,13 @@
 contract;
 
 use std::{
-    address::Address,
-    assert::assert,
     chain::auth::{
         AuthError,
         msg_sender,
     },
     hash::sha256,
-    identity::Identity,
     logging::log,
     result::Result,
-    revert::revert,
     storage::StorageMap,
 };
 
