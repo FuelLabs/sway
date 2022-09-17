@@ -19,6 +19,15 @@ fn main() -> bool {
     true
 }
 
+/// Takes eight test values and tests the vector implementation.
+/// All test values must be distinct.
+fn test_vector<T>(v: [T; 8]) {
+    let mut vector = ~Vec::new();
+    require(vector.len() == 0, "vector was initialized in a non-empty state");
+    require(vector.capacity() == 0, "vector was initialized but the capacity is non-zero"));
+    require(vector.is_empty(), "vector was initialized in a non-empty state");
+}
+
 fn test_vector_new_u8() {
     let mut vector = ~Vec::new();
 
