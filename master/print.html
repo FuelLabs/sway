@@ -492,6 +492,8 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/contract_id.sw"><code>std::contract_id::ContractId</code></a>, a wrapper around the <code>b256</code> type representing the ID of a contract.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/identity.sw"><code>std::identity::Identity</code></a>, an enum with two possible variants: <code>Address: Address</code> and <code>ContractId: ContractId</code>.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw"><code>std::vec::Vec</code></a>, a growable, heap-allocated vector.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw"><code>std::option::Option</code></a>, an enum which expresses the presence or absence of a value.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/result.sw"><code>std::result::Result</code></a>, an enum for functions that may succeed or fail.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw"><code>std::assert::assert</code></a>, a function that reverts the VM if the condition provided to it is <code>false</code>.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw"><code>std::revert::require</code></a>, a function that reverts the VM and logs a given value if the condition provided to it is <code>false</code>.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw"><code>std::revert::revert</code></a>, a function that reverts the VM.</li>
@@ -542,16 +544,7 @@ impl TestContract for Contract {
 <p>Being a ledger-based token, this example does not use Fuel's <a href="examples/../blockchain-development/native_assets.html">native asset system</a>. It is not recommended to actually use ledger-based tokens in production; this example is here purely for illustrative purposes.</p>
 <pre><code class="language-sway">contract;
 
-use std::{
-    chain::auth::{
-        AuthError,
-        msg_sender,
-    },
-    hash::sha256,
-    logging::log,
-    result::Result,
-    storage::StorageMap,
-};
+use std::{chain::auth::{AuthError, msg_sender}, hash::sha256, logging::log, storage::StorageMap};
 
 ////////////////////////////////////////
 // Event declarations
@@ -700,7 +693,6 @@ use std::{
         call_frames::msg_asset_id,
         msg_amount,
     },
-    result::Result,
     token::transfer_to_output,
 };
 
@@ -909,7 +901,7 @@ fn main() {
     // other methods
 }
 </code></pre>
-<p>Now that the library <code>option</code> is fully written, and because <code>Option&lt;T&gt;</code> is defined with the <code>pub</code> keyword, we are now able to import <code>Option&lt;T&gt;</code> using <code>use std::option::Option;</code> from any Sway project and have access to all of its variants and methods.</p>
+<p>Now that the library <code>option</code> is fully written, and because <code>Option&lt;T&gt;</code> is defined with the <code>pub</code> keyword, we are now able to import <code>Option&lt;T&gt;</code> using <code>use std::option::Option;</code> from any Sway project and have access to all of its variants and methods. That being said, <code>Option</code> is automatically available in the <a href="sway-program-types/../introduction/standard_library.html#standard-library-prelude">standard library prelude</a> so you never actually have to import it manually.</p>
 <p>Libraries are composed of just a <code>Forc.toml</code> file and a <code>src</code> directory, unlike contracts which usually contain a <code>tests</code> directory and a <code>Cargo.toml</code> file as well. An example of a library's <code>Forc.toml</code>:</p>
 <pre><code class="language-toml">[project]
 authors = [&quot;Fuel Labs &lt;contact@fuel.sh&gt;&quot;]
@@ -1916,16 +1908,7 @@ fn main() {
 <h2 id="signature-recovery"><a class="header" href="#signature-recovery">Signature Recovery</a></h2>
 <pre><code class="language-sway">script;
 
-use std::{
-    b512::B512,
-    ecr::{
-        ec_recover,
-        ec_recover_address,
-        EcRecoverError,
-    },
-    logging::log,
-    result::Result,
-};
+use std::{b512::B512, ecr::{ec_recover, ec_recover_address, EcRecoverError}, logging::log};
 
 const MSG_HASH = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
 
@@ -2170,7 +2153,7 @@ impl NativeAssetToken for Contract {
 <p>To deliver an experience akin to the EVM's access control, the <code>std</code> library provides a <code>msg_sender</code> function, which identifies a unique caller based upon the call and/or transaction input data.</p>
 <pre><code class="language-sway">contract;
 
-use std::{chain::auth::{AuthError, msg_sender}, result::Result};
+use std::chain::auth::{AuthError, msg_sender};
 
 abi MyOwnedContract {
     fn receive(field_1: u64) -&gt; bool;

@@ -175,7 +175,7 @@
     // other methods
 }
 </code></pre>
-<p>Now that the library <code>option</code> is fully written, and because <code>Option&lt;T&gt;</code> is defined with the <code>pub</code> keyword, we are now able to import <code>Option&lt;T&gt;</code> using <code>use std::option::Option;</code> from any Sway project and have access to all of its variants and methods.</p>
+<p>Now that the library <code>option</code> is fully written, and because <code>Option&lt;T&gt;</code> is defined with the <code>pub</code> keyword, we are now able to import <code>Option&lt;T&gt;</code> using <code>use std::option::Option;</code> from any Sway project and have access to all of its variants and methods. That being said, <code>Option</code> is automatically available in the <a href="../introduction/standard_library.html#standard-library-prelude">standard library prelude</a> so you never actually have to import it manually.</p>
 <p>Libraries are composed of just a <code>Forc.toml</code> file and a <code>src</code> directory, unlike contracts which usually contain a <code>tests</code> directory and a <code>Cargo.toml</code> file as well. An example of a library's <code>Forc.toml</code>:</p>
 <pre><code class="language-toml">[project]
 authors = [&quot;Fuel Labs &lt;contact@fuel.sh&gt;&quot;]
