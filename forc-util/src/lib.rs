@@ -427,8 +427,8 @@ pub fn init_tracing_subscriber(verbosity: Option<u8>) {
     };
 
     let level_filter = verbosity.and_then(|verbosity| match verbosity {
-        1 => Some(LevelFilter::DEBUG),
-        2 => Some(LevelFilter::TRACE),
+        1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
+        2 => Some(LevelFilter::TRACE), // matches -vv
         _ => None,
     });
 
