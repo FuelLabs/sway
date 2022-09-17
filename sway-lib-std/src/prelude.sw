@@ -7,6 +7,8 @@ use ::address::Address;
 use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::vec::Vec;
+use ::option::Option;
+use ::result::Result;
 use ::assert::assert;
 use ::revert::require;
 use ::revert::revert;
