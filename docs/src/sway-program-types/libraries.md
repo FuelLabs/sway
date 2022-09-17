@@ -47,7 +47,7 @@ impl<T> Option<T> {
 }
 ```
 
-Now that the library `option` is fully written, and because `Option<T>` is defined with the `pub` keyword, we are now able to import `Option<T>` using `use std::option::Option;` from any Sway project and have access to all of its variants and methods.
+Now that the library `option` is fully written, and because `Option<T>` is defined with the `pub` keyword, we are now able to import `Option<T>` using `use std::option::Option;` from any Sway project and have access to all of its variants and methods. That being said, `Option` is automatically available in the [standard library prelude](../introduction/standard_library.md#standard-library-prelude) so you never actually have to import it manually.
 
 Libraries are composed of just a `Forc.toml` file and a `src` directory, unlike contracts which usually contain a `tests` directory and a `Cargo.toml` file as well. An example of a library's `Forc.toml`:
 
