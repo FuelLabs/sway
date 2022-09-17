@@ -9,7 +9,6 @@ use crate::{
         token::{Token, TokenMap, TypeDefinition},
         {traverse_parse_tree, traverse_typed_tree},
     },
-    sway_config::SwayConfig,
     utils,
 };
 use dashmap::DashMap;
@@ -21,7 +20,7 @@ use std::{
 };
 use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypedProgram, TypedProgramKind};
 use sway_types::{Ident, Spanned};
-use swayfmt::Formatter;
+use swayfmt::{config::manifest::Config, Formatter};
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionParams, GotoDefinitionResponse, Location, Position,
     Range, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
@@ -38,7 +37,7 @@ pub struct CompiledProgram {
 #[derive(Debug)]
 pub struct Session {
     pub documents: Documents,
-    pub config: RwLock<SwayConfig>,
+    pub config: RwLock<Config>,
     pub token_map: TokenMap,
     pub runnables: DashMap<RunnableType, Runnable>,
     pub compiled_program: RwLock<CompiledProgram>,
@@ -48,7 +47,7 @@ impl Session {
     pub fn new() -> Self {
         Session {
             documents: DashMap::new(),
-            config: RwLock::new(SwayConfig::default()),
+            config: RwLock::new(Config::default()),
             token_map: DashMap::new(),
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
@@ -127,7 +126,7 @@ impl Session {
     // update sway config
     pub fn update_config(&self, options: Value) {
         if let LockResult::Ok(mut config) = self.config.write() {
-            *config = SwayConfig::with_options(options);
+            *config = Config::from_opts(options); // how to get the config from json::Value?
         }
     }
 
@@ -350,8 +349,8 @@ impl Session {
         if let Some(document) = self.documents.get(url.path()) {
             match self.config.read() {
                 std::sync::LockResult::Ok(config) => {
-                    let config: SwayConfig = *config;
-                    let mut formatter = Formatter::from(config);
+                    let config: Config = *config;
+                    let mut formatter = Formatter::from_config(config);
                     get_format_text_edits(Arc::from(document.get_text()), &mut formatter)
                 }
                 _ => None,
