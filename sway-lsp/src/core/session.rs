@@ -130,13 +130,8 @@ impl Session {
     pub fn update_config(&self, options: Value) {
         if let LockResult::Ok(mut config) = self.config.write() {
             let config_opts = ConfigOptions::from_json_value(options);
-            match config_opts {
-                Ok(opts) => {
-                    *config = Config::from_opts(opts);
-                }
-                Err(_) => {
-                    *config = Config::default();
-                }
+            if let Ok(opts) = config_opts {
+                *config = Config::from_opts(opts);
             }
         }
     }
