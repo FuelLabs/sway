@@ -55,12 +55,8 @@ fn inputs_owner() -> Result<Identity, AuthError> {
     while i < inputs {
         let type_of_input = input_type(i);
         match type_of_input {
-            Input::Coin => {
-                ();
-            },
-            Input::Message => {
-                ();
-            },
+            Input::Coin => (),
+            Input::Message => (),
             _ => {
                 // type != InputCoin or InputMessage, continue looping.
                 i += 1u8;
