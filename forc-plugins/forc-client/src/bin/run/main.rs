@@ -6,7 +6,7 @@ use clap::Parser;
 
 #[tokio::main]
 async fn main() {
-    init_tracing_subscriber();
+    init_tracing_subscriber(None);
     let command = RunCommand::parse();
     if let Err(err) = run(command).await {
         eprintln!("Error: {:?}", err);
