@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 /// A finalized `swayfmt` config.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Config {
     pub whitespace: Whitespace,
     pub imports: Imports,
@@ -136,5 +136,12 @@ impl ConfigOptions {
             find_parent_dir_with_file(dir, SWAY_FORMAT_FILE_NAME).ok_or(ConfigError::NotFound)?;
         let file_path = config_dir.join(SWAY_FORMAT_FILE_NAME);
         Self::from_file(file_path)
+    }
+    /// Construct `ConfigOptions` from a `serde_json::Value`.
+    pub fn from_json_value(opts: serde_json::Value) -> Result<Self, ConfigError> {
+        let config_str = opts.as_str().ok_or(ConfigError::EmptyConfigStr)?;
+        let config_opts: Self =
+            toml::from_str(config_str).map_err(|e| ConfigError::SerdeJSON { err: (e) })?;
+        Ok(config_opts)
     }
 }

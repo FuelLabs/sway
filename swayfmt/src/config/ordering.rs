@@ -1,7 +1,7 @@
 //! Configuration options related to re-ordering imports, modules and items.
 use crate::config::user_opts::OrderingOptions;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Ordering {
     /// Reorder import and extern crate statements alphabetically.
     pub reorder_imports: bool,

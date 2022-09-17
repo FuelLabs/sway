@@ -20,7 +20,10 @@ use std::{
 };
 use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypedProgram, TypedProgramKind};
 use sway_types::{Ident, Spanned};
-use swayfmt::{config::manifest::Config, Formatter};
+use swayfmt::{
+    config::manifest::{Config, ConfigOptions},
+    Formatter,
+};
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionParams, GotoDefinitionResponse, Location, Position,
     Range, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
@@ -126,7 +129,15 @@ impl Session {
     // update sway config
     pub fn update_config(&self, options: Value) {
         if let LockResult::Ok(mut config) = self.config.write() {
-            *config = Config::from_opts(options); // how to get the config from json::Value?
+            let config_opts = ConfigOptions::from_json_value(options);
+            match config_opts {
+                Ok(opts) => {
+                    *config = Config::from_opts(opts);
+                }
+                Err(_) => {
+                    *config = Config::default();
+                }
+            }
         }
     }
 

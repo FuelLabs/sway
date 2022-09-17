@@ -3,7 +3,7 @@ use crate::config::user_opts::StructuresOptions;
 use serde::{Deserialize, Serialize};
 
 /// Styling preferences for user-defined structures like `struct`s or `enum`s.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Structures {
     /// Align fields of user-defined structures if their diffs fit within threshold.
     pub field_alignment: FieldAlignment,

@@ -1,7 +1,7 @@
 //! Configuration options related to formatting comments.
 use crate::{config::user_opts::CommentsOptions, constants::DEFAULT_MAX_COMMENT_WIDTH};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Comments {
     /// Break comments to fit on the line.
     pub wrap_comments: bool,
