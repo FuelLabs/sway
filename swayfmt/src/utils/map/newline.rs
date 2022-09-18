@@ -40,7 +40,7 @@ fn newline_map_from_src(unformatted_input: Arc<str>) -> Result<NewlineMap, Forma
     let mut in_sequence = false;
     let mut sequence_start = 0;
     while let Some((char_index, char)) = input_iter.next() {
-        let next_char = input_iter.peek().map(|input| input.1);
+        let next_char = input_iter.peek().map(|(_, input_char)| *input_char);
         if (char == '}' || char == ';') && next_char == Some('\n') {
             if !in_sequence {
                 sequence_start = char_index + 1;
@@ -172,23 +172,6 @@ fn format_newline_sequnce(newline_sequence: &NewlineSequence, threshold: usize) 
     }
 }
 
-/// Checks for newlines that are already in the source code.
-fn find_already_present_extra_newlines(from: usize, src: String) -> usize {
-    let mut number_of_newlines_present = 0;
-    for char in src.chars().skip(from) {
-        if char == '\n' {
-            number_of_newlines_present += 1;
-        } else {
-            break;
-        }
-    }
-    if number_of_newlines_present == 0 {
-        0
-    } else {
-        number_of_newlines_present - 1
-    }
-}
-
 /// Inserts after given span and returns the offset.
 fn insert_after_span(
     from: &ByteSpan,
@@ -199,9 +182,7 @@ fn insert_after_span(
 ) -> Result<usize, FormatterError> {
     let iter = newline_sequences_to_insert.iter();
     let mut sequence_string = String::new();
-    let newlines_to_skip =
-        find_already_present_extra_newlines(from.end, formatted_code.to_string());
-    for newline_sequence in iter.skip(newlines_to_skip) {
+    for newline_sequence in iter {
         write!(
             sequence_string,
             "{}",

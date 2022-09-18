@@ -216,9 +216,6 @@ fn format_context(context: &str, threshold: usize) -> String {
             formatted_context.push(char);
         }
     }
-    if formatted_context.starts_with("\n\n") {
-        formatted_context.remove(0);
-    }
     formatted_context
 }
 
@@ -241,7 +238,7 @@ fn insert_after_span(
         write!(
             comment_str,
             "{}{}",
-            format_context(comment_context, 2),
+            format_context(comment_context, 1),
             &format_comment(comment_value)
         )?;
     }
