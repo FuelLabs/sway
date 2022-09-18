@@ -3,6 +3,8 @@
 library inputs;
 
 use ::address::Address;
+use ::contract_id::ContractId;
+use ::constants::BASE_ASSET_ID;
 use ::mem::read;
 use ::logging::log;
 use ::option::Option;
@@ -25,14 +27,14 @@ const GTF_INPUT_TYPE = 0x101;
 // const GTF_INPUT_COIN_TX_ID = 0x102;
 // const GTF_INPUT_COIN_OUTPUT_INDEX = 0x103;
 const GTF_INPUT_COIN_OWNER = 0x104;
-// const GTF_INPUT_COIN_AMOUNT = 0x105;
-// const GTF_INPUT_COIN_ASSET_ID = 0x106;
+const GTF_INPUT_COIN_AMOUNT = 0x105;
+const GTF_INPUT_COIN_ASSET_ID = 0x106;
 // const GTF_INPUT_COIN_TX_POINTER = 0x107;
-// const GTF_INPUT_COIN_WITNESS_INDEX = 0x108;
-// const GTF_INPUT_COIN_MATURITY = 0x109;
-// const GTF_INPUT_COIN_PREDICATE_LENGTH = 0x10A;
-// const GTF_INPUT_COIN_PREDICATE_DATA_LENGTH = 0x10B;
-// const GTF_INPUT_COIN_PREDICATE = 0x10C;
+const GTF_INPUT_COIN_WITNESS_INDEX = 0x108;
+const GTF_INPUT_COIN_MATURITY = 0x109;
+const GTF_INPUT_COIN_PREDICATE_LENGTH = 0x10A;
+const GTF_INPUT_COIN_PREDICATE_DATA_LENGTH = 0x10B;
+const GTF_INPUT_COIN_PREDICATE = 0x10C;
 const GTF_INPUT_COIN_PREDICATE_DATA = 0x10D;
 
 // const GTF_INPUT_CONTRACT_TX_ID = 0x10E;
@@ -45,25 +47,51 @@ const GTF_INPUT_COIN_PREDICATE_DATA = 0x10D;
 // const GTF_INPUT_MESSAGE_MESSAGE_ID = 0x114;
 // const GTF_INPUT_MESSAGE_SENDER = 0x115;
 const GTF_INPUT_MESSAGE_RECIPIENT = 0x116;
-// const GTF_INPUT_MESSAGE_AMOUNT = 0x117;
+const GTF_INPUT_MESSAGE_AMOUNT = 0x117;
 // const GTF_INPUT_MESSAGE_NONCE = 0x118;
 
 // These are based on the old spec (before
 // https://github.com/FuelLabs/fuel-specs/pull/400) because that's what's
 // currently implemented in `fuel-core`, `fuel-asm`, and `fuel-tx. They should
 // eventually be updated.
-// const GTF_INPUT_MESSAGE_WITNESS_INDEX = 0x11A;
+const GTF_INPUT_MESSAGE_WITNESS_INDEX = 0x11A;
 // const GTF_INPUT_MESSAGE_DATA_LENGTH = 0x11B;
-// const GTF_INPUT_MESSAGE_PREDICATE_LENGTH = 0x11C;
-// const GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH = 0x11D;
+const GTF_INPUT_MESSAGE_PREDICATE_LENGTH = 0x11C;
+const GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH = 0x11D;
 // const GTF_INPUT_MESSAGE_DATA = 0x11E;
-// const GTF_INPUT_MESSAGE_PREDICATE = 0x11F;
+const GTF_INPUT_MESSAGE_PREDICATE = 0x11F;
 const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x120;
 
 pub enum Input {
     Coin: (),
     Contract: (),
     Message: (),
+}
+
+/// Get the transaction inputs count
+pub fn input_count() -> u8 {
+    let type = tx_type();
+    match type {
+        Transaction::Script => {
+            __gtf::<u8>(0, GTF_SCRIPT_INPUTS_COUNT)
+        },
+        Transaction::Create => {
+            __gtf::<u8>(0, GTF_CREATE_INPUTS_COUNT)
+        },
+    }
+}
+
+/// Get the pointer of the input at `index`.
+pub fn input_pointer(index: u64) -> u64 {
+    let type = tx_type();
+    match type {
+        Transaction::Script => {
+            __gtf::<u64>(index, GTF_SCRIPT_INPUT_AT_INDEX)
+        },
+        Transaction::Create => {
+            __gtf::<u64>(index, GTF_CREATE_INPUT_AT_INDEX)
+        }
+    }
 }
 
 /// Get the type of the input at `index`.
@@ -85,20 +113,44 @@ pub fn input_type(index: u64) -> Input {
     }
 }
 
-/// for either tx type (transaction-script or transaction-create).
-pub fn input_pointer(index: u64) -> u64 {
-    let type = tx_type();
+/// If the input's type is `InputCoin` the amount as an Option::Some(u64).
+/// If the input's type is `InputMessage` the amount as an Option::Some(u64).
+/// Otherwise, returns Option::None.
+pub fn input_amount(index: u64) -> Option<u64> {
+    let type = input_type(index);
     match type {
-        Transaction::Script => {
-            __gtf::<u64>(index, GTF_SCRIPT_INPUT_AT_INDEX)
+        Input::Coin => {
+            Option::Some(__gtf::<u64>(index, GTF_INPUT_COIN_AMOUNT))
         },
-        Transaction::Create => {
-            __gtf::<u64>(index, GTF_CREATE_INPUT_AT_INDEX)
-        }
+        Input::Message => {
+            Option::Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_AMOUNT))
+        },
+        _ => {
+            return Option::None;
+        },
+    }
+}
+
+/// If the input's type is `InputCoin` the asset id as an Option::Some(id).
+/// If the input's type is `InputMessage` the base asset id as an Option::Some(id).
+/// Otherwise, returns Option::None.
+pub fn input_asset(index: u64) -> Option<ContractId> {
+    let type = input_type(index);
+    match type {
+        Input::Coin => {
+            Option::Some(~ContractId::from(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID)))
+        },
+        Input::Message => {
+            Option::Some(BASE_ASSET_ID)
+        },
+        _ => {
+            return Option::None;
+        },
     }
 }
 
 /// If the input's type is `InputCoin` the owner as an Option::Some(owner).
+/// If the input's type is `InputMessage` the owner as an Option::Some(recipient).
 /// Otherwise, returns Option::None.
 pub fn input_owner(index: u64) -> Option<Address> {
     let type = input_type(index);
@@ -106,9 +158,119 @@ pub fn input_owner(index: u64) -> Option<Address> {
         Input::Coin => {
             Option::Some(~Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER)))
         },
+        Input::Message => {
+            Option::Some(~Address::from(__gtf::<b256>(index, GTF_INPUT_MESSAGE_RECIPIENT)))
+        },
         _ => {
             return Option::None;
         },
+    }
+}
+
+/// Get the maturity from the input at `index`.
+/// If the input's type is `InputCoin`,
+/// return the index as an Option::Some(u32).
+/// Otherwise, returns Option::None.
+pub fn input_maturity(index: u64) -> Option<u32> {
+    let type = input_type(index);
+    match type {
+        Input::Coin => {
+            Option::Some(__gtf::<u32>(index, GTF_INPUT_COIN_MATURITY))
+        },
+        _ => {
+            Option::None
+        }
+    }
+}
+
+/// Get the witness index from the input at `index`.
+/// If the input's type is `InputCoin` or `InputMessage`,
+/// return the index as an Option::Some(u8).
+/// Otherwise, returns Option::None.
+pub fn input_witness_index(index: u64) -> Option<u8> {
+    let type = input_type(index);
+    match type {
+        Input::Coin => {
+            Option::Some(__gtf::<u8>(index, GTF_INPUT_COIN_WITNESS_INDEX))
+        },
+        Input::Message => {
+            Option::Some(__gtf::<u8>(index, GTF_INPUT_MESSAGE_WITNESS_INDEX))
+        },
+        _ => {
+            Option::None
+        }
+    }
+}
+
+/// Get the predicate length from the input at `index`.
+/// If the input's type is `InputCoin` or `InputMessage`,
+/// return the length as an Option::Some(u16).
+/// Otherwise, returns Option::None.
+pub fn input_predicate_length(index: u64) -> Option<u16> {
+    let type = input_type(index);
+    match type {
+        Input::Coin => {
+            Option::Some(__gtf::<u16>(index, GTF_INPUT_COIN_PREDICATE_LENGTH))
+        },
+        Input::Message => {
+            Option::Some(__gtf::<u16>(index, GTF_INPUT_MESSAGE_PREDICATE_LENGTH))
+        },
+        _ => {
+            Option::None
+        }
+    }
+}
+
+/// Get the predicate pointer from the input at `index`.
+/// If the input's type is `InputCoin` or `InputMessage`,
+/// return the pointer as an Option::Some(ptr).
+/// Otherwise, returns Option::None.
+pub fn input_predicate_pointer(index: u64) -> Option<u64> {
+    let type = input_type(index);
+    match type {
+        Input::Coin => {
+            Option::Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_DATA))
+        },
+        Input::Message => {
+            Option::Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA))
+        },
+        _ => {
+            Option::None
+        }
+    }
+}
+
+/// Get the predicate from the input at `index`.
+/// If the input's type is `InputCoin` or `InputMessage`,
+/// return the data, otherwise reverts.
+pub fn input_predicate<T>(index: u64) -> T {
+    let data = input_predicate_pointer(index);
+    match data {
+        Option::Some(d) => {
+            read::<T>(d)
+        },
+        Option::None => {
+            revert(0)
+        },
+    }
+}
+
+/// Get the predicate data length from the input at `index`.
+/// If the input's type is `InputCoin` or `InputMessage`,
+/// return the data length as an Option::Some(u16).
+/// Otherwise, returns Option::None.
+pub fn input_predicate_data_length(index: u64) -> Option<u16> {
+    let type = input_type(index);
+    match type {
+        Input::Coin => {
+            Option::Some(__gtf::<u16>(index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH))
+        },
+        Input::Message => {
+            Option::Some(__gtf::<u16>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH))
+        },
+        _ => {
+            Option::None
+        }
     }
 }
 
@@ -131,6 +293,9 @@ pub fn input_predicate_data_pointer(index: u64) -> Option<u64> {
     }
 }
 
+/// Get the predicate data from the input at `index`.
+/// If the input's type is `InputCoin` or `InputMessage`,
+/// return the data, otherwise reverts.
 pub fn input_predicate_data<T>(index: u64) -> T {
     let data = input_predicate_data_pointer(index);
     match data {
@@ -139,20 +304,6 @@ pub fn input_predicate_data<T>(index: u64) -> T {
         },
         Option::None => {
             revert(0)
-        },
-    }
-}
-
-/// Get the transaction inputs count for either tx type
-/// (transaction-script or transaction-create).
-pub fn input_count() -> u8 {
-    let type = tx_type();
-    match type {
-        Transaction::Script => {
-            __gtf::<u8>(0, GTF_SCRIPT_INPUTS_COUNT)
-        },
-        Transaction::Create => {
-            __gtf::<u8>(0, GTF_CREATE_INPUTS_COUNT)
         },
     }
 }
