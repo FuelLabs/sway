@@ -1,12 +1,11 @@
+
 //! A reentrancy check for use in Sway contracts.
 //! Note that this only works in internal contexts.
 //! to prevent reentrancy: `assert(!is_reentrant);
-
 library reentrancy;
 
-use ::context::call_frames::*;
 use ::assert::assert;
-use ::context::registers::frame_ptr;
+use ::context::{call_frames::*, registers::frame_ptr};
 
 pub fn reentrancy_guard() {
     assert(!is_reentrant());

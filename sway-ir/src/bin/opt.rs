@@ -7,13 +7,18 @@ use anyhow::anyhow;
 use sway_ir::{error::IrError, function::Function, optimize, Context};
 
 // -------------------------------------------------------------------------------------------------
-// Right now there are 2 passes - inline and constcombine.  If we are to add more, then this code
-// should be a bit more data driven, rather than comparing pass names to magic strings in `main()`,
-// `perform_xxx()` and `ConfigBuilder`.
 
 fn main() -> Result<(), anyhow::Error> {
+    // Maintain a list of named pass functions for delegation.
+    let mut pass_mgr = PassManager::default();
+
+    pass_mgr.register::<ConstCombinePass>();
+    pass_mgr.register::<InlinePass>();
+    pass_mgr.register::<SimplifyCfgPass>();
+    pass_mgr.register::<DCEPass>();
+
     // Build the config from the command line.
-    let config = ConfigBuilder::build(std::env::args())?;
+    let config = ConfigBuilder::build(&pass_mgr, std::env::args())?;
 
     // Read the input file, or standard in.
     let input_str = read_from_input(&config.input_path)?;
@@ -23,11 +28,7 @@ fn main() -> Result<(), anyhow::Error> {
 
     // Perform optimisation passes in order.
     for pass in config.passes {
-        match pass.name.as_ref() {
-            "inline" => perform_inline(&mut ir)?,
-            "constcombine" => perform_combine_constants(&mut ir)?,
-            _otherwise => unreachable!("Unknown pass name: {}", pass.name),
-        };
+        pass_mgr.run(pass.name.as_ref(), &mut ir)?;
     }
 
     // Write the output file or standard out.
@@ -67,27 +68,134 @@ fn write_to_output<S: Into<String>>(ir_str: S, path_str: &Option<String>) -> std
 
 // -------------------------------------------------------------------------------------------------
 
-fn perform_inline(ir: &mut Context) -> Result<bool, IrError> {
-    // For now we inline everything into `main()`.  Eventually we can be more selective.
-    let main_fn = ir
-        .functions
-        .iter()
-        .find_map(|(idx, fc)| if fc.name == "main" { Some(idx) } else { None })
-        .unwrap();
-    optimize::inline_all_function_calls(ir, &Function(main_fn))
+trait NamedPass {
+    fn name() -> &'static str;
+    fn descr() -> &'static str;
+    fn run(ir: &mut Context) -> Result<bool, IrError>;
+
+    fn run_on_all_fns<F: FnMut(&mut Context, &Function) -> Result<bool, IrError>>(
+        ir: &mut Context,
+        mut run_on_fn: F,
+    ) -> Result<bool, IrError> {
+        let funcs = ir.functions.iter().map(|(idx, _)| idx).collect::<Vec<_>>();
+        let mut modified = false;
+        for idx in funcs {
+            if run_on_fn(ir, &Function(idx))? {
+                modified = true;
+            }
+        }
+        Ok(modified)
+    }
 }
 
-// -------------------------------------------------------------------------------------------------
+type NamePassPair = (&'static str, fn(&mut Context) -> Result<bool, IrError>);
 
-fn perform_combine_constants(ir: &mut Context) -> Result<bool, IrError> {
-    let funcs = ir.functions.iter().map(|(idx, _)| idx).collect::<Vec<_>>();
-    let mut modified = false;
-    for idx in funcs {
-        if optimize::combine_constants(ir, &Function(idx))? {
-            modified = true;
-        }
+#[derive(Default)]
+struct PassManager {
+    passes: HashMap<&'static str, NamePassPair>,
+}
+
+impl PassManager {
+    fn register<T: NamedPass>(&mut self) {
+        self.passes.insert(T::name(), (T::descr(), T::run));
     }
-    Ok(modified)
+
+    fn run(&self, name: &str, ir: &mut Context) -> Result<bool, IrError> {
+        self.passes.get(name).expect("Unknown pass name!").1(ir)
+    }
+
+    fn contains(&self, name: &str) -> bool {
+        self.passes.contains_key(name)
+    }
+
+    fn help_text(&self) -> String {
+        let summary = self
+            .passes
+            .iter()
+            .map(|(name, (descr, _))| format!("  {name:16} - {descr}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        format!("Valid pass names are:\n\n{summary}",)
+    }
+}
+
+// -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
+
+struct InlinePass;
+
+impl NamedPass for InlinePass {
+    fn name() -> &'static str {
+        "inline"
+    }
+
+    fn descr() -> &'static str {
+        "inline function calls."
+    }
+
+    fn run(ir: &mut Context) -> Result<bool, IrError> {
+        // For now we inline everything into `main()`.  Eventually we can be more selective.
+        let main_fn = ir
+            .functions
+            .iter()
+            .find_map(|(idx, fc)| if fc.name == "main" { Some(idx) } else { None })
+            .unwrap();
+        optimize::inline_all_function_calls(ir, &Function(main_fn))
+    }
+}
+
+// -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
+
+struct ConstCombinePass;
+
+impl NamedPass for ConstCombinePass {
+    fn name() -> &'static str {
+        "constcombine"
+    }
+
+    fn descr() -> &'static str {
+        "constant folding."
+    }
+
+    fn run(ir: &mut Context) -> Result<bool, IrError> {
+        Self::run_on_all_fns(ir, optimize::combine_constants)
+    }
+}
+
+// -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
+
+struct SimplifyCfgPass;
+
+impl NamedPass for SimplifyCfgPass {
+    fn name() -> &'static str {
+        "simplifycfg"
+    }
+
+    fn descr() -> &'static str {
+        "merge or remove redundant blocks."
+    }
+
+    fn run(ir: &mut Context) -> Result<bool, IrError> {
+        Self::run_on_all_fns(ir, optimize::simplify_cfg)
+    }
+}
+
+// -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
+
+struct DCEPass;
+
+impl NamedPass for DCEPass {
+    fn name() -> &'static str {
+        "dce"
+    }
+
+    fn descr() -> &'static str {
+        "Dead code elimination."
+    }
+
+    fn run(ir: &mut Context) -> Result<bool, IrError> {
+        Self::run_on_all_fns(ir, optimize::dce)
+    }
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -123,20 +231,22 @@ impl From<&str> for Pass {
 
 // This is a little clumsy in that it needs to consume items from the iterator carefully in each
 // method to ensure we don't enter a weird state.
-struct ConfigBuilder<I: Iterator<Item = String>> {
+struct ConfigBuilder<'a, I: Iterator<Item = String>> {
     next: Option<String>,
     rest: I,
     cfg: Config,
+    pass_mgr: &'a PassManager,
 }
 
-impl<I: Iterator<Item = String>> ConfigBuilder<I> {
-    fn build(mut rest: I) -> Result<Config, anyhow::Error> {
+impl<'a, I: Iterator<Item = String>> ConfigBuilder<'a, I> {
+    fn build(pass_mgr: &PassManager, mut rest: I) -> Result<Config, anyhow::Error> {
         rest.next(); // Skip the first arg which is the binary name.
         let next = rest.next();
         ConfigBuilder {
             next,
             rest,
             cfg: Config::default(),
+            pass_mgr,
         }
         .build_root()
     }
@@ -150,22 +260,11 @@ impl<I: Iterator<Item = String>> ConfigBuilder<I> {
                     "-i" => self.build_input(),
                     "-o" => self.build_output(),
 
-                    "inline" => self.build_inline_pass(),
-                    "constcombine" => self.build_const_combine_pass(),
-
-                    _otherwise => {
+                    name => {
                         if matches!(opt.chars().next(), Some('-')) {
                             Err(anyhow!("Unrecognised option '{opt}'."))
                         } else {
-                            Err(anyhow!(
-                                r#"Unrecognised pass name '{opt}'.
-
-Valid pass names are:
-
-  constcombine - constant folding.
-  inline       - inline function calls.
-"#
-                            ))
+                            self.build_pass(name)
                         }
                     }
                 }
@@ -195,20 +294,17 @@ Valid pass names are:
         }
     }
 
-    fn build_inline_pass(mut self) -> Result<Config, anyhow::Error> {
-        // No args yet.  Eventually we should allow specifying which functions are to be inlined
-        // or which functions are to have all embedded calls inlined.
-        self.cfg.passes.push("inline".into());
-        self.next = self.rest.next();
-        self.build_root()
-    }
-
-    fn build_const_combine_pass(mut self) -> Result<Config, anyhow::Error> {
-        // No args yet.  Eventually we should allow specifying which functions should have consts
-        // combined.
-        self.cfg.passes.push("constcombine".into());
-        self.next = self.rest.next();
-        self.build_root()
+    fn build_pass(mut self, name: &str) -> Result<Config, anyhow::Error> {
+        if self.pass_mgr.contains(name) {
+            self.cfg.passes.push(name.into());
+            self.next = self.rest.next();
+            self.build_root()
+        } else {
+            Err(anyhow!(
+                "Unrecognised pass name '{name}'.\n\n{}",
+                self.pass_mgr.help_text()
+            ))
+        }
     }
 }
 

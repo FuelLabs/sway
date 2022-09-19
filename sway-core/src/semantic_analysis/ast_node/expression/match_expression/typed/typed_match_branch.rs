@@ -7,7 +7,7 @@ use crate::{
         TypeCheckContext, TypedAstNode, TypedAstNodeContent, TypedCodeBlock, TypedExpression,
         TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
     },
-    type_engine::insert_type,
+    type_system::insert_type,
     types::DeterministicallyAborts,
     CompileResult, MatchBranch, TypeInfo, TypedDeclaration,
 };
@@ -63,12 +63,14 @@ impl TypedMatchBranch {
         for (left_decl, right_decl) in match_decl_map.into_iter() {
             let type_ascription = right_decl.return_type;
             let span = left_decl.span().clone();
-            let var_decl = TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                name: left_decl.clone(),
-                body: right_decl,
-                is_mutable: VariableMutability::Immutable,
-                type_ascription,
-            });
+            let var_decl =
+                TypedDeclaration::VariableDeclaration(Box::new(TypedVariableDeclaration {
+                    name: left_decl.clone(),
+                    body: right_decl,
+                    mutability: VariableMutability::Immutable,
+                    type_ascription,
+                    type_ascription_span: None,
+                }));
             ctx.namespace.insert_symbol(left_decl, var_decl.clone());
             code_block_contents.push(TypedAstNode {
                 content: TypedAstNodeContent::Declaration(var_decl),
@@ -113,7 +115,7 @@ impl TypedMatchBranch {
             }
             typed_result_expression_variant => {
                 code_block_contents.push(TypedAstNode {
-                    content: TypedAstNodeContent::Expression(TypedExpression {
+                    content: TypedAstNodeContent::ImplicitReturnExpression(TypedExpression {
                         expression: typed_result_expression_variant,
                         return_type: typed_result_return_type,
                         is_constant: typed_result_is_constant,

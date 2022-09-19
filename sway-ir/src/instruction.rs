@@ -17,15 +17,22 @@ use crate::{
     function::Function,
     irtype::{Aggregate, Type},
     pointer::Pointer,
+    pretty::DebugWithContext,
     value::{Value, ValueDatum},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, DebugWithContext)]
 pub enum Instruction {
     /// Address of a non-copy (memory) value
     AddrOf(Value),
     /// An opaque list of ASM instructions passed directly to codegen.
     AsmBlock(AsmBlock, Vec<AsmArg>),
+    /// Binary arithmetic operations
+    BinaryOp {
+        op: BinaryOpKind,
+        arg1: Value,
+        arg2: Value,
+    },
     /// Cast the type of a value without changing its actual content.
     BitCast(Value, Type),
     /// An unconditional jump.
@@ -70,7 +77,7 @@ pub enum Instruction {
     /// Return a pointer as a value.
     GetPointer {
         base_ptr: Pointer,
-        ptr_ty: Type,
+        ptr_ty: Pointer,
         offset: u64,
     },
     /// Writing a specific value to an array.
@@ -91,6 +98,12 @@ pub enum Instruction {
     IntToPtr(Value, Type),
     /// Read a value from a memory pointer.
     Load(Value),
+    /// Logs a value along with an identifier.
+    Log {
+        log_val: Value,
+        log_ty: Type,
+        log_id: Value,
+    },
     /// No-op, handy as a placeholder instruction.
     Nop,
     /// Choose a value from a list depending on the preceding block.
@@ -130,6 +143,14 @@ pub enum Predicate {
     /// Equivalence.
     Equal,
     // More soon.  NotEqual, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual.
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum BinaryOpKind {
+    Add,
+    Sub,
+    Mul,
+    Div,
 }
 
 /// Special registers in the Fuel Virtual Machine.
@@ -173,7 +194,8 @@ impl Instruction {
     pub fn get_type(&self, context: &Context) -> Option<Type> {
         match self {
             Instruction::AddrOf(_) => Some(Type::Uint(64)),
-            Instruction::AsmBlock(asm_block, _) => asm_block.get_type(context),
+            Instruction::AsmBlock(asm_block, _) => Some(asm_block.get_type(context)),
+            Instruction::BinaryOp { arg1, .. } => arg1.get_type(context),
             Instruction::BitCast(_, ty) => Some(*ty),
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
             Instruction::Cmp(..) => Some(Type::Bool),
@@ -184,13 +206,14 @@ impl Instruction {
             Instruction::Gtf { .. } => Some(Type::Uint(64)),
             Instruction::InsertElement { array, .. } => array.get_type(context),
             Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
-            Instruction::Load(ptr_val) => {
-                if let ValueDatum::Instruction(ins) = &context.values[ptr_val.0].value {
-                    ins.get_type(context)
-                } else {
-                    None
+            Instruction::Load(ptr_val) => match &context.values[ptr_val.0].value {
+                ValueDatum::Argument(ty) => Some(ty.strip_ptr_type(context)),
+                ValueDatum::Constant(cons) => Some(cons.ty.strip_ptr_type(context)),
+                ValueDatum::Instruction(ins) => {
+                    ins.get_type(context).map(|f| f.strip_ptr_type(context))
                 }
-            }
+            },
+            Instruction::Log { .. } => Some(Type::Unit),
             Instruction::ReadRegister(_) => Some(Type::Uint(64)),
             Instruction::StateLoadWord(_) => Some(Type::Uint(64)),
             Instruction::Phi(alts) => {
@@ -200,7 +223,7 @@ impl Instruction {
             }
 
             // These can be recursed to via Load, so we return the pointer type.
-            Instruction::GetPointer { ptr_ty, .. } => Some(*ptr_ty),
+            Instruction::GetPointer { ptr_ty, .. } => Some(Type::Pointer(*ptr_ty)),
 
             // Used to re-interpret an integer as a pointer to some type so return the pointer type.
             Instruction::IntToPtr(_, ty) => Some(*ty),
@@ -210,11 +233,10 @@ impl Instruction {
             Instruction::ConditionalBranch { .. } => None,
             Instruction::Ret(..) => None,
 
-            // These write values but don't return one.  If we're explicit we could return Unit.
-            Instruction::StateLoadQuadWord { .. } => None,
-            Instruction::StateStoreQuadWord { .. } => None,
-            Instruction::StateStoreWord { .. } => None,
-            Instruction::Store { .. } => None,
+            Instruction::StateLoadQuadWord { .. } => Some(Type::Unit),
+            Instruction::StateStoreQuadWord { .. } => Some(Type::Unit),
+            Instruction::StateStoreWord { .. } => Some(Type::Unit),
+            Instruction::Store { .. } => Some(Type::Unit),
 
             // No-op is also no-type.
             Instruction::Nop => None,
@@ -229,7 +251,7 @@ impl Instruction {
                 Type::Struct(aggregate) => Some(*aggregate),
                 _otherwise => None,
             },
-            Instruction::GetPointer { ptr_ty, .. } => match ptr_ty {
+            Instruction::GetPointer { ptr_ty, .. } => match ptr_ty.get_type(context) {
                 Type::Array(aggregate) => Some(*aggregate),
                 Type::Struct(aggregate) => Some(*aggregate),
                 _otherwise => None,
@@ -271,6 +293,10 @@ impl Instruction {
                     .for_each(|init_val| replace(init_val))
             }),
             Instruction::BitCast(value, _) => replace(value),
+            Instruction::BinaryOp { op: _, arg1, arg2 } => {
+                replace(arg1);
+                replace(arg2);
+            }
             Instruction::Branch(_) => (),
             Instruction::Call(_, args) => args.iter_mut().for_each(replace),
             Instruction::Cmp(_, lhs_val, rhs_val) => {
@@ -318,6 +344,12 @@ impl Instruction {
             Instruction::Gtf { index, .. } => replace(index),
             Instruction::IntToPtr(value, _) => replace(value),
             Instruction::Load(_) => (),
+            Instruction::Log {
+                log_val, log_id, ..
+            } => {
+                replace(log_val);
+                replace(log_id);
+            }
             Instruction::Nop => (),
             Instruction::Phi(pairs) => pairs.iter_mut().for_each(|(_, val)| replace(val)),
             Instruction::ReadRegister { .. } => (),
@@ -341,6 +373,48 @@ impl Instruction {
                 replace(stored_val);
             }
         }
+    }
+
+    pub fn may_have_side_effect(&self) -> bool {
+        match self {
+            Instruction::AsmBlock(_, _)
+                | Instruction::Call(..)
+                | Instruction::ContractCall { .. }
+                | Instruction::Log { .. }
+                | Instruction::StateLoadQuadWord { .. }
+                | Instruction::StateStoreQuadWord { .. }
+                | Instruction::StateStoreWord { .. }
+                | Instruction::Store { .. }
+                // Insert(Element/Value), unlike those in LLVM
+                // do not have SSA semantics. They are like stores.
+                | Instruction::InsertElement { .. }
+                | Instruction::InsertValue { .. } => true,
+                | Instruction::AddrOf(_)
+                | Instruction::BitCast(..)
+                | Instruction::BinaryOp { .. }
+                | Instruction::Cmp(..)
+                | Instruction::ExtractElement {  .. }
+                | Instruction::ExtractValue { .. }
+                | Instruction::GetStorageKey
+                | Instruction::Gtf { .. }
+                | Instruction::Load(_)
+                | Instruction::ReadRegister(_)
+                | Instruction::StateLoadWord(_)
+                | Instruction::Phi(_)
+                | Instruction::GetPointer { .. }
+                | Instruction::IntToPtr(..)
+                | Instruction::Branch(_)
+                | Instruction::ConditionalBranch { .. }
+                | Instruction::Ret(..)
+                | Instruction::Nop => false,
+        }
+    }
+
+    pub fn is_terminator(&self) -> bool {
+        matches!(
+            self,
+            Instruction::Branch(_) | Instruction::ConditionalBranch { .. } | Instruction::Ret(..)
+        )
     }
 }
 
@@ -435,6 +509,15 @@ impl<'a> InstructionInserter<'a> {
             .instructions
             .push(bitcast_val);
         bitcast_val
+    }
+
+    pub fn binary_op(self, op: BinaryOpKind, arg1: Value, arg2: Value) -> Value {
+        let binop_val =
+            Value::new_instruction(self.context, Instruction::BinaryOp { op, arg1, arg2 });
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(binop_val);
+        binop_val
     }
 
     pub fn int_to_ptr(self, value: Value, ty: Type) -> Value {
@@ -564,11 +647,12 @@ impl<'a> InstructionInserter<'a> {
     }
 
     pub fn get_ptr(self, base_ptr: Pointer, ptr_ty: Type, offset: u64) -> Value {
+        let ptr = Pointer::new(self.context, ptr_ty, false, None);
         let get_ptr_val = Value::new_instruction(
             self.context,
             Instruction::GetPointer {
                 base_ptr,
-                ptr_ty,
+                ptr_ty: ptr,
                 offset,
             },
         );
@@ -628,6 +712,21 @@ impl<'a> InstructionInserter<'a> {
             .instructions
             .push(load_val);
         load_val
+    }
+
+    pub fn log(self, log_val: Value, log_ty: Type, log_id: Value) -> Value {
+        let log_instr_val = Value::new_instruction(
+            self.context,
+            Instruction::Log {
+                log_val,
+                log_ty,
+                log_id,
+            },
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(log_instr_val);
+        log_instr_val
     }
 
     pub fn nop(self) -> Value {

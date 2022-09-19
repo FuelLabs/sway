@@ -1,28 +1,57 @@
-use crate::type_engine::TypeId;
 use std::sync::RwLock;
 
-#[derive(Debug, Default)]
-pub struct ConcurrentSlab<T> {
+use crate::{type_system::TypeId, TypeInfo};
+
+#[derive(Debug)]
+pub(crate) struct ConcurrentSlab<T> {
     inner: RwLock<Vec<T>>,
+}
+
+impl<T> Default for ConcurrentSlab<T>
+where
+    T: Default,
+{
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+        }
+    }
 }
 
 impl<T> ConcurrentSlab<T>
 where
-    T: Clone + PartialEq,
+    T: Clone,
 {
-    pub fn insert(&self, value: T) -> TypeId {
+    pub fn insert(&self, value: T) -> usize {
         let mut inner = self.inner.write().unwrap();
         let ret = inner.len();
         inner.push(value);
-        ret.into()
+        ret
     }
 
-    pub fn get(&self, index: TypeId) -> T {
+    pub fn get(&self, index: usize) -> T {
         let inner = self.inner.read().unwrap();
-        inner[*index].clone()
+        inner[index].clone()
     }
 
-    pub fn replace(&self, index: TypeId, prev_value: &T, new_value: T) -> Option<T> {
+    pub fn clear(&self) {
+        let mut inner = self.inner.write().unwrap();
+        *inner = Vec::new();
+    }
+
+    pub fn exists<F: Fn(&T) -> bool>(&self, f: F) -> bool {
+        let inner = self.inner.read().unwrap();
+        inner.iter().any(f)
+    }
+}
+
+impl ConcurrentSlab<TypeInfo> {
+    pub fn replace(
+        &self,
+        index: TypeId,
+        prev_value: &TypeInfo,
+        new_value: TypeInfo,
+    ) -> Option<TypeInfo> {
         // The comparison below ends up calling functions in the slab, which
         // can lead to deadlocks if we used a single read/write lock.
         // So we split the operation: we do the read only operations with
@@ -39,10 +68,5 @@ where
         let mut inner = self.inner.write().unwrap();
         inner[*index] = new_value;
         None
-    }
-
-    pub fn clear(&self) {
-        let mut inner = self.inner.write().unwrap();
-        *inner = Vec::new();
     }
 }

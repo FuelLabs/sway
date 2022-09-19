@@ -1,8 +1,10 @@
 use crate::{
+    declaration_engine::declaration_engine::de_get_constant,
     error::CompileError,
     metadata::MetadataManager,
     parse_tree::Visibility,
     semantic_analysis::{ast_node::*, namespace},
+    type_system::look_up_type_id,
 };
 
 use super::{
@@ -48,7 +50,7 @@ pub(super) fn compile_contract(
     Ok(module)
 }
 
-fn compile_constants(
+pub(crate) fn compile_constants(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -83,7 +85,6 @@ fn compile_constants(
 // And for structs and enums in particular, we must ignore those with embedded generic types as
 // they are monomorphised only at the instantation site.  We must ignore the generic declarations
 // altogether anyway.
-
 fn compile_declarations(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
@@ -93,7 +94,8 @@ fn compile_declarations(
 ) -> Result<(), CompileError> {
     for declaration in declarations {
         match declaration {
-            TypedDeclaration::ConstantDeclaration(decl) => {
+            TypedDeclaration::ConstantDeclaration(ref decl_id) => {
+                let decl = de_get_constant(decl_id.clone(), &declaration.span())?;
                 compile_const_decl(
                     &mut LookupEnv {
                         context,
@@ -128,14 +130,10 @@ fn compile_declarations(
             | TypedDeclaration::EnumDeclaration(_)
             | TypedDeclaration::TraitDeclaration(_)
             | TypedDeclaration::VariableDeclaration(_)
-            | TypedDeclaration::Reassignment(_)
-            | TypedDeclaration::StorageReassignment(_)
             | TypedDeclaration::AbiDeclaration(_)
             | TypedDeclaration::GenericTypeForFunctionScope { .. }
             | TypedDeclaration::StorageDeclaration(_)
-            | TypedDeclaration::ErrorRecovery
-            | TypedDeclaration::Break { .. }
-            | TypedDeclaration::Continue { .. } => (),
+            | TypedDeclaration::ErrorRecovery => (),
         }
     }
     Ok(())
@@ -155,14 +153,28 @@ pub(super) fn compile_function(
         let args = ast_fn_decl
             .parameters
             .iter()
-            .map(|param| {
-                convert_resolved_typeid(context, &param.type_id, &param.type_span)
-                    .map(|ty| (param.name.as_str().into(), ty, param.name.span()))
-            })
+            .map(|param| convert_fn_param(context, param))
             .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
         compile_fn_with_args(context, md_mgr, module, ast_fn_decl, args, None).map(&Some)
     }
+}
+
+fn convert_fn_param(
+    context: &mut Context,
+    param: &TypedFunctionParameter,
+) -> Result<(String, Type, Span), CompileError> {
+    convert_resolved_typeid(context, &param.type_id, &param.type_span).map(|ty| {
+        (
+            param.name.as_str().into(),
+            if param.is_reference && look_up_type_id(param.type_id).is_copy_type() {
+                Type::Pointer(Pointer::new(context, ty, param.is_mutable, None))
+            } else {
+                ty
+            },
+            param.name.span(),
+        )
+    })
 }
 
 fn compile_fn_with_args(

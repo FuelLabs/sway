@@ -1,7 +1,7 @@
 use crate::{
     core::{
         session::Session,
-        token::{AstToken, TokenType, TypedAstToken},
+        token::{AstToken, Token, TypedAstToken},
     },
     utils::{
         common::{extract_visibility, get_range_from_span},
@@ -9,7 +9,9 @@ use crate::{
         token::to_ident_key,
     },
 };
-use sway_core::{semantic_analysis::ast_node::TypedDeclaration, Declaration, Visibility};
+use sway_core::{
+    declaration_engine, semantic_analysis::ast_node::TypedDeclaration, Declaration, Visibility,
+};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Hover, HoverContents, HoverParams, MarkupContent, MarkupKind};
 
@@ -31,7 +33,7 @@ pub fn hover_data(session: &Session, params: HoverParams) -> Option<Hover> {
     None
 }
 
-fn hover_format(token: &TokenType, ident: &Ident) -> Hover {
+fn hover_format(token: &Token, ident: &Ident) -> Hover {
     let token_name: String = ident.as_str().into();
     let range = get_range_from_span(&ident.span());
 
@@ -57,16 +59,24 @@ fn hover_format(token: &TokenType, ident: &Ident) -> Hover {
             TypedAstToken::TypedDeclaration(decl) => match decl {
                 TypedDeclaration::VariableDeclaration(var_decl) => {
                     let type_name = format!("{}", var_decl.type_ascription);
-                    format_variable_hover(var_decl.is_mutable.is_mutable(), type_name)
+                    format_variable_hover(var_decl.mutability.is_mutable(), type_name)
                 }
                 TypedDeclaration::FunctionDeclaration(func) => extract_fn_signature(&func.span()),
-                TypedDeclaration::StructDeclaration(ref struct_decl) => {
+                TypedDeclaration::StructDeclaration(decl_id) => {
+                    // TODO: do not use unwrap
+                    let struct_decl =
+                        declaration_engine::de_get_struct(decl_id.clone(), &decl.span()).unwrap();
                     format_visibility_hover(struct_decl.visibility, decl.friendly_name())
                 }
-                TypedDeclaration::TraitDeclaration(ref trait_decl) => {
+                TypedDeclaration::TraitDeclaration(ref decl_id) => {
+                    // TODO: do not use unwrap
+                    let trait_decl =
+                        declaration_engine::de_get_trait(decl_id.clone(), &decl_id.span()).unwrap();
                     format_visibility_hover(trait_decl.visibility, decl.friendly_name())
                 }
-                TypedDeclaration::EnumDeclaration(ref enum_decl) => {
+                TypedDeclaration::EnumDeclaration(decl_id) => {
+                    let enum_decl =
+                        declaration_engine::de_get_enum(decl_id.clone(), &decl_id.span()).unwrap();
                     format_visibility_hover(enum_decl.visibility, decl.friendly_name())
                 }
                 _ => token_name,

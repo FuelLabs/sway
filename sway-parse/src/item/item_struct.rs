@@ -1,51 +1,26 @@
-use crate::priv_prelude::*;
+use crate::{Parse, ParseErrorKind, ParseResult, Parser};
 
-#[derive(Clone, Debug)]
-pub struct ItemStruct {
-    pub visibility: Option<PubToken>,
-    pub struct_token: StructToken,
-    pub name: Ident,
-    pub generics: Option<GenericParams>,
-    pub where_clause_opt: Option<WhereClause>,
-    pub fields: Braces<Punctuated<TypeField, CommaToken>>,
-}
-
-impl Spanned for ItemStruct {
-    fn span(&self) -> Span {
-        let start = match &self.visibility {
-            Some(pub_token) => pub_token.span(),
-            None => self.struct_token.span(),
-        };
-        let end = self.fields.span();
-        Span::join(start, end)
-    }
-}
+use sway_ast::keywords::{ClassToken, Keyword, OpenAngleBracketToken, StructToken, WhereToken};
+use sway_ast::ItemStruct;
+use sway_types::Spanned;
 
 impl Parse for ItemStruct {
     fn parse(parser: &mut Parser) -> ParseResult<ItemStruct> {
-        let visibility = parser.take();
-        let struct_token = parser.parse()?;
-        let name = parser.parse()?;
-        let generics = if parser.peek::<OpenAngleBracketToken>().is_some() {
-            Some(parser.parse()?)
+        // Parse `struct`, or recover on `class` as if `struct` was written.
+        let struct_token = if let Some(ct) = parser.take::<ClassToken>() {
+            parser.emit_error(ParseErrorKind::UnexpectedClass);
+            StructToken::new(ct.span())
         } else {
-            None
+            parser.parse()?
         };
-        let where_clause_opt = match parser.peek::<WhereToken>() {
-            Some(..) => {
-                let where_clause = parser.parse()?;
-                Some(where_clause)
-            }
-            None => None,
-        };
-        let fields = parser.parse()?;
+
         Ok(ItemStruct {
-            visibility,
+            visibility: None,
             struct_token,
-            name,
-            generics,
-            where_clause_opt,
-            fields,
+            name: parser.parse()?,
+            generics: parser.guarded_parse::<OpenAngleBracketToken, _>()?,
+            where_clause_opt: parser.guarded_parse::<WhereToken, _>()?,
+            fields: parser.parse()?,
         })
     }
 }

@@ -17,6 +17,8 @@ dep b512;
 dep address;
 dep identity;
 dep tx;
+dep inputs;
+dep outputs;
 dep chain;
 dep math;
 dep block;
@@ -28,5 +30,6 @@ dep flags;
 dep u128;
 dep u256;
 dep vec;
+dep prelude;
 
 use core::*;

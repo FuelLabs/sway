@@ -21,7 +21,7 @@ async fn is_external_from_sdk() {
 async fn msg_sender_from_sdk() {
     let (auth_instance, _, _, _, wallet) = get_contracts().await;
     let result = auth_instance
-        .returns_msg_sender_address(wallet.address())
+        .returns_msg_sender_address(wallet.address().into())
         .call()
         .await
         .unwrap();
@@ -35,7 +35,7 @@ async fn msg_sender_from_contract() {
 
     let result = caller_instance
         .call_auth_contract(auth_id, caller_id)
-        .set_contracts(&[auth_id])
+        .set_contracts(&[auth_id.into()])
         .call()
         .await
         .unwrap();
@@ -48,7 +48,7 @@ async fn get_contracts() -> (
     ContractId,
     AuthCallerContract,
     ContractId,
-    LocalWallet,
+    Wallet,
 ) {
     let wallet = launch_provider_and_get_wallet().await;
 
@@ -77,8 +77,14 @@ async fn get_contracts() -> (
     .await
     .unwrap();
 
-    let instance_1 = AuthContract::new(id_1.to_string(), wallet.clone());
-    let instance_2 = AuthCallerContract::new(id_2.to_string(), wallet.clone());
+    let instance_1 = AuthContractBuilder::new(id_1.to_string(), wallet.clone()).build();
+    let instance_2 = AuthCallerContractBuilder::new(id_2.to_string(), wallet.clone()).build();
 
-    (instance_1, id_1, instance_2, id_2, wallet)
+    (
+        instance_1,
+        id_1.into(),
+        instance_2,
+        id_2.into(),
+        wallet.lock(),
+    )
 }

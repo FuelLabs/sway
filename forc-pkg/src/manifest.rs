@@ -9,6 +9,7 @@ use std::{
 };
 
 use sway_core::{parse, TreeType};
+pub use sway_types::ConfigTimeConstant;
 use sway_utils::constants;
 
 type PatchMap = BTreeMap<String, Dependency>;
@@ -30,6 +31,8 @@ pub struct Manifest {
     pub network: Option<Network>,
     pub dependencies: Option<BTreeMap<String, Dependency>>,
     pub patch: Option<BTreeMap<String, PatchMap>>,
+    /// A list of [configuration-time constants](https://github.com/FuelLabs/sway/issues/1498).
+    pub constants: Option<BTreeMap<String, ConfigTimeConstant>>,
     build_profile: Option<BTreeMap<String, BuildProfile>>,
 }
 
@@ -43,6 +46,7 @@ pub struct Project {
     #[serde(default = "default_entry")]
     pub entry: String,
     pub implicit_std: Option<bool>,
+    pub forc_version: Option<semver::Version>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -80,11 +84,13 @@ pub struct DependencyDetails {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct BuildProfile {
+    pub print_ast: bool,
     pub print_ir: bool,
     pub print_finalized_asm: bool,
     pub print_intermediate_asm: bool,
     pub silent: bool,
     pub time_phases: bool,
+    pub generate_logged_types: bool,
 }
 
 impl Dependency {
@@ -104,11 +110,11 @@ impl ManifestFile {
     /// fields were used.
     ///
     /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
-    /// implicitly. In this case, the `sway_git_tag` is used to specify the pinned commit at which
-    /// we fetch `std`.
-    pub fn from_file(path: PathBuf, sway_git_tag: &str) -> Result<Self> {
+    /// implicitly. In this case, the git tag associated with the version of this crate is used to
+    /// specify the pinned commit at which we fetch `std`.
+    pub fn from_file(path: PathBuf) -> Result<Self> {
         let path = path.canonicalize()?;
-        let manifest = Manifest::from_file(&path, sway_git_tag)?;
+        let manifest = Manifest::from_file(&path)?;
         Ok(Self { manifest, path })
     }
 
@@ -117,11 +123,11 @@ impl ManifestFile {
     ///
     /// This is short for `Manifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(manifest_dir: &Path, sway_git_tag: &str) -> Result<Self> {
+    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
         let dir = forc_util::find_manifest_dir(manifest_dir)
             .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
-        Self::from_file(path, sway_git_tag)
+        Self::from_file(path)
     }
 
     /// Validate the `Manifest`.
@@ -220,6 +226,10 @@ impl ManifestFile {
             }
         })
     }
+    /// Getter for the config time constants on the manifest.
+    pub fn config_time_constants(&self) -> BTreeMap<String, ConfigTimeConstant> {
+        self.constants.as_ref().cloned().unwrap_or_default()
+    }
 }
 
 impl Manifest {
@@ -231,9 +241,9 @@ impl Manifest {
     /// fields were used.
     ///
     /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
-    /// implicitly. In this case, the `sway_git_tag` is used to specify the pinned commit at which
-    /// we fetch `std`.
-    pub fn from_file(path: &Path, sway_git_tag: &str) -> Result<Self> {
+    /// implicitly. In this case, the git tag associated with the version of this crate is used to
+    /// specify the pinned commit at which we fetch `std`.
+    pub fn from_file(path: &Path) -> Result<Self> {
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
@@ -242,7 +252,7 @@ impl Manifest {
             println_yellow_err(&warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
-        manifest.implicitly_include_std_if_missing(sway_git_tag);
+        manifest.implicitly_include_std_if_missing();
         manifest.implicitly_include_default_build_profiles_if_missing();
         manifest.validate()?;
         Ok(manifest)
@@ -264,10 +274,10 @@ impl Manifest {
     ///
     /// This is short for `Manifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(dir: &Path, sway_git_tag: &str) -> Result<Self> {
+    pub fn from_dir(dir: &Path) -> Result<Self> {
         let manifest_dir = find_manifest_dir(dir).ok_or_else(|| manifest_file_missing(dir))?;
         let file_path = manifest_dir.join(constants::MANIFEST_FILE_NAME);
-        Self::from_file(&file_path, sway_git_tag)
+        Self::from_file(&file_path)
     }
 
     /// Produce an iterator yielding all listed dependencies.
@@ -310,7 +320,7 @@ impl Manifest {
     ///
     /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
     /// guarantee that the user's `core` is compatible with the implicit `std`.
-    fn implicitly_include_std_if_missing(&mut self, sway_git_tag: &str) {
+    fn implicitly_include_std_if_missing(&mut self) {
         use crate::{CORE, STD};
         // Don't include `std` if:
         // - this *is* `core` or `std`.
@@ -328,7 +338,7 @@ impl Manifest {
         // Add a `[dependencies]` table if there isn't one.
         let deps = self.dependencies.get_or_insert_with(Default::default);
         // Add the missing dependency.
-        let std_dep = implicit_std_dep(sway_git_tag.to_string());
+        let std_dep = implicit_std_dep();
         deps.insert(STD.to_string(), std_dep);
     }
 
@@ -389,21 +399,25 @@ impl BuildProfile {
 
     pub fn debug() -> Self {
         Self {
+            print_ast: false,
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
             silent: false,
             time_phases: false,
+            generate_logged_types: false,
         }
     }
 
     pub fn release() -> Self {
         Self {
+            print_ast: false,
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
             silent: false,
             time_phases: false,
+            generate_logged_types: false,
         }
     }
 }
@@ -422,11 +436,19 @@ impl Default for BuildProfile {
 }
 
 /// The definition for the implicit `std` dependency.
-fn implicit_std_dep(sway_git_tag: String) -> Dependency {
+fn implicit_std_dep() -> Dependency {
+    // The `forc-pkg` crate version formatted with the `v` prefix. E.g. "v1.2.3".
+    //
+    // This git tag is used during `Manifest` construction to pin the version of the implicit `std`
+    // dependency to the `forc-pkg` version.
+    //
+    // This is important to ensure that the version of `sway-core` that is baked into `forc-pkg` is
+    // compatible with the version of the `std` lib.
+    const SWAY_GIT_TAG: &str = concat!("v", env!("CARGO_PKG_VERSION"));
     const SWAY_GIT_REPO_URL: &str = "https://github.com/fuellabs/sway";
     let det = DependencyDetails {
         git: Some(SWAY_GIT_REPO_URL.to_string()),
-        tag: Some(sway_git_tag),
+        tag: Some(SWAY_GIT_TAG.to_string()),
         ..Default::default()
     };
     Dependency::Detailed(det)

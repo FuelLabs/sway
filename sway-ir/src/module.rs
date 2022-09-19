@@ -32,9 +32,7 @@ pub enum Kind {
 }
 
 impl Module {
-    /// Return a new named module of a specific kind.
-    ///
-    /// NOTE: the name is redundant and will be removed in the future.
+    /// Return a new module of a specific kind.
     pub fn new(context: &mut Context, kind: Kind) -> Module {
         let content = ModuleContent {
             kind,

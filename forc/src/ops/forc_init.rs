@@ -3,6 +3,7 @@ use crate::utils::{defaults, program_type::ProgramType::*};
 use anyhow::{Context, Result};
 use forc_util::validate_name;
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use sway_utils::constants;
 use tracing::info;
@@ -151,7 +152,13 @@ pub fn init(command: InitCommand) -> Result<()> {
 
     // Ignore default `out` and `target` directories created by forc and cargo.
     let gitignore_path = Path::new(&project_dir).join(".gitignore");
-    fs::write(&gitignore_path, defaults::default_gitignore())?;
+    // Append to existing gitignore if it exists otherwise create a new one.
+    let mut gitignore_file = fs::OpenOptions::new()
+        .write(true)
+        .append(true)
+        .create(true)
+        .open(&gitignore_path)?;
+    gitignore_file.write_all(defaults::default_gitignore().as_bytes())?;
 
     if command.verbose {
         info!(

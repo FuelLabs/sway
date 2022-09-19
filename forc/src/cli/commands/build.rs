@@ -21,6 +21,9 @@ pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
+    /// Print the generated Sway AST (Abstract Syntax Tree).
+    #[clap(long)]
+    pub print_ast: bool,
     /// Print the finalized ASM.
     ///
     /// This is the state of the ASM with registers allocated and optimisations applied.
@@ -77,6 +80,9 @@ pub struct Command {
     /// Output the time elapsed over each part of the compilation process.
     #[clap(long)]
     pub time_phases: bool,
+    /// Include logged types in the JSON ABI.
+    #[clap(long)]
+    pub generate_logged_types: bool,
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {

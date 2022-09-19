@@ -4,7 +4,7 @@ dep context/registers;
 dep context/call_frames;
 
 use ::contract_id::ContractId;
-use ::context::call_frames::*;
+use ::context::call_frames::contract_id;
 use ::context::registers::balance;
 
 /// Get the balance of coin `asset_id` for the current contract.
@@ -22,9 +22,7 @@ pub fn balance_of(asset_id: ContractId, target: ContractId) -> u64 {
 
 /// Get the remaining gas in the context.
 pub fn gas() -> u64 {
-    asm() {
-        cgas: u64
-    }
+    asm() { cgas: u64 }
 }
 
 /// Get the amount of units of `call_frames::msg_asset_id()` being sent.

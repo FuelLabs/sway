@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::declaration_engine::de_get_constant,
     error::CompileError,
     metadata::MetadataManager,
     semantic_analysis::{
@@ -43,11 +44,11 @@ pub(crate) fn compile_const_decl(
             // See if we it's a global const and whether we can compile it *now*.
             let decl = module_ns.check_symbol(name)?;
             let decl_name_value = match decl {
-                TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                    name,
-                    value,
-                    ..
-                }) => Some((name, value)),
+                TypedDeclaration::ConstantDeclaration(decl_id) => {
+                    let TypedConstantDeclaration { name, value, .. } =
+                        de_get_constant(decl_id.clone(), &name.span())?;
+                    Some((name, value))
+                }
                 _otherwise => None,
             };
             if let Some((name, value)) = decl_name_value {
@@ -56,7 +57,7 @@ pub(crate) fn compile_const_decl(
                     env.md_mgr,
                     env.module,
                     env.module_ns,
-                    value,
+                    &value,
                 )?;
                 env.module
                     .add_global_constant(env.context, name.as_str().to_owned(), const_val);
@@ -203,7 +204,7 @@ fn const_eval_typed_expr(
             }
             res
         }
-        TypedExpressionVariant::VariableExpression { name } => match known_consts.get(name) {
+        TypedExpressionVariant::VariableExpression { name, .. } => match known_consts.get(name) {
             // 1. Check if name is in known_consts.
             Some(cvs) => Some(cvs.clone()),
             None => {
@@ -262,8 +263,8 @@ fn const_eval_typed_expr(
             let mut element_iter = element_typs.iter();
             let element_type_id = *element_iter.next().unwrap();
             if !element_iter.all(|tid| {
-                crate::type_engine::look_up_type_id(*tid)
-                    == crate::type_engine::look_up_type_id(element_type_id)
+                crate::type_system::look_up_type_id(*tid)
+                    == crate::type_system::look_up_type_id(element_type_id)
             }) {
                 // This shouldn't happen if the type checker did its job.
                 return None;
@@ -287,7 +288,7 @@ fn const_eval_typed_expr(
             let tag_value = Constant::new_uint(64, *tag as u64);
             let mut fields: Vec<Constant> = vec![tag_value];
             contents.iter().for_each(|subexpr| {
-                const_eval_typed_expr(lookup, known_consts, &*subexpr)
+                const_eval_typed_expr(lookup, known_consts, subexpr)
                     .into_iter()
                     .for_each(|enum_val| {
                         fields.push(enum_val);
@@ -299,7 +300,8 @@ fn const_eval_typed_expr(
             prefix,
             field_to_access,
             resolved_type_of_parent,
-        } => match const_eval_typed_expr(lookup, known_consts, &*prefix) {
+            ..
+        } => match const_eval_typed_expr(lookup, known_consts, prefix) {
             Some(Constant {
                 value: ConstantValue::Struct(fields),
                 ..
@@ -319,16 +321,21 @@ fn const_eval_typed_expr(
             prefix,
             elem_to_access_num,
             ..
-        } => match const_eval_typed_expr(lookup, known_consts, &*prefix) {
+        } => match const_eval_typed_expr(lookup, known_consts, prefix) {
             Some(Constant {
                 value: ConstantValue::Struct(fields),
                 ..
             }) => fields.get(*elem_to_access_num).cloned(),
             _ => None,
         },
+        TypedExpressionVariant::Return(stmt) => {
+            const_eval_typed_expr(lookup, known_consts, &stmt.expr)
+        }
         TypedExpressionVariant::ArrayIndex { .. }
         | TypedExpressionVariant::IntrinsicFunction(_)
         | TypedExpressionVariant::CodeBlock(_)
+        | TypedExpressionVariant::Reassignment(_)
+        | TypedExpressionVariant::StorageReassignment(_)
         | TypedExpressionVariant::FunctionParameter
         | TypedExpressionVariant::IfExp { .. }
         | TypedExpressionVariant::AsmExpression { .. }
@@ -337,7 +344,10 @@ fn const_eval_typed_expr(
         | TypedExpressionVariant::StorageAccess(_)
         | TypedExpressionVariant::AbiName(_)
         | TypedExpressionVariant::EnumTag { .. }
-        | TypedExpressionVariant::UnsafeDowncast { .. } => None,
+        | TypedExpressionVariant::UnsafeDowncast { .. }
+        | TypedExpressionVariant::Break
+        | TypedExpressionVariant::Continue
+        | TypedExpressionVariant::WhileLoop { .. } => None,
     }
 }
 
@@ -347,9 +357,6 @@ fn const_eval_typed_ast_node(
     expr: &TypedAstNode,
 ) -> Option<Constant> {
     match &expr.content {
-        TypedAstNodeContent::ReturnStatement(trs) => {
-            const_eval_typed_expr(lookup, known_consts, &trs.expr)
-        }
         TypedAstNodeContent::Declaration(_) => {
             // TODO: add the binding to known_consts (if it's a const) and proceed.
             None
@@ -357,6 +364,6 @@ fn const_eval_typed_ast_node(
         TypedAstNodeContent::Expression(e) | TypedAstNodeContent::ImplicitReturnExpression(e) => {
             const_eval_typed_expr(lookup, known_consts, e)
         }
-        TypedAstNodeContent::WhileLoop(_) | TypedAstNodeContent::SideEffect => None,
+        TypedAstNodeContent::SideEffect => None,
     }
 }

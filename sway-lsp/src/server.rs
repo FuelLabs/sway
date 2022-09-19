@@ -6,7 +6,9 @@ use crate::core::{
 };
 use crate::utils::debug::{self, DebugFlags};
 use forc_util::find_manifest_dir;
-use std::sync::Arc;
+use serde::{Deserialize, Serialize};
+use std::{fs::File, io::Write, ops::Deref, path::Path, sync::Arc};
+use sway_types::Spanned;
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
@@ -59,14 +61,26 @@ fn capabilities() -> ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Kind(
             TextDocumentSyncKind::INCREMENTAL,
         )),
-        semantic_tokens_provider: capabilities::semantic_tokens::semantic_tokens(),
+        semantic_tokens_provider: Some(
+            SemanticTokensOptions {
+                legend: SemanticTokensLegend {
+                    token_types: capabilities::semantic_tokens::SUPPORTED_TYPES.to_vec(),
+                    token_modifiers: capabilities::semantic_tokens::SUPPORTED_MODIFIERS.to_vec(),
+                },
+                full: Some(SemanticTokensFullOptions::Bool(true)),
+                range: None,
+                ..Default::default()
+            }
+            .into(),
+        ),
         document_symbol_provider: Some(OneOf::Left(true)),
         completion_provider: Some(CompletionOptions {
             resolve_provider: Some(false),
             trigger_characters: None,
             ..Default::default()
         }),
-        document_formatting_provider: Some(OneOf::Left(true)),
+        // document_formatting_provider: Some(OneOf::Left(true)),
+        definition_provider: Some(OneOf::Left(true)),
         ..ServerCapabilities::default()
     }
 }
@@ -78,22 +92,29 @@ impl Backend {
         diagnostics: Vec<Diagnostic>,
         token_map: &TokenMap,
     ) {
-        // If parsed_tokens_as_warnings is true, take over the normal error and warning display behavior
-        // and instead show the parsed tokens as warnings.
-        // This is useful for debugging the lsp parser.
-        if self.config.parsed_tokens_as_warnings {
-            let diagnostics = debug::generate_warnings_for_parsed_tokens(token_map);
-
-            //let diagnostics = debug::generate_warnings_for_typed_tokens(token_map);
-            self.client
-                .publish_diagnostics(uri.clone(), diagnostics, None)
-                .await;
-        } else {
-            // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
-            // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-            self.client
-                .publish_diagnostics(uri.clone(), diagnostics, None)
-                .await;
+        match &self.config.collected_tokens_as_warnings {
+            Some(s) => {
+                // If collected_tokens_as_warnings is Some, take over the normal error and warning display behavior
+                // and instead show the either the parsed or typed tokens as warnings.
+                // This is useful for debugging the lsp parser.
+                let diagnostics = match s.as_str() {
+                    "parsed" => Some(debug::generate_warnings_for_parsed_tokens(token_map)),
+                    "typed" => Some(debug::generate_warnings_for_typed_tokens(token_map)),
+                    _ => None,
+                };
+                if let Some(diagnostics) = diagnostics {
+                    self.client
+                        .publish_diagnostics(uri.clone(), diagnostics, None)
+                        .await;
+                }
+            }
+            None => {
+                // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
+                // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
+                self.client
+                    .publish_diagnostics(uri.clone(), diagnostics, None)
+                    .await;
+            }
         }
     }
 }
@@ -249,6 +270,121 @@ impl LanguageServer for Backend {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct RunnableParams {}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShowAstParams {
+    pub text_document: TextDocumentIdentifier,
+    pub ast_kind: String,
+}
+
+// Custom LSP-Server Methods
+impl Backend {
+    pub async fn runnables(
+        &self,
+        _params: RunnableParams,
+    ) -> jsonrpc::Result<Option<Vec<(Range, String)>>> {
+        let ranges = self
+            .session
+            .runnables
+            .get(&capabilities::runnable::RunnableType::MainFn)
+            .map(|item| {
+                let runnable = item.value();
+                vec![(runnable.range, format!("{}", runnable.tree_type))]
+            });
+
+        Ok(ranges)
+    }
+
+    /// This method is triggered by a command palette request in VScode
+    /// The 2 commands are: "show parsed ast" or "show typed ast"
+    ///
+    /// If either command is executed, the client requests this method
+    /// by calling the "sway/show_ast".
+    ///
+    /// The function expects the URI of the current open file where the
+    /// request was made, and if the "parsed" or "typed" ast was requested.
+    ///
+    /// A formatted AST is written to a temporary file and the URI is
+    /// returned to the client so it can be opened and displayed in a
+    /// seperate side panel.
+    pub async fn show_ast(
+        &self,
+        params: ShowAstParams,
+    ) -> jsonrpc::Result<Option<TextDocumentIdentifier>> {
+        let current_open_file = params.text_document.uri;
+        // Convert the Uri to a PathBuf
+        let path = current_open_file.to_file_path().ok();
+
+        let write_ast_to_file =
+            |path: &Path, ast_string: &String| -> Option<TextDocumentIdentifier> {
+                if let Ok(mut file) = File::create(path) {
+                    let _ = writeln!(&mut file, "{}", ast_string);
+                    if let Ok(uri) = Url::from_file_path(path) {
+                        // Return the tmp file path where the AST has been written to.
+                        return Some(TextDocumentIdentifier::new(uri));
+                    }
+                }
+                None
+            };
+
+        match self.session.compiled_program.read() {
+            std::sync::LockResult::Ok(program) => {
+                match params.ast_kind.as_str() {
+                    "parsed" => {
+                        match program.parsed {
+                            Some(ref parsed_program) => {
+                                // Initialize the string with the AST from the root
+                                let mut formatted_ast: String =
+                                    format!("{:#?}", parsed_program.root.tree.root_nodes);
+
+                                for (ident, submodule) in &parsed_program.root.submodules {
+                                    // if the current path matches the path of a submodule
+                                    // overwrite the root AST with the submodule AST
+                                    if ident.span().path().map(|a| a.deref()) == path.as_ref() {
+                                        formatted_ast =
+                                            format!("{:#?}", submodule.module.tree.root_nodes);
+                                    }
+                                }
+
+                                let tmp_ast_path = Path::new("/tmp/parsed_ast.rs");
+                                Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
+                            }
+                            _ => Ok(None),
+                        }
+                    }
+                    "typed" => {
+                        match program.typed {
+                            Some(ref typed_program) => {
+                                // Initialize the string with the AST from the root
+                                let mut formatted_ast: String =
+                                    format!("{:#?}", typed_program.root.all_nodes);
+
+                                for (ident, submodule) in &typed_program.root.submodules {
+                                    // if the current path matches the path of a submodule
+                                    // overwrite the root AST with the submodule AST
+                                    if ident.span().path().map(|a| a.deref()) == path.as_ref() {
+                                        formatted_ast =
+                                            format!("{:#?}", submodule.module.all_nodes);
+                                    }
+                                }
+
+                                let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
+                                Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
+                            }
+                            _ => Ok(None),
+                        }
+                    }
+                    _ => Ok(None),
+                }
+            }
+            _ => Ok(None),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
@@ -260,25 +396,27 @@ mod tests {
     use tower_lsp::jsonrpc::{self, Request, Response};
     use tower_lsp::LspService;
 
-    fn _e2e_test_dir() -> PathBuf {
+    #[allow(dead_code)]
+    fn e2e_test_dir() -> PathBuf {
         env::current_dir()
             .unwrap()
             .parent()
             .unwrap()
             .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
-            .join("is_reference_type")
+            .join("struct_field_access")
     }
 
+    #[allow(dead_code)]
     fn sway_example_dir() -> PathBuf {
         env::current_dir()
             .unwrap()
             .parent()
             .unwrap()
-            .join("examples/subcurrency")
+            .join("examples/storage_variables")
     }
 
     fn load_sway_example() -> (Url, String) {
-        let manifest_dir = sway_example_dir(); //e2e_test_dir();
+        let manifest_dir = e2e_test_dir();
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();
@@ -346,6 +484,23 @@ mod tests {
         let exit = Request::build("textDocument/didClose").finish();
         let response = service.ready().await.unwrap().call(exit.clone()).await;
         assert_eq!(response, Ok(None));
+    }
+
+    async fn show_ast_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri
+            },
+            "astKind": "typed",
+        });
+        let show_ast = Request::build("sway/show_ast")
+            .params(params)
+            .id(1)
+            .finish();
+        let response = service.ready().await.unwrap().call(show_ast.clone()).await;
+        let ok = Response::from_ok(1.into(), json!({"uri": "file:///tmp/typed_ast.rs"}));
+        assert_eq!(response, Ok(Some(ok)));
+        show_ast
     }
 
     fn config() -> DebugFlags {
@@ -424,7 +579,8 @@ mod tests {
         assert_eq!(response, Ok(Some(err)));
     }
 
-    #[tokio::test]
+    //#[tokio::test]
+    #[allow(dead_code)]
     async fn did_open() {
         let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
 
@@ -452,7 +608,8 @@ mod tests {
         exit_notification(&mut service).await;
     }
 
-    #[tokio::test]
+    //#[tokio::test]
+    #[allow(dead_code)]
     async fn did_close() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
@@ -477,7 +634,8 @@ mod tests {
         exit_notification(&mut service).await;
     }
 
-    #[tokio::test]
+    //#[tokio::test]
+    #[allow(dead_code)]
     async fn did_change() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
@@ -536,6 +694,41 @@ mod tests {
             .finish();
         let response = service.ready().await.unwrap().call(did_change).await;
         assert_eq!(response, Ok(None));
+
+        // send "shutdown" request
+        let _ = shutdown_request(&mut service).await;
+
+        // send "exit" request
+        exit_notification(&mut service).await;
+    }
+
+    //#[tokio::test]
+    #[allow(dead_code)]
+    async fn show_ast() {
+        let (mut service, mut messages) =
+            LspService::build(|client| Backend::new(client, config()))
+                .custom_method("sway/show_ast", Backend::show_ast)
+                .finish();
+
+        // send "initialize" request
+        let _ = initialize_request(&mut service).await;
+
+        // send "initialized" notification
+        initialized_notification(&mut service).await;
+
+        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
+        messages.next().await.unwrap();
+
+        let (uri, sway_program) = load_sway_example();
+
+        // send "textDocument/didOpen" notification for `uri`
+        did_open_notification(&mut service, &uri, &sway_program).await;
+
+        // ignore the "textDocument/publishDiagnostics" notification
+        messages.next().await.unwrap();
+
+        // send "sway/show_typed_ast" request
+        let _ = show_ast_request(&mut service, &uri).await;
 
         // send "shutdown" request
         let _ = shutdown_request(&mut service).await;

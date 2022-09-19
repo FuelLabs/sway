@@ -2,15 +2,15 @@
 //!
 //! NOTE: much of this was hastily put together and can be streamlined or refactored altogether.
 
-use crate::{constant::Constant, context::Context, irtype::Type};
+use crate::{constant::Constant, context::Context, irtype::Type, pretty::DebugWithContext};
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
 /// [`Context`].
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct Pointer(pub generational_arena::Index);
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
+pub struct Pointer(#[in_context(pointers)] pub generational_arena::Index);
 
 #[doc(hidden)]
-#[derive(Clone)]
+#[derive(Clone, DebugWithContext)]
 pub struct PointerContent {
     pub ty: Type,
     pub is_mutable: bool,
@@ -18,6 +18,17 @@ pub struct PointerContent {
 }
 
 impl Pointer {
+    /// Return a string representation of type, used for IR printing.
+    pub fn as_string(&self, context: &Context, name: Option<&str>) -> String {
+        let PointerContent { ty, is_mutable, .. } = &context.pointers[self.0];
+        let mut_tag = if *is_mutable { "mut " } else { "" };
+        let name_tag = if name.is_some() {
+            format!(" {}", name.unwrap())
+        } else {
+            "".to_string()
+        };
+        format!("{mut_tag}ptr {}{}", ty.as_string(context), name_tag)
+    }
     /// Return a new pointer to a specific type with an optional [`Constant`] initializer.
     pub fn new(
         context: &mut Context,
@@ -44,5 +55,9 @@ impl Pointer {
             &context.pointers[self.0].ty,
             Type::Array(_) | Type::Struct(_) | Type::Union(_)
         )
+    }
+
+    pub fn is_equivalent(&self, context: &Context, other: &Pointer) -> bool {
+        self.get_type(context).eq(context, other.get_type(context))
     }
 }

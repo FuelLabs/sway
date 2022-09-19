@@ -1,0 +1,4 @@
+category = "fail"
+
+# unordered: $()Implicit return must match up with block's type.
+# unordered: $()A while loop's loop body cannot implicitly return a value. Try assigning it to a mutable variable declared outside of the loop instead.

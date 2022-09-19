@@ -1,6 +1,12 @@
 use crate::{
-    error::*, semantic_analysis::*, type_engine::*, CallPath, CompileResult, Ident, TypeInfo,
-    TypedDeclaration, TypedFunctionDeclaration,
+    declaration_engine::{
+        de_add_monomorphized_struct_copy,
+        declaration_engine::{de_add_monomorphized_enum_copy, de_get_enum, de_get_struct},
+    },
+    error::*,
+    semantic_analysis::*,
+    type_system::*,
+    CallPath, CompileResult, Ident, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::{module::Module, namespace::Namespace, Path};
@@ -56,7 +62,7 @@ impl Root {
                 .get(symbol.as_str())
                 .unwrap_or(symbol);
             match module.use_synonyms.get(symbol) {
-                Some(src_path) if mod_path != src_path => {
+                Some((src_path, _)) if mod_path != src_path => {
                     self.resolve_symbol(src_path, true_symbol)
                 }
                 _ => CompileResult::from(module.check_symbol(true_symbol)),
@@ -107,10 +113,19 @@ impl Root {
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(TypedDeclaration::StructDeclaration(mut decl)) => {
+                    Some(TypedDeclaration::StructDeclaration(original_id)) => {
+                        // get the copy from the declaration engine
+                        let mut new_copy = check!(
+                            CompileResult::from(de_get_struct(original_id.clone(), &name.span())),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+
+                        // monomorphize the copy, in place
                         check!(
                             monomorphize(
-                                &mut decl,
+                                &mut new_copy,
                                 &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
                                 span,
@@ -119,14 +134,31 @@ impl Root {
                             ),
                             return err(warnings, errors),
                             warnings,
-                            errors
+                            errors,
                         );
-                        decl.create_type_id()
+
+                        // create the type id from the copy
+                        let type_id = new_copy.create_type_id();
+
+                        // add the new copy as a monomorphized copy of the original id
+                        de_add_monomorphized_struct_copy(original_id, new_copy);
+
+                        // return the id
+                        type_id
                     }
-                    Some(TypedDeclaration::EnumDeclaration(mut decl)) => {
+                    Some(TypedDeclaration::EnumDeclaration(original_id)) => {
+                        // get the copy from the declaration engine
+                        let mut new_copy = check!(
+                            CompileResult::from(de_get_enum(original_id.clone(), &name.span())),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+
+                        // monomorphize the copy, in place
                         check!(
                             monomorphize(
-                                &mut decl,
+                                &mut new_copy,
                                 &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
                                 span,
@@ -137,7 +169,15 @@ impl Root {
                             warnings,
                             errors
                         );
-                        decl.create_type_id()
+
+                        // create the type id from the copy
+                        let type_id = new_copy.create_type_id();
+
+                        // add the new copy as a monomorphized copy of the original id
+                        de_add_monomorphized_enum_copy(original_id, new_copy);
+
+                        // return the id
+                        type_id
                     }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { name, type_id }) => {
                         insert_type(TypeInfo::Ref(type_id, name.span()))
@@ -152,14 +192,14 @@ impl Root {
                 }
             }
             TypeInfo::Ref(id, _) => id,
-            TypeInfo::Array(type_id, n) => {
+            TypeInfo::Array(type_id, n, initial_type_id) => {
                 let new_type_id = check!(
                     self.resolve_type(type_id, span, enforce_type_arguments, None, mod_path),
                     insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
-                insert_type(TypeInfo::Array(new_type_id, n))
+                insert_type(TypeInfo::Array(new_type_id, n, initial_type_id))
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {

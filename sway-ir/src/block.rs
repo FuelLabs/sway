@@ -15,12 +15,13 @@ use crate::{
     error::IrError,
     function::Function,
     instruction::{Instruction, InstructionInserter, InstructionIterator},
+    pretty::DebugWithContext,
     value::{Value, ValueDatum},
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
 /// [`Context`].
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
 pub struct Block(pub generational_arena::Index);
 
 #[doc(hidden)]
@@ -94,6 +95,32 @@ impl Block {
         }
     }
 
+    /// Add PHI entries to this block from the given iterator.
+    pub fn add_phis_from_iter(
+        &self,
+        context: &mut Context,
+        iter: impl Iterator<Item = (Block, Value)>,
+    ) {
+        let phi_val = self.get_phi(context);
+        if let ValueDatum::Instruction(Instruction::Phi(pairs)) =
+            &mut context.values[phi_val.0].value
+        {
+            pairs.extend(iter);
+        } else {
+            unreachable!("Phi value must be a PHI instruction.");
+        }
+    }
+
+    /// Get an iterator over this block's PHI pairs.
+    pub fn phi_iter<'a>(&'a self, context: &'a Context) -> impl Iterator<Item = &(Block, Value)> {
+        let phi_val = self.get_phi(context);
+        if let ValueDatum::Instruction(Instruction::Phi(pairs)) = &context.values[phi_val.0].value {
+            pairs.iter()
+        } else {
+            unreachable!("Phi value must be a PHI instruction.");
+        }
+    }
+
     /// Get the value from the phi instruction which correlates to `from_block`.
     ///
     /// Returns `None` if `from_block` isn't found.
@@ -107,6 +134,18 @@ impl Block {
                     None
                 }
             })
+        } else {
+            unreachable!("Phi value must be a PHI instruction.");
+        }
+    }
+
+    /// Remove the value in the phi instruction which correlates to `from_block`.
+    pub fn remove_phi_val_coming_from(&self, context: &mut Context, from_block: &Block) {
+        let phi_val = self.get_phi(context);
+        if let ValueDatum::Instruction(Instruction::Phi(pairs)) =
+            &mut context.values[phi_val.0].value
+        {
+            pairs.retain(|(block, _value)| block != from_block);
         } else {
             unreachable!("Phi value must be a PHI instruction.");
         }
@@ -138,7 +177,7 @@ impl Block {
     /// Get a reference to the block terminator.
     ///
     /// Returns `None` if block is empty.
-    pub fn get_term_inst<'a>(&self, context: &'a Context) -> Option<&'a Instruction> {
+    pub fn get_terminator<'a>(&self, context: &'a Context) -> Option<&'a Instruction> {
         context.blocks[self.0].instructions.last().and_then(|val| {
             // It's guaranteed to be an instruction value.
             if let ValueDatum::Instruction(term_inst) = &context.values[val.0].value {
@@ -147,6 +186,78 @@ impl Block {
                 None
             }
         })
+    }
+
+    /// Get a mut reference to the block terminator.
+    ///
+    /// Returns `None` if block is empty.
+    pub fn get_terminator_mut<'a>(&self, context: &'a mut Context) -> Option<&'a mut Instruction> {
+        context.blocks[self.0].instructions.last().and_then(|val| {
+            // It's guaranteed to be an instruction value.
+            if let ValueDatum::Instruction(term_inst) = &mut context.values[val.0].value {
+                Some(term_inst)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Get the CFG successors of this block.
+    pub(super) fn successors<'a>(&'a self, context: &'a Context) -> Vec<Block> {
+        match self.get_terminator(context) {
+            Some(Instruction::ConditionalBranch {
+                true_block,
+                false_block,
+                ..
+            }) => vec![*true_block, *false_block],
+
+            Some(Instruction::Branch(block)) => vec![*block],
+
+            _otherwise => Vec::new(),
+        }
+    }
+
+    /// Replace successor `old_succ` with `new_succ`
+    pub(super) fn replace_successor(
+        &self,
+        context: &mut Context,
+        old_succ: Block,
+        new_succ: Block,
+    ) {
+        if let Some(term) = self.get_terminator_mut(context) {
+            match term {
+                Instruction::ConditionalBranch {
+                    true_block,
+                    false_block,
+                    cond_value,
+                } => {
+                    let (new_true_block, new_false_block) = (
+                        if old_succ == *true_block {
+                            new_succ
+                        } else {
+                            *true_block
+                        },
+                        if old_succ == *false_block {
+                            new_succ
+                        } else {
+                            *false_block
+                        },
+                    );
+                    if new_true_block != *true_block || new_false_block != *false_block {
+                        *term = Instruction::ConditionalBranch {
+                            cond_value: *cond_value,
+                            true_block: new_true_block,
+                            false_block: new_false_block,
+                        };
+                    }
+                }
+
+                Instruction::Branch(block) if *block == old_succ => {
+                    *term = Instruction::Branch(new_succ);
+                }
+                _ => (),
+            }
+        }
     }
 
     /// Return whether this block is already terminated.  Checks if the final instruction, if it
@@ -160,7 +271,7 @@ impl Block {
 
     /// Return whether this block is already terminated specifically by a Ret instruction.
     pub fn is_terminated_by_ret(&self, context: &Context) -> bool {
-        self.get_term_inst(context)
+        self.get_terminator(context)
             .map_or(false, |i| matches!(i, Instruction::Ret { .. }))
     }
 
@@ -244,7 +355,7 @@ impl Block {
             //
             // Copying the candidate blocks and putting them in a vector to avoid borrowing context
             // as immutable and then mutable in the loop body.
-            for to_block in match new_block.get_term_inst(context) {
+            for to_block in match new_block.get_terminator(context) {
                 Some(Instruction::Branch(to_block)) => {
                     vec![*to_block]
                 }
@@ -273,26 +384,31 @@ impl Block {
 
 #[doc(hidden)]
 impl BlockContent {
-    pub(super) fn num_predecessors(&self, context: &Context) -> usize {
-        self.function
-            .instruction_iter(context)
-            .filter(
-                |(_block, ins_value)| match &context.values[ins_value.0].value {
-                    ValueDatum::Instruction(Instruction::ConditionalBranch {
+    pub(super) fn predecessors<'a>(
+        &'a self,
+        context: &'a Context,
+    ) -> impl Iterator<Item = Block> + 'a {
+        self.function.block_iter(context).filter(|block| {
+            let has_label = |b: &Block| b.get_label(context) == self.label;
+            block
+                .get_terminator(context)
+                .map(|term_inst| match term_inst {
+                    Instruction::ConditionalBranch {
                         true_block,
                         false_block,
                         ..
-                    }) => {
-                        true_block.get_label(context) == self.label
-                            || false_block.get_label(context) == self.label
-                    }
-                    ValueDatum::Instruction(Instruction::Branch(block)) => {
-                        block.get_label(context) == self.label
-                    }
+                    } => has_label(true_block) || has_label(false_block),
+
+                    Instruction::Branch(block) => has_label(block),
+
                     _otherwise => false,
-                },
-            )
-            .count()
+                })
+                .unwrap_or(false)
+        })
+    }
+
+    pub(super) fn num_predecessors(&self, context: &Context) -> usize {
+        self.predecessors(context).count()
     }
 }
 

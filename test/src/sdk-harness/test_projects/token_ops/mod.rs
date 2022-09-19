@@ -1,5 +1,4 @@
 use fuels::prelude::*;
-use fuels::signers::wallet::Wallet;
 use fuels::tx::{AssetId, ContractId};
 
 abigen!(
@@ -87,7 +86,7 @@ async fn can_force_transfer() {
     // confirm initial balance on balance contract (recipient)
     balance_result = fuelcoin_instance
         .get_balance(asset_id.clone(), target.clone())
-        .set_contracts(&[balance_id])
+        .set_contracts(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -97,7 +96,7 @@ async fn can_force_transfer() {
 
     fuelcoin_instance
         .force_transfer_coins(coins, asset_id.clone(), target.clone())
-        .set_contracts(&[balance_id])
+        .set_contracts(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -113,7 +112,7 @@ async fn can_force_transfer() {
     // confirm new balance on balance contract (recipient)
     balance_result = fuelcoin_instance
         .get_balance(asset_id.clone(), target.clone())
-        .set_contracts(&[balance_id])
+        .set_contracts(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -133,14 +132,14 @@ async fn can_mint_and_send_to_contract() {
 
     fuelcoin_instance
         .mint_and_send_to_contract(amount, target.clone())
-        .set_contracts(&[balance_id])
+        .set_contracts(&[balance_id.into()])
         .call()
         .await
         .unwrap();
 
     let result = fuelcoin_instance
         .get_balance(asset_id, target)
-        .set_contracts(&[balance_id])
+        .set_contracts(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -160,7 +159,7 @@ async fn can_mint_and_send_to_address() {
     let recipient = address.clone();
 
     fuelcoin_instance
-        .mint_and_send_to_address(amount, recipient)
+        .mint_and_send_to_address(amount, recipient.into())
         .append_variable_outputs(1)
         .call()
         .await
@@ -168,7 +167,7 @@ async fn can_mint_and_send_to_address() {
 
     assert_eq!(
         wallet
-            .get_spendable_coins(&AssetId::from(asset_id_array), 1)
+            .get_spendable_coins(AssetId::from(asset_id_array), 1)
             .await
             .unwrap()[0]
             .amount,
@@ -186,7 +185,7 @@ async fn can_perform_generic_mint_to_with_address() {
     let address = wallet.address();
 
     fuelcoin_instance
-        .generic_mint_to(amount, Identity::Address(address))
+        .generic_mint_to(amount, Identity::Address(address.into()))
         .append_variable_outputs(1)
         .call()
         .await
@@ -194,7 +193,7 @@ async fn can_perform_generic_mint_to_with_address() {
 
     assert_eq!(
         wallet
-            .get_spendable_coins(&AssetId::from(asset_id_array), 1)
+            .get_spendable_coins(AssetId::from(asset_id_array), 1)
             .await
             .unwrap()[0]
             .amount,
@@ -223,14 +222,14 @@ async fn can_perform_generic_mint_to_with_contract_id() {
 
     fuelcoin_instance
         .generic_mint_to(amount, Identity::ContractId(target))
-        .set_contracts(&[balance_id])
+        .set_contracts(&[balance_id.into()])
         .call()
         .await
         .unwrap();
 
     let result = fuelcoin_instance
         .get_balance(fuelcoin_id, target)
-        .set_contracts(&[balance_id])
+        .set_contracts(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -250,7 +249,7 @@ async fn can_perform_generic_transfer_to_address() {
     fuelcoin_instance.mint_coins(amount).call().await.unwrap();
 
     fuelcoin_instance
-        .generic_transfer(amount, fuelcoin_id, Identity::Address(address))
+        .generic_transfer(amount, fuelcoin_id, Identity::Address(address.into()))
         .append_variable_outputs(1)
         .call()
         .await
@@ -258,7 +257,7 @@ async fn can_perform_generic_transfer_to_address() {
 
     assert_eq!(
         wallet
-            .get_spendable_coins(&AssetId::from(asset_id_array), 1)
+            .get_spendable_coins(AssetId::from(asset_id_array), 1)
             .await
             .unwrap()[0]
             .amount,
@@ -289,14 +288,14 @@ async fn can_perform_generic_transfer_to_contract() {
 
     fuelcoin_instance
         .generic_transfer(amount, fuelcoin_id, Identity::ContractId(to))
-        .set_contracts(&[balance_id])
+        .set_contracts(&[balance_id.into()])
         .call()
         .await
         .unwrap();
 
     let result = fuelcoin_instance
         .get_balance(fuelcoin_id, to)
-        .set_contracts(&[balance_id])
+        .set_contracts(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -304,34 +303,35 @@ async fn can_perform_generic_transfer_to_contract() {
     assert_eq!(result.value, amount)
 }
 
-async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract, ContractId) {
+async fn get_fuelcoin_instance(wallet: WalletUnlocked) -> (TestFuelCoinContract, ContractId) {
     let fuelcoin_id = Contract::deploy(
         "test_projects/token_ops/out/debug/token_ops.bin",
         &wallet,
         TxParameters::default(),
         StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/token_ops/out/debug/token_ops-storage_slots.json".to_string(),
+            "test_projects/token_ops/out/debug/token_ops-storage_slots.json".to_string(),
         )),
     )
     .await
     .unwrap();
 
-    let fuelcoin_instance = TestFuelCoinContract::new(fuelcoin_id.to_string(), wallet);
+    let fuelcoin_instance =
+        TestFuelCoinContractBuilder::new(fuelcoin_id.to_string(), wallet).build();
 
-    (fuelcoin_instance, fuelcoin_id)
+    (fuelcoin_instance, fuelcoin_id.into())
 }
 
-async fn get_balance_contract_id(wallet: Wallet) -> ContractId {
+async fn get_balance_contract_id(wallet: WalletUnlocked) -> ContractId {
     let balance_id = Contract::deploy(
         "test_artifacts/balance_contract/out/debug/balance_contract.bin",
         &wallet,
         TxParameters::default(),
         StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/token_ops/out/debug/token_ops-storage_slots.json".to_string(),
+            "test_projects/token_ops/out/debug/token_ops-storage_slots.json".to_string(),
         )),
     )
     .await
     .unwrap();
 
-    balance_id
+    balance_id.into()
 }

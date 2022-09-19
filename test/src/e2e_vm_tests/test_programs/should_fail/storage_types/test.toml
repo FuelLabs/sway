@@ -1,0 +1,42 @@
+category = "fail"
+
+# check: $()error
+# check: $()struct Wrapper {
+# nextln: $()map1: StorageMap<u64, u64>
+# nextln: $()Type StorageMap<u64, u64> can only be declared directly as a storage field
+
+# check: $()error
+# check: $()map1: StorageMap<u64, u64>
+# nextln: $()vec2: StorageVec<u64>
+# nextln: $()Type StorageVec<u64> can only be declared directly as a storage field
+
+# check: $()error
+# check: $()storage {
+# nextln: $()w: Wrapper = Wrapper { map1: StorageMap {}, vec2: StorageVec {} }
+# nextln: $()Type StorageMap<u64, u64> can only be declared directly as a storage field
+
+# check: $()error
+# check: $()storage {
+# nextln: $()w: Wrapper = Wrapper { map1: StorageMap {}, vec2: StorageVec {} }
+# nextln: $()Type StorageVec<u64> can only be declared directly as a storage field
+
+# check: $()error
+# check: $()v: StorageVec<u64> = StorageVec {}
+# nextln: $()u: StorageVec<StorageVec<u64>> = StorageVec {}
+# nextln: $()Type StorageVec<u64> can only be declared directly as a storage field
+
+# check: $()error
+# check: $()let local_map1: StorageMap<u64, u64> = StorageMap {};
+# nextln: $()Type StorageMap<u64, u64> can only be declared directly as a storage field
+
+# check: $()error
+# check: $()let local_vec1: StorageVec<u64> = StorageVec {};
+# nextln: $()Type StorageVec<u64> can only be declared directly as a storage field
+
+# check: $()error
+# check: $()let local_map2 = storage.map1;
+# nextln: $()Type StorageMap<u32, u32> can only be declared directly as a storage field
+
+# check: $()error
+# check: $()fn insert(mapping: StorageMap<u64, u64>) {
+# nextln: $()Type StorageMap<u64, u64> can only be declared directly as a storage field

@@ -4,7 +4,7 @@ use crate::{
     constants::STORAGE_PURITY_ATTRIBUTE_NAME,
     convert_parse_tree::ConvertParseTreeError,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
-    type_engine::*,
+    type_system::*,
     CallPath, VariableDeclaration,
 };
 use sway_types::{ident::Ident, span::Span, Spanned};
@@ -191,7 +191,7 @@ where
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Hint {
     msg: Option<String>,
 }
@@ -213,7 +213,7 @@ impl Display for Hint {
 
 // TODO: since moving to using Idents instead of strings the warning_content will usually contain a
 // duplicate of the span.
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CompileWarning {
     pub span: Span,
     pub warning_content: Warning,
@@ -258,7 +258,7 @@ impl From<(usize, usize)> for LineCol {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Warning {
     NonClassCaseStructName {
         struct_name: Ident,
@@ -318,6 +318,9 @@ pub enum Warning {
         unneeded_attrib: String,
     },
     MatchExpressionUnreachableArm,
+    UnrecognizedAttribute {
+        attrib_name: Ident,
+    },
 }
 
 impl fmt::Display for Warning {
@@ -417,7 +420,7 @@ impl fmt::Display for Warning {
                 "This trait implementation overrides another one that was previously defined."
             ),
             DeadDeclaration => write!(f, "This declaration is never used."),
-            DeadStructDeclaration => write!(f, "This struct is never instantiated."),
+            DeadStructDeclaration => write!(f, "This struct is never used."),
             DeadFunctionDeclaration => write!(f, "This function is never called."),
             UnreachableCode => write!(f, "This code is unreachable."),
             DeadEnumVariant { variant_name } => {
@@ -441,13 +444,14 @@ impl fmt::Display for Warning {
                 and can be removed."
             ),
             MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
+            UnrecognizedAttribute {attrib_name} => write!(f, "Unknown attribute: \"{attrib_name}\"."),
         }
     }
 }
 
 // TODO: since moving to using Idents instead of strings, there are a lot of redundant spans in
 // this type.
-#[derive(Error, Debug, Clone, PartialEq, Hash)]
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: Ident },
@@ -538,6 +542,14 @@ pub enum CompileError {
         variable_name: Ident,
         span: Span,
     },
+    #[error(
+        "This parameter was declared as mutable, which is not supported yet, did you mean to use ref mut?"
+    )]
+    MutableParameterNotSupported { param_name: Ident },
+    #[error("Cannot pass immutable argument to mutable parameter.")]
+    ImmutableArgumentToMutableParameter { span: Span },
+    #[error("ref mut parameter is not allowed for contract ABI function.")]
+    RefMutableNotAllowedInContractAbi { param_name: Ident },
     #[error(
         "Cannot call associated function \"{fn_name}\" as a method. Use associated function \
         syntax instead."
@@ -674,6 +686,14 @@ pub enum CompileError {
     DeclIsNotAVariable { actually: String, span: Span },
     #[error("This is a {actually}, not an ABI.")]
     DeclIsNotAnAbi { actually: String, span: Span },
+    #[error("This is a {actually}, not a trait.")]
+    DeclIsNotATrait { actually: String, span: Span },
+    #[error("This is a {actually}, not an impl block.")]
+    DeclIsNotAnImplTrait { actually: String, span: Span },
+    #[error("This is a {actually}, not a trait function.")]
+    DeclIsNotATraitFn { actually: String, span: Span },
+    #[error("This is a {actually}, not storage.")]
+    DeclIsNotStorage { actually: String, span: Span },
     #[error(
         "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
          {available_fields}"
@@ -897,8 +917,6 @@ pub enum CompileError {
     ShadowsOtherSymbol { name: Ident },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
     GenericShadowsGeneric { name: Ident },
-    #[error("The name \"{name}\" imported through `*` shadows another symbol with the same name.")]
-    StarImportShadowsOtherSymbol { name: Ident },
     #[error(
         "Match expression arm has mismatched types.\n\
          expected: {expected}\n\
@@ -956,6 +974,12 @@ pub enum CompileError {
         attrs: String,
         span: Span,
     },
+    #[error(
+        "Parameter mutability mismatch between the trait function declaration and its implementation."
+    )]
+    ParameterMutabilityMismatch { span: Span },
+    #[error("Ref mutable parameter is not supported for contract ABI function.")]
+    RefMutParameterInContract { span: Span },
     #[error("Literal value is too large for type {ty}.")]
     IntegerTooLarge { span: Span, ty: String },
     #[error("Literal value underflows type {ty}.")]
@@ -998,6 +1022,8 @@ pub enum CompileError {
     NoDeclaredStorage { span: Span },
     #[error("Multiple storage declarations were found")]
     MultipleStorageDeclarations { span: Span },
+    #[error("Type {ty} can only be declared directly as a storage field")]
+    InvalidStorageOnlyTypeDecl { ty: String, span: Span },
     #[error("Expected identifier, found keyword \"{name}\" ")]
     InvalidVariableName { name: Ident },
     #[error(
@@ -1044,6 +1070,12 @@ pub enum CompileError {
     BreakOutsideLoop { span: Span },
     #[error("\"continue\" used outside of a loop")]
     ContinueOutsideLoop { span: Span },
+    #[error("Configuration-time constant value is not a constant item.")]
+    ConfigTimeConstantNotAConstDecl { span: Span },
+    #[error("Configuration-time constant value is not a literal.")]
+    ConfigTimeConstantNotALiteral { span: Span },
+    #[error("ref mut parameter not allowed for main()")]
+    RefMutableNotAllowedInMain { param_name: Ident },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1078,6 +1110,9 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfFunction { name } => name.span(),
             ReassignmentToNonVariable { span, .. } => span.clone(),
             AssignmentToNonMutable { name } => name.span(),
+            MutableParameterNotSupported { param_name } => param_name.span(),
+            ImmutableArgumentToMutableParameter { span } => span.clone(),
+            RefMutableNotAllowedInContractAbi { param_name } => param_name.span(),
             MethodRequiresMutableSelf { span, .. } => span.clone(),
             AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
@@ -1162,7 +1197,6 @@ impl Spanned for CompileError {
             ArrayOutOfBounds { span, .. } => span.clone(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
-            StarImportShadowsOtherSymbol { name } => name.span(),
             MatchWrongType { span, .. } => span.clone(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             MatchStructPatternMissingFields { span, .. } => span.clone(),
@@ -1175,8 +1209,14 @@ impl Spanned for CompileError {
             DeclIsNotAFunction { span, .. } => span.clone(),
             DeclIsNotAVariable { span, .. } => span.clone(),
             DeclIsNotAnAbi { span, .. } => span.clone(),
+            DeclIsNotATrait { span, .. } => span.clone(),
+            DeclIsNotAnImplTrait { span, .. } => span.clone(),
+            DeclIsNotATraitFn { span, .. } => span.clone(),
+            DeclIsNotStorage { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             ImpureInPureContext { span, .. } => span.clone(),
+            ParameterMutabilityMismatch { span, .. } => span.clone(),
+            RefMutParameterInContract { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
             IntegerTooSmall { span, .. } => span.clone(),
             IntegerContainsInvalidDigit { span, .. } => span.clone(),
@@ -1189,6 +1229,7 @@ impl Spanned for CompileError {
             UnrecognizedContractParam { span, .. } => span.clone(),
             CallParamForNonContractCallMethod { span, .. } => span.clone(),
             StorageFieldDoesNotExist { name } => name.span(),
+            InvalidStorageOnlyTypeDecl { span, .. } => span.clone(),
             NoDeclaredStorage { span, .. } => span.clone(),
             MultipleStorageDeclarations { span, .. } => span.clone(),
             InvalidVariableName { name } => name.span(),
@@ -1207,6 +1248,9 @@ impl Spanned for CompileError {
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
+            ConfigTimeConstantNotAConstDecl { span } => span.clone(),
+            ConfigTimeConstantNotALiteral { span } => span.clone(),
+            RefMutableNotAllowedInMain { param_name } => param_name.span(),
         }
     }
 }
@@ -1225,7 +1269,7 @@ impl CompileError {
     }
 }
 
-#[derive(Error, Debug, Clone, PartialEq, Hash)]
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeError {
     #[error(
         "Mismatched types.\n\

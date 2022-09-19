@@ -3,7 +3,7 @@ use std::{cmp::Ordering, fmt};
 use std::fmt::Write;
 use sway_types::Span;
 
-use crate::type_engine::look_up_type_id;
+use crate::type_system::look_up_type_id;
 use crate::TypeInfo;
 use crate::{
     error::{err, ok},
@@ -805,7 +805,7 @@ impl fmt::Display for StructPattern {
                 let (front, rest) = self.fields.split_at(start_of_wildcard_tail);
                 let mut inner_builder = front
                     .iter()
-                    .map(|(name, field)| -> Result<_, _> {
+                    .map(|(name, field)| -> Result<_, fmt::Error> {
                         let mut inner_builder = String::new();
                         inner_builder.push_str(name);
                         inner_builder.push_str(": ");
@@ -822,7 +822,7 @@ impl fmt::Display for StructPattern {
             None => self
                 .fields
                 .iter()
-                .map(|(name, field)| -> Result<_, _> {
+                .map(|(name, field)| -> Result<_, fmt::Error> {
                     let mut inner_builder = String::new();
                     inner_builder.push_str(name);
                     inner_builder.push_str(": ");

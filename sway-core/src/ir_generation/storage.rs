@@ -183,10 +183,9 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
                 .map(|i| Bytes8::new(b[8 * i..8 * i + 8].try_into().unwrap())),
         ),
         (Type::String(_), ConstantValue::String(s)) => {
-            // Turn the serialized words (Bytes8) into seriliazed storage slots (Bytes32)
-            // Pad to word alignment
+            // Turn the bytes into serialized words (Bytes8).
             let mut s = s.clone();
-            s.extend(vec![0; ((s.len() + 3) / 4) * 4 - s.len()]);
+            s.extend(vec![0; ((s.len() + 7) / 8) * 8 - s.len()]);
 
             assert!(s.len() % 8 == 0);
 

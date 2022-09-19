@@ -1,6 +1,6 @@
 use crate::{
     parse_tree::{CallPath, Literal},
-    type_engine::TypeBinding,
+    type_system::TypeBinding,
     CodeBlock, TypeInfo,
 };
 use sway_types::{ident::Ident, Span, Spanned};
@@ -13,85 +13,130 @@ pub(crate) use asm::*;
 pub(crate) use match_branch::MatchBranch;
 pub use method_name::MethodName;
 pub use scrutinee::*;
-use sway_parse::intrinsics::Intrinsic;
+use sway_ast::intrinsics::Intrinsic;
 
 /// Represents a parsed, but not yet type checked, [Expression](https://en.wikipedia.org/wiki/Expression_(computer_science)).
 #[derive(Debug, Clone)]
-pub enum Expression {
-    Literal {
-        value: Literal,
-        span: Span,
-    },
-    FunctionApplication {
-        call_path_binding: TypeBinding<CallPath>,
-        arguments: Vec<Expression>,
-        span: Span,
-    },
-    LazyOperator {
-        op: LazyOp,
-        lhs: Box<Expression>,
-        rhs: Box<Expression>,
-        span: Span,
-    },
-    VariableExpression {
-        name: Ident,
-        span: Span,
-    },
-    Tuple {
-        fields: Vec<Expression>,
-        span: Span,
-    },
-    TupleIndex {
-        prefix: Box<Expression>,
-        index: usize,
-        index_span: Span,
-        span: Span,
-    },
-    Array {
-        contents: Vec<Expression>,
-        span: Span,
-    },
-    StructExpression {
-        call_path_binding: TypeBinding<CallPath<(TypeInfo, Span)>>,
-        fields: Vec<StructExpressionField>,
-        span: Span,
-    },
-    CodeBlock {
-        contents: CodeBlock,
-        span: Span,
-    },
-    IfExp {
-        condition: Box<Expression>,
-        then: Box<Expression>,
-        r#else: Option<Box<Expression>>,
-        span: Span,
-    },
-    MatchExp {
-        value: Box<Expression>,
-        branches: Vec<MatchBranch>,
-        span: Span,
-    },
+pub struct Expression {
+    pub kind: ExpressionKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct FunctionApplicationExpression {
+    pub call_path_binding: TypeBinding<CallPath>,
+    pub arguments: Vec<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LazyOperatorExpression {
+    pub op: LazyOp,
+    pub lhs: Box<Expression>,
+    pub rhs: Box<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TupleIndexExpression {
+    pub prefix: Box<Expression>,
+    pub index: usize,
+    pub index_span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct StructExpression {
+    pub call_path_binding: TypeBinding<CallPath<(TypeInfo, Span)>>,
+    pub fields: Vec<StructExpressionField>,
+}
+
+#[derive(Debug, Clone)]
+pub struct IfExpression {
+    pub condition: Box<Expression>,
+    pub then: Box<Expression>,
+    pub r#else: Option<Box<Expression>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MatchExpression {
+    pub value: Box<Expression>,
+    pub branches: Vec<MatchBranch>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MethodApplicationExpression {
+    pub method_name_binding: TypeBinding<MethodName>,
+    pub contract_call_params: Vec<StructExpressionField>,
+    pub arguments: Vec<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SubfieldExpression {
+    pub prefix: Box<Expression>,
+    pub field_to_access: Ident,
+}
+
+#[derive(Debug, Clone)]
+pub struct DelineatedPathExpression {
+    pub call_path_binding: TypeBinding<CallPath>,
+    pub args: Vec<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AbiCastExpression {
+    pub abi_name: CallPath,
+    pub address: Box<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ArrayIndexExpression {
+    pub prefix: Box<Expression>,
+    pub index: Box<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct StorageAccessExpression {
+    pub field_names: Vec<Ident>,
+}
+
+#[derive(Debug, Clone)]
+pub struct IntrinsicFunctionExpression {
+    pub kind_binding: TypeBinding<Intrinsic>,
+    pub arguments: Vec<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct WhileLoopExpression {
+    pub condition: Box<Expression>,
+    pub body: CodeBlock,
+}
+
+#[derive(Debug, Clone)]
+pub struct ReassignmentExpression {
+    pub lhs: ReassignmentTarget,
+    pub rhs: Box<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub enum ExpressionKind {
+    Literal(Literal),
+    FunctionApplication(Box<FunctionApplicationExpression>),
+    LazyOperator(LazyOperatorExpression),
+    Variable(Ident),
+    Tuple(Vec<Expression>),
+    TupleIndex(TupleIndexExpression),
+    Array(Vec<Expression>),
+    Struct(Box<StructExpression>),
+    CodeBlock(CodeBlock),
+    If(IfExpression),
+    Match(MatchExpression),
     // separated into other struct for parsing reasons
-    AsmExpression {
-        span: Span,
-        asm: AsmExpression,
-    },
-    MethodApplication {
-        method_name_binding: TypeBinding<MethodName>,
-        contract_call_params: Vec<StructExpressionField>,
-        arguments: Vec<Expression>,
-        span: Span,
-    },
+    Asm(Box<AsmExpression>),
+    MethodApplication(Box<MethodApplicationExpression>),
     /// A _subfield expression_ is anything of the form:
     /// ```ignore
     /// <ident>.<ident>
     /// ```
     ///
-    SubfieldExpression {
-        prefix: Box<Expression>,
-        span: Span,
-        field_to_access: Ident,
-    },
+    Subfield(SubfieldExpression),
     /// A _delineated path_ is anything of the form:
     /// ```ignore
     /// <ident>::<ident>
@@ -113,34 +158,31 @@ pub enum Expression {
     ///
     /// MyEnum::Variant1
     /// ```
-    DelineatedPath {
-        call_path_binding: TypeBinding<CallPath>,
-        args: Vec<Expression>,
-        span: Span,
-    },
+    DelineatedPath(Box<DelineatedPathExpression>),
     /// A cast of a hash to an ABI for calling a contract.
-    AbiCast {
-        abi_name: CallPath,
-        address: Box<Expression>,
-        span: Span,
-    },
-    ArrayIndex {
-        prefix: Box<Expression>,
-        index: Box<Expression>,
-        span: Span,
-    },
-    StorageAccess {
-        field_names: Vec<Ident>,
-        span: Span,
-    },
-    IntrinsicFunction {
-        kind_binding: TypeBinding<Intrinsic>,
-        arguments: Vec<Expression>,
-        span: Span,
-    },
+    AbiCast(Box<AbiCastExpression>),
+    ArrayIndex(ArrayIndexExpression),
+    StorageAccess(StorageAccessExpression),
+    IntrinsicFunction(IntrinsicFunctionExpression),
+    /// A control flow element which loops continually until some boolean expression evaluates as
+    /// `false`.
+    WhileLoop(WhileLoopExpression),
+    Break,
+    Continue,
+    Reassignment(ReassignmentExpression),
+    Return(Box<Expression>),
 }
 
-#[derive(Clone, Debug, PartialEq, Hash)]
+/// Represents the left hand side of a reassignment, which could either be a regular variable
+/// expression, denoted by [ReassignmentTarget::VariableExpression], or, a storage field, denoted
+/// by [ReassignmentTarget::StorageField].
+#[derive(Debug, Clone)]
+pub enum ReassignmentTarget {
+    VariableExpression(Box<Expression>),
+    StorageField(Vec<Ident>),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum LazyOp {
     And,
     Or,
@@ -155,29 +197,7 @@ pub struct StructExpressionField {
 
 impl Spanned for Expression {
     fn span(&self) -> Span {
-        use Expression::*;
-        (match self {
-            Literal { span, .. } => span,
-            FunctionApplication { span, .. } => span,
-            LazyOperator { span, .. } => span,
-            VariableExpression { span, .. } => span,
-            Tuple { span, .. } => span,
-            TupleIndex { span, .. } => span,
-            Array { span, .. } => span,
-            StructExpression { span, .. } => span,
-            CodeBlock { span, .. } => span,
-            IfExp { span, .. } => span,
-            MatchExp { span, .. } => span,
-            AsmExpression { span, .. } => span,
-            MethodApplication { span, .. } => span,
-            SubfieldExpression { span, .. } => span,
-            DelineatedPath { span, .. } => span,
-            AbiCast { span, .. } => span,
-            ArrayIndex { span, .. } => span,
-            StorageAccess { span, .. } => span,
-            IntrinsicFunction { span, .. } => span,
-        })
-        .clone()
+        self.span.clone()
     }
 }
 

@@ -2,13 +2,14 @@ use derivative::Derivative;
 use sway_types::{Ident, Spanned};
 
 use crate::{
+    declaration_engine::declaration_engine::de_get_trait,
     error::{err, ok},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
         Mode, TypeCheckContext, TypedCodeBlock,
     },
     style::is_upper_camel_case,
-    type_engine::{insert_type, CopyTypes, TypeMapping},
+    type_system::{insert_type, CopyTypes, TypeMapping},
     CallPath, CompileError, CompileResult, FunctionDeclaration, FunctionParameter, Namespace,
     Supertrait, TraitDeclaration, TypeInfo, TypedDeclaration, TypedFunctionDeclaration, Visibility,
 };
@@ -117,12 +118,19 @@ fn handle_supertraits(
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
-                ref interface_surface,
-                ref methods,
-                ref supertraits,
-                ..
-            })) => {
+            Some(TypedDeclaration::TraitDeclaration(decl_id)) => {
+                let TypedTraitDeclaration {
+                    ref interface_surface,
+                    ref methods,
+                    ref supertraits,
+                    ..
+                } = check!(
+                    CompileResult::from(de_get_trait(decl_id.clone(), &supertrait.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
                 // insert dummy versions of the interfaces for all of the supertraits
                 trait_namespace.insert_trait_implementation(
                     supertrait.name.clone(),
@@ -186,54 +194,63 @@ fn convert_trait_methods_to_dummy_funcs(
                  return_type,
                  return_type_span,
                  ..
-             }| TypedFunctionDeclaration {
-                purity: Default::default(),
-                name: name.clone(),
-                body: TypedCodeBlock { contents: vec![] },
-                parameters: parameters
-                    .iter()
-                    .map(
-                        |FunctionParameter {
-                             name,
-                             is_mutable,
-                             type_id,
-                             type_span,
-                         }| TypedFunctionParameter {
-                            name: name.clone(),
-                            is_mutable: *is_mutable,
-                            type_id: check!(
-                                trait_namespace.resolve_type_with_self(
-                                    *type_id,
-                                    insert_type(TypeInfo::SelfType),
-                                    type_span,
-                                    EnforceTypeArguments::Yes,
-                                    None
+             }| {
+                let initial_return_type = insert_type(return_type.clone());
+                TypedFunctionDeclaration {
+                    purity: Default::default(),
+                    name: name.clone(),
+                    body: TypedCodeBlock { contents: vec![] },
+                    parameters: parameters
+                        .iter()
+                        .map(
+                            |FunctionParameter {
+                                 name,
+                                 is_reference,
+                                 is_mutable,
+                                 mutability_span,
+                                 type_id,
+                                 type_span,
+                             }| TypedFunctionParameter {
+                                name: name.clone(),
+                                is_reference: *is_reference,
+                                is_mutable: *is_mutable,
+                                mutability_span: mutability_span.clone(),
+                                type_id: check!(
+                                    trait_namespace.resolve_type_with_self(
+                                        *type_id,
+                                        insert_type(TypeInfo::SelfType),
+                                        type_span,
+                                        EnforceTypeArguments::Yes,
+                                        None
+                                    ),
+                                    insert_type(TypeInfo::ErrorRecovery),
+                                    warnings,
+                                    errors,
                                 ),
-                                insert_type(TypeInfo::ErrorRecovery),
-                                warnings,
-                                errors,
-                            ),
-                            type_span: type_span.clone(),
-                        },
-                    )
-                    .collect(),
-                span: name.span(),
-                return_type: check!(
-                    trait_namespace.resolve_type_with_self(
-                        insert_type(return_type.clone()),
-                        insert_type(TypeInfo::SelfType),
-                        return_type_span,
-                        EnforceTypeArguments::Yes,
-                        None
+                                initial_type_id: *type_id,
+                                type_span: type_span.clone(),
+                            },
+                        )
+                        .collect(),
+                    span: name.span(),
+                    return_type: check!(
+                        trait_namespace.resolve_type_with_self(
+                            initial_return_type,
+                            insert_type(TypeInfo::SelfType),
+                            return_type_span,
+                            EnforceTypeArguments::Yes,
+                            None
+                        ),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors,
                     ),
-                    insert_type(TypeInfo::ErrorRecovery),
-                    warnings,
-                    errors,
-                ),
-                return_type_span: return_type_span.clone(),
-                visibility: Visibility::Public,
-                type_parameters: vec![],
-                is_contract_call: false,
+                    initial_return_type,
+                    return_type_span: return_type_span.clone(),
+                    visibility: Visibility::Public,
+                    type_parameters: vec![],
+                    is_contract_call: false,
+                }
             },
         )
         .collect::<Vec<_>>();

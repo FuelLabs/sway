@@ -5,6 +5,7 @@ library test;
 
 trait Foo {
     fn foo(x: u64) -> str[7];
+    fn bar(variable: u64) -> bool;
 }
 
 struct S {
@@ -14,5 +15,9 @@ struct S {
 impl Foo for S {
     fn foo(s: str[7]) -> str[7] {
         s
+    }
+
+    fn bar(ref mut variable: u64) -> bool {
+        true
     }
 }

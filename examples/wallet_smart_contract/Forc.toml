@@ -6,3 +6,4 @@ name = "wallet_smart_contract"
 
 [dependencies]
 std = { path = "../../sway-lib-std" }
+wallet_abi = { path = "../wallet_abi" }

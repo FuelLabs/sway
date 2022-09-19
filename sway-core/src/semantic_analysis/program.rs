@@ -1,25 +1,31 @@
 use super::{
-    TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration, TypedImplTrait,
-    TypedStorageDeclaration,
+    storage_only_types, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
+    TypedFunctionDeclaration, TypedImplTrait, TypedStorageDeclaration,
 };
 use crate::{
+    declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait, de_get_storage},
     error::*,
+    metadata::MetadataManager,
     parse_tree::{ParseProgram, Purity, TreeType},
     semantic_analysis::{
         namespace::{self, Namespace},
         TypeCheckContext, TypedModule,
     },
-    type_engine::*,
-    types::ToJsonAbi,
+    type_system::*,
 };
 use fuel_tx::StorageSlot;
-use sway_types::{span::Span, Ident, JsonABI, Spanned};
+use sway_ir::{Context, Module};
+use sway_types::{
+    span::Span, Ident, JsonABIProgram, JsonLoggedType, JsonTypeApplication, JsonTypeDeclaration,
+    Spanned,
+};
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct TypedProgram {
     pub kind: TypedProgramKind,
     pub root: TypedModule,
     pub storage_slots: Vec<StorageSlot>,
+    pub logged_types: Vec<TypeId>,
 }
 
 impl TypedProgram {
@@ -42,6 +48,7 @@ impl TypedProgram {
                 kind,
                 root,
                 storage_slots: vec![],
+                logged_types: vec![],
             })
         })
     }
@@ -73,43 +80,67 @@ impl TypedProgram {
         }
 
         let mut mains = Vec::new();
-        let mut declarations = Vec::new();
+        let mut declarations = Vec::<TypedDeclaration>::new();
         let mut abi_entries = Vec::new();
         let mut fn_declarations = std::collections::HashSet::new();
         for node in &root.all_nodes {
             match &node.content {
-                TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(func))
-                    if func.name.as_str() == "main" =>
-                {
-                    mains.push(func.clone())
+                TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
+                    decl_id,
+                )) => {
+                    let func = check!(
+                        CompileResult::from(de_get_function(decl_id.clone(), &node.span)),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+
+                    if func.name.as_str() == "main" {
+                        mains.push(func.clone());
+                    }
+
+                    if !fn_declarations.insert(func.name.clone()) {
+                        errors
+                            .push(CompileError::MultipleDefinitionsOfFunction { name: func.name });
+                    }
+
+                    declarations.push(TypedDeclaration::FunctionDeclaration(decl_id.clone()));
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself.
-                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
-                    methods,
-                    implementing_for_type_id,
-                    ..
-                })) if matches!(
-                    look_up_type_id(*implementing_for_type_id),
-                    TypeInfo::Contract
-                ) =>
-                {
-                    abi_entries.extend(methods.clone())
+                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(decl_id)) => {
+                    let TypedImplTrait {
+                        methods,
+                        implementing_for_type_id,
+                        ..
+                    } = check!(
+                        CompileResult::from(de_get_impl_trait(decl_id.clone(), &node.span)),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if matches!(
+                        look_up_type_id(implementing_for_type_id),
+                        TypeInfo::Contract
+                    ) {
+                        abi_entries.extend(methods.clone());
+                    }
                 }
                 // XXX we're excluding the above ABI methods, is that OK?
                 TypedAstNodeContent::Declaration(decl) => {
-                    // Variable and constant declarations don't need a duplicate check.
-                    // Type declarations are checked elsewhere. That leaves functions.
-                    if let TypedDeclaration::FunctionDeclaration(func) = &decl {
-                        let name = func.name.clone();
-                        if !fn_declarations.insert(name.clone()) {
-                            errors.push(CompileError::MultipleDefinitionsOfFunction { name });
-                        }
-                    }
-                    declarations.push(decl.clone())
+                    declarations.push(decl.clone());
                 }
-                _ => (),
+                _ => {}
             };
+        }
+
+        for ast_n in &root.all_nodes {
+            check!(
+                storage_only_types::validate_decls_for_storage_only_types_in_ast(&ast_n.content),
+                continue,
+                warnings,
+                errors
+            );
         }
 
         // Some checks that are specific to non-contracts
@@ -124,14 +155,16 @@ impl TypedProgram {
                 .iter()
                 .find(|decl| matches!(decl, TypedDeclaration::StorageDeclaration(_)));
 
-            if let Some(TypedDeclaration::StorageDeclaration(TypedStorageDeclaration {
-                span,
-                ..
-            })) = storage_decl
-            {
+            if let Some(TypedDeclaration::StorageDeclaration(decl_id)) = storage_decl {
+                let TypedStorageDeclaration { span, .. } = check!(
+                    CompileResult::from(de_get_storage(decl_id.clone(), &decl_id.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 errors.push(CompileError::StorageDeclarationInNonContract {
                     program_kind: format!("{kind}"),
-                    span: span.clone(),
+                    span,
                 });
             }
         }
@@ -183,51 +216,116 @@ impl TypedProgram {
                 }
             }
         };
-
-        ok(typed_program_kind, vec![], errors)
+        // check if no ref mut arguments passed to a `main()` in a `script` or `predicate`.
+        match &typed_program_kind {
+            TypedProgramKind::Script { main_function, .. }
+            | TypedProgramKind::Predicate { main_function, .. } => {
+                for param in &main_function.parameters {
+                    if param.is_reference && param.is_mutable {
+                        errors.push(CompileError::RefMutableNotAllowedInMain {
+                            param_name: param.name.clone(),
+                        })
+                    }
+                }
+            }
+            _ => (),
+        }
+        ok(typed_program_kind, warnings, errors)
     }
 
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.
-    pub(crate) fn finalize_types(&self) -> CompileResult<()> {
+    pub(crate) fn collect_types_metadata(&mut self) -> CompileResult<Vec<TypeMetadata>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         // Get all of the entry points for this tree type. For libraries, that's everything
         // public. For contracts, ABI entries. For scripts and predicates, any function named `main`.
-        let errors: Vec<_> = match &self.kind {
-            TypedProgramKind::Library { .. } => self
-                .root
-                .all_nodes
-                .iter()
-                .filter(|x| x.is_public())
-                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                .collect(),
-            TypedProgramKind::Script { .. } => self
-                .root
-                .all_nodes
-                .iter()
-                .filter(|x| x.is_main_function(TreeType::Script))
-                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                .collect(),
-            TypedProgramKind::Predicate { .. } => self
-                .root
-                .all_nodes
-                .iter()
-                .filter(|x| x.is_main_function(TreeType::Predicate))
-                .flat_map(UnresolvedTypeCheck::check_for_unresolved_types)
-                .collect(),
-            TypedProgramKind::Contract { abi_entries, .. } => abi_entries
-                .iter()
-                .map(TypedAstNode::from)
-                .flat_map(|x| x.check_for_unresolved_types())
-                .collect(),
+        let metadata = match &self.kind {
+            TypedProgramKind::Library { .. } => {
+                let mut ret = vec![];
+                for node in self.root.all_nodes.iter() {
+                    let public = check!(
+                        node.is_public(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if public {
+                        ret.append(&mut check!(
+                            node.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                }
+                ret
+            }
+            TypedProgramKind::Script { .. } => {
+                let mut data = vec![];
+                for node in self.root.all_nodes.iter() {
+                    let is_main = check!(
+                        node.is_main_function(TreeType::Script),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if is_main {
+                        data.append(&mut check!(
+                            node.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                }
+                data
+            }
+            TypedProgramKind::Predicate { .. } => {
+                let mut data = vec![];
+                for node in self.root.all_nodes.iter() {
+                    let is_main = check!(
+                        node.is_main_function(TreeType::Predicate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if is_main {
+                        data.append(&mut check!(
+                            node.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                }
+                data
+            }
+            TypedProgramKind::Contract { abi_entries, .. } => {
+                let mut data = vec![];
+                for entry in abi_entries.iter() {
+                    data.append(&mut check!(
+                        TypedAstNode::from(entry).collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                data
+            }
         };
-
         if errors.is_empty() {
-            ok((), vec![], errors)
+            ok(metadata, warnings, errors)
         } else {
-            err(vec![], errors)
+            err(warnings, errors)
         }
     }
 
-    pub fn get_typed_program_with_initialized_storage_slots(&self) -> CompileResult<Self> {
+    pub(crate) fn get_typed_program_with_initialized_storage_slots(
+        &self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        module: Module,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match &self.kind {
@@ -238,9 +336,15 @@ impl TypedProgram {
 
                 // Expecting at most a single storage declaration
                 match storage_decl {
-                    Some(TypedDeclaration::StorageDeclaration(decl)) => {
+                    Some(TypedDeclaration::StorageDeclaration(decl_id)) => {
+                        let decl = check!(
+                            CompileResult::from(de_get_storage(decl_id.clone(), &decl_id.span())),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
                         let mut storage_slots = check!(
-                            decl.get_initialized_storage_slots(),
+                            decl.get_initialized_storage_slots(context, md_mgr, module),
                             return err(warnings, errors),
                             warnings,
                             errors,
@@ -253,6 +357,7 @@ impl TypedProgram {
                                 kind: self.kind.clone(),
                                 root: self.root.clone(),
                                 storage_slots,
+                                logged_types: self.logged_types.clone(),
                             },
                             warnings,
                             errors,
@@ -263,6 +368,7 @@ impl TypedProgram {
                             kind: self.kind.clone(),
                             root: self.root.clone(),
                             storage_slots: vec![],
+                            logged_types: self.logged_types.clone(),
                         },
                         warnings,
                         errors,
@@ -274,11 +380,80 @@ impl TypedProgram {
                     kind: self.kind.clone(),
                     root: self.root.clone(),
                     storage_slots: vec![],
+                    logged_types: self.logged_types.clone(),
                 },
                 warnings,
                 errors,
             ),
         }
+    }
+
+    pub fn generate_json_abi_program(
+        &self,
+        types: &mut Vec<JsonTypeDeclaration>,
+    ) -> JsonABIProgram {
+        match &self.kind {
+            TypedProgramKind::Contract { abi_entries, .. } => {
+                let functions = abi_entries
+                    .iter()
+                    .map(|x| x.generate_json_abi_function(types))
+                    .collect();
+                let logged_types = self.generate_json_logged_types(types);
+                JsonABIProgram {
+                    types: types.to_vec(),
+                    functions,
+                    logged_types,
+                }
+            }
+            TypedProgramKind::Script { main_function, .. }
+            | TypedProgramKind::Predicate { main_function, .. } => {
+                let functions = vec![main_function.generate_json_abi_function(types)];
+                let logged_types = self.generate_json_logged_types(types);
+                JsonABIProgram {
+                    types: types.to_vec(),
+                    functions,
+                    logged_types,
+                }
+            }
+            _ => JsonABIProgram {
+                types: vec![],
+                functions: vec![],
+                logged_types: vec![],
+            },
+        }
+    }
+
+    fn generate_json_logged_types(
+        &self,
+        types: &mut Vec<JsonTypeDeclaration>,
+    ) -> Vec<JsonLoggedType> {
+        // A list of all `JsonTypeDeclaration`s needed for the logged types
+        let logged_types = self
+            .logged_types
+            .iter()
+            .map(|x| JsonTypeDeclaration {
+                type_id: **x,
+                type_field: x.get_json_type_str(*x),
+                components: x.get_json_type_components(types, *x),
+                type_parameters: x.get_json_type_parameters(types, *x),
+            })
+            .collect::<Vec<_>>();
+
+        // Add the new types to `types`
+        types.extend(logged_types);
+
+        // Generate the JSON data for the logged types
+        self.logged_types
+            .iter()
+            .map(|x| JsonLoggedType {
+                log_id: **x,
+                logged_type: JsonTypeApplication {
+                    name: "".to_string(),
+                    type_id: **x,
+                    type_arguments: x.get_json_type_arguments(types, *x),
+                },
+            })
+            .collect()
     }
 }
 
@@ -301,23 +476,6 @@ pub enum TypedProgramKind {
     },
 }
 
-impl ToJsonAbi for TypedProgramKind {
-    type Output = JsonABI;
-
-    // TODO: Update this to match behaviour described in the `compile` doc comment above.
-    fn generate_json_abi(&self) -> Self::Output {
-        match self {
-            TypedProgramKind::Contract { abi_entries, .. } => {
-                abi_entries.iter().map(|x| x.generate_json_abi()).collect()
-            }
-            TypedProgramKind::Script { main_function, .. } => {
-                vec![main_function.generate_json_abi()]
-            }
-            _ => vec![],
-        }
-    }
-}
-
 impl TypedProgramKind {
     /// The parse tree type associated with this program kind.
     pub fn tree_type(&self) -> TreeType {
@@ -334,20 +492,31 @@ fn disallow_impure_functions(
     declarations: &[TypedDeclaration],
     mains: &[TypedFunctionDeclaration],
 ) -> Vec<CompileError> {
+    let mut errs: Vec<CompileError> = vec![];
     let fn_decls = declarations
         .iter()
         .filter_map(|decl| match decl {
-            TypedDeclaration::FunctionDeclaration(decl) => Some(decl),
+            TypedDeclaration::FunctionDeclaration(decl_id) => {
+                match de_get_function(decl_id.clone(), &decl.span()) {
+                    Ok(fn_decl) => Some(fn_decl),
+                    Err(err) => {
+                        errs.push(err);
+                        None
+                    }
+                }
+            }
             _ => None,
         })
-        .chain(mains);
-    fn_decls
+        .chain(mains.to_owned());
+    let mut err_purity = fn_decls
         .filter_map(|TypedFunctionDeclaration { purity, name, .. }| {
-            if *purity != Purity::Pure {
+            if purity != Purity::Pure {
                 Some(CompileError::ImpureInNonContract { span: name.span() })
             } else {
                 None
             }
         })
-        .collect()
+        .collect::<Vec<_>>();
+    errs.append(&mut err_purity);
+    errs
 }

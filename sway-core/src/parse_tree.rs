@@ -10,7 +10,6 @@ mod program;
 mod return_statement;
 mod use_statement;
 mod visibility;
-mod while_loop;
 
 pub use call_path::*;
 pub use code_block::*;
@@ -24,7 +23,6 @@ pub use return_statement::*;
 use sway_types::span::Span;
 pub use use_statement::{ImportType, UseStatement};
 pub use visibility::Visibility;
-pub use while_loop::WhileLoop;
 
 /// Represents some exportable information that results from compiling some
 /// Sway source code.
@@ -48,12 +46,11 @@ pub struct AstNode {
 }
 
 /// Represents the various structures that constitute a Sway program.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum AstNodeContent {
     /// A statement of the form `use foo::bar;` or `use ::foo::bar;`
     UseStatement(UseStatement),
-    /// A statement of the form `return foo;`
-    ReturnStatement(ReturnStatement),
     /// Any type of declaration, of which there are quite a few. See [Declaration] for more details
     /// on the possible variants.
     Declaration(Declaration),
@@ -65,9 +62,6 @@ pub enum AstNodeContent {
     /// An implicit return expression is an [Expression] at the end of a code block which has no
     /// semicolon, denoting that it is the [Expression] to be returned from that block.
     ImplicitReturnExpression(Expression),
-    /// A control flow element which loops continually until some boolean expression evaluates as
-    /// `false`.
-    WhileLoop(WhileLoop),
     /// A statement of the form `dep foo::bar;` which imports/includes another source file.
     IncludeStatement(IncludeStatement),
 }

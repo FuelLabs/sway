@@ -16,8 +16,8 @@ use crate::{
     irtype::Type,
     metadata::{MetadataIndex, Metadatum},
     module::{Kind, ModuleContent},
-    pointer::{Pointer, PointerContent},
     value::{Value, ValueContent, ValueDatum},
+    BinaryOpKind,
 };
 
 #[derive(Debug)]
@@ -204,7 +204,7 @@ fn function_to_doc<'a>(
                                 None => Doc::Empty,
                             };
                             Doc::line(
-                                Doc::text(format!("local {}", ptr.as_string(context, name)))
+                                Doc::text(format!("local {}", ptr.as_string(context, Some(name))))
                                     .append(init_doc),
                             )
                         })
@@ -334,6 +334,25 @@ fn instruction_to_doc<'a>(
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 ))
+            }
+            Instruction::BinaryOp { op, arg1, arg2 } => {
+                let op_str = match op {
+                    BinaryOpKind::Add => "add",
+                    BinaryOpKind::Sub => "sub",
+                    BinaryOpKind::Mul => "mul",
+                    BinaryOpKind::Div => "div",
+                };
+                maybe_constant_to_doc(context, md_namer, namer, arg1)
+                    .append(maybe_constant_to_doc(context, md_namer, namer, arg2))
+                    .append(Doc::line(
+                        Doc::text(format!(
+                            "{} = {op_str} {}, {}",
+                            namer.name(context, ins_value),
+                            namer.name(context, arg1),
+                            namer.name(context, arg2),
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    ))
             }
             Instruction::Branch(to_block) => maybe_constant_phi_to_doc(
                 context, md_namer, namer, block, to_block,
@@ -479,10 +498,10 @@ fn instruction_to_doc<'a>(
                     .unwrap();
                 Doc::line(
                     Doc::text(format!(
-                        "{} = get_ptr {}, ptr {}, {}",
+                        "{} = get_ptr {}, {}, {}",
                         namer.name(context, ins_value),
-                        base_ptr.as_string(context, name),
-                        ptr_ty.as_string(context),
+                        base_ptr.as_string(context, Some(name)),
+                        ptr_ty.as_string(context, None),
                         offset,
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
@@ -550,6 +569,21 @@ fn instruction_to_doc<'a>(
                 ))
                 .append(md_namer.md_idx_to_doc(context, metadata)),
             ),
+            Instruction::Log {
+                log_val,
+                log_ty,
+                log_id,
+            } => maybe_constant_to_doc(context, md_namer, namer, log_val)
+                .append(maybe_constant_to_doc(context, md_namer, namer, log_id))
+                .append(Doc::line(
+                    Doc::text(format!(
+                        "log {} {}, {}",
+                        log_ty.as_string(context),
+                        namer.name(context, log_val),
+                        namer.name(context, log_id),
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
+                )),
             Instruction::Nop => Doc::line(
                 Doc::text(format!("{} = nop", namer.name(context, ins_value)))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
@@ -791,14 +825,6 @@ impl Constant {
                     .join(", ")
             ),
         }
-    }
-}
-
-impl Pointer {
-    fn as_string(&self, context: &Context, name: &str) -> String {
-        let PointerContent { ty, is_mutable, .. } = &context.pointers[self.0];
-        let mut_tag = if *is_mutable { "mut " } else { "" };
-        format!("{mut_tag}ptr {} {name}", ty.as_string(context))
     }
 }
 

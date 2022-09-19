@@ -34,9 +34,12 @@ To insert key-value pairs into a storage map, we can use the `insert` method, as
 
 Note two details here. First, in order to use `insert`, we need to first access the storage map using the `storage` keyword. Second, because `insert` requires _writing_ into storage, a `#[storage(write)]` annotation is required on the ABI function that calls `insert`.
 
-> **Note**: The storage annotation is also required for any private function defined in the contract that tries to insert into the map.
+> **Note**
+> The storage annotation is also required for any private function defined in the contract that tries to insert into the map.
 
-> **Note**: There is no need to add the `mut` keyword when declaring a `StorageMap<K, V>`. All storage variables are mutable by default.
+<!-- markdownlint-disable-line MD028 -->
+> **Note**
+> There is no need to add the `mut` keyword when declaring a `StorageMap<K, V>`. All storage variables are mutable by default.
 
 ## Accessing Values in a Storage Map
 

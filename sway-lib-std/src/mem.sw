@@ -1,17 +1,15 @@
 //! Library for working with memory.
 library mem;
 
-use ::revert::revert;
 use ::intrinsics::{is_reference_type, size_of_val};
+use ::revert::revert;
 
 /// Returns the address of the given value.
 pub fn addr_of<T>(val: T) -> u64 {
     if !__is_reference_type::<T>() {
         revert(0);
     }
-    asm(ptr: val) {
-        ptr: u64
-    }
+    asm(ptr: val) { ptr: u64 }
 }
 
 /// Copies `size` bytes from `src` to `dst`.
@@ -32,9 +30,7 @@ pub fn eq(first: u64, second: u64, len: u64) -> bool {
 /// Reads the given type of value from the address.
 pub fn read<T>(ptr: u64) -> T {
     if is_reference_type::<T>() {
-        asm(ptr: ptr) {
-            ptr: T
-        }
+        asm(ptr: ptr) { ptr: T }
     } else {
         asm(ptr: ptr, val) {
             lw val ptr i0;

@@ -5,7 +5,7 @@ use sway_types::{Ident, Span};
 use crate::{
     error::{err, ok},
     semantic_analysis::TypedEnumVariant,
-    type_engine::{look_up_type_id, TypeId},
+    type_system::{look_up_type_id, TypeId},
     CompileError, CompileResult, TypeInfo,
 };
 

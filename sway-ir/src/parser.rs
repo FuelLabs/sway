@@ -90,7 +90,7 @@ mod ir_builder {
                 }
 
             rule block_decl() -> IrAstBlock
-                = label:id() ":" _ instructions: instr_decl()+ {
+                = label:id() ":" _ instructions: instr_decl()* {
                     IrAstBlock {
                         label,
                         instructions
@@ -121,11 +121,18 @@ mod ir_builder {
                     mdi
                 }
 
+            rule binary_op_kind() -> BinaryOpKind
+                = "add" _ { BinaryOpKind::Add }
+                / "sub" _ { BinaryOpKind::Sub }
+                / "mul" _ { BinaryOpKind::Mul }
+                / "div" _ { BinaryOpKind::Div }
+
             rule operation() -> IrAstOperation
                 = op_addr_of()
                 / op_asm()
                 / op_branch()
                 / op_bitcast()
+                / op_binary()
                 / op_call()
                 / op_cbr()
                 / op_cmp()
@@ -140,6 +147,7 @@ mod ir_builder {
                 / op_insert_value()
                 / op_int_to_ptr()
                 / op_load()
+                / op_log()
                 / op_nop()
                 / op_phi()
                 / op_read_register()
@@ -171,6 +179,11 @@ mod ir_builder {
             rule op_bitcast() -> IrAstOperation
                 = "bitcast" _ val:id() "to" _ ty:ast_ty() {
                     IrAstOperation::BitCast(val, ty)
+                }
+
+            rule op_binary() -> IrAstOperation
+                = op: binary_op_kind() arg1:id() comma() arg2:id() {
+                    IrAstOperation::BinaryOp(op, arg1, arg2)
                 }
 
             rule op_branch() -> IrAstOperation
@@ -249,6 +262,11 @@ mod ir_builder {
             rule op_load() -> IrAstOperation
                 = "load" _ ptr() src:id() {
                     IrAstOperation::Load(src)
+                }
+
+            rule op_log() -> IrAstOperation
+                = "log" _ log_ty:ast_ty() log_val:id() comma() log_id:id() {
+                    IrAstOperation::Log(log_ty, log_val, log_id)
                 }
 
             rule op_nop() -> IrAstOperation
@@ -372,7 +390,7 @@ mod ir_builder {
             rule str_char() -> u8
                 // Match any of the printable characters except '"' and '\'.
                 = c:$([' ' | '!' | '#'..='[' | ']'..='~']) {
-                    *c.as_bytes().get(0).unwrap()
+                    *c.as_bytes().first().unwrap()
                 }
                 / "\\x" h:hex_digit() l:hex_digit() {
                     (h << 4) | l
@@ -386,10 +404,10 @@ mod ir_builder {
             //  right offset.  Fiddly.
             rule hex_digit() -> u8
                 = d:$(['0'..='9']) {
-                    d.as_bytes().get(0).unwrap() - b'0'
+                    d.as_bytes().first().unwrap() - b'0'
                 }
                 / d:$(['a'..='f' | 'A'..='F']) {
-                    (d.as_bytes().get(0).unwrap() | 0x20) - b'a' + 10
+                    (d.as_bytes().first().unwrap() | 0x20) - b'a' + 10
                 }
 
             rule array_const() -> IrAstConstValue
@@ -553,6 +571,7 @@ mod ir_builder {
         module::{Kind, Module},
         pointer::Pointer,
         value::Value,
+        BinaryOpKind,
     };
 
     #[derive(Debug)]
@@ -597,6 +616,7 @@ mod ir_builder {
             Option<MdIdxRef>,
         ),
         BitCast(String, IrAstTy),
+        BinaryOp(BinaryOpKind, String, String),
         Br(String),
         Call(String, Vec<String>),
         Cbr(String, String, String),
@@ -612,6 +632,7 @@ mod ir_builder {
         InsertValue(String, IrAstTy, String, Vec<u64>),
         IntToPtr(String, IrAstTy),
         Load(String),
+        Log(IrAstTy, String, String),
         Nop,
         Phi(Vec<(String, String)>),
         ReadRegister(String),
@@ -792,11 +813,8 @@ mod ir_builder {
     }
 
     struct PendingCall {
-        block: Block,
-        call_value: Value,
+        call_val: Value,
         callee: String,
-        args: Vec<Value>,
-        metadata: Option<MetadataIndex>,
     }
 
     impl IrBuilder {
@@ -936,6 +954,14 @@ mod ir_builder {
                             .bitcast(*val_map.get(&val).unwrap(), to_ty)
                             .add_metadatum(context, opt_metadata)
                     }
+                    IrAstOperation::BinaryOp(op, arg1, arg2) => block
+                        .ins(context)
+                        .binary_op(
+                            op,
+                            *val_map.get(&arg1).unwrap(),
+                            *val_map.get(&arg2).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::Br(to_block_name) => {
                         let to_block = named_blocks.get(&to_block_name).unwrap();
                         block
@@ -945,21 +971,24 @@ mod ir_builder {
                     }
                     IrAstOperation::Call(callee, args) => {
                         // We can't resolve calls to other functions until we've done a first pass and
-                        // created them first.  So we can insert a NOP here, save the call params and
-                        // replace it with a CALL in a second pass.
-                        let nop = block.ins(context).nop();
-                        self.unresolved_calls.push(PendingCall {
-                            block: *block,
-                            call_value: nop,
-                            callee,
-                            args: args
-                                .iter()
-                                .map(|arg_name| val_map.get(arg_name).unwrap())
-                                .cloned()
-                                .collect::<Vec<Value>>(),
-                            metadata: opt_metadata,
-                        });
-                        nop
+                        // created them first.  So we can insert a dummy call here, save the call
+                        // params and update it with the proper callee function in a second pass.
+                        //
+                        // The dummy function we'll use for now is just the current function.
+                        let dummy_func = block.get_function(context);
+                        let call_val = block
+                            .ins(context)
+                            .call(
+                                dummy_func,
+                                &args
+                                    .iter()
+                                    .map(|arg_name| val_map.get(arg_name).unwrap())
+                                    .cloned()
+                                    .collect::<Vec<Value>>(),
+                            )
+                            .add_metadatum(context, opt_metadata);
+                        self.unresolved_calls.push(PendingCall { call_val, callee });
+                        call_val
                     }
                     IrAstOperation::Cbr(cond_val_name, true_block_name, false_block_name) => block
                         .ins(context)
@@ -1074,6 +1103,17 @@ mod ir_builder {
                         .ins(context)
                         .load(*val_map.get(&src_name).unwrap())
                         .add_metadatum(context, opt_metadata),
+                    IrAstOperation::Log(log_ty, log_val, log_id) => {
+                        let log_ty = log_ty.to_ir_type(context);
+                        block
+                            .ins(context)
+                            .log(
+                                *val_map.get(&log_val).unwrap(),
+                                log_ty,
+                                *val_map.get(&log_id).unwrap(),
+                            )
+                            .add_metadatum(context, opt_metadata)
+                    }
                     IrAstOperation::Nop => block.ins(context).nop(),
                     IrAstOperation::Phi(pairs) => {
                         for (block_name, val_name) in pairs {
@@ -1147,12 +1187,13 @@ mod ir_builder {
         }
 
         fn resolve_calls(self, context: &mut Context) -> Result<(), IrError> {
-            // All of the call instructions are currently NOPs which need to be replaced with actual
-            // calls.  We couldn't do it above until we'd gone and created all the functions first.
+            // All of the call instructions are currently invalid (recursive) CALLs to their own
+            // function, which need to be replaced with the proper callee function.  We couldn't do
+            // it above until we'd gone and created all the functions first.
             //
-            // Now we can loop and find the callee function for each call and replace the NOPs.
+            // Now we can loop and find the callee function for each call and update them.
             for pending_call in self.unresolved_calls {
-                let function = context
+                let call_func = context
                     .functions
                     .iter()
                     .find_map(|(idx, content)| {
@@ -1163,14 +1204,12 @@ mod ir_builder {
                         }
                     })
                     .unwrap();
-                let call_val =
-                    Value::new_instruction(context, Instruction::Call(function, pending_call.args))
-                        .add_metadatum(context, pending_call.metadata);
-                pending_call.block.replace_instruction(
-                    context,
-                    pending_call.call_value,
-                    call_val,
-                )?;
+
+                if let Some(Instruction::Call(dummy_func, _args)) =
+                    pending_call.call_val.get_instruction_mut(context)
+                {
+                    *dummy_func = call_func;
+                }
             }
             Ok(())
         }

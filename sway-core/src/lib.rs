@@ -8,22 +8,26 @@ mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
+pub mod declaration_engine;
 pub mod ir_generation;
 mod metadata;
 pub mod parse_tree;
 pub mod semantic_analysis;
 pub mod source_map;
 mod style;
-pub mod type_engine;
+pub mod type_system;
 
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
+use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use sway_ast::Dependency;
+use sway_ir::{Kind, Module};
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
@@ -31,12 +35,12 @@ pub use semantic_analysis::{
 };
 pub mod types;
 pub use crate::parse_tree::{
-    Declaration, Expression, ParseModule, ParseProgram, TreeType, UseStatement, WhileLoop, *,
+    Declaration, Expression, ParseModule, ParseProgram, TreeType, UseStatement, *,
 };
 
 pub use error::{CompileError, CompileResult, CompileWarning};
 use sway_types::{ident::Ident, span, Spanned};
-pub use type_engine::TypeInfo;
+pub use type_system::*;
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
@@ -58,17 +62,31 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<Par
     }
 }
 
+/// Parse a file with contents `src` at `path`.
+fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> CompileResult<sway_ast::Module> {
+    let handler = sway_parse::handler::Handler::default();
+    match sway_parse::parse_file(&handler, src, path) {
+        Ok(module) => ok(
+            module,
+            vec![],
+            parse_file_error_to_compile_errors(handler, None),
+        ),
+        Err(error) => err(
+            vec![],
+            parse_file_error_to_compile_errors(handler, Some(error)),
+        ),
+    }
+}
+
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
 fn parse_in_memory(src: Arc<str>) -> CompileResult<ParseProgram> {
-    let module = match sway_parse::parse_file(src, None) {
-        Ok(module) => module,
-        Err(error) => return err(vec![], parse_file_error_to_compile_errors(error)),
-    };
-    convert_parse_tree::convert_parse_tree(module).flat_map(|(kind, tree)| {
-        let submodules = Default::default();
-        let root = ParseModule { tree, submodules };
-        let program = ParseProgram { kind, root };
-        ok(program, vec![], vec![])
+    parse_file(src, None).flat_map(|module| {
+        convert_parse_tree::convert_parse_tree(module).flat_map(|(kind, tree)| {
+            let submodules = Default::default();
+            let root = ParseModule { tree, submodules };
+            let program = ParseProgram { kind, root };
+            ok(program, vec![], vec![])
+        })
     })
 }
 
@@ -82,19 +100,13 @@ fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<ParseProgra
     })
 }
 
-/// Given the source of the module along with its path, parse this module including all of its
-/// submodules.
-fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeType, ParseModule)> {
-    // Parse this module first.
-    let module = match sway_parse::parse_file(src, Some(path.clone())) {
-        Ok(module) => module,
-        Err(error) => return err(vec![], parse_file_error_to_compile_errors(error)),
-    };
-    let module_dir = path.parent().expect("module file has no parent directory");
-
-    // Parse all submodules before converting to the `ParseTree`.
+/// Parse all dependencies `deps` as submodules.
+fn parse_submodules(
+    deps: &[Dependency],
+    module_dir: &Path,
+) -> CompileResult<Vec<(Ident, ParseSubmodule)>> {
     let init_res = ok(vec![], vec![], vec![]);
-    let submodules_res = module.dependencies.iter().fold(init_res, |res, dep| {
+    deps.iter().fold(init_res, |res, dep| {
         let dep_path = Arc::new(module_path(module_dir, dep));
         let dep_str: Arc<str> = match std::fs::read_to_string(&*dep_path) {
             Ok(s) => Arc::from(s),
@@ -130,18 +142,30 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
                 ok(submods, vec![], vec![])
             })
         })
-    });
+    })
+}
 
-    // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-    convert_parse_tree::convert_parse_tree(module).flat_map(|(prog_kind, tree)| {
-        submodules_res.flat_map(|submodules| {
-            let parse_module = ParseModule { tree, submodules };
-            ok((prog_kind, parse_module), vec![], vec![])
+/// Given the source of the module along with its path, parse this module including all of its
+/// submodules.
+fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeType, ParseModule)> {
+    // Parse this module first.
+    parse_file(src, Some(path.clone())).flat_map(|module| {
+        let module_dir = path.parent().expect("module file has no parent directory");
+
+        // Parse all submodules before converting to the `ParseTree`.
+        let submodules_res = parse_submodules(&module.dependencies, module_dir);
+
+        // Convert from the raw parsed module to the `ParseTree` ready for type-check.
+        convert_parse_tree::convert_parse_tree(module).flat_map(|(prog_kind, tree)| {
+            submodules_res.flat_map(|submodules| {
+                let parse_module = ParseModule { tree, submodules };
+                ok((prog_kind, parse_module), vec![], vec![])
+            })
         })
     })
 }
 
-fn module_path(parent_module_dir: &Path, dep: &sway_parse::Dependency) -> PathBuf {
+fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf {
     parent_module_dir
         .iter()
         .chain(dep.path.span().as_str().split('/').map(AsRef::as_ref))
@@ -149,10 +173,14 @@ fn module_path(parent_module_dir: &Path, dep: &sway_parse::Dependency) -> PathBu
         .with_extension(crate::constants::DEFAULT_FILE_EXTENSION)
 }
 
-fn parse_file_error_to_compile_errors(error: sway_parse::ParseFileError) -> Vec<CompileError> {
+fn parse_file_error_to_compile_errors(
+    handler: sway_parse::handler::Handler,
+    error: Option<sway_parse::ParseFileError>,
+) -> Vec<CompileError> {
     match error {
-        sway_parse::ParseFileError::Lex(error) => vec![CompileError::Lex { error }],
-        sway_parse::ParseFileError::Parse(errors) => errors
+        Some(sway_parse::ParseFileError::Lex(error)) => vec![CompileError::Lex { error }],
+        Some(sway_parse::ParseFileError::Parse(_)) | None => handler
+            .into_errors()
             .into_iter()
             .map(|error| CompileError::Parse { error })
             .collect(),
@@ -207,6 +235,7 @@ pub enum BytecodeCompilationResult {
 pub fn parsed_to_ast(
     parse_program: &ParseProgram,
     initial_namespace: namespace::Module,
+    generate_logged_types: bool,
 ) -> CompileAstResult {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -218,7 +247,7 @@ pub fn parsed_to_ast(
     } = TypedProgram::type_check(parse_program, initial_namespace);
     warnings.extend(new_warnings);
     errors.extend(new_errors);
-    let typed_program = match typed_program_result {
+    let mut typed_program = match typed_program_result {
         Some(typed_program) => typed_program,
         None => {
             errors = dedup_unsorted(errors);
@@ -226,6 +255,36 @@ pub fn parsed_to_ast(
             return CompileAstResult::Failure { errors, warnings };
         }
     };
+
+    // Collect information about the types used in this program
+    let CompileResult {
+        value: types_metadata_result,
+        warnings: new_warnings,
+        errors: new_errors,
+    } = typed_program.collect_types_metadata();
+    warnings.extend(new_warnings);
+    errors.extend(new_errors);
+    let types_metadata = match types_metadata_result {
+        Some(types_metadata) => types_metadata,
+        None => {
+            errors = dedup_unsorted(errors);
+            warnings = dedup_unsorted(warnings);
+            return CompileAstResult::Failure { errors, warnings };
+        }
+    };
+
+    // Collect all the types of logged values. These are required when generating the JSON ABI.
+    if generate_logged_types {
+        typed_program.logged_types.extend(
+            types_metadata
+                .iter()
+                .filter_map(|m| match m {
+                    TypeMetadata::LoggedType(type_id) => Some(*type_id),
+                    _ => None,
+                })
+                .collect::<Vec<_>>(),
+        );
+    }
 
     let mut cfa_res = perform_control_flow_analysis(&typed_program);
 
@@ -237,12 +296,34 @@ pub fn parsed_to_ast(
         return CompileAstResult::Failure { errors, warnings };
     }
 
+    // Evaluate const declarations,
+    // to allow storage slots initializion with consts.
+    let mut ctx = Context::default();
+    let mut md_mgr = MetadataManager::default();
+    let module = Module::new(&mut ctx, Kind::Contract);
+    match ir_generation::compile::compile_constants(
+        &mut ctx,
+        &mut md_mgr,
+        module,
+        &typed_program.root.namespace,
+    ) {
+        Ok(()) => (),
+        Err(e) => {
+            errors.push(e);
+            return CompileAstResult::Failure { warnings, errors };
+        }
+    }
+
     // Check that all storage initializers can be evaluated at compile time.
     let CompileResult {
         value: typed_program_with_storage_slots_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = typed_program.get_typed_program_with_initialized_storage_slots();
+    } = typed_program.get_typed_program_with_initialized_storage_slots(
+        &mut ctx,
+        &mut md_mgr,
+        module,
+    );
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let typed_program_with_storage_slots = match typed_program_with_storage_slots_result {
@@ -253,6 +334,26 @@ pub fn parsed_to_ast(
             return CompileAstResult::Failure { errors, warnings };
         }
     };
+
+    // All unresolved types lead to compile errors
+    let unresolved_types_errors = types_metadata
+        .iter()
+        .filter_map(|m| match m {
+            TypeMetadata::UnresolvedType {
+                name,
+                span_override,
+            } => Some(CompileError::UnableToInferGeneric {
+                ty: name.as_str().to_string(),
+                span: span_override.clone().unwrap_or_else(|| name.span()),
+            }),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    errors.extend(unresolved_types_errors);
+    if !errors.is_empty() {
+        errors = dedup_unsorted(errors);
+        return CompileAstResult::Failure { errors, warnings };
+    }
 
     CompileAstResult::Success {
         typed_program: Box::new(typed_program_with_storage_slots),
@@ -285,7 +386,13 @@ pub fn compile_to_ast(
         }
     };
 
-    match parsed_to_ast(&parse_program, initial_namespace) {
+    let generate_logged_types = if let Some(build_config) = build_config {
+        build_config.generate_logged_types
+    } else {
+        false
+    };
+
+    match parsed_to_ast(&parse_program, initial_namespace, generate_logged_types) {
         CompileAstResult::Success {
             typed_program,
             warnings: new_warnings,
@@ -377,13 +484,6 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // errors and then hold as a runtime invariant that none of the types will be unresolved in the
     // IR phase.
 
-    check!(
-        program.finalize_types(),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
     let tree_type = program.kind.tree_type();
     let mut ir = match ir_generation::compile_program(program) {
         Ok(ir) => ir,
@@ -431,10 +531,38 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors
     );
 
-    // The only other optimisation we have at the moment is constant combining.  In lieu of a
-    // forthcoming pass manager we can just call it here now.
+    // TODO: Experiment with putting combine-constants and simplify-cfg
+    // in a loop, but per function.
     check!(
         combine_constants(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    check!(
+        simplify_cfg(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    // Simplify-CFG helps combine constants.
+    check!(
+        combine_constants(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    // And that in-turn enables more simplify-cfg.
+    check!(
+        simplify_cfg(&mut ir, &entry_point_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // Remove dead definitions.
+    check!(
+        dce(&mut ir, &entry_point_functions),
         return err(warnings, errors),
         warnings,
         errors
@@ -454,7 +582,7 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
                 Vec::new(),
                 vec![CompileError::InternalOwned(
                     ir_error.to_string(),
-                    span::Span::new("".into(), 0, 0, None).unwrap(),
+                    span::Span::dummy(),
                 )],
             );
         }
@@ -469,7 +597,37 @@ fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<
                 Vec::new(),
                 vec![CompileError::InternalOwned(
                     ir_error.to_string(),
-                    span::Span::new("".into(), 0, 0, None).unwrap(),
+                    span::Span::dummy(),
+                )],
+            );
+        }
+    }
+    ok((), Vec::new(), Vec::new())
+}
+
+fn dce(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+    for function in functions {
+        if let Err(ir_error) = sway_ir::optimize::dce(ir, function) {
+            return err(
+                Vec::new(),
+                vec![CompileError::InternalOwned(
+                    ir_error.to_string(),
+                    span::Span::dummy(),
+                )],
+            );
+        }
+    }
+    ok((), Vec::new(), Vec::new())
+}
+
+fn simplify_cfg(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+    for function in functions {
+        if let Err(ir_error) = sway_ir::optimize::simplify_cfg(ir, function) {
+            return err(
+                Vec::new(),
+                vec![CompileError::InternalOwned(
+                    ir_error.to_string(),
+                    span::Span::dummy(),
                 )],
             );
         }
@@ -527,7 +685,8 @@ pub fn asm_to_bytecode(
 }
 
 pub fn clear_lazy_statics() {
-    type_engine::clear_type_engine();
+    type_system::clear_type_engine();
+    declaration_engine::declaration_engine::de_clear();
 }
 
 /// Given a [TypedProgram], which is type-checked Sway source, construct a graph to analyze
@@ -733,7 +892,11 @@ fn test_unary_ordering() {
     } = &prog.root.tree.root_nodes[0]
     {
         if let AstNode {
-            content: AstNodeContent::Expression(Expression::LazyOperator { op, .. }),
+            content:
+                AstNodeContent::Expression(Expression {
+                    kind: ExpressionKind::LazyOperator(LazyOperatorExpression { op, .. }),
+                    ..
+                }),
             ..
         } = &body.contents[2]
         {

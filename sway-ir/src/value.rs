@@ -4,7 +4,7 @@
 //! refer to each other and to constants via the [`Value`] wrapper.
 //!
 //! Like most IR data structures they are `Copy` and cheap to pass around by value.  They are
-//! therefore also easy to replace, a common practise for optimization passes.
+//! therefore also easy to replace, a common practice for optimization passes.
 
 use crate::{
     constant::Constant,
@@ -12,22 +12,23 @@ use crate::{
     instruction::Instruction,
     irtype::Type,
     metadata::{combine, MetadataIndex},
+    pretty::DebugWithContext,
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
 /// [`Context`].
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct Value(pub generational_arena::Index);
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
+pub struct Value(#[in_context(values)] pub generational_arena::Index);
 
 #[doc(hidden)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, DebugWithContext)]
 pub struct ValueContent {
     pub value: ValueDatum,
     pub metadata: Option<MetadataIndex>,
 }
 
 #[doc(hidden)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, DebugWithContext)]
 pub enum ValueDatum {
     Argument(Type),
     Constant(Constant),
@@ -104,6 +105,20 @@ impl Value {
         }
     }
 
+    pub fn is_diverging(&self, context: &Context) -> bool {
+        match &context.values[self.0].value {
+            ValueDatum::Instruction(ins) => match ins {
+                Instruction::Branch(..)
+                | Instruction::ConditionalBranch { .. }
+                | Instruction::Ret(..) => true,
+                Instruction::Phi(alts) => alts.is_empty(),
+                Instruction::AsmBlock(asm_block, ..) => asm_block.is_diverging(context),
+                _ => false,
+            },
+            ValueDatum::Argument(..) | ValueDatum::Constant(..) => false,
+        }
+    }
+
     /// If this value is an instruction and if any of its parameters is `old_val` then replace them
     /// with `new_val`.
     pub fn replace_instruction_value(&self, context: &mut Context, old_val: Value, new_val: Value) {
@@ -111,6 +126,38 @@ impl Value {
             &mut context.values.get_mut(self.0).unwrap().value
         {
             instruction.replace_value(old_val, new_val);
+        }
+    }
+
+    /// Replace this value with another one, in-place.
+    pub fn replace(&self, context: &mut Context, other: ValueDatum) {
+        context.values[self.0].value = other;
+    }
+
+    pub fn get_instruction_mut<'a>(&self, context: &'a mut Context) -> Option<&'a mut Instruction> {
+        if let ValueDatum::Instruction(instruction) =
+            &mut context.values.get_mut(self.0).unwrap().value
+        {
+            Some(instruction)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_instruction<'a>(&self, context: &'a Context) -> Option<&'a Instruction> {
+        if let ValueDatum::Instruction(instruction) = &context.values.get(self.0).unwrap().value {
+            Some(instruction)
+        } else {
+            None
+        }
+    }
+
+    /// Get reference to the Constant inside this value, if it's one.
+    pub fn get_constant<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
+        if let ValueDatum::Constant(cn) = &context.values.get(self.0).unwrap().value {
+            Some(cn)
+        } else {
+            None
         }
     }
 
@@ -123,5 +170,10 @@ impl Value {
             ValueDatum::Constant(c) => Some(c.ty),
             ValueDatum::Instruction(ins) => ins.get_type(context),
         }
+    }
+
+    /// Get the type for this value with any pointer stripped, if found.
+    pub fn get_stripped_ptr_type(&self, context: &Context) -> Option<Type> {
+        self.get_type(context).map(|f| f.strip_ptr_type(context))
     }
 }

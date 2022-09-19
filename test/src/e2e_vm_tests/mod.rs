@@ -31,6 +31,7 @@ enum TestResult {
 struct TestDescription {
     name: String,
     category: TestCategory,
+    script_data: Option<Vec<u8>>,
     expected_result: Option<TestResult>,
     contract_paths: Vec<String>,
     validate_abi: bool,
@@ -54,6 +55,7 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
     for TestDescription {
         name,
         category,
+        script_data,
         expected_result,
         contract_paths,
         validate_abi,
@@ -81,7 +83,7 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
                     ),
                 };
 
-                let result = crate::e2e_vm_tests::harness::runs_in_vm(&name, locked);
+                let result = crate::e2e_vm_tests::harness::runs_in_vm(&name, script_data, locked);
                 assert_eq!(result.0, res);
                 if validate_abi {
                     assert!(crate::e2e_vm_tests::harness::test_json_abi(&name, &result.1).is_ok());
@@ -90,8 +92,12 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
             }
 
             TestCategory::Compiles => {
-                let result = crate::e2e_vm_tests::harness::compile_to_bytes(&name, locked);
+                let (result, output) =
+                    crate::e2e_vm_tests::harness::compile_and_capture_output(&name, locked);
+
                 assert!(result.is_ok());
+                check_file_checker(checker, &name, &output);
+
                 let compiled = result.unwrap();
                 if validate_abi {
                     assert!(crate::e2e_vm_tests::harness::test_json_abi(&name, &compiled).is_ok());
@@ -106,18 +112,14 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
             }
 
             TestCategory::FailsToCompile => {
-                match crate::e2e_vm_tests::harness::does_not_compile(&name, locked) {
-                    Ok(output) => match checker.explain(&output, filecheck::NO_VARIABLES) {
-                        Ok((success, report)) if !success => {
-                            panic!("For {name}:\nFilecheck failed:\n{report}");
-                        }
-                        Err(e) => {
-                            panic!("For {name}:\nFilecheck directive error: {e}");
-                        }
-                        _ => (),
-                    },
-                    Err(_) => {
+                let (result, output) =
+                    crate::e2e_vm_tests::harness::compile_and_capture_output(&name, locked);
+                match result {
+                    Ok(_) => {
                         panic!("For {name}:\nFailing test did not fail.");
+                    }
+                    Err(_) => {
+                        check_file_checker(checker, &name, &output);
                     }
                 }
                 number_of_tests_executed += 1;
@@ -233,6 +235,22 @@ fn build_file_checker(content: &str) -> Result<filecheck::Checker, String> {
     Ok(checker.finish())
 }
 
+/// This functions gets passed the previously built FileCheck-based file checker,
+/// along with the output of the compilation, and checks the output for the
+/// FileCheck directives that were found in the test.toml file, panicking
+/// if the checking fails.
+fn check_file_checker(checker: filecheck::Checker, name: &String, output: &str) {
+    match checker.explain(output, filecheck::NO_VARIABLES) {
+        Ok((success, report)) if !success => {
+            panic!("For {name}:\nFilecheck failed:\n{report}");
+        }
+        Err(e) => {
+            panic!("For {name}:\nFilecheck directive error: {e}");
+        }
+        _ => (),
+    }
+}
+
 fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
     let toml_content_str = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
 
@@ -265,6 +283,23 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
     if category == TestCategory::FailsToCompile && checker.is_empty() {
         return Err("'fail' tests must contain some FileCheck verification directives.".to_owned());
     }
+
+    let script_data = match &category {
+        TestCategory::Runs | TestCategory::RunsWithContract => {
+            match toml_content.get("script_data") {
+                Some(toml::Value::String(v)) => {
+                    let decoded = hex::decode(v)
+                        .map_err(|e| format!("Invalid hex value for 'script_data': {}", e))?;
+                    Some(decoded)
+                }
+                Some(_) => {
+                    return Err("Expected 'script_data' to be a hex string.".to_owned());
+                }
+                _ => None,
+            }
+        }
+        TestCategory::Compiles | TestCategory::FailsToCompile | TestCategory::Disabled => None,
+    };
 
     let expected_result = match &category {
         TestCategory::Runs | TestCategory::RunsWithContract => {
@@ -317,6 +352,7 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription, String> {
     Ok(TestDescription {
         name,
         category,
+        script_data,
         expected_result,
         contract_paths,
         validate_abi,
