@@ -2116,7 +2116,7 @@ fn update_json_type_declaration(
 pub fn check(
     plan: &BuildPlan,
     silent_mode: bool,
-) -> anyhow::Result<(CompileResult<ParseProgram>, CompileResult<TypedProgram>)> {
+) -> anyhow::Result<CompileResult<(ParseProgram, Option<TypedProgram>)>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
     let mut namespace_map = Default::default();
@@ -2127,17 +2127,26 @@ pub fn check(
         let constants = manifest.config_time_constants();
         let dep_namespace =
             dependency_namespace(&namespace_map, &plan.graph, node, constants).expect("TODO");
-        let parsed_result = parse(manifest, silent_mode)?;
+        let CompileResult {
+            value,
+            mut warnings,
+            mut errors,
+        } = parse(manifest, silent_mode)?;
 
-        let parse_program = match &parsed_result.value {
-            None => bail!("unable to parse"),
+        let parse_program = match value {
+            None => return Ok(CompileResult::new(None, warnings, errors)),
             Some(program) => program,
         };
 
-        let ast_result = sway_core::parsed_to_ast(parse_program, dep_namespace, false);
+        let ast_result = sway_core::parsed_to_ast(&parse_program, dep_namespace, false);
+        warnings.extend(ast_result.warnings);
+        errors.extend(ast_result.errors);
 
-        let typed_program = match &ast_result.value {
-            None => bail!("unable to type check"),
+        let typed_program = match ast_result.value {
+            None => {
+                let value = Some((parse_program, None));
+                return Ok(CompileResult::new(value, warnings, errors));
+            }
             Some(typed_program) => typed_program,
         };
 
@@ -2149,7 +2158,8 @@ pub fn check(
 
         // We only need to return the final `TypedProgram`.
         if i == plan.compilation_order.len() - 1 {
-            return Ok((parsed_result, ast_result));
+            let value = Some((parse_program, Some(typed_program)));
+            return Ok(CompileResult::new(value, warnings, errors));
         }
     }
     bail!("unable to check sway program: build plan contains no packages")

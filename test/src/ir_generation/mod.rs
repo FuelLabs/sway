@@ -258,11 +258,7 @@ fn compile_core() -> namespace::Module {
         .expect("Failed to compile sway-lib-core for IR tests.");
 
     match res.value {
-        Some(_) if !res.errors.is_empty() => {
-            panic!("Failed to compile sway-lib-core for IR tests.")
-        }
-        None => panic!("Failed to compile sway-lib-core for IR tests."),
-        Some(typed_program) => {
+        Some(typed_program) if res.is_ok() => {
             // Create a module for core and copy the compiled modules into it.  Unfortunately we
             // can't get mutable access to move them out so they're cloned.
             let core_module = typed_program.root.namespace.submodules().into_iter().fold(
@@ -278,5 +274,6 @@ fn compile_core() -> namespace::Module {
             std_module.insert_submodule("core".to_owned(), core_module);
             std_module
         }
+        _ => panic!("Failed to compile sway-lib-core for IR tests."),
     }
 }

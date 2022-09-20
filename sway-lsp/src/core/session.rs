@@ -162,10 +162,23 @@ impl Session {
         if let Ok(manifest) = pkg::ManifestFile::from_dir(&manifest_dir) {
             if let Ok(plan) = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline) {
                 //we can then use them directly to convert them to a Vec<Diagnostic>
-                if let Ok((parsed_res, ast_res)) = pkg::check(&plan, silent_mode) {
-                    // First, populate our token_map with un-typed ast nodes
+                if let Ok(CompileResult {
+                    value,
+                    warnings,
+                    errors,
+                }) = pkg::check(&plan, silent_mode)
+                {
+                    // FIXME(Centril): Refactor parse_ast_to_tokens + parse_ast_to_typed_tokens
+                    // due to the new API.
+                    let (parsed, typed) = match value {
+                        None => (None, None),
+                        Some((pp, tp)) => (Some(pp), tp),
+                    };
+                    // First, populate our token_map with un-typed ast nodes.
+                    let parsed_res = CompileResult::new(parsed, warnings.clone(), errors.clone());
                     let _ = self.parse_ast_to_tokens(parsed_res);
-                    // Next, populate our token_map with typed ast nodes
+                    // Next, populate our token_map with typed ast nodes.
+                    let ast_res = CompileResult::new(typed, warnings, errors);
                     let res = self.parse_ast_to_typed_tokens(ast_res);
                     //self.test_typed_parse(ast_res);
                     return res;

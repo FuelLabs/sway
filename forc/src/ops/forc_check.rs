@@ -2,8 +2,9 @@ use crate::cli::CheckCommand;
 use anyhow::Result;
 use forc_pkg::{self as pkg, ManifestFile};
 use std::path::PathBuf;
+use sway_core::CompileResult;
 
-pub fn check(command: CheckCommand) -> Result<sway_core::CompileResult<sway_core::TypedProgram>> {
+pub fn check(command: CheckCommand) -> Result<CompileResult<sway_core::TypedProgram>> {
     let CheckCommand {
         path,
         offline_mode: offline,
@@ -19,6 +20,5 @@ pub fn check(command: CheckCommand) -> Result<sway_core::CompileResult<sway_core
     let manifest = ManifestFile::from_dir(&this_dir)?;
     let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
 
-    let (_, ast_res) = pkg::check(&plan, silent_mode)?;
-    Ok(ast_res)
+    Ok(pkg::check(&plan, silent_mode)?.flat_map(|(_, tp)| CompileResult::new(tp, vec![], vec![])))
 }
