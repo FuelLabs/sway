@@ -111,7 +111,7 @@ pub(crate) fn type_id(token_type: &Token) -> Option<TypeId> {
                 TypedDeclaration::ConstantDeclaration(decl_id) => {
                     declaration_engine::de_get_constant(decl_id.clone(), &decl_id.span())
                         .ok()
-                        .and_then(|const_decl| Some(const_decl.value.return_type))
+                        .map(|const_decl| const_decl.value.return_type)
                 }
                 _ => None,
             },
