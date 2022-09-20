@@ -665,6 +665,11 @@ fn item_trait_to_trait_declaration(
     item_trait: ItemTrait,
 ) -> Result<TraitDeclaration, ErrorEmitted> {
     let name = item_trait.name;
+    let type_parameters = generic_params_opt_to_type_parameters(
+        ec,
+        item_trait.generics,
+        item_trait.where_clause_opt,
+    )?;
     let interface_surface = {
         item_trait
             .trait_items
@@ -694,6 +699,7 @@ fn item_trait_to_trait_declaration(
     let visibility = pub_token_opt_to_visibility(item_trait.visibility);
     Ok(TraitDeclaration {
         name,
+        type_parameters,
         interface_surface,
         methods,
         supertraits,
@@ -720,7 +726,7 @@ fn item_impl_to_declaration(
             .collect::<Result<_, _>>()?
     };
 
-    let type_parameters = generic_params_opt_to_type_parameters(
+    let impl_type_parameters = generic_params_opt_to_type_parameters(
         ec,
         item_impl.generic_params_opt,
         item_impl.where_clause_opt,
@@ -728,11 +734,88 @@ fn item_impl_to_declaration(
 
     match item_impl.trait_opt {
         Some((path_type, _for_token)) => {
+            let PathType {
+                root_opt,
+                prefix,
+                mut suffix,
+            } = path_type;
+            let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
+            let (trait_name, trait_type_parameters) = match suffix.pop() {
+                Some((_, call_path_suffix)) => match suffix.pop() {
+                    Some((_, trait_segment)) => {
+                        let PathTypeSegment {
+                            fully_qualified,
+                            name,
+                            generics_opt,
+                        } = trait_segment;
+                        let trait_type_parameters = match generics_opt {
+                            Some((_, generic_args)) => {
+                                generic_args_to_type_parameters(ec, generic_args)?
+                            }
+                            None => vec![],
+                        };
+                        let mut prefixes = vec![path_type_segment_to_ident(ec, prefix)?];
+                        for (_, call_path_prefix) in suffix {
+                            let ident = path_type_segment_to_ident(ec, call_path_prefix)?;
+                            prefixes.push(ident);
+                        }
+                        if fully_qualified.is_none() {
+                            prefixes.push(name);
+                        }
+                        (
+                            CallPath {
+                                prefixes,
+                                suffix: call_path_suffix.name,
+                                is_absolute,
+                            },
+                            trait_type_parameters,
+                        )
+                    }
+                    None => {
+                        let trait_type_parameters = match prefix.generics_opt {
+                            Some((_, generic_args)) => {
+                                generic_args_to_type_parameters(ec, generic_args)?
+                            }
+                            None => vec![],
+                        };
+                        let prefixes = if prefix.fully_qualified.is_some() {
+                            vec![]
+                        } else {
+                            vec![prefix.name]
+                        };
+                        (
+                            CallPath {
+                                prefixes,
+                                suffix: call_path_suffix.name,
+                                is_absolute,
+                            },
+                            trait_type_parameters,
+                        )
+                    }
+                },
+                None => {
+                    let trait_type_parameters = match prefix.generics_opt {
+                        Some((_, generic_args)) => {
+                            generic_args_to_type_parameters(ec, generic_args)?
+                        }
+                        None => vec![],
+                    };
+                    (
+                        CallPath {
+                            prefixes: vec![],
+                            suffix: prefix.name.clone(),
+                            is_absolute,
+                        },
+                        trait_type_parameters,
+                    )
+                }
+            };
             let impl_trait = ImplTrait {
-                trait_name: path_type_to_call_path(ec, path_type)?,
+                trait_name,
+                trait_type_parameters,
                 type_implementing_for,
                 type_implementing_for_span,
-                type_parameters,
+                impl_type_parameters,
                 functions,
                 block_span,
             };
@@ -742,7 +825,7 @@ fn item_impl_to_declaration(
             let impl_self = ImplSelf {
                 type_implementing_for,
                 type_implementing_for_span,
-                type_parameters,
+                type_parameters: impl_type_parameters,
                 functions,
                 block_span,
             };

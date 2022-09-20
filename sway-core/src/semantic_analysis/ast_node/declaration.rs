@@ -39,7 +39,7 @@ pub enum TypedDeclaration {
     AbiDeclaration(DeclarationId),
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
-    GenericTypeForFunctionScope { name: Ident, type_id: TypeId },
+    GenericType { name: Ident, type_id: TypeId },
     ErrorRecovery,
     StorageDeclaration(DeclarationId),
 }
@@ -60,7 +60,7 @@ impl CopyTypes for TypedDeclaration {
             AbiDeclaration(..)
             | ConstantDeclaration(_)
             | StorageDeclaration(..)
-            | GenericTypeForFunctionScope { .. }
+            | GenericType { .. }
             | ErrorRecovery => (),
         }
     }
@@ -79,7 +79,7 @@ impl Spanned for TypedDeclaration {
             AbiDeclaration(decl_id) => decl_id.span(),
             ImplTrait(decl_id) => decl_id.span(),
             StorageDeclaration(decl) => decl.span(),
-            ErrorRecovery | GenericTypeForFunctionScope { .. } => {
+            ErrorRecovery | GenericType { .. } => {
                 unreachable!("No span exists for these ast node types")
             }
         }
@@ -233,7 +233,7 @@ impl CollectTypesMetadata for TypedDeclaration {
             | EnumDeclaration(_)
             | ImplTrait { .. }
             | AbiDeclaration(_)
-            | GenericTypeForFunctionScope { .. } => vec![],
+            | GenericType { .. } => vec![],
         };
         if errors.is_empty() {
             ok(metadata, warnings, errors)
@@ -368,7 +368,7 @@ impl TypedDeclaration {
             EnumDeclaration(_) => "enum",
             ImplTrait { .. } => "impl trait",
             AbiDeclaration(..) => "abi",
-            GenericTypeForFunctionScope { .. } => "generic type parameter",
+            GenericType { .. } => "generic type parameter",
             ErrorRecovery => "error",
             StorageDeclaration(_) => "contract storage declaration",
         }
@@ -415,7 +415,7 @@ impl TypedDeclaration {
                     fields: storage_decl.fields_as_typed_struct_fields(),
                 })
             }
-            TypedDeclaration::GenericTypeForFunctionScope { name, type_id } => {
+            TypedDeclaration::GenericType { name, type_id } => {
                 insert_type(TypeInfo::Ref(*type_id, name.span()))
             }
             decl => {
@@ -480,7 +480,7 @@ impl TypedDeclaration {
                 );
                 visibility
             }
-            GenericTypeForFunctionScope { .. }
+            GenericType { .. }
             | ImplTrait { .. }
             | StorageDeclaration { .. }
             | AbiDeclaration(..)

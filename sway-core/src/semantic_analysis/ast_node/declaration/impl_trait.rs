@@ -13,23 +13,33 @@ use crate::{
         insert_type, look_up_type_id, resolve_type, set_type_as_storage_only, unify_with_self,
         CopyTypes, TypeId, TypeMapping, TypeParameter,
     },
-    CallPath, CompileError, CompileResult, FunctionDeclaration, ImplSelf, ImplTrait, Purity,
-    TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    CallPath, CompileError, CompileResult, EnforceTypeArguments, FunctionDeclaration, ImplSelf,
+    ImplTrait, Purity, TypeArgument, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::TypedTraitFn;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypedImplTrait {
+    pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,
-    pub(crate) span: Span,
-    pub methods: Vec<TypedFunctionDeclaration>,
+    pub trait_type_parameters: Vec<TypeParameter>,
     pub implementing_for_type_id: TypeId,
     pub type_implementing_for_span: Span,
+    pub methods: Vec<TypedFunctionDeclaration>,
+    pub(crate) span: Span,
 }
 
 impl CopyTypes for TypedImplTrait {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.impl_type_parameters
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+        self.trait_type_parameters
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+        self.implementing_for_type_id
+            .update_type(type_mapping, &self.type_implementing_for_span);
         self.methods
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
@@ -45,11 +55,12 @@ impl TypedImplTrait {
         let mut warnings = vec![];
 
         let ImplTrait {
+            impl_type_parameters,
             trait_name,
-            type_parameters,
-            functions,
+            trait_type_parameters,
             type_implementing_for,
             type_implementing_for_span,
+            functions,
             block_span,
         } = impl_trait;
 
@@ -57,12 +68,10 @@ impl TypedImplTrait {
         let mut impl_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut impl_namespace);
 
-        // type check the type parameters
-        // insert them into the namespace
-        // TODO: eventually when we support generic traits, we will want to use this
-        let mut new_type_parameters = vec![];
-        for type_parameter in type_parameters.into_iter() {
-            new_type_parameters.push(check!(
+        // type check the impl type parameters and insert them into the namespace
+        let mut new_impl_type_parameters = vec![];
+        for type_parameter in impl_type_parameters.into_iter() {
+            new_impl_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
                 warnings,
@@ -85,7 +94,7 @@ impl TypedImplTrait {
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
-                &new_type_parameters,
+                &new_impl_type_parameters,
                 implementing_for_type_id,
                 &type_implementing_for_span
             ),
@@ -94,9 +103,6 @@ impl TypedImplTrait {
             errors
         );
 
-        // Update the context with the new `self` type.
-        let ctx = ctx.with_self_type(implementing_for_type_id);
-
         let impl_trait = match ctx
             .namespace
             .resolve_call_path(&trait_name)
@@ -104,17 +110,69 @@ impl TypedImplTrait {
             .cloned()
         {
             Some(TypedDeclaration::TraitDeclaration(decl_id)) => {
-                let tr = check!(
+                // get the trait declaration from the declaration engine
+                let mut trait_decl = check!(
                     CompileResult::from(de_get_trait(decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
+
+                // monomorphize the trait declaration
+                let mut trait_type_arguments = trait_type_parameters
+                    .iter()
+                    .map(|type_param| TypeArgument {
+                        type_id: type_param.type_id,
+                        initial_type_id: type_param.type_id,
+                        span: type_param.name_ident.span(),
+                    })
+                    .collect::<Vec<_>>();
+
+                if trait_decl.name.as_str() == "Setter" {
+                    println!("{:#?}", trait_decl);
+                    println!(
+                        "[{}]",
+                        trait_type_arguments
+                            .iter()
+                            .map(|ta| ta.to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
+                }
+
+                check!(
+                    ctx.monomorphize(
+                        &mut trait_decl,
+                        &mut trait_type_arguments,
+                        EnforceTypeArguments::Yes,
+                        &trait_name.span()
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                if trait_decl.name.as_str() == "Setter" {
+                    println!("{:#?}", trait_decl);
+                    println!(
+                        "[{}]",
+                        trait_type_arguments
+                            .iter()
+                            .map(|ta| ta.to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
+                }
+
+                // Update the context with the new `self` type.
+                let ctx = ctx.with_self_type(implementing_for_type_id);
+
+                // type check the trait implementation
                 let functions_buf = check!(
                     type_check_trait_implementation(
                         ctx,
-                        &tr.interface_surface,
-                        &tr.methods,
+                        &trait_decl.interface_surface,
+                        &trait_decl.methods,
                         &functions,
                         &trait_name,
                         &type_implementing_for_span,
@@ -127,6 +185,8 @@ impl TypedImplTrait {
                 );
                 let impl_trait = TypedImplTrait {
                     trait_name,
+                    trait_type_parameters,
+                    impl_type_parameters: new_impl_type_parameters,
                     span: block_span,
                     methods: functions_buf,
                     implementing_for_type_id,
@@ -163,7 +223,10 @@ impl TypedImplTrait {
                     });
                 }
 
-                let ctx = ctx.with_mode(Mode::ImplAbiFn);
+                // Update the context with the new `self` type.
+                let ctx = ctx
+                    .with_self_type(implementing_for_type_id)
+                    .with_mode(Mode::ImplAbiFn);
 
                 let functions_buf = check!(
                     type_check_trait_implementation(
@@ -182,6 +245,8 @@ impl TypedImplTrait {
                 );
                 let impl_trait = TypedImplTrait {
                     trait_name,
+                    trait_type_parameters,
+                    impl_type_parameters: new_impl_type_parameters,
                     span: block_span,
                     methods: functions_buf,
                     implementing_for_type_id,
@@ -348,7 +413,7 @@ impl TypedImplTrait {
                 | TypedDeclaration::EnumDeclaration(_)
                 | TypedDeclaration::ImplTrait(_)
                 | TypedDeclaration::AbiDeclaration(_)
-                | TypedDeclaration::GenericTypeForFunctionScope { .. }
+                | TypedDeclaration::GenericType { .. }
                 | TypedDeclaration::ErrorRecovery
                 | TypedDeclaration::StorageDeclaration(_) => Ok(false),
             }
@@ -473,6 +538,8 @@ impl TypedImplTrait {
 
         let impl_trait = TypedImplTrait {
             trait_name,
+            trait_type_parameters: vec![],
+            impl_type_parameters: new_type_parameters,
             span: block_span,
             methods,
             implementing_for_type_id,

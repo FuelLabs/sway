@@ -539,12 +539,12 @@ pub fn unify_with_self(
 }
 
 pub(crate) fn unify(
-    a: TypeId,
-    b: TypeId,
+    received: TypeId,
+    expected: TypeId,
     span: &Span,
     help_text: impl Into<String>,
 ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-    TYPE_ENGINE.unify(a, b, span, help_text)
+    TYPE_ENGINE.unify(received, expected, span, help_text)
 }
 
 pub fn resolve_type(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {

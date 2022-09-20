@@ -205,7 +205,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 ),
             );
 
-            for type_param in &impl_trait.type_parameters {
+            for type_param in &impl_trait.impl_type_parameters {
                 collect_type_parameter(
                     type_param,
                     tokens,

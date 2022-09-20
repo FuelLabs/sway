@@ -179,7 +179,7 @@ impl Root {
                         // return the id
                         type_id
                     }
-                    Some(TypedDeclaration::GenericTypeForFunctionScope { name, type_id }) => {
+                    Some(TypedDeclaration::GenericType { name, type_id }) => {
                         insert_type(TypeInfo::Ref(type_id, name.span()))
                     }
                     _ => {

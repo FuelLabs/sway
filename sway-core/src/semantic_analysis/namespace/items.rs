@@ -109,7 +109,7 @@ impl Items {
                 | TypedDeclaration::StructDeclaration { .. } => {
                     errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
                 }
-                TypedDeclaration::GenericTypeForFunctionScope { .. } => {
+                TypedDeclaration::GenericType { .. } => {
                     errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
                 }
                 _ => {

@@ -154,12 +154,10 @@ impl FnCompiler {
                     decl_type: "abi",
                     span: ast_node.span,
                 }),
-                TypedDeclaration::GenericTypeForFunctionScope { .. } => {
-                    Err(CompileError::UnexpectedDeclaration {
-                        decl_type: "abi",
-                        span: ast_node.span,
-                    })
-                }
+                TypedDeclaration::GenericType { .. } => Err(CompileError::UnexpectedDeclaration {
+                    decl_type: "abi",
+                    span: ast_node.span,
+                }),
                 TypedDeclaration::ErrorRecovery { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "error recovery",

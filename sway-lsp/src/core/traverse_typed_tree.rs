@@ -178,7 +178,7 @@ fn handle_declaration(declaration: &TypedDeclaration, tokens: &TokenMap) {
                 }
             }
         }
-        TypedDeclaration::GenericTypeForFunctionScope { name, .. } => {
+        TypedDeclaration::GenericType { name, .. } => {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }

@@ -10,8 +10,9 @@ use crate::{
     },
     style::is_upper_camel_case,
     type_system::{insert_type, CopyTypes, TypeMapping},
-    CallPath, CompileError, CompileResult, FunctionDeclaration, FunctionParameter, Namespace,
-    Supertrait, TraitDeclaration, TypeInfo, TypedDeclaration, TypedFunctionDeclaration, Visibility,
+    CallPath, CompileError, CompileResult, FunctionDeclaration, FunctionParameter,
+    MonomorphizeHelper, Namespace, Supertrait, TraitDeclaration, TypeInfo, TypeParameter,
+    TypedDeclaration, TypedFunctionDeclaration, Visibility,
 };
 
 use super::{EnforceTypeArguments, TypedFunctionParameter, TypedTraitFn};
@@ -20,6 +21,7 @@ use super::{EnforceTypeArguments, TypedFunctionParameter, TypedTraitFn};
 #[derivative(PartialEq, Eq)]
 pub struct TypedTraitDeclaration {
     pub name: Ident,
+    pub(crate) type_parameters: Vec<TypeParameter>,
     pub interface_surface: Vec<TypedTraitFn>,
     // NOTE: deriving partialeq and hash on this element may be important in the
     // future, but I am not sure. For now, adding this would 2x the amount of
@@ -33,10 +35,23 @@ pub struct TypedTraitDeclaration {
 
 impl CopyTypes for TypedTraitDeclaration {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.type_parameters
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
         self.interface_surface
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
         // we don't have to type check the methods because it hasn't been type checked yet
+    }
+}
+
+impl MonomorphizeHelper for TypedTraitDeclaration {
+    fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    fn type_parameters(&self) -> &[TypeParameter] {
+        &self.type_parameters
     }
 }
 
@@ -48,23 +63,43 @@ impl TypedTraitDeclaration {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
-        is_upper_camel_case(&trait_decl.name).ok(&mut warnings, &mut errors);
+        let TraitDeclaration {
+            name,
+            type_parameters,
+            interface_surface,
+            methods,
+            supertraits,
+            visibility,
+        } = trait_decl;
 
-        // type check the interface surface
-        let interface_surface = check!(
-            type_check_interface_surface(trait_decl.interface_surface.to_vec(), ctx.namespace),
+        is_upper_camel_case(&name).ok(&mut warnings, &mut errors);
+
+        // A temporary namespace for checking within the trait's scope.
+        let mut trait_namespace = ctx.namespace.clone();
+        let mut ctx = ctx.scoped(&mut trait_namespace);
+
+        // type check the type parameters and insert them into the namespace
+        let mut new_type_parameters = vec![];
+        for type_parameter in type_parameters.into_iter() {
+            new_type_parameters.push(check!(
+                TypeParameter::type_check(ctx.by_ref(), type_parameter),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+
+        // Recursively handle supertraits: make their interfaces and methods available to this trait
+        check!(
+            handle_supertraits(&supertraits, ctx.namespace),
             return err(warnings, errors),
             warnings,
             errors
         );
 
-        // A temporary namespace for checking within the trait's scope.
-        let mut trait_namespace = ctx.namespace.clone();
-        let ctx = ctx.scoped(&mut trait_namespace);
-
-        // Recursively handle supertraits: make their interfaces and methods available to this trait
-        check!(
-            handle_supertraits(&trait_decl.supertraits, ctx.namespace),
+        // type check the interface surface
+        let interface_surface = check!(
+            type_check_interface_surface(interface_surface.to_vec(), ctx.namespace),
             return err(warnings, errors),
             warnings,
             errors
@@ -75,7 +110,7 @@ impl TypedTraitDeclaration {
         ctx.namespace.insert_trait_implementation(
             CallPath {
                 prefixes: vec![],
-                suffix: trait_decl.name.clone(),
+                suffix: name.clone(),
                 is_absolute: false,
             },
             insert_type(TypeInfo::SelfType),
@@ -84,20 +119,23 @@ impl TypedTraitDeclaration {
                 .map(|x| x.to_dummy_func(Mode::NonAbi))
                 .collect(),
         );
+
         // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
         let ctx = ctx.with_self_type(insert_type(TypeInfo::SelfType));
         let _methods = check!(
-            type_check_trait_methods(ctx, trait_decl.methods.clone()),
+            type_check_trait_methods(ctx, methods.clone()),
             vec![],
             warnings,
             errors
         );
+
         let typed_trait_decl = TypedTraitDeclaration {
-            name: trait_decl.name.clone(),
+            name,
+            type_parameters: new_type_parameters,
             interface_surface,
-            methods: trait_decl.methods.to_vec(),
-            supertraits: trait_decl.supertraits.to_vec(),
-            visibility: trait_decl.visibility,
+            methods: methods.to_vec(),
+            supertraits: supertraits.to_vec(),
+            visibility,
         };
         ok(typed_trait_decl, warnings, errors)
     }

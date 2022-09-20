@@ -131,7 +131,7 @@ fn compile_declarations(
             | TypedDeclaration::TraitDeclaration(_)
             | TypedDeclaration::VariableDeclaration(_)
             | TypedDeclaration::AbiDeclaration(_)
-            | TypedDeclaration::GenericTypeForFunctionScope { .. }
+            | TypedDeclaration::GenericType { .. }
             | TypedDeclaration::StorageDeclaration(_)
             | TypedDeclaration::ErrorRecovery => (),
         }

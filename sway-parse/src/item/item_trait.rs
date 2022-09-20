@@ -1,6 +1,7 @@
 use crate::{Parse, ParseBracket, ParseResult, Parser};
 
 use sway_ast::attribute::Annotated;
+use sway_ast::keywords::{OpenAngleBracketToken, WhereToken};
 use sway_ast::{Braces, FnSignature, ItemFn, ItemTrait, Traits};
 
 impl Parse for ItemTrait {
@@ -8,6 +9,9 @@ impl Parse for ItemTrait {
         let visibility = parser.take();
         let trait_token = parser.parse()?;
         let name = parser.parse()?;
+
+        let generics = parser.guarded_parse::<OpenAngleBracketToken, _>()?;
+
         let super_traits = match parser.take() {
             Some(colon_token) => {
                 let traits = parser.parse()?;
@@ -15,6 +19,8 @@ impl Parse for ItemTrait {
             }
             None => None,
         };
+
+        let where_clause_opt = parser.guarded_parse::<WhereToken, _>()?;
 
         let trait_items: Braces<Vec<(Annotated<FnSignature>, _)>> = parser.parse()?;
         for item in trait_items.get().iter() {
@@ -33,6 +39,8 @@ impl Parse for ItemTrait {
             visibility,
             trait_token,
             name,
+            generics,
+            where_clause_opt,
             super_traits,
             trait_items,
             trait_defs_opt,
