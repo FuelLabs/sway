@@ -100,7 +100,7 @@ impl Backend {
     async fn publish_diagnostics(&self, uri: &Url, diagnostics: Vec<Diagnostic>) {
         match &self.config.collected_tokens_as_warnings {
             Some(s) => {
-                let token_map = self.session.tokens_for_file(&uri);
+                let token_map = self.session.tokens_for_file(uri);
 
                 // If collected_tokens_as_warnings is Some, take over the normal error and warning display behavior
                 // and instead show the either the parsed or typed tokens as warnings.
