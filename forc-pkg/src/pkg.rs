@@ -23,6 +23,7 @@ use std::{
     fs::{self, File},
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
+    process::Command,
     str::FromStr,
 };
 use sway_core::{
@@ -692,6 +693,12 @@ impl SourceGitPinned {
     pub const PREFIX: &'static str = "git";
 }
 
+impl SourceGit {
+    pub fn is_github(&self) -> bool {
+        self.repo.to_string().contains("github.com")
+    }
+}
+
 impl fmt::Display for PinnedId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Format the inner `u64` as hex.
@@ -1229,6 +1236,21 @@ where
     Ok(output)
 }
 
+/// Returns if the user have git CLI installed
+///
+/// Only git CLI supports shallow copy which would save some space for the checked repo
+fn is_git_cli_installed() -> bool {
+    if let Ok(path) = std::env::var("PATH") {
+        for p in path.split(':') {
+            let p_str = format!("{}/{}", p, "git");
+            if fs::metadata(p_str).is_ok() {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 /// Pin the given git-sourced package.
 ///
 /// This clones the repository to a temporary directory in order to determine the commit at the
@@ -1364,27 +1386,90 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
 
-    // Checkout the pinned hash to the path.
-    with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
-        // Change HEAD to point to the pinned commit.
-        let id = git2::Oid::from_str(&pinned.commit_hash)?;
-        repo.set_head_detached(id)?;
+    if path.exists() {
+        let _ = std::fs::remove_dir_all(&path);
+    }
+    std::fs::create_dir_all(&path)?;
 
-        if path.exists() {
-            let _ = std::fs::remove_dir_all(&path);
+    if is_git_cli_installed() {
+        // Get the shallow copy of the repo using git CLI
+        let repo_path = path.to_str().unwrap();
+        // Initialize an empty git repository at target
+        Command::new("git")
+            .current_dir(repo_path)
+            .arg("init")
+            .output()
+            .expect("failed to init using git CLI");
+        Command::new("git")
+            .current_dir(repo_path)
+            .arg("remote")
+            .arg("add")
+            .arg("origin")
+            .arg(pinned.source.repo.to_string())
+            .output()
+            .expect("failed to add remote using git CLI");
+
+        match &pinned.source.reference {
+            GitReference::Branch(branch) => {
+                // Only get the latest commit
+                Command::new("git")
+                    .current_dir(repo_path)
+                    .arg("fetch")
+                    .arg("--depth")
+                    .arg("1")
+                    .arg("origin")
+                    .arg(branch)
+                    .arg(format!("refs/heads/{}", branch))
+                    .output()
+                    .expect("failed to fetch using git CLI");
+
+                Command::new("git")
+                    .current_dir(repo_path)
+                    .arg("checkout")
+                    .arg(branch)
+                    .output()
+                    .expect("failed to checkout using git CLI");
+            }
+            GitReference::Tag(tag) => {
+                Command::new("git")
+                    .current_dir(repo_path)
+                    .arg("fetch")
+                    .arg("--depth")
+                    .arg("1")
+                    .arg("origin")
+                    .arg(format!("refs/tags/{}:refs/tags/{}", tag, tag))
+                    .output()
+                    .expect("failed to fetch using git CLI");
+
+                Command::new("git")
+                    .current_dir(repo_path)
+                    .arg("checkout")
+                    .arg(tag)
+                    .output()
+                    .expect("failed to checkout using git CLI");
+            }
+            GitReference::Rev(_rev) => todo!(),
+            GitReference::DefaultBranch => todo!(),
         }
-        std::fs::create_dir_all(&path)?;
-        let repo_path = repo.path();
-        // Checkout HEAD to the target directory.
-        let mut checkout = git2::build::CheckoutBuilder::new();
-        checkout.force().target_dir(&path);
-        repo.checkout_head(Some(&mut checkout))?;
+    } else {
+        // Checkout the pinned hash to the path.
+        with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
+            // Change HEAD to point to the pinned commit.
+            let id = git2::Oid::from_str(&pinned.commit_hash)?;
+            repo.set_head_detached(id)?;
 
-        // Copy current_dir to target
-        let copy_options = fs_extra::dir::CopyOptions::new();
-        fs_extra::copy_items(&[repo_path], &path, &copy_options)?;
-        Ok(())
-    })?;
+            let repo_path = repo.path();
+            // Checkout HEAD to the target directory.
+            let mut checkout = git2::build::CheckoutBuilder::new();
+            checkout.force().target_dir(&path);
+            repo.checkout_head(Some(&mut checkout))?;
+
+            // Copy .git dir to target
+            let copy_options = fs_extra::dir::CopyOptions::new();
+            fs_extra::copy_items(&[repo_path], &path, &copy_options)?;
+            Ok(())
+        })?;
+    }
 
     Ok(path)
 }
@@ -1453,9 +1538,10 @@ fn find_exact_local_repo_with_reference(
     with_search_checkouts(checkouts_dir, package_name, &mut |repo, repo_dir_path| {
         // Get current head of the repo
         let current_head = repo.revparse_single("HEAD")?;
-        let oid = git_reference.resolve(&repo)?;
-        if oid == current_head.id() {
-            found_local_repo = Some((repo_dir_path, oid.to_string()));
+        if let Ok(oid) = git_reference.resolve(&repo) {
+            if oid == current_head.id() {
+                found_local_repo = Some((repo_dir_path, oid.to_string()));
+            }
         }
         Ok(())
     })?;
@@ -1495,11 +1581,13 @@ where
                 // each dirs inside this one
                 let repo_dir = repo_dir
                     .map_err(|e| anyhow!("Cannot find local repo at checkouts dir {}", e))?;
-                // Get the path of the current repo
-                let repo_dir_path = repo_dir.path();
-                // Get the repo from the found path
-                let repo = git2::Repository::open(&repo_dir_path)?;
-                f(repo, repo_dir_path)?;
+                if repo_dir.file_type()?.is_dir() {
+                    // Get the path of the current repo
+                    let repo_dir_path = repo_dir.path();
+                    // Get the repo from the found path
+                    let repo = git2::Repository::open(&repo_dir_path)?;
+                    f(repo, repo_dir_path)?;
+                }
             }
         }
     }
