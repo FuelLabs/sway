@@ -24,14 +24,15 @@ fn main() -> bool {
     res = ufp_128_169 - ufp_128_13;
     assert(~UFP128::from(156, 0) == res);
 
-    // // recip
-    // let mut value = UFP128 {
-    //         value: 1 << 32 + 3,
-    //     };
-    // res = ~UFP128::recip(value);
-    // assert(UFP128 {
-    //         value: 536870912,
-    //     } == res);
+    // recip
+    let mut value = UFP128 {
+        value: 1 << 32 + 3,
+    };
+    res = ~UFP128::recip(value);
+    assert(UFP128 {
+        value: 536870912, 
+    }
+    == res);
 
     // // trunc
     // value = UFP128 {

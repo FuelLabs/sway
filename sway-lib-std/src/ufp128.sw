@@ -2,8 +2,10 @@ library ufp128;
 //! A wrapper around U128 type for a library for Sway for mathematical functions operating with signed 64.64-bit fixed point numbers. 
 
 use ::u128::U128;
+use ::u256::U256;
 use ::assert::assert;
 use ::math::{Root,Exponent,Exponentiate};
+use ::revert::revert;
 
 pub struct UFP128 {
     value: U128 
@@ -89,25 +91,16 @@ impl core::ops::Multiply for UFP128 {
     /// Multiply a UFP128 with a UFP128. Panics of overflow.
     fn multiply(self, other: Self) -> Self {
 
-        let base = ~U128::from(1,0);
+        let self_u256 = ~U256::from(0, 0, self.value.upper, self.value.lower);
+        let other_u256 = ~U256::from(0, 0, other.value.upper, other.value.lower);
 
-        let self_up = ~U128::from(0, self.value.upper);
-        let self_lo = ~U128::from(0, self.value.lower);
-
-        let other_up = ~U128::from(0, other.value.upper);
-        let other_lo = ~U128::from(0, other.value.lower);
-
-        let mut up_up = self_up * other_up;
-        up_up *= base;
-        let mut lo_lo = self_lo * other_lo;
-        lo_lo /= base;
-
-        let up_lo = self_up * other_lo;
-        let lo_up = self_lo * other_up;
-
-        UFP128 {
-            value: up_lo + lo_up
+        let self_multiply_other = self_u256 * other_u256;
+        let res_u256 = self_multiply_other >> 64;
+        if res_u256.a != 0 || res_u256.b != 0 {
+            // panic on overflow
+            revert(0);
         }
+        ~Self::from(res_u256.c, res_u256.d)
     }
 }
 
@@ -118,41 +111,23 @@ impl core::ops::Divide for UFP128 {
         let zero = ~UFP128::zero();
         let u128_max = ~U128::max();
 
-        let denominator = ~U128::from(1, 0);
-
         assert(divisor != zero);
 
-        let mut res = ~UFP128::from(0, 0);
+        // Conversion to U128 done to ensure no overflow happen
+        // and maximal precision is avaliable
+        // as it makes possible to multiply by the denominator in 
+        // all cases
+        let self_u256 = ~U256::from(0, 0, self.value.upper, self.value.lower);
+        let divisor_u256 = ~U256::from(0, 0, divisor.value.upper, divisor.value.lower);
 
-        if self.value.upper == 0 {
-            s.value *= denominator;
-            let result = s.value / divisor.value;
-            res = UFP128 {
-                value: result
-            }
-        } else {
+        // Multiply by denominator to ensure accuracy 
+        let res_u256 = (self_u256 << 64) / divisor_u256;
 
-            let inter = u128_max / divisor.value;
-
-            if inter.upper == 0 {
-                let result = (self.value * inter) / denominator;
-                res = UFP128 {
-                    value: result
-                }
-            } else {
-                let mid = ~U128::from(0, 2 << 32);
-
-                let s = self.value / mid;
-
-                let inter = inter / mid;
-
-                let result = s * inter;
-                res = UFP128 {
-                    value: result
-                }
-            }
+        if res_u256.a != 0 || res_u256.b != 0 {
+            // panic on overflow
+            revert(0);
         }
-        res
+        ~Self::from(res_u256.c, res_u256.d)
     }
 }
 
