@@ -157,7 +157,7 @@ impl UFP64 {
         Self {
             // first move to the right (divide by the denominator)
             // to get rid of fractional part, than move to the
-            // left (multiply by th denominator), to ensure 
+            // left (multiply by the denominator), to ensure 
             // fixed-point structure
             value: (self.value >> 32) << 32,
         }
@@ -175,7 +175,7 @@ impl UFP64 {
         Self {
             // first move to the left (multiply by the denominator)
             // to get rid of integer part, than move to the
-            // right (divide by th denominator), to ensure 
+            // right (divide by the denominator), to ensure 
             // fixed-point structure
             value: (self.value << 32) >> 32,
         }
@@ -201,7 +201,7 @@ impl UFP64 {
         let diff_self_floor = self - floor;
         let diff_ceil_self = ceil - self;
 
-        // check if we are nearer to the fllor or to the ceiling
+        // check if we are nearer to the floor or to the ceiling
         if diff_self_floor < diff_ceil_self {
             return floor;
         } else {
@@ -231,7 +231,7 @@ impl Exponentiate for UFP64 {
         let nominator_pow = ~U128::from(0, self.value).pow(~U128::from(0, exponent_int));
         // As we need to ensure the fixed point structure 
         // which means that the denominator is always 2 ^ 32
-        // we need to deleet the nominator by 2 ^ (32 * exponent - 1)
+        // we need to delete the nominator by 2 ^ (32 * exponent - 1)
         // - 1 is the formula is due to denominator need to stay 2 ^ 32
         let nominator = nominator_pow >> demoninator_power * (exponent_int - 1);
 
