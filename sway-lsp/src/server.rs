@@ -156,17 +156,26 @@ impl LanguageServer for Backend {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let uri = &params.text_document.uri;
         self.session.handle_open_file(uri);
+        // 1. Create a new dir in /temp/ that clones the current workspace
+        // 2. store the tmp path in session
         self.parse_project(uri).await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = &params.text_document.uri;
+        // 3. trim the uri to be the relative file from workspace root
+        // 4. create a new uri using this that appends to the tmp/path in session
+        // 5. update this file with the new changes and write to disk
+        // 6. pass in the custom uri into parse_project, we can now get the updated
+        //    AST's back
         self.session
             .update_text_document(uri, params.content_changes);
         self.parse_project(uri).await;
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
+        // 7. overwrite the contents of the tmp/folder with everything in
+        //    the current workspace. (resync)
         self.parse_project(&params.text_document.uri).await;
     }
 

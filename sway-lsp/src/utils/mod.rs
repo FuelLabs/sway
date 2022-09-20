@@ -2,4 +2,5 @@ pub(crate) mod attributes;
 pub(crate) mod common;
 pub mod debug;
 pub(crate) mod function;
+pub(crate) mod temp;
 pub(crate) mod token;
