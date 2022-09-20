@@ -1,11 +1,6 @@
 script;
 
-use std::result::Result;
-use std::b512::B512;
-use std::revert::revert;
-use std::logging::log;
-use std::ecr::{ec_recover, ec_recover_address, EcRecoverError};
-use std::address::Address;
+use std::{b512::B512, ecr::{ec_recover, ec_recover_address, EcRecoverError}, logging::log};
 
 const MSG_HASH = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
 

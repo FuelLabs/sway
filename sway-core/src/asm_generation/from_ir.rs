@@ -521,6 +521,9 @@ impl<'ir> AsmBuilder<'ir> {
                     )
                 }
                 Instruction::BitCast(val, ty) => self.compile_bitcast(instr_val, val, ty),
+                Instruction::BinaryOp { op, arg1, arg2 } => {
+                    self.compile_binary_op(instr_val, op, arg1, arg2)
+                }
                 Instruction::Branch(to_block) => self.compile_branch(block, to_block),
                 Instruction::Call(..) => {
                     errors.push(CompileError::Internal(
@@ -808,6 +811,31 @@ impl<'ir> AsmBuilder<'ir> {
             val_reg
         };
         self.reg_map.insert(*instr_val, reg);
+    }
+
+    fn compile_binary_op(
+        &mut self,
+        instr_val: &Value,
+        op: &BinaryOpKind,
+        arg1: &Value,
+        arg2: &Value,
+    ) {
+        let val1_reg = self.value_to_register(arg1);
+        let val2_reg = self.value_to_register(arg2);
+        let res_reg = self.reg_seqr.next();
+        let opcode = match op {
+            BinaryOpKind::Add => Either::Left(VirtualOp::ADD(res_reg.clone(), val1_reg, val2_reg)),
+            BinaryOpKind::Sub => Either::Left(VirtualOp::SUB(res_reg.clone(), val1_reg, val2_reg)),
+            BinaryOpKind::Mul => Either::Left(VirtualOp::MUL(res_reg.clone(), val1_reg, val2_reg)),
+            BinaryOpKind::Div => Either::Left(VirtualOp::DIV(res_reg.clone(), val1_reg, val2_reg)),
+        };
+        self.bytecode.push(Op {
+            opcode,
+            comment: String::new(),
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+
+        self.reg_map.insert(*instr_val, res_reg);
     }
 
     fn compile_branch(&mut self, from_block: &Block, to_block: &Block) {

@@ -8,7 +8,7 @@ enum Result<T, E> {
     Err: E,
 }
 
-fn local_panic() {
+fn local_panic<T>() -> T {
     asm(r1: 42) {
         rvrt r1;
     }
@@ -22,14 +22,14 @@ fn main() -> u64 {
     } else {
         revert(0)
     };
-    let x: u64 = local_panic();
+    let x: u64 = local_panic::<u64>();
     let x = if let Result::Ok(ok) = Result::Ok::<u64, u64>(5) {
         ok
     } else {
-        local_panic()
+        local_panic::<u64>()
     };
     let x = if true {
-       true 
+       Result::Err::<u64, u32>(12)
     } else {
         return 10;
     };

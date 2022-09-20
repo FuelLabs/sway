@@ -1,7 +1,6 @@
 library evm_address;
 
 //! A wrapper around the b256 type to help enhance type-safety.
-
 use ::intrinsics::size_of_val;
 use ::mem::{addr_of, eq};
 

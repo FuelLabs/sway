@@ -917,8 +917,6 @@ pub enum CompileError {
     ShadowsOtherSymbol { name: Ident },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
     GenericShadowsGeneric { name: Ident },
-    #[error("The name \"{name}\" imported through `*` shadows another symbol with the same name.")]
-    StarImportShadowsOtherSymbol { name: Ident },
     #[error(
         "Match expression arm has mismatched types.\n\
          expected: {expected}\n\
@@ -1199,7 +1197,6 @@ impl Spanned for CompileError {
             ArrayOutOfBounds { span, .. } => span.clone(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
-            StarImportShadowsOtherSymbol { name } => name.span(),
             MatchWrongType { span, .. } => span.clone(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             MatchStructPatternMissingFields { span, .. } => span.clone(),

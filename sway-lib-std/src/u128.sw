@@ -26,13 +26,14 @@ pub trait From {
 
 impl From for U128 {
     fn from(upper: u64, lower: u64) -> U128 {
-        U128 {
-            upper, lower, 
-        }
+        U128 { upper, lower }
     }
 
     fn into(self) -> (u64, u64) {
-        (self.upper, self.lower)
+        (
+            self.upper,
+            self.lower,
+        )
     }
 }
 
@@ -55,7 +56,6 @@ impl core::ops::Ord for U128 {
 // TODO this doesn't work?
 // impl core::ops::OrdEq for U128 {
 // }
-
 impl u64 {
     pub fn overflowing_add(self, right: Self) -> U128 {
         disable_panic_on_overflow();
@@ -113,12 +113,8 @@ impl U128 {
     /// Returns Err if the number > ~u64::max()
     pub fn as_u64(self) -> Result<u64, U128Error> {
         match self.upper {
-            0 => {
-                Result::Ok(self.lower)
-            },
-            _ => {
-                Result::Err(U128Error::LossOfPrecision)
-            },
+            0 => Result::Ok(self.lower),
+            _ => Result::Err(U128Error::LossOfPrecision),
         }
     }
 
@@ -168,14 +164,13 @@ impl core::ops::Shiftable for U128 {
         // If shifting by at least half the number of bits, then upper word can
         // be discarded.
         if rhs >= 64 {
-            return ~Self::from(self.lower <<(rhs - 64), 0);
+            return ~Self::from(self.lower << (rhs - 64), 0);
         }
 
         // If shifting by less than half the number of bits, then need to
         // partially shift both upper and lower.
-
         // Save highest bits of lower half.
-        let highest_lower_bits = self.lower >>(64 - rhs);
+        let highest_lower_bits = self.lower >> (64 - rhs);
 
         let upper = (self.upper << rhs) + highest_lower_bits;
         let lower = self.lower << rhs;
@@ -193,14 +188,13 @@ impl core::ops::Shiftable for U128 {
         // If shifting by at least half the number of bits, then lower word can
         // be discarded.
         if (rhs >= 64) {
-            return ~Self::from(0, self.upper >>(rhs - 64));
+            return ~Self::from(0, self.upper >> (rhs - 64));
         }
 
         // If shifting by less than half the number of bits, then need to
         // partially shift both upper and lower.
-
         // Save lowest bits of upper half.
-        let lowest_upper_bits = self.upper <<(64 - rhs);
+        let lowest_upper_bits = self.upper << (64 - rhs);
 
         let upper = self.upper >> rhs;
         let lower = (self.lower >> rhs) + lowest_upper_bits;
@@ -251,12 +245,9 @@ impl core::ops::Subtract for U128 {
             lower = self.lower - other.lower;
         }
 
-        U128 {
-            upper, lower, 
-        }
+        U128 { upper, lower }
     }
 }
-
 impl core::ops::Multiply for U128 {
     /// Multiply a U128 with a U128. Panics of overflow.
     fn multiply(self, other: Self) -> Self {

@@ -51,8 +51,6 @@ pub struct AstNode {
 pub enum AstNodeContent {
     /// A statement of the form `use foo::bar;` or `use ::foo::bar;`
     UseStatement(UseStatement),
-    /// A statement of the form `return foo;`
-    ReturnStatement(ReturnStatement),
     /// Any type of declaration, of which there are quite a few. See [Declaration] for more details
     /// on the possible variants.
     Declaration(Declaration),

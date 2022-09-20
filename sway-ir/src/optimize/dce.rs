@@ -27,6 +27,7 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
             Instruction::AddrOf(v) => vec![*v],
             Instruction::AsmBlock(_, args) => args.iter().filter_map(|aa| aa.initializer).collect(),
             Instruction::BitCast(v, _) => vec![*v],
+            Instruction::BinaryOp { op: _, arg1, arg2 } => vec![*arg1, *arg2],
             Instruction::Branch(_) => vec![],
             Instruction::Call(_, vs) => vs.clone(),
             Instruction::Cmp(_, lhs, rhs) => vec![*lhs, *rhs],
