@@ -229,10 +229,10 @@ pub fn input_predicate_pointer(index: u64) -> Option<u64> {
     let type = input_type(index);
     match type {
         Input::Coin => {
-            Option::Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_DATA))
+            Option::Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE))
         },
         Input::Message => {
-            Option::Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA))
+            Option::Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE))
         },
         _ => {
             Option::None

@@ -59,9 +59,9 @@ abi TxContractTest {
     fn get_input_maturity(index: u64) -> u32;
     fn get_input_witness_index(index: u64) -> u8;
     fn get_input_predicate_length(index: u64) -> u16;
-    fn get_input_predicate(index: u64) -> u32;
+    fn get_input_predicate(index: u64) -> b256;
     fn get_input_predicate_data_length(index: u64) -> u16;
-    fn get_input_predicate_data(index: u64) -> u32;
+    fn get_input_predicate_data(index: u64) -> b256;
 
     fn get_output_count() -> u64;
     fn get_output_type(index: u64) -> Output;
@@ -126,13 +126,13 @@ impl TxContractTest for Contract {
     fn get_input_predicate_length(index: u64) -> u16 {
         input_predicate_length(index).unwrap()
     }
-    fn get_input_predicate(index: u64) -> u32 {
+    fn get_input_predicate(index: u64) -> b256 {
         input_predicate(index)
     }
     fn get_input_predicate_data_length(index: u64) -> u16 {
         input_predicate_data_length(index).unwrap()
     }
-    fn get_input_predicate_data(index: u64) -> u32 {
+    fn get_input_predicate_data(index: u64) -> b256 {
         input_predicate_data(index)
     }
 

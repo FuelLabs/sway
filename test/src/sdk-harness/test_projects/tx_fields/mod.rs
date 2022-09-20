@@ -35,7 +35,10 @@ async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
 }
 
 async fn generate_coin_predicate_input(amount: u64, data: Vec<u8>, wallet: &WalletUnlocked) -> (Vec<u8>, TxInput) {
-    let predicate_bytecode = Opcode::RET(REG_ONE).to_bytes().to_vec();
+    let mut predicate_bytecode = Opcode::RET(REG_ONE).to_bytes().to_vec();
+    predicate_bytecode.append(&mut predicate_bytecode.clone());
+    predicate_bytecode.append(&mut predicate_bytecode.clone());
+    predicate_bytecode.append(&mut predicate_bytecode.clone());
     let predicate_root: [u8; 32] = (*TxContract::root_from_code(&predicate_bytecode)).into();
     let predicate_root = Address::from(predicate_root);
 
@@ -339,7 +342,7 @@ async fn can_get_input_predicate() {
     let (contract_instance, _, wallet) = get_contracts().await;
     let provider = wallet.get_provider().unwrap();
     let (predicate_bytecode, predicate_coin) = generate_coin_predicate_input(100, vec![], &wallet).await;
-    let predicate_bytes: [u8; 4] = predicate_bytecode.try_into().unwrap();
+    let predicate_bytes: [u8; 32] = predicate_bytecode.try_into().unwrap();
 
     // Add predicate coin to inputs and call contract
     let call_handler = contract_instance.get_input_predicate(2);
@@ -348,7 +351,7 @@ async fn can_get_input_predicate() {
         inputs.push(predicate_coin)
     }
     let result = call_handler.get_response(script.call(provider).await.unwrap()).unwrap();
-    assert_eq!(result.value, u32::from_be_bytes(predicate_bytes));
+    assert_eq!(result.value, predicate_bytes);
 
     //TODO: add test for inputmessage
 }
@@ -377,7 +380,7 @@ async fn can_get_input_predicate_data_length() {
 async fn can_get_input_predicate_data() {
     let (contract_instance, _, wallet) = get_contracts().await;
     let provider = wallet.get_provider().unwrap();
-    let predicate_data_bytes: [u8; 4] = [1, 2, 3, 4];
+    let predicate_data_bytes: [u8; 32] = Bytes32::from_str("49a7e58dc8b6397a25de9090cb50e71c2588c773487d1da7066d0c7198c567c0").unwrap().into();
     let predicate_data = predicate_data_bytes.to_vec();
     let (_, predicate_coin) = generate_coin_predicate_input(100, predicate_data.clone(), &wallet).await;
 
@@ -388,7 +391,7 @@ async fn can_get_input_predicate_data() {
         inputs.push(predicate_coin)
     }
     let result = call_handler.get_response(script.call(provider).await.unwrap()).unwrap();
-    assert_eq!(result.value, u32::from_be_bytes(predicate_data_bytes));
+    assert_eq!(result.value, predicate_data_bytes);
 
     //TODO: add test for inputmessage
 }
