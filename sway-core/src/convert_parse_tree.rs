@@ -686,27 +686,22 @@ fn get_attributed_purity(
     };
     match attributes.get(&AttributeKind::Storage) {
         Some(attrs) if !attrs.is_empty() => {
-            for attr in attrs {
-                if !attr.args.is_empty() {
-                    for arg in &attr.args {
-                        match arg.as_str() {
-                            STORAGE_PURITY_READ_NAME => add_impurity(Purity::Reads, Purity::Writes),
-                            STORAGE_PURITY_WRITE_NAME => {
-                                add_impurity(Purity::Writes, Purity::Reads)
-                            }
-                            _otherwise => {
-                                return Err(ec.error(
-                                    ConvertParseTreeError::InvalidAttributeArgument {
-                                        attribute: "storage".to_owned(),
-                                        span: arg.span(),
-                                    },
-                                ));
-                            }
-                        }
+            for arg in attrs
+                .iter()
+                .filter(|attr| !attr.args.is_empty())
+                .flat_map(|attr| &attr.args)
+            {
+                match arg.as_str() {
+                    STORAGE_PURITY_READ_NAME => add_impurity(Purity::Reads, Purity::Writes),
+                    STORAGE_PURITY_WRITE_NAME => add_impurity(Purity::Writes, Purity::Reads),
+                    _otherwise => {
+                        return Err(ec.error(ConvertParseTreeError::InvalidAttributeArgument {
+                            attribute: "storage".to_owned(),
+                            span: arg.span(),
+                        }));
                     }
                 }
             }
-
             Ok(purity)
         }
         _otherwise => Ok(Purity::Pure),
