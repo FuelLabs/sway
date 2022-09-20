@@ -3,12 +3,13 @@ use std::{cmp::Ordering, fmt};
 use std::fmt::Write;
 use sway_types::Span;
 
+use crate::declaration_engine::de_get_constant;
 use crate::type_system::look_up_type_id;
-use crate::TypeInfo;
 use crate::{
     error::{err, ok},
     CompileError, CompileResult, Literal, Scrutinee, StructScrutineeField,
 };
+use crate::{Namespace, TypeInfo, TypedDeclaration};
 
 use super::{patstack::PatStack, range::Range};
 
@@ -117,23 +118,40 @@ pub(crate) enum Pattern {
 
 impl Pattern {
     /// Converts a `Scrutinee` to a `Pattern`.
-    pub(crate) fn from_scrutinee(scrutinee: Scrutinee) -> CompileResult<Self> {
+    pub(crate) fn from_scrutinee(
+        namespace: &Namespace,
+        scrutinee: Scrutinee,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let pat = match scrutinee {
             Scrutinee::CatchAll { .. } => Pattern::Wildcard,
-            Scrutinee::Variable { .. } => Pattern::Wildcard,
-            Scrutinee::Literal { value, .. } => match value {
-                Literal::U8(x) => Pattern::U8(Range::from_single(x)),
-                Literal::U16(x) => Pattern::U16(Range::from_single(x)),
-                Literal::U32(x) => Pattern::U32(Range::from_single(x)),
-                Literal::U64(x) => Pattern::U64(Range::from_single(x)),
-                Literal::B256(x) => Pattern::B256(x),
-                Literal::Boolean(b) => Pattern::Boolean(b),
-                Literal::Byte(x) => Pattern::Byte(Range::from_single(x)),
-                Literal::Numeric(x) => Pattern::Numeric(Range::from_single(x)),
-                Literal::String(s) => Pattern::String(s.as_str().to_string()),
-            },
+            Scrutinee::Variable { name, span } => {
+                match namespace.resolve_symbol(&name).value {
+                    // if this variable is a constant, then we turn it into a Scrutinee::Literal
+                    Some(TypedDeclaration::ConstantDeclaration(decl_id)) => {
+                        let constant_decl = check!(
+                            CompileResult::from(de_get_constant(decl_id.clone(), &span)),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        let value = match constant_decl.value.extract_constant_literal_value() {
+                            Some(value) => value,
+                            None => {
+                                errors.push(CompileError::Unimplemented(
+                                    "constant values of this type are not supported yet",
+                                    span,
+                                ));
+                                return err(warnings, errors);
+                            }
+                        };
+                        Pattern::from_literal(value)
+                    }
+                    _ => Pattern::Wildcard,
+                }
+            }
+            Scrutinee::Literal { value, .. } => Pattern::from_literal(value),
             Scrutinee::StructScrutinee {
                 struct_name,
                 fields,
@@ -147,7 +165,7 @@ impl Pattern {
                     {
                         let f = match scrutinee {
                             Some(scrutinee) => check!(
-                                Pattern::from_scrutinee(scrutinee),
+                                Pattern::from_scrutinee(namespace, scrutinee),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -166,7 +184,7 @@ impl Pattern {
                 let mut new_elems = PatStack::empty();
                 for elem in elems.into_iter() {
                     new_elems.push(check!(
-                        Pattern::from_scrutinee(elem),
+                        Pattern::from_scrutinee(namespace, elem),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -183,7 +201,7 @@ impl Pattern {
                     enum_name,
                     variant_name,
                     value: Box::new(check!(
-                        Pattern::from_scrutinee(*value),
+                        Pattern::from_scrutinee(namespace, *value),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -192,6 +210,20 @@ impl Pattern {
             }
         };
         ok(pat, warnings, errors)
+    }
+
+    fn from_literal(value: Literal) -> Pattern {
+        match value {
+            Literal::U8(x) => Pattern::U8(Range::from_single(x)),
+            Literal::U16(x) => Pattern::U16(Range::from_single(x)),
+            Literal::U32(x) => Pattern::U32(Range::from_single(x)),
+            Literal::U64(x) => Pattern::U64(Range::from_single(x)),
+            Literal::B256(x) => Pattern::B256(x),
+            Literal::Boolean(b) => Pattern::Boolean(b),
+            Literal::Byte(x) => Pattern::Byte(Range::from_single(x)),
+            Literal::Numeric(x) => Pattern::Numeric(Range::from_single(x)),
+            Literal::String(s) => Pattern::String(s.as_str().to_string()),
+        }
     }
 
     /// Converts a `PatStack` to a `Pattern`. If the `PatStack` is of lenth 1,

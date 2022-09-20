@@ -583,6 +583,15 @@ impl fmt::Display for TypedExpressionVariant {
     }
 }
 
+impl TypedExpressionVariant {
+    pub(crate) fn extract_constant_literal_value(&self) -> Option<Literal> {
+        match self {
+            TypedExpressionVariant::Literal(value) => Some(value.clone()),
+            _ => None,
+        }
+    }
+}
+
 /// Describes the full storage access including all the subfields
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeCheckedStorageAccess {

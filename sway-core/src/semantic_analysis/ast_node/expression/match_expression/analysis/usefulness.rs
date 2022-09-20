@@ -3,7 +3,7 @@ use sway_types::Span;
 use crate::{
     error::{err, ok},
     type_system::TypeId,
-    CompileError, CompileResult, Scrutinee,
+    CompileError, CompileResult, Namespace, Scrutinee,
 };
 
 use super::{
@@ -196,6 +196,7 @@ use super::{
 /// exhaustive if the imaginary additional wildcard pattern has an empty
 /// `WitnessReport`.
 pub(crate) fn check_match_expression_usefulness(
+    namespace: &Namespace,
     type_id: TypeId,
     scrutinees: Vec<Scrutinee>,
     span: Span,
@@ -212,7 +213,7 @@ pub(crate) fn check_match_expression_usefulness(
     );
     for scrutinee in scrutinees.iter() {
         let pat = check!(
-            Pattern::from_scrutinee(scrutinee.clone()),
+            Pattern::from_scrutinee(namespace, scrutinee.clone()),
             return err(warnings, errors),
             warnings,
             errors

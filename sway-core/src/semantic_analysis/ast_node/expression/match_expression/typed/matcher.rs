@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::de_get_constant,
     error::{err, ok},
     semantic_analysis::{
         ast_node::expression::typed_expression::{
@@ -6,10 +7,10 @@ use crate::{
             instantiate_unsafe_downcast,
         },
         namespace::Namespace,
-        IsConstant, TypedEnumVariant, TypedExpression, TypedExpressionVariant,
+        IsConstant, TypedEnumVariant, TypedExpression, TypedExpressionVariant, VariableMutability,
     },
     type_system::unify,
-    CompileResult, Ident, Literal,
+    CompileResult, Ident, Literal, TypedDeclaration,
 };
 
 use sway_types::span::Span;
@@ -84,7 +85,7 @@ pub(crate) fn matcher(
     match variant {
         TypedScrutineeVariant::CatchAll => ok((vec![], vec![]), warnings, errors),
         TypedScrutineeVariant::Literal(value) => match_literal(exp, value, span),
-        TypedScrutineeVariant::Variable(name) => match_variable(exp, name, span),
+        TypedScrutineeVariant::Variable(name) => match_variable(exp, name, span, namespace),
         TypedScrutineeVariant::StructScrutinee(fields) => match_struct(exp, fields, namespace),
         TypedScrutineeVariant::EnumScrutinee { value, variant } => {
             match_enum(exp, variant, *value, span, namespace)
@@ -114,11 +115,42 @@ fn match_literal(
 fn match_variable(
     exp: &TypedExpression,
     scrutinee_name: Ident,
-    _span: Span,
+    span: Span,
+    namespace: &Namespace,
 ) -> CompileResult<MatcherResult> {
-    let match_req_map = vec![];
-    let match_decl_map = vec![(scrutinee_name, exp.to_owned())];
-    ok((match_req_map, match_decl_map), vec![], vec![])
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let mut match_req_map = vec![];
+    let mut match_decl_map = vec![];
+
+    match namespace.resolve_symbol(&scrutinee_name).value {
+        Some(TypedDeclaration::ConstantDeclaration(decl_id)) => {
+            let constant_decl = check!(
+                CompileResult::from(de_get_constant(decl_id.clone(), &span)),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            match_req_map.push((
+                exp.to_owned(),
+                TypedExpression {
+                    expression: TypedExpressionVariant::VariableExpression {
+                        name: scrutinee_name,
+                        span: span.clone(),
+                        mutability: VariableMutability::Immutable,
+                    },
+                    return_type: constant_decl.value.return_type,
+                    is_constant: IsConstant::Yes,
+                    span,
+                },
+            ));
+        }
+        _ => {
+            match_decl_map.push((scrutinee_name, exp.to_owned()));
+        }
+    }
+
+    ok((match_req_map, match_decl_map), warnings, errors)
 }
 
 fn match_struct(

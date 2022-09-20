@@ -632,6 +632,10 @@ impl TypedExpression {
         }
     }
 
+    pub(crate) fn extract_constant_literal_value(&self) -> Option<Literal> {
+        self.expression.extract_constant_literal_value()
+    }
+
     pub(crate) fn type_check(mut ctx: TypeCheckContext, expr: Expression) -> CompileResult<Self> {
         let expr_span = expr.span();
         let span = expr_span.clone();
@@ -1160,7 +1164,7 @@ impl TypedExpression {
 
         // check to see if the match expression is exhaustive and if all match arms are reachable
         let (witness_report, arms_reachability) = check!(
-            check_match_expression_usefulness(type_id, scrutinees, span.clone()),
+            check_match_expression_usefulness(ctx.namespace, type_id, scrutinees, span.clone()),
             return err(warnings, errors),
             warnings,
             errors
