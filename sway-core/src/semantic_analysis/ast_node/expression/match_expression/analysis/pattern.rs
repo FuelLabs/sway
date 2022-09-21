@@ -3,14 +3,13 @@ use std::{cmp::Ordering, fmt};
 use std::fmt::Write;
 use sway_types::Span;
 
-use crate::declaration_engine::de_get_constant;
 use crate::semantic_analysis::{TypedScrutinee, TypedScrutineeVariant};
 use crate::type_system::look_up_type_id;
 use crate::{
     error::{err, ok},
-    CompileError, CompileResult, Literal, Scrutinee, StructScrutineeField,
+    CompileError, CompileResult, Literal,
 };
-use crate::{Namespace, TypeInfo, TypedDeclaration};
+use crate::{Namespace, TypeInfo};
 
 use super::{patstack::PatStack, range::Range};
 
@@ -127,62 +126,29 @@ impl Pattern {
         let mut errors = vec![];
         let pat = match scrutinee.variant {
             TypedScrutineeVariant::CatchAll => Pattern::Wildcard,
-            Scrutinee::Variable { name, span } => {
-                match namespace.resolve_symbol(&name).value {
-                    // If this variable is a constant, then we turn it into a `Scrutinee::Literal`.
-                    Some(TypedDeclaration::ConstantDeclaration(decl_id)) => {
-                        let constant_decl = check!(
-                            CompileResult::from(de_get_constant(decl_id.clone(), &span)),
+            TypedScrutineeVariant::Variable(_) => Pattern::Wildcard,
+            TypedScrutineeVariant::Literal(value) => Pattern::from_literal(value),
+            TypedScrutineeVariant::Constant(_, value, _) => Pattern::from_literal(value),
+            TypedScrutineeVariant::StructScrutinee(struct_name, fields) => {
+                let mut new_fields = vec![];
+                for field in fields.into_iter() {
+                    let f = match field.scrutinee {
+                        Some(scrutinee) => check!(
+                            Pattern::from_scrutinee(namespace, scrutinee),
                             return err(warnings, errors),
                             warnings,
                             errors
-                        );
-                        let value = match constant_decl.value.extract_literal_value() {
-                            Some(value) => value,
-                            None => {
-                                errors.push(CompileError::Unimplemented(
-                                    "constant values of this type are not supported yet",
-                                    span,
-                                ));
-                                return err(warnings, errors);
-                            }
-                        };
-                        Pattern::from_literal(value)
-                    }
-                    // Variable isn't a constant, so this is a new catch-all binding.
-                    _ => Pattern::Wildcard,
-                }
-            }
-            Scrutinee::Literal { value, .. } => Pattern::from_literal(value),
-            Scrutinee::StructScrutinee {
-                struct_name,
-                fields,
-                ..
-            } => {
-                let mut new_fields = vec![];
-                for field in fields.into_iter() {
-                    if let StructScrutineeField::Field {
-                        field, scrutinee, ..
-                    } = field
-                    {
-                        let f = match scrutinee {
-                            Some(scrutinee) => check!(
-                                Pattern::from_scrutinee(namespace, scrutinee),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            ),
-                            None => Pattern::Wildcard,
-                        };
-                        new_fields.push((field.as_str().to_string(), f));
-                    }
+                        ),
+                        None => Pattern::Wildcard,
+                    };
+                    new_fields.push((field.field.as_str().to_string(), f));
                 }
                 Pattern::Struct(StructPattern {
                     struct_name: struct_name.to_string(),
                     fields: new_fields,
                 })
             }
-            Scrutinee::Tuple { elems, .. } => {
+            TypedScrutineeVariant::Tuple(elems) => {
                 let mut new_elems = PatStack::empty();
                 for elem in elems.into_iter() {
                     new_elems.push(check!(
@@ -194,7 +160,7 @@ impl Pattern {
                 }
                 Pattern::Tuple(new_elems)
             }
-            Scrutinee::EnumScrutinee {
+            TypedScrutineeVariant::EnumScrutinee {
                 call_path, value, ..
             } => {
                 let enum_name = call_path.prefixes.last().unwrap().to_string();

@@ -1148,11 +1148,6 @@ impl TypedExpression {
             errors
         );
 
-        let scrutinees = branches
-            .iter()
-            .map(|branch| branch.scrutinee.clone())
-            .collect::<Vec<_>>();
-
         // type check the match expression and create a TypedMatchExpression object
         let (typed_match_expression, typed_scrutinees) = {
             let ctx = ctx.by_ref().with_help_text("");

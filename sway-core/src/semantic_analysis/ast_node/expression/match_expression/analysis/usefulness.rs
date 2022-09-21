@@ -4,7 +4,7 @@ use crate::{
     error::{err, ok},
     semantic_analysis::TypedScrutinee,
     type_system::TypeId,
-    CompileError, CompileResult, Namespace, Scrutinee,
+    CompileError, CompileResult, Namespace,
 };
 
 use super::{

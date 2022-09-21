@@ -92,8 +92,8 @@ pub(crate) fn matcher(
         TypedScrutineeVariant::Constant(name, _, type_id) => {
             match_constant(exp, name, type_id, span)
         }
-        TypedScrutineeVariant::StructScrutinee(fields) => match_struct(exp, fields, namespace),
-        TypedScrutineeVariant::EnumScrutinee { value, variant } => {
+        TypedScrutineeVariant::StructScrutinee(_, fields) => match_struct(exp, fields, namespace),
+        TypedScrutineeVariant::EnumScrutinee { value, variant, .. } => {
             match_enum(exp, variant, *value, span, namespace)
         }
         TypedScrutineeVariant::Tuple(elems) => match_tuple(exp, elems, span, namespace),

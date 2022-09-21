@@ -22,9 +22,10 @@ pub(crate) enum TypedScrutineeVariant {
     Literal(Literal),
     Variable(Ident),
     Constant(Ident, Literal, TypeId),
-    StructScrutinee(Vec<TypedStructScrutineeField>),
+    StructScrutinee(Ident, Vec<TypedStructScrutineeField>),
     #[allow(dead_code)]
     EnumScrutinee {
+        call_path: CallPath,
         variant: TypedEnumVariant,
         value: Box<TypedScrutinee>,
     },
@@ -214,7 +215,7 @@ fn type_check_struct(
     }
 
     let typed_scrutinee = TypedScrutinee {
-        variant: TypedScrutineeVariant::StructScrutinee(typed_fields),
+        variant: TypedScrutineeVariant::StructScrutinee(struct_decl.name.clone(), typed_fields),
         type_id: struct_decl.create_type_id(),
         span,
     };
@@ -241,7 +242,7 @@ fn type_check_enum(
             return err(warnings, errors);
         }
     };
-    let variant_name = call_path.suffix;
+    let variant_name = call_path.suffix.clone();
 
     // find the enum definition from the name
     let unknown_decl = check!(
@@ -289,6 +290,7 @@ fn type_check_enum(
 
     let typed_scrutinee = TypedScrutinee {
         variant: TypedScrutineeVariant::EnumScrutinee {
+            call_path,
             variant,
             value: Box::new(typed_value),
         },

@@ -11,24 +11,21 @@ fn main() -> u64 {
     let a = 5;
 
     let b = match a {
-        true => 1,
-        false => 1,
+        NUMBER_1 => 1,
+        NUMBER_2 => 1,
+        NUMBER_3 => 42,
+        other => other,
     };
 
-    // let b = match a {
-    //     NUMBER_1 => 1,
-    //     NUMBER_2 => 1,
-    //     NUMBER_3 => 42,
-    //     other => other,
-    // };
+    let c = true;
+    let d = match c {
+        TRUE => 42,
+        FALSE => 1,
+    };
 
-    b
-
-    // let c = false;
-    // let d = match a {
-    //     TRUE => 42,
-    //     FALSE => 1,
-    // };
-
-    // d
+    if b == 42 && d == 42 {
+        42
+    } else {
+        1
+    }
 }
