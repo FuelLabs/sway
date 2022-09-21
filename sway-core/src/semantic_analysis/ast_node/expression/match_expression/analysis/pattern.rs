@@ -213,6 +213,7 @@ impl Pattern {
         ok(pat, warnings, errors)
     }
 
+    /// Convert the given literal `value` into a pattern.
     fn from_literal(value: Literal) -> Pattern {
         match value {
             Literal::U8(x) => Pattern::U8(Range::from_single(x)),
