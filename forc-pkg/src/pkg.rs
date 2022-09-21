@@ -213,6 +213,8 @@ impl GitSourceIndex {
     }
 }
 
+const DEFAULT_REMOTE_NAME: &str = "origin";
+
 /// Error returned upon failed parsing of `SourcePinned::from_str`.
 #[derive(Clone, Debug)]
 pub struct SourcePinnedParseError;
@@ -631,7 +633,7 @@ impl GitReference {
     pub fn resolve(&self, repo: &git2::Repository) -> Result<git2::Oid> {
         // Find the commit associated with this tag.
         fn resolve_tag(repo: &git2::Repository, tag: &str) -> Result<git2::Oid> {
-            let refname = format!("refs/tags/{}", tag);
+            let refname = format!("refs/remotes/{}/tags/{}", DEFAULT_REMOTE_NAME, tag);
             let id = repo.refname_to_id(&refname)?;
             let obj = repo.find_object(id, None)?;
             let obj = obj.peel(git2::ObjectType::Commit)?;
@@ -640,7 +642,7 @@ impl GitReference {
 
         // Resolve to the target for the given branch.
         fn resolve_branch(repo: &git2::Repository, branch: &str) -> Result<git2::Oid> {
-            let name = format!("origin/{}", branch);
+            let name = format!("{}/{}", DEFAULT_REMOTE_NAME, branch);
             let b = repo
                 .find_branch(&name, git2::BranchType::Remote)
                 .with_context(|| format!("failed to find branch `{}`", branch))?;
@@ -651,7 +653,8 @@ impl GitReference {
 
         // Use the HEAD commit when default branch is specified.
         fn resolve_default_branch(repo: &git2::Repository) -> Result<git2::Oid> {
-            let head_id = repo.refname_to_id("refs/remotes/origin/HEAD")?;
+            let head_id =
+                repo.refname_to_id(&format!("refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME))?;
             let head = repo.find_object(head_id, None)?;
             Ok(head.peel(git2::ObjectType::Commit)?.id())
         }
@@ -1193,10 +1196,16 @@ fn git_ref_to_refspecs(reference: &GitReference) -> (Vec<String>, bool) {
     let mut tags = false;
     match reference {
         GitReference::Branch(s) => {
-            refspecs.push(format!("+refs/heads/{0}:refs/remotes/origin/{0}", s));
+            refspecs.push(format!(
+                "+refs/heads/{1}:refs/remotes/{0}/{1}",
+                DEFAULT_REMOTE_NAME, s
+            ));
         }
         GitReference::Tag(s) => {
-            refspecs.push(format!("+refs/tags/{0}:refs/remotes/origin/tags/{0}", s));
+            refspecs.push(format!(
+                "+refs/tags/{1}:refs/remotes/{0}/tags/{1}",
+                DEFAULT_REMOTE_NAME, s
+            ));
         }
         GitReference::Rev(s) => {
             if s.starts_with("refs/") {
@@ -1204,13 +1213,16 @@ fn git_ref_to_refspecs(reference: &GitReference) -> (Vec<String>, bool) {
             } else {
                 // We can't fetch the commit directly, so we fetch all branches and tags in order
                 // to find it.
-                refspecs.push("+refs/heads/*:refs/remotes/origin/*".to_string());
-                refspecs.push("+HEAD:refs/remotes/origin/HEAD".to_string());
+                refspecs.push(format!(
+                    "+refs/heads/*:refs/remotes/{}/*",
+                    DEFAULT_REMOTE_NAME
+                ));
+                refspecs.push(format!("+HEAD:refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME));
                 tags = true;
             }
         }
         GitReference::DefaultBranch => {
-            refspecs.push("+HEAD:refs/remotes/origin/HEAD".to_string());
+            refspecs.push(format!("+HEAD:refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME));
         }
     }
     (refspecs, tags)
@@ -1240,7 +1252,7 @@ where
     if tags {
         fetch_opts.download_tags(git2::AutotagOption::All);
     }
-    repo.remote("origin", source.repo.as_str())?
+    repo.remote_anonymous(source.repo.as_str())?
         .fetch(&refspecs, Some(&mut fetch_opts), None)
         .with_context(|| format!("failed to fetch `{}`", &source.repo))?;
 
@@ -1386,15 +1398,15 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 /// Returns the location of the checked out commit.
 pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
-    if path.exists() {
-        let _ = std::fs::remove_dir_all(&path);
-    }
-    std::fs::create_dir_all(&path)?;
     // Checkout the pinned hash to the path.
     with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
+        if path.exists() {
+            let _ = std::fs::remove_dir_all(&path);
+        }
+        std::fs::create_dir_all(&path)?;
 
         // Checkout HEAD to the target directory.
         let mut checkout = git2::build::CheckoutBuilder::new();

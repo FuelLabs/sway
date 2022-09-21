@@ -1523,7 +1523,6 @@ version = "0.24.4"
 dependencies = [
  "anyhow",
  "forc-util",
- "fs_extra",
  "fuel-crypto",
  "fuel-gql-client",
  "git2",
