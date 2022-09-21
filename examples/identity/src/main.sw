@@ -15,7 +15,6 @@ use std::{
         BASE_ASSET_ID,
         ZERO_B256,
     },
-    result::Result,
     token::{
         force_transfer_to_contract,
         transfer_to_output,
