@@ -4,6 +4,7 @@ use std::fmt::Write;
 use sway_types::Span;
 
 use crate::declaration_engine::de_get_constant;
+use crate::semantic_analysis::{TypedScrutinee, TypedScrutineeVariant};
 use crate::type_system::look_up_type_id;
 use crate::{
     error::{err, ok},
@@ -120,12 +121,12 @@ impl Pattern {
     /// Converts a `Scrutinee` to a `Pattern`.
     pub(crate) fn from_scrutinee(
         namespace: &Namespace,
-        scrutinee: Scrutinee,
+        scrutinee: TypedScrutinee,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let pat = match scrutinee {
-            Scrutinee::CatchAll { .. } => Pattern::Wildcard,
+        let pat = match scrutinee.variant {
+            TypedScrutineeVariant::CatchAll => Pattern::Wildcard,
             Scrutinee::Variable { name, span } => {
                 match namespace.resolve_symbol(&name).value {
                     // If this variable is a constant, then we turn it into a `Scrutinee::Literal`.
@@ -136,7 +137,7 @@ impl Pattern {
                             warnings,
                             errors
                         );
-                        let value = match constant_decl.value.extract_constant_literal_value() {
+                        let value = match constant_decl.value.extract_literal_value() {
                             Some(value) => value,
                             None => {
                                 errors.push(CompileError::Unimplemented(

@@ -632,8 +632,9 @@ impl TypedExpression {
         }
     }
 
-    pub(crate) fn extract_constant_literal_value(&self) -> Option<Literal> {
-        self.expression.extract_constant_literal_value()
+    /// Returns `self` as a literal, if possible.
+    pub(crate) fn extract_literal_value(&self) -> Option<Literal> {
+        self.expression.extract_literal_value()
     }
 
     pub(crate) fn type_check(mut ctx: TypeCheckContext, expr: Expression) -> CompileResult<Self> {
@@ -1139,6 +1140,7 @@ impl TypedExpression {
         };
         let type_id = typed_value.return_type;
 
+        // check to make sure that the type of the value is something that can be matched upon
         check!(
             look_up_type_id(type_id).expect_is_supported_in_match_expressions(&typed_value.span),
             return err(warnings, errors),
@@ -1152,7 +1154,7 @@ impl TypedExpression {
             .collect::<Vec<_>>();
 
         // type check the match expression and create a TypedMatchExpression object
-        let typed_match_expression = {
+        let (typed_match_expression, typed_scrutinees) = {
             let ctx = ctx.by_ref().with_help_text("");
             check!(
                 TypedMatchExpression::type_check(ctx, typed_value, branches, span.clone()),
@@ -1164,15 +1166,20 @@ impl TypedExpression {
 
         // check to see if the match expression is exhaustive and if all match arms are reachable
         let (witness_report, arms_reachability) = check!(
-            check_match_expression_usefulness(ctx.namespace, type_id, scrutinees, span.clone()),
+            check_match_expression_usefulness(
+                ctx.namespace,
+                type_id,
+                typed_scrutinees,
+                span.clone()
+            ),
             return err(warnings, errors),
             warnings,
             errors
         );
-        for (arm, reachable) in arms_reachability.into_iter() {
-            if !reachable {
+        for reachable_report in arms_reachability.into_iter() {
+            if !reachable_report.reachable {
                 warnings.push(CompileWarning {
-                    span: arm.span(),
+                    span: reachable_report.span,
                     warning_content: Warning::MatchExpressionUnreachableArm,
                 });
             }
