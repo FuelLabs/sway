@@ -128,7 +128,7 @@ impl Pattern {
             Scrutinee::CatchAll { .. } => Pattern::Wildcard,
             Scrutinee::Variable { name, span } => {
                 match namespace.resolve_symbol(&name).value {
-                    // if this variable is a constant, then we turn it into a Scrutinee::Literal
+                    // If this variable is a constant, then we turn it into a `Scrutinee::Literal`.
                     Some(TypedDeclaration::ConstantDeclaration(decl_id)) => {
                         let constant_decl = check!(
                             CompileResult::from(de_get_constant(decl_id.clone(), &span)),
