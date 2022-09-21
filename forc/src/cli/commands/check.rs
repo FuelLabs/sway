@@ -25,6 +25,9 @@ pub struct Command {
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {
-    forc_check::check(command)?;
+    let res = forc_check::check(command)?;
+    if !res.is_ok() {
+        anyhow::bail!("unable to type check");
+    }
     Ok(())
 }
