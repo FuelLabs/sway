@@ -148,6 +148,7 @@ impl Pattern {
                         };
                         Pattern::from_literal(value)
                     }
+                    // Variable isn't a constant, so this is a new catch-all binding.
                     _ => Pattern::Wildcard,
                 }
             }
