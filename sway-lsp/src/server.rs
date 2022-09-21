@@ -33,10 +33,6 @@ impl Backend {
         self.client.log_message(MessageType::INFO, message).await;
     }
 
-    async fn log_error_message(&self, message: &str) {
-        self.client.log_message(MessageType::ERROR, message).await;
-    }
-
     async fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
         let curr_dir = std::env::current_dir().unwrap();
 
@@ -54,16 +50,18 @@ impl Backend {
         Ok(())
     }
 
-    async fn parse_project(&self, uri: Url) {
-        match self.session.parse_project(&uri) {
-            Ok(diagnostics) => self.publish_diagnostics(&uri, diagnostics).await,
+    async fn parse_project(&self, uri: &Url) {
+        let diagnostics = match self.session.parse_project(&uri) {
+            Ok(diagnostics) => diagnostics,
             Err(err) => {
                 if let DocumentError::FailedToParse(diagnostics) = err {
-                    self.log_error_message("Unable to Parse Project!").await;
-                    self.publish_diagnostics(&uri, diagnostics).await
+                    diagnostics
+                } else {
+                    vec![]
                 }
             }
-        }
+        };
+        self.publish_diagnostics(&uri, diagnostics).await;
     }
 }
 
@@ -159,19 +157,19 @@ impl LanguageServer for Backend {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let uri = params.text_document.uri.clone();
         self.session.handle_open_file(&uri);
-        self.parse_project(uri).await;
+        self.parse_project(&uri).await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri.clone();
         self.session
             .update_text_document(&uri, params.content_changes);
-        self.parse_project(uri).await;
+        self.parse_project(&uri).await;
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let uri = params.text_document.uri.clone();
-        self.parse_project(uri).await;
+        self.parse_project(&uri).await;
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {

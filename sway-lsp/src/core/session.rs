@@ -151,7 +151,6 @@ impl Session {
         if let Ok(manifest) = pkg::ManifestFile::from_dir(&manifest_dir) {
             if let Ok(plan) = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline) {
                 //we can then use them directly to convert them to a Vec<Diagnostic>
-<<<<<<< HEAD
                 if let Ok(CompileResult {
                     value,
                     warnings,
@@ -172,20 +171,6 @@ impl Session {
                     let res = self.parse_ast_to_typed_tokens(ast_res);
                     //self.test_typed_parse(ast_res);
                     return res;
-=======
-                match pkg::check(&plan, silent_mode) {
-                    Ok((parsed_res, ast_res)) => {
-                        // First, populate our token_map with un-typed ast nodes
-                        let _ = self.parse_ast_to_tokens(parsed_res);
-                        // Next, populate our token_map with typed ast nodes
-                        let res = self.parse_ast_to_typed_tokens(ast_res);
-                        //self.test_typed_parse(ast_res);
-                        return res;
-                    }
-                    Err(_err) => {
-                        //TODO get warnings and errors from the compiler here and publish them
-                    }
->>>>>>> ee5a60f62 (clippy)
                 }
             }
         }
