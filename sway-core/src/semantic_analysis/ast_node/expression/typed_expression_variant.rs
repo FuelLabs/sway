@@ -584,7 +584,8 @@ impl fmt::Display for TypedExpressionVariant {
 }
 
 impl TypedExpressionVariant {
-    pub(crate) fn extract_constant_literal_value(&self) -> Option<Literal> {
+    /// Returns `self` as a literal, if possible.
+    pub(crate) fn extract_literal_value(&self) -> Option<Literal> {
         match self {
             TypedExpressionVariant::Literal(value) => Some(value.clone()),
             _ => None,
