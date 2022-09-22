@@ -450,7 +450,11 @@ fn implicit_std_dep() -> Dependency {
 
     fn rev_from_build_metadata(build_metadata: &str) -> Option<String> {
         // Nightlies are in the format v<version>+nightly.<date>.<hash>
-        build_metadata.split('.').last().map(|r| r.to_string())
+        build_metadata
+            .split('.')
+            .last()
+            .map(|r| r.to_string())
+            .filter(|s| !s.is_empty())
     }
 
     let sway_git_tag: String = "v".to_string() + VERSION;
@@ -462,12 +466,12 @@ fn implicit_std_dep() -> Dependency {
     };
 
     if let Some((_tag, build_metadata)) = VERSION.split_once('+') {
-        let rev = rev_from_build_metadata(build_metadata);
-
         // If some revision is available and parsed from the 'nightly' build metadata,
         // we always prefer the revision over the tag.
-        det.tag = None;
-        det.rev = rev;
+        if let Some(rev) = rev_from_build_metadata(build_metadata) {
+            det.tag = None;
+            det.rev = Some(rev);
+        }
     };
 
     Dependency::Detailed(det)
