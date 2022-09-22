@@ -18,13 +18,11 @@ fn main() -> bool {
     test_vector_new_u8();
     test_vector_new_b256();
     test_vector_new_struct();
-    /*
     test_vector_new_enum();
     test_vector_new_tuple();
     test_vector_new_string();
     test_vector_new_array();
     test_vector_with_capacity_u64();
-    */
     true
 }
 
@@ -894,7 +892,7 @@ fn test_vector_new_struct() {
     });
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
-    /*
+    
     // Set at first
     vector.set(0, SimpleStruct {
         x: number3, y: b3
@@ -903,24 +901,24 @@ fn test_vector_new_struct() {
     assert(vector.capacity() == 4);
     match vector.get(0) {
         Option::Some(val) => {
-            assert(val.x == number3),
-            assert(val.y == b3)
+            assert(val.x == number3);
+            assert(val.y == b3);
         }, 
         Option::None => revert(0), 
     }
 
     match vector.get(1) {
         Option::Some(val) => {
-            assert(val.x == number1),
-            assert(val.y == b1)
+            assert(val.x == number1);
+            assert(val.y == b1);
         }, 
         Option::None => revert(0), 
     }
 
     match vector.get(2) {
         Option::Some(val) => {
-            assert(val.x == number2),
-            assert(val.y == b2)
+            assert(val.x == number2);
+            assert(val.y == b2);
         }, 
         Option::None => revert(0), 
     }
@@ -934,24 +932,24 @@ fn test_vector_new_struct() {
     
     match vector.get(0) {
         Option::Some(val) => {
-            assert(val.x == number3),
-            assert(val.y == b3)
+            assert(val.x == number3);
+            assert(val.y == b3);
         }, 
         Option::None => revert(0), 
     }
 
     match vector.get(1) {
         Option::Some(val) => {
-            assert(val.x == number4),
-            assert(val.y == b4)
+            assert(val.x == number4);
+            assert(val.y == b4);
         }, 
         Option::None => revert(0), 
     }
 
     match vector.get(2) {
         Option::Some(val) => {
-            assert(val.x == number2),
-            assert(val.y == b2)
+            assert(val.x == number2);
+            assert(val.y == b2);
         }, 
         Option::None => revert(0), 
     }
@@ -964,30 +962,28 @@ fn test_vector_new_struct() {
     assert(vector.capacity() == 4);
     match vector.get(0) {
         Option::Some(val) => {
-            assert(val.x == number3),
-            assert(val.y == b3)
+            assert(val.x == number3);
+            assert(val.y == b3);
         }, 
         Option::None => revert(0), 
     }
 
     match vector.get(1) {
         Option::Some(val) => {
-            assert(val.x == number4),
-            assert(val.y == b4)
+            assert(val.x == number4);
+            assert(val.y == b4);
         }, 
         Option::None => revert(0), 
     }
 
     match vector.get(2) {
         Option::Some(val) => {
-            assert(val.x == number5),
-            assert(val.y == b5)
+            assert(val.x == number5);
+            assert(val.y == b5);
         }, 
         Option::None => revert(0), 
     }
-    */
 }
-/*
 
 fn test_vector_new_enum() {
     let mut vector = ~Vec::new();
@@ -1337,7 +1333,7 @@ fn test_vector_new_enum() {
     }
 
     // Set at last
-    vector.set(2, SimpleEnum::Z(b4, b5));
+    vector.set(2, SimpleEnum::Z((b4, b5)));
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
 
@@ -2411,4 +2407,3 @@ fn test_vector_with_capacity_u64() {
         Option::Some(val) => revert(0), Option::None => (), 
     }
 }
-*/
