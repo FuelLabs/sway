@@ -256,5 +256,5 @@ async fn can_get_tx_id() {
 
     let byte_array: [u8; 32] = tx_id.into();
 
-    assert_eq!(result.value, fuels::prelude::Bits256(byte_array));
+    assert_eq!(result.value, Bits256(byte_array));
 }

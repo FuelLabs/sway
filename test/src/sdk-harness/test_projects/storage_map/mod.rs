@@ -293,9 +293,9 @@ mod u64_to {
 
         let (key1, key2, key3) = (50, 99, 10);
         let (val1, val2, val3) = (
-            (fuels::prelude::Bits256([1; 32]), 42, true),
-            (fuels::prelude::Bits256([2; 32]), 24, true),
-            (fuels::prelude::Bits256([3; 32]), 99, true),
+            (Bits256([1; 32]), 42, true),
+            (Bits256([2; 32]), 24, true),
+            (Bits256([3; 32]), 99, true),
         );
 
         instance
@@ -351,18 +351,18 @@ mod u64_to {
         let (val1, val2, val3) = (
             Struct {
                 x: 42,
-                y: fuels::prelude::Bits256([66; 32]),
-                z: fuels::prelude::Bits256([99; 32]),
+                y: Bits256([66; 32]),
+                z: Bits256([99; 32]),
             },
             Struct {
                 x: 24,
-                y: fuels::prelude::Bits256([11; 32]),
-                z: fuels::prelude::Bits256([90; 32]),
+                y: Bits256([11; 32]),
+                z: Bits256([90; 32]),
             },
             Struct {
                 x: 77,
-                y: fuels::prelude::Bits256([55; 32]),
-                z: fuels::prelude::Bits256([12; 32]),
+                y: Bits256([55; 32]),
+                z: Bits256([12; 32]),
             },
         );
 
@@ -416,7 +416,7 @@ mod u64_to {
         let instance = test_storage_map_instance().await;
 
         let (key1, key2, key3) = (44, 17, 1000);
-        let (val1, val2, val3) = (Enum::V1(fuels::prelude::Bits256([66; 32])), Enum::V2(42), Enum::V3(fuels::prelude::Bits256([42; 32])));
+        let (val1, val2, val3) = (Enum::V1(Bits256([66; 32])), Enum::V2(42), Enum::V3(Bits256([42; 32])));
 
         instance
             .insert_into_u64_to_enum_map(key1, val1.clone())
@@ -723,9 +723,9 @@ mod to_u64_map {
         let instance = test_storage_map_instance().await;
 
         let (key1, key2, key3) = (
-            (fuels::prelude::Bits256([1; 32]), 42, true),
-            (fuels::prelude::Bits256([2; 32]), 24, true),
-            (fuels::prelude::Bits256([3; 32]), 99, true),
+            (Bits256([1; 32]), 42, true),
+            (Bits256([2; 32]), 24, true),
+            (Bits256([3; 32]), 99, true),
         );
         let (val1, val2, val3) = (50, 99, 10);
 
@@ -781,18 +781,18 @@ mod to_u64_map {
         let (key1, key2, key3) = (
             Struct {
                 x: 42,
-                y: fuels::prelude::Bits256([66; 32]),
-                z: fuels::prelude::Bits256([99; 32]),
+                y: Bits256([66; 32]),
+                z: Bits256([99; 32]),
             },
             Struct {
                 x: 24,
-                y: fuels::prelude::Bits256([11; 32]),
-                z: fuels::prelude::Bits256([90; 32]),
+                y: Bits256([11; 32]),
+                z: Bits256([90; 32]),
             },
             Struct {
                 x: 77,
-                y: fuels::prelude::Bits256([55; 32]),
-                z: fuels::prelude::Bits256([12; 32]),
+                y: Bits256([55; 32]),
+                z: Bits256([12; 32]),
             },
         );
 
@@ -847,7 +847,7 @@ mod to_u64_map {
     async fn from_enum() {
         let instance = test_storage_map_instance().await;
 
-        let (key1, key2, key3) = (Enum::V1(fuels::prelude::Bits256([66; 32])), Enum::V2(42), Enum::V3(fuels::prelude::Bits256([42; 32])));
+        let (key1, key2, key3) = (Enum::V1(Bits256([66; 32])), Enum::V2(42), Enum::V3(Bits256([42; 32])));
         let (val1, val2, val3) = (44, 17, 1000);
 
         instance
