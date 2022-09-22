@@ -406,7 +406,7 @@ impl TypeInfo {
                     let names = fields
                         .iter()
                         .map(|field_type| {
-                            resolve_type(field_type.type_id, error_msg_span)
+                            check_type_is_not_unknown(field_type.type_id, error_msg_span)
                                 .expect("unreachable?")
                                 .to_selector_name(error_msg_span)
                         })
@@ -434,7 +434,7 @@ impl TypeInfo {
                     let names = fields
                         .iter()
                         .map(|ty| {
-                            let ty = match resolve_type(ty.type_id, error_msg_span) {
+                            let ty = match check_type_is_not_unknown(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
@@ -455,7 +455,7 @@ impl TypeInfo {
                     let type_arguments = type_parameters
                         .iter()
                         .map(|ty| {
-                            let ty = match resolve_type(ty.type_id, error_msg_span) {
+                            let ty = match check_type_is_not_unknown(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
@@ -487,7 +487,7 @@ impl TypeInfo {
                     let names = variant_types
                         .iter()
                         .map(|ty| {
-                            let ty = match resolve_type(ty.type_id, error_msg_span) {
+                            let ty = match check_type_is_not_unknown(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
@@ -508,7 +508,7 @@ impl TypeInfo {
                     let type_arguments = type_parameters
                         .iter()
                         .map(|ty| {
-                            let ty = match resolve_type(ty.type_id, error_msg_span) {
+                            let ty = match check_type_is_not_unknown(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
@@ -710,11 +710,11 @@ impl TypeInfo {
         }
     }
 
-    pub(crate) fn matches_type_parameter(&self, mapping: &TypeMapping) -> Option<TypeId> {
+    pub(crate) fn matches_type_parameter(&self, type_mapping: &TypeMapping) -> Option<TypeId> {
         use TypeInfo::*;
         match self {
             TypeInfo::Custom { .. } => {
-                for (param, ty_id) in mapping.iter() {
+                for (param, ty_id) in type_mapping.iter() {
                     if look_up_type_id(*param) == *self {
                         return Some(*ty_id);
                     }
@@ -722,7 +722,7 @@ impl TypeInfo {
                 None
             }
             TypeInfo::UnknownGeneric { .. } => {
-                for (param, ty_id) in mapping.iter() {
+                for (param, ty_id) in type_mapping.iter() {
                     if look_up_type_id(*param) == *self {
                         return Some(*ty_id);
                     }
@@ -736,21 +736,13 @@ impl TypeInfo {
             } => {
                 let mut new_fields = fields.clone();
                 for new_field in new_fields.iter_mut() {
-                    if let Some(matching_id) =
-                        look_up_type_id(new_field.type_id).matches_type_parameter(mapping)
-                    {
-                        new_field.type_id =
-                            insert_type(TypeInfo::Ref(matching_id, new_field.span.clone()));
-                    }
+                    new_field.type_id.update_type(type_mapping, &new_field.span);
                 }
                 let mut new_type_parameters = type_parameters.clone();
                 for new_param in new_type_parameters.iter_mut() {
-                    if let Some(matching_id) =
-                        look_up_type_id(new_param.type_id).matches_type_parameter(mapping)
-                    {
-                        new_param.type_id =
-                            insert_type(TypeInfo::Ref(matching_id, new_param.span().clone()));
-                    }
+                    new_param
+                        .type_id
+                        .update_type(type_mapping, &new_param.span());
                 }
                 Some(insert_type(TypeInfo::Struct {
                     fields: new_fields,
@@ -765,21 +757,15 @@ impl TypeInfo {
             } => {
                 let mut new_variants = variant_types.clone();
                 for new_variant in new_variants.iter_mut() {
-                    if let Some(matching_id) =
-                        look_up_type_id(new_variant.type_id).matches_type_parameter(mapping)
-                    {
-                        new_variant.type_id =
-                            insert_type(TypeInfo::Ref(matching_id, new_variant.span.clone()));
-                    }
+                    new_variant
+                        .type_id
+                        .update_type(type_mapping, &new_variant.span);
                 }
                 let mut new_type_parameters = type_parameters.clone();
                 for new_param in new_type_parameters.iter_mut() {
-                    if let Some(matching_id) =
-                        look_up_type_id(new_param.type_id).matches_type_parameter(mapping)
-                    {
-                        new_param.type_id =
-                            insert_type(TypeInfo::Ref(matching_id, new_param.span().clone()));
-                    }
+                    new_param
+                        .type_id
+                        .update_type(type_mapping, &new_param.span());
                 }
                 Some(insert_type(TypeInfo::Enum {
                     variant_types: new_variants,
@@ -788,7 +774,7 @@ impl TypeInfo {
                 }))
             }
             TypeInfo::Array(ary_ty_id, count, initial_elem_ty) => look_up_type_id(*ary_ty_id)
-                .matches_type_parameter(mapping)
+                .matches_type_parameter(type_mapping)
                 .map(|matching_id| {
                     insert_type(TypeInfo::Array(matching_id, *count, *initial_elem_ty))
                 }),
@@ -797,7 +783,7 @@ impl TypeInfo {
                 let mut index = 0;
                 while index < fields.len() {
                     let new_field_id_opt =
-                        look_up_type_id(fields[index].type_id).matches_type_parameter(mapping);
+                        look_up_type_id(fields[index].type_id).matches_type_parameter(type_mapping);
                     if let Some(new_field_id) = new_field_id_opt {
                         new_fields.extend(fields[..index].iter().cloned());
                         let type_id =
@@ -814,7 +800,7 @@ impl TypeInfo {
                 }
                 while index < fields.len() {
                     let new_field = match look_up_type_id(fields[index].type_id)
-                        .matches_type_parameter(mapping)
+                        .matches_type_parameter(type_mapping)
                     {
                         Some(new_field_id) => {
                             let type_id = insert_type(TypeInfo::Ref(

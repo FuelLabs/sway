@@ -2084,7 +2084,7 @@ impl TypedExpression {
                         expression: TypedExpressionVariant::StorageReassignment(Box::new(
                             reassignment,
                         )),
-                        return_type: crate::type_system::insert_type(TypeInfo::Tuple(Vec::new())),
+                        return_type: insert_type(TypeInfo::Tuple(Vec::new())),
                         is_constant: IsConstant::No,
                         span,
                     },

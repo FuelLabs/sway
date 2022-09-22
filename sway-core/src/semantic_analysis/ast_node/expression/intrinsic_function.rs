@@ -142,7 +142,8 @@ impl TypedIntrinsicFunctionKind {
                     return err(warnings, errors);
                 }
                 let targ = type_arguments[0].clone();
-                let initial_type_id = insert_type(resolve_type(targ.type_id, &targ.span).unwrap());
+                let initial_type_id =
+                    insert_type(check_type_is_not_unknown(targ.type_id, &targ.span).unwrap());
                 let type_id = check!(
                     ctx.resolve_type_with_self(
                         initial_type_id,
@@ -177,7 +178,8 @@ impl TypedIntrinsicFunctionKind {
                     return err(warnings, errors);
                 }
                 let targ = type_arguments[0].clone();
-                let initial_type_id = insert_type(resolve_type(targ.type_id, &targ.span).unwrap());
+                let initial_type_id =
+                    insert_type(check_type_is_not_unknown(targ.type_id, &targ.span).unwrap());
                 let type_id = check!(
                     ctx.resolve_type_with_self(
                         initial_type_id,
@@ -232,7 +234,7 @@ impl TypedIntrinsicFunctionKind {
                 );
 
                 // Check for supported argument types
-                let arg_ty = resolve_type(lhs.return_type, &lhs.span).unwrap();
+                let arg_ty = check_type_is_not_unknown(lhs.return_type, &lhs.span).unwrap();
                 let is_valid_arg_ty = matches!(arg_ty, TypeInfo::UnsignedInteger(_))
                     || matches!(arg_ty, TypeInfo::Boolean);
                 if !is_valid_arg_ty {
@@ -308,7 +310,7 @@ impl TypedIntrinsicFunctionKind {
 
                 // Make sure that the index argument is a `u64`
                 if !matches!(
-                    resolve_type(index.return_type, &index.span).unwrap(),
+                    check_type_is_not_unknown(index.return_type, &index.span).unwrap(),
                     TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 ) {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
@@ -320,7 +322,7 @@ impl TypedIntrinsicFunctionKind {
 
                 // Make sure that the tx field ID is a `u64`
                 if !matches!(
-                    resolve_type(tx_field_id.return_type, &tx_field_id.span).unwrap(),
+                    check_type_is_not_unknown(tx_field_id.return_type, &tx_field_id.span).unwrap(),
                     TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 ) {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
@@ -331,7 +333,8 @@ impl TypedIntrinsicFunctionKind {
                 }
 
                 let targ = type_arguments[0].clone();
-                let initial_type_id = insert_type(resolve_type(targ.type_id, &targ.span).unwrap());
+                let initial_type_id =
+                    insert_type(check_type_is_not_unknown(targ.type_id, &targ.span).unwrap());
                 let type_id = check!(
                     ctx.resolve_type_with_self(
                         initial_type_id,
@@ -376,7 +379,9 @@ impl TypedIntrinsicFunctionKind {
                     warnings,
                     errors
                 );
-                let copy_ty = resolve_type(exp.return_type, &span).unwrap().is_copy_type();
+                let copy_ty = check_type_is_not_unknown(exp.return_type, &span)
+                    .unwrap()
+                    .is_copy_type();
                 if copy_ty {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
@@ -415,7 +420,7 @@ impl TypedIntrinsicFunctionKind {
                     warnings,
                     errors
                 );
-                let key_ty = resolve_type(exp.return_type, &span).unwrap();
+                let key_ty = check_type_is_not_unknown(exp.return_type, &span).unwrap();
                 if key_ty != TypeInfo::B256 {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
@@ -461,7 +466,7 @@ impl TypedIntrinsicFunctionKind {
                     warnings,
                     errors
                 );
-                let key_ty = resolve_type(key_exp.return_type, &span).unwrap();
+                let key_ty = check_type_is_not_unknown(key_exp.return_type, &span).unwrap();
                 if key_ty != TypeInfo::B256 {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
@@ -486,7 +491,7 @@ impl TypedIntrinsicFunctionKind {
                         .with_help_text("")
                         .with_type_annotation(insert_type(TypeInfo::Unknown));
                     let initial_type_id =
-                        insert_type(resolve_type(targ.type_id, &targ.span).unwrap());
+                        insert_type(check_type_is_not_unknown(targ.type_id, &targ.span).unwrap());
                     let type_id = check!(
                         ctx.resolve_type_with_self(
                             initial_type_id,
@@ -572,7 +577,7 @@ impl TypedIntrinsicFunctionKind {
                 );
 
                 // Check for supported argument types
-                let arg_ty = resolve_type(lhs.return_type, &lhs.span).unwrap();
+                let arg_ty = check_type_is_not_unknown(lhs.return_type, &lhs.span).unwrap();
                 let is_valid_arg_ty = matches!(arg_ty, TypeInfo::UnsignedInteger(_));
                 if !is_valid_arg_ty {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {

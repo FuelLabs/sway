@@ -10,8 +10,8 @@ use crate::{
         TypedExpressionVariant, TypedIntrinsicFunctionKind,
     },
     type_system::{
-        insert_type, look_up_type_id, resolve_type, set_type_as_storage_only, unify_with_self,
-        CopyTypes, TypeId, TypeMapping, TypeParameter,
+        check_type_is_not_unknown, insert_type, look_up_type_id, set_type_as_storage_only,
+        unify_with_self, CopyTypes, TypeId, TypeMapping, TypeParameter,
     },
     CallPath, CompileError, CompileResult, FunctionDeclaration, ImplSelf, ImplTrait, Purity,
     TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
@@ -133,7 +133,10 @@ impl TypedImplTrait {
                     type_implementing_for_span: type_implementing_for_span.clone(),
                 };
                 let implementing_for_type_id = insert_type(
-                    match resolve_type(implementing_for_type_id, &type_implementing_for_span) {
+                    match check_type_is_not_unknown(
+                        implementing_for_type_id,
+                        &type_implementing_for_span,
+                    ) {
                         Ok(o) => o,
                         Err(e) => {
                             errors.push(e.into());
@@ -655,13 +658,15 @@ fn type_check_trait_implementation(
     .concat();
     ctx.namespace.star_import(&trait_path);
 
-    let self_type_id = insert_type(match resolve_type(ctx.self_type(), self_type_span) {
-        Ok(o) => o,
-        Err(e) => {
-            errors.push(e.into());
-            return err(warnings, errors);
-        }
-    });
+    let self_type_id = insert_type(
+        match check_type_is_not_unknown(ctx.self_type(), self_type_span) {
+            Ok(o) => o,
+            Err(e) => {
+                errors.push(e.into());
+                return err(warnings, errors);
+            }
+        },
+    );
     ctx.namespace.insert_trait_implementation(
         CallPath {
             prefixes: vec![],
