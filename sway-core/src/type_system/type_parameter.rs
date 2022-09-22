@@ -39,13 +39,7 @@ impl PartialEq for TypeParameter {
 
 impl CopyTypes for TypeParameter {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_id = match look_up_type_id(self.type_id).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, self.name_ident.span())),
-            None => {
-                let ty = TypeInfo::Ref(insert_type(look_up_type_id_raw(self.type_id)), self.span());
-                insert_type(ty)
-            }
-        };
+        self.type_id.update_type(type_mapping, &self.span());
     }
 }
 

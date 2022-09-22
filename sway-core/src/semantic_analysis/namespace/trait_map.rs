@@ -1,6 +1,6 @@
 use crate::{
-    type_system::{create_type_mapping, look_up_type_id, CopyTypes, TypeId},
-    CallPath, TypeInfo, TypedFunctionDeclaration,
+    type_system::{look_up_type_id, CopyTypes, TypeId},
+    CallPath, TypeInfo, TypeMapping, TypedFunctionDeclaration,
 };
 
 type TraitName = CallPath;
@@ -87,7 +87,8 @@ impl TraitMap {
         }
         for ((_, map_type_id), trait_methods) in self.trait_map.iter() {
             if look_up_type_id(incoming_type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
-                let type_mapping = create_type_mapping(*map_type_id, incoming_type_id);
+                let type_mapping =
+                    TypeMapping::from_superset_and_subset(*map_type_id, incoming_type_id);
                 let mut trait_methods = trait_methods.values().cloned().collect::<Vec<_>>();
                 trait_methods
                     .iter_mut()
