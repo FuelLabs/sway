@@ -20,38 +20,79 @@ pub(crate) struct TypeEngine {
 }
 
 impl TypeEngine {
-    pub fn insert_type(&self, ty: TypeInfo) -> TypeId {
+    /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
+    /// referring to that [TypeInfo].
+    pub(crate) fn insert_type(&self, ty: TypeInfo) -> TypeId {
         TypeId::new(self.slab.insert(ty))
     }
 
-    pub fn len(&self) -> usize {
-        self.slab.len()
+    /// Gets the size of the [TypeEngine].
+    fn size(&self) -> usize {
+        self.slab.size()
     }
 
-    pub fn look_up_type_id_raw(&self, id: TypeId) -> TypeInfo {
+    /// Performs a lookup of `id` into the [TypeEngine], but only one level
+    /// deep. (i.e. lookup will stop after looking up `id` once, even if it
+    /// returns a [TypeInfo::Ref(..)])
+    fn look_up_type_id_raw(&self, id: TypeId) -> TypeInfo {
         self.slab.get(*id)
     }
 
-    pub fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
+    /// Performs a recursive lookup of `id` into the [TypeEngine] until the
+    /// lookup yields a [TypeInfo] variant other than [TypeInfo::Ref(..)].
+    pub(crate) fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
         match self.slab.get(*id) {
             TypeInfo::Ref(other, _sp) => self.look_up_type_id(other),
             ty => ty,
         }
     }
 
-    pub fn set_type_as_storage_only(&self, id: TypeId) {
+    /// Denotes the given [TypeId] as being used with storage.
+    fn set_type_as_storage_only(&self, id: TypeId) {
         self.storage_only_types.insert(self.look_up_type_id(id));
     }
 
-    pub fn is_type_storage_only(&self, id: TypeId) -> bool {
+    /// Checks if the given [TypeId] is a storage only type.
+    fn is_type_storage_only(&self, id: TypeId) -> bool {
         let ti = &self.look_up_type_id(id);
         self.is_type_info_storage_only(ti)
     }
 
-    pub fn is_type_info_storage_only(&self, ti: &TypeInfo) -> bool {
+    /// Checks if the given [TypeInfo] is a storage only type.
+    fn is_type_info_storage_only(&self, ti: &TypeInfo) -> bool {
         self.storage_only_types.exists(|x| ti.is_subset_of(x))
     }
 
+    /// Given a `value` of type `T` that is able to be monomorphized and a set
+    /// of `type_arguments`, monomorphize `value` with the `type_arguments`.
+    ///
+    /// When this function is called, it is passed a `T` that is a copy of some
+    /// original declaration for `T` (let's denote the original with `[T]`).
+    /// Because monomorphization happens at application time (e.g. function
+    /// application), we want to be able to modify `value` such that type
+    /// checking the application of `value` affects only `T` and not `[T]`.
+    ///
+    /// So, at a high level, this function does two things. It 1) performs the
+    /// necessary work to refresh the relevant generic types in `T` so that they
+    /// are distinct from the generics of the same name in `[T]`. And it 2)
+    /// applies `type_arguments` (if any are provided) to the type parameters
+    /// of `value`, unifying the types.
+    ///
+    /// There are 4 cases that are handled in this function:
+    ///
+    /// 1. `value` does not have type parameters + `type_arguments` is empty:
+    ///     1a. return ok
+    /// 2. `value` has type parameters + `type_arguments` is empty:
+    ///     2a. if the [EnforceTypeArguments::Yes] variant is provided, then
+    ///         error
+    ///     2b. call `refresh_relevant_generic_types`
+    /// 3. `value` does have type parameters + `type_arguments` is nonempty:
+    ///     3a. error
+    /// 4. `value` has type parameters + `type_arguments` is nonempty:
+    ///     4a. check to see that the type parameters and `type_arguments` have
+    ///         the same length
+    ///     4b. for each type argument in `type_arguments`, resolve the type
+    ///     4c. call `refresh_relevant_generic_types`
     fn monomorphize<T>(
         &self,
         value: &mut T,
@@ -64,14 +105,36 @@ impl TypeEngine {
     where
         T: MonomorphizeHelper + CopyTypes,
     {
+        fn refresh_relevant_generic_types<T>(
+            value: &mut T,
+            type_arguments: &[TypeArgument],
+        ) -> CompileResult<()>
+        where
+            T: MonomorphizeHelper + CopyTypes,
+        {
+            let mut warnings = vec![];
+            let mut errors = vec![];
+            let type_mapping = insert_type_parameters(value.type_parameters());
+            for ((_, interim_type), type_argument) in type_mapping.iter().zip(type_arguments.iter())
+            {
+                let (mut new_warnings, new_errors) = unify(
+                    *interim_type,
+                    type_argument.type_id,
+                    &type_argument.span,
+                    "Type argument is not assignable to generic type parameter.",
+                );
+                warnings.append(&mut new_warnings);
+                errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+            }
+            value.copy_types(&type_mapping);
+            ok((), warnings, errors)
+        }
+
         let mut warnings = vec![];
         let mut errors = vec![];
-        match (
-            value.type_parameters().is_empty(),
-            type_arguments.is_empty(),
-        ) {
-            (true, true) => ok((), warnings, errors),
-            (false, true) => {
+        match (value.type_parameters().len(), type_arguments.len()) {
+            (0, 0) => ok((), warnings, errors),
+            (_, 0) => {
                 if let EnforceTypeArguments::Yes = enforce_type_arguments {
                     errors.push(CompileError::NeedsTypeArguments {
                         name: value.name().clone(),
@@ -79,11 +142,9 @@ impl TypeEngine {
                     });
                     return err(warnings, errors);
                 }
-                let type_mapping = insert_type_parameters(value.type_parameters());
-                value.copy_types(&type_mapping);
-                ok((), warnings, errors)
+                refresh_relevant_generic_types(value, type_arguments)
             }
-            (true, false) => {
+            (0, _) => {
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
@@ -95,7 +156,7 @@ impl TypeEngine {
                 });
                 err(warnings, errors)
             }
-            (false, false) => {
+            (_, _) => {
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
@@ -124,29 +185,18 @@ impl TypeEngine {
                         errors
                     );
                 }
-                let type_mapping = insert_type_parameters(value.type_parameters());
-                for ((_, interim_type), type_argument) in
-                    type_mapping.iter().zip(type_arguments.iter())
-                {
-                    let (mut new_warnings, new_errors) = unify(
-                        *interim_type,
-                        type_argument.type_id,
-                        &type_argument.span,
-                        "Type argument is not assignable to generic type parameter.",
-                    );
-                    warnings.append(&mut new_warnings);
-                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                }
-                value.copy_types(&type_mapping);
-                ok((), warnings, errors)
+                refresh_relevant_generic_types(value, type_arguments)
             }
         }
     }
 
-    /// Make the types of two type terms equivalent (or produce an error if
-    /// there is a conflict between them).
-    //
-    // When reporting type errors we will report 'received' and 'expected' as such.
+    /// Make the types of `received` and `expected` equivalent (or produce an
+    /// error if there is a conflict between them).
+    ///
+    /// More specifically, this function tries to make `received` equivalent to
+    /// `expected`, except in cases where `received` has more type information
+    /// than `expected` (e.g. when `expected` is a generic type and `received`
+    /// is not).
     pub(crate) fn unify(
         &self,
         received: TypeId,
@@ -441,13 +491,6 @@ impl TypeEngine {
                 // if they are the same, then it's ok
                 (vec![], vec![])
             }
-            // When unifying complex types, we must check their sub-types. This
-            // can be trivially implemented for tuples, sum types, etc.
-            // (List(a_item), List(b_item)) => self.unify(a_item, b_item),
-            // this can be used for curried function types but we might not want that
-            // (Func(a_i, a_o), Func(b_i, b_o)) => {
-            //     self.unify(a_i, b_i).and_then(|_| self.unify(a_o, b_o))
-            // }
 
             // If no previous attempts to unify were successful, raise an error
             (TypeInfo::ErrorRecovery, _) => (vec![], vec![]),
@@ -464,7 +507,10 @@ impl TypeEngine {
         }
     }
 
-    pub fn unify_with_self(
+    /// Replace any instances of the [TypeInfo::SelfType] variant with
+    /// `self_type` in both `received` and `expected`, then unify `received` and
+    /// `expected`.
+    fn unify_with_self(
         &self,
         mut received: TypeId,
         mut expected: TypeId,
@@ -477,7 +523,9 @@ impl TypeEngine {
         self.unify(received, expected, span, help_text)
     }
 
-    pub fn check_type_is_not_unknown(
+    /// Lookup the given `id` and return a [TypeError] if it is a
+    /// [TypeInfo::Unknown] variant.
+    pub(crate) fn check_type_is_not_unknown(
         &self,
         id: TypeId,
         error_span: &Span,
@@ -490,12 +538,16 @@ impl TypeEngine {
         }
     }
 
-    pub fn clear(&self) {
+    /// Clear the [TypeEngine].
+    fn clear(&self) {
         self.slab.clear();
         self.storage_only_types.clear();
     }
 
-    pub(crate) fn resolve_type(
+    /// Resolve the type of the given [TypeId], replacing any instances of
+    /// [TypeInfo::Custom] with either a monomorphized struct, monomorphized
+    /// enum, or a reference to a type parameter.
+    fn resolve_type(
         &self,
         type_id: TypeId,
         span: &Span,
@@ -531,7 +583,7 @@ impl TypeEngine {
 
                         // monomorphize the copy, in place
                         check!(
-                            monomorphize(
+                            self.monomorphize(
                                 &mut new_copy,
                                 &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
@@ -564,7 +616,7 @@ impl TypeEngine {
 
                         // monomorphize the copy, in place
                         check!(
-                            monomorphize(
+                            self.monomorphize(
                                 &mut new_copy,
                                 &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
@@ -638,8 +690,10 @@ impl TypeEngine {
         ok(type_id, warnings, errors)
     }
 
+    /// Replace any instances of the [TypeInfo::SelfType] variant with
+    /// `self_type` in `type_id`, then resolve `type_id`.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn resolve_type_with_self(
+    fn resolve_type_with_self(
         &self,
         mut type_id: TypeId,
         self_type: TypeId,
@@ -665,8 +719,8 @@ pub fn insert_type(ty: TypeInfo) -> TypeId {
     TYPE_ENGINE.insert_type(ty)
 }
 
-pub fn type_engine_len() -> usize {
-    TYPE_ENGINE.len()
+pub fn type_engine_size() -> usize {
+    TYPE_ENGINE.size()
 }
 
 pub fn look_up_type_id(id: TypeId) -> TypeInfo {

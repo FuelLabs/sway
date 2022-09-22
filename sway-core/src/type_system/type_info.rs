@@ -27,7 +27,6 @@ impl fmt::Display for AbiName {
 }
 
 /// Type information without an associated value, used for type inferencing and definition.
-// TODO use idents instead of Strings when we have arena spans
 #[derive(Derivative)]
 #[derivative(Debug, Clone)]
 pub enum TypeInfo {
@@ -50,7 +49,6 @@ pub enum TypeInfo {
     Boolean,
     /// For the type inference engine to use when a type references another type
     Ref(TypeId, Span),
-
     Tuple(Vec<TypeArgument>),
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
@@ -384,6 +382,7 @@ impl TypeInfo {
             Storage { .. } => "contract storage".into(),
         }
     }
+
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(&self, error_msg_span: &Span) -> CompileResult<String> {
         use TypeInfo::*;

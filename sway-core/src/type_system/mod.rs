@@ -108,7 +108,9 @@ fn basic_numeric_unknown() {
     assert!(errors.is_empty());
 
     assert_eq!(
-        engine.check_type_is_not_unknown(id, &Span::dummy()).unwrap(),
+        engine
+            .check_type_is_not_unknown(id, &Span::dummy())
+            .unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     );
 }
@@ -128,7 +130,9 @@ fn chain_of_refs() {
     assert!(errors.is_empty());
 
     assert_eq!(
-        engine.check_type_is_not_unknown(id3, &Span::dummy()).unwrap(),
+        engine
+            .check_type_is_not_unknown(id3, &Span::dummy())
+            .unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     );
 }
@@ -148,7 +152,9 @@ fn chain_of_refs_2() {
     assert!(errors.is_empty());
 
     assert_eq!(
-        engine.check_type_is_not_unknown(id3, &Span::dummy()).unwrap(),
+        engine
+            .check_type_is_not_unknown(id3, &Span::dummy())
+            .unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     );
 }
