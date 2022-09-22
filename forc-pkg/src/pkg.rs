@@ -1316,7 +1316,7 @@ fn pin_pkg(
             pinned
         }
         Source::Git(ref git_source) => {
-            // TODO: If the git source directly specifies a full commit hash, we should first check
+            // If the git source directly specifies a full commit hash, we should check
             // to see if we have a local copy. Otherwise we cannot know what commit we should pin
             // to without fetching the repo into a temporary directory.
             let (pinned_git, repo_path) = if offline {
@@ -1445,17 +1445,13 @@ fn search_git_source_locally(
     match &git_source.reference {
         GitReference::Branch(branch) => {
             // Collect repos from this branch with their HEAD time
-            let mut repos_from_branch =
-                collect_local_repos_with_branch(checkouts_dir, name, branch)?;
-            // Sort the repos by their HEAD commit times
-            repos_from_branch.sort_by(|a, b| a.1 .1.cmp(&b.1 .1));
-            if let Some(newest_branch_repo) = repos_from_branch.get(0) {
-                let (repo_path, (commit_hash, _)) = newest_branch_repo;
-                Ok(Some((repo_path.clone(), commit_hash.clone())))
-            } else {
-                // No error occured during the process but there is no match
-                Ok(None)
-            }
+            let repos_from_branch = collect_local_repos_with_branch(checkouts_dir, name, branch)?;
+            // Get the newest repo by their HEAD commit times
+            let newest_branch_repo = repos_from_branch
+                .into_iter()
+                .max_by_key(|&(_, (_, time))| time)
+                .map(|(repo_path, (hash, _))| (repo_path, hash));
+            Ok(newest_branch_repo)
         }
         _ => find_exact_local_repo_with_reference(checkouts_dir, name, &git_source.reference),
     }
@@ -1468,19 +1464,15 @@ fn collect_local_repos_with_branch(
     branch_name: &str,
 ) -> Result<Vec<(PathBuf, HeadWithTime)>> {
     let mut list_of_repos = Vec::new();
-    with_search_checkouts(
-        checkouts_dir,
-        package_name,
-        &mut |repo_index, repo_dir_path| {
-            // Check if the repo's HEAD commit to verify it is from desired branch
-            if let GitReference::Branch(branch) = repo_index.git_reference {
-                if branch == branch_name {
-                    list_of_repos.push((repo_dir_path, repo_index.head_with_time));
-                }
+    with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
+        // Check if the repo's HEAD commit to verify it is from desired branch
+        if let GitReference::Branch(branch) = repo_index.git_reference {
+            if branch == branch_name {
+                list_of_repos.push((repo_dir_path, repo_index.head_with_time));
             }
-            Ok(())
-        },
-    )?;
+        }
+        Ok(())
+    })?;
     Ok(list_of_repos)
 }
 
@@ -1506,20 +1498,16 @@ fn find_repo_with_tag(
     checkouts_dir: PathBuf,
 ) -> Result<Option<(PathBuf, String)>> {
     let mut found_local_repo = None;
-    with_search_checkouts(
-        checkouts_dir,
-        package_name,
-        &mut |repo_index, repo_dir_path| {
-            // Get current head of the repo
-            let current_head = repo_index.head_with_time.0;
-            if let GitReference::Tag(curr_repo_tag) = repo_index.git_reference {
-                if curr_repo_tag == tag {
-                    found_local_repo = Some((repo_dir_path, current_head))
-                }
+    with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
+        // Get current head of the repo
+        let current_head = repo_index.head_with_time.0;
+        if let GitReference::Tag(curr_repo_tag) = repo_index.git_reference {
+            if curr_repo_tag == tag {
+                found_local_repo = Some((repo_dir_path, current_head))
             }
-            Ok(())
-        },
-    )?;
+        }
+        Ok(())
+    })?;
     Ok(found_local_repo)
 }
 
@@ -1530,26 +1518,22 @@ fn find_repo_with_rev(
     checkouts_dir: PathBuf,
 ) -> Result<Option<(PathBuf, String)>> {
     let mut found_local_repo = None;
-    with_search_checkouts(
-        checkouts_dir,
-        package_name,
-        &mut |repo_index, repo_dir_path| {
-            // Get current head of the repo
-            let current_head = repo_index.head_with_time.0;
-            if let GitReference::Rev(curr_repo_rev) = repo_index.git_reference {
-                if curr_repo_rev == rev {
-                    found_local_repo = Some((repo_dir_path, current_head))
-                }
+    with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
+        // Get current head of the repo
+        let current_head = repo_index.head_with_time.0;
+        if let GitReference::Rev(curr_repo_rev) = repo_index.git_reference {
+            if curr_repo_rev == rev {
+                found_local_repo = Some((repo_dir_path, current_head));
             }
-            Ok(())
-        },
-    )?;
+        }
+        Ok(())
+    })?;
     Ok(found_local_repo)
 }
 
 /// Search local checkouts directory and apply the given function. This is used for iterating over
 /// possible options of a given package.
-fn with_search_checkouts<F>(checkouts_dir: PathBuf, package_name: &str, f: &mut F) -> Result<()>
+fn with_search_checkouts<F>(checkouts_dir: PathBuf, package_name: &str, mut f: F) -> Result<()>
 where
     F: FnMut(GitSourceIndex, PathBuf) -> Result<()>,
 {
@@ -1570,9 +1554,10 @@ where
                     // Get the path of the current repo
                     let repo_dir_path = repo_dir.path();
                     // Get the index file from the found path
-                    let index_file = fs::read_to_string(repo_dir_path.join(".forc_index"))?;
-                    let index = serde_json::from_str(&index_file)?;
-                    f(index, repo_dir_path)?;
+                    if let Ok(index_file) = fs::read_to_string(repo_dir_path.join(".forc_index")) {
+                        let index = serde_json::from_str(&index_file)?;
+                        f(index, repo_dir_path)?;
+                    }
                 }
             }
         }
