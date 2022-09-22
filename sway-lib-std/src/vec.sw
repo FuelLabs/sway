@@ -6,8 +6,20 @@ use ::intrinsics::size_of;
 use ::mem::{copy, read, write};
 use ::option::Option;
 
+fn raw_ptr_from_u64(ptr: u64) -> raw_ptr {
+    asm(r1: ptr) {
+        r1: raw_ptr
+    }
+}
+
+fn raw_ptr_into_u64(ptr: raw_ptr) -> u64 {
+    asm(r1: ptr) {
+        r1: u64
+    }
+}
+
 struct RawVec<T> {
-    ptr: u64,
+    ptr: raw_ptr,
     cap: u64,
 }
 
@@ -15,7 +27,7 @@ impl<T> RawVec<T> {
     /// Create a new `RawVec` with zero capacity.
     fn new() -> Self {
         Self {
-            ptr: alloc(0),
+            ptr: raw_ptr_from_u64(alloc(0)),
             cap: 0,
         }
     }
@@ -25,14 +37,14 @@ impl<T> RawVec<T> {
     /// `capacity` is `0`.
     fn with_capacity(capacity: u64) -> Self {
         Self {
-            ptr: alloc(capacity * size_of::<T>()),
+            ptr: raw_ptr_from_u64(alloc(capacity * size_of::<T>())),
             cap: capacity,
         }
     }
 
     /// Gets the pointer of the allocation.
     fn ptr(self) -> u64 {
-        self.ptr
+        raw_ptr_into_u64(self.ptr)
     }
 
     /// Gets the capacity of the allocation.
@@ -46,7 +58,7 @@ impl<T> RawVec<T> {
     fn grow(ref mut self) {
         let new_cap = if self.cap == 0 { 1 } else { 2 * self.cap };
 
-        self.ptr = realloc(self.ptr, self.cap * size_of::<T>(), new_cap * size_of::<T>());
+        self.ptr = raw_ptr_from_u64(realloc(raw_ptr_into_u64(self.ptr), self.cap * size_of::<T>(), new_cap * size_of::<T>()));
         self.cap = new_cap;
     }
 }
