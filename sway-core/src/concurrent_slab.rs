@@ -43,6 +43,11 @@ where
         let inner = self.inner.read().unwrap();
         inner.iter().any(f)
     }
+
+    pub fn len(&self) -> usize {
+        let inner = self.inner.read().unwrap();
+        inner.len()
+    }
 }
 
 impl ConcurrentSlab<TypeInfo> {

@@ -218,6 +218,8 @@ pub fn parsed_to_ast(
         None => return err(warnings, errors),
     };
 
+    println!("{}", type_engine_len());
+
     // Collect information about the types used in this program
     let CompileResult {
         value: types_metadata_result,
