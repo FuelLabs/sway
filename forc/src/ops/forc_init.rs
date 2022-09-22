@@ -6,7 +6,7 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use sway_utils::constants;
-use tracing::info;
+use tracing::{debug, info};
 
 fn print_welcome_message() {
     let read_the_docs = format!(
@@ -54,12 +54,10 @@ pub fn init(command: InitCommand) -> Result<()> {
         );
     }
 
-    if command.verbose {
-        info!(
-            "\nUsing project directory at {}",
-            project_dir.canonicalize()?.display()
-        );
-    }
+    debug!(
+        "\nUsing project directory at {}",
+        project_dir.canonicalize()?.display()
+    );
 
     let project_name = match command.name {
         Some(name) => name,
@@ -143,12 +141,10 @@ pub fn init(command: InitCommand) -> Result<()> {
     let harness_path = Path::new(&project_dir).join("tests").join("harness.rs");
     fs::write(&harness_path, defaults::default_test_program(&project_name))?;
 
-    if command.verbose {
-        info!(
-            "\nCreated test harness at {}",
-            harness_path.canonicalize()?.display()
-        );
-    }
+    debug!(
+        "\nCreated test harness at {}",
+        harness_path.canonicalize()?.display()
+    );
 
     // Ignore default `out` and `target` directories created by forc and cargo.
     let gitignore_path = Path::new(&project_dir).join(".gitignore");
@@ -160,16 +156,12 @@ pub fn init(command: InitCommand) -> Result<()> {
         .open(&gitignore_path)?;
     gitignore_file.write_all(defaults::default_gitignore().as_bytes())?;
 
-    if command.verbose {
-        info!(
-            "\nCreated .gitignore at {}",
-            gitignore_path.canonicalize()?.display()
-        );
-    }
+    debug!(
+        "\nCreated .gitignore at {}",
+        gitignore_path.canonicalize()?.display()
+    );
 
-    if command.verbose {
-        info!("\nSuccessfully created {program_type}: {project_name}",);
-    }
+    debug!("\nSuccessfully created {program_type}: {project_name}",);
 
     print_welcome_message();
 
