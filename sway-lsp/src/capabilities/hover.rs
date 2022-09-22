@@ -63,21 +63,25 @@ fn hover_format(token: &Token, ident: &Ident) -> Hover {
                 }
                 TypedDeclaration::FunctionDeclaration(func) => extract_fn_signature(&func.span()),
                 TypedDeclaration::StructDeclaration(decl_id) => {
-                    // TODO: do not use unwrap
-                    let struct_decl =
-                        declaration_engine::de_get_struct(decl_id.clone(), &decl.span()).unwrap();
-                    format_visibility_hover(struct_decl.visibility, decl.friendly_name())
+                    declaration_engine::de_get_struct(decl_id.clone(), &decl.span())
+                        .map(|struct_decl| {
+                            format_visibility_hover(struct_decl.visibility, decl.friendly_name())
+                        })
+                        .unwrap_or(token_name)
                 }
                 TypedDeclaration::TraitDeclaration(ref decl_id) => {
-                    // TODO: do not use unwrap
-                    let trait_decl =
-                        declaration_engine::de_get_trait(decl_id.clone(), &decl_id.span()).unwrap();
-                    format_visibility_hover(trait_decl.visibility, decl.friendly_name())
+                    declaration_engine::de_get_trait(decl_id.clone(), &decl.span())
+                        .map(|trait_decl| {
+                            format_visibility_hover(trait_decl.visibility, decl.friendly_name())
+                        })
+                        .unwrap_or(token_name)
                 }
                 TypedDeclaration::EnumDeclaration(decl_id) => {
-                    let enum_decl =
-                        declaration_engine::de_get_enum(decl_id.clone(), &decl_id.span()).unwrap();
-                    format_visibility_hover(enum_decl.visibility, decl.friendly_name())
+                    declaration_engine::de_get_enum(decl_id.clone(), &decl.span())
+                        .map(|enum_decl| {
+                            format_visibility_hover(enum_decl.visibility, decl.friendly_name())
+                        })
+                        .unwrap_or(token_name)
                 }
                 _ => token_name,
             },
