@@ -461,16 +461,13 @@ fn implicit_std_dep() -> Dependency {
         ..Default::default()
     };
 
-    match VERSION.split_once('+') {
-        Some((_tag, build_metadata)) => {
-            let rev = rev_from_build_metadata(build_metadata);
+    if let Some((_tag, build_metadata)) = VERSION.split_once('+') {
+        let rev = rev_from_build_metadata(build_metadata);
 
-            // If some revision is available and parsed from the metadata,
-            // always prefer the revision over the tag.
-            det.tag = None;
-            det.rev = rev;
-        }
-        None => (),
+        // If some revision is available and parsed from the metadata,
+        // always prefer the revision over the tag.
+        det.tag = None;
+        det.rev = rev;
     };
 
     Dependency::Detailed(det)
