@@ -4222,7 +4222,6 @@ dependencies = [
  "ropey",
  "serde",
  "serde_ignored",
- "serde_json",
  "sway-ast",
  "sway-core",
  "sway-parse",
