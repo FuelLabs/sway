@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 /// A finalized `swayfmt` config.
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone)]
 pub struct Config {
     pub whitespace: Whitespace,
     pub imports: Imports,
