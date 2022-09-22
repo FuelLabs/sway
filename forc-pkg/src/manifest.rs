@@ -255,7 +255,6 @@ impl Manifest {
         manifest.implicitly_include_std_if_missing();
         manifest.implicitly_include_default_build_profiles_if_missing();
         manifest.validate()?;
-
         Ok(manifest)
     }
 
