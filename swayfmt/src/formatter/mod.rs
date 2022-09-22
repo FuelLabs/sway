@@ -40,12 +40,6 @@ impl Formatter {
             ..Default::default()
         })
     }
-    pub fn from_config(config: Config) -> Self {
-        Self {
-            config,
-            ..Default::default()
-        }
-    }
     pub fn format(
         &mut self,
         src: Arc<str>,

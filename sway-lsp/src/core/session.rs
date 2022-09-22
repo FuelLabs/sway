@@ -13,17 +13,13 @@ use crate::{
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
-use serde_json::Value;
 use std::{
     path::PathBuf,
     sync::{Arc, LockResult, RwLock},
 };
 use sway_core::{CompileResult, ParseProgram, TypedProgram, TypedProgramKind};
 use sway_types::{Ident, Spanned};
-use swayfmt::{
-    config::manifest::{Config, ConfigOptions},
-    Formatter,
-};
+use swayfmt::Formatter;
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionParams, GotoDefinitionResponse, Location, Position,
     Range, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
@@ -40,7 +36,6 @@ pub struct CompiledProgram {
 #[derive(Debug)]
 pub struct Session {
     pub documents: Documents,
-    pub config: RwLock<Config>,
     pub token_map: TokenMap,
     pub runnables: DashMap<RunnableType, Runnable>,
     pub compiled_program: RwLock<CompiledProgram>,
@@ -50,7 +45,6 @@ impl Session {
     pub fn new() -> Self {
         Session {
             documents: DashMap::new(),
-            config: RwLock::new(Config::default()),
             token_map: DashMap::new(),
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
@@ -124,16 +118,6 @@ impl Session {
 
     pub fn token_map(&self) -> &TokenMap {
         &self.token_map
-    }
-
-    // update sway config
-    pub fn update_config(&self, options: Value) {
-        if let LockResult::Ok(mut config) = self.config.write() {
-            let config_opts = ConfigOptions::from_json_value(options);
-            if let Ok(opts) = config_opts {
-                *config = Config::from_opts(opts);
-            }
-        }
     }
 
     // Document
@@ -365,14 +349,8 @@ impl Session {
 
     pub fn format_text(&self, url: &Url) -> Option<Vec<TextEdit>> {
         if let Some(document) = self.documents.get(url.path()) {
-            match self.config.read() {
-                std::sync::LockResult::Ok(config) => {
-                    let config: Config = *config;
-                    let mut formatter = Formatter::from_config(config);
-                    get_format_text_edits(Arc::from(document.get_text()), &mut formatter)
-                }
-                _ => None,
-            }
+            let mut formatter = Formatter::default();
+            get_format_text_edits(Arc::from(document.get_text()), &mut formatter)
         } else {
             None
         }

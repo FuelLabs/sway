@@ -23,8 +23,4 @@ pub enum ConfigError {
     ReadConfig { path: PathBuf, err: io::Error },
     #[error("could not find a `swayfmt.toml` in the given directory or its parents")]
     NotFound,
-    #[error("problem parsing serde_json::Value into ConfigOptions: {err}")]
-    SerdeJSON { err: toml::de::Error },
-    #[error("serde_json::Value.as_str() returned None value")]
-    EmptyConfigStr,
 }
