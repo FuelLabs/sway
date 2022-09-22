@@ -137,10 +137,10 @@ impl TypeId {
         match look_up_type_id(*self) {
             TypeInfo::Enum {
                 type_parameters, ..
-            } => (!type_parameters.is_empty()).then(|| type_parameters),
+            } => (!type_parameters.is_empty()).then_some(type_parameters),
             TypeInfo::Struct {
                 type_parameters, ..
-            } => (!type_parameters.is_empty()).then(|| type_parameters),
+            } => (!type_parameters.is_empty()).then_some(type_parameters),
             _ => None,
         }
     }
