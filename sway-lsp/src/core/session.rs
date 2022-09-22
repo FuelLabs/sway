@@ -19,7 +19,7 @@ use std::{
     path::PathBuf,
     sync::{Arc, LockResult, RwLock},
 };
-use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypedProgram, TypedProgramKind};
+use sway_core::{CompileResult, ParseProgram, TypedProgram, TypedProgramKind};
 use sway_types::{Ident, Spanned};
 use swayfmt::Formatter;
 use tower_lsp::lsp_types::{
@@ -162,10 +162,23 @@ impl Session {
         if let Ok(manifest) = pkg::ManifestFile::from_dir(&manifest_dir) {
             if let Ok(plan) = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline) {
                 //we can then use them directly to convert them to a Vec<Diagnostic>
-                if let Ok((parsed_res, ast_res)) = pkg::check(&plan, silent_mode) {
-                    // First, populate our token_map with un-typed ast nodes
+                if let Ok(CompileResult {
+                    value,
+                    warnings,
+                    errors,
+                }) = pkg::check(&plan, silent_mode)
+                {
+                    // FIXME(Centril): Refactor parse_ast_to_tokens + parse_ast_to_typed_tokens
+                    // due to the new API.
+                    let (parsed, typed) = match value {
+                        None => (None, None),
+                        Some((pp, tp)) => (Some(pp), tp),
+                    };
+                    // First, populate our token_map with un-typed ast nodes.
+                    let parsed_res = CompileResult::new(parsed, warnings.clone(), errors.clone());
                     let _ = self.parse_ast_to_tokens(parsed_res);
-                    // Next, populate our token_map with typed ast nodes
+                    // Next, populate our token_map with typed ast nodes.
+                    let ast_res = CompileResult::new(typed, warnings, errors);
                     let res = self.parse_ast_to_typed_tokens(ast_res);
                     //self.test_typed_parse(ast_res);
                     return res;
@@ -212,17 +225,13 @@ impl Session {
 
     fn parse_ast_to_typed_tokens(
         &self,
-        ast_res: CompileAstResult,
+        ast_res: CompileResult<TypedProgram>,
     ) -> Result<Vec<Diagnostic>, DocumentError> {
-        match ast_res {
-            CompileAstResult::Failure { warnings, errors } => {
-                let diagnostics = capabilities::diagnostic::get_diagnostics(warnings, errors);
-                Err(DocumentError::FailedToParse(diagnostics))
-            }
-            CompileAstResult::Success {
-                typed_program,
-                warnings,
-            } => {
+        match ast_res.value {
+            None => Err(DocumentError::FailedToParse(
+                capabilities::diagnostic::get_diagnostics(ast_res.warnings, ast_res.errors),
+            )),
+            Some(typed_program) => {
                 if let TypedProgramKind::Script {
                     ref main_function, ..
                 } = typed_program.kind
@@ -233,26 +242,29 @@ impl Session {
                     self.runnables.insert(RunnableType::MainFn, runnable);
                 }
 
-                for node in &typed_program.root.all_nodes {
-                    traverse_typed_tree::traverse_node(node, &self.token_map);
-                }
-
-                for (_, submodule) in &typed_program.root.submodules {
-                    for node in &submodule.module.all_nodes {
-                        traverse_typed_tree::traverse_node(node, &self.token_map);
-                    }
-                }
+                let root_nodes = typed_program.root.all_nodes.iter();
+                let sub_nodes = typed_program
+                    .root
+                    .submodules
+                    .iter()
+                    .flat_map(|(_, submodule)| &submodule.module.all_nodes);
+                root_nodes
+                    .chain(sub_nodes)
+                    .for_each(|node| traverse_typed_tree::traverse_node(node, &self.token_map));
 
                 if let LockResult::Ok(mut program) = self.compiled_program.write() {
-                    program.typed = Some(*typed_program);
+                    program.typed = Some(typed_program);
                 }
 
-                Ok(capabilities::diagnostic::get_diagnostics(warnings, vec![]))
+                Ok(capabilities::diagnostic::get_diagnostics(
+                    ast_res.warnings,
+                    ast_res.errors,
+                ))
             }
         }
     }
 
-    pub fn _test_typed_parse(&mut self, _ast_res: CompileAstResult, uri: &Url) {
+    pub fn _test_typed_parse(&mut self, _ast_res: CompileResult<TypedProgram>, uri: &Url) {
         for item in self.token_map.iter() {
             let ((ident, _span), token) = item.pair();
             utils::debug::debug_print_ident_and_token(ident, token);
