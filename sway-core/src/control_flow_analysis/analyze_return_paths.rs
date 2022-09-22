@@ -68,10 +68,7 @@ impl ControlFlowGraph {
         let mut max_iterations = 50;
         while !rovers.is_empty() && rovers[0] != exit_point && max_iterations > 0 {
             max_iterations -= 1;
-            rovers = rovers
-                .into_iter()
-                .filter(|idx| *idx != exit_point)
-                .collect();
+            rovers.retain(|idx| *idx != exit_point);
             let mut next_rovers = vec![];
             let mut last_discovered_span;
             for rover in rovers {
