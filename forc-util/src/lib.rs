@@ -14,7 +14,10 @@ use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
 use sway_types::Spanned;
 use sway_utils::constants;
 use tracing::{Level, Metadata};
-use tracing_subscriber::{filter::EnvFilter, fmt::MakeWriter};
+use tracing_subscriber::{
+    filter::{EnvFilter, LevelFilter},
+    fmt::MakeWriter,
+};
 
 pub mod restricted;
 
@@ -417,22 +420,34 @@ impl<'a> MakeWriter<'a> for StdioTracingWriter {
 /// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
 ///
 /// `RUST_LOG` environment variable can be used to set different minimum level for the subscriber, default is `INFO`.
-pub fn init_tracing_subscriber() {
-    let filter = match env::var_os(LOG_FILTER) {
+pub fn init_tracing_subscriber(verbosity: Option<u8>) {
+    let env_filter = match env::var_os(LOG_FILTER) {
         Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
         None => EnvFilter::new("info"),
     };
 
-    tracing_subscriber::fmt::Subscriber::builder()
-        .with_env_filter(filter)
+    let level_filter = verbosity.and_then(|verbosity| match verbosity {
+        1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
+        2 => Some(LevelFilter::TRACE), // matches -vv
+        _ => None,
+    });
+
+    let builder = tracing_subscriber::fmt::Subscriber::builder()
+        .with_env_filter(env_filter)
         .with_ansi(true)
         .with_level(false)
         .with_file(false)
         .with_line_number(false)
         .without_time()
         .with_target(false)
-        .with_writer(StdioTracingWriter)
-        .init();
+        .with_writer(StdioTracingWriter);
+
+    // If verbosity is set, it overrides the RUST_LOG setting
+    if let Some(level_filter) = level_filter {
+        builder.with_max_level(level_filter).init();
+    } else {
+        builder.init();
+    }
 }
 
 #[cfg(all(feature = "uwu", any(target_arch = "x86", target_arch = "x86_64")))]
