@@ -13,6 +13,8 @@ fn main() -> bool {
 }
 ```
 
+Stateless functions that can neither read nor write to any contract state. They are required to return a Boolean representing a UTXO spending condition, such as a multisig predicate, and they only allow a subset of the VM instructions to be used (e.g. no jumps)
+
 ## Debugging Predicates
 
 A predicate does not have any side effects because it is pure and thus it cannot create receipts. Since there are no receipts they cannot use logging nor create a stack backtrace for debugging. This means that there is no way to debug them aside from using a single-stepping [debugger](https://github.com/FuelLabs/fuel-debugger).
