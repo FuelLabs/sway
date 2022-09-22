@@ -1,6 +1,5 @@
 library address;
 //! A wrapper around the b256 type to help enhance type-safety.
-
 use ::intrinsics::size_of_val;
 use ::mem::{addr_of, eq};
 
@@ -23,9 +22,7 @@ pub trait From {
 /// Functions for casting between the b256 and Address types.
 impl From for Address {
     fn from(bits: b256) -> Address {
-        Address {
-            value: bits,
-        }
+        Address { value: bits }
     }
 
     fn into(self) -> b256 {
