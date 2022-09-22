@@ -227,7 +227,7 @@ impl Items {
         let mut full_name_for_error = base_name.to_string();
         let mut full_span_for_error = base_name.span();
         for projection in projections {
-            let resolved_type = match resolve_type(symbol, &symbol_span) {
+            let resolved_type = match check_type_is_not_unknown(symbol, &symbol_span) {
                 Ok(resolved_type) => resolved_type,
                 Err(error) => {
                     errors.push(CompileError::TypeError(error));

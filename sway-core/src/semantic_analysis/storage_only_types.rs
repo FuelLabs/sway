@@ -2,7 +2,7 @@ use sway_types::{Span, Spanned};
 
 use crate::declaration_engine::declaration_engine::*;
 use crate::error::err;
-use crate::type_system::{is_type_info_storage_only, resolve_type, TypeId};
+use crate::type_system::{check_type_is_not_unknown, is_type_info_storage_only, TypeId};
 use crate::{error::ok, semantic_analysis, CompileError, CompileResult, CompileWarning};
 use crate::{TypedDeclaration, TypedFunctionDeclaration};
 
@@ -144,7 +144,7 @@ fn check_type(ty: TypeId, span: Span, ignore_self: bool) -> CompileResult<()> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut errors: Vec<CompileError> = vec![];
 
-    let ti = resolve_type(ty, &span).unwrap();
+    let ti = check_type_is_not_unknown(ty, &span).unwrap();
     let nested_types = check!(
         ti.clone().extract_nested_types(&span),
         vec![],
