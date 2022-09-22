@@ -437,8 +437,8 @@ impl Default for BuildProfile {
 
 /// The definition for the implicit `std` dependency.
 fn implicit_std_dep() -> Dependency {
-    // The `forc-pkg` crate version formatted with the `v` prefix.
-    // E.g. "v1.2.3", "v1.2.3+nightly.20220922.abcdefg".
+    // Here, we use the `forc-pkg` crate version formatted with the `v` prefix (e.g. "v1.2.3"),
+    // or the revision commit hash (e.g. "abcdefg").
     //
     // This git tag or revision is used during `Manifest` construction to pin the version of the
     // implicit `std` dependency to the `forc-pkg` version.
@@ -464,8 +464,8 @@ fn implicit_std_dep() -> Dependency {
     if let Some((_tag, build_metadata)) = VERSION.split_once('+') {
         let rev = rev_from_build_metadata(build_metadata);
 
-        // If some revision is available and parsed from the metadata,
-        // always prefer the revision over the tag.
+        // If some revision is available and parsed from the 'nightly' build metadata,
+        // we always prefer the revision over the tag.
         det.tag = None;
         det.rev = rev;
     };
