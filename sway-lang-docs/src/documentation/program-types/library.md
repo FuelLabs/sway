@@ -3,21 +3,13 @@
 Libraries are defined using the `library` keyword at the beginning of a file, followed by a name so that they can be imported.
 
 ```sway
-library my_library;
-
-// library code
+{{#include ../../code/libraries/internal/my_library/src/my_library.sw:1}}
 ```
 
 All of the code inside the library is private by default therefore if the library is meant to expose some functionality then a `pub` keyword should be used in order to expose it.
 
 ```sway
-library my_library;
-
-// library code
-fn foo() {}
-
-// Publicly accessible
-pub fn bar() {}
+{{#include ../../code/libraries/internal/my_library/src/my_library.sw}}
 ```
 
 ## Including a library in a project
@@ -45,15 +37,8 @@ To be able to use our library `my_library.sw` in `lib.sw` there are two steps to
 1. Bring our library into scope by using the `dep` keyword followed by the library name
 2. Use the `use` keyword to selectively import our code from the library
 
-```bash
-$ cat src/lib.sw
-library lib;
-
-dep my_library;
-
-use my_library::bar;
-
-// `bar` from `my_library` is now available throughout the file
+```sway
+{{#include ../../code/libraries/internal/my_library/src/lib.sw}}
 ```
 
 ### External Libraries
@@ -83,13 +68,8 @@ If we take a look at each library then we have the following:
 
 __my_library__
 
-```bash
-$ cat my_library/src/lib.sw
-library my_library;
-
-use my_other_library::quix;
-
-// `quix` from `my_other_library` is now available throughout the file
+```sway
+{{#include ../../code/libraries/external/my_library/src/lib.sw}}
 ```
 
 __my_other_library__
@@ -106,15 +86,8 @@ The code in `my_library` seems to use the code from `my_other_library` however t
 This is done by listing `my_other_library` as a dependency in the `Forc.toml` file of `my_library` under the `[dependencies]` section.
 
 ```bash
-$ cat my_library/Forc.toml
-[project]
-authors = ["Fuel Labs <contact@fuel.sh>"]
-entry = "lib.sw"
-license = "Apache-2.0"
-name = "my_library"
-
-[dependencies]
-my_other_library = { path = "../my_other_library" }
+{{#include ../../code/libraries/external/my_library/Forc.toml}}
 ```
 
+> **Note:**
 > Only libraries can be included in the manifest file. Other program types will error.
