@@ -258,7 +258,7 @@ impl TypedFunctionDeclaration {
                 |TypedFunctionParameter {
                      type_id, type_span, ..
                  }| {
-                    check_type_is_not_unknown(*type_id, type_span)
+                    to_typeinfo(*type_id, type_span)
                         .expect("unreachable I think?")
                         .to_selector_name(type_span)
                 },

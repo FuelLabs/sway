@@ -512,7 +512,7 @@ impl TypeEngine {
         self.unify(received, expected, span, help_text)
     }
 
-    pub fn check_type_is_not_unknown(
+    pub fn to_typeinfo(
         &self,
         id: TypeId,
         error_span: &Span,
@@ -766,8 +766,8 @@ pub(crate) fn unify(
     TYPE_ENGINE.unify(a, b, span, help_text)
 }
 
-pub fn check_type_is_not_unknown(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
-    TYPE_ENGINE.check_type_is_not_unknown(id, error_span)
+pub fn to_typeinfo(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
+    TYPE_ENGINE.to_typeinfo(id, error_span)
 }
 
 pub fn clear_type_engine() {

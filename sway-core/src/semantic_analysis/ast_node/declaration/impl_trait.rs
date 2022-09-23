@@ -10,7 +10,7 @@ use crate::{
         TypedExpressionVariant, TypedIntrinsicFunctionKind,
     },
     type_system::{
-        check_type_is_not_unknown, insert_type, look_up_type_id, set_type_as_storage_only,
+        to_typeinfo, insert_type, look_up_type_id, set_type_as_storage_only,
         unify_with_self, CopyTypes, TypeId, TypeMapping, TypeParameter,
     },
     CallPath, CompileError, CompileResult, FunctionDeclaration, ImplSelf, ImplTrait, Purity,
@@ -133,7 +133,7 @@ impl TypedImplTrait {
                     type_implementing_for_span: type_implementing_for_span.clone(),
                 };
                 let implementing_for_type_id = insert_type(
-                    match check_type_is_not_unknown(
+                    match to_typeinfo(
                         implementing_for_type_id,
                         &type_implementing_for_span,
                     ) {
@@ -659,7 +659,7 @@ fn type_check_trait_implementation(
     ctx.namespace.star_import(&trait_path);
 
     let self_type_id = insert_type(
-        match check_type_is_not_unknown(ctx.self_type(), self_type_span) {
+        match to_typeinfo(ctx.self_type(), self_type_span) {
             Ok(o) => o,
             Err(e) => {
                 errors.push(e.into());

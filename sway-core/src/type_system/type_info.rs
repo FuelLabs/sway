@@ -406,7 +406,7 @@ impl TypeInfo {
                     let names = fields
                         .iter()
                         .map(|field_type| {
-                            check_type_is_not_unknown(field_type.type_id, error_msg_span)
+                            to_typeinfo(field_type.type_id, error_msg_span)
                                 .expect("unreachable?")
                                 .to_selector_name(error_msg_span)
                         })
@@ -434,7 +434,7 @@ impl TypeInfo {
                     let names = fields
                         .iter()
                         .map(|ty| {
-                            let ty = match check_type_is_not_unknown(ty.type_id, error_msg_span) {
+                            let ty = match to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
@@ -455,7 +455,7 @@ impl TypeInfo {
                     let type_arguments = type_parameters
                         .iter()
                         .map(|ty| {
-                            let ty = match check_type_is_not_unknown(ty.type_id, error_msg_span) {
+                            let ty = match to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
@@ -487,7 +487,7 @@ impl TypeInfo {
                     let names = variant_types
                         .iter()
                         .map(|ty| {
-                            let ty = match check_type_is_not_unknown(ty.type_id, error_msg_span) {
+                            let ty = match to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
@@ -508,7 +508,7 @@ impl TypeInfo {
                     let type_arguments = type_parameters
                         .iter()
                         .map(|ty| {
-                            let ty = match check_type_is_not_unknown(ty.type_id, error_msg_span) {
+                            let ty = match to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };

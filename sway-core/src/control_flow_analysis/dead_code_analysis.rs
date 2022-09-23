@@ -12,7 +12,7 @@ use crate::{
         TypedAsmRegisterDeclaration, TypedAstNode, TypedAstNodeContent, TypedImplTrait,
         TypedIntrinsicFunctionKind, TypedStorageDeclaration,
     },
-    type_system::{check_type_is_not_unknown, TypeInfo},
+    type_system::{to_typeinfo, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
@@ -561,7 +561,7 @@ fn connect_typed_fn_decl(
 
     // not sure how correct it is to default to Unit here...
     // I think types should all be resolved by now.
-    let ty = check_type_is_not_unknown(fn_decl.return_type, &span)
+    let ty = to_typeinfo(fn_decl.return_type, &span)
         .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
 
     let namespace_entry = FunctionNamespaceEntry {
@@ -588,7 +588,7 @@ fn connect_fn_params_struct_enums(
     fn_decl_entry_node: NodeIndex,
 ) -> Result<(), CompileError> {
     for fn_param in &fn_decl.parameters {
-        let ty = check_type_is_not_unknown(fn_param.type_id, &fn_param.type_span)?;
+        let ty = to_typeinfo(fn_param.type_id, &fn_param.type_span)?;
         match ty {
             TypeInfo::Enum { name, .. } => {
                 let ty_index = match graph.namespace.find_enum(&name) {
@@ -845,7 +845,7 @@ fn connect_expression(
             ..
         } => {
             let resolved_type_of_parent =
-                check_type_is_not_unknown(*resolved_type_of_parent, &field_to_access.span)
+                to_typeinfo(*resolved_type_of_parent, &field_to_access.span)
                     .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
 
             assert!(matches!(resolved_type_of_parent, TypeInfo::Struct { .. }));
