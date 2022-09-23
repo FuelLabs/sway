@@ -154,7 +154,7 @@ async fn can_get_receipts_root() {
         .call()
         .await
         .unwrap();
-    assert_ne!(Bytes32::from(result.value), zero_receipts_root);
+    assert_ne!(Bytes32::from(result.value.0), zero_receipts_root);
 }
 
 #[tokio::test]
@@ -196,7 +196,7 @@ async fn can_get_script_bytecode_hash() {
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value.to_vec(), hash.to_vec());
+    assert_eq!(Bytes32::from(result.value.0), hash);
 }
 
 #[tokio::test]
@@ -256,5 +256,5 @@ async fn can_get_tx_id() {
 
     let byte_array: [u8; 32] = tx_id.into();
 
-    assert_eq!(result.value, byte_array);
+    assert_eq!(result.value, Bits256(byte_array));
 }
