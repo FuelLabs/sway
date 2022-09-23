@@ -44,7 +44,7 @@ where
         inner.iter().any(f)
     }
 
-    pub fn len(&self) -> usize {
+    pub fn size(&self) -> usize {
         let inner = self.inner.read().unwrap();
         inner.len()
     }

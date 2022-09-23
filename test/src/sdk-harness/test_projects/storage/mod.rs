@@ -69,7 +69,7 @@ async fn can_store_and_get_u64() {
 #[tokio::test]
 async fn can_store_b256() {
     let instance = get_test_storage_instance().await;
-    let n: [u8; 32] = [2; 32];
+    let n: Bits256 = Bits256([2; 32]);
     instance.store_b256(n).call().await.unwrap();
     let result = instance.get_b256().call().await.unwrap();
     assert_eq!(result.value, n);
@@ -102,7 +102,7 @@ async fn can_store_large_struct() {
     let instance = get_test_storage_instance().await;
     let s = LargeStruct {
         x: 13,
-        y: [6; 32],
+        y: Bits256([6; 32]),
         z: 77,
     };
     instance.store_large_struct(s.clone()).call().await.unwrap();
@@ -115,8 +115,8 @@ async fn can_store_very_large_struct() {
     let instance = get_test_storage_instance().await;
     let s = VeryLargeStruct {
         x: 42,
-        y: [9; 32],
-        z: [7; 32],
+        y: Bits256([9; 32]),
+        z: Bits256([7; 32]),
     };
     instance
         .store_very_large_struct(s.clone())
@@ -130,7 +130,7 @@ async fn can_store_very_large_struct() {
 #[tokio::test]
 async fn can_store_enum() {
     let instance = get_test_storage_instance().await;
-    let e1 = StorageEnum::V1([3; 32]);
+    let e1 = StorageEnum::V1(Bits256([3; 32]));
     instance.store_enum(e1.clone()).call().await.unwrap();
     let result = instance.get_enum().call().await.unwrap();
     assert_eq!(result.value, e1);
@@ -140,7 +140,7 @@ async fn can_store_enum() {
     let result = instance.get_enum().call().await.unwrap();
     assert_eq!(result.value, e2);
 
-    let e3 = StorageEnum::V3([4; 32]);
+    let e3 = StorageEnum::V3(Bits256([4; 32]));
     instance.store_enum(e3.clone()).call().await.unwrap();
     let result = instance.get_enum().call().await.unwrap();
     assert_eq!(result.value, e3);
@@ -149,7 +149,7 @@ async fn can_store_enum() {
 #[tokio::test]
 async fn can_store_tuple() {
     let instance = get_test_storage_instance().await;
-    let t = ([7; 32], 8, [6; 32]);
+    let t = (Bits256([7; 32]), 8, Bits256([6; 32]));
     instance.store_tuple(t.clone()).call().await.unwrap();
     let result = instance.get_tuple().call().await.unwrap();
     assert_eq!(result.value, t);
@@ -159,15 +159,15 @@ async fn can_store_tuple() {
 async fn can_store_string() {
     let instance = get_test_storage_instance().await;
     let s = "fastest_modular_execution_layer".to_string();
-    instance.store_string(s.clone()).call().await.unwrap();
+    instance.store_string(SizedAsciiString::try_from(s.clone()).unwrap()).call().await.unwrap();
     let result = instance.get_string().call().await.unwrap();
-    assert_eq!(result.value, s);
+    assert_eq!(result.value, SizedAsciiString::try_from(s).unwrap());
 }
 
 #[tokio::test]
 async fn can_store_array() {
     let instance = get_test_storage_instance().await;
-    let a = [[153; 32], [136; 32], [119; 32]].to_vec();
+    let a = [Bits256([153; 32]), Bits256([136; 32]), Bits256([119; 32])];
     instance.store_array().call().await.unwrap();
     let result = instance.get_array().call().await.unwrap();
     assert_eq!(result.value, a);

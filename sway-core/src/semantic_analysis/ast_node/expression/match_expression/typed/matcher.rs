@@ -6,10 +6,10 @@ use crate::{
             instantiate_unsafe_downcast,
         },
         namespace::Namespace,
-        IsConstant, TypedEnumVariant, TypedExpression, TypedExpressionVariant,
+        IsConstant, TypedEnumVariant, TypedExpression, TypedExpressionVariant, VariableMutability,
     },
     type_system::unify,
-    CompileResult, Ident, Literal,
+    CompileResult, Ident, Literal, TypeId,
 };
 
 use sway_types::span::Span;
@@ -75,18 +75,25 @@ pub(crate) fn matcher(
         type_id,
         span,
     } = scrutinee;
+
+    // unify the type of the scrutinee with the type of the expression
     let (mut new_warnings, new_errors) = unify(type_id, exp.return_type, &span, "");
     warnings.append(&mut new_warnings);
     errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+
     if !errors.is_empty() {
         return err(warnings, errors);
     }
+
     match variant {
         TypedScrutineeVariant::CatchAll => ok((vec![], vec![]), warnings, errors),
         TypedScrutineeVariant::Literal(value) => match_literal(exp, value, span),
-        TypedScrutineeVariant::Variable(name) => match_variable(exp, name, span),
-        TypedScrutineeVariant::StructScrutinee(fields) => match_struct(exp, fields, namespace),
-        TypedScrutineeVariant::EnumScrutinee { value, variant } => {
+        TypedScrutineeVariant::Variable(name) => match_variable(exp, name),
+        TypedScrutineeVariant::Constant(name, _, type_id) => {
+            match_constant(exp, name, type_id, span)
+        }
+        TypedScrutineeVariant::StructScrutinee(_, fields) => match_struct(exp, fields, namespace),
+        TypedScrutineeVariant::EnumScrutinee { value, variant, .. } => {
             match_enum(exp, variant, *value, span, namespace)
         }
         TypedScrutineeVariant::Tuple(elems) => match_tuple(exp, elems, span, namespace),
@@ -111,13 +118,34 @@ fn match_literal(
     ok((match_req_map, match_decl_map), vec![], vec![])
 }
 
-fn match_variable(
-    exp: &TypedExpression,
-    scrutinee_name: Ident,
-    _span: Span,
-) -> CompileResult<MatcherResult> {
+fn match_variable(exp: &TypedExpression, scrutinee_name: Ident) -> CompileResult<MatcherResult> {
     let match_req_map = vec![];
     let match_decl_map = vec![(scrutinee_name, exp.to_owned())];
+
+    ok((match_req_map, match_decl_map), vec![], vec![])
+}
+
+fn match_constant(
+    exp: &TypedExpression,
+    scrutinee_name: Ident,
+    scrutinee_type_id: TypeId,
+    span: Span,
+) -> CompileResult<MatcherResult> {
+    let match_req_map = vec![(
+        exp.to_owned(),
+        TypedExpression {
+            expression: TypedExpressionVariant::VariableExpression {
+                name: scrutinee_name,
+                span: span.clone(),
+                mutability: VariableMutability::Immutable,
+            },
+            return_type: scrutinee_type_id,
+            is_constant: IsConstant::Yes,
+            span,
+        },
+    )];
+    let match_decl_map = vec![];
+
     ok((match_req_map, match_decl_map), vec![], vec![])
 }
 

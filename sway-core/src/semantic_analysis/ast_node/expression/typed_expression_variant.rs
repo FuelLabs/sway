@@ -583,6 +583,16 @@ impl fmt::Display for TypedExpressionVariant {
     }
 }
 
+impl TypedExpressionVariant {
+    /// Returns `self` as a literal, if possible.
+    pub(crate) fn extract_literal_value(&self) -> Option<Literal> {
+        match self {
+            TypedExpressionVariant::Literal(value) => Some(value.clone()),
+            _ => None,
+        }
+    }
+}
+
 /// Describes the full storage access including all the subfields
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeCheckedStorageAccess {
