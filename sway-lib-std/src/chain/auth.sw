@@ -8,7 +8,7 @@ use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::option::Option;
 use ::result::Result;
-use ::inputs::{Input, input_count, input_coin_owner, input_type};
+use ::inputs::{Input, input_coin_owner, input_count, input_type};
 
 pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),

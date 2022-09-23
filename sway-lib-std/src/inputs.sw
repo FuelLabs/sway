@@ -85,15 +85,9 @@ pub fn input_type(index: u64) -> Input {
 pub fn input_amount(index: u64) -> Option<u64> {
     let type = input_type(index);
     match type {
-        Input::Coin => {
-            Option::Some(__gtf::<u64>(index, GTF_INPUT_COIN_AMOUNT))
-        },
-        Input::Message => {
-            Option::Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_AMOUNT))
-        },
-        Input::Contract => {
-            return Option::None;
-        },
+        Input::Coin => Option::Some(__gtf::<u64>(index, GTF_INPUT_COIN_AMOUNT)),
+        Input::Message => Option::Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_AMOUNT)),
+        Input::Contract => return Option::None,
     }
 }
 
