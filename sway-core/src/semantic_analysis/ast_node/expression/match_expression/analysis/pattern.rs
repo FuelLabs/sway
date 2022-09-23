@@ -3,12 +3,13 @@ use std::{cmp::Ordering, fmt};
 use std::fmt::Write;
 use sway_types::Span;
 
+use crate::semantic_analysis::{TypedScrutinee, TypedScrutineeVariant};
 use crate::type_system::look_up_type_id;
-use crate::TypeInfo;
 use crate::{
     error::{err, ok},
-    CompileError, CompileResult, Literal, Scrutinee, StructScrutineeField,
+    CompileError, CompileResult, Literal,
 };
+use crate::{Namespace, TypeInfo};
 
 use super::{patstack::PatStack, range::Range};
 
@@ -117,56 +118,41 @@ pub(crate) enum Pattern {
 
 impl Pattern {
     /// Converts a `Scrutinee` to a `Pattern`.
-    pub(crate) fn from_scrutinee(scrutinee: Scrutinee) -> CompileResult<Self> {
+    pub(crate) fn from_scrutinee(
+        namespace: &Namespace,
+        scrutinee: TypedScrutinee,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let pat = match scrutinee {
-            Scrutinee::CatchAll { .. } => Pattern::Wildcard,
-            Scrutinee::Variable { .. } => Pattern::Wildcard,
-            Scrutinee::Literal { value, .. } => match value {
-                Literal::U8(x) => Pattern::U8(Range::from_single(x)),
-                Literal::U16(x) => Pattern::U16(Range::from_single(x)),
-                Literal::U32(x) => Pattern::U32(Range::from_single(x)),
-                Literal::U64(x) => Pattern::U64(Range::from_single(x)),
-                Literal::B256(x) => Pattern::B256(x),
-                Literal::Boolean(b) => Pattern::Boolean(b),
-                Literal::Byte(x) => Pattern::Byte(Range::from_single(x)),
-                Literal::Numeric(x) => Pattern::Numeric(Range::from_single(x)),
-                Literal::String(s) => Pattern::String(s.as_str().to_string()),
-            },
-            Scrutinee::StructScrutinee {
-                struct_name,
-                fields,
-                ..
-            } => {
+        let pat = match scrutinee.variant {
+            TypedScrutineeVariant::CatchAll => Pattern::Wildcard,
+            TypedScrutineeVariant::Variable(_) => Pattern::Wildcard,
+            TypedScrutineeVariant::Literal(value) => Pattern::from_literal(value),
+            TypedScrutineeVariant::Constant(_, value, _) => Pattern::from_literal(value),
+            TypedScrutineeVariant::StructScrutinee(struct_name, fields) => {
                 let mut new_fields = vec![];
                 for field in fields.into_iter() {
-                    if let StructScrutineeField::Field {
-                        field, scrutinee, ..
-                    } = field
-                    {
-                        let f = match scrutinee {
-                            Some(scrutinee) => check!(
-                                Pattern::from_scrutinee(scrutinee),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            ),
-                            None => Pattern::Wildcard,
-                        };
-                        new_fields.push((field.as_str().to_string(), f));
-                    }
+                    let f = match field.scrutinee {
+                        Some(scrutinee) => check!(
+                            Pattern::from_scrutinee(namespace, scrutinee),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ),
+                        None => Pattern::Wildcard,
+                    };
+                    new_fields.push((field.field.as_str().to_string(), f));
                 }
                 Pattern::Struct(StructPattern {
                     struct_name: struct_name.to_string(),
                     fields: new_fields,
                 })
             }
-            Scrutinee::Tuple { elems, .. } => {
+            TypedScrutineeVariant::Tuple(elems) => {
                 let mut new_elems = PatStack::empty();
                 for elem in elems.into_iter() {
                     new_elems.push(check!(
-                        Pattern::from_scrutinee(elem),
+                        Pattern::from_scrutinee(namespace, elem),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -174,7 +160,7 @@ impl Pattern {
                 }
                 Pattern::Tuple(new_elems)
             }
-            Scrutinee::EnumScrutinee {
+            TypedScrutineeVariant::EnumScrutinee {
                 call_path, value, ..
             } => {
                 let enum_name = call_path.prefixes.last().unwrap().to_string();
@@ -183,7 +169,7 @@ impl Pattern {
                     enum_name,
                     variant_name,
                     value: Box::new(check!(
-                        Pattern::from_scrutinee(*value),
+                        Pattern::from_scrutinee(namespace, *value),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -192,6 +178,21 @@ impl Pattern {
             }
         };
         ok(pat, warnings, errors)
+    }
+
+    /// Convert the given literal `value` into a pattern.
+    fn from_literal(value: Literal) -> Pattern {
+        match value {
+            Literal::U8(x) => Pattern::U8(Range::from_single(x)),
+            Literal::U16(x) => Pattern::U16(Range::from_single(x)),
+            Literal::U32(x) => Pattern::U32(Range::from_single(x)),
+            Literal::U64(x) => Pattern::U64(Range::from_single(x)),
+            Literal::B256(x) => Pattern::B256(x),
+            Literal::Boolean(b) => Pattern::Boolean(b),
+            Literal::Byte(x) => Pattern::Byte(Range::from_single(x)),
+            Literal::Numeric(x) => Pattern::Numeric(Range::from_single(x)),
+            Literal::String(s) => Pattern::String(s.as_str().to_string()),
+        }
     }
 
     /// Converts a `PatStack` to a `Pattern`. If the `PatStack` is of lenth 1,
