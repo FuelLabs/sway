@@ -23,6 +23,7 @@ use std::{
         input_predicate_data_pointer,
         input_type,
     },
+    option::Option,
     outputs::{
         Output,
         output_count,
@@ -48,7 +49,7 @@ use std::{
         tx_witness_data_length,
         tx_witness_pointer,
     },
-    };
+};
 
 abi TxContractTest {
     fn get_tx_type() -> Transaction;
@@ -67,6 +68,7 @@ abi TxContractTest {
     fn get_tx_script_start_pointer() -> u64;
     fn get_tx_script_data_start_pointer() -> u64;
     fn get_tx_id() -> b256;
+    fn get_tx_script_bytecode_hash() -> b256;
 
     fn get_input_type(index: u64) -> Input;
     fn get_tx_input_pointer(index: u64) -> u64;
@@ -137,6 +139,9 @@ impl TxContractTest for Contract {
     }
     fn get_tx_id() -> b256 {
         tx_id()
+    }
+    fn get_tx_script_bytecode_hash() -> b256 {
+        tx_script_bytecode_hash()
     }
     fn get_tx_input_pointer(index: u64) -> u64 {
         input_pointer(index)

@@ -1,0 +1,18 @@
+[package]
+name = "sway-ir-macros"
+version = "0.24.4"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "Macros for sway's intermediate representation."
+
+[lib]
+proc-macro = true
+
+[dependencies]
+itertools = "0.10.3"
+proc-macro2 = "1.0.43"
+quote = "1.0.21"
+syn = { version = "1.0.99", features = ["derive", "extra-traits"] }

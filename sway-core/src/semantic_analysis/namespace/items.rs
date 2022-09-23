@@ -13,8 +13,15 @@ use sway_types::{span::Span, Spanned};
 
 use std::sync::Arc;
 
+/// Is this a glob (`use foo::*;`) import?
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub(crate) enum GlobImport {
+    Yes,
+    No,
+}
+
 pub(super) type SymbolMap = im::OrdMap<Ident, TypedDeclaration>;
-pub(super) type UseSynonyms = im::HashMap<Ident, Vec<Ident>>;
+pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 
 /// The set of items that exist within some lexical scope via declaration or importing.
@@ -95,7 +102,7 @@ impl Items {
         let mut warnings = vec![];
         let mut errors = vec![];
         // purposefully do not preemptively return errors so that the
-        // new definiton allows later usages to compile
+        // new definition allows later usages to compile
         if self.symbols.get(&name).is_some() {
             match item {
                 TypedDeclaration::EnumDeclaration { .. }
@@ -132,6 +139,7 @@ impl Items {
         let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
                 .get(&trait_name.suffix)
+                .map(|us| &us.0)
                 .unwrap_or(&trait_name.prefixes)
                 .clone()
         } else {
@@ -155,7 +163,10 @@ impl Items {
     }
 
     pub(crate) fn get_canonical_path(&self, symbol: &Ident) -> &[Ident] {
-        self.use_synonyms.get(symbol).map(|v| &v[..]).unwrap_or(&[])
+        self.use_synonyms
+            .get(symbol)
+            .map(|v| &v.0[..])
+            .unwrap_or(&[])
     }
 
     pub(crate) fn has_storage_declared(&self) -> bool {
@@ -206,7 +217,7 @@ impl Items {
             }
         };
         let mut symbol = check!(
-            symbol.return_type(),
+            symbol.return_type(&base_name.span()),
             return err(warnings, errors),
             warnings,
             errors

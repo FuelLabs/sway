@@ -1,7 +1,5 @@
 script;
 
-use std::{assert::assert, contract_id::ContractId, logging::log};
-
 const ETH_ID0 = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
 fn contract_id_wrapper(b: b256) -> ContractId {
     ~ContractId::from(b)
@@ -16,16 +14,14 @@ fn tup_wrapper(a: u64, b: u64, c: u64) -> (u64, u64, u64) {
 }
 const TUP2 = tup_wrapper(2, 1, 21);
 
-fn arr_wrapper(a: u64, b: u64, c: u64) -> [u64;
-3] {
+fn arr_wrapper(a: u64, b: u64, c: u64) -> [u64; 3] {
     return [a, b, c];
 }
 const ARR2 = arr_wrapper(1, 2, 3);
 
 enum En1 {
     Int: u64,
-    Arr: [u64;
-    3],
+    Arr: [u64; 3],
     NoVal: (),
 }
 
@@ -60,16 +56,21 @@ fn main() -> u64 {
 
     // enum
     match EN1a {
-        En1::Int(i) => assert(i == 101), En1::Arr(_) => assert(false), En1::NoVal => assert(false), 
+        En1::Int(i) => assert(i == 101),
+        En1::Arr(_) => assert(false),
+        En1::NoVal => assert(false),
     }
     match EN1b {
-        En1::Int(i) => assert(false), En1::Arr(arr) => {
+        En1::Int(i) => assert(false),
+        En1::Arr(arr) => {
             assert(arr[0] == ARR1[0] && arr[1] == ARR1[1] && arr[2] == ARR1[2]);
         }
-        En1::NoVal => assert(false), 
+        En1::NoVal => assert(false),
     }
     match EN1c {
-        En1::Int(i) => assert(false), En1::Arr(_) => assert(false), En1::NoVal => assert(true), 
+        En1::Int(i) => assert(false),
+        En1::Arr(_) => assert(false),
+        En1::NoVal => assert(true),
     }
 
     // Struct and enum field access.

@@ -917,8 +917,6 @@ pub enum CompileError {
     ShadowsOtherSymbol { name: Ident },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
     GenericShadowsGeneric { name: Ident },
-    #[error("The name \"{name}\" imported through `*` shadows another symbol with the same name.")]
-    StarImportShadowsOtherSymbol { name: Ident },
     #[error(
         "Match expression arm has mismatched types.\n\
          expected: {expected}\n\
@@ -976,6 +974,12 @@ pub enum CompileError {
         attrs: String,
         span: Span,
     },
+    #[error(
+        "Parameter mutability mismatch between the trait function declaration and its implementation."
+    )]
+    ParameterMutabilityMismatch { span: Span },
+    #[error("Ref mutable parameter is not supported for contract ABI function.")]
+    RefMutParameterInContract { span: Span },
     #[error("Literal value is too large for type {ty}.")]
     IntegerTooLarge { span: Span, ty: String },
     #[error("Literal value underflows type {ty}.")]
@@ -1193,7 +1197,6 @@ impl Spanned for CompileError {
             ArrayOutOfBounds { span, .. } => span.clone(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
-            StarImportShadowsOtherSymbol { name } => name.span(),
             MatchWrongType { span, .. } => span.clone(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             MatchStructPatternMissingFields { span, .. } => span.clone(),
@@ -1212,6 +1215,8 @@ impl Spanned for CompileError {
             DeclIsNotStorage { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             ImpureInPureContext { span, .. } => span.clone(),
+            ParameterMutabilityMismatch { span, .. } => span.clone(),
+            RefMutParameterInContract { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
             IntegerTooSmall { span, .. } => span.clone(),
             IntegerContainsInvalidDigit { span, .. } => span.clone(),

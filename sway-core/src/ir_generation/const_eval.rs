@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::declaration_engine::de_get_constant,
     error::CompileError,
     metadata::MetadataManager,
     semantic_analysis::{
@@ -43,11 +44,11 @@ pub(crate) fn compile_const_decl(
             // See if we it's a global const and whether we can compile it *now*.
             let decl = module_ns.check_symbol(name)?;
             let decl_name_value = match decl {
-                TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                    name,
-                    value,
-                    ..
-                }) => Some((name, value)),
+                TypedDeclaration::ConstantDeclaration(decl_id) => {
+                    let TypedConstantDeclaration { name, value, .. } =
+                        de_get_constant(decl_id.clone(), &name.span())?;
+                    Some((name, value))
+                }
                 _otherwise => None,
             };
             if let Some((name, value)) = decl_name_value {
@@ -56,7 +57,7 @@ pub(crate) fn compile_const_decl(
                     env.md_mgr,
                     env.module,
                     env.module_ns,
-                    value,
+                    &value,
                 )?;
                 env.module
                     .add_global_constant(env.context, name.as_str().to_owned(), const_val);
@@ -142,14 +143,11 @@ impl<K: std::cmp::Eq + std::hash::Hash, V> MappedStack<K, V> {
         self.container.get(k).and_then(|val_vec| val_vec.last())
     }
     fn pop(&mut self, k: &K) {
-        match self.container.get_mut(k) {
-            Some(val_vec) => {
-                val_vec.pop();
-                if val_vec.is_empty() {
-                    self.container.remove(k);
-                }
+        if let Some(val_vec) = self.container.get_mut(k) {
+            val_vec.pop();
+            if val_vec.is_empty() {
+                self.container.remove(k);
             }
-            None => {}
         }
     }
 }
@@ -327,6 +325,9 @@ fn const_eval_typed_expr(
             }) => fields.get(*elem_to_access_num).cloned(),
             _ => None,
         },
+        TypedExpressionVariant::Return(stmt) => {
+            const_eval_typed_expr(lookup, known_consts, &stmt.expr)
+        }
         TypedExpressionVariant::ArrayIndex { .. }
         | TypedExpressionVariant::IntrinsicFunction(_)
         | TypedExpressionVariant::CodeBlock(_)
@@ -353,9 +354,6 @@ fn const_eval_typed_ast_node(
     expr: &TypedAstNode,
 ) -> Option<Constant> {
     match &expr.content {
-        TypedAstNodeContent::ReturnStatement(trs) => {
-            const_eval_typed_expr(lookup, known_consts, &trs.expr)
-        }
         TypedAstNodeContent::Declaration(_) => {
             // TODO: add the binding to known_consts (if it's a const) and proceed.
             None

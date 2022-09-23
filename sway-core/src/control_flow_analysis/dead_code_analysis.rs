@@ -6,9 +6,8 @@ use crate::{
         ast_node::{
             TypedAbiDeclaration, TypedCodeBlock, TypedConstantDeclaration, TypedDeclaration,
             TypedEnumDeclaration, TypedExpression, TypedExpressionVariant,
-            TypedFunctionDeclaration, TypedReturnStatement, TypedStructDeclaration,
-            TypedStructExpressionField, TypedTraitDeclaration, TypedVariableDeclaration,
-            VariableMutability,
+            TypedFunctionDeclaration, TypedStructDeclaration, TypedStructExpressionField,
+            TypedTraitDeclaration, TypedVariableDeclaration, VariableMutability,
         },
         TypedAsmRegisterDeclaration, TypedAstNode, TypedAstNodeContent, TypedImplTrait,
         TypedIntrinsicFunctionKind, TypedStorageDeclaration,
@@ -123,25 +122,28 @@ impl ControlFlowGraph {
         graph.entry_points = match tree_type {
             TreeType::Predicate | TreeType::Script => {
                 // a predicate or script have a main function as the only entry point
-                vec![
-                    graph
-                        .graph
-                        .node_indices()
-                        .find(|i| match graph.graph[*i] {
-                            ControlFlowGraphNode::OrganizationalDominator(_) => false,
-                            ControlFlowGraphNode::ProgramNode(TypedAstNode {
-                                content:
-                                    TypedAstNodeContent::Declaration(
-                                        TypedDeclaration::FunctionDeclaration(
-                                            TypedFunctionDeclaration { ref name, .. },
-                                        ),
-                                    ),
-                                ..
-                            }) => name.as_str() == "main",
-                            _ => false,
-                        })
-                        .unwrap(),
-                ]
+                let mut ret = vec![];
+                for i in graph.graph.node_indices() {
+                    let count_it = match &graph.graph[i] {
+                        ControlFlowGraphNode::OrganizationalDominator(_) => false,
+                        ControlFlowGraphNode::ProgramNode(TypedAstNode {
+                            span,
+                            content:
+                                TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
+                                    decl_id,
+                                )),
+                            ..
+                        }) => {
+                            let decl = de_get_function(decl_id.clone(), span)?;
+                            decl.name.as_str() == "main"
+                        }
+                        _ => false,
+                    };
+                    if count_it {
+                        ret.push(i);
+                    }
+                }
+                ret
             }
             TreeType::Contract | TreeType::Library { .. } => {
                 let mut ret = vec![];
@@ -151,13 +153,13 @@ impl ControlFlowGraph {
                         ControlFlowGraphNode::ProgramNode(TypedAstNode {
                             content:
                                 TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
-                                    TypedFunctionDeclaration {
-                                        visibility: Visibility::Public,
-                                        ..
-                                    },
+                                    decl_id,
                                 )),
                             ..
-                        }) => true,
+                        }) => {
+                            let function_decl = de_get_function(decl_id.clone(), &decl_id.span())?;
+                            function_decl.visibility == Visibility::Public
+                        }
                         ControlFlowGraphNode::ProgramNode(TypedAstNode {
                             content:
                                 TypedAstNodeContent::Declaration(TypedDeclaration::TraitDeclaration(
@@ -170,13 +172,13 @@ impl ControlFlowGraph {
                         ControlFlowGraphNode::ProgramNode(TypedAstNode {
                             content:
                                 TypedAstNodeContent::Declaration(TypedDeclaration::StructDeclaration(
-                                    TypedStructDeclaration {
-                                        visibility: Visibility::Public,
-                                        ..
-                                    },
+                                    decl_id,
                                 )),
                             ..
-                        }) => true,
+                        }) => {
+                            let struct_decl = de_get_struct(decl_id.clone(), &decl_id.span())?;
+                            struct_decl.visibility == Visibility::Public
+                        }
                         ControlFlowGraphNode::ProgramNode(TypedAstNode {
                             content:
                                 TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait { .. }),
@@ -185,13 +187,13 @@ impl ControlFlowGraph {
                         ControlFlowGraphNode::ProgramNode(TypedAstNode {
                             content:
                                 TypedAstNodeContent::Declaration(TypedDeclaration::ConstantDeclaration(
-                                    TypedConstantDeclaration {
-                                        visibility: Visibility::Public,
-                                        ..
-                                    },
+                                    decl_id,
                                 )),
                             ..
-                        }) => true,
+                        }) => {
+                            let decl = de_get_constant(decl_id.clone(), &decl_id.span())?;
+                            decl.visibility.is_public()
+                        }
                         _ => false,
                     };
                     if count_it {
@@ -215,33 +217,6 @@ fn connect_node(
     //    let mut graph = graph.clone();
     let span = node.span.clone();
     Ok(match &node.content {
-        TypedAstNodeContent::ReturnStatement(TypedReturnStatement { expr }) => {
-            let this_index = graph.add_node(node.into());
-            for leaf_ix in leaves {
-                graph.add_edge(*leaf_ix, this_index, "".into());
-            }
-            // evaluate the expression
-
-            let return_contents = connect_expression(
-                &expr.expression,
-                graph,
-                &[this_index],
-                exit_node,
-                "",
-                tree_type,
-                expr.span.clone(),
-            )?;
-            for leaf in return_contents {
-                graph.add_edge(this_index, leaf, "".into());
-            }
-            // connect return to the exit node
-            if let Some(exit_node) = exit_node {
-                graph.add_edge(this_index, exit_node, "return".into());
-                (vec![], None)
-            } else {
-                (vec![], None)
-            }
-        }
         TypedAstNodeContent::ImplicitReturnExpression(expr) => {
             let this_index = graph.add_node(node.into());
             for leaf_ix in leaves {
@@ -318,12 +293,13 @@ fn connect_declaration(
 ) -> Result<Vec<NodeIndex>, CompileError> {
     use TypedDeclaration::*;
     match decl {
-        VariableDeclaration(TypedVariableDeclaration {
-            name,
-            body,
-            mutability: is_mutable,
-            ..
-        }) => {
+        VariableDeclaration(var_decl) => {
+            let TypedVariableDeclaration {
+                name,
+                body,
+                mutability: is_mutable,
+                ..
+            } = &**var_decl;
             if matches!(is_mutable, VariableMutability::ExportedConst) {
                 graph.namespace.insert_constant(name.clone(), entry_node);
                 Ok(leaves.to_vec())
@@ -339,8 +315,10 @@ fn connect_declaration(
                 )
             }
         }
-        ConstantDeclaration(TypedConstantDeclaration { name, value, .. }) => {
-            graph.namespace.insert_constant(name.clone(), entry_node);
+        ConstantDeclaration(decl_id) => {
+            let TypedConstantDeclaration { name, value, .. } =
+                de_get_constant(decl_id.clone(), &span)?;
+            graph.namespace.insert_constant(name, entry_node);
             connect_expression(
                 &value.expression,
                 graph,
@@ -351,8 +329,9 @@ fn connect_declaration(
                 value.span.clone(),
             )
         }
-        FunctionDeclaration(fn_decl) => {
-            connect_typed_fn_decl(fn_decl, graph, entry_node, span, exit_node, tree_type)?;
+        FunctionDeclaration(decl_id) => {
+            let fn_decl = de_get_function(decl_id.clone(), &decl.span())?;
+            connect_typed_fn_decl(&fn_decl, graph, entry_node, span, exit_node, tree_type)?;
             Ok(leaves.to_vec())
         }
         TraitDeclaration(decl_id) => {
@@ -365,20 +344,23 @@ fn connect_declaration(
             connect_abi_declaration(&abi_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
-        StructDeclaration(struct_decl) => {
-            connect_struct_declaration(struct_decl, graph, entry_node, tree_type);
+        StructDeclaration(decl_id) => {
+            let struct_decl = de_get_struct(decl_id.clone(), &span)?;
+            connect_struct_declaration(&struct_decl, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        EnumDeclaration(enum_decl) => {
-            connect_enum_declaration(enum_decl, graph, entry_node);
+        EnumDeclaration(decl_id) => {
+            let enum_decl = de_get_enum(decl_id.clone(), &span)?;
+            connect_enum_declaration(&enum_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
-        ImplTrait(TypedImplTrait {
-            trait_name,
-            methods,
-            ..
-        }) => {
-            connect_impl_trait(trait_name, graph, methods, entry_node, tree_type)?;
+        ImplTrait(decl_id) => {
+            let TypedImplTrait {
+                trait_name,
+                methods,
+                ..
+            } = de_get_impl_trait(decl_id.clone(), &span)?;
+            connect_impl_trait(&trait_name, graph, &methods, entry_node, tree_type)?;
             Ok(leaves.to_vec())
         }
         StorageDeclaration(decl_id) => {
@@ -1122,6 +1104,30 @@ fn connect_expression(
             tree_type,
             typed_storage_reassignment.rhs.clone().span,
         ),
+        Return(stmt) => {
+            let this_index = graph.add_node("return entry".into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, this_index, "".into());
+            }
+            let return_contents = connect_expression(
+                &stmt.expr.expression,
+                graph,
+                &[this_index],
+                exit_node,
+                "",
+                tree_type,
+                stmt.expr.span.clone(),
+            )?;
+            // TODO: is this right? Shouldn't we connect the return_contents leaves to the exit
+            // node?
+            for leaf in return_contents {
+                graph.add_edge(this_index, leaf, "".into());
+            }
+            if let Some(exit_node) = exit_node {
+                graph.add_edge(this_index, exit_node, "return".into());
+            }
+            Ok(vec![])
+        }
     }
 }
 
@@ -1245,10 +1251,7 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
         // if this is a function, struct, or trait declaration that is never called, then it is dead
         // code.
         TypedAstNode {
-            content:
-                TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
-                    TypedFunctionDeclaration { .. },
-                )),
+            content: TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(_)),
             span,
             ..
         } => CompileWarning {
@@ -1276,13 +1279,15 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
             }
         }
         TypedAstNode {
-            content:
-                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(TypedImplTrait {
-                    methods,
-                    ..
-                })),
-            ..
-        } if methods.is_empty() => return None,
+            content: TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(decl_id)),
+            span,
+        } => match de_get_impl_trait(decl_id.clone(), span) {
+            Ok(TypedImplTrait { methods, .. }) if methods.is_empty() => return None,
+            _ => CompileWarning {
+                span: span.clone(),
+                warning_content: Warning::DeadDeclaration,
+            },
+        },
         TypedAstNode {
             content: TypedAstNodeContent::Declaration(TypedDeclaration::AbiDeclaration { .. }),
             ..
@@ -1304,8 +1309,7 @@ fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileW
         TypedAstNode {
             span,
             content:
-                TypedAstNodeContent::ReturnStatement(_)
-                | TypedAstNodeContent::ImplicitReturnExpression(_)
+                TypedAstNodeContent::ImplicitReturnExpression(_)
                 | TypedAstNodeContent::Expression(_)
                 | TypedAstNodeContent::SideEffect,
         } => CompileWarning {

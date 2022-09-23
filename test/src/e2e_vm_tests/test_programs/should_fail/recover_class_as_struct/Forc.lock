@@ -1,0 +1,4 @@
+[[package]]
+name = 'recover_class_as_struct'
+source = 'root'
+dependencies = []

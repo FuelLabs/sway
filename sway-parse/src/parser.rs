@@ -121,7 +121,7 @@ impl<'a, 'e> Parser<'a, 'e> {
 
     pub fn check_empty(&self) -> Option<ParserConsumed<'a>> {
         self.is_empty()
-            .then(|| ParserConsumed { _priv: PhantomData })
+            .then_some(ParserConsumed { _priv: PhantomData })
     }
 
     pub fn debug_tokens(&self) -> &[TokenTree] {

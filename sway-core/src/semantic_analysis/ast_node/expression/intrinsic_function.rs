@@ -53,23 +53,32 @@ impl DeterministicallyAborts for TypedIntrinsicFunctionKind {
 }
 
 impl CollectTypesMetadata for TypedIntrinsicFunctionKind {
-    fn collect_types_metadata(&self) -> Vec<TypeMetadata> {
-        let mut types_metadata = self
-            .type_arguments
-            .iter()
-            .flat_map(|targ| targ.type_id.collect_types_metadata())
-            .chain(
-                self.arguments
-                    .iter()
-                    .flat_map(CollectTypesMetadata::collect_types_metadata),
-            )
-            .collect::<Vec<_>>();
+    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut types_metadata = vec![];
+        for type_arg in self.type_arguments.iter() {
+            types_metadata.append(&mut check!(
+                type_arg.type_id.collect_types_metadata(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        for arg in self.arguments.iter() {
+            types_metadata.append(&mut check!(
+                arg.collect_types_metadata(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
 
         if matches!(self.kind, Intrinsic::Log) {
             types_metadata.push(TypeMetadata::LoggedType(self.arguments[0].return_type));
         }
 
-        types_metadata
+        ok(types_metadata, warnings, errors)
     }
 }
 
@@ -531,6 +540,69 @@ impl TypedIntrinsicFunctionKind {
                 };
                 let return_type = insert_type(TypeInfo::Tuple(vec![]));
                 (intrinsic_function, return_type)
+            }
+            Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
+                if arguments.len() != 2 {
+                    errors.push(CompileError::IntrinsicIncorrectNumArgs {
+                        name: kind.to_string(),
+                        expected: 2,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                if !type_arguments.is_empty() {
+                    errors.push(CompileError::IntrinsicIncorrectNumTArgs {
+                        name: kind.to_string(),
+                        expected: 0,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+
+                let mut ctx = ctx
+                    .by_ref()
+                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+
+                let lhs = arguments[0].clone();
+                let lhs = check!(
+                    TypedExpression::type_check(ctx.by_ref(), lhs),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                // Check for supported argument types
+                let arg_ty = resolve_type(lhs.return_type, &lhs.span).unwrap();
+                let is_valid_arg_ty = matches!(arg_ty, TypeInfo::UnsignedInteger(_));
+                if !is_valid_arg_ty {
+                    errors.push(CompileError::IntrinsicUnsupportedArgType {
+                        name: kind.to_string(),
+                        span: lhs.span,
+                        hint: Hint::empty(),
+                    });
+                    return err(warnings, errors);
+                }
+
+                let rhs = arguments[1].clone();
+                let ctx = ctx
+                    .by_ref()
+                    .with_help_text("Incorrect argument type")
+                    .with_type_annotation(lhs.return_type);
+                let rhs = check!(
+                    TypedExpression::type_check(ctx, rhs),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                (
+                    TypedIntrinsicFunctionKind {
+                        kind,
+                        arguments: vec![lhs, rhs],
+                        type_arguments: vec![],
+                        span,
+                    },
+                    insert_type(arg_ty),
+                )
             }
         };
         ok((intrinsic_function, return_type), warnings, errors)

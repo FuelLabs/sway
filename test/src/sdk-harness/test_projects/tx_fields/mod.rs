@@ -1,4 +1,6 @@
+use fuel_vm::fuel_crypto::Hasher;
 use fuel_vm::fuel_tx::ConsensusParameters;
+use fuel_vm::fuel_tx::Transaction as FuelTransaction;
 use fuels::prelude::*;
 use fuels::tx::{Bytes32, ContractId};
 use std::str::FromStr;
@@ -197,7 +199,7 @@ async fn can_get_receipts_root() {
         .call()
         .await
         .unwrap();
-    assert_ne!(Bytes32::from(result.value), zero_receipts_root);
+    assert_ne!(Bytes32::from(result.value.0), zero_receipts_root);
 }
 
 #[tokio::test]
@@ -213,6 +215,33 @@ async fn can_get_script_start_offset() {
         .await
         .unwrap();
     assert_eq!(result.value, script_start_offset as u64);
+}
+
+#[tokio::test]
+async fn can_get_script_bytecode_hash() {
+    let (contract_instance, _, _) = get_contracts().await;
+
+    let tx = contract_instance
+        .get_tx_script_bytecode_hash()
+        .get_call_execution_script()
+        .await
+        .unwrap()
+        .tx;
+    let hash = match tx {
+        FuelTransaction::Script { script, .. } => {
+            // Make sure script is actually something fairly substantial
+            assert!(script.len() > 1);
+            Hasher::hash(&script)
+        }
+        _ => Hasher::hash(&vec![]),
+    };
+
+    let result = contract_instance
+        .get_tx_script_bytecode_hash()
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(Bytes32::from(result.value.0), hash);
 }
 
 #[tokio::test]
@@ -306,7 +335,7 @@ async fn can_get_tx_id() {
 
     let byte_array: [u8; 32] = tx_id.into();
 
-    assert_eq!(result.value, byte_array);
+    assert_eq!(result.value, Bits256(byte_array));
 }
 
 #[tokio::test]

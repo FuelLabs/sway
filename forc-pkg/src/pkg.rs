@@ -1,7 +1,7 @@
 use crate::{
     lock::Lock,
     manifest::{BuildProfile, ConfigTimeConstant, Dependency, Manifest, ManifestFile},
-    CORE, STD,
+    CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
@@ -26,10 +26,10 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    semantic_analysis::namespace, source_map::SourceMap, BytecodeCompilationResult,
-    CompileAstResult, CompileError, CompileResult, ParseProgram, TreeType,
+    semantic_analysis::namespace, source_map::SourceMap, BytecodeOrLib, CompileError,
+    CompileResult, ParseProgram, TreeType, TypedProgram,
 };
-use sway_types::{JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
+use sway_types::{Ident, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
 use sway_utils::constants;
 use tracing::{info, warn};
 use url::Url;
@@ -1483,6 +1483,9 @@ pub fn sway_build_config(
 ///
 /// This function ensures that if `core` exists in the graph (the vastly common case) it is also
 /// present within the namespace. This is a necessity for operators to work for example.
+///
+/// This function also ensures that if `std` exists in the graph,
+/// then the std prelude will also be added.
 pub fn dependency_namespace(
     namespace_map: &HashMap<NodeIx, namespace::Module>,
     graph: &Graph,
@@ -1512,7 +1515,27 @@ pub fn dependency_namespace(
         }
     }
 
+    if has_std_dep(graph, node) {
+        namespace.star_import_with_reexports(&[STD, PRELUDE].map(Ident::new_no_span), &[]);
+    }
+
     Ok(namespace)
+}
+
+/// Find the `std` dependency, if it is a direct one, of the given node.
+fn has_std_dep(graph: &Graph, node: NodeIx) -> bool {
+    // If we are `std`, do nothing.
+    let pkg = &graph[node];
+    if pkg.name == STD {
+        return false;
+    }
+
+    // If we have `std` as a direct dep, use it.
+    graph.edges_directed(node, Direction::Outgoing).any(|edge| {
+        let dep_node = edge.target();
+        let dep = &graph[dep_node];
+        matches!(&dep.name[..], STD)
+    })
 }
 
 /// Find the `core` dependency (whether direct or transitive) for the given node if it exists.
@@ -1531,7 +1554,7 @@ fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
         match &dep.name[..] {
             CORE => return Some(dep_node),
             STD => maybe_std = Some(dep_node),
-            _ => (),
+            _ => {}
         }
     }
 
@@ -1556,7 +1579,7 @@ pub fn compile_ast(
     manifest: &ManifestFile,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
-) -> Result<CompileAstResult> {
+) -> Result<CompileResult<TypedProgram>> {
     let source = manifest.entry_string()?;
     let sway_build_config =
         sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
@@ -1613,82 +1636,80 @@ pub fn compile(
         sway_build_config(manifest.dir(), &entry_path, build_profile,)?
     );
     let silent_mode = build_profile.silent;
+    let fail = |warnings, errors| {
+        print_on_failure(silent_mode, warnings, errors);
+        bail!("Failed to compile {}", pkg.name);
+    };
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
         compile_ast(manifest, build_profile, namespace,)?
     );
-    match &ast_res {
-        CompileAstResult::Failure { warnings, errors } => {
-            print_on_failure(silent_mode, warnings, errors);
-            bail!("Failed to compile {}", pkg.name);
+    let typed_program = match ast_res.value.as_ref() {
+        None => return fail(&ast_res.warnings, &ast_res.errors),
+        Some(typed_program) => typed_program,
+    };
+
+    if build_profile.print_ast {
+        tracing::info!("{:#?}", typed_program);
+    }
+
+    let mut types = vec![];
+    let json_abi_program = time_expr!(
+        "generate JSON ABI program",
+        typed_program.generate_json_abi_program(&mut types)
+    );
+
+    let storage_slots = typed_program.storage_slots.clone();
+    let tree_type = typed_program.kind.tree_type();
+    match tree_type {
+        // If we're compiling a library, we don't need to compile any further.
+        // Instead, we update the namespace with the library's top-level module.
+        TreeType::Library { .. } if !ast_res.errors.is_empty() => {
+            return fail(&ast_res.warnings, &ast_res.errors);
         }
-        CompileAstResult::Success {
-            typed_program,
-            warnings,
-        } => {
-            if build_profile.print_ast {
-                tracing::info!("{:#?}", typed_program);
-            }
-
-            let mut types = vec![];
-            let json_abi_program = time_expr!(
-                "generate JSON ABI program",
-                typed_program.generate_json_abi_program(&mut types)
-            );
-
-            let storage_slots = typed_program.storage_slots.clone();
-            let tree_type = typed_program.kind.tree_type();
-            match tree_type {
-                // If we're compiling a library, we don't need to compile any further.
-                // Instead, we update the namespace with the library's top-level module.
-                TreeType::Library { .. } => {
-                    print_on_success_library(silent_mode, &pkg.name, warnings);
-                    let bytecode = vec![];
-                    let lib_namespace = typed_program.root.namespace.clone();
-                    let compiled = Compiled {
-                        json_abi_program,
-                        storage_slots,
-                        bytecode,
-                        tree_type,
-                    };
-                    Ok((compiled, Some(lib_namespace.into())))
-                }
-
-                // For all other program types, we'll compile the bytecode.
-                TreeType::Contract | TreeType::Predicate | TreeType::Script => {
-                    let asm_res = time_expr!(
-                        "compile ast to asm",
-                        sway_core::ast_to_asm(ast_res, &sway_build_config)
-                    );
-                    let bc_res = time_expr!(
-                        "compile asm to bytecode",
-                        sway_core::asm_to_bytecode(asm_res, source_map)
-                    );
-                    match bc_res {
-                        BytecodeCompilationResult::Success { bytes, warnings } => {
-                            print_on_success(silent_mode, &pkg.name, &warnings, &tree_type);
-                            let bytecode = bytes;
-                            let compiled = Compiled {
-                                json_abi_program,
-                                storage_slots,
-                                bytecode,
-                                tree_type,
-                            };
-                            Ok((compiled, None))
-                        }
-                        BytecodeCompilationResult::Library { .. } => {
-                            unreachable!("compilation of library program types is handled above")
-                        }
-                        BytecodeCompilationResult::Failure { errors, warnings } => {
-                            print_on_failure(silent_mode, &warnings, &errors);
-                            bail!("Failed to compile {}", pkg.name);
-                        }
-                    }
-                }
-            }
+        TreeType::Library { .. } => {
+            print_on_success_library(silent_mode, &pkg.name, &ast_res.warnings);
+            let bytecode = vec![];
+            let lib_namespace = typed_program.root.namespace.clone();
+            let compiled = Compiled {
+                json_abi_program,
+                storage_slots,
+                bytecode,
+                tree_type,
+            };
+            return Ok((compiled, Some(lib_namespace.into())));
         }
+        // For all other program types, we'll compile the bytecode.
+        TreeType::Contract | TreeType::Predicate | TreeType::Script => {}
+    }
+
+    let asm_res = time_expr!(
+        "compile ast to asm",
+        sway_core::ast_to_asm(ast_res, &sway_build_config)
+    );
+    let bc_res = time_expr!(
+        "compile asm to bytecode",
+        sway_core::asm_to_bytecode(asm_res, source_map)
+    );
+
+    match bc_res.value {
+        Some(BytecodeOrLib::Library) => {
+            unreachable!("compilation of library program types is handled above")
+        }
+        Some(BytecodeOrLib::Bytecode(bytes)) if bc_res.errors.is_empty() => {
+            print_on_success(silent_mode, &pkg.name, &bc_res.warnings, &tree_type);
+            let bytecode = bytes;
+            let compiled = Compiled {
+                json_abi_program,
+                storage_slots,
+                bytecode,
+                tree_type,
+            };
+            Ok((compiled, None))
+        }
+        Some(BytecodeOrLib::Bytecode(_)) | None => fail(&bc_res.warnings, &bc_res.errors),
     }
 }
 #[derive(Default)]
@@ -2091,11 +2112,11 @@ fn update_json_type_declaration(
     }
 }
 
-/// Compile the entire forc package and return a CompileAstResult.
+/// Compile the entire forc package and return a typed program, if any.
 pub fn check(
     plan: &BuildPlan,
     silent_mode: bool,
-) -> anyhow::Result<(CompileResult<ParseProgram>, CompileAstResult)> {
+) -> anyhow::Result<CompileResult<(ParseProgram, Option<TypedProgram>)>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
     let mut namespace_map = Default::default();
@@ -2106,18 +2127,27 @@ pub fn check(
         let constants = manifest.config_time_constants();
         let dep_namespace =
             dependency_namespace(&namespace_map, &plan.graph, node, constants).expect("TODO");
-        let parsed_result = parse(manifest, silent_mode)?;
+        let CompileResult {
+            value,
+            mut warnings,
+            mut errors,
+        } = parse(manifest, silent_mode)?;
 
-        let parse_program = match &parsed_result.value {
-            None => bail!("unable to parse"),
+        let parse_program = match value {
+            None => return Ok(CompileResult::new(None, warnings, errors)),
             Some(program) => program,
         };
 
-        let ast_result = sway_core::parsed_to_ast(parse_program, dep_namespace, false);
+        let ast_result = sway_core::parsed_to_ast(&parse_program, dep_namespace, false);
+        warnings.extend(ast_result.warnings);
+        errors.extend(ast_result.errors);
 
-        let typed_program = match &ast_result {
-            CompileAstResult::Failure { .. } => bail!("unable to type check"),
-            CompileAstResult::Success { typed_program, .. } => typed_program,
+        let typed_program = match ast_result.value {
+            None => {
+                let value = Some((parse_program, None));
+                return Ok(CompileResult::new(value, warnings, errors));
+            }
+            Some(typed_program) => typed_program,
         };
 
         if let TreeType::Library { .. } = typed_program.kind.tree_type() {
@@ -2126,9 +2156,10 @@ pub fn check(
 
         source_map.insert_dependency(manifest.dir());
 
-        // We only need to return the final CompileAstResult
+        // We only need to return the final `TypedProgram`.
         if i == plan.compilation_order.len() - 1 {
-            return Ok((parsed_result, ast_result));
+            let value = Some((parse_program, Some(typed_program)));
+            return Ok(CompileResult::new(value, warnings, errors));
         }
     }
     bail!("unable to check sway program: build plan contains no packages")

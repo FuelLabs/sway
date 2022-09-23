@@ -2,10 +2,15 @@
 //! execution.
 
 use crate::{
-    control_flow_analysis::*, error::*, parse_tree::*, semantic_analysis::*, type_system::*,
+    control_flow_analysis::*,
+    declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait},
+    error::*,
+    parse_tree::*,
+    semantic_analysis::*,
+    type_system::*,
 };
 use petgraph::prelude::NodeIndex;
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 impl ControlFlowGraph {
     pub(crate) fn construct_return_path_graph(
@@ -63,10 +68,7 @@ impl ControlFlowGraph {
         let mut max_iterations = 50;
         while !rovers.is_empty() && rovers[0] != exit_point && max_iterations > 0 {
             max_iterations -= 1;
-            rovers = rovers
-                .into_iter()
-                .filter(|idx| *idx != exit_point)
-                .collect();
+            rovers.retain(|idx| *idx != exit_point);
             let mut next_rovers = vec![];
             let mut last_discovered_span;
             for rover in rovers {
@@ -124,7 +126,10 @@ fn connect_node(
 ) -> Result<(NodeConnection, ReturnStatementNodes), CompileError> {
     let span = node.span.clone();
     match &node.content {
-        TypedAstNodeContent::ReturnStatement(_)
+        TypedAstNodeContent::Expression(TypedExpression {
+            expression: TypedExpressionVariant::Return(..),
+            ..
+        })
         | TypedAstNodeContent::ImplicitReturnExpression(_) => {
             let this_index = graph.add_node(node.into());
             for leaf_ix in leaves {
@@ -209,24 +214,26 @@ fn connect_declaration(
             }
             Ok(vec![entry_node])
         }
-        FunctionDeclaration(fn_decl) => {
+        FunctionDeclaration(decl_id) => {
+            let fn_decl = de_get_function(decl_id.clone(), &decl.span())?;
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
-            connect_typed_fn_decl(fn_decl, graph, entry_node, span)?;
+            connect_typed_fn_decl(&fn_decl, graph, entry_node, span)?;
             Ok(leaves.to_vec())
         }
-        ImplTrait(TypedImplTrait {
-            trait_name,
-            methods,
-            ..
-        }) => {
+        ImplTrait(decl_id) => {
+            let TypedImplTrait {
+                trait_name,
+                methods,
+                ..
+            } = de_get_impl_trait(decl_id.clone(), &span)?;
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
-            connect_impl_trait(trait_name, graph, methods, entry_node)?;
+            connect_impl_trait(&trait_name, graph, &methods, entry_node)?;
             Ok(leaves.to_vec())
         }
         ErrorRecovery => Ok(leaves.to_vec()),
