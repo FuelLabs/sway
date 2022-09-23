@@ -244,8 +244,6 @@ impl<T> Vec<T> {
     ///
     /// Reverts if `index` is greater than or equal to the length of vector.
     pub fn set(ref mut self, index: u64, value: T) {
-        // YYY -> documentation
-
         assert(index < self.len);
 
         let end = self.buf.ptr() + index * size_of::<T>();
