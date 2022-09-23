@@ -8,7 +8,6 @@ use ::identity::Identity;
 use ::revert::revert;
 use ::outputs::{Output, output_amount, output_count, output_type};
 
-
 /// Mint `amount` coins of the current contract's `asset_id` and transfer them
 /// to `to` by calling either force_transfer_to_contract() or
 /// transfer_to_output(), depending on the type of `Identity`.
@@ -19,9 +18,9 @@ pub fn mint_to(amount: u64, to: Identity) {
 
 /// Mint `amount` coins of the current contract's `asset_id` and send them
 /// UNCONDITIONALLY to the contract at `to`.
-///
+/// 
 /// CAUTION !!!
-///
+/// 
 /// This will transfer coins to a contract even with no way to retrieve them
 /// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
 /// the PERMANENT LOSS OF COINS if not used with care.
@@ -54,28 +53,24 @@ pub fn burn(amount: u64) {
 /// Transfer `amount` coins of the current contract's `asset_id` and send them
 /// to `to` by calling either force_transfer_to_contract() or
 /// transfer_to_output(), depending on the type of `Identity`.
-///
+/// 
 /// CAUTION !!!
-///
+/// 
 /// This may transfer coins to a contract even with no way to retrieve them
 /// (i.e. no withdrawal functionality on receiving contract), possibly leading
 /// to the PERMANENT LOSS OF COINS if not used with care.
 pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
     match to {
-        Identity::Address(addr) => {
-            transfer_to_output(amount, asset_id, addr);
-        },
-        Identity::ContractId(id) => {
-            force_transfer_to_contract(amount, asset_id, id);
-        },
-    }
+        Identity::Address(addr) => transfer_to_output(amount, asset_id, addr),
+        Identity::ContractId(id) => force_transfer_to_contract(amount, asset_id, id),
+    };
 }
 
 /// UNCONDITIONAL transfer of `amount` coins of type `asset_id` to
 /// the contract at `to`.
-///
+/// 
 /// CAUTION !!!
-///
+/// 
 /// This will transfer coins to a contract even with no way to retrieve them
 /// (i.e. no withdrawal functionality on receiving contract), possibly leading
 /// to the PERMANENT LOSS OF COINS if not used with care.

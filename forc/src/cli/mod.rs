@@ -6,9 +6,10 @@ use addr2line::Command as Addr2LineCommand;
 use anyhow::{anyhow, Result};
 pub use build::Command as BuildCommand;
 pub use check::Command as CheckCommand;
-use clap::Parser;
+use clap::{Parser, Subcommand};
 pub use clean::Command as CleanCommand;
 pub use completions::Command as CompletionsCommand;
+use forc_util::init_tracing_subscriber;
 pub use init::Command as InitCommand;
 pub use new::Command as NewCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
@@ -26,9 +27,12 @@ struct Opt {
     /// the command to run
     #[clap(subcommand)]
     command: Forc,
+    /// Use verbose output.
+    #[clap(short, long, parse(from_occurrences), global = true)]
+    verbose: u8,
 }
 
-#[derive(Debug, Parser)]
+#[derive(Subcommand, Debug)]
 enum Forc {
     #[clap(name = "addr2line")]
     Addr2Line(Addr2LineCommand),
@@ -59,6 +63,8 @@ enum Forc {
 
 pub async fn run_cli() -> Result<()> {
     let opt = Opt::parse();
+    init_tracing_subscriber(Some(opt.verbose));
+
     match opt.command {
         Forc::Addr2Line(command) => addr2line::exec(command),
         Forc::Build(command) => build::exec(command),

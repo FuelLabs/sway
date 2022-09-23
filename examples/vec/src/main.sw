@@ -1,6 +1,6 @@
 script;
 
-use std::{logging::log, option::Option};
+use std::logging::log;
 
 fn main() {
     // ANCHOR: vec_new

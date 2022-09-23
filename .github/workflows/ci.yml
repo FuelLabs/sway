@@ -120,7 +120,7 @@ jobs:
           cargo install --debug --path ./forc-plugins/forc-fmt
           cargo install --debug --path ./forc-plugins/forc-lsp
           cargo install --debug --path ./forc-plugins/forc-explore
-          cargo install --debug --path ./forc-plugins/forc-client
+          cargo install --debug forc-client
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
         with:
@@ -324,7 +324,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notify Slack On Failure
-        uses: ravsamhq/notify-slack-action@v1
+        uses: ravsamhq/notify-slack-action@v2
         if: always() && github.ref == 'refs/heads/master'
         with:
           status: ${{ job.status }}
@@ -369,7 +369,6 @@ jobs:
         run: |
           cargo install toml-cli
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-client/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-explore/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-fmt/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-lsp/Cargo.toml
@@ -388,7 +387,7 @@ jobs:
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
       - name: Notify if Job Fails
-        uses: ravsamhq/notify-slack-action@v1
+        uses: ravsamhq/notify-slack-action@v2
         if: always()
         with:
           status: ${{ job.status }}
@@ -463,7 +462,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Notify if Job Fails
-        uses: ravsamhq/notify-slack-action@v1
+        uses: ravsamhq/notify-slack-action@v2
         if: always()
         with:
           status: ${{ job.status }}
@@ -518,7 +517,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Notify if Job Fails
-        uses: ravsamhq/notify-slack-action@v1
+        uses: ravsamhq/notify-slack-action@v2
         if: always()
         with:
           status: ${{ job.status }}
@@ -610,12 +609,6 @@ jobs:
           command: install
           args: --profile=release --path ./forc-plugins/forc-explore
 
-      - name: Install Forc-Client
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-client
-
       - name: Prep Assets
         id: prep_assets
         env:
@@ -626,7 +619,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for binary in forc forc-fmt forc-lsp forc-explore forc-deploy forc-run; do
+          for binary in forc forc-fmt forc-lsp forc-explore; do
             cp $(which ${binary}) ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries

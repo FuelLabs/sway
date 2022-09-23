@@ -1,6 +1,6 @@
 contract;
 
-use std::{chain::auth::{AuthError, msg_sender}, result::Result};
+use std::chain::auth::{AuthError, msg_sender};
 
 abi MyOwnedContract {
     fn receive(field_1: u64) -> bool;

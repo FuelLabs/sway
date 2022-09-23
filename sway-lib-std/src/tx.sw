@@ -10,7 +10,6 @@ use ::revert::revert;
 ////////////////////////////////////////
 // GTF Opcode const selectors
 ////////////////////////////////////////
-
 const GTF_TYPE = 0x001;
 const GTF_SCRIPT_GAS_PRICE = 0x002;
 const GTF_SCRIPT_GAS_LIMIT = 0x003;
@@ -53,17 +52,10 @@ pub enum Transaction {
 /// Get the type of the current transaction.
 /// Either 0 (transaction-script) or 1 (transaction-create)
 pub fn tx_type() -> Transaction {
-    let type = __gtf::<u8>(0, GTF_TYPE);
-    match type {
-        0u8 => {
-            Transaction::Script
-        },
-        1u8 => {
-            Transaction::Create
-        },
-        _ => {
-            revert(0);
-        },
+    match __gtf::<u8>(0, GTF_TYPE) {
+        0u8 => Transaction::Script,
+        1u8 => Transaction::Create,
+        _ => revert(0),
     }
 }
 
@@ -71,12 +63,8 @@ pub fn tx_type() -> Transaction {
 /// (transaction-script or transaction-create).
 pub fn tx_gas_price() -> u64 {
     match tx_type() {
-        Transaction::Script => {
-            __gtf::<u64>(0, GTF_SCRIPT_GAS_PRICE)
-        },
-        Transaction::Create => {
-            __gtf::<u64>(0, GTF_CREATE_GAS_PRICE)
-        },
+        Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_GAS_PRICE),
+        Transaction::Create => __gtf::<u64>(0, GTF_CREATE_GAS_PRICE),
     }
 }
 
@@ -84,12 +72,8 @@ pub fn tx_gas_price() -> u64 {
 /// (transaction-script or transaction-create).
 pub fn tx_gas_limit() -> u64 {
     match tx_type() {
-        Transaction::Script => {
-            __gtf::<u64>(0, GTF_SCRIPT_GAS_LIMIT)
-        },
-        Transaction::Create => {
-            __gtf::<u64>(0, GTF_CREATE_GAS_LIMIT)
-        },
+        Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_GAS_LIMIT),
+        Transaction::Create => __gtf::<u64>(0, GTF_CREATE_GAS_LIMIT),
     }
 }
 
@@ -97,12 +81,8 @@ pub fn tx_gas_limit() -> u64 {
 /// (transaction-script or transaction-create).
 pub fn tx_maturity() -> u32 {
     match tx_type() {
-        Transaction::Script => {
-            __gtf::<u32>(0, GTF_SCRIPT_MATURITY)
-        },
-        Transaction::Create => {
-            __gtf::<u32>(0, GTF_CREATE_MATURITY)
-        },
+        Transaction::Script => __gtf::<u32>(0, GTF_SCRIPT_MATURITY),
+        Transaction::Create => __gtf::<u32>(0, GTF_CREATE_MATURITY),
     }
 }
 
@@ -110,12 +90,8 @@ pub fn tx_maturity() -> u32 {
 /// Reverts if not a transaction-script.
 pub fn tx_script_length() -> u64 {
     match tx_type() {
-        Transaction::Script => {
-            __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH)
-        },
-        Transaction::Create => {
-            revert(0)
-        },
+        Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH),
+        Transaction::Create => revert(0),
     }
 }
 
@@ -123,12 +99,8 @@ pub fn tx_script_length() -> u64 {
 /// Reverts if not a transaction-script.
 pub fn tx_script_data_length() -> u64 {
     match tx_type() {
-        Transaction::Script => {
-            __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA_LENGTH)
-        },
-        Transaction::Create => {
-            revert(0)
-        }
+        Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA_LENGTH),
+        Transaction::Create => revert(0),
     }
 }
 
@@ -136,12 +108,8 @@ pub fn tx_script_data_length() -> u64 {
 /// (transaction-script or transaction-create).
 pub fn tx_witnesses_count() -> u64 {
     match tx_type() {
-        Transaction::Script => {
-            __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT)
-        },
-        Transaction::Create => {
-            __gtf::<u64>(0, GTF_CREATE_WITNESSES_COUNT)
-        },
+        Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
+        Transaction::Create => __gtf::<u64>(0, GTF_CREATE_WITNESSES_COUNT),
     }
 }
 
@@ -149,12 +117,8 @@ pub fn tx_witnesses_count() -> u64 {
 /// (transaction-script or transaction-create).
 pub fn tx_witness_pointer(index: u64) -> u64 {
     match tx_type() {
-        Transaction::Script => {
-            __gtf::<u64>(0, GTF_SCRIPT_WITNESS_AT_INDEX)
-        },
-        Transaction::Create => {
-            __gtf::<u64>(0, GTF_CREATE_WITNESS_AT_INDEX)
-        },
+        Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_WITNESS_AT_INDEX),
+        Transaction::Create => __gtf::<u64>(0, GTF_CREATE_WITNESS_AT_INDEX),
     }
 }
 
@@ -172,12 +136,8 @@ pub fn tx_witness_data<T>(index: u64) -> T {
 /// Reverts if not a transaction-script.
 pub fn tx_receipts_root() -> b256 {
     match tx_type() {
-        Transaction::Script => {
-            read::<b256>(__gtf::<u64>(0, GTF_SCRIPT_RECEIPTS_ROOT))
-        },
-        _ => {
-            revert(0);
-        }
+        Transaction::Script => read::<b256>(__gtf::<u64>(0, GTF_SCRIPT_RECEIPTS_ROOT)),
+        _ => revert(0),
     }
 }
 
@@ -185,12 +145,8 @@ pub fn tx_receipts_root() -> b256 {
 /// Reverts if not a transaction-script.
 pub fn tx_script_start_pointer() -> u64 {
     match tx_type() {
-        Transaction::Script => {
-            __gtf::<u64>(0, GTF_SCRIPT_SCRIPT)
-        },
-        _ => {
-            revert(0);
-        }
+        Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_SCRIPT),
+        _ => revert(0),
     }
 }
 
@@ -199,9 +155,7 @@ pub fn tx_script_start_pointer() -> u64 {
 /// (transaction-create has no script data length),
 pub fn tx_script_data_start_pointer() -> u64 {
     match tx_type() {
-        Transaction::Script => {
-            __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA)
-        },
+        Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA),
         _ => {
             // transaction-create has no script data length
             revert(0);
@@ -232,7 +186,7 @@ pub fn tx_script_bytecode_hash() -> b256 {
             let mut result_buffer = ZERO_B256;
             let script_length = tx_script_length();
             let script_ptr = tx_script_start_pointer();
-            
+
             // Run the hash opcode for the script in memory
             asm(hash: result_buffer, ptr: script_ptr, len: script_length) {
                 s256 hash ptr len;
