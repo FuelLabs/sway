@@ -3,6 +3,7 @@ mod matrix;
 mod patstack;
 mod pattern;
 mod range;
+mod reachable_report;
 mod usefulness;
 mod witness_report;
 
