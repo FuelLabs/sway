@@ -512,11 +512,7 @@ impl TypeEngine {
         self.unify(received, expected, span, help_text)
     }
 
-    pub fn to_typeinfo(
-        &self,
-        id: TypeId,
-        error_span: &Span,
-    ) -> Result<TypeInfo, TypeError> {
+    pub fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
         match self.look_up_type_id(id) {
             TypeInfo::Unknown => Err(TypeError::UnknownType {
                 span: error_span.clone(),

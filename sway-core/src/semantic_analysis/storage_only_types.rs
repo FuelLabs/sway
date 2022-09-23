@@ -2,7 +2,7 @@ use sway_types::{Span, Spanned};
 
 use crate::declaration_engine::declaration_engine::*;
 use crate::error::err;
-use crate::type_system::{to_typeinfo, is_type_info_storage_only, TypeId};
+use crate::type_system::{is_type_info_storage_only, to_typeinfo, TypeId};
 use crate::{error::ok, semantic_analysis, CompileError, CompileResult, CompileWarning};
 use crate::{TypedDeclaration, TypedFunctionDeclaration};
 

@@ -142,8 +142,7 @@ impl TypedIntrinsicFunctionKind {
                     return err(warnings, errors);
                 }
                 let targ = type_arguments[0].clone();
-                let initial_type_id =
-                    insert_type(to_typeinfo(targ.type_id, &targ.span).unwrap());
+                let initial_type_id = insert_type(to_typeinfo(targ.type_id, &targ.span).unwrap());
                 let type_id = check!(
                     ctx.resolve_type_with_self(
                         initial_type_id,
@@ -178,8 +177,7 @@ impl TypedIntrinsicFunctionKind {
                     return err(warnings, errors);
                 }
                 let targ = type_arguments[0].clone();
-                let initial_type_id =
-                    insert_type(to_typeinfo(targ.type_id, &targ.span).unwrap());
+                let initial_type_id = insert_type(to_typeinfo(targ.type_id, &targ.span).unwrap());
                 let type_id = check!(
                     ctx.resolve_type_with_self(
                         initial_type_id,
@@ -333,8 +331,7 @@ impl TypedIntrinsicFunctionKind {
                 }
 
                 let targ = type_arguments[0].clone();
-                let initial_type_id =
-                    insert_type(to_typeinfo(targ.type_id, &targ.span).unwrap());
+                let initial_type_id = insert_type(to_typeinfo(targ.type_id, &targ.span).unwrap());
                 let type_id = check!(
                     ctx.resolve_type_with_self(
                         initial_type_id,
@@ -379,9 +376,7 @@ impl TypedIntrinsicFunctionKind {
                     warnings,
                     errors
                 );
-                let copy_ty = to_typeinfo(exp.return_type, &span)
-                    .unwrap()
-                    .is_copy_type();
+                let copy_ty = to_typeinfo(exp.return_type, &span).unwrap().is_copy_type();
                 if copy_ty {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),

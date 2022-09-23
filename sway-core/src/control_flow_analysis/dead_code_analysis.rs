@@ -561,8 +561,8 @@ fn connect_typed_fn_decl(
 
     // not sure how correct it is to default to Unit here...
     // I think types should all be resolved by now.
-    let ty = to_typeinfo(fn_decl.return_type, &span)
-        .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
+    let ty =
+        to_typeinfo(fn_decl.return_type, &span).unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
 
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,

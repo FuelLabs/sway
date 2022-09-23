@@ -1,9 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    type_system::{
-        to_typeinfo, TraitConstraint, TypeArgument, TypeBinding, TypeParameter,
-    },
+    type_system::{to_typeinfo, TraitConstraint, TypeArgument, TypeBinding, TypeParameter},
     WhileLoopExpression,
 };
 
