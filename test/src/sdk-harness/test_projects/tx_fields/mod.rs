@@ -180,11 +180,15 @@ async fn can_get_witness_data() {
         .await
         .unwrap();
 
+    // let mut witness_first = Bits256(witnesses[0].clone().as_ref());
     let mut witness_first = witnesses[0].clone().into_inner();
     let witness_second = witness_first.split_off(32);
 
-    assert_eq!(result.value.bytes[0].to_vec(), witness_first);
-    assert_eq!(result.value.bytes[1].to_vec(), witness_second);
+    let first_witness_array = witness_first.try_into().unwrap();
+    let second_witness_array = witness_second.try_into().unwrap();
+
+    assert_eq!(result.value.bytes[0], Bits256(first_witness_array));
+    assert_eq!(result.value.bytes[1], Bits256(second_witness_array));
 }
 
 #[tokio::test]
@@ -350,7 +354,7 @@ async fn can_get_get_tx_script_data_start_pointer() {
 async fn can_get_input_message_msg_id() {
     let (contract_instance, _, _) = get_contracts().await;
     let result = contract_instance.get_input_message_msg_id(0).call().await.unwrap();
-    assert_eq!(result.value, [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8])
+    assert_eq!(result.value, Bits256([0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8]))
 }
 
 #[tokio::test]

@@ -3,7 +3,6 @@ contract;
 use std::{
     address::Address,
     b512::B512,
-    option::Option,
     inputs::{
         Input,
         input_amount,
@@ -39,9 +38,11 @@ use std::{
         tx_id,
         tx_maturity,
         tx_receipts_root,
+        tx_script_bytecode_hash,
         tx_script_data_length,
         tx_script_data_start_pointer,
         tx_script_length,
+
         tx_script_start_pointer,
         tx_type,
         tx_witnesses_count,
