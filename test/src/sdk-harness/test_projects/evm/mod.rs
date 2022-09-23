@@ -25,8 +25,9 @@ async fn can_call_from_literal() {
 
     let raw_address = [6; 32]; // hardcoded in the contract to test calling `from()` with a literal
     let result = instance.evm_address_from_literal().call().await.unwrap();
-    assert_eq!(result.value.value[0..12], [0; 12]);
-    assert_eq!(result.value.value[12..32], raw_address[12..32]);
+    let returned_value = result.value.value;
+    assert_eq!(returned_value.0[0..12], [0; 12]);
+    assert_eq!(returned_value.0[12..32], raw_address[12..32]);
 }
 
 #[tokio::test]
@@ -35,10 +36,11 @@ async fn can_call_from_argument() {
 
     let raw_address = [7; 32];
     let result = instance
-        .evm_address_from_argument(raw_address.into())
+        .evm_address_from_argument(Bits256(raw_address))
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value.value[0..12], [0; 12]);
-    assert_eq!(result.value.value[12..32], raw_address[12..32]);
+    let returned_value = result.value.value;
+    assert_eq!(returned_value.0[0..12], [0; 12]);
+    assert_eq!(returned_value.0[12..32], raw_address[12..32]);
 }

@@ -20,9 +20,6 @@ pub struct Command {
     /// Create a package with a library target (src/lib.sw).
     #[clap(long)]
     pub library: bool,
-    /// Use verbose output.
-    #[clap(short = 'v', long)]
-    pub verbose: bool,
     /// Set the package name. Defaults to the directory name
     #[clap(long)]
     pub name: Option<String>,
