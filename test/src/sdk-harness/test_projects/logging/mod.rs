@@ -9,11 +9,6 @@ async fn run_valid() {
 
     let wallet = launch_provider_and_get_wallet().await;
 
-    let inputs = wallet
-        .get_asset_inputs_for_amount(BASE_ASSET_ID, DEFAULT_SPENDABLE_COIN_AMOUNT, 0)
-        .await
-        .unwrap();
-
     let mut tx = Transaction::Script {
         gas_price: 0,
         gas_limit: ConsensusParameters::DEFAULT.max_gas_per_tx,
@@ -21,7 +16,7 @@ async fn run_valid() {
         receipts_root: Default::default(),
         script: bin.unwrap(),
         script_data: vec![],
-        inputs,
+        inputs: vec![],
         outputs: vec![],
         witnesses: vec![],
         metadata: None,

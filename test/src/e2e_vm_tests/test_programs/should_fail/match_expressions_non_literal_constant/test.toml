@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: MY_DATA1
+# check: $()Unimplemented feature: constant values of this type are not supported yet
