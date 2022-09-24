@@ -115,7 +115,7 @@ impl TypeEngine {
                     });
                     return err(warnings, errors);
                 }
-                let type_mapping = insert_type_parameters(value.type_parameters());
+                let type_mapping = TypeMapping::from_type_parameters(value.type_parameters());
                 value.copy_types(&type_mapping);
                 ok((), warnings, errors)
             }
@@ -159,19 +159,13 @@ impl TypeEngine {
                         errors
                     );
                 }
-                let type_mapping = insert_type_parameters(value.type_parameters());
-                for ((_, interim_type), type_argument) in
-                    type_mapping.iter().zip(type_arguments.iter())
-                {
-                    let (mut new_warnings, new_errors) = unify(
-                        *interim_type,
-                        type_argument.type_id,
-                        &type_argument.span,
-                        "Type argument is not assignable to generic type parameter.",
-                    );
-                    warnings.append(&mut new_warnings);
-                    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-                }
+                let type_mapping = TypeMapping::from_type_parameters(value.type_parameters());
+                check!(
+                    type_mapping.unify_with_type_arguments(type_arguments),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 value.copy_types(&type_mapping);
                 ok((), warnings, errors)
             }
