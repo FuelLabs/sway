@@ -124,7 +124,7 @@ impl TypeId {
     }
 
     pub(crate) fn update_type(&mut self, type_mapping: &TypeMapping, span: &Span) {
-        if let Some(matching_id) = look_up_type_id(*self).matches_type_parameter(type_mapping) {
+        if let Some(matching_id) = type_mapping.find_match(*self) {
             *self = insert_type(TypeInfo::Ref(matching_id, span.clone()));
         }
     }
