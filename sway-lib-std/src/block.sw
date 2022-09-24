@@ -10,11 +10,7 @@ pub fn height() -> u64 {
 
 /// Get the timestamp of the current block
 pub fn timestamp() -> u64 {
-    let current_block_height = height();
-    asm(timestamp, height: current_block_height) {
-        time timestamp height;
-        timestamp: u64
-    }
+    timestamp_of_block(height())
 }
 
 /// Get the timestamp of block at height `block_height`
