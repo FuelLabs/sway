@@ -22,6 +22,10 @@ impl TypeEngine {
         TypeId::new(self.slab.insert(ty))
     }
 
+    pub fn size(&self) -> usize {
+        self.slab.size()
+    }
+
     /// Gets the size of the [TypeEngine].
     fn look_up_type_id_raw(&self, id: TypeId) -> TypeInfo {
         self.slab.get(*id)
@@ -531,6 +535,10 @@ impl TypeEngine {
 
 pub fn insert_type(ty: TypeInfo) -> TypeId {
     TYPE_ENGINE.insert_type(ty)
+}
+
+pub fn type_engine_size() -> usize {
+    TYPE_ENGINE.size()
 }
 
 pub fn look_up_type_id(id: TypeId) -> TypeInfo {
