@@ -266,7 +266,7 @@ fn insert_after_span(
     if pre_module_comment {
         writeln!(comment_str)?;
 
-        src_rope.insert(from.end + offset, &comment_str.trim_start());
+        src_rope.insert(from.end + offset, comment_str.trim_start());
     } else {
         src_rope.insert(from.end + offset, &comment_str);
     }
