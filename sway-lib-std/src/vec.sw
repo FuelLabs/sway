@@ -248,6 +248,6 @@ impl<T> Vec<T> {
 
         let end = self.buf.ptr() + index * size_of::<T>();
 
-        write(end, value);
+        write(index_ptr, value);
     }
 }
