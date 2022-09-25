@@ -1,7 +1,5 @@
 script;
 
-use std::{assert::assert, vec::Vec};
-
 fn main() {
     let mut vector = ~Vec::new();
 

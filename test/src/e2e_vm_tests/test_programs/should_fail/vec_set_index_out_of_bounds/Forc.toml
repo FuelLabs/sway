@@ -1,5 +1,5 @@
 [project]
-authors = ["Maurice Weber"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
 name = "vec_set_index_out_of_bounds"

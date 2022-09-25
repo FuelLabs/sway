@@ -246,7 +246,7 @@ impl<T> Vec<T> {
     pub fn set(ref mut self, index: u64, value: T) {
         assert(index < self.len);
 
-        let end = self.buf.ptr() + index * size_of::<T>();
+        let index_ptr = self.buf.ptr() + index * size_of::<T>();
 
         write(index_ptr, value);
     }
