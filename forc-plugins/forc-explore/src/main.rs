@@ -70,7 +70,7 @@ fn clean() -> Result<()> {
 }
 
 async fn run(app: App) -> Result<()> {
-    init_tracing_subscriber();
+    init_tracing_subscriber(None);
     let App { port, .. } = app;
     let releases = get_github_releases().await?;
     let release = releases

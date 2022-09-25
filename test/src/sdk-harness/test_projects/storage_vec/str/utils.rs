@@ -34,31 +34,31 @@ pub mod wrappers {
     use super::*;
 
     pub async fn push(instance: &MyContract, value: String) {
-        instance.str_push(value).call().await.unwrap();
+        instance.str_push(SizedAsciiString::try_from(value).unwrap()).call().await.unwrap();
     }
 
     pub async fn get(instance: &MyContract, index: u64) -> String {
-        instance.str_get(index).call().await.unwrap().value
+        instance.str_get(index).call().await.unwrap().value.into()
     }
 
     pub async fn pop(instance: &MyContract) -> String {
-        instance.str_pop().call().await.unwrap().value
+        instance.str_pop().call().await.unwrap().value.into()
     }
 
     pub async fn remove(instance: &MyContract, index: u64) -> String {
-        instance.str_remove(index).call().await.unwrap().value
+        instance.str_remove(index).call().await.unwrap().value.into()
     }
 
     pub async fn swap_remove(instance: &MyContract, index: u64) -> String {
-        instance.str_swap_remove(index).call().await.unwrap().value
+        instance.str_swap_remove(index).call().await.unwrap().value.into()
     }
 
     pub async fn set(instance: &MyContract, index: u64, value: String) {
-        instance.str_set(index, value).call().await.unwrap();
+        instance.str_set(index, SizedAsciiString::try_from(value).unwrap()).call().await.unwrap();
     }
 
     pub async fn insert(instance: &MyContract, index: u64, value: String) {
-        instance.str_insert(index, value).call().await.unwrap();
+        instance.str_insert(index, SizedAsciiString::try_from(value).unwrap()).call().await.unwrap();
     }
 
     pub async fn len(instance: &MyContract) -> u64 {

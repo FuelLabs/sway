@@ -6,7 +6,7 @@ use clap::Parser;
 
 #[tokio::main]
 pub async fn main() {
-    init_tracing_subscriber();
+    init_tracing_subscriber(None);
     let command = DeployCommand::parse();
     if let Err(err) = deploy(command).await {
         tracing::error!("Error: {:?}", err);
