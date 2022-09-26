@@ -376,29 +376,8 @@ pub fn lex_commented(
             }
             continue;
         }
-        if character == '"' {
-            let mut parsed = String::new();
-            loop {
-                let unclosed_string_lit = |end| LexError {
-                    kind: LexErrorKind::UnclosedStringLiteral { position: index },
-                    span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
-                };
-                let next_character = match char_indices.next() {
-                    Some((_, c)) => c,
-                    None => return Err(unclosed_string_lit(src.len() - 1)),
-                };
-                parsed.push(match next_character {
-                    '\\' => match parse_escape_code(src, &mut char_indices, &path) {
-                        Ok(c) => c,
-                        Err(e) => return Err(e.unwrap_or_else(|| unclosed_string_lit(src.len()))),
-                    },
-                    '"' => break,
-                    _ => next_character,
-                });
-            }
-            let span = span_until(src, index, &mut char_indices, &path);
-            let literal = Literal::String(LitString { span, parsed });
-            token_trees.push(CommentedTokenTree::Tree(literal.into()));
+        if let Some(token) = lex_string(src, &path, &mut char_indices, index, character)? {
+            token_trees.push(token);
             continue;
         }
         if character == '\'' {
@@ -684,6 +663,40 @@ pub fn lex_commented(
         full_span,
     };
     Ok(token_stream)
+}
+
+fn lex_string(
+    src: &Arc<str>,
+    path: &Option<Arc<PathBuf>>,
+    char_indices: &mut CharIndices,
+    index: usize,
+    character: char,
+) -> Result<Option<CommentedTokenTree>, LexError> {
+    if character != '"' {
+        return Ok(None);
+    }
+    let mut parsed = String::new();
+    loop {
+        let unclosed_string_lit = |end| LexError {
+            kind: LexErrorKind::UnclosedStringLiteral { position: index },
+            span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
+        };
+        let next_character = match char_indices.next() {
+            Some((_, c)) => c,
+            None => return Err(unclosed_string_lit(src.len() - 1)),
+        };
+        parsed.push(match next_character {
+            '\\' => match parse_escape_code(src, char_indices, &path) {
+                Ok(c) => c,
+                Err(e) => return Err(e.unwrap_or_else(|| unclosed_string_lit(src.len()))),
+            },
+            '"' => break,
+            _ => next_character,
+        });
+    }
+    let span = span_until(src, index, char_indices, &path);
+    let literal = Literal::String(LitString { span, parsed });
+    Ok(Some(CommentedTokenTree::Tree(literal.into())))
 }
 
 fn parse_escape_code(
