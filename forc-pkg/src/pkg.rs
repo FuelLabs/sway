@@ -1854,11 +1854,12 @@ pub fn compile(
     let storage_slots = typed_program.storage_slots.clone();
     let tree_type = typed_program.kind.tree_type();
     match tree_type {
-        // If we're compiling a library, we don't need to compile any further.
-        // Instead, we update the namespace with the library's top-level module.
-        TreeType::Library { .. } if !ast_res.errors.is_empty() => {
+        // On errors, do not proceed to compiling bytecode, as semantic analysis did not pass.
+        _ if !ast_res.errors.is_empty() => {
             return fail(&ast_res.warnings, &ast_res.errors);
         }
+        // If we're compiling a library, we don't need to compile any further.
+        // Instead, we update the namespace with the library's top-level module.
         TreeType::Library { .. } => {
             print_on_success_library(silent_mode, &pkg.name, &ast_res.warnings);
             let bytecode = vec![];
