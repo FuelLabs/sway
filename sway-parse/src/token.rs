@@ -379,44 +379,22 @@ pub fn lex_commented(
         if character == '"' {
             let mut parsed = String::new();
             loop {
-                let next_character = match char_indices.next() {
-                    Some((_, next_character)) => next_character,
-                    None => {
-                        return Err(LexError {
-                            kind: LexErrorKind::UnclosedStringLiteral { position: index },
-                            span: Span::new(src.clone(), index, src.len() - 1, path.clone())
-                                .unwrap(),
-                        });
-                    }
+                let unclosed_string_lit = |end| LexError {
+                    kind: LexErrorKind::UnclosedStringLiteral { position: index },
+                    span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
                 };
-                match next_character {
-                    '\\' => {
-                        let parsed_character =
-                            match parse_escape_code(src, &mut char_indices, &path) {
-                                Ok(parsed_character) => parsed_character,
-                                Err(None) => {
-                                    return Err(LexError {
-                                        kind: LexErrorKind::UnclosedStringLiteral {
-                                            position: index,
-                                        },
-                                        span: Span::new(
-                                            src.clone(),
-                                            index,
-                                            src.len(),
-                                            path.clone(),
-                                        )
-                                        .unwrap(),
-                                    });
-                                }
-                                Err(Some(err)) => return Err(err),
-                            };
-                        parsed.push(parsed_character);
-                    }
+                let next_character = match char_indices.next() {
+                    Some((_, c)) => c,
+                    None => return Err(unclosed_string_lit(src.len() - 1)),
+                };
+                parsed.push(match next_character {
+                    '\\' => match parse_escape_code(src, &mut char_indices, &path) {
+                        Ok(c) => c,
+                        Err(e) => return Err(e.unwrap_or_else(|| unclosed_string_lit(src.len()))),
+                    },
                     '"' => break,
-                    _ => {
-                        parsed.push(next_character);
-                    }
-                }
+                    _ => next_character,
+                });
             }
             let span = span_until(src, index, &mut char_indices, &path);
             let literal = Literal::String(LitString { span, parsed });
