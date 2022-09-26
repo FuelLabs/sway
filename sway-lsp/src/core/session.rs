@@ -168,9 +168,7 @@ impl Session {
                     let _ = self.parse_ast_to_tokens(parsed_res);
                     // Next, populate our token_map with typed ast nodes.
                     let ast_res = CompileResult::new(typed, warnings, errors);
-                    let res = self.parse_ast_to_typed_tokens(ast_res);
-                    //self.test_typed_parse(ast_res);
-                    return res;
+                    return self.parse_ast_to_typed_tokens(ast_res);
                 }
             }
         }
@@ -250,31 +248,6 @@ impl Session {
                     ast_res.errors,
                 ))
             }
-        }
-    }
-
-    pub fn _test_typed_parse(&mut self, _ast_res: CompileResult<TypedProgram>, uri: &Url) {
-        for item in self.token_map.iter() {
-            let ((ident, _span), token) = item.pair();
-            utils::debug::debug_print_ident_and_token(ident, token);
-        }
-
-        //let cursor_position = Position::new(25, 14); //Cursor's hovered over the position var decl in main()
-        let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
-
-        if let Some((_, token)) = self.token_at_position(uri, cursor_position) {
-            // Look up the tokens TypeId
-            if let Some(type_id) = utils::token::type_id(&token) {
-                tracing::info!("type_id = {:#?}", type_id);
-
-                // Use the TypeId to look up the actual type
-                let type_info = sway_core::type_system::look_up_type_id(type_id);
-                tracing::info!("type_info = {:#?}", type_info);
-            }
-
-            // Find the ident / span on the returned type
-
-            // Contruct a go_to LSP request from the declarations span
         }
     }
 
