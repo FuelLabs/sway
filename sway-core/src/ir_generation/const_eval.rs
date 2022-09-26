@@ -143,14 +143,11 @@ impl<K: std::cmp::Eq + std::hash::Hash, V> MappedStack<K, V> {
         self.container.get(k).and_then(|val_vec| val_vec.last())
     }
     fn pop(&mut self, k: &K) {
-        match self.container.get_mut(k) {
-            Some(val_vec) => {
-                val_vec.pop();
-                if val_vec.is_empty() {
-                    self.container.remove(k);
-                }
+        if let Some(val_vec) = self.container.get_mut(k) {
+            val_vec.pop();
+            if val_vec.is_empty() {
+                self.container.remove(k);
             }
-            None => {}
         }
     }
 }
@@ -328,6 +325,9 @@ fn const_eval_typed_expr(
             }) => fields.get(*elem_to_access_num).cloned(),
             _ => None,
         },
+        TypedExpressionVariant::Return(stmt) => {
+            const_eval_typed_expr(lookup, known_consts, &stmt.expr)
+        }
         TypedExpressionVariant::ArrayIndex { .. }
         | TypedExpressionVariant::IntrinsicFunction(_)
         | TypedExpressionVariant::CodeBlock(_)
@@ -354,9 +354,6 @@ fn const_eval_typed_ast_node(
     expr: &TypedAstNode,
 ) -> Option<Constant> {
     match &expr.content {
-        TypedAstNodeContent::ReturnStatement(trs) => {
-            const_eval_typed_expr(lookup, known_consts, &trs.expr)
-        }
         TypedAstNodeContent::Declaration(_) => {
             // TODO: add the binding to known_consts (if it's a const) and proceed.
             None

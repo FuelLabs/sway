@@ -1,7 +1,5 @@
 library r#abi;
 
-use std::identity::Identity;
-
 abi IdentityExample {
     #[storage(read)]
     fn access_control_with_identity();

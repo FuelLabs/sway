@@ -27,7 +27,7 @@ impl TypedMatchBranch {
         mut ctx: TypeCheckContext,
         typed_value: &TypedExpression,
         branch: MatchBranch,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<(TypedMatchBranch, TypedScrutinee)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -47,7 +47,7 @@ impl TypedMatchBranch {
 
         // calculate the requirements map and the declarations map
         let (match_req_map, match_decl_map) = check!(
-            matcher(typed_value, typed_scrutinee, ctx.namespace),
+            matcher(typed_value, typed_scrutinee.clone(), ctx.namespace),
             return err(warnings, errors),
             warnings,
             errors
@@ -115,7 +115,7 @@ impl TypedMatchBranch {
             }
             typed_result_expression_variant => {
                 code_block_contents.push(TypedAstNode {
-                    content: TypedAstNodeContent::Expression(TypedExpression {
+                    content: TypedAstNodeContent::ImplicitReturnExpression(TypedExpression {
                         expression: typed_result_expression_variant,
                         return_type: typed_result_return_type,
                         is_constant: typed_result_is_constant,
@@ -138,11 +138,11 @@ impl TypedMatchBranch {
         };
 
         // return!
-        let branch = TypedMatchBranch {
+        let typed_branch = TypedMatchBranch {
             conditions: match_req_map,
             result: new_result,
             span: branch_span,
         };
-        ok(branch, warnings, errors)
+        ok((typed_branch, typed_scrutinee), warnings, errors)
     }
 }

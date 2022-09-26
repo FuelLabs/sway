@@ -22,6 +22,7 @@ pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
+pub use convert_parse_tree::{Attribute, AttributeKind, AttributesMap};
 use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -187,73 +188,35 @@ fn parse_file_error_to_compile_errors(
     }
 }
 
-/// Represents the result of compiling Sway code via [compile_to_asm].
-/// Contains the compiled assets or resulting errors, and any warnings generated.
-pub enum CompilationResult {
-    Success {
-        asm: FinalizedAsm,
-        warnings: Vec<CompileWarning>,
-    },
+/// Either finalized ASM or a library.
+pub enum AsmOrLib {
+    Asm(FinalizedAsm),
     Library {
         name: Ident,
         namespace: Box<namespace::Root>,
-        warnings: Vec<CompileWarning>,
-    },
-    Failure {
-        warnings: Vec<CompileWarning>,
-        errors: Vec<CompileError>,
     },
 }
 
-pub enum CompileAstResult {
-    Success {
-        typed_program: Box<TypedProgram>,
-        warnings: Vec<CompileWarning>,
-    },
-    Failure {
-        warnings: Vec<CompileWarning>,
-        errors: Vec<CompileError>,
-    },
-}
-
-/// Represents the result of compiling Sway code via [compile_to_bytecode].
-/// Contains the compiled bytecode in byte form, or resulting errors, and any warnings generated.
-pub enum BytecodeCompilationResult {
-    Success {
-        bytes: Vec<u8>,
-        warnings: Vec<CompileWarning>,
-    },
-    Library {
-        warnings: Vec<CompileWarning>,
-    },
-    Failure {
-        warnings: Vec<CompileWarning>,
-        errors: Vec<CompileError>,
-    },
+/// Either compiled bytecode in byte form or a library.
+pub enum BytecodeOrLib {
+    Bytecode(Vec<u8>),
+    Library,
 }
 
 pub fn parsed_to_ast(
     parse_program: &ParseProgram,
     initial_namespace: namespace::Module,
     generate_logged_types: bool,
-) -> CompileAstResult {
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
-
+) -> CompileResult<TypedProgram> {
+    // Type check the program.
     let CompileResult {
-        value: typed_program_result,
-        warnings: new_warnings,
-        errors: new_errors,
+        value: typed_program_opt,
+        mut warnings,
+        mut errors,
     } = TypedProgram::type_check(parse_program, initial_namespace);
-    warnings.extend(new_warnings);
-    errors.extend(new_errors);
-    let mut typed_program = match typed_program_result {
+    let mut typed_program = match typed_program_opt {
         Some(typed_program) => typed_program,
-        None => {
-            errors = dedup_unsorted(errors);
-            warnings = dedup_unsorted(warnings);
-            return CompileAstResult::Failure { errors, warnings };
-        }
+        None => return err(warnings, errors),
     };
 
     // Collect information about the types used in this program
@@ -266,199 +229,144 @@ pub fn parsed_to_ast(
     errors.extend(new_errors);
     let types_metadata = match types_metadata_result {
         Some(types_metadata) => types_metadata,
-        None => {
-            errors = dedup_unsorted(errors);
-            warnings = dedup_unsorted(warnings);
-            return CompileAstResult::Failure { errors, warnings };
-        }
+        None => return deduped_err(warnings, errors),
     };
 
     // Collect all the types of logged values. These are required when generating the JSON ABI.
     if generate_logged_types {
-        typed_program.logged_types.extend(
-            types_metadata
-                .iter()
-                .filter_map(|m| match m {
-                    TypeMetadata::LoggedType(type_id) => Some(*type_id),
-                    _ => None,
-                })
-                .collect::<Vec<_>>(),
-        );
+        typed_program
+            .logged_types
+            .extend(types_metadata.iter().filter_map(|m| match m {
+                TypeMetadata::LoggedType(type_id) => Some(*type_id),
+                _ => None,
+            }));
     }
 
-    let mut cfa_res = perform_control_flow_analysis(&typed_program);
-
-    errors.append(&mut cfa_res.errors);
-    warnings.append(&mut cfa_res.warnings);
-    errors = dedup_unsorted(errors);
-    warnings = dedup_unsorted(warnings);
-    if !errors.is_empty() {
-        return CompileAstResult::Failure { errors, warnings };
-    }
+    // Perform control flow analysis and extend with any errors.
+    let cfa_res = perform_control_flow_analysis(&typed_program);
+    errors.extend(cfa_res.errors);
+    warnings.extend(cfa_res.warnings);
 
     // Evaluate const declarations,
     // to allow storage slots initializion with consts.
     let mut ctx = Context::default();
     let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
-    match ir_generation::compile::compile_constants(
+    if let Err(e) = ir_generation::compile::compile_constants(
         &mut ctx,
         &mut md_mgr,
         module,
         &typed_program.root.namespace,
     ) {
-        Ok(()) => (),
-        Err(e) => {
-            errors.push(e);
-            return CompileAstResult::Failure { warnings, errors };
-        }
+        errors.push(e);
     }
 
     // Check that all storage initializers can be evaluated at compile time.
-    let CompileResult {
-        value: typed_program_with_storage_slots_result,
-        warnings: new_warnings,
-        errors: new_errors,
-    } = typed_program.get_typed_program_with_initialized_storage_slots(
+    let typed_wiss_res = typed_program.get_typed_program_with_initialized_storage_slots(
         &mut ctx,
         &mut md_mgr,
         module,
     );
-    warnings.extend(new_warnings);
-    errors.extend(new_errors);
-    let typed_program_with_storage_slots = match typed_program_with_storage_slots_result {
+    warnings.extend(typed_wiss_res.warnings);
+    errors.extend(typed_wiss_res.errors);
+    let typed_program_with_storage_slots = match typed_wiss_res.value {
         Some(typed_program_with_storage_slots) => typed_program_with_storage_slots,
-        None => {
-            errors = dedup_unsorted(errors);
-            warnings = dedup_unsorted(warnings);
-            return CompileAstResult::Failure { errors, warnings };
-        }
+        None => return deduped_err(warnings, errors),
     };
 
-    // All unresolved types lead to compile errors
-    let unresolved_types_errors = types_metadata
-        .iter()
-        .filter_map(|m| match m {
-            TypeMetadata::UnresolvedType {
-                name,
-                span_override,
-            } => Some(CompileError::UnableToInferGeneric {
-                ty: name.as_str().to_string(),
-                span: span_override.clone().unwrap_or_else(|| name.span()),
-            }),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-    errors.extend(unresolved_types_errors);
-    if !errors.is_empty() {
-        errors = dedup_unsorted(errors);
-        return CompileAstResult::Failure { errors, warnings };
-    }
+    // All unresolved types lead to compile errors.
+    errors.extend(types_metadata.iter().filter_map(|m| match m {
+        TypeMetadata::UnresolvedType {
+            name,
+            span_override,
+        } => Some(CompileError::UnableToInferGeneric {
+            ty: name.as_str().to_string(),
+            span: span_override.clone().unwrap_or_else(|| name.span()),
+        }),
+        _ => None,
+    }));
 
-    CompileAstResult::Success {
-        typed_program: Box::new(typed_program_with_storage_slots),
-        warnings,
-    }
+    ok(
+        typed_program_with_storage_slots,
+        dedup_unsorted(warnings),
+        dedup_unsorted(errors),
+    )
 }
 
 pub fn compile_to_ast(
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
-) -> CompileAstResult {
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
-
+) -> CompileResult<TypedProgram> {
+    // Parse the program to a concrete syntax tree (CST).
     let CompileResult {
         value: parse_program_opt,
-        warnings: new_warnings,
-        errors: new_errors,
+        mut warnings,
+        mut errors,
     } = parse(input, build_config);
-
-    warnings.extend(new_warnings);
-    errors.extend(new_errors);
     let parse_program = match parse_program_opt {
         Some(parse_program) => parse_program,
-        None => {
-            errors = dedup_unsorted(errors);
-            warnings = dedup_unsorted(warnings);
-            return CompileAstResult::Failure { errors, warnings };
-        }
+        None => return deduped_err(warnings, errors),
     };
 
-    let generate_logged_types = if let Some(build_config) = build_config {
-        build_config.generate_logged_types
-    } else {
-        false
+    // Type check (+ other static analysis) the CST to a typed AST.
+    let generate_logged_types = build_config.map_or(false, |bc| bc.generate_logged_types);
+    let typed_res = parsed_to_ast(&parse_program, initial_namespace, generate_logged_types);
+    errors.extend(typed_res.errors);
+    warnings.extend(typed_res.warnings);
+    let typed_program = match typed_res.value {
+        Some(tp) => tp,
+        None => return deduped_err(warnings, errors),
     };
 
-    match parsed_to_ast(&parse_program, initial_namespace, generate_logged_types) {
-        CompileAstResult::Success {
-            typed_program,
-            warnings: new_warnings,
-        } => {
-            warnings.extend(new_warnings);
-            warnings = dedup_unsorted(warnings);
-            CompileAstResult::Success {
-                typed_program,
-                warnings,
-            }
-        }
-        CompileAstResult::Failure {
-            warnings: new_warnings,
-            errors: new_errors,
-        } => {
-            warnings.extend(new_warnings);
-            errors.extend(new_errors);
-            errors = dedup_unsorted(errors);
-            warnings = dedup_unsorted(warnings);
-            CompileAstResult::Failure { errors, warnings }
-        }
-    }
+    ok(
+        typed_program,
+        dedup_unsorted(warnings),
+        dedup_unsorted(errors),
+    )
 }
 
-/// Given input Sway source code, compile to a [CompilationResult] which contains the asm in opcode
-/// form (not raw bytes/bytecode).
+/// Given input Sway source code,
+/// try compiling to a `AsmOrLib`,
+/// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn compile_to_asm(
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
-) -> CompilationResult {
+) -> CompileResult<AsmOrLib> {
     let ast_res = compile_to_ast(input, initial_namespace, Some(&build_config));
     ast_to_asm(ast_res, &build_config)
 }
 
-/// Given an AST compilation result, compile to a [CompilationResult] which contains the asm in
-/// opcode form (not raw bytes/bytecode).
-pub fn ast_to_asm(ast_res: CompileAstResult, build_config: &BuildConfig) -> CompilationResult {
-    match ast_res {
-        CompileAstResult::Failure { warnings, errors } => {
-            CompilationResult::Failure { warnings, errors }
-        }
-        CompileAstResult::Success {
-            typed_program,
-            mut warnings,
-        } => {
-            let mut errors = vec![];
+/// Given an AST compilation result,
+/// try compiling to a `AsmOrLib`,
+/// containing the asm in opcode form (not raw bytes/bytecode).
+pub fn ast_to_asm(
+    ast_res: CompileResult<TypedProgram>,
+    build_config: &BuildConfig,
+) -> CompileResult<AsmOrLib> {
+    match ast_res.value {
+        None => err(ast_res.warnings, ast_res.errors),
+        Some(typed_program) => {
+            let mut errors = ast_res.errors;
+            let mut warnings = ast_res.warnings;
+
             let tree_type = typed_program.kind.tree_type();
             match tree_type {
                 TreeType::Contract | TreeType::Script | TreeType::Predicate => {
                     let asm = check!(
-                        compile_ast_to_ir_to_asm(*typed_program, build_config),
-                        return CompilationResult::Failure { errors, warnings },
+                        compile_ast_to_ir_to_asm(typed_program, build_config),
+                        return deduped_err(warnings, errors),
                         warnings,
                         errors
                     );
-                    if !errors.is_empty() {
-                        return CompilationResult::Failure { errors, warnings };
-                    }
-                    CompilationResult::Success { asm, warnings }
+                    ok(AsmOrLib::Asm(asm), warnings, errors)
                 }
-                TreeType::Library { name } => CompilationResult::Library {
-                    warnings,
-                    name,
-                    namespace: Box::new(typed_program.root.namespace.into()),
-                },
+                TreeType::Library { name } => {
+                    let namespace = Box::new(typed_program.root.namespace.into());
+                    let lib = AsmOrLib::Library { name, namespace };
+                    ok(lib, warnings, errors)
+                }
             }
         }
     }
@@ -487,10 +395,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     let tree_type = program.kind.tree_type();
     let mut ir = match ir_generation::compile_program(program) {
         Ok(ir) => ir,
-        Err(e) => {
-            errors.push(e);
-            return err(warnings, errors);
-        }
+        Err(e) => return err(warnings, vec![e]),
     };
 
     // Find all the entry points.  This is main for scripts and predicates, or ABI methods for
@@ -635,52 +540,40 @@ fn simplify_cfg(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
     ok((), Vec::new(), Vec::new())
 }
 
-/// Given input Sway source code, compile to a [BytecodeCompilationResult] which contains the asm in
-/// bytecode form.
+/// Given input Sway source code, compile to a [BytecodeOrLib], containing the asm in bytecode form.
 pub fn compile_to_bytecode(
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
-) -> BytecodeCompilationResult {
+) -> CompileResult<BytecodeOrLib> {
     let asm_res = compile_to_asm(input, initial_namespace, build_config);
     let result = asm_to_bytecode(asm_res, source_map);
     clear_lazy_statics();
     result
 }
 
-/// Given a [CompilationResult] containing the assembly (opcodes), compile to a
-/// [BytecodeCompilationResult] which contains the asm in bytecode form.
+/// Given the assembly (opcodes), compile to a [BytecodeOrLib], containing the asm in bytecode form.
 pub fn asm_to_bytecode(
-    asm_res: CompilationResult,
+    CompileResult {
+        value,
+        mut warnings,
+        mut errors,
+    }: CompileResult<AsmOrLib>,
     source_map: &mut SourceMap,
-) -> BytecodeCompilationResult {
-    match asm_res {
-        CompilationResult::Success {
-            mut asm,
-            mut warnings,
-        } => {
-            let mut asm_res = asm.to_bytecode_mut(source_map);
-            warnings.append(&mut asm_res.warnings);
-            if asm_res.value.is_none() || !asm_res.errors.is_empty() {
-                BytecodeCompilationResult::Failure {
-                    warnings,
-                    errors: asm_res.errors,
-                }
-            } else {
-                // asm_res is confirmed to be Some(bytes).
-                BytecodeCompilationResult::Success {
-                    bytes: asm_res.value.unwrap(),
-                    warnings,
-                }
-            }
+) -> CompileResult<BytecodeOrLib> {
+    match value {
+        Some(AsmOrLib::Asm(mut asm)) => {
+            let bytes = check!(
+                asm.to_bytecode_mut(source_map),
+                return err(warnings, errors),
+                warnings,
+                errors,
+            );
+            ok(BytecodeOrLib::Bytecode(bytes), warnings, errors)
         }
-        CompilationResult::Failure { warnings, errors } => {
-            BytecodeCompilationResult::Failure { warnings, errors }
-        }
-        CompilationResult::Library { warnings, .. } => {
-            BytecodeCompilationResult::Library { warnings }
-        }
+        Some(AsmOrLib::Library { .. }) => ok(BytecodeOrLib::Library, warnings, errors),
+        None => err(warnings, errors),
     }
 }
 
@@ -909,12 +802,18 @@ fn test_unary_ordering() {
     };
 }
 
+/// Return an irrecoverable compile result deduping any errors and warnings.
+fn deduped_err<T>(warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> CompileResult<T> {
+    err(dedup_unsorted(warnings), dedup_unsorted(errors))
+}
+
 /// We want compile errors and warnings to retain their ordering, since typically
 /// they are grouped by relevance. However, we want to deduplicate them.
 /// Stdlib dedup in Rust assumes sorted data for efficiency, but we don't want that.
 /// A hash set would also mess up the order, so this is just a brute force way of doing it
 /// with a vector.
 fn dedup_unsorted<T: PartialEq + std::hash::Hash>(mut data: Vec<T>) -> Vec<T> {
+    // TODO(Centril): Consider using `IndexSet` instead for readability.
     use smallvec::SmallVec;
     use std::collections::hash_map::{DefaultHasher, Entry};
     use std::hash::Hasher;

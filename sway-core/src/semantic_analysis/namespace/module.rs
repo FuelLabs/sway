@@ -10,7 +10,7 @@ use crate::{
 };
 
 use super::{
-    items::{Items, SymbolMap},
+    items::{GlobImport, Items, SymbolMap},
     root::Root,
     ModuleName, Path,
 };
@@ -96,19 +96,20 @@ impl Module {
 
             // perform the conversions from parser code to parse tree types
             let name = const_item.name.clone();
+            let attributes = std::collections::HashMap::new();
             // convert to const decl
-            let const_decl =
-                match crate::convert_parse_tree::item_const_to_constant_declaration(ec, const_item)
-                {
-                    Ok(o) => o,
-                    Err(_emit_signal) => {
-                        // if an error was emitted, grab errors from the error context
-                        errors.append(&mut ec.errors.clone());
-                        warnings.append(&mut ec.warnings.clone());
+            let const_decl = match crate::convert_parse_tree::item_const_to_constant_declaration(
+                ec, const_item, attributes,
+            ) {
+                Ok(o) => o,
+                Err(_emit_signal) => {
+                    // if an error was emitted, grab errors from the error context
+                    errors.append(&mut ec.errors.clone());
+                    warnings.append(&mut ec.warnings.clone());
 
-                        return err(warnings, errors);
-                    }
-                };
+                    return err(warnings, errors);
+                }
+            };
 
             // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.
             if !matches!(const_decl.value.kind, ExpressionKind::Literal(_)) {
@@ -213,6 +214,7 @@ impl Module {
             warnings,
             errors
         );
+
         let implemented_traits = src_ns.implemented_traits.clone();
         let mut symbols = vec![];
         for (symbol, decl) in src_ns.symbols.iter() {
@@ -230,13 +232,65 @@ impl Module {
         let dst_ns = &mut self[dst];
         dst_ns.implemented_traits.extend(implemented_traits);
         for symbol in symbols {
-            if dst_ns.use_synonyms.contains_key(&symbol) {
-                errors.push(CompileError::StarImportShadowsOtherSymbol {
-                    name: symbol.clone(),
-                });
-            }
-            dst_ns.use_synonyms.insert(symbol, src.to_vec());
+            dst_ns
+                .use_synonyms
+                .insert(symbol, (src.to_vec(), GlobImport::Yes));
         }
+
+        ok((), warnings, errors)
+    }
+
+    /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
+    /// `dst` module.
+    ///
+    /// This is used when an import path contains an asterisk.
+    ///
+    /// Paths are assumed to be relative to `self`.
+    pub fn star_import_with_reexports(&mut self, src: &Path, dst: &Path) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let src_ns = check!(
+            self.check_submodule(src),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        let implemented_traits = src_ns.implemented_traits.clone();
+        let use_synonyms = src_ns.use_synonyms.clone();
+        let mut symbols = src_ns.use_synonyms.keys().cloned().collect::<Vec<_>>();
+        for (symbol, decl) in src_ns.symbols.iter() {
+            let visibility = check!(
+                decl.visibility(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            if visibility == Visibility::Public {
+                symbols.push(symbol.clone());
+            }
+        }
+
+        let dst_ns = &mut self[dst];
+        dst_ns.implemented_traits.extend(implemented_traits);
+        let mut try_add = |symbol, path| {
+            dst_ns.use_synonyms.insert(symbol, (path, GlobImport::Yes));
+        };
+
+        for symbol in symbols {
+            try_add(symbol, src.to_vec());
+        }
+        for (symbol, (mod_path, _)) in use_synonyms {
+            // N.B. We had a path like `::bar::baz`, which makes the module `bar` "crate-relative".
+            // Given that `bar`'s "crate" is `foo`, we'll need `foo::bar::baz` outside of it.
+            //
+            // FIXME(Centril, #2780): Seems like the compiler has no way of
+            // distinguishing between external and crate-relative paths?
+            let mut src = src[..1].to_vec();
+            src.extend(mod_path);
+            try_add(symbol, src);
+        }
+
         ok((), warnings, errors)
     }
 
@@ -304,24 +358,22 @@ impl Module {
                 impls_to_insert.append(&mut res);
                 // no matter what, import it this way though.
                 let dst_ns = &mut self[dst];
+                let mut add_synonym = |name| {
+                    if let Some((_, GlobImport::No)) = dst_ns.use_synonyms.get(name) {
+                        errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
+                    }
+                    dst_ns
+                        .use_synonyms
+                        .insert(name.clone(), (src.to_vec(), GlobImport::No));
+                };
                 match alias {
                     Some(alias) => {
-                        if dst_ns.use_synonyms.contains_key(&alias) {
-                            errors.push(CompileError::ShadowsOtherSymbol {
-                                name: alias.clone(),
-                            });
-                        }
-                        dst_ns.use_synonyms.insert(alias.clone(), src.to_vec());
+                        add_synonym(&alias);
                         dst_ns
                             .use_aliases
                             .insert(alias.as_str().to_string(), item.clone());
                     }
-                    None => {
-                        if dst_ns.use_synonyms.contains_key(item) {
-                            errors.push(CompileError::ShadowsOtherSymbol { name: item.clone() });
-                        }
-                        dst_ns.use_synonyms.insert(item.clone(), src.to_vec());
-                    }
+                    None => add_synonym(item),
                 };
             }
             None => {

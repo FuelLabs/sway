@@ -63,6 +63,8 @@ pub mod parser;
 pub use parser::*;
 pub mod pointer;
 pub use pointer::*;
+pub mod pretty;
+pub use pretty::*;
 pub mod printer;
 pub use printer::*;
 pub mod value;

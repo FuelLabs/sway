@@ -47,33 +47,39 @@ impl TypedCodeBlock {
                 _ => None,
             })
             .flatten();
+        let span = implicit_return_span.unwrap_or_else(|| code_block.whole_block_span.clone());
 
         // find the implicit return, if any, and use it as the code block's return type.
         // The fact that there is at most one implicit return is an invariant held by the parser.
-        let return_type = evaluated_contents.iter().find_map(|x| match x {
-            TypedAstNode {
-                content:
-                    TypedAstNodeContent::ImplicitReturnExpression(TypedExpression {
-                        ref return_type,
-                        ..
-                    }),
-                ..
-            } if !x.deterministically_aborts() => Some(*return_type),
-            _ => None,
-        });
+        // If any node diverges then the entire block has unknown type.
+        let block_type = evaluated_contents
+            .iter()
+            .find_map(|node| {
+                if node.deterministically_aborts() {
+                    Some(insert_type(TypeInfo::Unknown))
+                } else {
+                    match node {
+                        TypedAstNode {
+                            content:
+                                TypedAstNodeContent::ImplicitReturnExpression(TypedExpression {
+                                    ref return_type,
+                                    ..
+                                }),
+                            ..
+                        } => Some(*return_type),
+                        _ => None,
+                    }
+                }
+            })
+            .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
 
-        if let Some(return_type) = return_type {
-            let span = implicit_return_span.unwrap_or_else(|| code_block.whole_block_span.clone());
-            let (mut new_warnings, new_errors) = ctx.unify_with_self(return_type, &span);
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-            // The annotation will result in a cast, so set the return type accordingly.
-        }
+        let (new_warnings, new_errors) = ctx.unify_with_self(block_type, &span);
+        warnings.extend(new_warnings);
+        errors.extend(new_errors.into_iter().map(|type_error| type_error.into()));
 
         let typed_code_block = TypedCodeBlock {
             contents: evaluated_contents,
         };
-        let type_id = return_type.unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
-        ok((typed_code_block, type_id), warnings, errors)
+        ok((typed_code_block, block_type), warnings, errors)
     }
 }
