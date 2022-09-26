@@ -190,6 +190,31 @@ pub enum SourceGitPinnedParseError {
     CommitHash,
 }
 
+/// Represents the Head's commit hash and time (in seconds) from epoch
+type HeadWithTime = (String, i64);
+
+/// Everything needed to recognize a checkout in offline mode
+///
+/// Since we are omiting `.git` folder to save disk space, we need an indexing file
+/// to recognize a checkout while searching local checkouts in offline mode
+#[derive(Serialize, Deserialize)]
+pub struct GitSourceIndex {
+    /// Type of the git reference
+    pub git_reference: GitReference,
+    pub head_with_time: HeadWithTime,
+}
+
+impl GitSourceIndex {
+    pub fn new(time: i64, git_reference: GitReference, commit_hash: String) -> GitSourceIndex {
+        GitSourceIndex {
+            git_reference,
+            head_with_time: (commit_hash, time),
+        }
+    }
+}
+
+const DEFAULT_REMOTE_NAME: &str = "origin";
+
 /// Error returned upon failed parsing of `SourcePinned::from_str`.
 #[derive(Clone, Debug)]
 pub struct SourcePinnedParseError;
@@ -608,7 +633,7 @@ impl GitReference {
     pub fn resolve(&self, repo: &git2::Repository) -> Result<git2::Oid> {
         // Find the commit associated with this tag.
         fn resolve_tag(repo: &git2::Repository, tag: &str) -> Result<git2::Oid> {
-            let refname = format!("refs/remotes/origin/tags/{}", tag);
+            let refname = format!("refs/remotes/{}/tags/{}", DEFAULT_REMOTE_NAME, tag);
             let id = repo.refname_to_id(&refname)?;
             let obj = repo.find_object(id, None)?;
             let obj = obj.peel(git2::ObjectType::Commit)?;
@@ -617,7 +642,7 @@ impl GitReference {
 
         // Resolve to the target for the given branch.
         fn resolve_branch(repo: &git2::Repository, branch: &str) -> Result<git2::Oid> {
-            let name = format!("origin/{}", branch);
+            let name = format!("{}/{}", DEFAULT_REMOTE_NAME, branch);
             let b = repo
                 .find_branch(&name, git2::BranchType::Remote)
                 .with_context(|| format!("failed to find branch `{}`", branch))?;
@@ -628,7 +653,8 @@ impl GitReference {
 
         // Use the HEAD commit when default branch is specified.
         fn resolve_default_branch(repo: &git2::Repository) -> Result<git2::Oid> {
-            let head_id = repo.refname_to_id("refs/remotes/origin/HEAD")?;
+            let head_id =
+                repo.refname_to_id(&format!("refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME))?;
             let head = repo.find_object(head_id, None)?;
             Ok(head.peel(git2::ObjectType::Commit)?.id())
         }
@@ -1170,10 +1196,16 @@ fn git_ref_to_refspecs(reference: &GitReference) -> (Vec<String>, bool) {
     let mut tags = false;
     match reference {
         GitReference::Branch(s) => {
-            refspecs.push(format!("+refs/heads/{0}:refs/remotes/origin/{0}", s));
+            refspecs.push(format!(
+                "+refs/heads/{1}:refs/remotes/{0}/{1}",
+                DEFAULT_REMOTE_NAME, s
+            ));
         }
         GitReference::Tag(s) => {
-            refspecs.push(format!("+refs/tags/{0}:refs/remotes/origin/tags/{0}", s));
+            refspecs.push(format!(
+                "+refs/tags/{1}:refs/remotes/{0}/tags/{1}",
+                DEFAULT_REMOTE_NAME, s
+            ));
         }
         GitReference::Rev(s) => {
             if s.starts_with("refs/") {
@@ -1181,13 +1213,16 @@ fn git_ref_to_refspecs(reference: &GitReference) -> (Vec<String>, bool) {
             } else {
                 // We can't fetch the commit directly, so we fetch all branches and tags in order
                 // to find it.
-                refspecs.push("+refs/heads/*:refs/remotes/origin/*".to_string());
-                refspecs.push("+HEAD:refs/remotes/origin/HEAD".to_string());
+                refspecs.push(format!(
+                    "+refs/heads/*:refs/remotes/{}/*",
+                    DEFAULT_REMOTE_NAME
+                ));
+                refspecs.push(format!("+HEAD:refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME));
                 tags = true;
             }
         }
         GitReference::DefaultBranch => {
-            refspecs.push("+HEAD:refs/remotes/origin/HEAD".to_string());
+            refspecs.push(format!("+HEAD:refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME));
         }
     }
     (refspecs, tags)
@@ -1281,19 +1316,29 @@ fn pin_pkg(
             pinned
         }
         Source::Git(ref git_source) => {
-            // TODO: If the git source directly specifies a full commit hash, we should first check
+            // If the git source directly specifies a full commit hash, we should check
             // to see if we have a local copy. Otherwise we cannot know what commit we should pin
             // to without fetching the repo into a temporary directory.
-            if offline {
-                bail!(
-                    "Unable to fetch pkg {:?} from {:?} in offline mode",
-                    name,
-                    git_source.repo
-                );
-            }
-            let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
-            let repo_path =
-                git_commit_path(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
+            let (pinned_git, repo_path) = if offline {
+                let (local_path, commit_hash) = search_git_source_locally(&name, git_source)?
+                    .ok_or_else(|| {
+                        anyhow!(
+                            "Unable to fetch pkg {:?} from  {:?} in offline mode",
+                            name,
+                            git_source.repo
+                        )
+                    })?;
+                let pinned_git = SourceGitPinned {
+                    source: git_source.clone(),
+                    commit_hash,
+                };
+                (pinned_git, local_path)
+            } else {
+                let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
+                let repo_path =
+                    git_commit_path(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
+                (pinned_git, repo_path)
+            };
             let source = SourcePinned::Git(pinned_git.clone());
             let pinned = Pinned { name, source };
             let id = pinned.id();
@@ -1353,13 +1398,11 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 /// Returns the location of the checked out commit.
 pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
-
     // Checkout the pinned hash to the path.
     with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
-
         if path.exists() {
             let _ = std::fs::remove_dir_all(&path);
         }
@@ -1369,10 +1412,157 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         let mut checkout = git2::build::CheckoutBuilder::new();
         checkout.force().target_dir(&path);
         repo.checkout_head(Some(&mut checkout))?;
+
+        // Fetch HEAD time and create an index
+        let current_head = repo.revparse_single("HEAD")?;
+        let head_commit = current_head
+            .as_commit()
+            .ok_or_else(|| anyhow!("Cannot get commit from {}", current_head.id().to_string()))?;
+        let head_time = head_commit.time().seconds();
+        let source_index = GitSourceIndex::new(
+            head_time,
+            pinned.source.reference.clone(),
+            pinned.commit_hash.clone(),
+        );
+        // Write the index file
+        fs::write(
+            path.join(".forc_index"),
+            serde_json::to_string(&source_index)?,
+        )?;
         Ok(())
     })?;
-
     Ok(path)
+}
+
+/// Search local checkout dir for git sources, for non-branch git references tries to find the
+/// exact match. For branch references, tries to find the most recent repo present locally with the given repo
+fn search_git_source_locally(
+    name: &str,
+    git_source: &SourceGit,
+) -> Result<Option<(PathBuf, String)>> {
+    // In the checkouts dir iterate over dirs whose name starts with `name`
+    let checkouts_dir = git_checkouts_directory();
+    match &git_source.reference {
+        GitReference::Branch(branch) => {
+            // Collect repos from this branch with their HEAD time
+            let repos_from_branch = collect_local_repos_with_branch(checkouts_dir, name, branch)?;
+            // Get the newest repo by their HEAD commit times
+            let newest_branch_repo = repos_from_branch
+                .into_iter()
+                .max_by_key(|&(_, (_, time))| time)
+                .map(|(repo_path, (hash, _))| (repo_path, hash));
+            Ok(newest_branch_repo)
+        }
+        _ => find_exact_local_repo_with_reference(checkouts_dir, name, &git_source.reference),
+    }
+}
+
+/// Search and collect repos from checkouts_dir that are from given branch and for the given package
+fn collect_local_repos_with_branch(
+    checkouts_dir: PathBuf,
+    package_name: &str,
+    branch_name: &str,
+) -> Result<Vec<(PathBuf, HeadWithTime)>> {
+    let mut list_of_repos = Vec::new();
+    with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
+        // Check if the repo's HEAD commit to verify it is from desired branch
+        if let GitReference::Branch(branch) = repo_index.git_reference {
+            if branch == branch_name {
+                list_of_repos.push((repo_dir_path, repo_index.head_with_time));
+            }
+        }
+        Ok(())
+    })?;
+    Ok(list_of_repos)
+}
+
+/// Search an exact reference in locally available repos
+fn find_exact_local_repo_with_reference(
+    checkouts_dir: PathBuf,
+    package_name: &str,
+    git_reference: &GitReference,
+) -> Result<Option<(PathBuf, String)>> {
+    let mut found_local_repo = None;
+    if let GitReference::Tag(tag) = git_reference {
+        found_local_repo = find_repo_with_tag(tag, package_name, checkouts_dir)?;
+    } else if let GitReference::Rev(rev) = git_reference {
+        found_local_repo = find_repo_with_rev(rev, package_name, checkouts_dir)?;
+    }
+    Ok(found_local_repo)
+}
+
+/// Search and find the match repo between the given tag and locally available options
+fn find_repo_with_tag(
+    tag: &str,
+    package_name: &str,
+    checkouts_dir: PathBuf,
+) -> Result<Option<(PathBuf, String)>> {
+    let mut found_local_repo = None;
+    with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
+        // Get current head of the repo
+        let current_head = repo_index.head_with_time.0;
+        if let GitReference::Tag(curr_repo_tag) = repo_index.git_reference {
+            if curr_repo_tag == tag {
+                found_local_repo = Some((repo_dir_path, current_head))
+            }
+        }
+        Ok(())
+    })?;
+    Ok(found_local_repo)
+}
+
+/// Search and find the match repo between the given rev and locally available options
+fn find_repo_with_rev(
+    rev: &str,
+    package_name: &str,
+    checkouts_dir: PathBuf,
+) -> Result<Option<(PathBuf, String)>> {
+    let mut found_local_repo = None;
+    with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
+        // Get current head of the repo
+        let current_head = repo_index.head_with_time.0;
+        if let GitReference::Rev(curr_repo_rev) = repo_index.git_reference {
+            if curr_repo_rev == rev {
+                found_local_repo = Some((repo_dir_path, current_head));
+            }
+        }
+        Ok(())
+    })?;
+    Ok(found_local_repo)
+}
+
+/// Search local checkouts directory and apply the given function. This is used for iterating over
+/// possible options of a given package.
+fn with_search_checkouts<F>(checkouts_dir: PathBuf, package_name: &str, mut f: F) -> Result<()>
+where
+    F: FnMut(GitSourceIndex, PathBuf) -> Result<()>,
+{
+    for entry in fs::read_dir(checkouts_dir)? {
+        let entry = entry?;
+        let folder_name = entry
+            .file_name()
+            .into_string()
+            .map_err(|_| anyhow!("invalid folder name"))?;
+        if folder_name.starts_with(package_name) {
+            // Search if the dir we are looking starts with the name of our package
+            for repo_dir in fs::read_dir(entry.path())? {
+                // Iterate over all dirs inside the `name-***` directory and try to open repo from
+                // each dirs inside this one
+                let repo_dir = repo_dir
+                    .map_err(|e| anyhow!("Cannot find local repo at checkouts dir {}", e))?;
+                if repo_dir.file_type()?.is_dir() {
+                    // Get the path of the current repo
+                    let repo_dir_path = repo_dir.path();
+                    // Get the index file from the found path
+                    if let Ok(index_file) = fs::read_to_string(repo_dir_path.join(".forc_index")) {
+                        let index = serde_json::from_str(&index_file)?;
+                        f(index, repo_dir_path)?;
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Given the path to a package and a `Dependency` parsed from one of its forc dependencies,
