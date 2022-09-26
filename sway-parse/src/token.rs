@@ -133,15 +133,12 @@ struct CharIndicesInner<'a> {
     position: usize,
 }
 
-impl<'a> Iterator for CharIndicesInner<'a> {
+impl Iterator for CharIndicesInner<'_> {
     type Item = (usize, char);
 
     fn next(&mut self) -> Option<(usize, char)> {
         let mut char_indices = self.src[self.position..].char_indices();
-        let c = match char_indices.next() {
-            Some((_, c)) => c,
-            None => return None,
-        };
+        let (_, c) = char_indices.next()?;
         let ret = (self.position, c);
         match char_indices.next() {
             Some((char_width, _)) => self.position += char_width,
@@ -931,7 +928,7 @@ mod tests {
         ////none
         //!inner
         ///outer
-        /// outer 
+        /// outer
         "#;
         let start = 0;
         let end = input.len();
