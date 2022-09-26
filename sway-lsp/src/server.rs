@@ -51,7 +51,7 @@ impl Backend {
     }
 
     async fn parse_project(&self, uri: &Url) {
-        let diagnostics = match self.session.parse_project(&uri) {
+        let diagnostics = match self.session.parse_project(uri) {
             Ok(diagnostics) => diagnostics,
             Err(err) => {
                 if let DocumentError::FailedToParse(diagnostics) = err {
@@ -61,7 +61,7 @@ impl Backend {
                 }
             }
         };
-        self.publish_diagnostics(&uri, diagnostics).await;
+        self.publish_diagnostics(uri, diagnostics).await;
     }
 }
 
