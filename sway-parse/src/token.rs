@@ -220,6 +220,7 @@ pub fn lex_commented(
                         let comment = Comment { span };
                         comment.into()
                     });
+                    continue;
                 }
                 Some((_, '*')) => {
                     let _ = char_indices.next();
@@ -259,40 +260,16 @@ pub fn lex_commented(
                             },
                             Some((next_index, '/')) => match char_indices.next() {
                                 None => return Err(unclosed_multiline_comment(unclosed_indices)),
-                                Some((_, '*')) => {
-                                    unclosed_indices.push(next_index);
-                                }
-                                Some((_, _)) => (),
+                                Some((_, '*')) => unclosed_indices.push(next_index),
+                                Some((_, _)) => {},
                             },
-                            Some((_, _)) => (),
+                            Some((_, _)) => {},
                         }
                     }
+                    continue;
                 }
-                Some(&(end, next_character)) => {
-                    let spacing = if let Some(..) = next_character.as_punct_kind() {
-                        Spacing::Joint
-                    } else {
-                        Spacing::Alone
-                    };
-                    let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
-                    let punct = Punct {
-                        kind: PunctKind::ForwardSlash,
-                        spacing,
-                        span,
-                    };
-                    token_trees.push(CommentedTokenTree::Tree(punct.into()));
-                }
-                None => {
-                    let span = Span::new(src.clone(), start, end, path.clone()).unwrap();
-                    let punct = Punct {
-                        kind: PunctKind::ForwardSlash,
-                        spacing: Spacing::Alone,
-                        span,
-                    };
-                    token_trees.push(CommentedTokenTree::Tree(punct.into()));
-                }
+                Some(_) | None => {}
             }
-            continue;
         }
         if character.is_xid_start() || character == '_' {
             // Raw identifier, e.g., `r#foo`? Then mark as such, stripping the prefix `r#`.
@@ -802,10 +779,7 @@ fn span_until(
     char_indices: &mut CharIndices,
     path: &Option<Arc<PathBuf>>,
 ) -> Span {
-    let end = match char_indices.peek() {
-        Some(&(end, _)) => end,
-        None => src.len(),
-    };
+    let end = char_indices.peek().map_or(src.len(), |(end, _)| *end);
     Span::new(src.clone(), start, end, path.clone()).unwrap()
 }
 
