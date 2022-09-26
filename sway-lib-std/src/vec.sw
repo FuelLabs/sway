@@ -232,4 +232,22 @@ impl<T> Vec<T> {
         copy(element2_ptr, element1_ptr, val_size);
         write(element2_ptr, element1_val);
     }
+
+    /// Updates an element at position `index` with a new element `value`
+    ///
+    /// # Arguments
+    ///
+    /// * index - The index of the element to be set
+    /// * value - The value of the element to be set
+    ///
+    /// # Reverts
+    ///
+    /// Reverts if `index` is greater than or equal to the length of vector.
+    pub fn set(ref mut self, index: u64, value: T) {
+        assert(index < self.len);
+
+        let index_ptr = self.buf.ptr() + index * size_of::<T>();
+
+        write(index_ptr, value);
+    }
 }

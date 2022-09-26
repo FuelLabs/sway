@@ -124,23 +124,19 @@ impl TypeId {
     }
 
     pub(crate) fn update_type(&mut self, type_mapping: &TypeMapping, span: &Span) {
-        *self = match look_up_type_id(*self).matches_type_parameter(type_mapping) {
-            Some(matching_id) => insert_type(TypeInfo::Ref(matching_id, span.clone())),
-            None => {
-                let ty = TypeInfo::Ref(insert_type(look_up_type_id_raw(*self)), span.clone());
-                insert_type(ty)
-            }
-        };
+        if let Some(matching_id) = type_mapping.find_match(*self) {
+            *self = insert_type(TypeInfo::Ref(matching_id, span.clone()));
+        }
     }
 
     pub(crate) fn get_type_parameters(&self) -> Option<Vec<TypeParameter>> {
         match look_up_type_id(*self) {
             TypeInfo::Enum {
                 type_parameters, ..
-            } => (!type_parameters.is_empty()).then(|| type_parameters),
+            } => (!type_parameters.is_empty()).then_some(type_parameters),
             TypeInfo::Struct {
                 type_parameters, ..
-            } => (!type_parameters.is_empty()).then(|| type_parameters),
+            } => (!type_parameters.is_empty()).then_some(type_parameters),
             _ => None,
         }
     }

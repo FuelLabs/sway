@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-6679AAF5443CF293'
+dependencies = []
+
+[[package]]
+name = 'match_expressions_constants'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-6679AAF5443CF293'
+dependencies = ['core']
