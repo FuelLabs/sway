@@ -82,7 +82,7 @@ impl I128 {
     /// Helper function to get a negative value of unsigned number
     pub fn neg_from(value: U128) -> Self {
         Self {
-            underlying: ~I128::indent() - value,
+            underlying: ~Self::indent() - value,
         }
     }
 
@@ -122,15 +122,15 @@ impl core::ops::Subtract for I128 {
 impl core::ops::Multiply for I128 {
     /// Multiply a I128 with a I128. Panics of overflow.
     fn multiply(self, other: Self) -> Self {
-        let mut res = ~I128::new();
-        if (self.underlying > ~I128::indent() || self.underlying == ~I128::indent()) && (other.underlying > ~I128::indent() || other.underlying == ~I128::indent()) {
-            res = ~I128::from((self.underlying - ~I128::indent()) * (other.underlying -~I128::indent()) + ~I128::indent());
-        } else if self.underlying < ~I128::indent() && other.underlying < ~I128::indent() {
-            res = ~I128::from((~I128::indent() - self.underlying) * (~I128::indent() - other.underlying) + ~I128::indent());
-        } else if (self.underlying > ~I128::indent() || self.underlying == ~I128::indent()) && other.underlying < ~I128::indent() {
-            res = ~I128::from(~I128::indent() - (self.underlying - ~I128::indent()) * (~I128::indent() - other.underlying));
-        } else if self.underlying < ~I128::indent() && (other.underlying > ~I128::indent() || other.underlying == ~I128::indent()) {
-            res = ~I128::from(~I128::indent() - (other.underlying - ~I128::indent()) * (~I128::indent() - self.underlying));
+        let mut res = ~Self::new();
+        if (self.underlying > ~Self::indent() || self.underlying == ~Self::indent()) && (other.underlying > ~Self::indent() || other.underlying == ~Self::indent()) {
+            res = ~Self::from((self.underlying - ~Self::indent()) * (other.underlying -~Self::indent()) + ~Self::indent());
+        } else if self.underlying < ~Self::indent() && other.underlying < ~Self::indent() {
+            res = ~Self::from((~Self::indent() - self.underlying) * (~Self::indent() - other.underlying) + ~Self::indent());
+        } else if (self.underlying > ~Self::indent() || self.underlying == ~Self::indent()) && other.underlying < ~Self::indent() {
+            res = ~Self::from(~Self::indent() - (self.underlying - ~Self::indent()) * (~Self::indent() - other.underlying));
+        } else if self.underlying < ~Self::indent() && (other.underlying > ~Self::indent() || other.underlying == ~Self::indent()) {
+            res = ~Self::from(~Self::indent() - (other.underlying - ~Self::indent()) * (~Self::indent() - self.underlying));
         }
         res
     }
@@ -139,14 +139,14 @@ impl core::ops::Multiply for I128 {
 impl core::ops::Divide for I128 {
     /// Divide a I128 by a I128. Panics if divisor is zero.
     fn divide(self, divisor: Self) -> Self {
-        assert(divisor != ~I128::new());
+        assert(divisor != ~Self::new());
         let mut res = ~Self::new();
         if (self.underlying > ~Self::indent() || self.underlying == ~Self::indent()) && divisor.underlying > ~Self::indent() {
-            res = ~Self::from((self.underlying - ~Self::indent()) / (divisor.underlying -~Self::indent()) + ~Self::indent());
+            res = ~Self::from((self.underlying - ~Self::indent()) / (divisor.underlying - ~Self::indent()) + ~Self::indent());
         } else if self.underlying < ~Self::indent() && divisor.underlying < ~Self::indent() {
             res = ~Self::from((~Self::indent() - self.underlying) / (~Self::indent() - divisor.underlying) + ~Self::indent());
         } else if (self.underlying > ~Self::indent() || self.underlying == ~Self::indent()) && divisor.underlying < ~Self::indent() {
-            res = ~Self::from(~Self::indent() - (self.underlying - ~Self::indent()) / (~I128::indent() - divisor.underlying));
+            res = ~Self::from(~Self::indent() - (self.underlying - ~Self::indent()) / (~Self::indent() - divisor.underlying));
         } else if self.underlying < ~Self::indent() && divisor.underlying > ~Self::indent() {
             res = ~Self::from(~Self::indent() - (~Self::indent() - self.underlying) / (divisor.underlying - ~Self::indent()));
         }

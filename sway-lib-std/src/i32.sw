@@ -103,13 +103,13 @@ impl core::ops::Add for I32 {
 impl core::ops::Subtract for I32 {
     /// Subtract a I32 from a I32. Panics of overflow.
     fn subtract(self, other: Self) -> Self {
-        let mut res = ~I32::new();
+        let mut res = ~Self::new();
         if self > other {
             // add 1 << 31 to avoid loosing the move
-            res = ~Self::from(self.underlying - other.underlying + ~I32::indent());
+            res = ~Self::from(self.underlying - other.underlying + ~Self::indent());
         } else {
             // subtract from 1 << 31 as we are getting a negative value
-            res = ~Self::from(~I32::indent() - (other.underlying - self.underlying));
+            res = ~Self::from(~Self::indent() - (other.underlying - self.underlying));
         }
         res
     }
@@ -124,9 +124,9 @@ impl core::ops::Multiply for I32 {
         } else if self.underlying < ~Self::indent() && other.underlying < ~Self::indent() {
             res = ~Self::from((~Self::indent() - self.underlying) * (~Self::indent() - other.underlying) + ~Self::indent());
         } else if self.underlying >= ~Self::indent() && other.underlying < ~Self::indent() {
-            res = ~Self::from(~I32::indent() - (self.underlying - ~Self::indent()) * (~Self::indent() - other.underlying));
+            res = ~Self::from(~Self::indent() - (self.underlying - ~Self::indent()) * (~Self::indent() - other.underlying));
         } else if self.underlying < ~Self::indent() && other.underlying >= ~Self::indent() {
-            res = ~Self::from(~I32::indent() - (other.underlying - ~Self::indent()) * (~Self::indent() - self.underlying));
+            res = ~Self::from(~Self::indent() - (other.underlying - ~Self::indent()) * (~Self::indent() - self.underlying));
         }
         res
     }

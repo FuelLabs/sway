@@ -109,7 +109,7 @@ impl core::ops::Add for I256 {
 impl core::ops::Subtract for I256 {
     /// Subtract a I256 from a I256. Panics of overflow.
     fn subtract(self, other: Self) -> Self {
-        let mut res = ~I256::new();
+        let mut res = ~Self::new();
         if self > other {
             // add 1 << 63 to avoid loosing the move
             res = ~Self::from(self.underlying - other.underlying + ~Self::indent());

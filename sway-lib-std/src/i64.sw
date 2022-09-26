@@ -52,7 +52,7 @@ impl I64 {
     /// Initializes a new, zeroed I64.
     pub fn new() -> Self {
         Self {
-            underlying: ~I64::indent(),
+            underlying: ~Self::indent(),
         }
     }
 
@@ -103,7 +103,7 @@ impl core::ops::Add for I64 {
 impl core::ops::Subtract for I64 {
     /// Subtract a I64 from a I64. Panics of overflow.
     fn subtract(self, other: Self) -> Self {
-        let mut res = ~I64::new();
+        let mut res = ~Self::new();
         if self > other {
             // add 1 << 63 to avoid loosing the move
             res = ~Self::from(self.underlying - other.underlying + ~Self::indent());
@@ -119,11 +119,11 @@ impl core::ops::Multiply for I64 {
     /// Multiply a I64 with a I64. Panics of overflow.
     fn multiply(self, other: Self) -> Self {
         let mut res = ~Self::new();
-        if self.underlying >= ~I64::indent() && other.underlying >= ~Self::indent() {
-            res = ~Self::from((self.underlying - ~I64::indent()) * (other.underlying -~Self::indent()) + ~Self::indent());
+        if self.underlying >= ~Self::indent() && other.underlying >= ~Self::indent() {
+            res = ~Self::from((self.underlying - ~Self::indent()) * (other.underlying -~Self::indent()) + ~Self::indent());
         } else if self.underlying < ~Self::indent() && other.underlying < ~Self::indent() {
             res = ~Self::from((~Self::indent() - self.underlying) * (~Self::indent() - other.underlying) + ~Self::indent());
-        } else if self.underlying >= ~I64::indent() && other.underlying < ~Self::indent() {
+        } else if self.underlying >= ~Self::indent() && other.underlying < ~Self::indent() {
             res = ~Self::from(~Self::indent() - (self.underlying - ~Self::indent()) * (~Self::indent() - other.underlying));
         } else if self.underlying < ~Self::indent() && other.underlying >= ~Self::indent() {
             res = ~Self::from(~Self::indent() - (other.underlying - ~Self::indent()) * (~Self::indent() - self.underlying));
