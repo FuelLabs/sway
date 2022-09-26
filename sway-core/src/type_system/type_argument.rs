@@ -58,3 +58,9 @@ impl ReplaceSelfType for TypeArgument {
         self.type_id.replace_self_type(self_type);
     }
 }
+
+impl CopyTypes for TypeArgument {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.type_id.update_type(type_mapping, &self.span);
+    }
+}

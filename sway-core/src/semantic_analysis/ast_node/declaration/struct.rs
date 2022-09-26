@@ -74,6 +74,7 @@ impl TypedStructDeclaration {
             type_parameters,
             visibility,
             span,
+            ..
         } = decl;
 
         // create a namespace for the decl, used to create a scope for generics

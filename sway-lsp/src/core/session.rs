@@ -9,12 +9,10 @@ use crate::{
         token::{Token, TokenMap, TypeDefinition},
         {traverse_parse_tree, traverse_typed_tree},
     },
-    sway_config::SwayConfig,
     utils,
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
-use serde_json::Value;
 use std::{
     path::PathBuf,
     sync::{Arc, LockResult, RwLock},
@@ -38,7 +36,6 @@ pub struct CompiledProgram {
 #[derive(Debug)]
 pub struct Session {
     pub documents: Documents,
-    pub config: RwLock<SwayConfig>,
     pub token_map: TokenMap,
     pub runnables: DashMap<RunnableType, Runnable>,
     pub compiled_program: RwLock<CompiledProgram>,
@@ -48,7 +45,6 @@ impl Session {
     pub fn new() -> Self {
         Session {
             documents: DashMap::new(),
-            config: RwLock::new(SwayConfig::default()),
             token_map: DashMap::new(),
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
@@ -124,13 +120,6 @@ impl Session {
         &self.token_map
     }
 
-    // update sway config
-    pub fn update_config(&self, options: Value) {
-        if let LockResult::Ok(mut config) = self.config.write() {
-            *config = SwayConfig::with_options(options);
-        }
-    }
-
     // Document
     pub fn store_document(&self, text_document: TextDocument) -> Result<(), DocumentError> {
         match self
@@ -179,9 +168,7 @@ impl Session {
                     let _ = self.parse_ast_to_tokens(parsed_res);
                     // Next, populate our token_map with typed ast nodes.
                     let ast_res = CompileResult::new(typed, warnings, errors);
-                    let res = self.parse_ast_to_typed_tokens(ast_res);
-                    //self.test_typed_parse(ast_res);
-                    return res;
+                    return self.parse_ast_to_typed_tokens(ast_res);
                 }
             }
         }
@@ -264,31 +251,6 @@ impl Session {
         }
     }
 
-    pub fn _test_typed_parse(&mut self, _ast_res: CompileResult<TypedProgram>, uri: &Url) {
-        for item in self.token_map.iter() {
-            let ((ident, _span), token) = item.pair();
-            utils::debug::debug_print_ident_and_token(ident, token);
-        }
-
-        //let cursor_position = Position::new(25, 14); //Cursor's hovered over the position var decl in main()
-        let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
-
-        if let Some((_, token)) = self.token_at_position(uri, cursor_position) {
-            // Look up the tokens TypeId
-            if let Some(type_id) = utils::token::type_id(&token) {
-                tracing::info!("type_id = {:#?}", type_id);
-
-                // Use the TypeId to look up the actual type
-                let type_info = sway_core::type_system::look_up_type_id(type_id);
-                tracing::info!("type_info = {:#?}", type_info);
-            }
-
-            // Find the ident / span on the returned type
-
-            // Contruct a go_to LSP request from the declarations span
-        }
-    }
-
     pub fn contains_sway_file(&self, url: &Url) -> bool {
         self.documents.contains_key(url.path())
     }
@@ -360,14 +322,8 @@ impl Session {
 
     pub fn format_text(&self, url: &Url) -> Option<Vec<TextEdit>> {
         if let Some(document) = self.documents.get(url.path()) {
-            match self.config.read() {
-                std::sync::LockResult::Ok(config) => {
-                    let config: SwayConfig = *config;
-                    let mut formatter = Formatter::from(config);
-                    get_format_text_edits(Arc::from(document.get_text()), &mut formatter)
-                }
-                _ => None,
-            }
+            let mut formatter = Formatter::default();
+            get_format_text_edits(Arc::from(document.get_text()), &mut formatter)
         } else {
             None
         }
