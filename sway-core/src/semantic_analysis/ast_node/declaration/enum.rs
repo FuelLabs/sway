@@ -80,6 +80,7 @@ impl TypedEnumDeclaration {
             variants,
             span,
             visibility,
+            ..
         } = decl;
 
         // create a namespace for the decl, used to create a scope for generics

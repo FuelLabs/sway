@@ -389,13 +389,18 @@ impl TypedAstNode {
                             ctx.namespace.insert_symbol(name, decl.clone());
                             decl
                         }
-                        Declaration::StorageDeclaration(StorageDeclaration { span, fields }) => {
+                        Declaration::StorageDeclaration(StorageDeclaration {
+                            span,
+                            fields,
+                            ..
+                        }) => {
                             let mut fields_buf = Vec::with_capacity(fields.len());
                             for StorageField {
                                 name,
                                 type_info,
                                 initializer,
                                 type_info_span,
+                                ..
                             } in fields
                             {
                                 let type_id = check!(
@@ -503,6 +508,7 @@ fn type_check_interface_surface(
                  parameters,
                  return_type,
                  return_type_span,
+                 ..
              }| TypedTraitFn {
                 name,
                 purity,
