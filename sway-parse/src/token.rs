@@ -380,47 +380,8 @@ pub fn lex_commented(
             token_trees.push(token);
             continue;
         }
-        if character == '\'' {
-            let unclosed_char_lit = || LexError {
-                kind: LexErrorKind::UnclosedCharLiteral { position: index },
-                span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
-            };
-
-            let next_character = match char_indices.next() {
-                Some((_, next_character)) => next_character,
-                None => return Err(unclosed_char_lit()),
-            };
-            let parsed = if next_character == '\\' {
-                match parse_escape_code(src, &mut char_indices, &path) {
-                    Ok(parsed) => parsed,
-                    Err(e) => return Err(e.unwrap_or_else(|| unclosed_char_lit())),
-                }
-            } else {
-                next_character
-            };
-            // Consume the character; next should be the closing `'`.
-            match char_indices.next() {
-                None => return Err(unclosed_char_lit()),
-                Some((_, '\'')) => {}
-                Some((next_index, unexpected_char)) => {
-                    // FIXME(Centril, #2864): Recover as string lit instead of char lit.
-                    return Err(LexError {
-                        kind: LexErrorKind::ExpectedCloseQuote {
-                            position: next_index,
-                        },
-                        span: Span::new(
-                            src.clone(),
-                            next_index,
-                            next_index + unexpected_char.len_utf8(),
-                            path.clone(),
-                        )
-                        .unwrap(),
-                    });
-                }
-            }
-            let span = span_until(src, index, &mut char_indices, &path);
-            let literal = Literal::Char(LitChar { span, parsed });
-            token_trees.push(CommentedTokenTree::Tree(literal.into()));
+        if let Some(token) = lex_char(src, &path, &mut char_indices, index, character)? {
+            token_trees.push(token);
             continue;
         }
         if let Some(digit) = character.to_digit(10) {
@@ -687,6 +648,59 @@ fn lex_string(
     }
     let span = span_until(src, index, char_indices, &path);
     let literal = Literal::String(LitString { span, parsed });
+    Ok(Some(CommentedTokenTree::Tree(literal.into())))
+}
+
+fn lex_char(
+    src: &Arc<str>,
+    path: &Option<Arc<PathBuf>>,
+    char_indices: &mut CharIndices,
+    index: usize,
+    character: char,
+) -> Result<Option<CommentedTokenTree>, LexError> {
+    if character != '\'' {
+        return Ok(None);
+    }
+
+    let unclosed_char_lit = || LexError {
+        kind: LexErrorKind::UnclosedCharLiteral { position: index },
+        span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
+    };
+    let next_character = match char_indices.next() {
+        Some((_, next_character)) => next_character,
+        None => return Err(unclosed_char_lit()),
+    };
+    let parsed = if next_character == '\\' {
+        match parse_escape_code(src, char_indices, &path) {
+            Ok(parsed) => parsed,
+            Err(e) => return Err(e.unwrap_or_else(|| unclosed_char_lit())),
+        }
+    } else {
+        next_character
+    };
+
+    // Consume the closing `'`.
+    match char_indices.next() {
+        None => return Err(unclosed_char_lit()),
+        Some((_, '\'')) => {}
+        Some((next_index, unexpected_char)) => {
+            // FIXME(Centril, #2864): Recover as string lit instead of char lit.
+            return Err(LexError {
+                kind: LexErrorKind::ExpectedCloseQuote {
+                    position: next_index,
+                },
+                span: Span::new(
+                    src.clone(),
+                    next_index,
+                    next_index + unexpected_char.len_utf8(),
+                    path.clone(),
+                )
+                .unwrap(),
+            });
+        }
+    }
+    let span = span_until(src, index, char_indices, &path);
+    let literal = Literal::Char(LitChar { span, parsed });
     Ok(Some(CommentedTokenTree::Tree(literal.into())))
 }
 
