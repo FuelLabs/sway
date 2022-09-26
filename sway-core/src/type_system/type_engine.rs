@@ -541,10 +541,7 @@ impl TypeEngine {
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let module_path = match type_info_prefix {
-            Some(type_info_prefix) => type_info_prefix,
-            None => mod_path,
-        };
+        let module_path = type_info_prefix.unwrap_or(mod_path);
         let type_id = match look_up_type_id(type_id) {
             TypeInfo::Custom {
                 name,
