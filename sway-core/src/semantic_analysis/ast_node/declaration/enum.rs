@@ -1,5 +1,6 @@
 use crate::{
     error::*,
+    insert_type_with_initial,
     parse_tree::*,
     semantic_analysis::*,
     type_system::{
@@ -196,10 +197,14 @@ impl TypedEnumVariant {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let initial_type_id = insert_type(variant.type_info);
-        let enum_variant_type = check!(
+
+        // create the type ids
+        let (initial_type_id, enum_variant_type) = insert_type_with_initial(variant.type_info);
+
+        // resolve the enum variant type
+        check!(
             ctx.resolve_type_with_self(
-                initial_type_id,
+                enum_variant_type,
                 &variant.span,
                 EnforceTypeArguments::Yes,
                 None

@@ -1,6 +1,7 @@
 mod collect_types_metadata;
 mod copy_types;
 mod create_type_id;
+mod create_type_info;
 mod integer_bits;
 mod replace_self_type;
 mod resolved_type;
@@ -16,6 +17,7 @@ mod type_parameter;
 pub(crate) use collect_types_metadata::*;
 pub(crate) use copy_types::*;
 pub(crate) use create_type_id::*;
+pub(crate) use create_type_info::*;
 pub use integer_bits::*;
 pub(crate) use replace_self_type::*;
 pub(crate) use resolved_type::*;

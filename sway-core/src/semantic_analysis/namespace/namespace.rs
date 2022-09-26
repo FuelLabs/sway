@@ -105,7 +105,7 @@ impl Namespace {
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
-    ) -> CompileResult<TypeId> {
+    ) -> CompileResult<()> {
         resolve_type_with_self(
             type_id,
             self_type,
@@ -123,7 +123,7 @@ impl Namespace {
         type_id: TypeId,
         span: &Span,
         type_info_prefix: Option<&Path>,
-    ) -> CompileResult<TypeId> {
+    ) -> CompileResult<()> {
         resolve_type(
             type_id,
             span,

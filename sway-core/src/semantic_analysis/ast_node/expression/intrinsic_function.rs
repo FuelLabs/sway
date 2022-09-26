@@ -142,10 +142,14 @@ impl TypedIntrinsicFunctionKind {
                     return err(warnings, errors);
                 }
                 let targ = type_arguments[0].clone();
-                let initial_type_id = insert_type(to_typeinfo(targ.type_id, &targ.span).unwrap());
-                let type_id = check!(
+
+                // create the type ids
+                let (initial_type_id, type_id) =
+                    insert_type_with_initial(to_typeinfo(targ.type_id, &targ.span).unwrap());
+
+                check!(
                     ctx.resolve_type_with_self(
-                        initial_type_id,
+                        type_id,
                         &targ.span,
                         EnforceTypeArguments::Yes,
                         None
@@ -177,10 +181,14 @@ impl TypedIntrinsicFunctionKind {
                     return err(warnings, errors);
                 }
                 let targ = type_arguments[0].clone();
-                let initial_type_id = insert_type(to_typeinfo(targ.type_id, &targ.span).unwrap());
-                let type_id = check!(
+
+                // create the type ids
+                let (initial_type_id, type_id) =
+                    insert_type_with_initial(to_typeinfo(targ.type_id, &targ.span).unwrap());
+
+                check!(
                     ctx.resolve_type_with_self(
-                        initial_type_id,
+                        type_id,
                         &targ.span,
                         EnforceTypeArguments::Yes,
                         None
@@ -331,10 +339,14 @@ impl TypedIntrinsicFunctionKind {
                 }
 
                 let targ = type_arguments[0].clone();
-                let initial_type_id = insert_type(to_typeinfo(targ.type_id, &targ.span).unwrap());
-                let type_id = check!(
+
+                // create the type ids
+                let (initial_type_id, type_id) =
+                    insert_type_with_initial(to_typeinfo(targ.type_id, &targ.span).unwrap());
+
+                check!(
                     ctx.resolve_type_with_self(
-                        initial_type_id,
+                        type_id,
                         &targ.span,
                         EnforceTypeArguments::Yes,
                         None
@@ -485,11 +497,14 @@ impl TypedIntrinsicFunctionKind {
                     let mut ctx = ctx
                         .with_help_text("")
                         .with_type_annotation(insert_type(TypeInfo::Unknown));
-                    let initial_type_id =
-                        insert_type(to_typeinfo(targ.type_id, &targ.span).unwrap());
-                    let type_id = check!(
+
+                    // create the type ids
+                    let (initial_type_id, type_id) =
+                        insert_type_with_initial(to_typeinfo(targ.type_id, &targ.span).unwrap());
+
+                    check!(
                         ctx.resolve_type_with_self(
-                            initial_type_id,
+                            type_id,
                             &targ.span,
                             EnforceTypeArguments::Yes,
                             None

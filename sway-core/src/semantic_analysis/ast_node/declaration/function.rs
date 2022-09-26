@@ -132,8 +132,10 @@ impl TypedFunctionDeclaration {
             ));
         }
 
+        // create the type ids
+        let (initial_return_type, return_type) = insert_type_with_initial(return_type);
+
         // type check the return type
-        let initial_return_type = insert_type(return_type);
         let return_type = check!(
             ctx.resolve_type_with_self(
                 initial_return_type,

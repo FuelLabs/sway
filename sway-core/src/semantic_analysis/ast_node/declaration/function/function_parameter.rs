@@ -49,7 +49,13 @@ impl TypedFunctionParameter {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let type_id = check!(
+
+        // create the type ids
+        let initial_type_id = parameter.type_id;
+        let type_id = insert_type(look_up_type_id(initial_type_id));
+
+        // resolve the type of the parameter
+        check!(
             ctx.resolve_type_with_self(
                 parameter.type_id,
                 &parameter.type_span,
@@ -60,6 +66,7 @@ impl TypedFunctionParameter {
             warnings,
             errors,
         );
+
         let mutability =
             convert_to_variable_immutability(parameter.is_reference, parameter.is_mutable);
         if mutability == VariableMutability::Mutable {
@@ -89,7 +96,7 @@ impl TypedFunctionParameter {
             is_mutable: parameter.is_mutable,
             mutability_span: parameter.mutability_span,
             type_id,
-            initial_type_id: parameter.type_id,
+            initial_type_id,
             type_span: parameter.type_span,
         };
         ok(parameter, warnings, errors)

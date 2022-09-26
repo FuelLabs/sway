@@ -26,6 +26,15 @@ impl TypeEngine {
         TypeId::new(self.slab.insert(ty))
     }
 
+    /// Given a [TypeInfo], inserts the [TypeInfo] into the [TypeEngine] twice
+    /// to create two distinct [TypeId]s that both point to two distinct copies
+    /// of the same [TypeInfo]
+    pub(crate) fn insert_type_with_initial(&self, ty: TypeInfo) -> (TypeId, TypeId) {
+        let initial_type_id = TypeId::new(self.slab.insert(ty.clone()));
+        let other_type_id = TypeId::new(self.slab.insert(ty));
+        (initial_type_id, other_type_id)
+    }
+
     pub fn size(&self) -> usize {
         self.slab.size()
     }
@@ -530,142 +539,177 @@ impl TypeEngine {
     /// enum, or a reference to a type parameter.
     fn resolve_type(
         &self,
-        type_id: TypeId,
+        old_type_id: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
         namespace: &Root,
         mod_path: &Path,
-    ) -> CompileResult<TypeId> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let module_path = type_info_prefix.unwrap_or(mod_path);
-        let type_id = match look_up_type_id(type_id) {
-            TypeInfo::Custom {
-                name,
-                type_arguments,
-            } => {
-                match namespace
-                    .resolve_symbol(module_path, &name)
-                    .ok(&mut warnings, &mut errors)
-                    .cloned()
-                {
-                    Some(TypedDeclaration::StructDeclaration(original_id)) => {
-                        // get the copy from the declaration engine
-                        let mut new_copy = check!(
-                            CompileResult::from(de_get_struct(original_id.clone(), &name.span())),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
+    ) -> CompileResult<()> {
+        fn error_recovery(te: &TypeEngine, old_type_id: TypeId) {
+            te.slab.blind_replace(*old_type_id, TypeInfo::ErrorRecovery);
+        }
 
-                        // monomorphize the copy, in place
-                        check!(
-                            self.monomorphize(
-                                &mut new_copy,
-                                &mut type_arguments.unwrap_or_default(),
-                                enforce_type_arguments,
-                                span,
-                                namespace,
-                                mod_path
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors,
-                        );
-
-                        // create the type id from the copy
-                        let type_id = new_copy.create_type_id();
-
-                        // add the new copy as a monomorphized copy of the original id
-                        de_add_monomorphized_struct_copy(original_id, new_copy);
-
-                        // return the id
-                        type_id
-                    }
-                    Some(TypedDeclaration::EnumDeclaration(original_id)) => {
-                        // get the copy from the declaration engine
-                        let mut new_copy = check!(
-                            CompileResult::from(de_get_enum(original_id.clone(), &name.span())),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-
-                        // monomorphize the copy, in place
-                        check!(
-                            self.monomorphize(
-                                &mut new_copy,
-                                &mut type_arguments.unwrap_or_default(),
-                                enforce_type_arguments,
-                                span,
-                                namespace,
-                                mod_path
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-
-                        // create the type id from the copy
-                        let type_id = new_copy.create_type_id();
-
-                        // add the new copy as a monomorphized copy of the original id
-                        de_add_monomorphized_enum_copy(original_id, new_copy);
-
-                        // return the id
-                        type_id
-                    }
-                    Some(TypedDeclaration::GenericTypeForFunctionScope { name, type_id }) => {
-                        self.insert_type(TypeInfo::Ref(type_id, name.span()))
-                    }
-                    _ => {
-                        errors.push(CompileError::UnknownTypeName {
-                            name: name.to_string(),
-                            span: name.span(),
-                        });
-                        self.insert_type(TypeInfo::ErrorRecovery)
+        fn resolve_type_inner(te: &TypeEngine,         old_type_id: TypeId,
+            span: &Span,
+            enforce_type_arguments: EnforceTypeArguments,
+            type_info_prefix: Option<&Path>,
+            namespace: &Root,
+            mod_path: &Path) -> CompileResult<()> {
+            let mut warnings = vec![];
+            let mut errors = vec![];
+            let module_path = type_info_prefix.unwrap_or(mod_path);
+            match look_up_type_id(old_type_id) {
+                TypeInfo::Custom {
+                    name,
+                    type_arguments,
+                } => {
+                    match namespace
+                        .resolve_symbol(module_path, &name)
+                        .ok(&mut warnings, &mut errors)
+                        .cloned()
+                    {
+                        Some(TypedDeclaration::StructDeclaration(original_id)) => {
+                            // get the copy from the declaration engine
+                            let mut new_copy = check!(
+                                CompileResult::from(de_get_struct(
+                                    original_id.clone(),
+                                    &name.span()
+                                )),
+                                return err(warnings, errors,
+                                warnings,
+                                errors
+                            );
+    
+                            // monomorphize the copy, in place
+                            check!(
+                                te.monomorphize(
+                                    &mut new_copy,
+                                    &mut type_arguments.unwrap_or_default(),
+                                    enforce_type_arguments,
+                                    span,
+                                    namespace,
+                                    mod_path
+                                ),
+                                return err(warnings, errors),
+                                warnings,
+                                errors,
+                            );
+    
+                            // create the type id from the copy
+                            let new_type_id = new_copy.create_type_id();
+    
+                            // add the new copy as a monomorphized copy of the original id
+                            de_add_monomorphized_struct_copy(original_id, new_copy);
+    
+                            // replace the old type id with the new type id
+                            te.slab
+                                .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
+                        }
+                        Some(TypedDeclaration::EnumDeclaration(original_id)) => {
+                            // get the copy from the declaration engine
+                            let mut new_copy = check!(
+                                CompileResult::from(de_get_enum(original_id.clone(), &name.span())),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+    
+                            // monomorphize the copy, in place
+                            check!(
+                                te.monomorphize(
+                                    &mut new_copy,
+                                    &mut type_arguments.unwrap_or_default(),
+                                    enforce_type_arguments,
+                                    span,
+                                    namespace,
+                                    mod_path
+                                ),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+    
+                            // create the type id from the copy
+                            let new_type_id = new_copy.create_type_id();
+    
+                            // add the new copy as a monomorphized copy of the original id
+                            de_add_monomorphized_enum_copy(original_id, new_copy);
+    
+                            // replace the old type id with the new type id
+                            te.slab
+                                .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
+                        }
+                        Some(TypedDeclaration::GenericTypeForFunctionScope { name, type_id }) => {
+                            let new_type_id = te.insert_type(TypeInfo::Ref(type_id, name.span()));
+                            // replace the old type id with the new type id
+                            te.slab
+                                .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
+                        }
+                        _ => {
+                            errors.push(CompileError::UnknownTypeName {
+                                name: name.to_string(),
+                                span: name.span(),
+                            });
+                            let new_type_id = te.insert_type(TypeInfo::ErrorRecovery);
+                            // replace the old type id with the new type id
+                            te.slab
+                                .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
+                        }
                     }
                 }
-            }
-            TypeInfo::Ref(id, _) => id,
-            TypeInfo::Array(type_id, n, initial_type_id) => {
-                let new_type_id = check!(
-                    self.resolve_type(
-                        type_id,
-                        span,
-                        enforce_type_arguments,
-                        None,
-                        namespace,
-                        mod_path
-                    ),
-                    self.insert_type(TypeInfo::ErrorRecovery),
-                    warnings,
-                    errors
-                );
-                self.insert_type(TypeInfo::Array(new_type_id, n, initial_type_id))
-            }
-            TypeInfo::Tuple(mut type_arguments) => {
-                for type_argument in type_arguments.iter_mut() {
-                    type_argument.type_id = check!(
-                        self.resolve_type(
-                            type_argument.type_id,
+                TypeInfo::Ref(new_type_id, _) => {
+                    // replace the old type id with the new type id
+                    te.slab
+                        .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
+                }
+                TypeInfo::Array(type_id, n, initial_type_id) => {
+                    let new_type_id = check!(
+                        te.resolve_type(
+                            type_id,
                             span,
                             enforce_type_arguments,
                             None,
                             namespace,
                             mod_path
                         ),
-                        self.insert_type(TypeInfo::ErrorRecovery),
+                        te.insert_type(TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
+                    let new_type_id =
+                    te.insert_type(TypeInfo::Array(new_type_id, n, initial_type_id));
+                    // replace the old type id with the new type id
+                    te.slab
+                        .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
                 }
-                self.insert_type(TypeInfo::Tuple(type_arguments))
+                TypeInfo::Tuple(mut type_arguments) => {
+                    for type_argument in type_arguments.iter_mut() {
+                        type_argument.type_id = check!(
+                            te.resolve_type(
+                                type_argument.type_id,
+                                span,
+                                enforce_type_arguments,
+                                None,
+                                namespace,
+                                mod_path
+                            ),
+                            te.insert_type(TypeInfo::ErrorRecovery),
+                            warnings,
+                            errors
+                        );
+                    }
+                    let new_type_id = te.insert_type(TypeInfo::Tuple(type_arguments));
+                    // replace the old type id with the new type id
+                    te.slab
+                        .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
+                }
+                o => insert_type(o),
             }
-            o => insert_type(o),
-        };
-        ok(type_id, warnings, errors)
+            ok((), warnings, errors)
+        }
+
+        resolve_type_inner(self, old_type_id, span, enforce_type_arguments, type_info_prefix, namespace, mod_path)
     }
 
     /// Replace any instances of the [TypeInfo::SelfType] variant with
@@ -680,7 +724,7 @@ impl TypeEngine {
         type_info_prefix: Option<&Path>,
         namespace: &Root,
         mod_path: &Path,
-    ) -> CompileResult<TypeId> {
+    ) -> CompileResult<()> {
         type_id.replace_self_type(self_type);
         self.resolve_type(
             type_id,
@@ -695,6 +739,10 @@ impl TypeEngine {
 
 pub fn insert_type(ty: TypeInfo) -> TypeId {
     TYPE_ENGINE.insert_type(ty)
+}
+
+pub fn insert_type_with_initial(ty: TypeInfo) -> (TypeId, TypeId) {
+    TYPE_ENGINE.insert_type_with_initial(ty)
 }
 
 pub fn type_engine_size() -> usize {
@@ -776,7 +824,7 @@ pub(crate) fn resolve_type(
     type_info_prefix: Option<&Path>,
     namespace: &Root,
     mod_path: &Path,
-) -> CompileResult<TypeId> {
+) -> CompileResult<()> {
     TYPE_ENGINE.resolve_type(
         type_id,
         span,
@@ -795,7 +843,7 @@ pub(crate) fn resolve_type_with_self(
     type_info_prefix: Option<&Path>,
     namespace: &Root,
     mod_path: &Path,
-) -> CompileResult<TypeId> {
+) -> CompileResult<()> {
     TYPE_ENGINE.resolve_type_with_self(
         type_id,
         self_type,

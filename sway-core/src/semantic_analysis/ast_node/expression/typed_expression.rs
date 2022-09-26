@@ -825,7 +825,7 @@ impl TypedExpression {
         errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
 
         // The annotation may result in a cast, which is handled in the type engine.
-        typed_expression.return_type = check!(
+        check!(
             ctx.resolve_type_with_self(
                 typed_expression.return_type,
                 &expr_span,
@@ -1215,20 +1215,18 @@ impl TypedExpression {
             .body
             .iter()
             .any(|asm_op| matches!(asm_op.op_name.as_str(), "rvrt" | "ret"));
+
         let return_type = if diverges {
             insert_type(TypeInfo::Unknown)
         } else {
+            let return_type = insert_type(asm.return_type.clone());
             check!(
-                ctx.resolve_type_with_self(
-                    insert_type(asm.return_type.clone()),
-                    &asm_span,
-                    EnforceTypeArguments::No,
-                    None
-                ),
+                ctx.resolve_type_with_self(return_type, &asm_span, EnforceTypeArguments::No, None),
                 insert_type(TypeInfo::ErrorRecovery),
                 warnings,
                 errors,
-            )
+            );
+            return_type
         };
         // type check the initializers
         let typed_registers = asm

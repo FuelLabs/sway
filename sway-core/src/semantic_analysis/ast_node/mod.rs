@@ -403,12 +403,9 @@ impl TypedAstNode {
                                 ..
                             } in fields
                             {
-                                let type_id = check!(
-                                    ctx.resolve_type_without_self(
-                                        insert_type(type_info),
-                                        &name.span(),
-                                        None
-                                    ),
+                                let type_id = insert_type(type_info);
+                                check!(
+                                    ctx.resolve_type_without_self(type_id, &name.span(), None),
                                     return err(warnings, errors),
                                     warnings,
                                     errors
