@@ -7,7 +7,8 @@ It can be used to replicate the functionality of contracts, such as routers, wit
 Some properties of a script include:
 
 - It cannot be called by a contract
-- It has no persistent storage but can interact with storage through a contract
+- It is stateless but can interact with storage through a contract
+- Can call multiple contracts
 
 ## Calling a contract
 
@@ -16,33 +17,26 @@ A script is a simple program because it consists of a single `main()` function w
 - Take any number of arguments
 - Return a single value of any type
 
-The following example uses the [wallet smart contract](contract.md) to send some asset to a recipient by calling the `send_funds()` function.
+There are two ways to use a script:
 
-> TODO: fix abi cast link
+- Via the [Rust SDK](https://fuellabs.github.io/fuels-rs/latest/index.html) or [TypeScript SDK](https://fuellabs.github.io/fuels-ts/)
+- Manually
 
-1. The first step is to declare the type of program which is a `script`
-2. In order to call our `Wallet` we must import its interface
-3. We declare the parameters that we wish to pass into the script
-4. We use an [abi cast](./contract.md#calling-a-smart-contract-from-a-script) to create a callable type for our `Wallet`
-5. We call our wallet with optional parameters (wrapped in `{}`) and pass in the parameters
-6. We return a boolean to indicate that the call has succeeded
+The SDKs provide an ergonomic interface for interacting with contracts because they are built to automatically handle various processes however there may be cases where manual use is preferred.
+
+The following example demonstrates the manual implementation which uses the [wallet smart contract](contract.md) to send some asset to a recipient by calling the `send_funds()` function.
 
 ```sway
 {{#include ../../code/program-types/scripts/transfer/src/main.sw}}
 ```
 
-> **Note:**
-> The return value is optional and is only included here for demonstration purposes
+Some important points to note are:
 
-1. `gas`: a `u64` that represents the gas being forwarded to the contract when it is called
-   1. Default: context gas (i.e. the content of the special register `$cgas`).  Refer to the [FuelVM specifications](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md)
-2. `coins`: a `u64` that represents how many coins are being forwarded with this call
-   1. Default: 0
-3. `asset_id`: a `b256` that represents the ID of the _asset type_ of the coins being forwarded
-   1. Default: `0x000....0` i.e. `b256` of all 0s
+1. The return value and parameters are optional
+   1. A simple `fn main() { ... }` is sufficient
+2. The `abi(<interface>, <b256-address>)` creates a callable type
+3. There are optional arguments wrapped in `{}` for the `send_funds()` function
+   1. `gas`: a `u64` that represents the gas being forwarded to the contract when it is called
+   2. `coins`: a `u64` that represents how many coins are being forwarded with this call
+   3. `asset_id`: a `b256` that represents the ID of the _asset type_ of the coins being forwarded
 
->**Note**: In most cases, calling a contract should be done from the [Rust SDK](../testing/testing-with-rust.md) or the [TypeScript SDK](../frontend/typescript_sdk.md) which provide a more ergonomic UI for interacting with a contract. However, there are situations where manually writing a script to call a contract is required.
-
-## Scripts and the SDKs
-
-Unlike EVM transactions which can call a contract directly (but can only call a single contract), Fuel transactions execute a script, which may call zero or more contracts. The [Rust](https://github.com/FuelLabs/fuels-rs) and [TypeScript](https://github.com/FuelLabs/fuels-ts) SDKs provide functions to call contract methods as if they were calling contracts directly. Under the hood, the SDKs wrap all contract calls with scripts that contain minimal code to simply make the call and forward script data as call parameters.
