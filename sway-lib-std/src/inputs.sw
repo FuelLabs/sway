@@ -3,6 +3,7 @@
 library inputs;
 
 use ::address::Address;
+use ::assert::assert;
 use ::mem::read;
 use ::option::Option;
 use ::revert::revert;
@@ -14,6 +15,7 @@ use ::tx::{
     Transaction,
     tx_type,
 };
+use core::ops::Eq;
 
 const GTF_INPUT_TYPE = 0x101;
 
@@ -61,6 +63,27 @@ pub enum Input {
     Coin: (),
     Contract: (),
     Message: (),
+}
+
+impl Eq for Input {
+    fn eq(self, other: Self) -> bool {
+        if let Input::Coin = self {
+            if let Input::Coin = other {
+                return true;
+            }
+        };
+        if let Input::Contract = self {
+            if let Input::Contract = other {
+                return true;
+            }
+        };
+        if let Input::Message = self {
+            if let Input::Message = other {
+                return true;
+            }
+        };
+        false
+    }
 }
 
 ////////////////////////////////////////
@@ -149,6 +172,7 @@ pub fn input_count() -> u8 {
 
 /// Get the message id of the input message at `index`.
 pub fn input_message_msg_id(index: u64) -> b256 {
+    assert(valid_input_type(index, Input::Message));
     __gtf::<b256>(index, GTF_INPUT_MESSAGE_MESSAGE_ID)
 }
 
@@ -167,7 +191,7 @@ pub fn input_message_nonce(index: u64) -> u64 {
     __gtf::<u64>(index, GTF_INPUT_MESSAGE_NONCE)
 }
 
-/// Get the witness index of the input messasge at `index`.
+/// Get the witness index of the input message at `index`.
 pub fn input_message_witness_index(index: u64) -> u8 {
     __gtf::<u8>(index, GTF_INPUT_MESSAGE_WITNESS_INDEX)
 }
@@ -195,4 +219,13 @@ pub fn input_message_data<T>(index: u64, offset: u64) -> T {
 /// Get the predicate of the input message at `index`.
 pub fn input_message_predicate<T>(index: u64) -> T {
     read::<T>(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE))
+}
+
+fn valid_input_type(index: u64, input: Input) -> bool {
+    let input_type: Input = input_type(index);
+    if input_type == input {
+        true
+    } else {
+        false
+    }
 }
