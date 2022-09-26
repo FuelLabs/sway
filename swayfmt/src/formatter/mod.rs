@@ -34,9 +34,11 @@ impl Formatter {
             Err(ConfigError::NotFound) => Config::default(),
             Err(e) => return Err(e),
         };
-        let shape = Shape::default();
 
-        Ok(Self { config, shape })
+        Ok(Self {
+            config,
+            ..Default::default()
+        })
     }
     pub fn format(
         &mut self,
