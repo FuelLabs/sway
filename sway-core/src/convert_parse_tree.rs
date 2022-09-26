@@ -686,11 +686,7 @@ fn get_attributed_purity(
     };
     match attributes.get(&AttributeKind::Storage) {
         Some(attrs) if !attrs.is_empty() => {
-            for arg in attrs
-                .iter()
-                .filter(|attr| !attr.args.is_empty())
-                .flat_map(|attr| &attr.args)
-            {
+            for arg in attrs.iter().flat_map(|attr| &attr.args) {
                 match arg.as_str() {
                     STORAGE_PURITY_READ_NAME => add_impurity(Purity::Reads, Purity::Writes),
                     STORAGE_PURITY_WRITE_NAME => add_impurity(Purity::Writes, Purity::Reads),
