@@ -433,7 +433,7 @@ pub fn lex_commented(
                             None => return Err(incomplete_int_lit(src.len())),
                             Some(od) => od,
                         };
-                        let oct_digit = match oct_digit.to_digit(2) {
+                        let oct_digit = match oct_digit.to_digit(8) {
                             Some(oct_digit) => oct_digit,
                             None => return Err(incomplete_int_lit(oct_digit_position)),
                         };
