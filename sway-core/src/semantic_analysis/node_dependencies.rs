@@ -479,22 +479,24 @@ impl Dependencies {
                 self.gather_from_call_path(&abi_cast_expression.abi_name, false, false)
             }
 
-            ExpressionKind::Literal(_) => self,
+            ExpressionKind::Literal(_)
+            | ExpressionKind::Break
+            | ExpressionKind::Continue
+            | ExpressionKind::StorageAccess(_)
+            | ExpressionKind::Error => self,
+
             ExpressionKind::Tuple(fields) => {
                 self.gather_from_iter(fields.iter(), |deps, field| deps.gather_from_expr(field))
             }
             ExpressionKind::TupleIndex(TupleIndexExpression { prefix, .. }) => {
                 self.gather_from_expr(prefix)
             }
-            ExpressionKind::StorageAccess(_) => self,
             ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
                 arguments, ..
             }) => self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
             ExpressionKind::WhileLoop(WhileLoopExpression {
                 condition, body, ..
             }) => self.gather_from_expr(condition).gather_from_block(body),
-            ExpressionKind::Break => self,
-            ExpressionKind::Continue => self,
             ExpressionKind::Reassignment(reassignment) => self.gather_from_expr(&reassignment.rhs),
             ExpressionKind::Return(expr) => self.gather_from_expr(expr),
         }

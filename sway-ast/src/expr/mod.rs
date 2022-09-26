@@ -5,6 +5,10 @@ pub mod op_code;
 
 #[derive(Clone, Debug)]
 pub enum Expr {
+    /// A malformed expression.
+    ///
+    /// Used for parser recovery when we cannot form a more specific node.
+    Error(Span),
     Path(PathExpr),
     Literal(Literal),
     AbiCast {
@@ -179,6 +183,7 @@ pub enum Expr {
 impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
+            Expr::Error(span) => span.clone(),
             Expr::Path(path_expr) => path_expr.span(),
             Expr::Literal(literal) => literal.span(),
             Expr::AbiCast { abi_token, args } => Span::join(abi_token.span(), args.span()),

@@ -117,6 +117,10 @@ pub struct ReassignmentExpression {
 
 #[derive(Debug, Clone)]
 pub enum ExpressionKind {
+    /// A malformed expression.
+    ///
+    /// Used for parser recovery when we cannot form a more specific node.
+    Error,
     Literal(Literal),
     FunctionApplication(Box<FunctionApplicationExpression>),
     LazyOperator(LazyOperatorExpression),
