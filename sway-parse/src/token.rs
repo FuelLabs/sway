@@ -295,28 +295,24 @@ pub fn lex_commented(
             continue;
         }
         if character.is_xid_start() || character == '_' {
+            // Raw identifier, e.g., `r#foo`? Then mark as such, stripping the prefix `r#`.
             let is_raw_ident = character == 'r' && matches!(char_indices.peek(), Some((_, '#')));
             if is_raw_ident {
                 char_indices.next();
-                if let Some((_, next_character)) = char_indices.peek() {
-                    character = *next_character;
-                    if let Some((next_index, _)) = char_indices.next() {
-                        index = next_index;
-                    }
+                if let Some((next_index, next_character)) = char_indices.next() {
+                    character = next_character;
+                    index = next_index;
                 }
             }
-            let is_single_underscore = character == '_'
-                && match char_indices.peek() {
-                    Some((_, next_character)) => !next_character.is_xid_continue(),
-                    None => true,
-                };
-            if !is_single_underscore {
-                while let Some((_, next_character)) = char_indices.peek() {
-                    if !next_character.is_xid_continue() {
-                        break;
-                    }
-                    let _ = char_indices.next();
-                }
+
+            // Don't accept just `_` as an identifier.
+            let not_is_single_underscore = character != '_'
+                || char_indices
+                    .peek()
+                    .map_or(false, |(_, next)| next.is_xid_continue());
+            if not_is_single_underscore {
+                // Consume until we hit other than `XID_CONTINUE`.
+                while let Some(_) = char_indices.next_if(|(_, c)| c.is_xid_continue()) {}
                 let span = span_until(src, index, &mut char_indices, &path);
                 let ident = Ident::new_with_raw(span, is_raw_ident);
                 token_trees.push(CommentedTokenTree::Tree(ident.into()));
