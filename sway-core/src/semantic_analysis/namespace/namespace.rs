@@ -138,17 +138,10 @@ impl Namespace {
         r#type: TypeId,
         method_prefix: &Path,
         method_name: &Ident,
-        self_type: TypeId,
         args_buf: &VecDeque<TypedExpression>,
     ) -> CompileResult<TypedFunctionDeclaration> {
-        self.root.find_method_for_type(
-            &self.mod_path,
-            r#type,
-            method_prefix,
-            method_name,
-            self_type,
-            args_buf,
-        )
+        self.root
+            .find_method_for_type(&self.mod_path, r#type, method_prefix, method_name, args_buf)
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.

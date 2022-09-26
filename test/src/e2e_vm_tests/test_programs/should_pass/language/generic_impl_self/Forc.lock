@@ -6,4 +6,9 @@ dependencies = []
 [[package]]
 name = 'generic_impl_self'
 source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-DA3FEDB2AB26E552'
 dependencies = ['core']

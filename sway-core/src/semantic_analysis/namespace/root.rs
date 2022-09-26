@@ -234,10 +234,9 @@ impl Root {
     pub(crate) fn find_method_for_type(
         &mut self,
         mod_path: &Path,
-        mut type_id: TypeId,
+        type_id: TypeId,
         method_prefix: &Path,
         method_name: &Ident,
-        self_type: TypeId,
         args_buf: &VecDeque<TypedExpression>,
     ) -> CompileResult<TypedFunctionDeclaration> {
         let mut warnings = vec![];
@@ -253,22 +252,6 @@ impl Root {
 
         // grab the local methods from the local module
         let local_methods = local_module.get_methods_for_type(type_id);
-
-        type_id.replace_self_type(self_type);
-
-        // resolve the type
-        let type_id = check!(
-            self.resolve_type(
-                type_id,
-                &method_name.span(),
-                EnforceTypeArguments::No,
-                None,
-                method_prefix
-            ),
-            insert_type(TypeInfo::ErrorRecovery),
-            warnings,
-            errors
-        );
 
         // grab the module where the type itself is declared
         let type_module = check!(

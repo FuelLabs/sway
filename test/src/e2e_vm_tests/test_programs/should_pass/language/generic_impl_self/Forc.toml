@@ -5,4 +5,4 @@ name = "generic_impl_self"
 entry = "main.sw"
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../../../../sway-lib-std" }

@@ -347,7 +347,6 @@ pub(crate) fn resolve_method_name(
                     type_id,
                     &type_info_prefix,
                     method_name,
-                    ctx.self_type(),
                     &arguments
                 ),
                 return err(warnings, errors),
@@ -371,7 +370,6 @@ pub(crate) fn resolve_method_name(
                     type_id,
                     &module_path,
                     &call_path.suffix,
-                    ctx.self_type(),
                     &arguments
                 ),
                 return err(warnings, errors),
@@ -391,13 +389,8 @@ pub(crate) fn resolve_method_name(
 
             // find the method
             check!(
-                ctx.namespace.find_method_for_type(
-                    type_id,
-                    &module_path,
-                    method_name,
-                    ctx.self_type(),
-                    &arguments
-                ),
+                ctx.namespace
+                    .find_method_for_type(type_id, &module_path, method_name, &arguments),
                 return err(warnings, errors),
                 warnings,
                 errors

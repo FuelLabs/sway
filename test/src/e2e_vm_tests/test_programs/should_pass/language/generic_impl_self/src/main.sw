@@ -1,5 +1,7 @@
 script;
 
+use std::result::Result;
+
 struct Data<T> {
   value: T
 }
@@ -75,21 +77,6 @@ fn crazy<T, F>(x: T, y: F) -> F {
   foo.get_second()
 }
 
-enum Result<T> {
-  Ok: T,
-  Err: u8 // err code
-}
-
-impl<T> Result<T> {
-  fn ok(value: T) -> Self {
-    Result::Ok::<T>(value)
-  }
-
-  fn err(code: u8) -> Self {
-    Result::Err::<T>(code)
-  }
-}
-
 enum Option<T> {
   Some: T,
   None: ()
@@ -104,11 +91,11 @@ impl<T> Option<T> {
     Option::None::<T>(())
   }
 
-  fn to_result(self) -> Result<T> {
+  fn to_result(self) -> Result<T, u8> {
     if let Option::Some(value) = self {
-      ~Result::<T>::ok(value)
+      Result::Ok::<T, u8>(value)
     } else {
-      ~Result::<T>::err(99u8)
+      Result::Err::<T, u8>(99u8)
     }
   }
 }
