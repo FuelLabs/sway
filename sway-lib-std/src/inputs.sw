@@ -4,6 +4,8 @@ library inputs;
 
 use ::address::Address;
 use ::assert::assert;
+use ::constants::BASE_ASSET_ID;
+use ::contract_id::ContractId;
 use ::mem::read;
 use ::option::Option;
 use ::revert::revert;
@@ -130,7 +132,7 @@ pub fn input_owner(index: u64) -> Option<Address> {
     match type {
         Input::Coin => Option::Some(~Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER))),
         Input::Message => Option::Some(~Address::from(__gtf::<b256>(index, GTF_INPUT_MESSAGE_RECIPIENT))),
-        Input::Contract => return Option::None;
+        Input::Contract => return Option::None,
     }
 }
 
@@ -158,16 +160,6 @@ pub fn input_predicate_data<T>(index: u64) -> T {
     }
 }
 
-/// Get the transaction inputs count for either tx type
-/// (transaction-script or transaction-create).
-pub fn input_count() -> u8 {
-    let type = tx_type();
-    match type {
-        Transaction::Script => __gtf::<u8>(0, GTF_SCRIPT_INPUTS_COUNT),
-        Transaction::Create => __gtf::<u8>(0, GTF_CREATE_INPUTS_COUNT),
-    }
-}
-
 /// If the input's type is `InputCoin` the asset id as an Option::Some(id).
 /// If the input's type is `InputMessage` the base asset id as an Option::Some(id).
 /// Otherwise, returns Option::None.
@@ -176,7 +168,7 @@ pub fn input_asset_id(index: u64) -> Option<ContractId> {
     match type {
         Input::Coin => Option::Some(~ContractId::from(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID))),
         Input::Message => Option::Some(BASE_ASSET_ID),
-        Input::Contract => return Option::None;
+        Input::Contract => return Option::None,
     }
 }
 
@@ -189,7 +181,7 @@ pub fn input_witness_index(index: u64) -> Option<u8> {
     match type {
         Input::Coin => Option::Some(__gtf::<u8>(index, GTF_INPUT_COIN_WITNESS_INDEX)),
         Input::Message => Option::Some(__gtf::<u8>(index, GTF_INPUT_MESSAGE_WITNESS_INDEX)),
-        Input::Contract => Option::None
+        Input::Contract => Option::None,
     }
 }
 
@@ -202,7 +194,7 @@ pub fn input_predicate_length(index: u64) -> Option<u16> {
     match type {
         Input::Coin => Option::Some(__gtf::<u16>(index, GTF_INPUT_COIN_PREDICATE_LENGTH)),
         Input::Message => Option::Some(__gtf::<u16>(index, GTF_INPUT_MESSAGE_PREDICATE_LENGTH)),
-        Input::Contract => Option::None
+        Input::Contract => Option::None,
     }
 }
 
@@ -215,7 +207,7 @@ pub fn input_predicate_pointer(index: u64) -> Option<u64> {
     match type {
         Input::Coin => Option::Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE)),
         Input::Message => Option::Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE)),
-        Input::Contract => Option::None
+        Input::Contract => Option::None,
     }
 }
 
@@ -239,7 +231,7 @@ pub fn input_predicate_data_length(index: u64) -> Option<u16> {
     match type {
         Input::Coin => Option::Some(__gtf::<u16>(index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH)),
         Input::Message => Option::Some(__gtf::<u16>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH)),
-        Input::Contract => Option::None
+        Input::Contract => Option::None,
     }
 }
 

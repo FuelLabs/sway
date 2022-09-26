@@ -8,7 +8,7 @@ use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::option::Option;
 use ::result::Result;
-use ::inputs::{Input, input_coin_owner, input_count, input_type};
+use ::inputs::{Input, input_owner, input_count, input_type};
 
 pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),
@@ -66,7 +66,7 @@ fn inputs_owner() -> Result<Identity, AuthError> {
         }
 
         // type == InputCoin
-        let owner_of_input = input_coin_owner(i);
+        let owner_of_input = input_owner(i);
         if candidate.is_none() {
             // This is the first input seen of the correct type.
             candidate = owner_of_input;
