@@ -84,6 +84,7 @@ impl LexError {
 
 #[extension_trait]
 impl CharExt for char {
+    /// Converts the character into an opening delimiter, if any.
     fn as_open_delimiter(self) -> Option<Delimiter> {
         match self {
             '(' => Some(Delimiter::Parenthesis),
@@ -93,6 +94,7 @@ impl CharExt for char {
         }
     }
 
+    /// Converts the character into a closing delimiter, if any.
     fn as_close_delimiter(self) -> Option<Delimiter> {
         match self {
             ')' => Some(Delimiter::Parenthesis),
@@ -102,6 +104,7 @@ impl CharExt for char {
         }
     }
 
+    /// Determines what sort of punctuation this character is, if any.
     fn as_punct_kind(self) -> Option<PunctKind> {
         match self {
             ';' => Some(PunctKind::Semicolon),
