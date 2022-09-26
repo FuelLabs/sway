@@ -182,44 +182,7 @@ pub fn lex_commented(
         if character == '/' {
             match char_indices.peek() {
                 Some((_, '/')) => {
-                    let _ = char_indices.next();
-
-                    let end = match char_indices.find(|(_, character)| *character == '\n') {
-                        // Reached EOF
-                        None => end,
-                        // Found "\n"
-                        Some((end, _)) => end,
-                    };
-                    let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
-
-                    let doc_style =
-                        match (span.as_str().chars().nth(2), span.as_str().chars().nth(3)) {
-                            // `//!` is an inner line doc comment.
-                            (Some('!'), _) => {
-                                // TODO: Add support for inner line doc comments.
-                                // Some(DocStyle::Inner)
-                                None
-                            }
-                            // `////` (more than 3 slashes) is not considered a doc comment.
-                            (Some('/'), Some('/')) => None,
-                            // `///` is an outer line doc comment.
-                            (Some('/'), _) => Some(DocStyle::Outer),
-                            _ => None,
-                        };
-
-                    token_trees.push(if let Some(doc_style) = doc_style {
-                        let content_span =
-                            Span::new(src.clone(), index + 3, end, path.clone()).unwrap();
-                        let doc_comment = DocComment {
-                            span,
-                            doc_style,
-                            content_span,
-                        };
-                        CommentedTokenTree::Tree(doc_comment.into())
-                    } else {
-                        let comment = Comment { span };
-                        comment.into()
-                    });
+                    token_trees.push(lex_line_comment(end, src, &path, &mut char_indices, index));
                     continue;
                 }
                 Some((_, '*')) => {
@@ -261,9 +224,9 @@ pub fn lex_commented(
                             Some((next_index, '/')) => match char_indices.next() {
                                 None => return Err(unclosed_multiline_comment(unclosed_indices)),
                                 Some((_, '*')) => unclosed_indices.push(next_index),
-                                Some((_, _)) => {},
+                                Some((_, _)) => {}
                             },
-                            Some((_, _)) => {},
+                            Some((_, _)) => {}
                         }
                     }
                     continue;
@@ -404,6 +367,48 @@ pub fn lex_commented(
         full_span,
     };
     Ok(token_stream)
+}
+
+fn lex_line_comment(
+    end: usize,
+    src: &Arc<str>,
+    path: &Option<Arc<PathBuf>>,
+    char_indices: &mut CharIndices,
+    index: usize,
+) -> CommentedTokenTree {
+    let _ = char_indices.next();
+
+    // Find end; either at EOF or at `\n`.
+    let end = char_indices
+        .find(|(_, character)| *character == '\n')
+        .map_or(end, |(end, _)| end);
+    let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
+
+    let doc_style = match (span.as_str().chars().nth(2), span.as_str().chars().nth(3)) {
+        // `//!` is an inner line doc comment.
+        (Some('!'), _) => {
+            // TODO: Add support for inner line doc comments.
+            // Some(DocStyle::Inner)
+            None
+        }
+        // `////` (more than 3 slashes) is not considered a doc comment.
+        (Some('/'), Some('/')) => None,
+        // `///` is an outer line doc comment.
+        (Some('/'), _) => Some(DocStyle::Outer),
+        _ => None,
+    };
+
+    if let Some(doc_style) = doc_style {
+        let content_span = Span::new(src.clone(), index + 3, end, path.clone()).unwrap();
+        let doc_comment = DocComment {
+            span,
+            doc_style,
+            content_span,
+        };
+        CommentedTokenTree::Tree(doc_comment.into())
+    } else {
+        Comment { span }.into()
+    }
 }
 
 fn lex_string(
