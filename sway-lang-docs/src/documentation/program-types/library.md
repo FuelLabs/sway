@@ -3,13 +3,13 @@
 Libraries are defined using the `library` keyword at the beginning of a file, followed by a name so that they can be imported.
 
 ```sway
-{{#include ../../code/libraries/internal/my_library/src/my_library.sw:1}}
+{{#include ../../code/program-types/libraries/internal/my_library/src/my_library.sw:1}}
 ```
 
 All of the code inside the library is private by default therefore if the library is meant to expose some functionality then a `pub` keyword should be used in order to expose it.
 
 ```sway
-{{#include ../../code/libraries/internal/my_library/src/my_library.sw}}
+{{#include ../../code/program-types/libraries/internal/my_library/src/my_library.sw}}
 ```
 
 ## Including a library in a project
@@ -38,7 +38,7 @@ To be able to use our library `my_library.sw` in `lib.sw` there are two steps to
 2. Use the `use` keyword to selectively import our code from the library
 
 ```sway
-{{#include ../../code/libraries/internal/my_library/src/lib.sw}}
+{{#include ../../code/program-types/libraries/internal/my_library/src/lib.sw}}
 ```
 
 ### External Libraries
@@ -64,29 +64,26 @@ $ tree
         └── harness.rs
 ```
 
-If we take a look at each library then we have the following:
+If we take a look at each library then we see the following:
 
 __my_library__
 
 ```sway
-{{#include ../../code/libraries/external/my_library/src/lib.sw}}
+{{#include ../../code/program-types/libraries/external/my_library/src/lib.sw}}
 ```
 
 __my_other_library__
 
-```bash
-$ cat my_other_library/src/lib.sw
-library my_other_library;
-
-pub fn quix() {}
+```sway
+{{#include ../../code/program-types/libraries/external/my_other_library/src/lib.sw}}
 ```
 
-The code in `my_library` seems to use the code from `my_other_library` however there is one more step required to let `my_library` know about the path where it can find `my_other_library`.
+The code in `my_library` references `my_other_library` however there is one more step required in order to link the two libraries and that is to tell `my_library` where to find `my_other_library`.
 
 This is done by listing `my_other_library` as a dependency in the `Forc.toml` file of `my_library` under the `[dependencies]` section.
 
 ```bash
-{{#include ../../code/libraries/external/my_library/Forc.toml}}
+{{#include ../../code/program-types/libraries/external/my_library/Forc.toml}}
 ```
 
 > **Note:**

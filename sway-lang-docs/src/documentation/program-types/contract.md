@@ -6,9 +6,9 @@ It can be called in the same way that an API may be called to perform computatio
 
 A smart contract consists of two parts:
 
-- [Smart Contracts](#smart-contracts)
-  - [Application Binary Interface (`ABI`)](#application-binary-interface-abi)
-  - [Implementating the `ABI`](#implementating-the-abi)
+<!--no toc-->
+- [Application Binary Interface (`ABI`)](#application-binary-interface-abi)
+- [Implementation of the `ABI`](#implementating-the-abi)
 
 ## Application Binary Interface (`ABI`)
 
@@ -21,7 +21,7 @@ The structure begins by using the keyword `abi` followed by the name of the cont
 Inside the declaration are function signatures, annotations denoting the interaction with storage and documentation comments outlining the functionality.
 
 ```sway
-{{#include ../../code/wallet/interface/src/lib.sw}}
+{{#include ../../code/program-types/contracts/interface/src/lib.sw}}
 ```
 
 ## Implementating the `ABI`
@@ -30,15 +30,10 @@ Similar to [traits](https://doc.rust-lang.org/rust-by-example/trait.html) in Rus
 
 All functions defined in the `ABI` must be declared in the implementation.
 
-In the wallet example we import the `Wallet`, with additional standard library imports, declare contract storage for keeping track of the balance and implement two functions:
-
-- `receive_funds()` 
-  - Updates the balance only when the specified _BASE_ASSET_ is sent
-- `send_funds()`
-  - Sends some amount to a recipient if the caller is the owner and the contract has enough of the _BASE_ASSET_
+Since the interface is defined outside of the contract we must import it using the `use` syntax before we can use it.
 
 <br>
 
 ```sway
-{{#include ../../code/wallet/wallet/src/main.sw}}
+{{#include ../../code/program-types/contracts/wallet/src/main.sw}}
 ```
