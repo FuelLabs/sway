@@ -128,6 +128,8 @@ pub trait BinaryLogarithm {
     fn log2(self) -> Self;
 }
 
+// Trait for exponential functions
+// Should exist for UFP64, UFP128 and their signed versions
 pub trait Exponent {
     fn exp(exponent: Self) -> Self;
 }
