@@ -1256,7 +1256,7 @@ where
         .fetch(&refspecs, Some(&mut fetch_opts), None)
         .with_context(|| {
             format!(
-                "failed to fetch `{}` Check your connection or run in `--offline` mode",
+                "failed to fetch `{}`. Check your connection or run in `--offline` mode",
                 &source.repo
             )
         })?;
