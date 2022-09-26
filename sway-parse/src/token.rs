@@ -388,92 +388,54 @@ pub fn lex_commented(
             let (big_uint, end_opt) = if digit == 0 {
                 match char_indices.peek() {
                     Some((_, 'x')) => {
-                        let incomplete_hex_int_lit = |end| LexError {
+                        let incomplete_int_lit = |end| LexError {
                             kind: LexErrorKind::IncompleteHexIntLiteral { position: index },
                             span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
                         };
                         let _ = char_indices.next();
                         let (hex_digit_position, hex_digit) = match char_indices.next() {
-                            None => return Err(incomplete_hex_int_lit(src.len())),
+                            None => return Err(incomplete_int_lit(src.len())),
                             Some(hd) => hd,
                         };
                         let hex_digit = match hex_digit.to_digit(16) {
                             Some(hex_digit) => hex_digit,
-                            None => return Err(incomplete_hex_int_lit(hex_digit_position)),
+                            None => return Err(incomplete_int_lit(hex_digit_position)),
                         };
                         let mut big_uint = BigUint::from(hex_digit);
                         let end_opt = parse_digits(&mut big_uint, &mut char_indices, 16);
                         (big_uint, end_opt)
                     }
                     Some((_, 'b')) => {
+                        let incomplete_int_lit = |end| LexError {
+                            kind: LexErrorKind::IncompleteBinaryIntLiteral { position: index },
+                            span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
+                        };
                         let _ = char_indices.next();
                         let (bin_digit_position, bin_digit) = match char_indices.next() {
-                            None => {
-                                return Err(LexError {
-                                    kind: LexErrorKind::IncompleteBinaryIntLiteral {
-                                        position: index,
-                                    },
-                                    span: Span::new(src.clone(), index, src.len(), path.clone())
-                                        .unwrap(),
-                                });
-                            }
-                            Some((bin_digit_position, bin_digit)) => {
-                                (bin_digit_position, bin_digit)
-                            }
+                            None => return Err(incomplete_int_lit(src.len())),
+                            Some(bd) => bd,
                         };
                         let bin_digit = match bin_digit.to_digit(2) {
                             Some(bin_digit) => bin_digit,
-                            None => {
-                                return Err(LexError {
-                                    kind: LexErrorKind::IncompleteBinaryIntLiteral {
-                                        position: index,
-                                    },
-                                    span: Span::new(
-                                        src.clone(),
-                                        index,
-                                        bin_digit_position,
-                                        path.clone(),
-                                    )
-                                    .unwrap(),
-                                });
-                            }
+                            None => return Err(incomplete_int_lit(bin_digit_position)),
                         };
                         let mut big_uint = BigUint::from(bin_digit);
                         let end_opt = parse_digits(&mut big_uint, &mut char_indices, 2);
                         (big_uint, end_opt)
                     }
                     Some((_, 'o')) => {
+                        let incomplete_int_lit = |end| LexError {
+                            kind: LexErrorKind::IncompleteOctalIntLiteral { position: index },
+                            span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
+                        };
                         let _ = char_indices.next();
                         let (oct_digit_position, oct_digit) = match char_indices.next() {
-                            None => {
-                                return Err(LexError {
-                                    kind: LexErrorKind::IncompleteOctalIntLiteral {
-                                        position: index,
-                                    },
-                                    span: Span::new(src.clone(), index, src.len(), path.clone())
-                                        .unwrap(),
-                                });
-                            }
-                            Some((oct_digit_position, oct_digit)) => {
-                                (oct_digit_position, oct_digit)
-                            }
+                            None => return Err(incomplete_int_lit(src.len())),
+                            Some(od) => od,
                         };
                         let oct_digit = match oct_digit.to_digit(2) {
                             Some(oct_digit) => oct_digit,
-                            None => {
-                                return Err(LexError {
-                                    kind: LexErrorKind::IncompleteOctalIntLiteral {
-                                        position: index,
-                                    },
-                                    span: Span::new(
-                                        src.clone(),
-                                        index,
-                                        oct_digit_position,
-                                        path.clone(),
-                                    )
-                                    .unwrap(),
-                                });
-                            }
+                            None => return Err(incomplete_int_lit(oct_digit_position)),
                         };
                         let mut big_uint = BigUint::from(oct_digit);
                         let end_opt = parse_digits(&mut big_uint, &mut char_indices, 8);
