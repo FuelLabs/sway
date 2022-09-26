@@ -1,5 +1,5 @@
 use self::commands::{
-    addr2line, build, check, clean, completions, init, new, parse_bytecode, plugins, template,
+    addr2line, build, check, clean, completions, doc, init, new, parse_bytecode, plugins, template,
     test, update,
 };
 use addr2line::Command as Addr2LineCommand;
@@ -9,6 +9,7 @@ pub use check::Command as CheckCommand;
 use clap::{Parser, Subcommand};
 pub use clean::Command as CleanCommand;
 pub use completions::Command as CompletionsCommand;
+pub use doc::Command as DocCommand;
 use forc_util::init_tracing_subscriber;
 pub use init::Command as InitCommand;
 pub use new::Command as NewCommand;
@@ -49,6 +50,7 @@ enum Forc {
     Update(UpdateCommand),
     Plugins(PluginsCommand),
     Template(TemplateCommand),
+    Doc(DocCommand),
     /// This is a catch-all for unknown subcommands and their arguments.
     ///
     /// When we receive an unknown subcommand, we check for a plugin exe named
@@ -78,6 +80,7 @@ pub async fn run_cli() -> Result<()> {
         Forc::Test(command) => test::exec(command),
         Forc::Update(command) => update::exec(command).await,
         Forc::Template(command) => template::exec(command),
+        Forc::Doc(command) => doc::exec(command),
         Forc::Plugin(args) => {
             let output = plugin::execute_external_subcommand(args)?;
             let code = output

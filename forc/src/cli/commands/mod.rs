@@ -3,6 +3,7 @@ pub mod build;
 pub mod check;
 pub mod clean;
 pub mod completions;
+pub mod doc;
 pub mod init;
 pub mod new;
 pub mod parse_bytecode;
