@@ -388,33 +388,18 @@ pub fn lex_commented(
             let (big_uint, end_opt) = if digit == 0 {
                 match char_indices.peek() {
                     Some((_, 'x')) => {
+                        let incomplete_hex_int_lit = |end| LexError {
+                            kind: LexErrorKind::IncompleteHexIntLiteral { position: index },
+                            span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
+                        };
                         let _ = char_indices.next();
                         let (hex_digit_position, hex_digit) = match char_indices.next() {
-                            None => {
-                                return Err(LexError {
-                                    kind: LexErrorKind::IncompleteHexIntLiteral { position: index },
-                                    span: Span::new(src.clone(), index, src.len(), path.clone())
-                                        .unwrap(),
-                                });
-                            }
-                            Some((hex_digit_position, hex_digit)) => {
-                                (hex_digit_position, hex_digit)
-                            }
+                            None => return Err(incomplete_hex_int_lit(src.len())),
+                            Some(hd) => hd,
                         };
                         let hex_digit = match hex_digit.to_digit(16) {
                             Some(hex_digit) => hex_digit,
-                            None => {
-                                return Err(LexError {
-                                    kind: LexErrorKind::IncompleteHexIntLiteral { position: index },
-                                    span: Span::new(
-                                        src.clone(),
-                                        index,
-                                        hex_digit_position,
-                                        path.clone(),
-                                    )
-                                    .unwrap(),
-                                });
-                            }
+                            None => return Err(incomplete_hex_int_lit(hex_digit_position)),
                         };
                         let mut big_uint = BigUint::from(hex_digit);
                         let end_opt = parse_digits(&mut big_uint, &mut char_indices, 16);
