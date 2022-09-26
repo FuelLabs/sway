@@ -37,5 +37,6 @@ dep i64;
 dep i128;
 dep i256;
 dep prelude;
+dep ufp64;
 
 use core::*;

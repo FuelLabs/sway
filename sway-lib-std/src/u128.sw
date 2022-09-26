@@ -5,6 +5,7 @@ use core::num::*;
 use ::assert::assert;
 use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
 use ::result::Result;
+use ::math::Exponentiate;
 
 /// The 128-bit unsigned integer type.
 /// Represented as two 64-bit components: `(upper, lower)`, where `value = (upper << 64) + lower`.
@@ -301,5 +302,37 @@ impl core::ops::Divide for U128 {
         }
 
         quotient
+    }
+}
+
+impl Exponentiate for U128 {
+    fn pow(self, exponent: Self) -> Self {
+        let mut value = self;
+        let mut exp = exponent;
+        let one = ~U128::from(0, 1);
+        let zero = ~U128::from(0, 0);
+
+        if exp == zero {
+            return one;
+        }
+
+        while exp & one == zero {
+            value = value * value;
+            exp >>= 1;
+        }
+
+        if exp == one {
+            return self;
+        }
+
+        let mut acc = value;
+        while exp > one {
+            exp >>= 1;
+            value = value * value;
+            if exp & one == one {
+                acc = acc * value;
+            }
+        }
+        acc
     }
 }
