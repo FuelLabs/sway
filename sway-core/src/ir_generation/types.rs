@@ -4,7 +4,7 @@ use crate::{
         ProjectionKind, TypeCheckedStorageAccessDescriptor, TypeCheckedStorageReassignDescriptor,
         TypedEnumVariant,
     },
-    type_system::{resolve_type, TypeId, TypeInfo},
+    type_system::{to_typeinfo, TypeId, TypeInfo},
 };
 
 use super::convert::convert_resolved_typeid_no_span;
@@ -70,7 +70,7 @@ pub(super) fn get_struct_name_field_index_and_type(
     field_type: TypeId,
     field_kind: ProjectionKind,
 ) -> Option<(String, Option<(u64, TypeId)>)> {
-    let ty_info = resolve_type(field_type, &field_kind.span()).ok()?;
+    let ty_info = to_typeinfo(field_type, &field_kind.span()).ok()?;
     match (ty_info, field_kind) {
         (
             TypeInfo::Struct { name, fields, .. },
@@ -127,7 +127,7 @@ pub(super) fn get_indices_for_struct_access<F: TypedNamedField>(
             (Vec::new(), base_type),
             |(mut fld_idcs, prev_type_id), field| {
                 let field_kind = field.get_field_kind();
-                let ty_info = match resolve_type(prev_type_id, &field_kind.span()) {
+                let ty_info = match to_typeinfo(prev_type_id, &field_kind.span()) {
                     Ok(ty_info) => ty_info,
                     Err(error) => {
                         return Err(CompileError::InternalOwned(
