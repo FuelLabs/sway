@@ -136,16 +136,15 @@ impl TypedFunctionDeclaration {
         let (initial_return_type, return_type) = insert_type_with_initial(return_type);
 
         // type check the return type
-        let return_type = check!(
+        append!(
             ctx.resolve_type_with_self(
                 initial_return_type,
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
             warnings,
-            errors,
+            errors
         );
 
         // type check the function body

@@ -6,7 +6,7 @@ use crate::{
         insert_type, monomorphize, unify_with_self, CopyTypes, EnforceTypeArguments,
         MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
     },
-    CompileResult, CompileWarning, TypeError,
+    CompileError, CompileResult, CompileWarning, TypeError,
 };
 use sway_types::{span::Span, Ident};
 
@@ -203,7 +203,7 @@ impl<'ns> TypeCheckContext<'ns> {
         span: &Span,
         enforce_type_args: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
-    ) -> CompileResult<()> {
+    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         self.namespace.resolve_type_with_self(
             type_id,
             self.self_type,
@@ -219,7 +219,7 @@ impl<'ns> TypeCheckContext<'ns> {
         type_id: TypeId,
         span: &Span,
         type_info_prefix: Option<&Path>,
-    ) -> CompileResult<()> {
+    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         self.namespace
             .resolve_type_without_self(type_id, span, type_info_prefix)
     }

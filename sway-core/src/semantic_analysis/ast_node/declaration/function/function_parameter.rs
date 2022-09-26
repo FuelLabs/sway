@@ -55,16 +55,15 @@ impl TypedFunctionParameter {
         let type_id = insert_type(look_up_type_id(initial_type_id));
 
         // resolve the type of the parameter
-        check!(
+        append!(
             ctx.resolve_type_with_self(
                 parameter.type_id,
                 &parameter.type_span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
             warnings,
-            errors,
+            errors
         );
 
         let mutability =

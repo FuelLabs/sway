@@ -1,6 +1,6 @@
 use crate::{
-    semantic_analysis::ast_node::TypedExpression, type_system::*, CallPath, CompileResult, Ident,
-    TypedDeclaration, TypedFunctionDeclaration,
+    semantic_analysis::ast_node::TypedExpression, type_system::*, CallPath, CompileError,
+    CompileResult, CompileWarning, Ident, TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
@@ -105,7 +105,7 @@ impl Namespace {
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
-    ) -> CompileResult<()> {
+    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         resolve_type_with_self(
             type_id,
             self_type,
@@ -123,7 +123,7 @@ impl Namespace {
         type_id: TypeId,
         span: &Span,
         type_info_prefix: Option<&Path>,
-    ) -> CompileResult<()> {
+    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         resolve_type(
             type_id,
             span,

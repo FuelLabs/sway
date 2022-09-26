@@ -188,16 +188,11 @@ impl TypedAstNode {
         // A little utility used to check an ascribed type matches its associated expression.
         let mut type_check_ascribed_expr =
             |mut ctx: TypeCheckContext, type_ascription: TypeInfo, expr| {
-                let type_id = check!(
-                    ctx.resolve_type_with_self(
-                        insert_type(type_ascription),
-                        &node.span,
-                        EnforceTypeArguments::No,
-                        None
-                    ),
-                    insert_type(TypeInfo::ErrorRecovery),
+                let type_id = insert_type(type_ascription);
+                append!(
+                    ctx.resolve_type_with_self(type_id, &node.span, EnforceTypeArguments::No, None),
                     warnings,
-                    errors,
+                    errors
                 );
                 let ctx = ctx.with_type_annotation(type_id).with_help_text(
                     "This declaration's type annotation does not match up with the assigned \
@@ -233,17 +228,21 @@ impl TypedAstNode {
                             body,
                             is_mutable,
                         }) => {
-                            let type_ascription = check!(
+                            // create type id
+                            let type_ascription = insert_type(type_ascription);
+
+                            // resolve the type
+                            append!(
                                 ctx.resolve_type_with_self(
-                                    insert_type(type_ascription),
+                                    type_ascription,
                                     &type_ascription_span.clone().unwrap_or_else(|| name.span()),
                                     EnforceTypeArguments::Yes,
                                     None
                                 ),
-                                insert_type(TypeInfo::ErrorRecovery),
                                 warnings,
                                 errors
                             );
+
                             let mut ctx = ctx.with_type_annotation(type_ascription).with_help_text(
                                 "Variable declaration's type annotation does not match up \
                                     with the assigned expression's type.",
@@ -404,9 +403,8 @@ impl TypedAstNode {
                             } in fields
                             {
                                 let type_id = insert_type(type_info);
-                                check!(
+                                append!(
                                     ctx.resolve_type_without_self(type_id, &name.span(), None),
-                                    return err(warnings, errors),
                                     warnings,
                                     errors
                                 );
@@ -498,64 +496,79 @@ fn type_check_interface_surface(
     let mut errors = vec![];
     let interface_surface = interface_surface
         .into_iter()
-        .map(
-            |TraitFn {
-                 name,
-                 purity,
-                 parameters,
-                 return_type,
-                 return_type_span,
-                 ..
-             }| TypedTraitFn {
+        .map(|trait_fn| {
+            let TraitFn {
+                name,
+                purity,
+                parameters,
+                return_type,
+                return_type_span,
+                ..
+            } = trait_fn;
+            let parameters = parameters
+                .into_iter()
+                .map(|param| {
+                    let FunctionParameter {
+                        name,
+                        is_reference,
+                        is_mutable,
+                        mutability_span,
+                        type_id: initial_type_id,
+                        type_span,
+                    } = param;
+
+                    // create the type id
+                    let type_id = insert_type(look_up_type_id(initial_type_id));
+
+                    // resolve the type
+                    append!(
+                        namespace.resolve_type_with_self(
+                            type_id,
+                            insert_type(TypeInfo::SelfType),
+                            &type_span,
+                            EnforceTypeArguments::Yes,
+                            None
+                        ),
+                        warnings,
+                        errors
+                    );
+
+                    TypedFunctionParameter {
+                        name,
+                        is_reference,
+                        is_mutable,
+                        mutability_span,
+                        type_id,
+                        initial_type_id: type_id,
+                        type_span,
+                    }
+                })
+                .collect();
+
+            // create the type id
+            let return_type = insert_type(return_type);
+
+            // resolve the type
+            append!(
+                namespace.resolve_type_with_self(
+                    return_type,
+                    insert_type(TypeInfo::SelfType),
+                    &return_type_span,
+                    EnforceTypeArguments::Yes,
+                    None
+                ),
+                warnings,
+                errors
+            );
+
+            TypedTraitFn {
                 name,
                 purity,
                 return_type_span: return_type_span.clone(),
-                parameters: parameters
-                    .into_iter()
-                    .map(
-                        |FunctionParameter {
-                             name,
-                             is_reference,
-                             is_mutable,
-                             mutability_span,
-                             type_id,
-                             type_span,
-                         }| TypedFunctionParameter {
-                            name,
-                            is_reference,
-                            is_mutable,
-                            mutability_span,
-                            type_id: check!(
-                                namespace.resolve_type_with_self(
-                                    type_id,
-                                    insert_type(TypeInfo::SelfType),
-                                    &type_span,
-                                    EnforceTypeArguments::Yes,
-                                    None
-                                ),
-                                insert_type(TypeInfo::ErrorRecovery),
-                                warnings,
-                                errors,
-                            ),
-                            initial_type_id: type_id,
-                            type_span,
-                        },
-                    )
-                    .collect(),
-                return_type: check!(
-                    namespace.resolve_type_with_self(
-                        insert_type(return_type),
-                        insert_type(TypeInfo::SelfType),
-                        &return_type_span,
-                        EnforceTypeArguments::Yes,
-                        None
-                    ),
-                    insert_type(TypeInfo::ErrorRecovery),
-                    warnings,
-                    errors,
-                ),
-            },
-        )
+                parameters,
+                return_type,
+            }
+        })
         .collect::<Vec<_>>();
     ok(interface_surface, warnings, errors)
 }
@@ -581,42 +594,41 @@ fn type_check_trait_methods(
     {
         // A context while checking the signature where `self_type` refers to `SelfType`.
         let mut sig_ctx = ctx.by_ref().with_self_type(insert_type(TypeInfo::SelfType));
-        parameters.clone().into_iter().for_each(
-            |FunctionParameter {
-                 name,
-                 is_reference,
-                 is_mutable,
-                 ref type_id,
-                 ..
-             }| {
-                let r#type = check!(
-                    sig_ctx.resolve_type_with_self(
-                        *type_id,
-                        &name.span(),
-                        EnforceTypeArguments::Yes,
-                        None
-                    ),
-                    insert_type(TypeInfo::ErrorRecovery),
-                    warnings,
-                    errors,
-                );
-                sig_ctx.namespace.insert_symbol(
-                    name.clone(),
-                    TypedDeclaration::VariableDeclaration(Box::new(TypedVariableDeclaration {
-                        name: name.clone(),
-                        body: TypedExpression {
-                            expression: TypedExpressionVariant::FunctionParameter,
-                            return_type: r#type,
-                            is_constant: IsConstant::No,
-                            span: name.span(),
-                        },
-                        mutability: convert_to_variable_immutability(is_reference, is_mutable),
-                        type_ascription: r#type,
-                        type_ascription_span: None,
-                    })),
-                );
-            },
-        );
+        parameters.clone().into_iter().for_each(|param| {
+            let FunctionParameter {
+                name,
+                is_reference,
+                is_mutable,
+                ref type_id,
+                ..
+            } = param;
+            let type_id = *type_id;
+            append!(
+                sig_ctx.resolve_type_with_self(
+                    type_id,
+                    &name.span(),
+                    EnforceTypeArguments::Yes,
+                    None
+                ),
+                warnings,
+                errors
+            );
+            sig_ctx.namespace.insert_symbol(
+                name.clone(),
+                TypedDeclaration::VariableDeclaration(Box::new(TypedVariableDeclaration {
+                    name: name.clone(),
+                    body: TypedExpression {
+                        expression: TypedExpressionVariant::FunctionParameter,
+                        return_type: type_id,
+                        is_constant: IsConstant::No,
+                        span: name.span(),
+                    },
+                    mutability: convert_to_variable_immutability(is_reference, is_mutable),
+                    type_ascription: type_id,
+                    type_ascription_span: None,
+                })),
+            );
+        });
         // check the generic types in the arguments, make sure they are in
         // the type scope
         let mut generic_params_buf_for_error_message = Vec::new();
@@ -658,51 +670,53 @@ fn type_check_trait_methods(
         }
         let parameters = parameters
             .into_iter()
-            .map(
-                |FunctionParameter {
-                     name,
-                     type_id,
-                     is_reference,
-                     is_mutable,
-                     mutability_span,
-                     type_span,
-                 }| {
-                    TypedFunctionParameter {
-                        name,
-                        is_reference,
-                        is_mutable,
-                        mutability_span,
-                        type_id: check!(
-                            sig_ctx.resolve_type_with_self(
-                                type_id,
-                                &type_span,
-                                EnforceTypeArguments::Yes,
-                                None
-                            ),
-                            insert_type(TypeInfo::ErrorRecovery),
-                            warnings,
-                            errors,
-                        ),
-                        initial_type_id: type_id,
-                        type_span,
-                    }
-                },
-            )
+            .map(|param| {
+                let FunctionParameter {
+                    name,
+                    type_id,
+                    is_reference,
+                    is_mutable,
+                    mutability_span,
+                    type_span,
+                } = param;
+                append!(
+                    sig_ctx.resolve_type_with_self(
+                        type_id,
+                        &type_span,
+                        EnforceTypeArguments::Yes,
+                        None
+                    ),
+                    warnings,
+                    errors
+                );
+                TypedFunctionParameter {
+                    name,
+                    is_reference,
+                    is_mutable,
+                    mutability_span,
+                    type_id,
+                    initial_type_id: type_id,
+                    type_span,
+                }
+            })
             .collect::<Vec<_>>();
 
         // TODO check code block implicit return
-        let initial_return_type = insert_type(return_type);
-        let return_type = check!(
+        // create the type ids
+        let (initial_return_type, return_type) = insert_type_with_initial(return_type);
+
+        // resolve the type
+        append!(
             ctx.resolve_type_with_self(
-                initial_return_type,
+                return_type,
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
             warnings,
-            errors,
+            errors
         );
+
         let ctx = ctx
             .by_ref()
             .with_purity(purity)

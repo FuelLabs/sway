@@ -191,12 +191,12 @@ impl TypedStructField {
         let (initial_type_id, type_id) = insert_type_with_initial(field.type_info);
 
         // resolve the type of the field
-        check!(
+        append!(
             ctx.resolve_type_with_self(type_id, &field.type_span, EnforceTypeArguments::Yes, None),
-            insert_type(TypeInfo::ErrorRecovery),
             warnings,
-            errors,
+            errors
         );
+
         let field = TypedStructField {
             name: field.name,
             type_id,

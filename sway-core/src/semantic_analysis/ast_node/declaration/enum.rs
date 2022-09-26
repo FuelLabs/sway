@@ -202,16 +202,15 @@ impl TypedEnumVariant {
         let (initial_type_id, enum_variant_type) = insert_type_with_initial(variant.type_info);
 
         // resolve the enum variant type
-        check!(
+        append!(
             ctx.resolve_type_with_self(
                 enum_variant_type,
                 &variant.span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
             warnings,
-            errors,
+            errors
         );
         ok(
             TypedEnumVariant {

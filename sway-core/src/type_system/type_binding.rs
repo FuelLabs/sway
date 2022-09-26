@@ -110,14 +110,14 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
         );
 
         // resolve the type of the type info object
-        let type_id = check!(
+        let type_id = insert_type(type_info);
+        append!(
             ctx.resolve_type_with_self(
-                insert_type(type_info),
+                type_id,
                 &type_info_span,
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix)
             ),
-            insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors
         );

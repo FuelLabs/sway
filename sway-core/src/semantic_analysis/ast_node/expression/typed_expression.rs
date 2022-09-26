@@ -825,16 +825,15 @@ impl TypedExpression {
         errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
 
         // The annotation may result in a cast, which is handled in the type engine.
-        check!(
+        append!(
             ctx.resolve_type_with_self(
                 typed_expression.return_type,
                 &expr_span,
                 EnforceTypeArguments::No,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
             warnings,
-            errors,
+            errors
         );
 
         // Literals of type Numeric can now be resolved if typed_expression.return_type is
@@ -1220,11 +1219,10 @@ impl TypedExpression {
             insert_type(TypeInfo::Unknown)
         } else {
             let return_type = insert_type(asm.return_type.clone());
-            check!(
+            append!(
                 ctx.resolve_type_with_self(return_type, &asm_span, EnforceTypeArguments::No, None),
-                insert_type(TypeInfo::ErrorRecovery),
                 warnings,
-                errors,
+                errors
             );
             return_type
         };

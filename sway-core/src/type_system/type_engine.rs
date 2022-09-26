@@ -159,7 +159,7 @@ impl TypeEngine {
                     return err(warnings, errors);
                 }
                 for type_argument in type_arguments.iter_mut() {
-                    type_argument.type_id = check!(
+                    append!(
                         self.resolve_type(
                             type_argument.type_id,
                             &type_argument.span,
@@ -168,7 +168,6 @@ impl TypeEngine {
                             namespace,
                             mod_path
                         ),
-                        self.insert_type(TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
@@ -545,17 +544,16 @@ impl TypeEngine {
         type_info_prefix: Option<&Path>,
         namespace: &Root,
         mod_path: &Path,
-    ) -> CompileResult<()> {
-        fn error_recovery(te: &TypeEngine, old_type_id: TypeId) {
-            te.slab.blind_replace(*old_type_id, TypeInfo::ErrorRecovery);
-        }
-
-        fn resolve_type_inner(te: &TypeEngine,         old_type_id: TypeId,
+    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
+        fn resolve_type_inner(
+            te: &TypeEngine,
+            old_type_id: TypeId,
             span: &Span,
             enforce_type_arguments: EnforceTypeArguments,
             type_info_prefix: Option<&Path>,
             namespace: &Root,
-            mod_path: &Path) -> CompileResult<()> {
+            mod_path: &Path,
+        ) -> CompileResult<()> {
             let mut warnings = vec![];
             let mut errors = vec![];
             let module_path = type_info_prefix.unwrap_or(mod_path);
@@ -576,11 +574,11 @@ impl TypeEngine {
                                     original_id.clone(),
                                     &name.span()
                                 )),
-                                return err(warnings, errors,
+                                return err(warnings, errors),
                                 warnings,
                                 errors
                             );
-    
+
                             // monomorphize the copy, in place
                             check!(
                                 te.monomorphize(
@@ -595,13 +593,13 @@ impl TypeEngine {
                                 warnings,
                                 errors,
                             );
-    
+
                             // create the type id from the copy
                             let new_type_id = new_copy.create_type_id();
-    
+
                             // add the new copy as a monomorphized copy of the original id
                             de_add_monomorphized_struct_copy(original_id, new_copy);
-    
+
                             // replace the old type id with the new type id
                             te.slab
                                 .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
@@ -614,7 +612,7 @@ impl TypeEngine {
                                 warnings,
                                 errors
                             );
-    
+
                             // monomorphize the copy, in place
                             check!(
                                 te.monomorphize(
@@ -629,13 +627,13 @@ impl TypeEngine {
                                 warnings,
                                 errors
                             );
-    
+
                             // create the type id from the copy
                             let new_type_id = new_copy.create_type_id();
-    
+
                             // add the new copy as a monomorphized copy of the original id
                             de_add_monomorphized_enum_copy(original_id, new_copy);
-    
+
                             // replace the old type id with the new type id
                             te.slab
                                 .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
@@ -664,7 +662,7 @@ impl TypeEngine {
                         .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
                 }
                 TypeInfo::Array(type_id, n, initial_type_id) => {
-                    let new_type_id = check!(
+                    append!(
                         te.resolve_type(
                             type_id,
                             span,
@@ -673,19 +671,17 @@ impl TypeEngine {
                             namespace,
                             mod_path
                         ),
-                        te.insert_type(TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
-                    let new_type_id =
-                    te.insert_type(TypeInfo::Array(new_type_id, n, initial_type_id));
+                    let new_type_id = te.insert_type(TypeInfo::Array(type_id, n, initial_type_id));
                     // replace the old type id with the new type id
                     te.slab
                         .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
                 }
                 TypeInfo::Tuple(mut type_arguments) => {
                     for type_argument in type_arguments.iter_mut() {
-                        type_argument.type_id = check!(
+                        append!(
                             te.resolve_type(
                                 type_argument.type_id,
                                 span,
@@ -694,7 +690,6 @@ impl TypeEngine {
                                 namespace,
                                 mod_path
                             ),
-                            te.insert_type(TypeInfo::ErrorRecovery),
                             warnings,
                             errors
                         );
@@ -704,12 +699,30 @@ impl TypeEngine {
                     te.slab
                         .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
                 }
-                o => insert_type(o),
+                _ => {}
             }
             ok((), warnings, errors)
         }
 
-        resolve_type_inner(self, old_type_id, span, enforce_type_arguments, type_info_prefix, namespace, mod_path)
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        check!(
+            resolve_type_inner(
+                self,
+                old_type_id,
+                span,
+                enforce_type_arguments,
+                type_info_prefix,
+                namespace,
+                mod_path,
+            ),
+            self.slab
+                .blind_replace(*old_type_id, TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+
+        return (warnings, errors);
     }
 
     /// Replace any instances of the [TypeInfo::SelfType] variant with
@@ -724,7 +737,7 @@ impl TypeEngine {
         type_info_prefix: Option<&Path>,
         namespace: &Root,
         mod_path: &Path,
-    ) -> CompileResult<()> {
+    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         type_id.replace_self_type(self_type);
         self.resolve_type(
             type_id,
@@ -824,7 +837,7 @@ pub(crate) fn resolve_type(
     type_info_prefix: Option<&Path>,
     namespace: &Root,
     mod_path: &Path,
-) -> CompileResult<()> {
+) -> (Vec<CompileWarning>, Vec<CompileError>) {
     TYPE_ENGINE.resolve_type(
         type_id,
         span,
@@ -843,7 +856,7 @@ pub(crate) fn resolve_type_with_self(
     type_info_prefix: Option<&Path>,
     namespace: &Root,
     mod_path: &Path,
-) -> CompileResult<()> {
+) -> (Vec<CompileWarning>, Vec<CompileError>) {
     TYPE_ENGINE.resolve_type_with_self(
         type_id,
         self_type,

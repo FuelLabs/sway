@@ -98,16 +98,15 @@ impl Root {
         type_id.replace_self_type(self_type);
 
         // resolve the type
-        let type_id = check!(
+        append!(
             resolve_type(
                 type_id,
                 &method_name.span(),
                 EnforceTypeArguments::No,
                 None,
                 self,
-                method_prefix
+                method_prefix,
             ),
-            insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
