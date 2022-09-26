@@ -384,104 +384,8 @@ pub fn lex_commented(
             token_trees.push(token);
             continue;
         }
-        if let Some(digit) = character.to_digit(10) {
-            let (big_uint, end_opt) = if digit == 0 {
-                let prefixed_int_lit = |char_indices: &mut CharIndices<'_>, radix| {
-                    let incomplete_int_lit = |end| LexError {
-                        kind: match radix {
-                            16 => LexErrorKind::IncompleteHexIntLiteral { position: index },
-                            8 => LexErrorKind::IncompleteOctalIntLiteral { position: index },
-                            2 => LexErrorKind::IncompleteBinaryIntLiteral { position: index },
-                            _ => unreachable!(),
-                        },
-                        span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
-                    };
-                    let _ = char_indices.next();
-                    let (digit_pos, digit) = match char_indices.next() {
-                        None => return Err(incomplete_int_lit(src.len())),
-                        Some(d) => d,
-                    };
-                    let radix_digit = match digit.to_digit(radix) {
-                        Some(rd) => rd,
-                        None => return Err(incomplete_int_lit(digit_pos)),
-                    };
-                    let mut big_uint = BigUint::from(radix_digit);
-                    let end_opt = parse_digits(&mut big_uint, char_indices, radix);
-                    Ok((big_uint, end_opt))
-                };
-
-                match char_indices.peek() {
-                    Some((_, 'x')) => prefixed_int_lit(&mut char_indices, 16)?,
-                    Some((_, 'o')) => prefixed_int_lit(&mut char_indices, 8)?,
-                    Some((_, 'b')) => prefixed_int_lit(&mut char_indices, 2)?,
-                    Some((_, '_')) | Some((_, '0'..='9')) => {
-                        let mut big_uint = BigUint::from(0u32);
-                        let end_opt = parse_digits(&mut big_uint, &mut char_indices, 10);
-                        (big_uint, end_opt)
-                    }
-                    Some(&(next_index, _)) => (BigUint::from(0u32), Some(next_index)),
-                    None => (BigUint::from(0u32), None),
-                }
-            } else {
-                let mut big_uint = BigUint::from(digit);
-                let end_opt = parse_digits(&mut big_uint, &mut char_indices, 10);
-                (big_uint, end_opt)
-            };
-            let end = end_opt.unwrap_or(src.len());
-            let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
-            let ty_opt = match char_indices.peek() {
-                Some((_, c)) if c.is_xid_continue() => {
-                    let (suffix_start_position, c) = char_indices.next().unwrap();
-                    let mut suffix = String::from(c);
-                    let suffix_end_position = loop {
-                        match char_indices.peek() {
-                            Some((position, c)) => {
-                                if c.is_xid_continue() {
-                                    suffix.push(*c);
-                                    let _ = char_indices.next();
-                                } else {
-                                    break *position;
-                                }
-                            }
-                            None => break src.len(),
-                        }
-                    };
-                    let ty = match &suffix[..] {
-                        "u8" => LitIntType::U8,
-                        "u16" => LitIntType::U16,
-                        "u32" => LitIntType::U32,
-                        "u64" => LitIntType::U64,
-                        "i8" => LitIntType::I8,
-                        "i16" => LitIntType::I16,
-                        "i32" => LitIntType::I32,
-                        "i64" => LitIntType::I64,
-                        _ => {
-                            let span = Span::new(
-                                src.clone(),
-                                suffix_start_position,
-                                suffix_end_position,
-                                path.clone(),
-                            )
-                            .unwrap();
-                            return Err(LexError {
-                                kind: LexErrorKind::InvalidIntSuffix {
-                                    suffix: Ident::new(span.clone()),
-                                },
-                                span,
-                            });
-                        }
-                    };
-                    let span = span_until(src, suffix_start_position, &mut char_indices, &path);
-                    Some((ty, span))
-                }
-                _ => None,
-            };
-            let literal = Literal::Int(LitInt {
-                span,
-                parsed: big_uint,
-                ty_opt,
-            });
-            token_trees.push(CommentedTokenTree::Tree(literal.into()));
+        if let Some(token) = lex_int_lit(src, &path, &mut char_indices, index, character)? {
+            token_trees.push(token);
             continue;
         }
         if let Some(kind) = character.as_punct_kind() {
@@ -747,6 +651,120 @@ fn parse_escape_code(
             .unwrap(),
         })),
     }
+}
+
+fn lex_int_lit(
+    src: &Arc<str>,
+    path: &Option<Arc<PathBuf>>,
+    char_indices: &mut CharIndices,
+    index: usize,
+    character: char,
+) -> Result<Option<CommentedTokenTree>, LexError> {
+    let digit = match character.to_digit(10) {
+        None => return Ok(None),
+        Some(d) => d,
+    };
+
+    let decimal_int_lit = |char_indices, digit: u32| {
+        let mut big_uint = BigUint::from(digit);
+        let end_opt = parse_digits(&mut big_uint, char_indices, 10);
+        (big_uint, end_opt)
+    };
+    let (big_uint, end_opt) = if digit == 0 {
+        let prefixed_int_lit = |char_indices: &mut CharIndices<'_>, radix| {
+            let incomplete_int_lit = |end| LexError {
+                kind: match radix {
+                    16 => LexErrorKind::IncompleteHexIntLiteral { position: index },
+                    8 => LexErrorKind::IncompleteOctalIntLiteral { position: index },
+                    2 => LexErrorKind::IncompleteBinaryIntLiteral { position: index },
+                    _ => unreachable!(),
+                },
+                span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
+            };
+            let _ = char_indices.next();
+            let (digit_pos, digit) = match char_indices.next() {
+                None => return Err(incomplete_int_lit(src.len())),
+                Some(d) => d,
+            };
+            let radix_digit = match digit.to_digit(radix) {
+                Some(rd) => rd,
+                None => return Err(incomplete_int_lit(digit_pos)),
+            };
+            let mut big_uint = BigUint::from(radix_digit);
+            let end_opt = parse_digits(&mut big_uint, char_indices, radix);
+            Ok((big_uint, end_opt))
+        };
+
+        match char_indices.peek() {
+            Some((_, 'x')) => prefixed_int_lit(char_indices, 16)?,
+            Some((_, 'o')) => prefixed_int_lit(char_indices, 8)?,
+            Some((_, 'b')) => prefixed_int_lit(char_indices, 2)?,
+            Some((_, '_' | '0'..='9')) => decimal_int_lit(char_indices, 0),
+            Some(&(next_index, _)) => (BigUint::from(0u32), Some(next_index)),
+            None => (BigUint::from(0u32), None),
+        }
+    } else {
+        decimal_int_lit(char_indices, digit)
+    };
+    let end = end_opt.unwrap_or(src.len());
+    let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
+    let ty_opt = lex_int_ty_opt(src, path, char_indices)?;
+    let literal = Literal::Int(LitInt {
+        span,
+        parsed: big_uint,
+        ty_opt,
+    });
+    Ok(Some(CommentedTokenTree::Tree(literal.into())))
+}
+
+fn lex_int_ty_opt(
+    src: &Arc<str>,
+    path: &Option<Arc<PathBuf>>,
+    char_indices: &mut CharIndices,
+) -> Result<Option<(LitIntType, Span)>, LexError> {
+    let (suffix_start_position, c) = match char_indices.next_if(|(_, c)| c.is_xid_continue()) {
+        None => return Ok(None),
+        Some(x) => x,
+    };
+    let mut suffix = String::from(c);
+    let suffix_end_position = loop {
+        match char_indices.peek() {
+            Some((_, c)) if c.is_xid_continue() => {
+                suffix.push(*c);
+                let _ = char_indices.next();
+            }
+            Some((pos, _)) => break *pos,
+            None => break src.len(),
+        }
+    };
+    let ty = match &suffix[..] {
+        "u8" => LitIntType::U8,
+        "u16" => LitIntType::U16,
+        "u32" => LitIntType::U32,
+        "u64" => LitIntType::U64,
+        "i8" => LitIntType::I8,
+        "i16" => LitIntType::I16,
+        "i32" => LitIntType::I32,
+        "i64" => LitIntType::I64,
+        _ => {
+            // FIXME(Centril, #)
+            let span = Span::new(
+                src.clone(),
+                suffix_start_position,
+                suffix_end_position,
+                path.clone(),
+            )
+            .unwrap();
+            return Err(LexError {
+                kind: LexErrorKind::InvalidIntSuffix {
+                    suffix: Ident::new(span.clone()),
+                },
+                span,
+            });
+        }
+    };
+    let span = span_until(src, suffix_start_position, char_indices, &path);
+    Ok(Some((ty, span)))
 }
 
 fn parse_digits(
