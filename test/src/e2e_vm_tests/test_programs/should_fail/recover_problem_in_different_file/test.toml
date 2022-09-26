@@ -1,4 +1,6 @@
 category = "fail"
 
 # check: $()invalid character
+# check: $()This imported file must be a library.
+# check: $()no_such_file.sw could not be read
 # check: $()Mismatched types.
