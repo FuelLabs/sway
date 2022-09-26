@@ -2,13 +2,14 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
+    semantic_analysis::TypedScrutinee,
     type_system::TypeId,
-    CompileError, CompileResult, Scrutinee,
+    CompileError, CompileResult, Namespace,
 };
 
 use super::{
     constructor_factory::ConstructorFactory, matrix::Matrix, patstack::PatStack, pattern::Pattern,
-    witness_report::WitnessReport,
+    reachable_report::ReachableReport, witness_report::WitnessReport,
 };
 
 /// Given the arms of a match expression, checks to see if the arms are
@@ -196,10 +197,11 @@ use super::{
 /// exhaustive if the imaginary additional wildcard pattern has an empty
 /// `WitnessReport`.
 pub(crate) fn check_match_expression_usefulness(
+    namespace: &Namespace,
     type_id: TypeId,
-    scrutinees: Vec<Scrutinee>,
+    scrutinees: Vec<TypedScrutinee>,
     span: Span,
-) -> CompileResult<(WitnessReport, Vec<(Scrutinee, bool)>)> {
+) -> CompileResult<(WitnessReport, Vec<ReachableReport>)> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut matrix = Matrix::empty();
@@ -210,9 +212,9 @@ pub(crate) fn check_match_expression_usefulness(
         warnings,
         errors
     );
-    for scrutinee in scrutinees.iter() {
+    for scrutinee in scrutinees.into_iter() {
         let pat = check!(
-            Pattern::from_scrutinee(scrutinee.clone()),
+            Pattern::from_scrutinee(namespace, scrutinee.clone()),
             return err(warnings, errors),
             warnings,
             errors
@@ -226,7 +228,10 @@ pub(crate) fn check_match_expression_usefulness(
         );
         matrix.push(v);
         // if an arm has witnesses to its usefulness then it is reachable
-        arms_reachability.push((scrutinee.clone(), witness_report.has_witnesses()));
+        arms_reachability.push(ReachableReport::new(
+            witness_report.has_witnesses(),
+            scrutinee,
+        ));
     }
     let v = PatStack::from_pattern(Pattern::wild_pattern());
     let witness_report = check!(

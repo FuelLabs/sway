@@ -30,6 +30,7 @@ dep flags;
 dep u128;
 dep u256;
 dep vec;
+dep prelude;
 dep ufp64;
 
 use core::*;

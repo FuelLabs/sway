@@ -14,6 +14,10 @@ pub enum Intrinsic {
     StateLoadQuad,
     StateStoreQuad,
     Log,
+    Add,
+    Sub,
+    Mul,
+    Div,
 }
 
 impl fmt::Display for Intrinsic {
@@ -31,6 +35,10 @@ impl fmt::Display for Intrinsic {
             Intrinsic::StateLoadQuad => "state_load_quad",
             Intrinsic::StateStoreQuad => "state_store_quad",
             Intrinsic::Log => "log",
+            Intrinsic::Add => "add",
+            Intrinsic::Sub => "sub",
+            Intrinsic::Mul => "mul",
+            Intrinsic::Div => "div",
         };
         write!(f, "{}", s)
     }
@@ -52,6 +60,10 @@ impl Intrinsic {
             "__state_load_quad" => StateLoadQuad,
             "__state_store_quad" => StateStoreQuad,
             "__log" => Log,
+            "__add" => Add,
+            "__sub" => Sub,
+            "__mul" => Mul,
+            "__div" => Div,
             _ => return None,
         })
     }

@@ -122,6 +122,7 @@ pub enum TypedExpressionVariant {
     Continue,
     Reassignment(Box<TypedReassignment>),
     StorageReassignment(Box<TypeCheckedStorageReassignment>),
+    Return(Box<TypedReturnStatement>),
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -459,6 +460,7 @@ impl CopyTypes for TypedExpressionVariant {
             Continue => (),
             Reassignment(reassignment) => reassignment.copy_types(type_mapping),
             StorageReassignment(..) => (),
+            Return(stmt) => stmt.copy_types(type_mapping),
         }
     }
 }
@@ -573,8 +575,21 @@ impl fmt::Display for TypedExpressionVariant {
                 };
                 format!("storage reassignment to {}", place)
             }
+            TypedExpressionVariant::Return(stmt) => {
+                format!("return {}", stmt.expr)
+            }
         };
         write!(f, "{}", s)
+    }
+}
+
+impl TypedExpressionVariant {
+    /// Returns `self` as a literal, if possible.
+    pub(crate) fn extract_literal_value(&self) -> Option<Literal> {
+        match self {
+            TypedExpressionVariant::Literal(value) => Some(value.clone()),
+            _ => None,
+        }
     }
 }
 

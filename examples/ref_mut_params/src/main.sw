@@ -1,7 +1,5 @@
 script;
 
-use std::assert::assert;
-
 enum Color {
     Red: (),
     Blue: (),

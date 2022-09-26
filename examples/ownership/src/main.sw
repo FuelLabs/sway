@@ -1,7 +1,5 @@
 contract;
 
-use std::{identity::Identity, option::Option};
-
 abi OwnershipExample {
     #[storage(write)]
     fn revoke_ownership();

@@ -3,7 +3,7 @@ contract;
 // ANCHOR: storage_vec_import
 use std::storage::StorageVec;
 // ANCHOR_END: storage_vec_import
-use std::{logging::log, option::Option, revert::revert};
+use std::logging::log;
 
 // ANCHOR: storage_vec_multiple_types_enum
 enum TableCell {

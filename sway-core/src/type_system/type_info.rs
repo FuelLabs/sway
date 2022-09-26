@@ -1,6 +1,6 @@
 use super::*;
 use crate::{semantic_analysis::*, CallPath, Ident};
-use sway_types::{span::Span, Spanned};
+use sway_types::span::Span;
 
 use derivative::Derivative;
 use std::{
@@ -324,8 +324,15 @@ impl fmt::Display for TypeInfo {
                 name.as_str().to_string(),
                 type_parameters.iter().map(|x| x.type_id),
             ),
-            ContractCaller { abi_name, .. } => {
-                format!("contract caller {}", abi_name)
+            ContractCaller { abi_name, address } => {
+                format!(
+                    "contract caller {} ( {} )",
+                    abi_name,
+                    address
+                        .as_ref()
+                        .map(|address| address.span.as_str().to_string())
+                        .unwrap_or_else(|| "None".into())
+                )
             }
             Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty, count),
             Storage { .. } => "contract storage".into(),
@@ -558,6 +565,10 @@ impl TypeInfo {
             TypeInfo::Tuple(fields) => fields
                 .iter()
                 .any(|field_type| look_up_type_id(field_type.type_id).is_uninhabited()),
+            TypeInfo::Ref(type_id, _) => look_up_type_id(*type_id).is_uninhabited(),
+            TypeInfo::Array(type_id, size, _) => {
+                *size > 0 && look_up_type_id(*type_id).is_uninhabited()
+            }
             _ => false,
         }
     }
@@ -605,6 +616,28 @@ impl TypeInfo {
                 }
                 all_zero_sized
             }
+            TypeInfo::Ref(type_id, _) => look_up_type_id(*type_id).is_zero_sized(),
+            TypeInfo::Array(type_id, size, _) => {
+                *size == 0 || look_up_type_id(*type_id).is_zero_sized()
+            }
+            _ => false,
+        }
+    }
+
+    pub fn can_safely_ignore(&self) -> bool {
+        if self.is_zero_sized() {
+            return true;
+        }
+        match self {
+            TypeInfo::Tuple(fields) => fields
+                .iter()
+                .all(|type_argument| look_up_type_id(type_argument.type_id).can_safely_ignore()),
+            TypeInfo::Array(type_id, size, _) => {
+                *size == 0 || look_up_type_id(*type_id).can_safely_ignore()
+            }
+            TypeInfo::Ref(type_id, _) => look_up_type_id(*type_id).can_safely_ignore(),
+            TypeInfo::ErrorRecovery => true,
+            TypeInfo::Unknown => true,
             _ => false,
         }
     }
@@ -674,150 +707,6 @@ impl TypeInfo {
                 errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
                 err(warnings, errors)
             }
-        }
-    }
-
-    pub(crate) fn matches_type_parameter(&self, mapping: &TypeMapping) -> Option<TypeId> {
-        use TypeInfo::*;
-        match self {
-            TypeInfo::Custom { .. } => {
-                for (param, ty_id) in mapping.iter() {
-                    if look_up_type_id(*param) == *self {
-                        return Some(*ty_id);
-                    }
-                }
-                None
-            }
-            TypeInfo::UnknownGeneric { .. } => {
-                for (param, ty_id) in mapping.iter() {
-                    if look_up_type_id(*param) == *self {
-                        return Some(*ty_id);
-                    }
-                }
-                None
-            }
-            TypeInfo::Struct {
-                fields,
-                name,
-                type_parameters,
-            } => {
-                let mut new_fields = fields.clone();
-                for new_field in new_fields.iter_mut() {
-                    if let Some(matching_id) =
-                        look_up_type_id(new_field.type_id).matches_type_parameter(mapping)
-                    {
-                        new_field.type_id =
-                            insert_type(TypeInfo::Ref(matching_id, new_field.span.clone()));
-                    }
-                }
-                let mut new_type_parameters = type_parameters.clone();
-                for new_param in new_type_parameters.iter_mut() {
-                    if let Some(matching_id) =
-                        look_up_type_id(new_param.type_id).matches_type_parameter(mapping)
-                    {
-                        new_param.type_id =
-                            insert_type(TypeInfo::Ref(matching_id, new_param.span().clone()));
-                    }
-                }
-                Some(insert_type(TypeInfo::Struct {
-                    fields: new_fields,
-                    name: name.clone(),
-                    type_parameters: new_type_parameters,
-                }))
-            }
-            TypeInfo::Enum {
-                variant_types,
-                name,
-                type_parameters,
-            } => {
-                let mut new_variants = variant_types.clone();
-                for new_variant in new_variants.iter_mut() {
-                    if let Some(matching_id) =
-                        look_up_type_id(new_variant.type_id).matches_type_parameter(mapping)
-                    {
-                        new_variant.type_id =
-                            insert_type(TypeInfo::Ref(matching_id, new_variant.span.clone()));
-                    }
-                }
-                let mut new_type_parameters = type_parameters.clone();
-                for new_param in new_type_parameters.iter_mut() {
-                    if let Some(matching_id) =
-                        look_up_type_id(new_param.type_id).matches_type_parameter(mapping)
-                    {
-                        new_param.type_id =
-                            insert_type(TypeInfo::Ref(matching_id, new_param.span().clone()));
-                    }
-                }
-                Some(insert_type(TypeInfo::Enum {
-                    variant_types: new_variants,
-                    type_parameters: new_type_parameters,
-                    name: name.clone(),
-                }))
-            }
-            TypeInfo::Array(ary_ty_id, count, initial_elem_ty) => look_up_type_id(*ary_ty_id)
-                .matches_type_parameter(mapping)
-                .map(|matching_id| {
-                    insert_type(TypeInfo::Array(matching_id, *count, *initial_elem_ty))
-                }),
-            TypeInfo::Tuple(fields) => {
-                let mut new_fields = Vec::new();
-                let mut index = 0;
-                while index < fields.len() {
-                    let new_field_id_opt =
-                        look_up_type_id(fields[index].type_id).matches_type_parameter(mapping);
-                    if let Some(new_field_id) = new_field_id_opt {
-                        new_fields.extend(fields[..index].iter().cloned());
-                        let type_id =
-                            insert_type(TypeInfo::Ref(new_field_id, fields[index].span.clone()));
-                        new_fields.push(TypeArgument {
-                            type_id,
-                            initial_type_id: fields[index].initial_type_id,
-                            span: fields[index].span.clone(),
-                        });
-                        index += 1;
-                        break;
-                    }
-                    index += 1;
-                }
-                while index < fields.len() {
-                    let new_field = match look_up_type_id(fields[index].type_id)
-                        .matches_type_parameter(mapping)
-                    {
-                        Some(new_field_id) => {
-                            let type_id = insert_type(TypeInfo::Ref(
-                                new_field_id,
-                                fields[index].span.clone(),
-                            ));
-                            TypeArgument {
-                                type_id,
-                                initial_type_id: fields[index].initial_type_id,
-                                span: fields[index].span.clone(),
-                            }
-                        }
-                        None => fields[index].clone(),
-                    };
-                    new_fields.push(new_field);
-                    index += 1;
-                }
-                if new_fields.is_empty() {
-                    None
-                } else {
-                    Some(insert_type(TypeInfo::Tuple(new_fields)))
-                }
-            }
-            Unknown
-            | Str(..)
-            | UnsignedInteger(..)
-            | Boolean
-            | Ref(..)
-            | ContractCaller { .. }
-            | SelfType
-            | Byte
-            | B256
-            | Numeric
-            | Contract
-            | Storage { .. }
-            | ErrorRecovery => None,
         }
     }
 

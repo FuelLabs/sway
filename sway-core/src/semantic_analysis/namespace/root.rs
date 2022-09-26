@@ -62,7 +62,7 @@ impl Root {
                 .get(symbol.as_str())
                 .unwrap_or(symbol);
             match module.use_synonyms.get(symbol) {
-                Some(src_path) if mod_path != src_path => {
+                Some((src_path, _)) if mod_path != src_path => {
                     self.resolve_symbol(src_path, true_symbol)
                 }
                 _ => CompileResult::from(module.check_symbol(true_symbol)),
@@ -218,7 +218,7 @@ impl Root {
                 }
                 insert_type(TypeInfo::Tuple(type_arguments))
             }
-            o => insert_type(o),
+            _ => type_id,
         };
         ok(type_id, warnings, errors)
     }
