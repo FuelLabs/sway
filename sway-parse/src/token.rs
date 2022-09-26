@@ -381,38 +381,29 @@ pub fn lex_commented(
             continue;
         }
         if character == '\'' {
+            let unclosed_char_lit = || LexError {
+                kind: LexErrorKind::UnclosedCharLiteral { position: index },
+                span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
+            };
+
             let next_character = match char_indices.next() {
                 Some((_, next_character)) => next_character,
-                None => {
-                    return Err(LexError {
-                        kind: LexErrorKind::UnclosedCharLiteral { position: index },
-                        span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
-                    });
-                }
+                None => return Err(unclosed_char_lit()),
             };
             let parsed = if next_character == '\\' {
                 match parse_escape_code(src, &mut char_indices, &path) {
                     Ok(parsed) => parsed,
-                    Err(None) => {
-                        return Err(LexError {
-                            kind: LexErrorKind::UnclosedCharLiteral { position: index },
-                            span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
-                        });
-                    }
-                    Err(Some(err)) => return Err(err),
+                    Err(e) => return Err(e.unwrap_or_else(|| unclosed_char_lit())),
                 }
             } else {
                 next_character
             };
+            // Consume the character; next should be the closing `'`.
             match char_indices.next() {
-                None => {
-                    return Err(LexError {
-                        kind: LexErrorKind::UnclosedCharLiteral { position: index },
-                        span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
-                    });
-                }
-                Some((_, '\'')) => (),
+                None => return Err(unclosed_char_lit()),
+                Some((_, '\'')) => {}
                 Some((next_index, unexpected_char)) => {
+                    // FIXME(Centril, #2864): Recover as string lit instead of char lit.
                     return Err(LexError {
                         kind: LexErrorKind::ExpectedCloseQuote {
                             position: next_index,
