@@ -211,7 +211,7 @@ pub fn input_message_predicate<T>(index: u64) -> T {
     read::<T>(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE))
 }
 
-fn valid_input_type(index: u64, input: Input) -> bool {
+fn valid_input_type(index: u64, expected_type: Input) -> bool {
     let input_type: Input = input_type(index);
-    input_type == input
+    input_type == expected_type
 }
