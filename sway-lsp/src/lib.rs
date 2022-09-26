@@ -3,7 +3,6 @@ use tower_lsp::{LspService, Server};
 mod capabilities;
 mod core;
 mod server;
-mod sway_config;
 pub mod utils;
 use server::Backend;
 use utils::debug::DebugFlags;
