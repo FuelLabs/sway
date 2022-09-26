@@ -388,20 +388,8 @@ pub fn lex_commented(
             token_trees.push(token);
             continue;
         }
-        if let Some(kind) = character.as_punct_kind() {
-            let spacing = match char_indices.peek() {
-                Some((_, next_character)) if next_character.as_punct_kind().is_some() => {
-                    Spacing::Joint
-                }
-                _ => Spacing::Alone,
-            };
-            let span = span_until(src, index, &mut char_indices, &path);
-            let punct = Punct {
-                kind,
-                spacing,
-                span,
-            };
-            token_trees.push(CommentedTokenTree::Tree(punct.into()));
+        if let Some(token) = lex_punctuation(src, &path, &mut char_indices, index, character) {
+            token_trees.push(token);
             continue;
         }
         return Err(LexError {
@@ -788,6 +776,24 @@ fn parse_digits(
             },
         };
     }
+}
+
+fn lex_punctuation(
+    src: &Arc<str>,
+    path: &Option<Arc<PathBuf>>,
+    char_indices: &mut CharIndices,
+    index: usize,
+    character: char,
+) -> Option<CommentedTokenTree> {
+    let punct = Punct {
+        kind: character.as_punct_kind()?,
+        spacing: match char_indices.peek() {
+            Some((_, next_character)) if next_character.as_punct_kind().is_some() => Spacing::Joint,
+            _ => Spacing::Alone,
+        },
+        span: span_until(src, index, char_indices, &path),
+    };
+    Some(CommentedTokenTree::Tree(punct.into()))
 }
 
 fn span_until(
