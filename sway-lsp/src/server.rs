@@ -1,8 +1,16 @@
-use crate::capabilities;
-use crate::core::{document::TextDocument, session::Session};
 pub use crate::error::DocumentError;
-use crate::error::LanguageServerError;
-use crate::utils::debug::{self, DebugFlags};
+use crate::{
+    capabilities,
+    core::{
+        document::TextDocument,
+        session::Session,
+    },
+    error::LanguageServerError,
+    utils::{
+        debug::{self, DebugFlags},
+        sync,
+    },
+};
 use forc_util::find_manifest_dir;
 use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Write, ops::Deref, path::Path, sync::Arc};
@@ -48,9 +56,14 @@ impl Backend {
         Ok(())
     }
 
-    async fn parse_project(&self, uri: &Url) {
-        let diagnostics = match self.session.parse_project(uri) {
-            Ok(diagnostics) => diagnostics,
+    async fn parse_project(&self, uri: Url) {
+        // convert the client Url to the temp Url
+        let temp_path = sync::temp_path_from_url(&uri, &self.session.directories);
+        let temp_uri = Url::from_file_path(temp_path).unwrap();
+
+        // pass in the temp Url into parse_project, we can now get the updated AST's back.
+        match self.session.parse_project(&temp_uri) {
+            Ok(diagnostics) => self.publish_diagnostics(&uri, diagnostics).await,
             Err(err) => {
                 self.log_error_message(err.to_string().as_str()).await;
                 if let LanguageServerError::FailedToParse { diagnostics } = err {
@@ -156,26 +169,34 @@ impl LanguageServer for Backend {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let uri = &params.text_document.uri;
         self.session.handle_open_file(uri);
-        // 1. Create a new dir in /temp/ that clones the current workspace
-        // 2. store the tmp path in session
+        // Create a new temp dir that clones the current workspace
+        // and store manifest and temp paths
+        sync::create_temp_dir_from_url(&uri, &self.session.directories);
+        sync::clone_manifest_dir_to_temp(&self.session.directories);
         self.parse_project(uri).await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = &params.text_document.uri;
-        // 3. trim the uri to be the relative file from workspace root
-        // 4. create a new uri using this that appends to the tmp/path in session
-        // 5. update this file with the new changes and write to disk
-        // 6. pass in the custom uri into parse_project, we can now get the updated
-        //    AST's back
-        self.session
-            .update_text_document(uri, params.content_changes);
+        // convert the client Url to the temp path
+        let temp_path = sync::temp_path_from_url(&uri, &self.session.directories);
+        // update this file with the new changes and write to disk
+        if let Some(src) = self
+            .session
+            .update_text_document(&uri, params.content_changes)
+        {
+            if let Ok(mut file) = File::create(temp_path) {
+                let _ = writeln!(&mut file, "{}", src);
+            }
+        }
         self.parse_project(uri).await;
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        // 7. overwrite the contents of the tmp/folder with everything in
-        //    the current workspace. (resync)
+        // overwrite the contents of the tmp/folder with everything in
+        // the current workspace. (resync)
+        sync::clone_manifest_dir_to_temp(&self.session.directories);
+
         self.parse_project(&params.text_document.uri).await;
     }
 
