@@ -11,7 +11,21 @@ abigen!(
 );
 
 async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
-    let wallet = launch_provider_and_get_wallet().await;
+    let mut wallet = WalletUnlocked::new_random(None);
+
+    let messages = setup_single_message(
+        &Bech32Address {
+            hrp: "".to_string(),
+            hash: Default::default(),
+        },
+        wallet.address(),
+        DEFAULT_COIN_AMOUNT,
+        0,
+        vec![1, 2],
+    );
+
+    let (provider, _address) = setup_test_provider(vec![], messages.clone(), None).await;
+    wallet.set_provider(provider);
 
     let contract_id = Contract::deploy(
         "test_artifacts/tx_contract/out/debug/tx_contract.bin",
@@ -106,7 +120,7 @@ async fn can_get_script_data_length() {
 #[tokio::test]
 async fn can_get_inputs_count() {
     let (contract_instance, _, _) = get_contracts().await;
-    let inputs_count = 2;
+    let inputs_count = 3;
 
     let result = contract_instance
         .get_tx_inputs_count()
@@ -119,7 +133,7 @@ async fn can_get_inputs_count() {
 #[tokio::test]
 async fn can_get_outputs_count() {
     let (contract_instance, _, _) = get_contracts().await;
-    let outputs_count = 2;
+    let outputs_count = 1;
 
     let result = contract_instance
         .get_tx_outputs_count()
@@ -151,7 +165,7 @@ async fn can_get_witness_pointer() {
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, 10960);
+    assert_eq!(result.value, 11120);
 }
 
 #[tokio::test]
@@ -256,14 +270,13 @@ async fn can_get_input_type() {
     assert_eq!(result.value, Input::Contract());
 
     let result = contract_instance.get_input_type(1).call().await.unwrap();
-
-    assert_eq!(result.value, Input::Coin());
+    assert_eq!(result.value, Input::Message());
 }
 
 #[tokio::test]
 async fn can_get_tx_input_amount() {
     let (contract_instance, _, _) = get_contracts().await;
-    let result = contract_instance.get_tx_input_amount(1).call().await.unwrap();
+    let result = contract_instance.get_input_amount(1).call().await.unwrap();
 
     assert_eq!(result.value, 1000000000);
 }
@@ -273,7 +286,7 @@ async fn can_get_tx_input_coin_owner() {
     let (contract_instance, _, wallet) = get_contracts().await;
 
     let owner_result = contract_instance
-        .get_tx_input_coin_owner(1)
+        .get_input_owner(1)
         .call()
         .await
         .unwrap();
@@ -299,14 +312,14 @@ async fn can_handle_no_input_predicate_data_pointer() {
 async fn can_get_tx_output_type() {
     let (contract_instance, _, _) = get_contracts().await;
     let result = contract_instance
-        .get_tx_output_type(0)
+        .get_output_type(0)
         .call()
         .await
         .unwrap();
     assert_eq!(result.value, Output::Contract());
 
     let result = contract_instance
-        .get_tx_output_type(1)
+        .get_output_type(1)
         .call()
         .await
         .unwrap();
@@ -381,7 +394,7 @@ async fn can_get_input_message_nonce() {
 #[tokio::test]
 async fn can_get_input_message_witness_index() {
     let (contract_instance, _, _) = get_contracts().await;
-    let result = contract_instance.get_input_message_witness_index(0).call().await.unwrap();
+    let result = contract_instance.get_input_witness_index(0).call().await.unwrap();
     assert_eq!(result.value, 42u8);
 }
 
@@ -395,14 +408,14 @@ async fn can_get_input_message_data_length() {
 #[tokio::test]
 async fn can_get_input_message_predicate_length() {
     let (contract_instance, _, _) = get_contracts().await;
-    let result = contract_instance.get_input_message_predicate_length(0).call().await.unwrap();
+    let result = contract_instance.get_input_predicate_length(0).call().await.unwrap();
     assert_eq!(result.value, 11u16);
 }
 
 #[tokio::test]
 async fn can_get_input_message_predicate_data_length() {
     let (contract_instance, _, _) = get_contracts().await;
-    let result = contract_instance.get_input_message_predicate_data_length(0).call().await.unwrap();
+    let result = contract_instance.get_input_predicate_data_length(0).call().await.unwrap();
     assert_eq!(result.value, 11u16);
 }
 
