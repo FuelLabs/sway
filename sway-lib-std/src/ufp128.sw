@@ -188,10 +188,10 @@ impl Root for UFP128 {
 impl Exponentiate for UFP128 {
     fn pow(self, exponent: Self) -> Self {
         let nominator_pow = self.value.pow(exponent.value);
-        let one_u128 = ~U128::from(0, 1);
-        let two_u128 = ~U128::from(0, 2);
+        let u128_1 = ~U128::from(0, 1);
+        let u128_2 = ~U128::from(0, 2);
         let u128_64 = ~U128::from(0, 64);
-        let two_pow_64_n_minus_1 = two_u128.pow(u128_64*(exponent.value - one_u128));
+        let two_pow_64_n_minus_1 = u128_2.pow(u128_64*(exponent.value - u128_1));
         let nominator = nominator_pow / two_pow_64_n_minus_1;
         ~Self::from(nominator.upper, nominator.lower)
     }
