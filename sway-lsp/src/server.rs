@@ -2,7 +2,6 @@ use crate::capabilities;
 use crate::core::{
     document::{DocumentError, TextDocument},
     session::Session,
-    token::TokenMap,
 };
 use crate::utils::debug::{self, DebugFlags};
 use forc_util::find_manifest_dir;
@@ -34,10 +33,6 @@ impl Backend {
         self.client.log_message(MessageType::INFO, message).await;
     }
 
-    async fn log_error_message(&self, message: &str) {
-        self.client.log_message(MessageType::ERROR, message).await;
-    }
-
     async fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
         let curr_dir = std::env::current_dir().unwrap();
 
@@ -53,6 +48,20 @@ impl Backend {
         }
 
         Ok(())
+    }
+
+    async fn parse_project(&self, uri: &Url) {
+        let diagnostics = match self.session.parse_project(uri) {
+            Ok(diagnostics) => diagnostics,
+            Err(err) => {
+                if let DocumentError::FailedToParse(diagnostics) = err {
+                    diagnostics
+                } else {
+                    vec![]
+                }
+            }
+        };
+        self.publish_diagnostics(uri, diagnostics).await;
     }
 }
 
@@ -79,27 +88,24 @@ fn capabilities() -> ServerCapabilities {
             trigger_characters: None,
             ..Default::default()
         }),
-        // document_formatting_provider: Some(OneOf::Left(true)),
+        document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
         ..ServerCapabilities::default()
     }
 }
 
 impl Backend {
-    async fn publish_diagnostics(
-        &self,
-        uri: &Url,
-        diagnostics: Vec<Diagnostic>,
-        token_map: &TokenMap,
-    ) {
+    async fn publish_diagnostics(&self, uri: &Url, diagnostics: Vec<Diagnostic>) {
         match &self.config.collected_tokens_as_warnings {
             Some(s) => {
+                let token_map = self.session.tokens_for_file(uri);
+
                 // If collected_tokens_as_warnings is Some, take over the normal error and warning display behavior
                 // and instead show the either the parsed or typed tokens as warnings.
                 // This is useful for debugging the lsp parser.
                 let diagnostics = match s.as_str() {
-                    "parsed" => Some(debug::generate_warnings_for_parsed_tokens(token_map)),
-                    "typed" => Some(debug::generate_warnings_for_typed_tokens(token_map)),
+                    "parsed" => Some(debug::generate_warnings_for_parsed_tokens(&token_map)),
+                    "typed" => Some(debug::generate_warnings_for_typed_tokens(&token_map)),
                     _ => None,
                 };
                 if let Some(diagnostics) = diagnostics {
@@ -121,11 +127,7 @@ impl Backend {
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
-        if let Some(options) = params.initialization_options {
-            self.session.update_config(options);
-        }
-
+    async fn initialize(&self, _params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
         self.client
             .log_message(MessageType::INFO, "Initializing the Sway Language Server")
             .await;
@@ -155,38 +157,19 @@ impl LanguageServer for Backend {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let uri = params.text_document.uri.clone();
         self.session.handle_open_file(&uri);
-
-        match self.session.parse_project(&uri) {
-            Ok(diagnostics) => {
-                let tokens = self.session.tokens_for_file(&uri);
-                self.publish_diagnostics(&uri, diagnostics, &tokens).await
-            }
-            Err(_) => self.log_error_message("Unable to Parse Project!").await,
-        }
+        self.parse_project(&uri).await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri.clone();
         self.session
             .update_text_document(&uri, params.content_changes);
-        match self.session.parse_project(&uri) {
-            Ok(diagnostics) => {
-                let tokens = self.session.tokens_for_file(&uri);
-                self.publish_diagnostics(&uri, diagnostics, &tokens).await
-            }
-            Err(_) => self.log_error_message("Unable to Parse Project!").await,
-        }
+        self.parse_project(&uri).await;
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let uri = params.text_document.uri.clone();
-        match self.session.parse_project(&uri) {
-            Ok(diagnostics) => {
-                let tokens = self.session.tokens_for_file(&uri);
-                self.publish_diagnostics(&uri, diagnostics, &tokens).await
-            }
-            Err(_) => self.log_error_message("Unable to Parse Project!").await,
-        }
+        self.parse_project(&uri).await;
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
