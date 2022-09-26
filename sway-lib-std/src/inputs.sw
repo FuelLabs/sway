@@ -67,22 +67,12 @@ pub enum Input {
 
 impl Eq for Input {
     fn eq(self, other: Self) -> bool {
-        if let Input::Coin = self {
-            if let Input::Coin = other {
-                return true;
-            }
-        };
-        if let Input::Contract = self {
-            if let Input::Contract = other {
-                return true;
-            }
-        };
-        if let Input::Message = self {
-            if let Input::Message = other {
-                return true;
-            }
-        };
-        false
+        match (self, other) {
+        (Input::Coin, Input::Coin) => true,
+        (Input::Contract, Input::Contract) => true,
+        (Input::Message, Input::Message) => true,
+        _ => false,
+    }
     }
 }
 
@@ -223,9 +213,5 @@ pub fn input_message_predicate<T>(index: u64) -> T {
 
 fn valid_input_type(index: u64, input: Input) -> bool {
     let input_type: Input = input_type(index);
-    if input_type == input {
-        true
-    } else {
-        false
-    }
+    input_type == input
 }
