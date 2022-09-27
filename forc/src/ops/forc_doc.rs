@@ -25,9 +25,10 @@ pub fn doc(command: DocCommand) -> Result<()> {
     };
     let manifest = ManifestFile::from_dir(&dir)?;
     let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
-
+    // compile the program and extract the docs
     let compilation = pkg::check(&plan, silent_mode)?;
     let _docs = get_compiled_docs(&compilation, no_deps);
+    // check if the out path exists
     let out_path = Path::new(&dir).join("out");
     if out_path.try_exists().is_err() {
         // create the out path
@@ -38,7 +39,7 @@ pub fn doc(command: DocCommand) -> Result<()> {
 
     Ok(())
 }
-
+// TODO: get docs on fields and functions
 fn attributes_map(ast_node: &AstNode) -> Option<AttributesMap> {
     match ast_node.content.clone() {
         AstNodeContent::Declaration(decl) => match decl {
