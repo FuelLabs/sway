@@ -19,7 +19,7 @@ use sway_ast::{
     ExprTupleDescriptor, IfCondition, IfExpr, LitInt, Literal, MatchBranch, MatchBranchKind,
     Statement, StatementLet,
 };
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Spanned};
 
 mod asm;
 pub mod op_code;
@@ -563,7 +563,7 @@ fn parse_projection(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr>
             // Nothing expected followed. Now we have parsed `expr .`.
             // Try to recover as an unknown sort of expression.
             parser.emit_error(ParseErrorKind::ExpectedFieldName);
-            return Ok(Expr::Error(Span::join(target.span(), dot_token.span())));
+            return Ok(Expr::Error([target.span(), dot_token.span()].into()));
         }
         return Ok(expr);
     }
