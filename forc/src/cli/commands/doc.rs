@@ -22,6 +22,9 @@ pub struct Command {
     /// needs to be updated, Forc will exit with an error
     #[clap(long)]
     pub locked: bool,
+    /// Do not build documentation for dependencies.
+    #[clap(long)]
+    pub no_deps: bool,
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {

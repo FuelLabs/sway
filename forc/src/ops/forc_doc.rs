@@ -2,6 +2,10 @@ use crate::cli::DocCommand;
 use anyhow::Result;
 use forc_pkg::{self as pkg, ManifestFile};
 use std::path::PathBuf;
+use sway_core::{
+    AstNode, AstNodeContent, Attribute, AttributeKind, AttributesMap, CompileResult, Declaration,
+    ParseProgram, ParseSubmodule, TypedProgram,
+};
 
 /// Main method for `forc doc`.
 pub fn doc(command: DocCommand) -> Result<()> {
@@ -11,6 +15,7 @@ pub fn doc(command: DocCommand) -> Result<()> {
         offline_mode: offline,
         silent_mode,
         locked,
+        no_deps,
     } = command;
 
     let dir = if let Some(ref path) = manifest_path {
@@ -22,15 +27,58 @@ pub fn doc(command: DocCommand) -> Result<()> {
     let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
 
     let compilation = pkg::check(&plan, silent_mode)?;
-    match compilation.value {
-        Some((_parse_program, _typed_program_opt)) => {}
-        None => {}
-    }
+    let _docs = get_compiled_docs(&compilation, no_deps);
 
     // check if the user wants to open the doc in the browser
     if open_result {}
 
     Ok(())
+}
+
+fn attributes_map(ast_node: &AstNode) -> Option<AttributesMap> {
+    match ast_node.content.clone() {
+        AstNodeContent::Declaration(decl) => match decl {
+            Declaration::EnumDeclaration(decl) => Some(decl.attributes),
+            Declaration::FunctionDeclaration(decl) => Some(decl.attributes),
+            Declaration::StructDeclaration(decl) => Some(decl.attributes),
+            Declaration::ConstantDeclaration(decl) => Some(decl.attributes),
+            Declaration::StorageDeclaration(decl) => Some(decl.attributes),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+fn doc_attributes(ast_node: &AstNode) -> Option<Vec<Attribute>> {
+    attributes_map(ast_node).and_then(|mut attributes| attributes.remove(&AttributeKind::Doc))
+}
+fn extract_submodule_docs(submodule: &ParseSubmodule, docs: &mut Vec<Option<Vec<Attribute>>>) {
+    for ast_node in &submodule.module.tree.root_nodes {
+        docs.push(doc_attributes(ast_node));
+    }
+    if !submodule.module.submodules.is_empty() {
+        while let Some((_, submodule)) = submodule.module.submodules.first() {
+            extract_submodule_docs(submodule, docs);
+        }
+    }
+}
+fn get_compiled_docs(
+    compilation: &CompileResult<(ParseProgram, Option<TypedProgram>)>,
+    no_deps: bool,
+) -> Vec<Option<Vec<Attribute>>> {
+    let mut docs = vec![];
+
+    if let Some((parse_program, _)) = &compilation.value {
+        for ast_node in &parse_program.root.tree.root_nodes {
+            docs.push(doc_attributes(ast_node));
+        }
+        if !no_deps {
+            while let Some((_, submodule)) = parse_program.root.submodules.first() {
+                extract_submodule_docs(submodule, &mut docs);
+            }
+        }
+    }
+
+    docs
 }
 
 // From Cargo Doc:
