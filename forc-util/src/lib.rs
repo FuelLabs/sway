@@ -420,6 +420,7 @@ impl<'a> MakeWriter<'a> for StdioTracingWriter {
 #[derive(Default)]
 pub struct TracingSubscriberOptions {
     pub verbosity: Option<u8>,
+    pub silent: Option<bool>,
     pub log_level: Option<LevelFilter>,
 }
 /// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
@@ -431,15 +432,23 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
         None => EnvFilter::new("info"),
     };
 
-    let level_filter = options.log_level.or_else(|| {
-        options.verbosity.and_then(|verbosity| {
-            match verbosity {
-                1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
-                2 => Some(LevelFilter::TRACE), // matches -vv
-                _ => None,
-            }
+    let level_filter = options
+        .log_level
+        .or_else(|| {
+            options.verbosity.and_then(|verbosity| {
+                match verbosity {
+                    1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
+                    2 => Some(LevelFilter::TRACE), // matches -vv
+                    _ => None,
+                }
+            })
         })
-    });
+        .or_else(|| {
+            options.silent.and_then(|silent| match silent {
+                true => Some(LevelFilter::OFF),
+                _ => None,
+            })
+        });
 
     let builder = tracing_subscriber::fmt::Subscriber::builder()
         .with_env_filter(env_filter)

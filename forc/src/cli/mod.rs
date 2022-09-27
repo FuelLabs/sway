@@ -30,9 +30,15 @@ struct Opt {
     /// The command to run
     #[clap(subcommand)]
     command: Forc,
+
     /// Use verbose output
     #[clap(short, long, parse(from_occurrences), global = true)]
     verbose: u8,
+
+    /// Silence all output
+    #[clap(short, long, global = true)]
+    silent: bool,
+
     /// Set the log level
     #[clap(short='L', long, global = true, parse(try_from_str = LevelFilter::from_str))]
     log_level: Option<LevelFilter>,
@@ -71,6 +77,7 @@ pub async fn run_cli() -> Result<()> {
     let opt = Opt::parse();
     let tracing_options = TracingSubscriberOptions {
         verbosity: Some(opt.verbose),
+        silent: Some(opt.silent),
         log_level: opt.log_level,
     };
 
