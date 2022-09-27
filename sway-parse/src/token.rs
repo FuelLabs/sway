@@ -252,7 +252,7 @@ pub fn lex_commented(
                     .map_or(false, |(_, next)| next.is_xid_continue());
             if not_is_single_underscore {
                 // Consume until we hit other than `XID_CONTINUE`.
-                while let Some(_) = char_indices.next_if(|(_, c)| c.is_xid_continue()) {}
+                while char_indices.next_if(|(_, c)| c.is_xid_continue()).is_some() {}
                 let span = span_until(src, index, &mut char_indices, &path);
                 let ident = Ident::new_with_raw(span, is_raw_ident);
                 token_trees.push(CommentedTokenTree::Tree(ident.into()));
@@ -432,7 +432,7 @@ fn lex_string(
             None => return Err(unclosed_string_lit(src.len() - 1)),
         };
         parsed.push(match next_character {
-            '\\' => match parse_escape_code(src, char_indices, &path) {
+            '\\' => match parse_escape_code(src, char_indices, path) {
                 Ok(c) => c,
                 Err(e) => return Err(e.unwrap_or_else(|| unclosed_string_lit(src.len()))),
             },
@@ -440,7 +440,7 @@ fn lex_string(
             _ => next_character,
         });
     }
-    let span = span_until(src, index, char_indices, &path);
+    let span = span_until(src, index, char_indices, path);
     let literal = Literal::String(LitString { span, parsed });
     Ok(Some(CommentedTokenTree::Tree(literal.into())))
 }
@@ -465,9 +465,9 @@ fn lex_char(
         None => return Err(unclosed_char_lit()),
     };
     let parsed = if next_character == '\\' {
-        match parse_escape_code(src, char_indices, &path) {
+        match parse_escape_code(src, char_indices, path) {
             Ok(parsed) => parsed,
-            Err(e) => return Err(e.unwrap_or_else(|| unclosed_char_lit())),
+            Err(e) => return Err(e.unwrap_or_else(unclosed_char_lit)),
         }
     } else {
         next_character
@@ -493,7 +493,7 @@ fn lex_char(
             });
         }
     }
-    let span = span_until(src, index, char_indices, &path);
+    let span = span_until(src, index, char_indices, path);
     let literal = Literal::Char(LitChar { span, parsed });
     Ok(Some(CommentedTokenTree::Tree(literal.into())))
 }
@@ -733,7 +733,7 @@ fn lex_int_ty_opt(
             });
         }
     };
-    let span = span_until(src, suffix_start_position, char_indices, &path);
+    let span = span_until(src, suffix_start_position, char_indices, path);
     Ok(Some((ty, span)))
 }
 
@@ -773,7 +773,7 @@ fn lex_punctuation(
             Some((_, next_character)) if next_character.as_punct_kind().is_some() => Spacing::Joint,
             _ => Spacing::Alone,
         },
-        span: span_until(src, index, char_indices, &path),
+        span: span_until(src, index, char_indices, path),
     };
     Some(CommentedTokenTree::Tree(punct.into()))
 }
