@@ -717,7 +717,7 @@ fn lex_int_ty_opt(
         "i32" => LitIntType::I32,
         "i64" => LitIntType::I64,
         _ => {
-            // FIXME(Centril, #)
+            // FIXME(Centril, #2865): Recover here by throwing away the suffix.
             let span = Span::new(
                 src.clone(),
                 suffix_start_position,
