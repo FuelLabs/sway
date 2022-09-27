@@ -564,7 +564,7 @@ fn type_check_interface_surface(
             TypedTraitFn {
                 name,
                 purity,
-                return_type_span: return_type_span.clone(),
+                return_type_span,
                 parameters,
                 return_type,
             }
