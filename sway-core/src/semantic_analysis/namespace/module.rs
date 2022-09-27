@@ -96,19 +96,20 @@ impl Module {
 
             // perform the conversions from parser code to parse tree types
             let name = const_item.name.clone();
+            let attributes = std::collections::HashMap::new();
             // convert to const decl
-            let const_decl =
-                match crate::convert_parse_tree::item_const_to_constant_declaration(ec, const_item)
-                {
-                    Ok(o) => o,
-                    Err(_emit_signal) => {
-                        // if an error was emitted, grab errors from the error context
-                        errors.append(&mut ec.errors.clone());
-                        warnings.append(&mut ec.warnings.clone());
+            let const_decl = match crate::convert_parse_tree::item_const_to_constant_declaration(
+                ec, const_item, attributes,
+            ) {
+                Ok(o) => o,
+                Err(_emit_signal) => {
+                    // if an error was emitted, grab errors from the error context
+                    errors.append(&mut ec.errors.clone());
+                    warnings.append(&mut ec.warnings.clone());
 
-                        return err(warnings, errors);
-                    }
-                };
+                    return err(warnings, errors);
+                }
+            };
 
             // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.
             if !matches!(const_decl.value.kind, ExpressionKind::Literal(_)) {
