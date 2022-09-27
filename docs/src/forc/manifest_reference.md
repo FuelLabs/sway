@@ -88,13 +88,13 @@ name = "wallet_contract"
 print-finalized-asm = false
 print-intermediate-asm = false
 print-ir = false
-silent = false
+terse = false
 
 [build-profiles.release]
 print-finalized-asm = false
 print-intermediate-asm = false
 print-ir = false
-silent = true
+terse = true
 ```
 
 Since `release` and `debug` implicitly included in every manifest file, you can use them by just passing `--release` or by not passing anything (debug is default). For using a user defined build profile there is `--build-profile <profile name>` option available to the relevant commands. (For an example see [forc-build](../forc/commands/forc_build.md))
@@ -104,7 +104,7 @@ Note that providing the corresponding cli options (like `--print-finalized-asm`)
 - print-finalized-asm - true
 - print-intermediate-asm - false
 - print-ir - false
-- silent - false
+- terse - false
 
 ## The `[patch]` section
 
