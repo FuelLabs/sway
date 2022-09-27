@@ -622,6 +622,7 @@ impl<'a> InstructionVerifier<'a> {
             .iter()
             .map(|(_, v)| v.get_type(self.context))
             .reduce(|a, b| if self.opt_ty_not_eq(&a, &b) { None } else { b })
+            .unwrap() // Safe to unwrap because `pairs` is *not* empty as this was checked earlier
             .is_none()
         {
             Err(IrError::VerifyPhiInconsistentTypes)
