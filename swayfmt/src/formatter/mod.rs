@@ -1054,4 +1054,22 @@ library test_module_kind_with_comments;
         assert_eq!(correct_sway_code, formatted_sway_code);
         assert!(test_stability(formatted_sway_code, formatter));
     }
+    #[test]
+    fn newline_before_comments() {
+        let sway_code_to_format = r#"
+
+
+// something about module kind
+// something else about module kind
+library test_module_kind_with_comments;"#;
+        let correct_sway_code = r#"// something about module kind
+// something else about module kind
+library test_module_kind_with_comments;
+"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
+    }
 }

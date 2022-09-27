@@ -16,7 +16,7 @@ use crate::{
     metadata::MetadataManager,
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal},
     semantic_analysis::*,
-    type_system::{look_up_type_id, resolve_type, IntegerBits, TypeId, TypeInfo},
+    type_system::{look_up_type_id, to_typeinfo, IntegerBits, TypeId, TypeInfo},
 };
 use sway_ast::intrinsics::Intrinsic;
 use sway_ir::{Context, *};
@@ -546,7 +546,7 @@ impl FnCompiler {
                 let val_exp = arguments[1].clone();
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = resolve_type(val_exp.return_type, &span).unwrap();
+                let val_ty = to_typeinfo(val_exp.return_type, &span).unwrap();
                 if !val_ty.is_copy_type() {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
@@ -569,7 +569,7 @@ impl FnCompiler {
                 let val_exp = arguments[1].clone();
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = resolve_type(val_exp.return_type, &span).unwrap();
+                let val_ty = to_typeinfo(val_exp.return_type, &span).unwrap();
                 if val_ty != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
@@ -1256,7 +1256,7 @@ impl FnCompiler {
         // Nothing to do for an abi cast declarations. The address specified in them is already
         // provided in each contract call node in the AST.
         if matches!(
-            &resolve_type(body.return_type, &body.span).map_err(|ty_err| {
+            &to_typeinfo(body.return_type, &body.span).map_err(|ty_err| {
                 CompileError::InternalOwned(format!("{:?}", ty_err), body.span.clone())
             })?,
             TypeInfo::ContractCaller { .. }
