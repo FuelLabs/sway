@@ -12,6 +12,7 @@ mod type_id;
 mod type_info;
 mod type_mapping;
 mod type_parameter;
+mod unifier;
 
 pub(crate) use collect_types_metadata::*;
 pub(crate) use copy_types::*;
