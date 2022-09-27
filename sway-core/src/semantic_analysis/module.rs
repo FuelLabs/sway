@@ -69,12 +69,7 @@ impl TypedModule {
             .map(|node| TypedAstNode::type_check(ctx.by_ref(), node))
             .filter_map(|res| res.ok(&mut warnings, &mut errors))
             .collect();
-
-        if !errors.is_empty() {
-            err(warnings, errors)
-        } else {
-            ok(typed_nodes, warnings, errors)
-        }
+        ok(typed_nodes, warnings, errors)
     }
 }
 
