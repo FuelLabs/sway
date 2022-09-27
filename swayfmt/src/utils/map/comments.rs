@@ -45,29 +45,18 @@ impl CommentRange for CommentMap {
 
 /// Get the CommentedTokenStream and collect the spans -> Comment mapping for the input source
 /// code.
-pub fn comment_map_from_src(input: Arc<str>) -> Result<(CommentMap, usize), FormatterError> {
+pub fn comment_map_from_src(input: Arc<str>) -> Result<CommentMap, FormatterError> {
     let mut comment_map = BTreeMap::new();
 
     // pass the input through lexer
-    let mut start = 0;
-    for (char_index, curr_char) in input.chars().enumerate() {
-        if char_index == 0 && !curr_char.is_whitespace() {
-            break;
-        }
-        if curr_char.is_whitespace() {
-            start += 1;
-        } else {
-            break;
-        }
-    }
-    let commented_token_stream = lex_commented(&input, start, input.len(), None)?;
+    let commented_token_stream = lex_commented(&input, 0, input.len(), None)?;
     let tts = commented_token_stream.token_trees().iter();
 
     for comment in tts {
         collect_comments_from_token_stream(comment, &mut comment_map);
     }
 
-    Ok((comment_map, start))
+    Ok(comment_map)
 }
 
 /// Collects `Comment`s from the token stream and insert it with its span to the `CommentMap`.
@@ -128,7 +117,7 @@ pub fn handle_comments(
 /// traversal. When `add_comments` is called we have already parsed the unformatted_code so there is no need
 /// to parse it again.
 fn add_comments(
-    comment_map: (CommentMap, usize),
+    comment_map: CommentMap,
     unformatted_module: &Module,
     formatted_module: &Module,
     formatted_code: &mut FormattedCode,
@@ -150,7 +139,6 @@ fn add_comments(
     // Since we are adding comments into formatted code, in the next iteration the spans we find for the formatted code needs to be offsetted
     // as the total length of comments we added in previous iterations.
     let mut offset = 0;
-    let (comment_map, start_offset) = comment_map;
 
     // We will definetly have a span in the collected span since for a source code to be parsed there should be some tokens present.
     let mut previous_unformatted_comment_span = unformatted_comment_spans
@@ -175,7 +163,6 @@ fn add_comments(
                 previous_formatted_comment_span,
                 comments_found,
                 offset,
-                start_offset,
                 formatted_code,
             )?;
         }
@@ -241,7 +228,6 @@ fn insert_after_span(
     from: &ByteSpan,
     comments_to_insert: Vec<CommentWithContext>,
     offset: usize,
-    start_offset: usize,
     formatted_code: &mut FormattedCode,
 ) -> Result<usize, FormatterError> {
     let iter = comments_to_insert.iter();
@@ -250,7 +236,7 @@ fn insert_after_span(
     let mut pre_module_comment = false;
     for comment_with_context in iter {
         let (comment_value, comment_context) = comment_with_context;
-        if comment_value.span.start() == from.start + start_offset {
+        if comment_value.span.start() == from.start {
             pre_module_comment = true;
         }
         write!(
@@ -304,7 +290,7 @@ mod tests {
             bar: i32,
         }
         "#;
-        let (map, _) = comment_map_from_src(Arc::from(input)).unwrap();
+        let map = comment_map_from_src(Arc::from(input)).unwrap();
         assert!(!map.is_empty());
         let range_start_span = ByteSpan { start: 0, end: 32 };
         let range_end_span = ByteSpan { start: 33, end: 34 };
@@ -326,7 +312,7 @@ mod tests {
             bar: i32,
         }
         "#;
-        let (map, _) = comment_map_from_src(Arc::from(input)).unwrap();
+        let map = comment_map_from_src(Arc::from(input)).unwrap();
         assert!(!map.is_empty());
         let range_start_span = ByteSpan { start: 40, end: 54 };
         let range_end_span = ByteSpan {
@@ -351,7 +337,7 @@ mod tests {
             bar: i32,
         }
         "#;
-        let (map, _) = comment_map_from_src(Arc::from(input)).unwrap();
+        let map = comment_map_from_src(Arc::from(input)).unwrap();
         assert!(!map.is_empty());
         let range_start_span = ByteSpan {
             start: 110,
@@ -376,7 +362,7 @@ mod tests {
         let range_end_span = ByteSpan { start: 8, end: 16 };
         let input = r#"// test
 contract;"#;
-        let (map, _) = comment_map_from_src(Arc::from(input)).unwrap();
+        let map = comment_map_from_src(Arc::from(input)).unwrap();
         assert!(!map.is_empty());
         let found_comments = map.comments_in_range(&range_start_span, &range_end_span);
         assert_eq!(found_comments[0].1.span.as_str(), "// test");

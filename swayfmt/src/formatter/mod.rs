@@ -52,7 +52,7 @@ impl Formatter {
                 .heuristics_pref
                 .to_width_heuristics(self.config.whitespace.max_width),
         );
-        let src = src.trim_start();
+        let src = src.trim();
 
         let path = build_config.map(|build_config| build_config.canonical_root_module());
         // Formatted code will be pushed here with raw newline stlye.
