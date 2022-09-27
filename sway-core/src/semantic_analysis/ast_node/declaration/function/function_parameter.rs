@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::{
     error::{err, ok},
     semantic_analysis::{
@@ -19,6 +21,29 @@ pub struct TypedFunctionParameter {
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
     pub type_span: Span,
+}
+
+impl fmt::Display for TypedFunctionParameter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_self() {
+            write!(
+                f,
+                "{}{}{}",
+                if self.is_reference { "ref " } else { "" },
+                if self.is_mutable { "mut " } else { "" },
+                self.name
+            )
+        } else {
+            write!(
+                f,
+                "{}: {}{}{}",
+                self.name,
+                if self.is_reference { "ref " } else { "" },
+                if self.is_mutable { "mut " } else { "" },
+                self.type_id,
+            )
+        }
+    }
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -59,8 +84,6 @@ impl TypedFunctionParameter {
             type_span,
         } = parameter;
 
-        println!("self type: {}", ctx.self_type());
-
         // resolve the type of the parameter
         let type_id = insert_type(look_up_type_id(initial_type_id));
         append!(
@@ -68,7 +91,6 @@ impl TypedFunctionParameter {
             warnings,
             errors
         );
-        println!("param: {}", type_id);
 
         let mutability = convert_to_variable_immutability(is_reference, is_mutable);
         if mutability == VariableMutability::Mutable {

@@ -530,8 +530,8 @@ fn type_check_trait_implementation(
         }
 
         // remove this function from the "checklist"
-        let fn_signature = match function_checklist.remove(&fn_decl.name) {
-            Some(trait_fn) => trait_fn,
+        let mut fn_signature = match function_checklist.remove(&fn_decl.name) {
+            Some(trait_fn) => trait_fn.clone(),
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
                     name: fn_decl.name.clone(),
@@ -541,6 +541,10 @@ fn type_check_trait_implementation(
                 return err(warnings, errors);
             }
         };
+
+        // refresh the types to disassociate this application from the future
+        // applications
+        fn_signature.refresh_types();
 
         // ensure this fn decl's parameters and signature lines up with the one
         // in the trait

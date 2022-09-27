@@ -510,6 +510,26 @@ pub struct TypedTraitFn {
     pub return_type_span: Span,
 }
 
+impl fmt::Display for TypedTraitFn {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let return_type = look_up_type_id(self.return_type);
+        write!(
+            f,
+            "{}({}){}",
+            self.name,
+            self.parameters
+                .iter()
+                .map(|param| param.to_string())
+                .collect::<Vec<_>>()
+                .join(", "),
+            match return_type {
+                TypeInfo::Tuple(elems) if elems.is_empty() => "".to_string(),
+                return_type => format!(" -> {}", return_type),
+            }
+        )
+    }
+}
+
 impl CopyTypes for TypedTraitFn {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.return_type
@@ -517,7 +537,24 @@ impl CopyTypes for TypedTraitFn {
     }
 }
 
+impl MonomorphizeHelper for TypedTraitFn {
+    fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    fn type_parameters(&self) -> &[TypeParameter] {
+        &[]
+    }
+}
+
 impl TypedTraitFn {
+    pub(crate) fn refresh_types(&mut self) {
+        self.parameters.iter_mut().for_each(|param| {
+            param.type_id = insert_type(look_up_type_id(param.type_id));
+        });
+        self.return_type = insert_type(look_up_type_id(self.return_type));
+    }
+
     /// This function is used in trait declarations to insert "placeholder" functions
     /// in the methods. This allows the methods to use functions declared in the
     /// interface surface.
