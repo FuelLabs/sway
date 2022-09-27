@@ -1338,11 +1338,39 @@ fn pin_pkg(
                     commit_hash,
                 };
                 (pinned_git, local_path)
-            } else {
+            } else if let GitReference::DefaultBranch | GitReference::Branch(_) =
+                git_source.reference
+            {
+                // If the reference is to a branch or to the default branch we need to fetch
+                // from remote even though we may have it locally. Because remote may contain a
+                // newer commit.
                 let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
                 let repo_path =
                     git_commit_path(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
                 (pinned_git, repo_path)
+            } else {
+                // If we are in online mode and the reference is to a specific commit (tag or
+                // rev) we can first search it locally and re-use it.
+                match search_git_source_locally(&name, git_source) {
+                    Ok(Some((local_path, commit_hash))) => {
+                        let pinned_git = SourceGitPinned {
+                            source: git_source.clone(),
+                            commit_hash,
+                        };
+                        (pinned_git, local_path)
+                    }
+                    _ => {
+                        // If the checkout we are looking for does not exists locally or an
+                        // error happened during the search fetch it
+                        let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
+                        let repo_path = git_commit_path(
+                            &name,
+                            &pinned_git.source.repo,
+                            &pinned_git.commit_hash,
+                        );
+                        (pinned_git, repo_path)
+                    }
+                }
             };
             let source = SourcePinned::Git(pinned_git.clone());
             let pinned = Pinned { name, source };
@@ -1859,11 +1887,12 @@ pub fn compile(
     let storage_slots = typed_program.storage_slots.clone();
     let tree_type = typed_program.kind.tree_type();
     match tree_type {
-        // If we're compiling a library, we don't need to compile any further.
-        // Instead, we update the namespace with the library's top-level module.
-        TreeType::Library { .. } if !ast_res.errors.is_empty() => {
+        // On errors, do not proceed to compiling bytecode, as semantic analysis did not pass.
+        _ if !ast_res.errors.is_empty() => {
             return fail(&ast_res.warnings, &ast_res.errors);
         }
+        // If we're compiling a library, we don't need to compile any further.
+        // Instead, we update the namespace with the library's top-level module.
         TreeType::Library { .. } => {
             print_on_success_library(terse_mode, &pkg.name, &ast_res.warnings);
             let bytecode = vec![];
