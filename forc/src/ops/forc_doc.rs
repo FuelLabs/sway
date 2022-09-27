@@ -1,7 +1,7 @@
 use crate::cli::DocCommand;
 use anyhow::Result;
 use forc_pkg::{self as pkg, ManifestFile};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use sway_core::{
     AstNode, AstNodeContent, Attribute, AttributeKind, AttributesMap, CompileResult, Declaration,
     ParseProgram, ParseSubmodule, TypedProgram,
@@ -28,6 +28,10 @@ pub fn doc(command: DocCommand) -> Result<()> {
 
     let compilation = pkg::check(&plan, silent_mode)?;
     let _docs = get_compiled_docs(&compilation, no_deps);
+    let out_path = Path::new(&dir).join("out");
+    if out_path.try_exists().is_err() {
+        // create the out path
+    }
 
     // check if the user wants to open the doc in the browser
     if open_result {}
