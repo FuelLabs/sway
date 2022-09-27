@@ -29,6 +29,14 @@ macro_rules! check {
     }};
 }
 
+macro_rules! append {
+    ($fn_expr: expr, $warnings: ident, $errors: ident $(,)?) => {{
+        let (mut l, mut r) = $fn_expr;
+        $warnings.append(&mut l);
+        $errors.append(&mut r);
+    }};
+}
+
 macro_rules! assert_or_warn {
     ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr $(,)?) => {{
         if !$bool_expr {

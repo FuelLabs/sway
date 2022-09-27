@@ -77,9 +77,7 @@ pub(crate) fn matcher(
     } = scrutinee;
 
     // unify the type of the scrutinee with the type of the expression
-    let (mut new_warnings, new_errors) = unify(type_id, exp.return_type, &span, "");
-    warnings.append(&mut new_warnings);
-    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+    append!(unify(type_id, exp.return_type, &span, ""), warnings, errors);
 
     if !errors.is_empty() {
         return err(warnings, errors);
