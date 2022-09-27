@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use self::commands::{
     addr2line, build, check, clean, completions, init, new, parse_bytecode, plugins, template,
     test, update,
@@ -9,13 +11,14 @@ pub use check::Command as CheckCommand;
 use clap::{Parser, Subcommand};
 pub use clean::Command as CleanCommand;
 pub use completions::Command as CompletionsCommand;
-use forc_util::init_tracing_subscriber;
+use forc_util::{init_tracing_subscriber, TracingSubscriberOptions};
 pub use init::Command as InitCommand;
 pub use new::Command as NewCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use plugins::Command as PluginsCommand;
 pub use template::Command as TemplateCommand;
 use test::Command as TestCommand;
+use tracing::metadata::LevelFilter;
 pub use update::Command as UpdateCommand;
 
 mod commands;
@@ -24,12 +27,15 @@ mod plugin;
 #[derive(Debug, Parser)]
 #[clap(name = "forc", about = "Fuel Orchestrator", version)]
 struct Opt {
-    /// the command to run
+    /// The command to run
     #[clap(subcommand)]
     command: Forc,
-    /// Use verbose output.
+    /// Use verbose output
     #[clap(short, long, parse(from_occurrences), global = true)]
     verbose: u8,
+    /// Set the log level
+    #[clap(short='L', long, global = true, parse(try_from_str = LevelFilter::from_str))]
+    log_level: Option<LevelFilter>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -63,7 +69,12 @@ enum Forc {
 
 pub async fn run_cli() -> Result<()> {
     let opt = Opt::parse();
-    init_tracing_subscriber(Some(opt.verbose));
+    let tracing_options = TracingSubscriberOptions {
+        verbosity: Some(opt.verbose),
+        log_level: opt.log_level,
+    };
+
+    init_tracing_subscriber(tracing_options);
 
     match opt.command {
         Forc::Addr2Line(command) => addr2line::exec(command),

@@ -36,6 +36,7 @@ tokio = { version = "1.8.0", features = ["macros", "rt-multi-thread"] }
 toml = "0.5"
 toml_edit = "0.13"
 tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["ansi", "env-filter", "json"] }
 url = "2.2"
 uwuify = { version = "^0.2", optional = true }
 walkdir = "2.3"

@@ -417,19 +417,28 @@ impl<'a> MakeWriter<'a> for StdioTracingWriter {
     }
 }
 
+#[derive(Default)]
+pub struct TracingSubscriberOptions {
+    pub verbosity: Option<u8>,
+    pub log_level: Option<LevelFilter>,
+}
 /// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
 ///
 /// `RUST_LOG` environment variable can be used to set different minimum level for the subscriber, default is `INFO`.
-pub fn init_tracing_subscriber(verbosity: Option<u8>) {
+pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
     let env_filter = match env::var_os(LOG_FILTER) {
         Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
         None => EnvFilter::new("info"),
     };
 
-    let level_filter = verbosity.and_then(|verbosity| match verbosity {
-        1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
-        2 => Some(LevelFilter::TRACE), // matches -vv
-        _ => None,
+    let level_filter = options.log_level.or_else(|| {
+        options.verbosity.and_then(|verbosity| {
+            match verbosity {
+                1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
+                2 => Some(LevelFilter::TRACE), // matches -vv
+                _ => None,
+            }
+        })
     });
 
     let builder = tracing_subscriber::fmt::Subscriber::builder()
@@ -442,7 +451,7 @@ pub fn init_tracing_subscriber(verbosity: Option<u8>) {
         .with_target(false)
         .with_writer(StdioTracingWriter);
 
-    // If verbosity is set, it overrides the RUST_LOG setting
+    // If log level or verbosity is set, it overrides the RUST_LOG setting
     if let Some(level_filter) = level_filter {
         builder.with_max_level(level_filter).init();
     } else {
