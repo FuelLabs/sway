@@ -186,6 +186,7 @@ pub fn lex_commented(
                     continue;
                 }
                 Some((_, '*')) => {
+                    // Lexing a multi-line comment.
                     let _ = char_indices.next();
                     let mut unclosed_indices = vec![index];
 
@@ -204,29 +205,20 @@ pub fn lex_commented(
                     };
 
                     loop {
-                        match char_indices.next() {
+                        match char_indices.next().zip(char_indices.next()) {
                             None => return Err(unclosed_multiline_comment(unclosed_indices)),
-                            Some((_, '*')) => match char_indices.next() {
-                                None => return Err(unclosed_multiline_comment(unclosed_indices)),
-                                Some((slash_ix, '/')) => {
-                                    let start = unclosed_indices.pop().unwrap();
-                                    let end = slash_ix + '/'.len_utf8();
-                                    let span =
-                                        Span::new(src.clone(), start, end, path.clone()).unwrap();
-                                    let comment = Comment { span };
-                                    token_trees.push(comment.into());
-                                    if unclosed_indices.is_empty() {
-                                        break;
-                                    }
+                            Some(((_, '*'), (slash_ix, '/'))) => {
+                                let start = unclosed_indices.pop().unwrap();
+                                let end = slash_ix + '/'.len_utf8();
+                                let span =
+                                    Span::new(src.clone(), start, end, path.clone()).unwrap();
+                                token_trees.push(Comment { span }.into());
+                                if unclosed_indices.is_empty() {
+                                    break;
                                 }
-                                Some((_, _)) => (),
-                            },
-                            Some((next_index, '/')) => match char_indices.next() {
-                                None => return Err(unclosed_multiline_comment(unclosed_indices)),
-                                Some((_, '*')) => unclosed_indices.push(next_index),
-                                Some((_, _)) => {}
-                            },
-                            Some((_, _)) => {}
+                            }
+                            Some(((next_idx, '/'), (_, '*'))) => unclosed_indices.push(next_idx),
+                            Some(_) => {}
                         }
                     }
                     continue;
