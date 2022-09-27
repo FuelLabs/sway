@@ -663,7 +663,7 @@ impl TypeEngine {
                 }
                 self.insert_type(TypeInfo::Tuple(type_arguments))
             }
-            o => insert_type(o),
+            _ => type_id,
         };
         ok(type_id, warnings, errors)
     }
