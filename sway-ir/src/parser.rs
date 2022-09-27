@@ -149,7 +149,6 @@ mod ir_builder {
                 / op_load()
                 / op_log()
                 / op_nop()
-                / op_phi()
                 / op_read_register()
                 / op_ret()
                 / op_state_load_quad_word()
@@ -272,11 +271,6 @@ mod ir_builder {
             rule op_nop() -> IrAstOperation
                 = "nop" _ {
                     IrAstOperation::Nop
-                }
-
-            rule op_phi() -> IrAstOperation
-                = "phi" _ "(" _ pairs:((bl:id() ":" _ vn:id() { (bl, vn) }) ** comma()) ")" _ {
-                    IrAstOperation::Phi(pairs)
                 }
 
             rule op_read_register() -> IrAstOperation
@@ -634,7 +628,6 @@ mod ir_builder {
         Load(String),
         Log(IrAstTy, String, String),
         Nop,
-        Phi(Vec<(String, String)>),
         ReadRegister(String),
         Ret(IrAstTy, String),
         StateLoadQuadWord(String, String),
@@ -966,8 +959,9 @@ mod ir_builder {
                         let to_block = named_blocks.get(&to_block_name).unwrap();
                         block
                             .ins(context)
-                            .branch(*to_block, None)
-                            .add_metadatum(context, opt_metadata)
+                            .branch(*to_block, vec![])
+                            .add_metadatum(context, opt_metadata);
+                        todo!()
                     }
                     IrAstOperation::Call(callee, args) => {
                         // We can't resolve calls to other functions until we've done a first pass and
@@ -990,15 +984,19 @@ mod ir_builder {
                         self.unresolved_calls.push(PendingCall { call_val, callee });
                         call_val
                     }
-                    IrAstOperation::Cbr(cond_val_name, true_block_name, false_block_name) => block
-                        .ins(context)
-                        .conditional_branch(
-                            *val_map.get(&cond_val_name).unwrap(),
-                            *named_blocks.get(&true_block_name).unwrap(),
-                            *named_blocks.get(&false_block_name).unwrap(),
-                            None,
-                        )
-                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::Cbr(cond_val_name, true_block_name, false_block_name) => {
+                        block
+                            .ins(context)
+                            .conditional_branch(
+                                *val_map.get(&cond_val_name).unwrap(),
+                                *named_blocks.get(&true_block_name).unwrap(),
+                                *named_blocks.get(&false_block_name).unwrap(),
+                                vec![],
+                                vec![],
+                            )
+                            .add_metadatum(context, opt_metadata);
+                        todo!()
+                    }
                     IrAstOperation::Cmp(pred_str, lhs, rhs) => block
                         .ins(context)
                         .cmp(
@@ -1115,16 +1113,6 @@ mod ir_builder {
                             .add_metadatum(context, opt_metadata)
                     }
                     IrAstOperation::Nop => block.ins(context).nop(),
-                    IrAstOperation::Phi(pairs) => {
-                        for (block_name, val_name) in pairs {
-                            block.add_phi(
-                                context,
-                                *named_blocks.get(&block_name).unwrap(),
-                                *val_map.get(&val_name).unwrap(),
-                            );
-                        }
-                        block.get_phi(context)
-                    }
                     IrAstOperation::ReadRegister(reg_name) => block
                         .ins(context)
                         .read_register(match reg_name.as_str() {

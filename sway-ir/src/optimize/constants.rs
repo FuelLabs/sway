@@ -51,12 +51,18 @@ fn combine_cbr(context: &mut Context, function: &Function) -> Result<bool, IrErr
                     false_block,
                 }) if cond_value.is_constant(context) => {
                     match cond_value.get_constant(context).unwrap().value {
-                        ConstantValue::Bool(true) => {
-                            Some(Ok((inst_val, in_block, *true_block, *false_block)))
-                        }
-                        ConstantValue::Bool(false) => {
-                            Some(Ok((inst_val, in_block, *false_block, *true_block)))
-                        }
+                        ConstantValue::Bool(true) => Some(Ok((
+                            inst_val,
+                            in_block,
+                            true_block.clone(),
+                            false_block.clone(),
+                        ))),
+                        ConstantValue::Bool(false) => Some(Ok((
+                            inst_val,
+                            in_block,
+                            false_block.clone(),
+                            true_block.clone(),
+                        ))),
                         _ => Some(Err(IrError::VerifyConditionExprNotABool)),
                     }
                 }
@@ -65,8 +71,8 @@ fn combine_cbr(context: &mut Context, function: &Function) -> Result<bool, IrErr
         )
         .transpose()?;
 
-    candidate.map_or(Ok(false), |(cbr, from_block, dest, no_more_dest)| {
-        no_more_dest.remove_phi_val_coming_from(context, &from_block);
+    candidate.map_or(Ok(false), |(cbr, from_block, dest, (no_more_dest, _))| {
+        no_more_dest.remove_pred(context, &from_block);
         cbr.replace(context, ValueDatum::Instruction(Instruction::Branch(dest)));
         Ok(true)
     })

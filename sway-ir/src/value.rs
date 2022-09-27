@@ -13,6 +13,7 @@ use crate::{
     irtype::Type,
     metadata::{combine, MetadataIndex},
     pretty::DebugWithContext,
+    BlockArgument,
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
@@ -30,16 +31,16 @@ pub struct ValueContent {
 #[doc(hidden)]
 #[derive(Debug, Clone, DebugWithContext)]
 pub enum ValueDatum {
-    Argument(Type),
+    Argument(BlockArgument),
     Constant(Constant),
     Instruction(Instruction),
 }
 
 impl Value {
     /// Return a new argument [`Value`].
-    pub fn new_argument(context: &mut Context, ty: Type) -> Value {
+    pub fn new_argument(context: &mut Context, arg: BlockArgument) -> Value {
         let content = ValueContent {
-            value: ValueDatum::Argument(ty),
+            value: ValueDatum::Argument(arg),
             metadata: None,
         };
         Value(context.values.insert(content))
@@ -111,7 +112,6 @@ impl Value {
                 Instruction::Branch(..)
                 | Instruction::ConditionalBranch { .. }
                 | Instruction::Ret(..) => true,
-                Instruction::Phi(alts) => alts.is_empty(),
                 Instruction::AsmBlock(asm_block, ..) => asm_block.is_diverging(context),
                 _ => false,
             },
@@ -166,7 +166,7 @@ impl Value {
     /// Arguments and constants always have a type, but only some instructions do.
     pub fn get_type(&self, context: &Context) -> Option<Type> {
         match &context.values[self.0].value {
-            ValueDatum::Argument(ty) => Some(*ty),
+            ValueDatum::Argument(BlockArgument { ty, .. }) => Some(*ty),
             ValueDatum::Constant(c) => Some(c.ty),
             ValueDatum::Instruction(ins) => ins.get_type(context),
         }

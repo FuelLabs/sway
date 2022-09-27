@@ -86,7 +86,6 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
                 log_val, log_id, ..
             } => vec![*log_val, *log_id],
             Instruction::Nop => vec![],
-            Instruction::Phi(ins) => ins.iter().map(|v| v.1).collect(),
             Instruction::ReadRegister(_) => vec![],
             Instruction::Ret(v, _) => vec![*v],
             Instruction::StateLoadQuadWord { load_val, key } => vec![*load_val, *key],
@@ -144,15 +143,8 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
                 ValueDatum::Constant(_) | ValueDatum::Argument(_) => (),
             }
         }
-        // Don't remove PHIs, just make them empty.
-        if matches!(
-            &context.values[dead.0].value,
-            ValueDatum::Instruction(Instruction::Phi(_))
-        ) {
-            dead.replace(context, ValueDatum::Instruction(Instruction::Phi(vec![])));
-        } else {
-            in_block.remove_instruction(context, dead);
-        }
+
+        in_block.remove_instruction(context, dead);
         modified = true;
     }
 

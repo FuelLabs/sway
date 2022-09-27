@@ -4145,6 +4145,7 @@ dependencies = [
  "filecheck",
  "generational-arena",
  "peg",
+ "rustc-hash",
  "sway-ir-macros",
  "sway-types",
 ]

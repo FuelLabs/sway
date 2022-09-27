@@ -341,7 +341,7 @@ impl FnCompiler {
                     Some(block_to_break_to) => Ok(self
                         .current_block
                         .ins(context)
-                        .branch(block_to_break_to, None)),
+                        .branch(block_to_break_to, vec![])),
                     None => Err(CompileError::BreakOutsideLoop {
                         span: ast_expr.span,
                     }),
@@ -354,7 +354,7 @@ impl FnCompiler {
                 Some(block_to_continue_to) => Ok(self
                     .current_block
                     .ins(context)
-                    .branch(block_to_continue_to, None)),
+                    .branch(block_to_continue_to, vec![])),
                 None => Err(CompileError::ContinueOutsideLoop {
                     span: ast_expr.span,
                 }),
@@ -691,15 +691,24 @@ impl FnCompiler {
         let lhs_val = self.compile_expression(context, md_mgr, ast_lhs)?;
         let rhs_block = self.function.create_block(context, None);
         let final_block = self.function.create_block(context, None);
+        let merge_val_arg_idx = final_block.new_arg(context, lhs_val.get_type(context).unwrap());
         if !self.current_block.is_terminated(context) {
             let cond_builder = self.current_block.ins(context);
             match ast_op {
-                LazyOp::And => {
-                    cond_builder.conditional_branch(lhs_val, rhs_block, final_block, Some(lhs_val))
-                }
-                LazyOp::Or => {
-                    cond_builder.conditional_branch(lhs_val, final_block, rhs_block, Some(lhs_val))
-                }
+                LazyOp::And => cond_builder.conditional_branch(
+                    lhs_val,
+                    rhs_block,
+                    final_block,
+                    vec![],
+                    vec![lhs_val],
+                ),
+                LazyOp::Or => cond_builder.conditional_branch(
+                    lhs_val,
+                    final_block,
+                    rhs_block,
+                    vec![lhs_val],
+                    vec![],
+                ),
             }
             .add_metadatum(context, span_md_idx);
         }
@@ -710,12 +719,12 @@ impl FnCompiler {
         if !self.current_block.is_terminated(context) {
             self.current_block
                 .ins(context)
-                .branch(final_block, Some(rhs_val))
+                .branch(final_block, vec![rhs_val])
                 .add_metadatum(context, span_md_idx);
         }
 
         self.current_block = final_block;
-        Ok(final_block.get_phi(context))
+        Ok(final_block.get_arg(context, merge_val_arg_idx).unwrap())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1053,23 +1062,31 @@ impl FnCompiler {
 
         cond_block
             .ins(context)
-            .conditional_branch(cond_value, true_block_begin, false_block_begin, None)
+            .conditional_branch(
+                cond_value,
+                true_block_begin,
+                false_block_begin,
+                vec![],
+                vec![],
+            )
             .add_metadatum(context, cond_span_md_idx);
 
         let merge_block = self.function.create_block(context, None);
+        // Add a single argument to merge_block that merges true_value and false_value.
+        let merge_val_arg_idx = merge_block.new_arg(context, true_value.get_type(context).unwrap());
         if !true_block_end.is_terminated(context) {
             true_block_end
                 .ins(context)
-                .branch(merge_block, Some(true_value));
+                .branch(merge_block, vec![true_value]);
         }
         if !false_block_end.is_terminated(context) {
             false_block_end
                 .ins(context)
-                .branch(merge_block, Some(false_value));
+                .branch(merge_block, vec![false_value]);
         }
 
         self.current_block = merge_block;
-        Ok(merge_block.get_phi(context))
+        Ok(merge_block.get_arg(context, merge_val_arg_idx).unwrap())
     }
 
     fn compile_unsafe_downcast(
@@ -1136,7 +1153,7 @@ impl FnCompiler {
         let cond_block = self.function.create_block(context, Some("while".into()));
 
         if !self.current_block.is_terminated(context) {
-            self.current_block.ins(context).branch(cond_block, None);
+            self.current_block.ins(context).branch(cond_block, vec![]);
         }
 
         // Fill in the body block now, jump unconditionally to the cond block at its end.
@@ -1164,7 +1181,7 @@ impl FnCompiler {
         self.current_block = body_block;
         self.compile_code_block(context, md_mgr, body)?;
         if !self.current_block.is_terminated(context) {
-            self.current_block.ins(context).branch(cond_block, None);
+            self.current_block.ins(context).branch(cond_block, vec![]);
         }
 
         // Restore the blocks to jump to now that we're done with the current loop
@@ -1179,7 +1196,8 @@ impl FnCompiler {
                 cond_value,
                 body_block,
                 final_block,
-                None,
+                vec![],
+                vec![],
             );
         }
 
@@ -1522,7 +1540,7 @@ impl FnCompiler {
                         array_expr_span)
                 })
             }
-            ValueDatum::Argument(Type::Array(aggregate))
+            ValueDatum::Argument(BlockArgument{ty: Type::Array(aggregate), ..})
             | ValueDatum::Constant(Constant { ty : Type::Array(aggregate), ..}) => Ok (*aggregate),
             otherwise => Err(CompileError::InternalOwned(
                 format!("Unsupported array value for index expression: {otherwise:?}"),
@@ -1622,7 +1640,10 @@ impl FnCompiler {
                     )
                 })
             }
-            ValueDatum::Argument(Type::Struct(aggregate))
+            ValueDatum::Argument(BlockArgument {
+                ty: Type::Struct(aggregate),
+                ..
+            })
             | ValueDatum::Constant(Constant {
                 ty: Type::Struct(aggregate),
                 ..

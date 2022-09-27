@@ -30,6 +30,7 @@ pub enum IrError {
     VerifyBitcastBetweenInvalidTypes(String, String),
     VerifyBinaryOpIncorrectArgType,
     VerifyBranchToMissingBlock(String),
+    VerifyBranchParamsMismatch,
     VerifyCallArgTypeMismatch(String),
     VerifyCallToMissingFunction(String),
     VerifyCmpBadTypes(String, String),
@@ -45,9 +46,7 @@ pub enum IrError {
     VerifyIntToPtrUnknownSourceType,
     VerifyLoadFromNonPointer,
     VerifyMismatchedReturnTypes(String),
-    VerifyPhiFromMissingBlock(String),
-    VerifyPhiInconsistentTypes,
-    VerifyPhiNonUniqueLabels,
+    VerifyBlockArgMalformed,
     VerifyPtrCastFromNonPointer,
     VerifyStateKeyBadType,
     VerifyStateDestBadType(String),
@@ -252,17 +251,11 @@ impl fmt::Display for IrError {
                 "Verification failed: Function {fn_str} return type must match its RET \
                 instructions."
             ),
-            IrError::VerifyPhiFromMissingBlock(label) => {
-                write!(
-                    f,
-                    "Verification failed: PHI has a block '{label}'not from the current function."
-                )
+            IrError::VerifyBlockArgMalformed =>  {
+                write!(f, "Verification failed: Block argument is malformed")
             }
-            IrError::VerifyPhiInconsistentTypes => {
-                write!(f, "Verification failed: PHI has inconsistent types.")
-            }
-            IrError::VerifyPhiNonUniqueLabels => {
-                write!(f, "Verification failed: PHI must have unique block labels.")
+            IrError::VerifyBranchParamsMismatch             => {
+                write!(f, "Verification failed: Block parameter passed in branch is malformed")
             }
             IrError::VerifyPtrCastFromNonPointer => {
                 write!(

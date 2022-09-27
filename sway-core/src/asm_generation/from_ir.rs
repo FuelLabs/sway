@@ -496,7 +496,7 @@ impl<'ir> AsmBuilder<'ir> {
             self.add_block_label(block);
             for instr_val in block.instruction_iter(self.context) {
                 check!(
-                    self.compile_instruction(&block, &instr_val),
+                    self.compile_instruction(&instr_val),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -506,7 +506,7 @@ impl<'ir> AsmBuilder<'ir> {
         ok((), warnings, errors)
     }
 
-    fn compile_instruction(&mut self, block: &Block, instr_val: &Value) -> CompileResult<()> {
+    fn compile_instruction(&mut self, instr_val: &Value) -> CompileResult<()> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         if let ValueDatum::Instruction(instruction) = &self.context.values[instr_val.0].value {
@@ -524,7 +524,7 @@ impl<'ir> AsmBuilder<'ir> {
                 Instruction::BinaryOp { op, arg1, arg2 } => {
                     self.compile_binary_op(instr_val, op, arg1, arg2)
                 }
-                Instruction::Branch(to_block) => self.compile_branch(block, to_block),
+                Instruction::Branch(to_block) => self.compile_branch(to_block),
                 Instruction::Call(..) => {
                     errors.push(CompileError::Internal(
                         "Calls are not yet supported.",
@@ -541,7 +541,7 @@ impl<'ir> AsmBuilder<'ir> {
                     cond_value,
                     true_block,
                     false_block,
-                } => self.compile_conditional_branch(cond_value, block, true_block, false_block),
+                } => self.compile_conditional_branch(cond_value, true_block, false_block),
                 Instruction::ContractCall {
                     params,
                     coins,
@@ -598,7 +598,6 @@ impl<'ir> AsmBuilder<'ir> {
                     log_id,
                 } => self.compile_log(instr_val, log_val, log_ty, log_id),
                 Instruction::Nop => (),
-                Instruction::Phi(_) => (), // Managing the phi value is done in br and cbr compilation.
                 Instruction::ReadRegister(reg) => self.compile_read_register(instr_val, reg),
                 Instruction::Ret(ret_val, ty) => self.compile_ret(instr_val, ret_val, ty),
                 Instruction::StateLoadQuadWord { load_val, key } => check!(
@@ -838,10 +837,10 @@ impl<'ir> AsmBuilder<'ir> {
         self.reg_map.insert(*instr_val, res_reg);
     }
 
-    fn compile_branch(&mut self, from_block: &Block, to_block: &Block) {
-        self.compile_branch_to_phi_value(from_block, to_block);
+    fn compile_branch(&mut self, to_block: &(Block, Vec<Value>)) {
+        self.compile_branch_to_phi_value(to_block);
 
-        let label = self.block_to_label(to_block);
+        let label = self.block_to_label(&to_block.0);
         self.bytecode.push(Op::jump_to_label(label));
     }
 
@@ -870,33 +869,31 @@ impl<'ir> AsmBuilder<'ir> {
     fn compile_conditional_branch(
         &mut self,
         cond_value: &Value,
-        from_block: &Block,
-        true_block: &Block,
-        false_block: &Block,
+        true_block: &(Block, Vec<Value>),
+        false_block: &(Block, Vec<Value>),
     ) {
-        self.compile_branch_to_phi_value(from_block, true_block);
-        self.compile_branch_to_phi_value(from_block, false_block);
+        self.compile_branch_to_phi_value(true_block);
+        self.compile_branch_to_phi_value(false_block);
 
         let cond_reg = self.value_to_register(cond_value);
 
-        let true_label = self.block_to_label(true_block);
+        let true_label = self.block_to_label(&true_block.0);
         self.bytecode
             .push(Op::jump_if_not_zero(cond_reg, true_label));
 
-        let false_label = self.block_to_label(false_block);
+        let false_label = self.block_to_label(&false_block.0);
         self.bytecode.push(Op::jump_to_label(false_label));
     }
 
-    fn compile_branch_to_phi_value(&mut self, from_block: &Block, to_block: &Block) {
-        if let Some(local_val) = to_block.get_phi_val_coming_from(self.context, from_block) {
-            // We only need a MOVE here if get_phi_val_coming_from() is actually assigned to a
-            // register
-            if let Some(local_reg) = self.value_to_register_or_none(&local_val) {
-                let phi_reg = self.value_to_register(&to_block.get_phi(self.context));
+    fn compile_branch_to_phi_value(&mut self, to_block: &(Block, Vec<Value>)) {
+        for (i, param) in to_block.1.iter().enumerate() {
+            // We only need a MOVE here if param is actually assigned to a register
+            if let Some(local_reg) = self.value_to_register_or_none(param) {
+                let phi_reg = self.value_to_register(&to_block.0.get_arg(self.context, i).unwrap());
                 self.bytecode.push(Op::unowned_register_move_comment(
                     phi_reg,
                     local_reg,
-                    "branch to phi value",
+                    "parameter from branch to block argument",
                 ));
             }
         }
