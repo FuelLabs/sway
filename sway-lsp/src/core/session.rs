@@ -154,7 +154,7 @@ impl Session {
                     value,
                     warnings,
                     errors,
-                }) = pkg::check(&plan)
+                }) = pkg::check(&plan, true)
                 {
                     // FIXME(Centril): Refactor parse_ast_to_tokens + parse_ast_to_typed_tokens
                     // due to the new API.

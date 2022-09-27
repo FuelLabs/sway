@@ -48,6 +48,9 @@ pub struct Command {
     /// Meaning it will only try to use previously downloaded dependencies.
     #[clap(long = "offline")]
     pub offline_mode: bool,
+    /// Terse mode. Limited warning and error output.
+    #[clap(long = "terse", short = 't')]
+    pub terse_mode: bool,
     /// The directory in which the sway compiler output artifacts are placed.
     ///
     /// By default, this is `<project-root>/out`.

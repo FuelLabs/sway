@@ -18,6 +18,8 @@ pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
     tracing::info!(" Deploying {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
+    let verbose = get_test_config_from_env();
+
     tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(deploy(DeployCommand {
@@ -25,6 +27,7 @@ pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
                 "{}/src/e2e_vm_tests/test_programs/{}",
                 manifest_dir, file_name
             )),
+            terse_mode: !verbose,
             locked,
             unsigned: true,
             ..Default::default()
@@ -47,12 +50,15 @@ pub(crate) fn runs_on_node(
         contracts.push(contract);
     }
 
+    let verbose = get_test_config_from_env();
+
     let command = RunCommand {
         path: Some(format!(
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
         )),
         node_url: Some("http://127.0.0.1:4000".into()),
+        terse_mode: !verbose,
         contract: Some(contracts),
         locked,
         unsigned: true,
@@ -74,7 +80,7 @@ pub(crate) fn runs_in_vm(
     let storage = MemoryStorage::default();
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
-    let script = compile_to_bytes(file_name, locked, false).0.unwrap();
+    let script = compile_to_bytes(file_name, locked).unwrap();
     let maturity = 1;
     let script_data = script_data.unwrap_or_default();
     let block_height = (u32::MAX >> 1) as u64;
@@ -99,10 +105,12 @@ pub(crate) fn compile_and_capture_output(
 ) -> (Result<Compiled>, String) {
     tracing::info!(" Compiling {}", file_name);
 
-    let (result, mut output) = compile_to_bytes(file_name, locked, true);
+    let (result, mut output) = compile_to_bytes_verbose(file_name, locked, true, true);
 
     // If verbosity is requested then print it out.
-    tracing::debug!("{output}");
+    if get_test_config_from_env() {
+        tracing::info!("{output}");
+    }
 
     // Capture the result of the compilation (i.e., any errors Forc produces) and append to
     // the stdout from the compiler.
@@ -114,9 +122,14 @@ pub(crate) fn compile_and_capture_output(
 }
 
 /// Compiles the code and returns a result of the compilation,
-pub(crate) fn compile_to_bytes(
+pub(crate) fn compile_to_bytes(file_name: &str, locked: bool) -> Result<Compiled> {
+    compile_to_bytes_verbose(file_name, locked, get_test_config_from_env(), false).0
+}
+
+pub(crate) fn compile_to_bytes_verbose(
     file_name: &str,
     locked: bool,
+    verbose: bool,
     capture_output: bool,
 ) -> (Result<Compiled>, String) {
     use std::io::Read;
@@ -137,6 +150,7 @@ pub(crate) fn compile_to_bytes(
             manifest_dir, file_name
         )),
         locked,
+        terse_mode: !verbose,
         ..Default::default()
     });
 
@@ -231,4 +245,9 @@ fn emit_json_storage_slots(file_name: &str, compiled: &Compiled) -> Result<()> {
     let res = serde_json::to_writer_pretty(&file, &json_storage_slots);
     res?;
     Ok(())
+}
+
+fn get_test_config_from_env() -> bool {
+    let var_exists = |key| std::env::var(key).map(|_| true).unwrap_or(false);
+    var_exists("SWAY_TEST_VERBOSE")
 }

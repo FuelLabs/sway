@@ -19,6 +19,9 @@ pub struct Command {
     /// needs to be updated, Forc will exit with an error
     #[clap(long)]
     pub locked: bool,
+    /// Terse mode. Limited warning and error output.
+    #[clap(long = "terse", short = 't')]
+    pub terse_mode: bool,
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {
