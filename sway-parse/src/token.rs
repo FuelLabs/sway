@@ -378,33 +378,44 @@ fn lex_multiline_comment(
     // Lexing a multi-line comment.
     let _ = char_indices.next();
     let mut unclosed_indices = vec![index];
+
+    let unclosed_multiline_comment = |unclosed_indices: Vec<_>| {
+        let span = Span::new(
+            src.clone(),
+            *unclosed_indices.last().unwrap(),
+            src.len() - 1,
+            path.clone(),
+        )
+        .unwrap();
+        LexError {
+            kind: LexErrorKind::UnclosedMultilineComment { unclosed_indices },
+            span,
+        }
+    };
+
     loop {
-        match char_indices.next().zip(char_indices.next()) {
-            None => {
-                let span = Span::new(
-                    src.clone(),
-                    *unclosed_indices.last().unwrap(),
-                    src.len() - 1,
-                    path.clone(),
-                )
-                .unwrap();
-                return Err(LexError {
-                    kind: LexErrorKind::UnclosedMultilineComment { unclosed_indices },
-                    span,
-                });
-            }
-            Some(((_, '*'), (slash_ix, '/'))) => {
-                let start = unclosed_indices.pop().unwrap();
-                if unclosed_indices.is_empty() {
-                    // For the purposes of lexing,
-                    // nested multi-line comments constitute a single multi-line comment.
-                    // We could represent them as several ones, but that's unnecessary.
-                    let end = slash_ix + '/'.len_utf8();
-                    let span = Span::new(src.clone(), start, end, path.clone()).unwrap();
-                    return Ok(Comment { span }.into());
+        match char_indices.next() {
+            None => return Err(unclosed_multiline_comment(unclosed_indices)),
+            Some((_, '*')) => match char_indices.next() {
+                None => return Err(unclosed_multiline_comment(unclosed_indices)),
+                Some((slash_ix, '/')) => {
+                    let start = unclosed_indices.pop().unwrap();
+                    if unclosed_indices.is_empty() {
+                        // For the purposes of lexing,
+                        // nested multi-line comments constitute a single multi-line comment.
+                        // We could represent them as several ones, but that's unnecessary.
+                        let end = slash_ix + '/'.len_utf8();
+                        let span = Span::new(src.clone(), start, end, path.clone()).unwrap();
+                        return Ok(Comment { span }.into());
+                    }
                 }
-            }
-            Some(((next_idx, '/'), (_, '*'))) => unclosed_indices.push(next_idx),
+                Some(_) => {}
+            },
+            Some((next_index, '/')) => match char_indices.next() {
+                None => return Err(unclosed_multiline_comment(unclosed_indices)),
+                Some((_, '*')) => unclosed_indices.push(next_index),
+                Some(_) => {}
+            },
             Some(_) => {}
         }
     }
