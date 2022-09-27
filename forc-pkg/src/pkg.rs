@@ -1254,7 +1254,12 @@ where
     }
     repo.remote_anonymous(source.repo.as_str())?
         .fetch(&refspecs, Some(&mut fetch_opts), None)
-        .with_context(|| format!("failed to fetch `{}`", &source.repo))?;
+        .with_context(|| {
+            format!(
+                "failed to fetch `{}`. Check your connection or run in `--offline` mode",
+                &source.repo
+            )
+        })?;
 
     // Call the user function.
     let output = f(repo)?;
