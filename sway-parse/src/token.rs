@@ -904,7 +904,7 @@ mod tests {
                 doc_style: DocStyle::Outer,
                 span,
                 content_span
-            }))) if span.as_str() ==  "/// outer " && content_span.as_str() == " outer "
+            }))) if span.as_str() ==  "/// outer" && content_span.as_str() == " outer"
         );
         assert_eq!(tts.next(), None);
     }
