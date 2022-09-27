@@ -1,4 +1,4 @@
-use super::unifier::Unifier;
+use super::unifier::TypeUnifier;
 use super::*;
 use crate::concurrent_slab::ConcurrentSlab;
 use crate::declaration_engine::{
@@ -16,7 +16,7 @@ lazy_static! {
 
 #[derive(Debug, Default)]
 pub(crate) struct TypeEngine {
-    slab: ConcurrentSlab<TypeInfo>,
+    pub(super) slab: ConcurrentSlab<TypeInfo>,
     storage_only_types: ConcurrentSlab<TypeInfo>,
 }
 
@@ -178,26 +178,16 @@ impl TypeEngine {
         }
     }
 
+    // NOTE: this is used in a test
+    #[allow(dead_code)]
     pub(crate) fn unify(
         &self,
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        help_text: impl Into<String>,
+        help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        let unifier = Unifier::new(&self.slab, None);
-        unifier.unify(received, expected, span, help_text)
-    }
-
-    fn unify_with_self(
-        &self,
-        received: TypeId,
-        expected: TypeId,
-        self_type: TypeId,
-        span: &Span,
-        help_text: impl Into<String>,
-    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        let unifier = Unifier::new(&self.slab, Some(self_type));
+        let mut unifier = TypeUnifier::new_unifier(self, None);
         unifier.unify(received, expected, span, help_text)
     }
 
@@ -384,6 +374,10 @@ impl TypeEngine {
     }
 }
 
+pub(crate) fn type_engine() -> &'static TypeEngine {
+    &TYPE_ENGINE
+}
+
 pub fn insert_type(ty: TypeInfo) -> TypeId {
     TYPE_ENGINE.insert_type(ty)
 }
@@ -431,25 +425,6 @@ where
         namespace,
         module_path,
     )
-}
-
-pub fn unify_with_self(
-    a: TypeId,
-    b: TypeId,
-    self_type: TypeId,
-    span: &Span,
-    help_text: impl Into<String>,
-) -> (Vec<CompileWarning>, Vec<TypeError>) {
-    TYPE_ENGINE.unify_with_self(a, b, self_type, span, help_text)
-}
-
-pub(crate) fn unify(
-    a: TypeId,
-    b: TypeId,
-    span: &Span,
-    help_text: impl Into<String>,
-) -> (Vec<CompileWarning>, Vec<TypeError>) {
-    TYPE_ENGINE.unify(a, b, span, help_text)
 }
 
 pub fn to_typeinfo(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {

@@ -9,12 +9,13 @@ use crate::{
         Mode, TypeCheckContext, TypedAstNodeContent, TypedConstantDeclaration, TypedExpression,
         TypedExpressionVariant, TypedIntrinsicFunctionKind,
     },
+    type_engine,
     type_system::{
-        insert_type, look_up_type_id, set_type_as_storage_only, to_typeinfo, unify_with_self,
-        CopyTypes, TypeId, TypeMapping, TypeParameter,
+        insert_type, look_up_type_id, set_type_as_storage_only, to_typeinfo, CopyTypes, TypeId,
+        TypeMapping, TypeParameter,
     },
     CallPath, CompileError, CompileResult, FunctionDeclaration, ImplSelf, ImplTrait, Purity,
-    TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    TypeInfo, TypeUnifier, TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::TypedTraitFn;
@@ -499,6 +500,8 @@ fn type_check_trait_implementation(
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
     let mut processed_fns = std::collections::HashSet::<Ident>::new();
 
+    let mut unifier = TypeUnifier::new_unifier(type_engine(), Some(ctx.self_type()));
+
     // this map keeps track of the remaining functions in the
     // interface surface that still need to be implemented for the
     // trait to be fully implemented
@@ -579,10 +582,9 @@ fn type_check_trait_implementation(
                 });
             }
 
-            let (mut new_warnings, new_errors) = unify_with_self(
+            let (mut new_warnings, new_errors) = unifier.unify(
                 fn_decl_param_type,
                 fn_signature_param_type,
-                ctx.self_type(),
                 &fn_signature_param.type_span,
                 ctx.help_text(),
             );
@@ -619,10 +621,9 @@ fn type_check_trait_implementation(
 
         // unify the return type of the function declaration
         // with the return type of the function signature
-        let (mut new_warnings, new_errors) = unify_with_self(
+        let (mut new_warnings, new_errors) = unifier.unify(
             fn_decl.return_type,
             fn_signature.return_type,
-            ctx.self_type(),
             &fn_decl.return_type_span,
             ctx.help_text(),
         );

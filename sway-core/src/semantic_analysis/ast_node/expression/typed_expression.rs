@@ -820,7 +820,7 @@ impl TypedExpression {
 
         // if the return type cannot be cast into the annotation type then it is a type error
         let (mut new_warnings, new_errors) =
-            ctx.unify_with_self(typed_expression.return_type, &expr_span);
+            ctx.unify_with_type_annotation_and_self(typed_expression.return_type, &expr_span);
         warnings.append(&mut new_warnings);
         errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
 
@@ -1039,7 +1039,8 @@ impl TypedExpression {
             errors
         );
 
-        let (mut new_warnings, new_errors) = ctx.unify_with_self(block_return_type, &span);
+        let (mut new_warnings, new_errors) =
+            ctx.unify_with_type_annotation_and_self(block_return_type, &span);
         warnings.append(&mut new_warnings);
         errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
         let exp = TypedExpression {
@@ -1813,7 +1814,7 @@ impl TypedExpression {
             let (mut new_warnings, new_errors) = ctx
                 .by_ref()
                 .with_type_annotation(elem_type)
-                .unify_with_self(typed_elem.return_type, &typed_elem.span);
+                .unify_with_type_annotation_and_self(typed_elem.return_type, &typed_elem.span);
             let no_warnings = new_warnings.is_empty();
             let no_errors = new_errors.is_empty();
             warnings.append(&mut new_warnings);

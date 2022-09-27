@@ -180,7 +180,7 @@ impl TypedFunctionDeclaration {
                 .by_ref()
                 .with_type_annotation(return_type)
                 .with_help_text("Return statement must return the declared function return type.")
-                .unify_with_self(stmt.return_type, &stmt.span);
+                .unify_with_type_annotation_and_self(stmt.return_type, &stmt.span);
             warnings.append(&mut new_warnings);
             errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
         }

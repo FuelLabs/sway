@@ -8,8 +8,7 @@ use crate::{
         namespace::Namespace,
         IsConstant, TypedEnumVariant, TypedExpression, TypedExpressionVariant, VariableMutability,
     },
-    type_system::unify,
-    CompileResult, Ident, Literal, TypeId,
+    type_engine, CompileResult, Ident, Literal, TypeId, TypeUnifier,
 };
 
 use sway_types::span::Span;
@@ -77,7 +76,8 @@ pub(crate) fn matcher(
     } = scrutinee;
 
     // unify the type of the scrutinee with the type of the expression
-    let (mut new_warnings, new_errors) = unify(type_id, exp.return_type, &span, "");
+    let mut unifier = TypeUnifier::new_unifier(type_engine(), None);
+    let (mut new_warnings, new_errors) = unifier.unify(type_id, exp.return_type, &span, "");
     warnings.append(&mut new_warnings);
     errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
 

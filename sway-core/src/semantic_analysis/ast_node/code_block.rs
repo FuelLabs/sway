@@ -73,7 +73,7 @@ impl TypedCodeBlock {
             })
             .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
 
-        let (new_warnings, new_errors) = ctx.unify_with_self(block_type, &span);
+        let (new_warnings, new_errors) = ctx.unify_with_type_annotation_and_self(block_type, &span);
         warnings.extend(new_warnings);
         errors.extend(new_errors.into_iter().map(|type_error| type_error.into()));
 

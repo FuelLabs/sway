@@ -2,11 +2,12 @@ use crate::{
     namespace::Path,
     parse_tree::declaration::Purity,
     semantic_analysis::{ast_node::Mode, Namespace},
+    type_engine,
     type_system::{
-        insert_type, monomorphize, unify_with_self, CopyTypes, EnforceTypeArguments,
-        MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
+        insert_type, monomorphize, CopyTypes, EnforceTypeArguments, MonomorphizeHelper,
+        TypeArgument, TypeId, TypeInfo,
     },
-    CompileResult, CompileWarning, TypeError,
+    CompileResult, CompileWarning, TypeError, TypeUnifier,
 };
 use sway_types::{span::Span, Ident};
 
@@ -226,17 +227,12 @@ impl<'ns> TypeCheckContext<'ns> {
 
     /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the
     /// type annotation, self type and help text.
-    pub(crate) fn unify_with_self(
+    pub(crate) fn unify_with_type_annotation_and_self(
         &self,
         ty: TypeId,
         span: &Span,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        unify_with_self(
-            ty,
-            self.type_annotation(),
-            self.self_type(),
-            span,
-            self.help_text(),
-        )
+        let mut unifier = TypeUnifier::new_unifier(type_engine(), Some(self.self_type()));
+        unifier.unify(ty, self.type_annotation(), span, self.help_text())
     }
 }

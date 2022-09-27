@@ -28,6 +28,7 @@ pub use type_id::*;
 pub use type_info::*;
 pub(crate) use type_mapping::*;
 pub use type_parameter::*;
+pub(crate) use unifier::*;
 
 use crate::error::*;
 use std::fmt::Debug;

@@ -15,6 +15,8 @@ pub(crate) fn instantiate_if_expression(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let mut unifier = TypeUnifier::new_unifier(type_engine(), Some(self_type));
+
     // if the branch aborts, then its return type doesn't matter.
     let then_deterministically_aborts = then.deterministically_aborts();
     if !then_deterministically_aborts {
@@ -24,10 +26,9 @@ pub(crate) fn instantiate_if_expression(
         } else {
             insert_type(TypeInfo::Tuple(vec![]))
         };
-        let (mut new_warnings, new_errors) = unify_with_self(
+        let (mut new_warnings, new_errors) = unifier.unify(
             then.return_type,
             ty_to_check,
-            self_type,
             &then.span,
             "`then` branch must return expected type.",
         );
@@ -44,10 +45,9 @@ pub(crate) fn instantiate_if_expression(
         };
         if !else_deterministically_aborts {
             // if this does not deterministically_abort, check the block return type
-            let (mut new_warnings, new_errors) = unify_with_self(
+            let (mut new_warnings, new_errors) = unifier.unify(
                 r#else.return_type,
                 ty_to_check,
-                self_type,
                 &r#else.span,
                 "`else` branch must return expected type.",
             );
@@ -63,10 +63,9 @@ pub(crate) fn instantiate_if_expression(
         .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
     // if there is a type annotation, then the else branch must exist
     if !else_deterministically_aborts && !then_deterministically_aborts {
-        let (mut new_warnings, new_errors) = unify_with_self(
+        let (mut new_warnings, new_errors) = unifier.unify(
             then.return_type,
             r#else_ret_ty,
-            self_type,
             &span,
             "The two branches of an if expression must return the same type.",
         );

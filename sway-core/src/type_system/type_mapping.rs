@@ -316,8 +316,9 @@ impl TypeMapping {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let mut unifier = TypeUnifier::new_unifier(type_engine(), None);
         for ((_, destination_type), type_arg) in self.mapping.iter().zip(type_arguments.iter()) {
-            let (mut new_warnings, new_errors) = unify(
+            let (mut new_warnings, new_errors) = unifier.unify(
                 *destination_type,
                 type_arg.type_id,
                 &type_arg.span,
