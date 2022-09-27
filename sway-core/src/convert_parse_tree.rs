@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    type_system::{resolve_type, TraitConstraint, TypeArgument, TypeBinding, TypeParameter},
+    type_system::{to_typeinfo, TraitConstraint, TypeArgument, TypeBinding, TypeParameter},
     WhileLoopExpression,
 };
 
@@ -315,7 +315,7 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
         ItemKind::Fn(item_fn) => {
             let function_declaration = item_fn_to_function_declaration(ec, item_fn, attributes)?;
             for param in &function_declaration.parameters {
-                if let Ok(ty) = resolve_type(param.type_id, &param.type_span) {
+                if let Ok(ty) = to_typeinfo(param.type_id, &param.type_span) {
                     if matches!(ty, TypeInfo::SelfType) {
                         let error = ConvertParseTreeError::SelfParameterNotAllowedForFreeFn {
                             span: param.type_span.clone(),

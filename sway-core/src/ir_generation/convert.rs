@@ -1,7 +1,7 @@
 use crate::{
     error::CompileError,
     parse_tree::Literal,
-    type_system::{resolve_type, TypeId, TypeInfo},
+    type_system::{to_typeinfo, TypeId, TypeInfo},
 };
 
 use super::types::{create_enum_aggregate, create_tuple_aggregate};
@@ -51,7 +51,7 @@ pub(super) fn convert_resolved_typeid(
     // other than String eventually?  IrError?
     convert_resolved_type(
         context,
-        &resolve_type(*ast_type, span)
+        &to_typeinfo(*ast_type, span)
             .map_err(|ty_err| CompileError::InternalOwned(format!("{ty_err:?}"), span.clone()))?,
         span,
     )

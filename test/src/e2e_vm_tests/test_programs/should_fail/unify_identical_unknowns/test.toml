@@ -1,8 +1,5 @@
 category = "fail"
 
-# check: impl Foo for NonExistant {
-# nextln: $()Could not find symbol "NonExistant" in this scope.
+# check: $()Could not find symbol "NonExistant" in this scope.
 
-# check: impl Foo for NonExistant {
-# nextln: $()Unknown type name "NonExistant".
-
+# check: $()Unknown type name "NonExistant".
