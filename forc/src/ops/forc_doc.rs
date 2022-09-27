@@ -1,36 +1,34 @@
 use crate::cli::DocCommand;
-use anyhow::{bail, Result};
-use forc_util::find_manifest_dir;
-use std::{fs, sync::Arc};
-use sway_core::BuildConfig;
-use sway_utils::get_sway_files;
+use anyhow::Result;
+use forc_pkg::{self as pkg, ManifestFile};
+use std::path::PathBuf;
 
 /// Main method for `forc doc`.
 pub fn doc(command: DocCommand) -> Result<()> {
-    // compile the workspace documentation and store it in `target/doc`
-    match find_manifest_dir(&command.manifest_path) {
-        Some(path) => {
-            let manifest_path = path.clone();
-            let files = get_sway_files(path);
+    let DocCommand {
+        manifest_path,
+        open: open_result,
+        offline_mode: offline,
+        silent_mode,
+        locked,
+    } = command;
 
-            for file in files {
-                if let Ok(file_content) = fs::read_to_string(&file) {
-                    let _file_content: Arc<str> = Arc::from(file_content);
-                    let _build_config = BuildConfig::root_from_file_name_and_manifest_path(
-                        file.clone(),
-                        manifest_path.clone(),
-                    );
-                    // make function to retreive doc comment spans
-                }
-            }
-            // check if a `target/doc` folder exists, if not then create one
-            // organize doc comment information into `html` files
-
-            // check if the user wants to open the doc in the browser
-            if command.open {}
-        }
-        None => bail!("failed to locate manifest file"),
+    let dir = if let Some(ref path) = manifest_path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir()?
     };
+    let manifest = ManifestFile::from_dir(&dir)?;
+    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
+
+    let compilation = pkg::check(&plan, silent_mode)?;
+    match compilation.value {
+        Some((_parse_program, _typed_program_opt)) => {}
+        None => {}
+    }
+
+    // check if the user wants to open the doc in the browser
+    if open_result {}
 
     Ok(())
 }
