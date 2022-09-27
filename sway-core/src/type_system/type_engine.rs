@@ -54,6 +54,13 @@ impl TypeEngine {
         }
     }
 
+    /// Replaces the value that the `old_type_id` was pointing to with the value
+    /// that the `new_type_id` points to.
+    fn replace_type_id(&self, old_type_id: TypeId, new_type_id: TypeId) {
+        self.slab
+            .blind_replace(*old_type_id, self.look_up_type_id(new_type_id));
+    }
+
     /// Performs a recursive lookup of `id` into the [TypeEngine] until the
     /// lookup yields a [TypeInfo] variant other than [TypeInfo::Ref(..)].
     fn set_type_as_storage_only(&self, id: TypeId) {
@@ -507,8 +514,8 @@ impl TypeEngine {
     /// `expected`.
     fn unify_with_self(
         &self,
-        mut received: TypeId,
-        mut expected: TypeId,
+        received: TypeId,
+        expected: TypeId,
         self_type: TypeId,
         span: &Span,
         help_text: impl Into<String>,
@@ -656,11 +663,6 @@ impl TypeEngine {
                         }
                     }
                 }
-                TypeInfo::Ref(new_type_id, _) => {
-                    // replace the old type id with the new type id
-                    te.slab
-                        .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
-                }
                 TypeInfo::Array(type_id, n, initial_type_id) => {
                     append!(
                         te.resolve_type(
@@ -722,7 +724,7 @@ impl TypeEngine {
             errors
         );
 
-        return (warnings, errors);
+        (warnings, errors)
     }
 
     /// Replace any instances of the [TypeInfo::SelfType] variant with
@@ -730,7 +732,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     fn resolve_type_with_self(
         &self,
-        mut type_id: TypeId,
+        type_id: TypeId,
         self_type: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
@@ -770,6 +772,10 @@ pub(crate) fn look_up_type_id_raw(id: TypeId) -> TypeInfo {
     TYPE_ENGINE.look_up_type_id_raw(id)
 }
 
+pub(crate) fn replace_type_id(old_type_id: TypeId, new_type_id: TypeId) {
+    TYPE_ENGINE.replace_type_id(old_type_id, new_type_id);
+}
+
 pub fn set_type_as_storage_only(id: TypeId) {
     TYPE_ENGINE.set_type_as_storage_only(id);
 }
@@ -804,22 +810,22 @@ where
 }
 
 pub fn unify_with_self(
-    a: TypeId,
-    b: TypeId,
+    received: TypeId,
+    expected: TypeId,
     self_type: TypeId,
     span: &Span,
     help_text: impl Into<String>,
 ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-    TYPE_ENGINE.unify_with_self(a, b, self_type, span, help_text)
+    TYPE_ENGINE.unify_with_self(received, expected, self_type, span, help_text)
 }
 
 pub(crate) fn unify(
-    a: TypeId,
-    b: TypeId,
+    received: TypeId,
+    expected: TypeId,
     span: &Span,
     help_text: impl Into<String>,
 ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-    TYPE_ENGINE.unify(a, b, span, help_text)
+    TYPE_ENGINE.unify(received, expected, span, help_text)
 }
 
 pub fn to_typeinfo(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {

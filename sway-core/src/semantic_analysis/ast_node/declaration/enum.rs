@@ -185,7 +185,7 @@ impl CopyTypes for TypedEnumVariant {
 }
 
 impl ReplaceSelfType for TypedEnumVariant {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&self, self_type: TypeId) {
         self.type_id.replace_self_type(self_type);
     }
 }
@@ -198,24 +198,18 @@ impl TypedEnumVariant {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        // create the type ids
-        let (initial_type_id, enum_variant_type) = insert_type_with_initial(variant.type_info);
-
-        // resolve the enum variant type
+        // resolve the type of the variant
+        let (initial_type_id, type_id) = insert_type_with_initial(variant.type_info);
         append!(
-            ctx.resolve_type_with_self(
-                enum_variant_type,
-                &variant.span,
-                EnforceTypeArguments::Yes,
-                None
-            ),
+            ctx.resolve_type_with_self(type_id, &variant.span, EnforceTypeArguments::Yes, None),
             warnings,
             errors
         );
+
         ok(
             TypedEnumVariant {
                 name: variant.name.clone(),
-                type_id: enum_variant_type,
+                type_id,
                 initial_type_id,
                 type_span: variant.type_span.clone(),
                 tag: variant.tag,

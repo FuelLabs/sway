@@ -50,7 +50,7 @@ impl Spanned for TypeParameter {
 }
 
 impl ReplaceSelfType for TypeParameter {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&self, self_type: TypeId) {
         self.type_id.replace_self_type(self_type);
     }
 }
@@ -68,23 +68,33 @@ impl TypeParameter {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        // check that the trait constraints are empty
         if !type_parameter.trait_constraints.is_empty() {
             errors.push(CompileError::WhereClauseNotYetSupported {
                 span: type_parameter.name_ident.span(),
             });
             return err(warnings, errors);
         }
+
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
+
+        // create a new type id
         let type_id = insert_type(TypeInfo::UnknownGeneric {
             name: type_parameter.name_ident.clone(),
         });
-        let type_parameter_decl = TypedDeclaration::GenericTypeForFunctionScope {
-            name: type_parameter.name_ident.clone(),
-            type_id,
-        };
+
+        // insert the type parameter into the namespace as a declaration
         ctx.namespace
-            .insert_symbol(type_parameter.name_ident.clone(), type_parameter_decl)
+            .insert_symbol(
+                type_parameter.name_ident.clone(),
+                TypedDeclaration::GenericTypeForFunctionScope {
+                    name: type_parameter.name_ident.clone(),
+                    type_id,
+                },
+            )
             .ok(&mut warnings, &mut errors);
+
         let type_parameter = TypeParameter {
             name_ident: type_parameter.name_ident,
             type_id,

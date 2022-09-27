@@ -101,11 +101,11 @@ impl TypedFunctionDeclaration {
             purity,
             ..
         } = fn_decl;
+
         is_snake_case(&name).ok(&mut warnings, &mut errors);
 
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
-
         let mut ctx = ctx.scoped(&mut fn_namespace).with_purity(purity);
 
         // type check the type parameters
@@ -132,13 +132,11 @@ impl TypedFunctionDeclaration {
             ));
         }
 
-        // create the type ids
+        // resolve the return type
         let (initial_return_type, return_type) = insert_type_with_initial(return_type);
-
-        // type check the return type
         append!(
             ctx.resolve_type_with_self(
-                initial_return_type,
+                return_type,
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None

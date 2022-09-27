@@ -177,7 +177,7 @@ impl CopyTypes for TypedStructField {
 }
 
 impl ReplaceSelfType for TypedStructField {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&self, self_type: TypeId) {
         self.type_id.replace_self_type(self_type);
     }
 }
@@ -187,10 +187,8 @@ impl TypedStructField {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        // create the type ids
-        let (initial_type_id, type_id) = insert_type_with_initial(field.type_info);
-
         // resolve the type of the field
+        let (initial_type_id, type_id) = insert_type_with_initial(field.type_info);
         append!(
             ctx.resolve_type_with_self(type_id, &field.type_span, EnforceTypeArguments::Yes, None),
             warnings,

@@ -143,11 +143,9 @@ impl TypedIntrinsicFunctionKind {
                 }
                 let targ = type_arguments[0].clone();
 
-                // create the type ids
+                // resolve the type of the argument
                 let (initial_type_id, type_id) =
                     insert_type_with_initial(to_typeinfo(targ.type_id, &targ.span).unwrap());
-
-                // resolve the type
                 append!(
                     ctx.resolve_type_with_self(
                         type_id,
@@ -183,11 +181,9 @@ impl TypedIntrinsicFunctionKind {
                 }
                 let targ = type_arguments[0].clone();
 
-                // create the type ids
+                // resolve the type of the argument
                 let (initial_type_id, type_id) =
                     insert_type_with_initial(to_typeinfo(targ.type_id, &targ.span).unwrap());
-
-                // resolve the type
                 append!(
                     ctx.resolve_type_with_self(
                         type_id,
@@ -342,11 +338,9 @@ impl TypedIntrinsicFunctionKind {
 
                 let targ = type_arguments[0].clone();
 
-                // create the type ids
+                // resolve the type of the argument
                 let (initial_type_id, type_id) =
                     insert_type_with_initial(to_typeinfo(targ.type_id, &targ.span).unwrap());
-
-                // resolve the type
                 append!(
                     ctx.resolve_type_with_self(
                         type_id,
@@ -500,11 +494,9 @@ impl TypedIntrinsicFunctionKind {
                         .with_help_text("")
                         .with_type_annotation(insert_type(TypeInfo::Unknown));
 
-                    // create the type ids
+                    // resolve the type of the argument
                     let (initial_type_id, type_id) =
                         insert_type_with_initial(to_typeinfo(targ.type_id, &targ.span).unwrap());
-
-                    // resolve the type
                     append!(
                         ctx.resolve_type_with_self(
                             type_id,

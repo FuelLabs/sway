@@ -51,6 +51,10 @@ impl TypedTraitDeclaration {
 
         is_upper_camel_case(&trait_decl.name).ok(&mut warnings, &mut errors);
 
+        // A temporary namespace for checking within the trait's scope.
+        let mut trait_namespace = ctx.namespace.clone();
+        let ctx = ctx.scoped(&mut trait_namespace);
+
         // type check the interface surface
         let interface_surface = check!(
             type_check_interface_surface(trait_decl.interface_surface.to_vec(), ctx.namespace),
@@ -58,10 +62,6 @@ impl TypedTraitDeclaration {
             warnings,
             errors
         );
-
-        // A temporary namespace for checking within the trait's scope.
-        let mut trait_namespace = ctx.namespace.clone();
-        let ctx = ctx.scoped(&mut trait_namespace);
 
         // Recursively handle supertraits: make their interfaces and methods available to this trait
         check!(
@@ -85,6 +85,7 @@ impl TypedTraitDeclaration {
                 .map(|x| x.to_dummy_func(Mode::NonAbi))
                 .collect(),
         );
+
         // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
         let ctx = ctx.with_self_type(insert_type(TypeInfo::SelfType));
         let _methods = check!(

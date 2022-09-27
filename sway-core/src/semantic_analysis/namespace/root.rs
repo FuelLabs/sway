@@ -75,7 +75,7 @@ impl Root {
     pub(crate) fn find_method_for_type(
         &mut self,
         mod_path: &Path,
-        mut type_id: TypeId,
+        type_id: TypeId,
         method_prefix: &Path,
         method_name: &Ident,
         self_type: TypeId,

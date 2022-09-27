@@ -82,6 +82,9 @@ impl TypedImplTrait {
             errors
         );
 
+        // Update the context with the new `self` type.
+        let ctx = ctx.with_self_type(implementing_for_type_id);
+
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
@@ -93,9 +96,6 @@ impl TypedImplTrait {
             warnings,
             errors
         );
-
-        // Update the context with the new `self` type.
-        let ctx = ctx.with_self_type(implementing_for_type_id);
 
         let impl_trait = match ctx
             .namespace
@@ -506,6 +506,7 @@ fn type_check_trait_implementation(
         .iter()
         .map(|decl| (&decl.name, decl))
         .collect();
+
     for fn_decl in functions {
         let mut ctx = ctx
             .by_ref()

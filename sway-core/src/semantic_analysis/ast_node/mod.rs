@@ -228,10 +228,8 @@ impl TypedAstNode {
                             body,
                             is_mutable,
                         }) => {
-                            // create type id
+                            // resolve the type of the type ascription
                             let type_ascription = insert_type(type_ascription);
-
-                            // resolve the type
                             append!(
                                 ctx.resolve_type_with_self(
                                     type_ascription,
@@ -539,7 +537,7 @@ fn type_check_interface_surface(
                         is_mutable,
                         mutability_span,
                         type_id,
-                        initial_type_id: type_id,
+                        initial_type_id,
                         type_span,
                     }
                 })
@@ -580,29 +578,31 @@ fn type_check_trait_methods(
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut methods_buf = Vec::new();
-    for FunctionDeclaration {
-        body,
-        name: fn_name,
-        parameters,
-        span,
-        return_type,
-        type_parameters,
-        return_type_span,
-        purity,
-        ..
-    } in methods
-    {
+    for method in methods.into_iter() {
+        let FunctionDeclaration {
+            body,
+            name: fn_name,
+            parameters,
+            span,
+            return_type,
+            type_parameters,
+            return_type_span,
+            purity,
+            ..
+        } = method;
+
         // A context while checking the signature where `self_type` refers to `SelfType`.
         let mut sig_ctx = ctx.by_ref().with_self_type(insert_type(TypeInfo::SelfType));
+
+        // type check the parameters
         parameters.clone().into_iter().for_each(|param| {
             let FunctionParameter {
                 name,
                 is_reference,
                 is_mutable,
-                ref type_id,
+                type_id,
                 ..
             } = param;
-            let type_id = *type_id;
             append!(
                 sig_ctx.resolve_type_with_self(
                     type_id,
@@ -629,6 +629,7 @@ fn type_check_trait_methods(
                 })),
             );
         });
+
         // check the generic types in the arguments, make sure they are in
         // the type scope
         let mut generic_params_buf_for_error_message = Vec::new();
@@ -637,11 +638,12 @@ fn type_check_trait_methods(
                 generic_params_buf_for_error_message.push(name.to_string());
             }
         }
+
         let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
-        for FunctionParameter {
-            ref type_id, name, ..
-        } in parameters.iter()
-        {
+
+        for parameter in parameters.iter() {
+            let FunctionParameter { type_id, name, .. } = parameter;
+
             let span = name.span().clone();
             if let TypeInfo::Custom { name, .. } = look_up_type_id(*type_id) {
                 let args_span = parameters.iter().fold(
@@ -668,17 +670,19 @@ fn type_check_trait_methods(
                 }
             }
         }
+
         let parameters = parameters
             .into_iter()
             .map(|param| {
                 let FunctionParameter {
                     name,
-                    type_id,
+                    type_id: initial_type_id,
                     is_reference,
                     is_mutable,
                     mutability_span,
                     type_span,
                 } = param;
+                let type_id = insert_type(look_up_type_id(initial_type_id));
                 append!(
                     sig_ctx.resolve_type_with_self(
                         type_id,
@@ -695,7 +699,7 @@ fn type_check_trait_methods(
                     is_mutable,
                     mutability_span,
                     type_id,
-                    initial_type_id: type_id,
+                    initial_type_id,
                     type_span,
                 }
             })

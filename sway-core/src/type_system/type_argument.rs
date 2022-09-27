@@ -54,7 +54,7 @@ impl TypeArgument {
 }
 
 impl ReplaceSelfType for TypeArgument {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&self, self_type: TypeId) {
         self.type_id.replace_self_type(self_type);
     }
 }

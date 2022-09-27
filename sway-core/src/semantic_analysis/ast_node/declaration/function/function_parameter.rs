@@ -50,39 +50,40 @@ impl TypedFunctionParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        // create the type ids
-        let initial_type_id = parameter.type_id;
-        let type_id = insert_type(look_up_type_id(initial_type_id));
+        let FunctionParameter {
+            name,
+            is_reference,
+            is_mutable,
+            mutability_span,
+            type_id: initial_type_id,
+            type_span,
+        } = parameter;
+
+        println!("self type: {}", ctx.self_type());
 
         // resolve the type of the parameter
+        let type_id = insert_type(look_up_type_id(initial_type_id));
         append!(
-            ctx.resolve_type_with_self(
-                parameter.type_id,
-                &parameter.type_span,
-                EnforceTypeArguments::Yes,
-                None
-            ),
+            ctx.resolve_type_with_self(type_id, &type_span, EnforceTypeArguments::Yes, None),
             warnings,
             errors
         );
+        println!("param: {}", type_id);
 
-        let mutability =
-            convert_to_variable_immutability(parameter.is_reference, parameter.is_mutable);
+        let mutability = convert_to_variable_immutability(is_reference, is_mutable);
         if mutability == VariableMutability::Mutable {
-            errors.push(CompileError::MutableParameterNotSupported {
-                param_name: parameter.name,
-            });
+            errors.push(CompileError::MutableParameterNotSupported { param_name: name });
             return err(warnings, errors);
         }
         ctx.namespace.insert_symbol(
-            parameter.name.clone(),
+            name.clone(),
             TypedDeclaration::VariableDeclaration(Box::new(TypedVariableDeclaration {
-                name: parameter.name.clone(),
+                name: name.clone(),
                 body: TypedExpression {
                     expression: TypedExpressionVariant::FunctionParameter,
                     return_type: type_id,
                     is_constant: IsConstant::No,
-                    span: parameter.name.span(),
+                    span: name.span(),
                 },
                 mutability,
                 type_ascription: type_id,
@@ -90,13 +91,13 @@ impl TypedFunctionParameter {
             })),
         );
         let parameter = TypedFunctionParameter {
-            name: parameter.name,
-            is_reference: parameter.is_reference,
-            is_mutable: parameter.is_mutable,
-            mutability_span: parameter.mutability_span,
+            name,
+            is_reference,
+            is_mutable,
+            mutability_span,
             type_id,
             initial_type_id,
-            type_span: parameter.type_span,
+            type_span,
         };
         ok(parameter, warnings, errors)
     }
