@@ -50,10 +50,14 @@ pub fn comment_map_from_src(input: Arc<str>) -> Result<(CommentMap, usize), Form
 
     // pass the input through lexer
     let mut start = 0;
-    if input.starts_with('\n') {
-        let mut input_chars = input.chars().peekable();
-        while let Some('\n') = input_chars.next() {
-            start += 1
+    for (char_index, curr_char) in input.chars().enumerate() {
+        if char_index == 0 && !curr_char.is_whitespace() {
+            break;
+        }
+        if curr_char.is_whitespace() {
+            start += 1;
+        } else {
+            break;
         }
     }
     let commented_token_stream = lex_commented(&input, start, input.len(), None)?;
