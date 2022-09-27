@@ -133,12 +133,7 @@ pub fn git_checkouts_directory() -> PathBuf {
     user_forc_directory().join("git").join("checkouts")
 }
 
-pub fn print_on_success(
-    silent_mode: bool,
-    proj_name: &str,
-    warnings: &[CompileWarning],
-    tree_type: &TreeType,
-) {
+pub fn print_on_success(proj_name: &str, warnings: &[CompileWarning], tree_type: &TreeType) {
     let type_str = match &tree_type {
         TreeType::Script {} => "script",
         TreeType::Contract {} => "contract",
@@ -146,9 +141,7 @@ pub fn print_on_success(
         TreeType::Library { .. } => "library",
     };
 
-    if !silent_mode {
-        warnings.iter().for_each(format_warning);
-    }
+    warnings.iter().for_each(format_warning);
 
     if warnings.is_empty() {
         println_green_err(&format!("  Compiled {} {:?}.", type_str, proj_name));
@@ -167,10 +160,8 @@ pub fn print_on_success(
     }
 }
 
-pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[CompileWarning]) {
-    if !silent_mode {
-        warnings.iter().for_each(format_warning);
-    }
+pub fn print_on_success_library(proj_name: &str, warnings: &[CompileWarning]) {
+    warnings.iter().for_each(format_warning);
 
     if warnings.is_empty() {
         println_green_err(&format!("  Compiled library {:?}.", proj_name));
@@ -188,13 +179,11 @@ pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[
     }
 }
 
-pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: &[CompileError]) {
+pub fn print_on_failure(warnings: &[CompileWarning], errors: &[CompileError]) {
     let e_len = errors.len();
 
-    if !silent_mode {
-        warnings.iter().for_each(format_warning);
-        errors.iter().for_each(format_err);
-    }
+    warnings.iter().for_each(format_warning);
+    errors.iter().for_each(format_err);
 
     println_red_err(&format!(
         "  Aborting due to {} {}.",

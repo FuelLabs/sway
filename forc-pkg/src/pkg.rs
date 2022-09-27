@@ -1830,9 +1830,8 @@ pub fn compile(
         "produce `sway_core::BuildConfig`",
         sway_build_config(manifest.dir(), &entry_path, build_profile,)?
     );
-    let silent_mode = build_profile.silent;
     let fail = |warnings, errors| {
-        print_on_failure(silent_mode, warnings, errors);
+        print_on_failure(warnings, errors);
         bail!("Failed to compile {}", pkg.name);
     };
 
@@ -1865,7 +1864,7 @@ pub fn compile(
             return fail(&ast_res.warnings, &ast_res.errors);
         }
         TreeType::Library { .. } => {
-            print_on_success_library(silent_mode, &pkg.name, &ast_res.warnings);
+            print_on_success_library(&pkg.name, &ast_res.warnings);
             let bytecode = vec![];
             let lib_namespace = typed_program.root.namespace.clone();
             let compiled = Compiled {
@@ -1894,7 +1893,7 @@ pub fn compile(
             unreachable!("compilation of library program types is handled above")
         }
         Some(BytecodeOrLib::Bytecode(bytes)) if bc_res.errors.is_empty() => {
-            print_on_success(silent_mode, &pkg.name, &bc_res.warnings, &tree_type);
+            print_on_success(&pkg.name, &bc_res.warnings, &tree_type);
             let bytecode = bytes;
             let compiled = Compiled {
                 json_abi_program,
@@ -1931,8 +1930,6 @@ pub struct BuildOptions {
     /// Offline mode, prevents Forc from using the network when managing dependencies.
     /// Meaning it will only try to use previously downloaded dependencies.
     pub offline_mode: bool,
-    /// Silent mode. Don't output any warnings or errors to the command line.
-    pub silent_mode: bool,
     /// The directory in which the sway compiler output artifacts are placed.
     ///
     /// By default, this is `<project-root>/out`.
@@ -1981,7 +1978,6 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
         print_intermediate_asm,
         print_ir,
         offline_mode,
-        silent_mode,
         output_directory,
         minify_json_abi,
         minify_json_storage_slots,
@@ -2038,7 +2034,6 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
     profile.print_ir |= print_ir;
     profile.print_finalized_asm |= print_finalized_asm;
     profile.print_intermediate_asm |= print_intermediate_asm;
-    profile.silent |= silent_mode;
     profile.time_phases |= time_phases;
     profile.generate_logged_types |= generate_logged_types;
 
@@ -2148,7 +2143,7 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
         {
             Ok(o) => o,
             Err(errs) => {
-                print_on_failure(profile.silent, &[], &errs);
+                print_on_failure(&[], &errs);
                 bail!("Failed to compile {}", pkg.name);
             }
         };
@@ -2310,7 +2305,6 @@ fn update_json_type_declaration(
 /// Compile the entire forc package and return a typed program, if any.
 pub fn check(
     plan: &BuildPlan,
-    silent_mode: bool,
 ) -> anyhow::Result<CompileResult<(ParseProgram, Option<TypedProgram>)>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
@@ -2326,7 +2320,7 @@ pub fn check(
             value,
             mut warnings,
             mut errors,
-        } = parse(manifest, silent_mode)?;
+        } = parse(manifest)?;
 
         let parse_program = match value {
             None => return Ok(CompileResult::new(None, warnings, errors)),
@@ -2361,12 +2355,8 @@ pub fn check(
 }
 
 /// Returns a parsed AST from the supplied [ManifestFile]
-pub fn parse(
-    manifest: &ManifestFile,
-    silent_mode: bool,
-) -> anyhow::Result<CompileResult<ParseProgram>> {
+pub fn parse(manifest: &ManifestFile) -> anyhow::Result<CompileResult<ParseProgram>> {
     let profile = BuildProfile {
-        silent: silent_mode,
         ..BuildProfile::debug()
     };
     let source = manifest.entry_string()?;

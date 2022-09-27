@@ -143,7 +143,6 @@ impl Session {
         self.runnables.clear();
 
         let manifest_dir = PathBuf::from(uri.path());
-        let silent_mode = true;
         let locked = false;
         let offline = false;
 
@@ -155,7 +154,7 @@ impl Session {
                     value,
                     warnings,
                     errors,
-                }) = pkg::check(&plan, silent_mode)
+                }) = pkg::check(&plan)
                 {
                     // FIXME(Centril): Refactor parse_ast_to_tokens + parse_ast_to_typed_tokens
                     // due to the new API.

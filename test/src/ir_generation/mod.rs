@@ -250,7 +250,6 @@ fn compile_core() -> namespace::Module {
     let check_cmd = forc::cli::CheckCommand {
         path: Some(libcore_root_dir),
         offline_mode: true,
-        silent_mode: true,
         locked: false,
     };
 

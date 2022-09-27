@@ -8,7 +8,6 @@ pub fn check(command: CheckCommand) -> Result<CompileResult<sway_core::TypedProg
     let CheckCommand {
         path,
         offline_mode: offline,
-        silent_mode,
         locked,
     } = command;
 
@@ -20,5 +19,5 @@ pub fn check(command: CheckCommand) -> Result<CompileResult<sway_core::TypedProg
     let manifest = ManifestFile::from_dir(&this_dir)?;
     let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
 
-    Ok(pkg::check(&plan, silent_mode)?.flat_map(|(_, tp)| CompileResult::new(tp, vec![], vec![])))
+    Ok(pkg::check(&plan)?.flat_map(|(_, tp)| CompileResult::new(tp, vec![], vec![])))
 }
