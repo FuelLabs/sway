@@ -460,7 +460,7 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
         .with_target(false)
         .with_writer(StdioTracingWriter);
 
-    // If log level or verbosity is set, it overrides the RUST_LOG setting
+    // If log level, verbosity, or silent mode is set, it overrides the RUST_LOG setting
     if let Some(level_filter) = level_filter {
         builder.with_max_level(level_filter).init();
     } else {
