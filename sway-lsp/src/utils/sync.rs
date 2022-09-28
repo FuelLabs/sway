@@ -2,6 +2,7 @@
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use std::{
+    collections::HashMap,
     fs,
     path::{Path, PathBuf},
 };
@@ -20,7 +21,7 @@ fn feature() {
     // 2. deserialize the manifest file and loop through the dependancies
     // 3. check if the dependancy is specifying a 'path'
     // 4. if so, check if the path is relative
-    // 5. convert the relative path to an absolute path, with the temp_dir as the prefix
+    // 5. convert the relative path to an absolute path
     // 6. edit the toml entry using toml_edit with the absolute path
     // 7. save the manifest to temp_dir/Forc.toml
 
@@ -32,21 +33,56 @@ fn feature() {
 
     use forc_pkg::manifest::*;
 
+    // Key = name of the dependancy that has been specified will a relative path
+    // Value = the absolute path that should be used to overwrite the relateive path
+    let mut dependency_map: HashMap<String, PathBuf> = HashMap::new();
+
     let manifest_dir = PathBuf::from(current_open_file.path());
-    if let Ok(mut manifest) = pkg::ManifestFile::from_dir(&manifest_dir) {
-        watch(&manifest.path());
+    if let Ok(manifest) = pkg::ManifestFile::from_dir(&manifest_dir) {
+        //watch(&manifest.path());
 
         if let Some(deps) = &manifest.dependencies {
             for (name, dep) in deps.iter() {
-                eprintln!("{:#?}", dep);
                 if let Dependency::Detailed(details) = dep {
                     if let Some(path) = &details.path {
-                        eprintln!("{:#?}", path);
                         if let Some(abs_path) = manifest.dep_path(name) {
-                            eprintln!("{:#?}", abs_path);
+                            dependency_map.insert(name.clone(), abs_path);
                         }
                     }
                 }
+            }
+        }
+
+        if dependency_map.capacity() != 0 {
+            let temp_manifest_path = directories
+                .get(&Directory::Temp)
+                .map(|item| item.value().clone())
+                .unwrap()
+                .join(sway_utils::constants::TEST_MANIFEST_FILE_NAME);
+            edit_dependency_paths(&manifest.path(), &temp_manifest_path, &dependency_map);
+        }
+    }
+}
+
+fn edit_dependency_paths(
+    manifest_path: &Path,
+    temp_manifest_path: &Path,
+    dependency_map: &HashMap<String, PathBuf>,
+) {
+    use std::fs::File;
+    use std::io::{Read, Write};
+
+    if let Ok(mut file) = File::open(manifest_path) {
+        let mut toml = String::new();
+        let _ = file.read_to_string(&mut toml);
+        if let Ok(mut manifest_toml) = toml.parse::<toml_edit::Document>() {
+            for (name, abs_path) in dependency_map {
+                manifest_toml["dependencies"][&name] =
+                    toml_edit::value(abs_path.display().to_string());
+            }
+
+            if let Ok(mut file) = File::create(temp_manifest_path) {
+                let _ = file.write_all(manifest_toml.to_string().as_bytes());
             }
         }
     }
