@@ -248,14 +248,16 @@ impl TypeEngine {
                 let mut warnings = vec![];
                 let mut errors = vec![];
                 for (field_a, field_b) in fields_a.iter().zip(fields_b.iter()) {
-                    let (new_warnings, new_errors) = self.unify(
-                        field_a.type_id,
-                        field_b.type_id,
-                        &field_a.span,
-                        help_text.clone(),
+                    append!(
+                        self.unify(
+                            field_a.type_id,
+                            field_b.type_id,
+                            &field_a.span,
+                            help_text.clone(),
+                        ),
+                        warnings,
+                        errors
                     );
-                    warnings.extend(new_warnings);
-                    errors.extend(new_errors);
                 }
                 (warnings, errors)
             }
@@ -330,23 +332,26 @@ impl TypeEngine {
                     && a_parameters.len() == b_parameters.len()
                 {
                     a_fields.iter().zip(b_fields.iter()).for_each(|(a, b)| {
-                        let (new_warnings, new_errors) =
-                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone());
-                        warnings.extend(new_warnings);
-                        errors.extend(new_errors);
+                        append!(
+                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone()),
+                            warnings,
+                            errors
+                        );
                     });
                     a_parameters
                         .iter()
                         .zip(b_parameters.iter())
                         .for_each(|(a, b)| {
-                            let (new_warnings, new_errors) = self.unify(
-                                a.type_id,
-                                b.type_id,
-                                &a.name_ident.span(),
-                                help_text.clone(),
+                            append!(
+                                self.unify(
+                                    a.type_id,
+                                    b.type_id,
+                                    &a.name_ident.span(),
+                                    help_text.clone(),
+                                ),
+                                warnings,
+                                errors
                             );
-                            warnings.extend(new_warnings);
-                            errors.extend(new_errors);
                         });
                 } else {
                     errors.push(TypeError::MismatchedType {
@@ -377,23 +382,26 @@ impl TypeEngine {
                     && a_parameters.len() == b_parameters.len()
                 {
                     a_variants.iter().zip(b_variants.iter()).for_each(|(a, b)| {
-                        let (new_warnings, new_errors) =
-                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone());
-                        warnings.extend(new_warnings);
-                        errors.extend(new_errors);
+                        append!(
+                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone()),
+                            warnings,
+                            errors
+                        );
                     });
                     a_parameters
                         .iter()
                         .zip(b_parameters.iter())
                         .for_each(|(a, b)| {
-                            let (new_warnings, new_errors) = self.unify(
-                                a.type_id,
-                                b.type_id,
-                                &a.name_ident.span(),
-                                help_text.clone(),
+                            append!(
+                                self.unify(
+                                    a.type_id,
+                                    b.type_id,
+                                    &a.name_ident.span(),
+                                    help_text.clone(),
+                                ),
+                                warnings,
+                                errors
                             );
-                            warnings.extend(new_warnings);
-                            errors.extend(new_errors);
                         });
                 } else {
                     errors.push(TypeError::MismatchedType {
@@ -663,7 +671,7 @@ impl TypeEngine {
                 }
                 self.insert_type(TypeInfo::Tuple(type_arguments))
             }
-            o => insert_type(o),
+            _ => type_id,
         };
         ok(type_id, warnings, errors)
     }
@@ -748,8 +756,12 @@ pub fn unify_with_self(
     self_type: TypeId,
     span: &Span,
     help_text: impl Into<String>,
-) -> (Vec<CompileWarning>, Vec<TypeError>) {
-    TYPE_ENGINE.unify_with_self(a, b, self_type, span, help_text)
+) -> (Vec<CompileWarning>, Vec<CompileError>) {
+    let (warnings, errors) = TYPE_ENGINE.unify_with_self(a, b, self_type, span, help_text);
+    (
+        warnings,
+        errors.into_iter().map(|error| error.into()).collect(),
+    )
 }
 
 pub(crate) fn unify(
@@ -757,8 +769,12 @@ pub(crate) fn unify(
     b: TypeId,
     span: &Span,
     help_text: impl Into<String>,
-) -> (Vec<CompileWarning>, Vec<TypeError>) {
-    TYPE_ENGINE.unify(a, b, span, help_text)
+) -> (Vec<CompileWarning>, Vec<CompileError>) {
+    let (warnings, errors) = TYPE_ENGINE.unify(a, b, span, help_text);
+    (
+        warnings,
+        errors.into_iter().map(|error| error.into()).collect(),
+    )
 }
 
 pub fn to_typeinfo(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {

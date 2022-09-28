@@ -641,6 +641,8 @@ impl TypedExpression {
         let expr_span = expr.span();
         let span = expr_span.clone();
         let res = match expr.kind {
+            // We've already emitted an error for the `::Error` case.
+            ExpressionKind::Error(_) => ok(error_recovery_expr(span), vec![], vec![]),
             ExpressionKind::Literal(lit) => Self::type_check_literal(lit, span),
             ExpressionKind::Variable(name) => {
                 Self::type_check_variable_expression(ctx.namespace, name, span)
@@ -819,10 +821,11 @@ impl TypedExpression {
         let mut errors = res.errors;
 
         // if the return type cannot be cast into the annotation type then it is a type error
-        let (mut new_warnings, new_errors) =
-            ctx.unify_with_self(typed_expression.return_type, &expr_span);
-        warnings.append(&mut new_warnings);
-        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+        append!(
+            ctx.unify_with_self(typed_expression.return_type, &expr_span),
+            warnings,
+            errors
+        );
 
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = check!(
@@ -1039,9 +1042,12 @@ impl TypedExpression {
             errors
         );
 
-        let (mut new_warnings, new_errors) = ctx.unify_with_self(block_return_type, &span);
-        warnings.append(&mut new_warnings);
-        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+        append!(
+            ctx.unify_with_self(block_return_type, &span),
+            warnings,
+            errors
+        );
+
         let exp = TypedExpression {
             expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
                 contents: typed_block.contents,
@@ -1810,14 +1816,14 @@ impl TypedExpression {
 
         let elem_type = typed_contents[0].return_type;
         for typed_elem in &typed_contents[1..] {
-            let (mut new_warnings, new_errors) = ctx
+            let (mut new_warnings, mut new_errors) = ctx
                 .by_ref()
                 .with_type_annotation(elem_type)
                 .unify_with_self(typed_elem.return_type, &typed_elem.span);
             let no_warnings = new_warnings.is_empty();
             let no_errors = new_errors.is_empty();
             warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+            errors.append(&mut new_errors);
             // In both cases, if there are warnings or errors then break here, since we don't
             // need to spam type errors for every element once we have one.
             if !no_warnings && !no_errors {
