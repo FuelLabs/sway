@@ -39,7 +39,7 @@ pub fn doc(command: DocCommand) -> Result<()> {
 
     Ok(())
 }
-// TODO: get docs on fields and functions
+
 fn attributes_map(ast_node: &AstNode) -> Option<Vec<AttributesMap>> {
     match ast_node.content.clone() {
         AstNodeContent::Declaration(decl) => match decl {
