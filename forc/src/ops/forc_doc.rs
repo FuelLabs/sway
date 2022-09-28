@@ -93,6 +93,22 @@ fn attributes_map(ast_node: &AstNode) -> Option<Vec<AttributesMap>> {
 
                 Some(attr_map)
             }
+            Declaration::AbiDeclaration(decl) => {
+                let mut attr_map = Vec::new();
+                for method in decl.methods {
+                    attr_map.push(method.attributes)
+                }
+
+                Some(attr_map)
+            }
+            Declaration::ImplSelf(decl) => {
+                let mut attr_map = Vec::new();
+                for method in decl.functions {
+                    attr_map.push(method.attributes)
+                }
+
+                Some(attr_map)
+            }
             _ => None,
         },
         _ => None,
