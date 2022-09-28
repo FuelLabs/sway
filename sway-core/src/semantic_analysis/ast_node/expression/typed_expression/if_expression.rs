@@ -24,15 +24,17 @@ pub(crate) fn instantiate_if_expression(
         } else {
             insert_type(TypeInfo::Tuple(vec![]))
         };
-        let (mut new_warnings, new_errors) = unify_with_self(
-            then.return_type,
-            ty_to_check,
-            self_type,
-            &then.span,
-            "`then` branch must return expected type.",
+        append!(
+            unify_with_self(
+                then.return_type,
+                ty_to_check,
+                self_type,
+                &then.span,
+                "`then` branch must return expected type.",
+            ),
+            warnings,
+            errors
         );
-        warnings.append(&mut new_warnings);
-        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
     }
     let mut else_deterministically_aborts = false;
     let r#else = r#else.map(|r#else| {
@@ -44,15 +46,17 @@ pub(crate) fn instantiate_if_expression(
         };
         if !else_deterministically_aborts {
             // if this does not deterministically_abort, check the block return type
-            let (mut new_warnings, new_errors) = unify_with_self(
-                r#else.return_type,
-                ty_to_check,
-                self_type,
-                &r#else.span,
-                "`else` branch must return expected type.",
+            append!(
+                unify_with_self(
+                    r#else.return_type,
+                    ty_to_check,
+                    self_type,
+                    &r#else.span,
+                    "`else` branch must return expected type.",
+                ),
+                warnings,
+                errors
             );
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
         }
         Box::new(r#else)
     });
@@ -63,7 +67,7 @@ pub(crate) fn instantiate_if_expression(
         .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
     // if there is a type annotation, then the else branch must exist
     if !else_deterministically_aborts && !then_deterministically_aborts {
-        let (mut new_warnings, new_errors) = unify_with_self(
+        let (mut new_warnings, mut new_errors) = unify_with_self(
             then.return_type,
             r#else_ret_ty,
             self_type,
@@ -79,7 +83,7 @@ pub(crate) fn instantiate_if_expression(
                 });
             }
         } else {
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+            errors.append(&mut new_errors);
         }
     }
 
