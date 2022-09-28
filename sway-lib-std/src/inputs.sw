@@ -43,7 +43,6 @@ const GTF_INPUT_COIN_PREDICATE_DATA = 0x10D;
 // const GTF_INPUT_CONTRACT_STATE_ROOT = 0x111;
 // const GTF_INPUT_CONTRACT_TX_POINTER = 0x112;
 // const GTF_INPUT_CONTRACT_CONTRACT_ID = 0x113;
-
 const GTF_INPUT_MESSAGE_MESSAGE_ID = 0x114;
 const GTF_INPUT_MESSAGE_SENDER = 0x115;
 const GTF_INPUT_MESSAGE_RECIPIENT = 0x116;
@@ -70,18 +69,17 @@ pub enum Input {
 impl Eq for Input {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
-        (Input::Coin, Input::Coin) => true,
-        (Input::Contract, Input::Contract) => true,
-        (Input::Message, Input::Message) => true,
-        _ => false,
-    }
+            (Input::Coin, Input::Coin) => true,
+            (Input::Contract, Input::Contract) => true,
+            (Input::Message, Input::Message) => true,
+            _ => false,
+        }
     }
 }
 
 ////////////////////////////////////////
 // General Inputs
 ////////////////////////////////////////
-
 /// Get the type of the input at `index`.
 pub fn input_type(index: u64) -> Input {
     let type = __gtf::<u8>(index, GTF_INPUT_TYPE);
@@ -236,9 +234,8 @@ pub fn input_predicate_data_length(index: u64) -> Option<u16> {
 }
 
 ////////////////////////////////////////
-// Message Inputs
+// Coin Inputs
 ////////////////////////////////////////
-
 /// Get the maturity from the input at `index`.
 /// If the input's type is `InputCoin`,
 /// return the index as an Option::Some(u32).
@@ -258,7 +255,6 @@ pub fn input_maturity(index: u64) -> Option<u32> {
 ////////////////////////////////////////
 // Message Inputs
 ////////////////////////////////////////
-
 /// Get the message id of the input message at `index`.
 pub fn input_message_msg_id(index: u64) -> b256 {
     assert(valid_input_type(index, Input::Message));
