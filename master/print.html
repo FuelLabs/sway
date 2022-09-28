@@ -3122,7 +3122,7 @@ name = &quot;wallet_contract&quot;
 <li><code>print-finalized-asm</code> - Whether to compile to bytecode (false) or to print out the generated ASM (true).</li>
 <li><code>print-intermediate-asm</code> - Whether to compile to bytecode (false) or to print out the generated ASM (true).</li>
 <li><code>print-ir</code> - Whether to compile to bytecode (false) or to print out the generated IR (true).</li>
-<li><code>silent-mode</code> - Silent mode. Don't output any warnings or errors to the command line.</li>
+<li><code>terse-mode</code> - Terse mode. Limited warning and error output.</li>
 </ul>
 <p>There are two default <code>[build-profile]</code> available with every manifest file. These are <code>debug</code> and <code>release</code> profiles. If you want to override these profiles, you can provide them explicitly in the manifest file like the following example:</p>
 <pre><code class="language-toml">[project]
@@ -3136,13 +3136,13 @@ name = &quot;wallet_contract&quot;
 print-finalized-asm = false
 print-intermediate-asm = false
 print-ir = false
-silent = false
+terse = false
 
 [build-profiles.release]
 print-finalized-asm = false 
 print-intermediate-asm = false
 print-ir = false
-silent = true
+terse = true
 </code></pre>
 <p>Since <code>release</code> and <code>debug</code> implicitly included in every manifest file, you can use them by just passing <code>--release</code> or by not passing anything (debug is default). For using a user defined build profile there is <code>--build-profile &lt;profile name&gt;</code> option available to the relevant commands. (For an example see <a href="forc/../forc/commands/forc_build.html">forc-build</a>)</p>
 <p>Note that providing the corresponding cli options (like <code>--print-finalized-asm</code>) will override the selected build profile. For example if you pass both <code>--release</code> and <code>--print-finalized-asm</code>, release build profile is omitted and resulting build profile would have a structure like the following:</p>
@@ -3150,7 +3150,7 @@ silent = true
 <li>print-finalized-asm - true</li>
 <li>print-intermediate-asm - false</li>
 <li>print-ir - false</li>
-<li>silent - false</li>
+<li>terse - false</li>
 </ul>
 <h2 id="the-patch-section"><a class="header" href="#the-patch-section">The <code>[patch]</code> section</a></h2>
 <p>The [patch] section of <code>Forc.toml</code> can be used to override dependencies with other copies. The example provided below patches <a href="https://github.com/fuellabs/sway">https://github.com/fuellabs/sway</a> source with master branch of the same repo.</p>
@@ -3232,7 +3232,11 @@ custom_lib = { path = &quot;../custom_lib&quot; }
 <p>Print help information</p>
 <p><code>-i</code>, <code>--opcode-index</code> &lt;<em>OPCODE_INDEX</em>&gt;</p>
 <p>Opcode index</p>
-<p><code>-s</code>, <code>--search-dir</code> &lt;<em>SEARCH_DIR</em>&gt;</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
+<p><code>-S</code>, <code>--search-dir</code> &lt;<em>SEARCH_DIR</em>&gt;</p>
 <p>Where to search for the project root [default: .]</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output</p>
@@ -3269,6 +3273,8 @@ profile</p>
 <p>Include logged types in the JSON ABI</p>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
 <p><code>--locked</code> </p>
 <p>Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs
 to be updated, Forc will exit with an error</p>
@@ -3306,7 +3312,9 @@ added to the manifest file.</p>
 <p>If --build-profile is also provided, forc omits this flag and uses provided
 build-profile.</p>
 <p><code>-s</code>, <code>--silent</code> </p>
-<p>Silent mode. Don't output any warnings or errors to the command line</p>
+<p>Silence all output</p>
+<p><code>-t</code>, <code>--terse</code> </p>
+<p>Terse mode. Limited warning and error output</p>
 <p><code>--time-phases</code> </p>
 <p>Output the time elapsed over each part of the compilation process</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
@@ -3329,6 +3337,8 @@ which is faster than running forc build.</p>
 <h2 id="options-2"><a class="header" href="#options-2">OPTIONS:</a></h2>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
 <p><code>--locked</code> </p>
 <p>Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs
 to be updated, Forc will exit with an error</p>
@@ -3338,7 +3348,9 @@ it will only try to use previously downloaded dependencies</p>
 <p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
 <p>Path to the project, if not specified, current working directory will be used</p>
 <p><code>-s</code>, <code>--silent</code> </p>
-<p>Silent mode. Don't output any warnings or errors to the command line</p>
+<p>Silence all output</p>
+<p><code>-t</code>, <code>--terse</code> </p>
+<p>Terse mode. Limited warning and error output</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-clean"><a class="header" href="#forc-clean">forc-clean</a></h1>
@@ -3349,9 +3361,13 @@ it will only try to use previously downloaded dependencies</p>
 <h2 id="options-3"><a class="header" href="#options-3">OPTIONS:</a></h2>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
 <p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
-<p>Path to the project, if not specified, current working directory will be
-used</p>
+<p>Path to the project, if not specified, current working directory
+will be used</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-completions"><a class="header" href="#forc-completions">forc-completions</a></h1>
@@ -3361,7 +3377,11 @@ used</p>
 <h2 id="options-4"><a class="header" href="#options-4">OPTIONS:</a></h2>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
-<p><code>-s</code>, <code>--shell</code> &lt;<em>SHELL</em>&gt;</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
+<p><code>-S</code>, <code>--shell</code> &lt;<em>SHELL</em>&gt;</p>
 <p>Specify shell to enable tab-completion for</p>
 <p>[possible values: zsh, bash, fish, powershell, elvish]</p>
 <p>For more info:
@@ -3454,10 +3474,12 @@ completions into our profile simply use</p>
 <p>forc init [OPTIONS]</p>
 <h2 id="options-5"><a class="header" href="#options-5">OPTIONS:</a></h2>
 <p><code>--contract</code> </p>
-<p>The default program type, excluding all flags or adding this flag creates a
-basic contract program</p>
+<p>The default program type, excluding all flags or adding this flag
+creates a basic contract program</p>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
 <p><code>--library</code> </p>
 <p>Create a package with a library target (src/lib.sw)</p>
 <p><code>--name</code> &lt;<em>NAME</em>&gt;</p>
@@ -3466,6 +3488,8 @@ basic contract program</p>
 <p>The directory in which the forc project will be initialized</p>
 <p><code>--predicate</code> </p>
 <p>Create a package with a predicate target (src/predicate.rs)</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
 <p><code>--script</code> </p>
 <p>Create a package with a script target (src/main.sw)</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
@@ -3494,16 +3518,20 @@ $ tree
 <p>The path at which the project directory will be created</p>
 <h2 id="options-6"><a class="header" href="#options-6">OPTIONS:</a></h2>
 <p><code>--contract</code> </p>
-<p>The default program type. Excluding all flags or adding this flag creates a
-basic contract program</p>
+<p>The default program type. Excluding all flags or adding this flag
+creates a basic contract program</p>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
 <p><code>--library</code> </p>
 <p>Adding this flag creates an empty library program</p>
 <p><code>--name</code> &lt;<em>NAME</em>&gt;</p>
 <p>Set the package name. Defaults to the directory name</p>
 <p><code>--predicate</code> </p>
 <p>Adding this flag creates an empty predicate program</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
 <p><code>--script</code> </p>
 <p>Adding this flag creates an empty script program</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
@@ -3532,6 +3560,10 @@ $ tree
 <h2 id="options-7"><a class="header" href="#options-7">OPTIONS:</a></h2>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output<!-- markdownlint-disable MD041 --></p>
 <h2 id="example-5"><a class="header" href="#example-5">EXAMPLE</a></h2>
@@ -3567,8 +3599,12 @@ forc build -o obj
 <p>Prints the long description associated with each listed plugin</p>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
 <p><code>-p</code>, <code>--paths</code> </p>
 <p>Prints the absolute path to each discovered plugin</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-test"><a class="header" href="#forc-test">forc-test</a></h1>
@@ -3596,6 +3632,10 @@ All trailing arguments following <code>--</code> are collected within this argum
 <p><code>cargo test --color always</code></p>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output<!-- markdownlint-disable MD041 --></p>
 <h2 id="example-6"><a class="header" href="#example-6">EXAMPLE</a></h2>
@@ -3615,9 +3655,13 @@ outdated</p>
 updated</p>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
 <p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
 <p>Path to the project, if not specified, current working directory
 will be used</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-template"><a class="header" href="#forc-template">forc-template</a></h1>
@@ -3630,6 +3674,10 @@ will be used</p>
 <h2 id="options-11"><a class="header" href="#options-11">OPTIONS:</a></h2>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
 <p><code>-t</code>, <code>--template-name</code> &lt;<em>TEMPLATE_NAME</em>&gt;</p>
 <p>The name of the template that needs to be fetched and used from git repo provided</p>
 <p><code>-u</code>, <code>--url</code> &lt;<em>URL</em>&gt;</p>

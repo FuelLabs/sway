@@ -214,7 +214,7 @@ name = &quot;wallet_contract&quot;
 <li><code>print-finalized-asm</code> - Whether to compile to bytecode (false) or to print out the generated ASM (true).</li>
 <li><code>print-intermediate-asm</code> - Whether to compile to bytecode (false) or to print out the generated ASM (true).</li>
 <li><code>print-ir</code> - Whether to compile to bytecode (false) or to print out the generated IR (true).</li>
-<li><code>silent-mode</code> - Silent mode. Don't output any warnings or errors to the command line.</li>
+<li><code>terse-mode</code> - Terse mode. Limited warning and error output.</li>
 </ul>
 <p>There are two default <code>[build-profile]</code> available with every manifest file. These are <code>debug</code> and <code>release</code> profiles. If you want to override these profiles, you can provide them explicitly in the manifest file like the following example:</p>
 <pre><code class="language-toml">[project]
@@ -228,13 +228,13 @@ name = &quot;wallet_contract&quot;
 print-finalized-asm = false
 print-intermediate-asm = false
 print-ir = false
-silent = false
+terse = false
 
 [build-profiles.release]
 print-finalized-asm = false 
 print-intermediate-asm = false
 print-ir = false
-silent = true
+terse = true
 </code></pre>
 <p>Since <code>release</code> and <code>debug</code> implicitly included in every manifest file, you can use them by just passing <code>--release</code> or by not passing anything (debug is default). For using a user defined build profile there is <code>--build-profile &lt;profile name&gt;</code> option available to the relevant commands. (For an example see <a href="../forc/commands/forc_build.html">forc-build</a>)</p>
 <p>Note that providing the corresponding cli options (like <code>--print-finalized-asm</code>) will override the selected build profile. For example if you pass both <code>--release</code> and <code>--print-finalized-asm</code>, release build profile is omitted and resulting build profile would have a structure like the following:</p>
@@ -242,7 +242,7 @@ silent = true
 <li>print-finalized-asm - true</li>
 <li>print-intermediate-asm - false</li>
 <li>print-ir - false</li>
-<li>silent - false</li>
+<li>terse - false</li>
 </ul>
 <h2 id="the-patch-section"><a class="header" href="#the-patch-section">The <code>[patch]</code> section</a></h2>
 <p>The [patch] section of <code>Forc.toml</code> can be used to override dependencies with other copies. The example provided below patches <a href="https://github.com/fuellabs/sway">https://github.com/fuellabs/sway</a> source with master branch of the same repo.</p>
