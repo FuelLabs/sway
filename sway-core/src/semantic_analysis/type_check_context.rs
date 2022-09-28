@@ -6,7 +6,7 @@ use crate::{
         insert_type, monomorphize, unify_with_self, CopyTypes, EnforceTypeArguments,
         MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
     },
-    CompileResult, CompileWarning, TypeError,
+    CompileError, CompileResult, CompileWarning,
 };
 use sway_types::{span::Span, Ident};
 
@@ -230,7 +230,7 @@ impl<'ns> TypeCheckContext<'ns> {
         &self,
         ty: TypeId,
         span: &Span,
-    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
+    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         unify_with_self(
             ty,
             self.type_annotation(),

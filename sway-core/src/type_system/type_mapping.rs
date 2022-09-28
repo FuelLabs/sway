@@ -317,14 +317,16 @@ impl TypeMapping {
         let mut warnings = vec![];
         let mut errors = vec![];
         for ((_, destination_type), type_arg) in self.mapping.iter().zip(type_arguments.iter()) {
-            let (mut new_warnings, new_errors) = unify(
-                *destination_type,
-                type_arg.type_id,
-                &type_arg.span,
-                "Type argument is not assignable to generic type parameter.",
+            append!(
+                unify(
+                    *destination_type,
+                    type_arg.type_id,
+                    &type_arg.span,
+                    "Type argument is not assignable to generic type parameter.",
+                ),
+                warnings,
+                errors
             );
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
         }
         ok((), warnings, errors)
     }
