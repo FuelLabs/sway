@@ -483,7 +483,7 @@ impl Dependencies {
             | ExpressionKind::Break
             | ExpressionKind::Continue
             | ExpressionKind::StorageAccess(_)
-            | ExpressionKind::Error => self,
+            | ExpressionKind::Error(_) => self,
 
             ExpressionKind::Tuple(fields) => {
                 self.gather_from_iter(fields.iter(), |deps, field| deps.gather_from_expr(field))

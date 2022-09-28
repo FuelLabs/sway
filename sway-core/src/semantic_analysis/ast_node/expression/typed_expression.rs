@@ -642,7 +642,7 @@ impl TypedExpression {
         let span = expr_span.clone();
         let res = match expr.kind {
             // We've already emitted an error for the `::Error` case.
-            ExpressionKind::Error => ok(error_recovery_expr(span), vec![], vec![]),
+            ExpressionKind::Error(_) => ok(error_recovery_expr(span), vec![], vec![]),
             ExpressionKind::Literal(lit) => Self::type_check_literal(lit, span),
             ExpressionKind::Variable(name) => {
                 Self::type_check_variable_expression(ctx.namespace, name, span)
