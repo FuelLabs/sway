@@ -1,6 +1,10 @@
 use std::sync::RwLock;
 
-use crate::{type_system::TypeId, TypeInfo};
+use crate::{
+    declaration_engine::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper},
+    type_system::TypeId,
+    TypeInfo,
+};
 
 #[derive(Debug)]
 pub(crate) struct ConcurrentSlab<T> {
@@ -70,6 +74,18 @@ impl ConcurrentSlab<TypeInfo> {
             }
         }
 
+        let mut inner = self.inner.write().unwrap();
+        inner[*index] = new_value;
+        None
+    }
+}
+
+impl ConcurrentSlab<DeclarationWrapper> {
+    pub fn replace(
+        &self,
+        index: DeclarationId,
+        new_value: DeclarationWrapper,
+    ) -> Option<DeclarationWrapper> {
         let mut inner = self.inner.write().unwrap();
         inner[*index] = new_value;
         None
