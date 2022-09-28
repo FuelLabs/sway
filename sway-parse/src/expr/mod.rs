@@ -493,6 +493,8 @@ fn parse_projection(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr>
         }
         if let Some(dot_token) = parser.take() {
             let target = Box::new(expr);
+
+            // Try parsing a field access or a method call.
             if let Some(name) = parser.take() {
                 if !ctx.parsing_conditional {
                     if let Some(contract_args) = Braces::try_parse(parser)? {
@@ -526,6 +528,8 @@ fn parse_projection(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr>
                 };
                 continue;
             }
+
+            // Try parsing a tuple field projection.
             if let Some(lit) = parser.take() {
                 let lit_int = match lit {
                     Literal::Int(lit_int) => lit_int,
@@ -555,7 +559,11 @@ fn parse_projection(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr>
                 };
                 continue;
             }
-            return Err(parser.emit_error(ParseErrorKind::ExpectedFieldName));
+
+            // Nothing expected followed. Now we have parsed `expr .`.
+            // Try to recover as an unknown sort of expression.
+            parser.emit_error(ParseErrorKind::ExpectedFieldName);
+            return Ok(Expr::Error([target.span(), dot_token.span()].into()));
         }
         return Ok(expr);
     }
