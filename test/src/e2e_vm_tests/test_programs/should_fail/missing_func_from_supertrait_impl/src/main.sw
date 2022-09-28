@@ -47,4 +47,4 @@ impl D for Y {
     fn d() { }
 }
 
-fn main() { } 
+fn main() { }
