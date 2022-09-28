@@ -1538,6 +1538,10 @@ fn expr_func_app_to_expression_kind(
 fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, ErrorEmitted> {
     let span = expr.span();
     let expression = match expr {
+        Expr::Error(part_spans) => Expression {
+            kind: ExpressionKind::Error(part_spans),
+            span,
+        },
         Expr::Path(path_expr) => path_expr_to_expression(ec, path_expr)?,
         Expr::Literal(literal) => Expression {
             kind: ExpressionKind::Literal(literal_to_literal(ec, literal)?),

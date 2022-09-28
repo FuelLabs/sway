@@ -36,6 +36,7 @@ impl Format for Expr {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
+            Self::Error(_) => {}
             Self::Path(path) => path.format(formatted_code, formatter)?,
             Self::Literal(lit) => lit.format(formatted_code, formatter)?,
             Self::AbiCast { abi_token, args } => {
@@ -722,6 +723,7 @@ impl LeafSpans for Expr {
 /// Collects various expr field's ByteSpans.
 fn visit_expr(expr: &Expr) -> Vec<ByteSpan> {
     match expr {
+        Expr::Error(_) => vec![expr.span().into()],
         Expr::Path(path) => path.leaf_spans(),
         Expr::Literal(literal) => literal.leaf_spans(),
         Expr::AbiCast { abi_token, args } => {

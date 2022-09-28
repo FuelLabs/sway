@@ -106,27 +106,38 @@ fn parse_submodules(
     deps: &[Dependency],
     module_dir: &Path,
 ) -> CompileResult<Vec<(Ident, ParseSubmodule)>> {
-    let init_res = ok(vec![], vec![], vec![]);
-    deps.iter().fold(init_res, |res, dep| {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
+    let mut submods = Vec::with_capacity(deps.len());
+
+    deps.iter().for_each(|dep| {
+        // Read the source code from the dependency.
+        // If we cannot, record as an error, but continue with other files.
         let dep_path = Arc::new(module_path(module_dir, dep));
         let dep_str: Arc<str> = match std::fs::read_to_string(&*dep_path) {
             Ok(s) => Arc::from(s),
             Err(e) => {
-                let error = CompileError::FileCouldNotBeRead {
+                errors.push(CompileError::FileCouldNotBeRead {
                     span: dep.path.span(),
                     file_path: dep_path.to_string_lossy().to_string(),
                     stringified_error: e.to_string(),
-                };
-                return res.flat_map(|_| err(vec![], vec![error]));
+                });
+                return;
             }
         };
-        parse_module_tree(dep_str.clone(), dep_path.clone()).flat_map(|(kind, module)| {
+
+        let mt_res = parse_module_tree(dep_str.clone(), dep_path.clone());
+        warnings.extend(mt_res.warnings);
+        errors.extend(mt_res.errors);
+
+        if let Some((kind, module)) = mt_res.value {
             let library_name = match kind {
                 TreeType::Library { name } => name,
                 _ => {
                     let span = span::Span::new(dep_str, 0, 0, Some(dep_path)).unwrap();
-                    let error = CompileError::ImportMustBeLibrary { span };
-                    return err(vec![], vec![error]);
+                    errors.push(CompileError::ImportMustBeLibrary { span });
+                    return;
                 }
             };
             // NOTE: Typed `IncludStatement`'s include an `alias` field, however its only
@@ -138,16 +149,15 @@ fn parse_submodules(
                 library_name,
                 module,
             };
-            res.flat_map(|mut submods| {
-                submods.push((dep_name, submodule));
-                ok(submods, vec![], vec![])
-            })
-        })
-    })
+            submods.push((dep_name, submodule));
+        }
+    });
+
+    ok(submods, warnings, errors)
 }
 
-/// Given the source of the module along with its path, parse this module including all of its
-/// submodules.
+/// Given the source of the module along with its path,
+/// parse this module including all of its submodules.
 fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeType, ParseModule)> {
     // Parse this module first.
     parse_file(src, Some(path.clone())).flat_map(|module| {
@@ -158,10 +168,7 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
 
         // Convert from the raw parsed module to the `ParseTree` ready for type-check.
         convert_parse_tree::convert_parse_tree(module).flat_map(|(prog_kind, tree)| {
-            submodules_res.flat_map(|submodules| {
-                let parse_module = ParseModule { tree, submodules };
-                ok((prog_kind, parse_module), vec![], vec![])
-            })
+            submodules_res.map(|submodules| (prog_kind, ParseModule { tree, submodules }))
         })
     })
 }
