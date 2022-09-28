@@ -40,21 +40,81 @@ pub fn doc(command: DocCommand) -> Result<()> {
     Ok(())
 }
 // TODO: get docs on fields and functions
-fn attributes_map(ast_node: &AstNode) -> Option<AttributesMap> {
+fn attributes_map(ast_node: &AstNode) -> Option<Vec<AttributesMap>> {
     match ast_node.content.clone() {
         AstNodeContent::Declaration(decl) => match decl {
-            Declaration::EnumDeclaration(decl) => Some(decl.attributes),
-            Declaration::FunctionDeclaration(decl) => Some(decl.attributes),
-            Declaration::StructDeclaration(decl) => Some(decl.attributes),
-            Declaration::ConstantDeclaration(decl) => Some(decl.attributes),
-            Declaration::StorageDeclaration(decl) => Some(decl.attributes),
+            Declaration::EnumDeclaration(decl) => {
+                let attr_map = vec![];
+                attr_map.push(decl.attributes);
+                for variant in decl.variants {
+                    attr_map.push(variant.attributes)
+                }
+                // let attr = attr_map.concat(); // not implemented
+                // need to find the right way to finish the doc collection
+
+                Some(attr_map)
+            }
+            Declaration::FunctionDeclaration(decl) => {
+                let attr_map = vec![];
+                attr_map.push(decl.attributes);
+
+                Some(attr_map)
+            }
+            Declaration::StructDeclaration(decl) => {
+                let attr_map = vec![];
+                attr_map.push(decl.attributes);
+                for field in decl.fields {
+                    attr_map.push(field.attributes)
+                }
+
+                Some(attr_map)
+            }
+            Declaration::ConstantDeclaration(decl) => {
+                let attr_map = vec![];
+                attr_map.push(decl.attributes);
+
+                Some(attr_map)
+            }
+            Declaration::StorageDeclaration(decl) => {
+                let attr_map = vec![];
+                attr_map.push(decl.attributes);
+                for field in decl.fields {
+                    attr_map.push(field.attributes)
+                }
+
+                Some(attr_map)
+            }
+            Declaration::TraitDeclaration(decl) => {
+                let attr_map = vec![];
+                attr_map.push(decl.attributes);
+                for method in decl.methods {
+                    attr_map.push(method.attributes)
+                }
+
+                Some(attr_map)
+            }
+            Declaration::ImplTrait(decl) => {
+                let attr_map = vec![];
+                for method in decl.functions {
+                    attr_map.push(method.attributes)
+                }
+
+                Some(attr_map)
+            }
             _ => None,
         },
         _ => None,
     }
 }
 fn doc_attributes(ast_node: &AstNode) -> Option<Vec<Attribute>> {
-    attributes_map(ast_node).and_then(|mut attributes| attributes.remove(&AttributeKind::Doc))
+    attributes_map(ast_node).and_then(|mut attributes| {
+        Some(
+            attributes
+                .iter()
+                .map(|mut attr| attr.remove(&AttributeKind::Doc))
+                .collect::<Vec<Attribute>>(),
+        )
+    })
 }
 fn extract_submodule_docs(submodule: &ParseSubmodule, docs: &mut Vec<Option<Vec<Attribute>>>) {
     for ast_node in &submodule.module.tree.root_nodes {
