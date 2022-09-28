@@ -44,25 +44,20 @@ fn attributes_map(ast_node: &AstNode) -> Option<Vec<AttributesMap>> {
     match ast_node.content.clone() {
         AstNodeContent::Declaration(decl) => match decl {
             Declaration::EnumDeclaration(decl) => {
-                let attr_map = vec![];
-                attr_map.push(decl.attributes);
+                let mut attr_map = vec![decl.attributes];
                 for variant in decl.variants {
                     attr_map.push(variant.attributes)
                 }
-                // let attr = attr_map.concat(); // not implemented
-                // need to find the right way to finish the doc collection
 
                 Some(attr_map)
             }
             Declaration::FunctionDeclaration(decl) => {
-                let attr_map = vec![];
-                attr_map.push(decl.attributes);
+                let attr_map = vec![decl.attributes];
 
                 Some(attr_map)
             }
             Declaration::StructDeclaration(decl) => {
-                let attr_map = vec![];
-                attr_map.push(decl.attributes);
+                let mut attr_map = vec![decl.attributes];
                 for field in decl.fields {
                     attr_map.push(field.attributes)
                 }
@@ -70,14 +65,12 @@ fn attributes_map(ast_node: &AstNode) -> Option<Vec<AttributesMap>> {
                 Some(attr_map)
             }
             Declaration::ConstantDeclaration(decl) => {
-                let attr_map = vec![];
-                attr_map.push(decl.attributes);
+                let attr_map = vec![decl.attributes];
 
                 Some(attr_map)
             }
             Declaration::StorageDeclaration(decl) => {
-                let attr_map = vec![];
-                attr_map.push(decl.attributes);
+                let mut attr_map = vec![decl.attributes];
                 for field in decl.fields {
                     attr_map.push(field.attributes)
                 }
@@ -85,8 +78,7 @@ fn attributes_map(ast_node: &AstNode) -> Option<Vec<AttributesMap>> {
                 Some(attr_map)
             }
             Declaration::TraitDeclaration(decl) => {
-                let attr_map = vec![];
-                attr_map.push(decl.attributes);
+                let mut attr_map = vec![decl.attributes];
                 for method in decl.methods {
                     attr_map.push(method.attributes)
                 }
@@ -94,7 +86,7 @@ fn attributes_map(ast_node: &AstNode) -> Option<Vec<AttributesMap>> {
                 Some(attr_map)
             }
             Declaration::ImplTrait(decl) => {
-                let attr_map = vec![];
+                let mut attr_map = Vec::new();
                 for method in decl.functions {
                     attr_map.push(method.attributes)
                 }
@@ -106,14 +98,29 @@ fn attributes_map(ast_node: &AstNode) -> Option<Vec<AttributesMap>> {
         _ => None,
     }
 }
+/// Wrapper for `Vec<Attribute>` to use `collect()` method.
+struct Attributes(Vec<Attribute>);
+impl std::iter::FromIterator<std::option::Option<Vec<Attribute>>> for Attributes {
+    fn from_iter<T: IntoIterator<Item = std::option::Option<Vec<Attribute>>>>(iter: T) -> Self {
+        let mut c = Vec::new();
+
+        for attrs in iter.into_iter().flatten() {
+            for attr in attrs {
+                c.push(attr)
+            }
+        }
+        Self(c)
+    }
+}
 fn doc_attributes(ast_node: &AstNode) -> Option<Vec<Attribute>> {
-    attributes_map(ast_node).and_then(|mut attributes| {
-        Some(
-            attributes
-                .iter()
-                .map(|mut attr| attr.remove(&AttributeKind::Doc))
-                .collect::<Vec<Attribute>>(),
-        )
+    attributes_map(ast_node).map(|attributes| {
+        let attr_map = attributes
+            .iter()
+            .map(|attr| attr.clone().remove(&AttributeKind::Doc))
+            .collect::<Attributes>();
+        match attr_map {
+            Attributes(c) => c,
+        }
     })
 }
 fn extract_submodule_docs(submodule: &ParseSubmodule, docs: &mut Vec<Option<Vec<Attribute>>>) {
@@ -130,7 +137,7 @@ fn get_compiled_docs(
     compilation: &CompileResult<(ParseProgram, Option<TypedProgram>)>,
     no_deps: bool,
 ) -> Vec<Option<Vec<Attribute>>> {
-    let mut docs = vec![];
+    let mut docs = Vec::new();
 
     if let Some((parse_program, _)) = &compilation.value {
         for ast_node in &parse_program.root.tree.root_nodes {
