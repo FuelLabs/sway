@@ -8,7 +8,7 @@ use crate::{
         TypeCheckContext,
     },
     type_system::{insert_type, AbiName, TypeId},
-    AbiDeclaration, CompileError, CompileResult, FunctionDeclaration, TypeInfo,
+    AbiDeclaration, CompileError, CompileResult, CreateTypeInfo, FunctionDeclaration, TypeInfo,
 };
 
 use super::{CreateTypeId, TypedTraitFn};
@@ -31,13 +31,18 @@ pub struct TypedAbiDeclaration {
     pub(crate) span: Span,
 }
 
-impl CreateTypeId for TypedAbiDeclaration {
-    fn create_type_id(&self) -> TypeId {
-        let ty = TypeInfo::ContractCaller {
+impl CreateTypeInfo for TypedAbiDeclaration {
+    fn create_type_info(&self) -> TypeInfo {
+        TypeInfo::ContractCaller {
             abi_name: AbiName::Known(self.name.clone().into()),
             address: None,
-        };
-        insert_type(ty)
+        }
+    }
+}
+
+impl CreateTypeId for TypedAbiDeclaration {
+    fn create_type_id(&self) -> TypeId {
+        insert_type(self.create_type_info())
     }
 }
 

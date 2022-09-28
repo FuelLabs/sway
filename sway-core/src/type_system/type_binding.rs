@@ -3,7 +3,7 @@ use sway_types::{Span, Spanned};
 use crate::{
     declaration_engine::declaration_engine::*,
     error::{err, ok},
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{TypeCheckContext, TypedTraitFn},
     type_system::{insert_type, EnforceTypeArguments},
     CallPath, CompileResult, TypeInfo, TypedDeclaration,
 };
@@ -158,6 +158,17 @@ impl TypeBinding<CallPath> {
                     errors
                 );
 
+                if new_copy.name.as_str() == "first_if" {
+                    let trait_fn = TypedTraitFn {
+                        name: new_copy.name.clone(),
+                        purity: new_copy.purity,
+                        parameters: new_copy.parameters.clone(),
+                        return_type: new_copy.return_type,
+                        return_type_span: new_copy.return_type_span.clone(),
+                    };
+                    println!("before: {:#?}", trait_fn);
+                }
+
                 // monomorphize the copy, in place
                 check!(
                     ctx.monomorphize(
@@ -170,6 +181,17 @@ impl TypeBinding<CallPath> {
                     warnings,
                     errors
                 );
+
+                if new_copy.name.as_str() == "first_if" {
+                    let trait_fn = TypedTraitFn {
+                        name: new_copy.name.clone(),
+                        purity: new_copy.purity,
+                        parameters: new_copy.parameters.clone(),
+                        return_type: new_copy.return_type,
+                        return_type_span: new_copy.return_type_span.clone(),
+                    };
+                    println!("after: {:#?}", trait_fn);
+                }
 
                 // insert the new copy into the declaration engine
                 let new_id = de_insert_function(new_copy);

@@ -34,13 +34,19 @@ impl CopyTypes for TypedStructDeclaration {
     }
 }
 
-impl CreateTypeId for TypedStructDeclaration {
-    fn create_type_id(&self) -> TypeId {
-        insert_type(TypeInfo::Struct {
+impl CreateTypeInfo for TypedStructDeclaration {
+    fn create_type_info(&self) -> TypeInfo {
+        TypeInfo::Struct {
             name: self.name.clone(),
             fields: self.fields.clone(),
             type_parameters: self.type_parameters.clone(),
-        })
+        }
+    }
+}
+
+impl CreateTypeId for TypedStructDeclaration {
+    fn create_type_id(&self) -> TypeId {
+        insert_type(self.create_type_info())
     }
 }
 

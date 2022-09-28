@@ -180,13 +180,13 @@ impl TypeEngine {
                     );
                 }
                 let type_mapping = TypeMapping::from_type_parameters(value.type_parameters());
+                value.copy_types(&type_mapping);
                 check!(
                     type_mapping.unify_with_type_arguments(type_arguments),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                value.copy_types(&type_mapping);
                 ok((), warnings, errors)
             }
         }
@@ -600,15 +600,14 @@ impl TypeEngine {
                                 errors,
                             );
 
-                            // create the type id from the copy
-                            let new_type_id = new_copy.create_type_id();
+                            // create the type info from the new copy
+                            let new_type_info = new_copy.create_type_info();
 
                             // add the new copy as a monomorphized copy of the original id
                             de_add_monomorphized_struct_copy(original_id, new_copy);
 
-                            // replace the old type id with the new type id
-                            te.slab
-                                .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
+                            // replace the old type id with the new type info
+                            te.slab.blind_replace(*old_type_id, new_type_info);
                         }
                         Some(TypedDeclaration::EnumDeclaration(original_id)) => {
                             // get the copy from the declaration engine
@@ -634,15 +633,14 @@ impl TypeEngine {
                                 errors
                             );
 
-                            // create the type id from the copy
-                            let new_type_id = new_copy.create_type_id();
+                            // create the type info from the new copy
+                            let new_type_info = new_copy.create_type_info();
 
                             // add the new copy as a monomorphized copy of the original id
                             de_add_monomorphized_enum_copy(original_id, new_copy);
 
-                            // replace the old type id with the new type id
-                            te.slab
-                                .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
+                            // replace the old type id with the new type info
+                            te.slab.blind_replace(*old_type_id, new_type_info);
                         }
                         Some(TypedDeclaration::GenericTypeForFunctionScope { name, type_id }) => {
                             let new_type_id = te.insert_type(TypeInfo::Ref(type_id, name.span()));
@@ -655,10 +653,9 @@ impl TypeEngine {
                                 name: name.to_string(),
                                 span: name.span(),
                             });
-                            let new_type_id = te.insert_type(TypeInfo::ErrorRecovery);
-                            // replace the old type id with the new type id
-                            te.slab
-                                .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
+
+                            // replace the old type id with the error type
+                            te.slab.blind_replace(*old_type_id, TypeInfo::ErrorRecovery);
                         }
                     }
                 }

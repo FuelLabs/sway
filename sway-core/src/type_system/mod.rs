@@ -17,6 +17,7 @@ mod type_parameter;
 pub(crate) use collect_types_metadata::*;
 pub(crate) use copy_types::*;
 pub(crate) use create_type_id::*;
+pub(crate) use create_type_info::*;
 pub use integer_bits::*;
 pub(crate) use replace_self_type::*;
 pub(crate) use resolved_type::*;

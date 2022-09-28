@@ -1,4 +1,6 @@
 mod function_parameter;
+use std::fmt;
+
 pub use function_parameter::*;
 
 use crate::{
@@ -24,6 +26,19 @@ pub struct TypedFunctionDeclaration {
     /// whether this function exists in another contract and requires a call to it or not
     pub(crate) is_contract_call: bool,
     pub(crate) purity: Purity,
+}
+
+impl fmt::Display for TypedFunctionDeclaration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let trait_fn = TypedTraitFn {
+            name: self.name.clone(),
+            purity: self.purity,
+            parameters: self.parameters.clone(),
+            return_type: self.return_type,
+            return_type_span: self.return_type_span.clone(),
+        };
+        write!(f, "{}", trait_fn)
+    }
 }
 
 impl From<&TypedFunctionDeclaration> for TypedAstNode {

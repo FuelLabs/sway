@@ -7,7 +7,7 @@ use crate::{
         insert_type, look_up_type_id, CopyTypes, CreateTypeId, EnforceTypeArguments,
         MonomorphizeHelper, ReplaceSelfType, TypeId, TypeMapping, TypeParameter,
     },
-    TypeInfo,
+    TypeInfo, CreateTypeInfo,
 };
 use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Span, Spanned};
@@ -44,13 +44,19 @@ impl CopyTypes for TypedEnumDeclaration {
     }
 }
 
-impl CreateTypeId for TypedEnumDeclaration {
-    fn create_type_id(&self) -> TypeId {
-        insert_type(TypeInfo::Enum {
+impl CreateTypeInfo for TypedEnumDeclaration {
+    fn create_type_info(&self) -> TypeInfo {
+        TypeInfo::Enum {
             name: self.name.clone(),
             variant_types: self.variants.clone(),
             type_parameters: self.type_parameters.clone(),
-        })
+        }
+    }
+}
+
+impl CreateTypeId for TypedEnumDeclaration {
+    fn create_type_id(&self) -> TypeId {
+        insert_type(self.create_type_info())
     }
 }
 

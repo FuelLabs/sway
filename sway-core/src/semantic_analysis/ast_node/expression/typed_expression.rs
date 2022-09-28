@@ -973,7 +973,7 @@ impl TypedExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        // type deck the declaration
+        // type check the declaration
         let unknown_decl = check!(
             TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx),
             return err(warnings, errors),
