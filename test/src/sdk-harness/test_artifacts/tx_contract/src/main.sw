@@ -84,7 +84,7 @@ abi TxContractTest {
     fn get_input_message_data_length(index: u64) -> u16;
     fn get_input_predicate_length(index: u64) -> u16;
     fn get_input_predicate_data_length(index: u64) -> u16;
-    fn get_input_message_data(index: u64, offset: u64) -> u64;
+    fn get_input_message_data(index: u64, offset: u64) -> [u8; 3];
     fn get_input_message_predicate(index: u64) -> u64;
 
     fn get_tx_output_pointer(index: u64) -> u64;
@@ -184,8 +184,8 @@ impl TxContractTest for Contract {
         input_predicate_data_length(index).unwrap()
     }
     // @review return type ! (lib func is generic)
-    fn get_input_message_data(index: u64, offset: u64) -> u64 {
-        input_message_data::<u64>(index, offset)
+    fn get_input_message_data(index: u64, offset: u64) -> [u8; 3] {
+        input_message_data::<[u8; 3]>(index, offset)
     }
     // @review return type ! (lib func is generic)
     fn get_input_message_predicate(index: u64) -> u64 {
