@@ -4,6 +4,7 @@ use crate::{
     metadata::{MetadataManager, StorageOperation},
 };
 
+use sway_error::error::CompileError;
 use sway_ir::{Context, Function, Instruction};
 use sway_types::span::Span;
 

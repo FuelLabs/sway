@@ -6,6 +6,8 @@ use crate::declaration_engine::{
 use crate::namespace::{Path, Root};
 use crate::TyDeclaration;
 use lazy_static::lazy_static;
+use sway_error::error::CompileError;
+use sway_error::type_error::TypeError;
 use sway_types::span::Span;
 use sway_types::{Ident, Spanned};
 
@@ -195,8 +197,8 @@ impl TypeEngine {
                 let mut errors = vec![];
                 if l != r {
                     errors.push(TypeError::MismatchedType {
-                        expected,
-                        received,
+                        expected: expected.to_string(),
+                        received: received.to_string(),
                         help_text,
                         span: span.clone(),
                     });
@@ -324,8 +326,8 @@ impl TypeEngine {
                         });
                 } else {
                     errors.push(TypeError::MismatchedType {
-                        expected,
-                        received,
+                        expected: expected.to_string(),
+                        received: received.to_string(),
                         help_text,
                         span: span.clone(),
                     });
@@ -374,8 +376,8 @@ impl TypeEngine {
                         });
                 } else {
                     errors.push(TypeError::MismatchedType {
-                        expected,
-                        received,
+                        expected: expected.to_string(),
+                        received: received.to_string(),
                         help_text,
                         span: span.clone(),
                     });
@@ -404,8 +406,8 @@ impl TypeEngine {
                 let mut errors = vec![];
                 if !new_errors.is_empty() {
                     errors.push(TypeError::MismatchedType {
-                        expected,
-                        received,
+                        expected: expected.to_string(),
+                        received: received.to_string(),
                         help_text,
                         span: span.clone(),
                     });
@@ -461,8 +463,8 @@ impl TypeEngine {
             (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
             (_, _) => {
                 let errors = vec![TypeError::MismatchedType {
-                    expected,
-                    received,
+                    expected: expected.to_string(),
+                    received: received.to_string(),
                     help_text,
                     span: span.clone(),
                 }];

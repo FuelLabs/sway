@@ -21,6 +21,7 @@ use crate::{
     Ident,
 };
 
+use sway_error::error::CompileError;
 use sway_types::{span::Span, Spanned};
 
 use either::Either;

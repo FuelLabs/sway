@@ -22,6 +22,7 @@ use crate::{
 };
 
 use sway_ast::intrinsics::Intrinsic;
+use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use std::{

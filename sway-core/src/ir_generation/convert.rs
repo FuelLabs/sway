@@ -1,11 +1,11 @@
 use crate::{
-    error::CompileError,
     language::Literal,
     type_system::{to_typeinfo, TypeId, TypeInfo},
 };
 
 use super::types::{create_enum_aggregate, create_tuple_aggregate};
 
+use sway_error::error::CompileError;
 use sway_ir::{Aggregate, Constant, Context, Type, Value};
 use sway_types::span::Span;
 

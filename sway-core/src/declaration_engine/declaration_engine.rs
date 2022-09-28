@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use std::{collections::HashMap, sync::RwLock};
+use sway_error::error::CompileError;
 use sway_types::{Span, Spanned};
 
 use crate::{
@@ -8,7 +9,7 @@ use crate::{
         TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyImplTrait,
         TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
     },
-    CompileError, TyFunctionDeclaration,
+    TyFunctionDeclaration,
 };
 
 use super::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper};

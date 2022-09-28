@@ -1,4 +1,4 @@
-use crate::{Parse, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsumed};
+use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::keywords::{
     AbiToken, ClassToken, ConstToken, EnumToken, FnToken, ImplToken, MutToken,
@@ -9,6 +9,7 @@ use sway_ast::{
     FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait,
     ItemUse, TypeField,
 };
+use sway_error::parser_error::ParseErrorKind;
 
 mod item_abi;
 mod item_const;

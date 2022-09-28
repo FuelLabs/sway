@@ -1,5 +1,4 @@
-use crate::handler::Handler;
-use crate::{Parse, ParseError, ParseErrorKind, ParseToEnd, Peek};
+use crate::{Parse, ParseToEnd, Peek};
 
 use core::marker::PhantomData;
 use sway_ast::keywords::Keyword;
@@ -8,6 +7,8 @@ use sway_ast::token::{
     Delimiter, DocComment, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree,
 };
 use sway_ast::PubToken;
+use sway_error::handler::Handler;
+use sway_error::parser_error::{ParseError, ParseErrorKind};
 use sway_types::{Ident, Span, Spanned};
 
 pub struct Parser<'a, 'e> {

@@ -1,7 +1,6 @@
 pub use {
     crate::{
         brackets::ParseBracket,
-        error::{ParseError, ParseErrorKind},
         expr::op_code::parse_instruction,
         parse::{Parse, ParseToEnd, Peek},
         parser::{ErrorEmitted, ParseResult, Parser, ParserConsumed, Peeker},

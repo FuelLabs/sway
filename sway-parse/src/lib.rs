@@ -1,10 +1,8 @@
 mod attribute;
 mod brackets;
 mod dependency;
-mod error;
 mod expr;
 mod generics;
-pub mod handler;
 mod item;
 mod keywords;
 mod literal;
@@ -19,18 +17,18 @@ mod token;
 mod ty;
 mod where_clause;
 
-use crate::handler::Handler;
+use crate::priv_prelude::*;
 pub use crate::{
-    error::{ParseError, ParseErrorKind},
     parse::Parse,
     parser::Parser,
-    token::LexError,
     token::{lex, lex_commented},
 };
 
 use sway_ast::Module;
+use sway_error::handler::Handler;
+use sway_error::lex_error::LexError;
+use sway_error::parser_error::ParseError;
 
-use crate::priv_prelude::*;
 use std::{path::PathBuf, sync::Arc};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

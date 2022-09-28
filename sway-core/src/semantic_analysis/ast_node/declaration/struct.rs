@@ -5,6 +5,7 @@ use crate::{
     type_system::*,
 };
 use std::hash::{Hash, Hasher};
+use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]

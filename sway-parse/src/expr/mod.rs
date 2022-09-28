@@ -1,6 +1,4 @@
-use crate::{
-    Parse, ParseBracket, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsumed, Peek,
-};
+use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed, Peek};
 
 use core::ops::ControlFlow;
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
@@ -19,6 +17,7 @@ use sway_ast::{
     ExprTupleDescriptor, GenericArgs, IfCondition, IfExpr, LitInt, Literal, MatchBranch,
     MatchBranchKind, PathExprSegment, Statement, StatementLet,
 };
+use sway_error::parser_error::ParseErrorKind;
 use sway_types::{Ident, Span, Spanned};
 
 mod asm;

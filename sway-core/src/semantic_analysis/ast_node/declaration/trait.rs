@@ -167,7 +167,8 @@ fn handle_supertraits(
                 span: supertrait.name.span().clone(),
             }),
             _ => errors.push(CompileError::TraitNotFound {
-                name: supertrait.name.clone(),
+                name: supertrait.name.to_string(),
+                span: supertrait.name.span(),
             }),
         }
     }

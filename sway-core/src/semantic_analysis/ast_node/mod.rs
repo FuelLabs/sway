@@ -23,6 +23,7 @@ use crate::{
     Ident,
 };
 
+use sway_error::error::CompileError;
 use sway_types::{span::Span, state::StateIndex, Spanned};
 
 use derivative::Derivative;
@@ -143,7 +144,7 @@ impl TyAstNode {
                     warnings,
                     errors
                 );
-                let is_main = name.as_str() == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME
+                let is_main = name.as_str() == sway_types::constants::DEFAULT_ENTRY_POINT_FN_NAME
                     && matches!(tree_type, TreeType::Script | TreeType::Predicate);
                 ok(is_main, warnings, errors)
             }

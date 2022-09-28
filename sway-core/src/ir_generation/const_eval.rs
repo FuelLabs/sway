@@ -1,6 +1,5 @@
 use crate::{
     declaration_engine::declaration_engine::de_get_constant,
-    error::CompileError,
     metadata::MetadataManager,
     semantic_analysis::{
         declaration::ProjectionKind, namespace, TyAstNode, TyAstNodeContent, TyConstantDeclaration,
@@ -10,13 +9,13 @@ use crate::{
 
 use super::{convert::convert_literal_to_constant, types::*};
 
+use sway_error::error::CompileError;
 use sway_ir::{
     constant::{Constant, ConstantValue},
     context::Context,
     module::Module,
     value::Value,
 };
-
 use sway_types::{ident::Ident, span::Spanned};
 
 use std::collections::HashMap;

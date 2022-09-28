@@ -1,4 +1,5 @@
 use derivative::Derivative;
+use sway_error::error::CompileError;
 use sway_types::{Ident, Span};
 
 use crate::{
@@ -9,7 +10,7 @@ use crate::{
         TypeCheckContext,
     },
     type_system::{insert_type, AbiName, TypeId},
-    CompileError, CompileResult, TypeInfo,
+    CompileResult, TypeInfo,
 };
 
 use super::{CreateTypeId, TyTraitFn};

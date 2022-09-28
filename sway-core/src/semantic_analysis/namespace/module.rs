@@ -17,7 +17,9 @@ use super::{
 
 use std::collections::BTreeMap;
 use sway_ast::ItemConst;
-use sway_parse::{handler::Handler, lex, Parser};
+use sway_error::error::CompileError;
+use sway_error::handler::Handler;
+use sway_parse::{lex, Parser};
 use sway_types::{span::Span, ConfigTimeConstant, Spanned};
 
 /// A single `Module` within a Sway project.

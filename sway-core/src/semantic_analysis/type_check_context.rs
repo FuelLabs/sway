@@ -6,8 +6,9 @@ use crate::{
         insert_type, monomorphize, unify_with_self, CopyTypes, EnforceTypeArguments,
         MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
     },
-    CompileError, CompileResult, CompileWarning,
+    CompileResult, CompileWarning,
 };
+use sway_error::error::CompileError;
 use sway_types::{span::Span, Ident};
 
 /// Contextual state tracked and accumulated throughout type-checking.

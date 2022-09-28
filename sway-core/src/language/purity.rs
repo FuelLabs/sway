@@ -21,7 +21,7 @@ impl Purity {
 
     // Useful for error messages, show the syntax needed in the #[storage(...)] attribute.
     pub fn to_attribute_syntax(&self) -> String {
-        use crate::constants::*;
+        use sway_types::constants::*;
         match self {
             Purity::Pure => "".to_owned(),
             Purity::Reads => STORAGE_PURITY_READ_NAME.to_owned(),
