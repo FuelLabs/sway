@@ -32,7 +32,8 @@ use sway_ir::{Kind, Module};
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
-    TypedDeclaration, TypedFunctionDeclaration, TypedModule, TypedProgram, TypedProgramKind,
+    TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration, TypedModule,
+    TypedProgram, TypedProgramKind,
 };
 pub mod types;
 pub use crate::parse_tree::{

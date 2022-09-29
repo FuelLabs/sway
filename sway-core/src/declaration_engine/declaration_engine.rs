@@ -14,12 +14,12 @@ use crate::{
 use super::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper};
 
 lazy_static! {
-    static ref DECLARATION_ENGINE: DeclarationEngine = DeclarationEngine::default();
+    pub static ref DECLARATION_ENGINE: DeclarationEngine = DeclarationEngine::default();
 }
 
 /// Used inside of type inference to store declarations.
 #[derive(Debug, Default)]
-pub(crate) struct DeclarationEngine {
+pub struct DeclarationEngine {
     slab: ConcurrentSlab<DeclarationWrapper>,
     // *declaration_id -> vec of monomorphized copies
     // where the declaration_id is the original declaration
@@ -255,7 +255,7 @@ pub(crate) fn de_clear() {
     DECLARATION_ENGINE.clear()
 }
 
-pub(crate) fn de_look_up_decl_id(index: DeclarationId) -> DeclarationWrapper {
+pub fn de_look_up_decl_id(index: DeclarationId) -> DeclarationWrapper {
     DECLARATION_ENGINE.look_up_decl_id(index)
 }
 

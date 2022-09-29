@@ -1,4 +1,3 @@
-use crate::ops::forc_doc;
 use anyhow::Result;
 use clap::Parser;
 
@@ -25,9 +24,4 @@ pub struct Command {
     /// Do not build documentation for dependencies.
     #[clap(long)]
     pub no_deps: bool,
-}
-
-pub(crate) fn exec(command: Command) -> Result<()> {
-    forc_doc::doc(command)?;
-    Ok(())
 }

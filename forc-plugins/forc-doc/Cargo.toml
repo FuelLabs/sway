@@ -1,0 +1,13 @@
+[package]
+name = "forc-doc"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+sway-core = { version = "0.24.5", path = "../../sway-core" }
+sway-types = { version = "0.24.5", path = "../../sway-types" }
+forc-pkg = { version = "0.24.5", path = "../../forc-pkg" }
+anyhow = "1.0.65"
+clap = { version = "4.0.4", features = ["derive"] }
