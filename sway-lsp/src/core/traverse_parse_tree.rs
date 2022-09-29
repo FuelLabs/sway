@@ -296,6 +296,9 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
 fn handle_expression(expression: &Expression, tokens: &TokenMap) {
     let span = &expression.span;
     match &expression.kind {
+        ExpressionKind::Error(_part_spans) => {
+            // FIXME(Centril): Left for @JoshuaBatty to use.
+        }
         ExpressionKind::Literal(value) => {
             let symbol_kind = literal_to_symbol_kind(value);
 
@@ -567,7 +570,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
             body, condition, ..
         }) => handle_while_loop(body, condition, tokens),
         // TODO: collect these tokens as keywords once the compiler returns the span
-        ExpressionKind::Break | ExpressionKind::Continue => (),
+        ExpressionKind::Break | ExpressionKind::Continue => {}
         ExpressionKind::Reassignment(reassignment) => {
             handle_expression(&reassignment.rhs, tokens);
 

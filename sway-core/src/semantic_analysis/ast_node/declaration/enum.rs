@@ -7,7 +7,7 @@ use crate::{
         insert_type, look_up_type_id, CopyTypes, CreateTypeId, EnforceTypeArguments,
         MonomorphizeHelper, ReplaceSelfType, TypeId, TypeMapping, TypeParameter,
     },
-    TypeInfo, CreateTypeInfo,
+    CreateTypeInfo, TypeInfo,
 };
 use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Span, Spanned};
