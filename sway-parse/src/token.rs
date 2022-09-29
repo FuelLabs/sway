@@ -467,15 +467,10 @@ fn lex_char(
         kind: LexErrorKind::UnclosedCharLiteral { position: index },
         span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
     };
-    let next_character = match char_indices.next() {
-        Some((_, next_character)) => next_character,
-        None => return Err(unclosed_char_lit()),
-    };
+    let (_, next_character) = char_indices.next().ok_or_else(unclosed_char_lit)?;
     let parsed = if next_character == '\\' {
-        match parse_escape_code(src, char_indices, path) {
-            Ok(parsed) => parsed,
-            Err(e) => return Err(e.unwrap_or_else(unclosed_char_lit)),
-        }
+        parse_escape_code(src, char_indices, path)
+            .map_err(|e| e.unwrap_or_else(unclosed_char_lit))?
     } else {
         next_character
     };
