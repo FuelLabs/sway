@@ -76,24 +76,15 @@ impl From<&TypedDeclaration> for Descriptor {
         match o {
             StructDeclaration(ref decl) => Descriptor::Documentable {
                 ty: Struct,
-                name: de_get_struct(decl.clone(), &decl.span())
-                    .unwrap()
-                    .name
-                    .clone(),
+                name: de_get_struct(decl.clone(), &decl.span()).unwrap().name,
             },
             EnumDeclaration(ref decl) => Descriptor::Documentable {
                 ty: Enum,
-                name: de_get_enum(decl.clone(), &decl.span())
-                    .unwrap()
-                    .name
-                    .clone(),
+                name: de_get_enum(decl.clone(), &decl.span()).unwrap().name,
             },
             TraitDeclaration(ref decl) => Descriptor::Documentable {
                 ty: Trait,
-                name: de_get_trait(decl.clone(), &decl.span())
-                    .unwrap()
-                    .name
-                    .clone(),
+                name: de_get_trait(decl.clone(), &decl.span()).unwrap().name,
             },
             _ => Descriptor::NonDocumentable,
         }
@@ -105,17 +96,16 @@ type Documentation = BTreeMap<Descriptor, (Vec<Attribute>, TypeInformation)>;
 impl RenderedDocumentation {
     pub fn render(raw: &Documentation) -> Vec<RenderedDocumentation> {
         let mut buf: Vec<RenderedDocumentation> = Default::default();
-        for (desc, (docs, ty)) in raw {
+        for (desc, (_docs, _ty)) in raw {
             let file_name = match desc.to_file_name() {
                 Some(x) => x,
                 None => continue,
             };
-            match desc {
-                Descriptor::Documentable { ty, name } => buf.push(Self {
+            if let Descriptor::Documentable { ty, name } = desc {
+                buf.push(Self {
                     file_contents: HTMLString(format!("Docs for {:?} {:?}", name.as_str(), ty)),
                     file_name,
-                }),
-                _ => (),
+                })
             }
         }
         buf
@@ -281,14 +271,14 @@ fn doc_attributes(ast_node: &AstNode) -> Vec<Attribute> {
         })
         .unwrap_or_default()
 }
-fn extract_submodule_docs(submodule: &ParseSubmodule, docs: &mut Documentation) {
+fn extract_submodule_docs(_submodule: &ParseSubmodule, _docs: &mut Documentation) {
     todo!();
 
-    if !submodule.module.submodules.is_empty() {
-        while let Some((_, submodule)) = submodule.module.submodules.first() {
-            extract_submodule_docs(submodule, docs);
-        }
-    }
+    // if !submodule.module.submodules.is_empty() {
+    //     while let Some((_, submodule)) = submodule.module.submodules.first() {
+    //         extract_submodule_docs(submodule, docs);
+    //     }
+    // }
 }
 fn get_compiled_docs(
     compilation: &CompileResult<(ParseProgram, Option<TypedProgram>)>,
@@ -312,7 +302,7 @@ fn get_compiled_docs(
         // then, grab the docstrings
         for ast_node in &parsed_program.root.tree.root_nodes {
             if let AstNodeContent::Declaration(ref decl) = ast_node.content {
-                let docstrings = doc_attributes(&ast_node);
+                let docstrings = doc_attributes(ast_node);
                 if let Some(entry) = docs.get_mut(&Descriptor::from(decl)) {
                     entry.0 = docstrings;
                 } else {
@@ -321,14 +311,13 @@ fn get_compiled_docs(
                 }
             }
         }
-        /*
-         * TODO submodules
+
+        //TODO submodules
         if !no_deps {
             for (_, ref submodule) in &parsed_program.root.submodules {
                 extract_submodule_docs(submodule, &mut docs);
             }
         }
-        */
     }
 
     docs
