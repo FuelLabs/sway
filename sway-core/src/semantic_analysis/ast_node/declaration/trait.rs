@@ -202,35 +202,38 @@ fn convert_trait_methods_to_dummy_funcs(
                     body: TypedCodeBlock { contents: vec![] },
                     parameters: parameters
                         .iter()
-                        .map(
-                            |FunctionParameter {
-                                 name,
-                                 is_reference,
-                                 is_mutable,
-                                 mutability_span,
-                                 type_id,
-                                 type_span,
-                             }| TypedFunctionParameter {
+                        .map(|param| {
+                            let FunctionParameter {
+                                name,
+                                is_reference,
+                                is_mutable,
+                                mutability_span,
+                                type_info,
+                                type_span,
+                            } = param;
+                            let initial_type_id = insert_type(type_info.clone());
+                            let type_id = check!(
+                                trait_namespace.resolve_type_with_self(
+                                    initial_type_id,
+                                    insert_type(TypeInfo::SelfType),
+                                    type_span,
+                                    EnforceTypeArguments::Yes,
+                                    None
+                                ),
+                                insert_type(TypeInfo::ErrorRecovery),
+                                warnings,
+                                errors,
+                            );
+                            TypedFunctionParameter {
                                 name: name.clone(),
                                 is_reference: *is_reference,
                                 is_mutable: *is_mutable,
                                 mutability_span: mutability_span.clone(),
-                                type_id: check!(
-                                    trait_namespace.resolve_type_with_self(
-                                        *type_id,
-                                        insert_type(TypeInfo::SelfType),
-                                        type_span,
-                                        EnforceTypeArguments::Yes,
-                                        None
-                                    ),
-                                    insert_type(TypeInfo::ErrorRecovery),
-                                    warnings,
-                                    errors,
-                                ),
-                                initial_type_id: *type_id,
+                                type_id,
+                                initial_type_id,
                                 type_span: type_span.clone(),
-                            },
-                        )
+                            }
+                        })
                         .collect(),
                     span: name.span(),
                     return_type: check!(

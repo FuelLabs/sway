@@ -777,7 +777,7 @@ pub(crate) fn unify(
     )
 }
 
-pub fn to_typeinfo(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
+pub(crate) fn to_typeinfo(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
     TYPE_ENGINE.to_typeinfo(id, error_span)
 }
 

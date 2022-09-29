@@ -49,10 +49,22 @@ impl TypedFunctionParameter {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let FunctionParameter {
+            name,
+            is_reference,
+            is_mutable,
+            mutability_span,
+            type_info,
+            type_span,
+        } = parameter;
+
+        let initial_type_id = insert_type(type_info);
+
         let type_id = check!(
             ctx.resolve_type_with_self(
-                parameter.type_id,
-                &parameter.type_span,
+                initial_type_id,
+                &type_span,
                 EnforceTypeArguments::Yes,
                 None
             ),
@@ -60,37 +72,37 @@ impl TypedFunctionParameter {
             warnings,
             errors,
         );
-        let mutability =
-            convert_to_variable_immutability(parameter.is_reference, parameter.is_mutable);
+
+        let mutability = convert_to_variable_immutability(is_reference, is_mutable);
         if mutability == VariableMutability::Mutable {
-            errors.push(CompileError::MutableParameterNotSupported {
-                param_name: parameter.name,
-            });
+            errors.push(CompileError::MutableParameterNotSupported { param_name: name });
             return err(warnings, errors);
         }
+
         ctx.namespace.insert_symbol(
-            parameter.name.clone(),
+            name.clone(),
             TypedDeclaration::VariableDeclaration(Box::new(TypedVariableDeclaration {
-                name: parameter.name.clone(),
+                name: name.clone(),
                 body: TypedExpression {
                     expression: TypedExpressionVariant::FunctionParameter,
                     return_type: type_id,
                     is_constant: IsConstant::No,
-                    span: parameter.name.span(),
+                    span: name.span(),
                 },
                 mutability,
                 type_ascription: type_id,
                 type_ascription_span: None,
             })),
         );
+
         let parameter = TypedFunctionParameter {
-            name: parameter.name,
-            is_reference: parameter.is_reference,
-            is_mutable: parameter.is_mutable,
-            mutability_span: parameter.mutability_span,
+            name,
+            is_reference,
+            is_mutable,
+            mutability_span,
             type_id,
-            initial_type_id: parameter.type_id,
-            type_span: parameter.type_span,
+            initial_type_id,
+            type_span,
         };
         ok(parameter, warnings, errors)
     }
