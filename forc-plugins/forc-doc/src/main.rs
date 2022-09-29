@@ -150,12 +150,9 @@ pub fn main() -> Result<()> {
     // check if the out path exists
     let out_path = PathBuf::from(&manifest.dir()).join("out");
     let doc_path = out_path.join("doc");
-    if out_path.try_exists().is_err() {
+    if !out_path.try_exists().unwrap_or(false) {
         // create the out path
-        fs::create_dir_all(&out_path)?;
-        if doc_path.try_exists().is_err() {
-            fs::create_dir(&doc_path)?;
-        }
+        fs::create_dir_all(&doc_path)?;
     }
     // gather docs
 
@@ -169,9 +166,9 @@ pub fn main() -> Result<()> {
 
     // write to outfile
     for entry in rendered {
-        let mut out_path = out_path.clone();
-        out_path.push(entry.file_name);
-        let mut file = fs::File::create(out_path)?;
+        let mut doc_path = out_path.clone();
+        doc_path.push(entry.file_name);
+        let mut file = fs::File::create(doc_path)?;
         file.write_all(entry.file_contents.0.as_bytes())?;
     }
 
@@ -309,6 +306,7 @@ fn get_compiled_docs(
                     .entry(Descriptor::from(decl))
                     .or_insert((Vec::new(), decl.clone()));
                 entry.1 = decl.clone();
+                dbg!(&entry);
             }
         }
         // then, grab the docstrings
