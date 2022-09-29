@@ -1,10 +1,17 @@
 // #![allow(dead_code)]
 use dashmap::DashMap;
-use forc_pkg::{self as pkg};
+use forc_pkg::{manifest::Dependency, ManifestFile};
+use notify::RecursiveMode;
+use notify_debouncer_mini::new_debouncer;
+use notify_debouncer_mini::DebouncedEvent;
+use std::sync::mpsc::{Receiver, Sender};
+
 use std::{
     collections::HashMap,
-    fs,
+    fs::{self, File},
+    io::{Read, Write},
     path::{Path, PathBuf},
+    sync::Arc,
 };
 use tempfile::Builder;
 use tower_lsp::lsp_types::Url;
@@ -15,8 +22,8 @@ pub enum Directory {
     Temp,
 }
 
-#[test]
-fn feature() {
+#[tokio::test(flavor = "multi_thread")]
+async fn feature() {
     // 1. watch the manifest directory and check for any save events on Forc.toml
     // 2. deserialize the manifest file and loop through the dependancies
     // 3. check if the dependancy is specifying a 'path'
@@ -29,17 +36,41 @@ fn feature() {
     let directories: DashMap<Directory, PathBuf> = DashMap::new();
     let dirs = create_temp_dir_from_url(&current_open_file, &directories);
 
-    // https://github.com/kondanta/reload_config/blob/master/src/lib.rs <- possibly something like this
-
-    use forc_pkg::manifest::*;
-
     // Key = name of the dependancy that has been specified will a relative path
     // Value = the absolute path that should be used to overwrite the relateive path
     let mut dependency_map: HashMap<String, PathBuf> = HashMap::new();
 
     let manifest_dir = PathBuf::from(current_open_file.path());
-    if let Ok(manifest) = pkg::ManifestFile::from_dir(&manifest_dir) {
-        //watch(&manifest.path());
+    if let Ok(manifest) = ManifestFile::from_dir(&manifest_dir) {
+        let manifest_dir = Arc::new(manifest.clone());
+        let jh = tokio::spawn(async move {
+            let (tx, mut rx) = tokio::sync::mpsc::channel(10);
+            // Setup debouncer. No specific tickrate, max debounce time 2 seconds
+            let mut debouncer = new_debouncer(
+                std::time::Duration::from_secs(1),
+                None,
+                move |event| match event {
+                    Ok(e) => {
+                        tx.blocking_send(e);
+                    }
+                    Err(_) => (),
+                },
+            )
+            .unwrap();
+
+            debouncer
+                .watcher()
+                .watch(manifest_dir.as_ref().path(), RecursiveMode::Recursive)
+                .unwrap();
+
+            while let Some(events) = rx.recv().await {
+                for e in events {
+                    // Match on did save event. Rescan the Forc.toml and convert
+                    // relative paths to absolute. Save into our temp directory.
+                    println!("event! {:?}", e);
+                }
+            }
+        });
 
         if let Some(deps) = &manifest.dependencies {
             for (name, dep) in deps.iter() {
@@ -61,6 +92,16 @@ fn feature() {
                 .join(sway_utils::constants::TEST_MANIFEST_FILE_NAME);
             edit_dependency_paths(&manifest.path(), &temp_manifest_path, &dependency_map);
         }
+
+        //jh.await;
+    }
+
+    loop_indef().await;
+}
+
+async fn loop_indef() {
+    loop {
+        tokio::time::sleep(std::time::Duration::from_millis(1250));
     }
 }
 
@@ -69,9 +110,6 @@ fn edit_dependency_paths(
     temp_manifest_path: &Path,
     dependency_map: &HashMap<String, PathBuf>,
 ) {
-    use std::fs::File;
-    use std::io::{Read, Write};
-
     if let Ok(mut file) = File::open(manifest_path) {
         let mut toml = String::new();
         let _ = file.read_to_string(&mut toml);
@@ -84,29 +122,6 @@ fn edit_dependency_paths(
             if let Ok(mut file) = File::create(temp_manifest_path) {
                 let _ = file.write_all(manifest_toml.to_string().as_bytes());
             }
-        }
-    }
-}
-
-fn watch(manifest_path: &Path) {
-    use notify::RecursiveMode;
-    use notify_debouncer_mini::new_debouncer;
-
-    // setup debouncer
-    let (tx, rx) = std::sync::mpsc::channel();
-
-    // No specific tickrate, max debounce time 2 seconds
-    let mut debouncer = new_debouncer(std::time::Duration::from_secs(1), None, tx).unwrap();
-
-    debouncer
-        .watcher()
-        .watch(manifest_path, RecursiveMode::Recursive)
-        .unwrap();
-
-    // print all events, non returning
-    for events in rx {
-        for e in events {
-            println!("event! {:?}", e);
         }
     }
 }
@@ -212,7 +227,7 @@ fn copy_dir_contents(
 pub(crate) fn create_temp_dir_from_url(uri: &Url, directories: &DashMap<Directory, PathBuf>) {
     // Convert the Uri to a PathBuf
     let manifest_dir = PathBuf::from(uri.path());
-    if let Ok(manifest) = pkg::ManifestFile::from_dir(&manifest_dir) {
+    if let Ok(manifest) = ManifestFile::from_dir(&manifest_dir) {
         // strip Forc.toml from the path
         let manifest_dir = manifest.path().parent().unwrap();
         // extract the project name from the path
