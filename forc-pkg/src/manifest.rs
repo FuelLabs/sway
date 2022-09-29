@@ -88,7 +88,7 @@ pub struct BuildProfile {
     pub print_ir: bool,
     pub print_finalized_asm: bool,
     pub print_intermediate_asm: bool,
-    pub silent: bool,
+    pub terse: bool,
     pub time_phases: bool,
     pub generate_logged_types: bool,
 }
@@ -403,7 +403,7 @@ impl BuildProfile {
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
-            silent: false,
+            terse: false,
             time_phases: false,
             generate_logged_types: false,
         }
@@ -415,7 +415,7 @@ impl BuildProfile {
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
-            silent: false,
+            terse: false,
             time_phases: false,
             generate_logged_types: false,
         }
