@@ -277,10 +277,11 @@ async fn can_get_input_type() {
 
 #[tokio::test]
 async fn can_get_tx_input_amount() {
+    let default_amount = 1000000000;
     let (contract_instance, _, _) = get_contracts().await;
     let result = contract_instance.get_input_amount(1).call().await.unwrap();
 
-    assert_eq!(result.value, 1000000000);
+    assert_eq!(result.value, default_amount);
 }
 
 #[tokio::test]
@@ -298,16 +299,15 @@ async fn can_get_tx_input_coin_owner() {
 
 #[tokio::test]
 #[should_panic(expected = "Revert(0)")]
-async fn can_handle_no_input_predicate_data_pointer() {
+async fn fails_to_get_predicate_data_pointer_from_input_contract() {
     let (contract_instance, _, _) = get_contracts().await;
     let call_params = CallParameters::default();
-    let result = contract_instance
+    contract_instance
         .get_tx_input_predicate_data_pointer(0)
         .call_params(call_params)
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, 7);
 }
 
 #[tokio::test]
@@ -319,27 +319,16 @@ async fn can_get_tx_output_type() {
         .await
         .unwrap();
     assert_eq!(result.value, Output::Contract());
-
-    let result = contract_instance
-        .get_output_type(1)
-        .call()
-        .await
-        .unwrap();
-    assert_eq!(result.value, Output::Change());
 }
 
-#[tokio::test]
-async fn can_get_tx_output_amount() {
-    let (contract_instance, _, _) = get_contracts().await;
-    let result = contract_instance.get_tx_output_amount(1).call().await.unwrap();
-    assert_eq!(result.value, 0);
-}
+// TODO: test output.amount with outputs which have this field !
+// TODO: organize tests into modules
 
 #[tokio::test]
 #[should_panic(expected = "Revert(0)")]
-async fn can_handle_no_tx_output_amount_for_output_contract() {
+async fn fails_to_get_amount_for_output_contract() {
     let (contract_instance, _, _) = get_contracts().await;
-    let _result = contract_instance.get_tx_output_amount(0).call().await.unwrap();
+    contract_instance.get_tx_output_amount(0).call().await.unwrap();
 }
 
 #[tokio::test]
@@ -376,23 +365,29 @@ async fn can_get_input_message_msg_id() -> Result<(), Error> {
 }
 
 #[tokio::test]
-#[ignore]
 async fn can_get_input_message_sender() -> Result<(), Error> {
     let (contract_instance, _, wallet) = get_contracts().await;
     let result = contract_instance.get_input_message_sender(1).call().await.unwrap();
     let messages = wallet.get_messages().await?;
-    // assert_eq!(result.value, messages[0].sender.0);
+    let contract_bytes: [u8; 32] = result.value.into();
+    let message_bytes: [u8; 32] = messages[0].sender.0.0.into();
+    assert_eq!(contract_bytes, message_bytes);
     Ok(())
 }
 
 #[tokio::test]
-async fn can_get_input_message_recipient() {
+async fn can_get_input_message_recipient() -> Result<(), Error> {
     let (contract_instance, _, wallet) = get_contracts().await;
     let result = contract_instance.get_input_message_recipient(1).call().await.unwrap();
-    assert_eq!(result.value, Address::from(wallet.address()));
+    let messages = wallet.get_messages().await?;
+    let contract_bytes: [u8; 32] = result.value.into();
+    let message_bytes: [u8; 32] = messages[0].recipient.0.0.into();
+    assert_eq!(contract_bytes, message_bytes);
+    Ok(())
 }
 
 #[tokio::test]
+#[ignore]
 async fn can_get_input_message_nonce() -> Result<(), Error> {
     let (contract_instance, _, wallet) = get_contracts().await;
     let result = contract_instance.get_input_message_nonce(1).call().await.unwrap();
