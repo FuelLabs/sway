@@ -134,7 +134,7 @@ pub fn git_checkouts_directory() -> PathBuf {
 }
 
 pub fn print_on_success(
-    silent_mode: bool,
+    terse_mode: bool,
     proj_name: &str,
     warnings: &[CompileWarning],
     tree_type: &TreeType,
@@ -146,7 +146,7 @@ pub fn print_on_success(
         TreeType::Library { .. } => "library",
     };
 
-    if !silent_mode {
+    if !terse_mode {
         warnings.iter().for_each(format_warning);
     }
 
@@ -167,8 +167,8 @@ pub fn print_on_success(
     }
 }
 
-pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[CompileWarning]) {
-    if !silent_mode {
+pub fn print_on_success_library(terse_mode: bool, proj_name: &str, warnings: &[CompileWarning]) {
+    if !terse_mode {
         warnings.iter().for_each(format_warning);
     }
 
@@ -188,10 +188,10 @@ pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[
     }
 }
 
-pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: &[CompileError]) {
+pub fn print_on_failure(terse_mode: bool, warnings: &[CompileWarning], errors: &[CompileError]) {
     let e_len = errors.len();
 
-    if !silent_mode {
+    if !terse_mode {
         warnings.iter().for_each(format_warning);
         errors.iter().for_each(format_err);
     }
@@ -417,20 +417,39 @@ impl<'a> MakeWriter<'a> for StdioTracingWriter {
     }
 }
 
+#[derive(Default)]
+pub struct TracingSubscriberOptions {
+    pub verbosity: Option<u8>,
+    pub silent: Option<bool>,
+    pub log_level: Option<LevelFilter>,
+}
+
 /// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
 ///
 /// `RUST_LOG` environment variable can be used to set different minimum level for the subscriber, default is `INFO`.
-pub fn init_tracing_subscriber(verbosity: Option<u8>) {
+pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
     let env_filter = match env::var_os(LOG_FILTER) {
         Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
         None => EnvFilter::new("info"),
     };
 
-    let level_filter = verbosity.and_then(|verbosity| match verbosity {
-        1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
-        2 => Some(LevelFilter::TRACE), // matches -vv
-        _ => None,
-    });
+    let level_filter = options
+        .log_level
+        .or_else(|| {
+            options.verbosity.and_then(|verbosity| {
+                match verbosity {
+                    1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
+                    2 => Some(LevelFilter::TRACE), // matches -vv
+                    _ => None,
+                }
+            })
+        })
+        .or_else(|| {
+            options.silent.and_then(|silent| match silent {
+                true => Some(LevelFilter::OFF),
+                _ => None,
+            })
+        });
 
     let builder = tracing_subscriber::fmt::Subscriber::builder()
         .with_env_filter(env_filter)
@@ -442,7 +461,7 @@ pub fn init_tracing_subscriber(verbosity: Option<u8>) {
         .with_target(false)
         .with_writer(StdioTracingWriter);
 
-    // If verbosity is set, it overrides the RUST_LOG setting
+    // If log level, verbosity, or silent mode is set, it overrides the RUST_LOG setting
     if let Some(level_filter) = level_filter {
         builder.with_max_level(level_filter).init();
     } else {
