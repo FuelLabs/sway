@@ -8,6 +8,8 @@ use ::identity::Identity;
 use ::revert::revert;
 use ::outputs::{Output, output_amount, output_count, output_type};
 
+const FAILED_TRANSFER_TO_OUTPUT_SIGNAL = 0xffff_ffff_ffff_0001;
+
 /// Mint `amount` coins of the current contract's `asset_id` and transfer them
 /// to `to` by calling either force_transfer_to_contract() or
 /// transfer_to_output(), depending on the type of `Identity`.
@@ -105,7 +107,7 @@ pub fn transfer_to_output(amount: u64, asset_id: ContractId, to: Address) {
     }
 
     if !output_found {
-        revert(0);
+        revert(FAILED_TRANSFER_TO_OUTPUT_SIGNAL);
     } else {
         asm(r1: to.value, r2: output_index, r3: amount, r4: asset_id.value) {
             tro r1 r2 r3 r4;
