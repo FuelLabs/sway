@@ -2,7 +2,6 @@ library r#storage;
 
 use ::alloc::alloc;
 use ::assert::assert;
-use ::context::registers::stack_ptr;
 use ::hash::sha256;
 use ::option::Option;
 use ::result::Result;
@@ -42,7 +41,10 @@ pub fn store<T>(key: b256, value: T) {
     };
 }
 
-/// Load a stack variable from storage.
+/// Load a variable from storage.
+///
+/// If the value size is larger than 8 bytes it is read to a heap buffer which is leaked for the
+/// duration of the program.
 #[storage(read)]
 pub fn get<T>(key: b256) -> T {
     if !__is_reference_type::<T>() {
