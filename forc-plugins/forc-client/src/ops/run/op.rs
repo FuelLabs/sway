@@ -37,7 +37,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         binary_outfile: command.binary_outfile,
         debug_outfile: command.debug_outfile,
         offline_mode: false,
-        silent_mode: command.silent_mode,
+        terse_mode: command.terse_mode,
         output_directory: command.output_directory,
         minify_json_abi: command.minify_json_abi,
         minify_json_storage_slots: command.minify_json_storage_slots,
