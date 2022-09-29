@@ -10,7 +10,7 @@ use forc_util::{
 };
 // Using `fuel_tx` directly instead of `fuel_gql_client` transitively is causing some weird issue.
 // See https://github.com/FuelLabs/sway/issues/2659
-use fuel_gql_client::fuel_tx::{Contract, StorageSlot};
+use fuel_tx::{Contract, StorageSlot};
 use petgraph::{
     self,
     visit::{Bfs, Dfs, EdgeRef, Walker},
