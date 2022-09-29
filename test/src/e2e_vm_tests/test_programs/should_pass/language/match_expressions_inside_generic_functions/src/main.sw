@@ -3,14 +3,14 @@ script;
 use std::assert::*;
 use std::revert::*;
 
-fn third_match<V>(value: V) -> u8 {
-  match value {
+fn third_match<M>(bbbb_value: M) -> u8 {
+  match bbbb_value {
     foo => 5u8,
   }
 }
 
-fn second_match<U>(value: U) -> bool {
-  match third_match(value) {
+fn second_match<L>(bbb_value: L) -> bool {
+  match third_match(bbb_value) {
     1u8 => false,
     2u8 => false,
     3u8 => false,
@@ -20,14 +20,14 @@ fn second_match<U>(value: U) -> bool {
   }
 }
 
-fn first_match<T>(value: T) -> u64 {
-  match second_match(value) {
+fn first_match<Z>(bb_value: Z) -> u64 {
+  match second_match(bb_value) {
     false => 2u64,
     true => 3u64,
   }
 }
 
-fn third_if<V>(value: V) -> u8 {
+fn third_if<A>(aaaa_value: A) -> u8 {
   if true {
     5u8
   } else {
@@ -35,8 +35,8 @@ fn third_if<V>(value: V) -> u8 {
   }
 }
 
-fn second_if<U>(value: U) -> bool {
-  let third = third_if(value);
+fn second_if<Q>(aaa_value: Q) -> bool {
+  let third = third_if(aaa_value);
   if third == 1u8 || third == 2u8 || third == 3u8 || third == 4u8 {
     false
   } else if third == 5u8 {
@@ -46,8 +46,8 @@ fn second_if<U>(value: U) -> bool {
   }
 }
 
-fn first_if<T>(value: T) -> u64 {
-  let second = second_if(value);
+fn first_if<Y>(aa_value: Y) -> u64 {
+  let second = second_if(aa_value);
   if second == false {
     2u64
   } else {
@@ -55,13 +55,13 @@ fn first_if<T>(value: T) -> u64 {
   }
 }
 
-fn generic_match<T>(value: T) -> u64 {
-  match value {
+fn generic_match<W>(cc_value: W) -> u64 {
+  match cc_value {
     foo => 3u64,
   }
 }
 
-fn generic_if<T>(value: T) -> u64 {
+fn generic_if<X>(dd_value: X) -> u64 {
   if true {
     3u64
   } else {
@@ -70,11 +70,18 @@ fn generic_if<T>(value: T) -> u64 {
 }
 
 fn main() -> u64 {
+
   let a = first_match(true);
   assert(a == 3);
 
   let b = first_match(1u8);
   assert(b == 3);
+
+  let i = second_if(1u16);
+  assert(i);
+
+  let j = second_if(false);
+  assert(j);
 
   let c = first_if(true);
   assert(c == 3);

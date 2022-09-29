@@ -158,7 +158,7 @@ impl TypeBinding<CallPath> {
                     errors
                 );
 
-                if new_copy.name.as_str() == "first_if" {
+                if new_copy.name.as_str() == "second_if" {
                     let trait_fn = TypedTraitFn {
                         name: new_copy.name.clone(),
                         purity: new_copy.purity,
@@ -166,6 +166,7 @@ impl TypeBinding<CallPath> {
                         return_type: new_copy.return_type,
                         return_type_span: new_copy.return_type_span.clone(),
                     };
+                    println!("before: {}", trait_fn);
                     println!("before: {:#?}", trait_fn);
                 }
 
@@ -182,7 +183,7 @@ impl TypeBinding<CallPath> {
                     errors
                 );
 
-                if new_copy.name.as_str() == "first_if" {
+                if new_copy.name.as_str() == "second_if" {
                     let trait_fn = TypedTraitFn {
                         name: new_copy.name.clone(),
                         purity: new_copy.purity,
@@ -190,6 +191,7 @@ impl TypeBinding<CallPath> {
                         return_type: new_copy.return_type,
                         return_type_span: new_copy.return_type_span.clone(),
                     };
+                    println!("after: {}", trait_fn);
                     println!("after: {:#?}", trait_fn);
                 }
 

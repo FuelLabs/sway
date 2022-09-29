@@ -366,7 +366,7 @@ impl CopyTypes for TypedExpressionVariant {
                 arguments
                     .iter_mut()
                     .for_each(|(_ident, expr)| expr.copy_types(type_mapping));
-                function_decl.copy_types(type_mapping);
+                //function_decl.copy_types(type_mapping);
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).copy_types(type_mapping);
