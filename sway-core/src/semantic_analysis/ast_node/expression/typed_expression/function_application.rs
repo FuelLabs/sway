@@ -31,6 +31,10 @@ pub(crate) fn instantiate_function_application(
         errors
     );
 
+    if function_decl.name.as_str() == "second_if" {
+        println!("about to unify arguments: {}", function_decl);
+    }
+
     // type check arguments in function application vs arguments in function
     // declaration. Use parameter type annotations as annotations for the
     // arguments
@@ -38,34 +42,14 @@ pub(crate) fn instantiate_function_application(
         .into_iter()
         .zip(function_decl.parameters.iter())
         .map(|(arg, param)| {
-            // let ctx = ctx
-            //     .by_ref()
-            //     .with_help_text(
-            //         "The argument that has been provided to this function's type does \
-            //         not match the declared type of the parameter in the function \
-            //         declaration.",
-            //     )
-            //     .with_type_annotation(param.type_id);
-
-            // let exp = check!(
-            //     TypedExpression::type_check(ctx, arg.clone()),
-            //     error_recovery_expr(arg.span()),
-            //     warnings,
-            //     errors
-            // );
-
-            // // check for matching mutability
-            // let param_mutability =
-            //     convert_to_variable_immutability(param.is_reference, param.is_mutable);
-            // if exp.gather_mutability().is_immutable() && param_mutability.is_mutable() {
-            //     errors.push(CompileError::ImmutableArgumentToMutableParameter { span: arg.span() });
-            // }
-
-            // (param.name.clone(), exp)
-
             let ctx = ctx
                 .by_ref()
-                .with_type_annotation(insert_type(TypeInfo::Unknown));
+                .with_help_text(
+                    "The argument that has been provided to this function's type does \
+                    not match the declared type of the parameter in the function \
+                    declaration.",
+                )
+                .with_type_annotation(param.type_id);
 
             let exp = check!(
                 TypedExpression::type_check(ctx, arg.clone()),
@@ -74,6 +58,12 @@ pub(crate) fn instantiate_function_application(
                 errors
             );
 
+            if function_decl.name.as_str() == "second_if"
+                || function_decl.name.as_str() == "third_if"
+            {
+                println!("just unified: {} and {}", exp.return_type, param.type_id);
+            }
+
             // check for matching mutability
             let param_mutability =
                 convert_to_variable_immutability(param.is_reference, param.is_mutable);
@@ -81,22 +71,13 @@ pub(crate) fn instantiate_function_application(
                 errors.push(CompileError::ImmutableArgumentToMutableParameter { span: arg.span() });
             }
 
-            append!(
-                unify(
-                    exp.return_type,
-                    param.type_id,
-                    &exp.span,
-                    "The argument that has been provided to this function's type does \
-                not match the declared type of the parameter in the function \
-                declaration."
-                ),
-                warnings,
-                errors
-            );
-
             (param.name.clone(), exp)
         })
         .collect();
+
+    if function_decl.name.as_str() == "second_if" || function_decl.name.as_str() == "third_if" {
+        println!("  just unified arguments: {}", function_decl);
+    }
 
     let span = function_decl.span.clone();
     let exp = instantiate_function_application_inner(

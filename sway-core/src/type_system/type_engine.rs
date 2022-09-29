@@ -182,13 +182,13 @@ impl TypeEngine {
                     );
                 }
                 let type_mapping = TypeMapping::from_type_parameters(value.type_parameters());
-                value.copy_types(&type_mapping);
                 check!(
                     type_mapping.unify_with_type_arguments(type_arguments),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
+                value.copy_types(&type_mapping);
                 ok((), warnings, errors)
             }
         }
@@ -310,6 +310,16 @@ impl TypeEngine {
             (UnknownGeneric { name: l_name }, UnknownGeneric { name: r_name })
                 if l_name.as_str() == r_name.as_str() =>
             {
+                (vec![], vec![])
+            }
+            (UnknownGeneric { name: l_name }, UnknownGeneric { name: r_name })
+                if l_name.as_str() != r_name.as_str() =>
+            {
+                self.slab.replace(
+                    expected,
+                    &UnknownGeneric { name: r_name },
+                    TypeInfo::Ref(received, span.clone()),
+                );
                 (vec![], vec![])
             }
             (ref received_info @ UnknownGeneric { .. }, _) => {
@@ -655,10 +665,10 @@ impl TypeEngine {
                             // replace the old type id with the new type info
                             te.slab.blind_replace(*old_type_id, new_type_info);
                         }
-                        Some(TypedDeclaration::GenericTypeForFunctionScope { name, type_id }) => {
-                            if name.as_str() == "Q" {
-                                println!("found match with {}", name);
-                            }
+                        Some(TypedDeclaration::GenericTypeForFunctionScope {
+                            name: _,
+                            type_id,
+                        }) => {
                             // replace the old type id with the new type id
                             te.slab
                                 .blind_replace(*old_type_id, TypeInfo::Ref(type_id, name.span()));

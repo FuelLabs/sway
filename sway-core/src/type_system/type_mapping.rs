@@ -1,3 +1,5 @@
+use std::fmt;
+
 use super::*;
 
 type SourceType = TypeId;
@@ -7,6 +9,20 @@ type DestinationType = TypeId;
 /// and a [DestinationType] (RHS).
 pub(crate) struct TypeMapping {
     mapping: Vec<(SourceType, DestinationType)>,
+}
+
+impl fmt::Display for TypeMapping {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.mapping
+                .iter()
+                .map(|(source, destination)| format!("({} -> {})", source, destination))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
 }
 
 impl TypeMapping {
@@ -243,16 +259,8 @@ impl TypeMapping {
     pub(crate) fn find_match(&self, type_id: TypeId) -> Option<TypeId> {
         let type_info = look_up_type_id(type_id);
         match type_info {
-            TypeInfo::Custom { .. } => {
-                let potential_match = iter_for_match(self, &type_info);
-                //println!("comparing {}, found match: {}", type_id, potential_match.map(|x| x.to_string()).unwrap_or("none".to_string()));
-                potential_match
-            }
-            TypeInfo::UnknownGeneric { .. } => {
-                let potential_match = iter_for_match(self, &type_info);
-                //println!("comparing {}, found match: {}", type_id, potential_match.map(|x| x.to_string()).unwrap_or("none".to_string()));
-                potential_match
-            }
+            TypeInfo::Custom { .. } => iter_for_match(self, &type_info),
+            TypeInfo::UnknownGeneric { .. } => iter_for_match(self, &type_info),
             TypeInfo::Struct {
                 mut fields,
                 name,
@@ -327,8 +335,8 @@ impl TypeMapping {
         for ((_, destination_type), type_arg) in self.mapping.iter().zip(type_arguments.iter()) {
             append!(
                 unify(
-                    *destination_type,
                     type_arg.type_id,
+                    *destination_type,
                     &type_arg.span,
                     "Type argument is not assignable to generic type parameter.",
                 ),

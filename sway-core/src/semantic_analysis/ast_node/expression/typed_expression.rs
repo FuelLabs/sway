@@ -82,9 +82,9 @@ impl CollectTypesMetadata for TypedExpression {
                     warnings,
                     errors
                 ));
-                for arg in arguments.iter() {
+                for (_, arg) in arguments.iter() {
                     res.append(&mut check!(
-                        arg.1.collect_types_metadata(),
+                        arg.collect_types_metadata(),
                         return err(warnings, errors),
                         warnings,
                         errors

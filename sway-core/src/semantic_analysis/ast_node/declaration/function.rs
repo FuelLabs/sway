@@ -119,6 +119,9 @@ impl CollectTypesMetadata for TypedFunctionDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut body = vec![];
+        if self.name.as_str() == "second_if" || self.name.as_str() == "third_if" {
+            println!("at collect_types: {}", self);
+        }
         for type_param in self.type_parameters.iter() {
             body.append(&mut check!(
                 type_param.type_id.collect_types_metadata(),
@@ -126,6 +129,9 @@ impl CollectTypesMetadata for TypedFunctionDeclaration {
                 warnings,
                 errors
             ));
+        }
+        if !body.is_empty() {
+            println!("!! found bad type");
         }
         for param in self.parameters.iter() {
             body.append(&mut check!(
@@ -214,7 +220,7 @@ impl TypedFunctionDeclaration {
             errors
         );
 
-        if name.as_str() == "second_if" {
+        if name.as_str() == "second_if" || name.as_str() == "third_if" {
             let tmp = TypedFunctionDeclaration {
                 name: name.clone(),
                 type_parameters: new_type_parameters.clone(),
@@ -228,7 +234,7 @@ impl TypedFunctionDeclaration {
                 purity,
                 span: span.clone(),
             };
-            println!("currently type checking: {}", tmp);
+            println!("1 currently type checking: {}", tmp);
         }
 
         // type check the function body
@@ -250,6 +256,23 @@ impl TypedFunctionDeclaration {
                 errors
             )
         };
+
+        if name.as_str() == "second_if" || name.as_str() == "third_if" {
+            let tmp = TypedFunctionDeclaration {
+                name: name.clone(),
+                type_parameters: new_type_parameters.clone(),
+                parameters: new_parameters.clone(),
+                return_type,
+                initial_return_type,
+                return_type_span: return_type_span.clone(),
+                body: TypedCodeBlock { contents: vec![] },
+                visibility,
+                is_contract_call: false,
+                purity,
+                span: span.clone(),
+            };
+            println!("2 currently type checking: {}", tmp);
+        }
 
         // gather the return statements
         let return_statements: Vec<&TypedExpression> = body

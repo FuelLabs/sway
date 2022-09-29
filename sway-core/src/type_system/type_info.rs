@@ -294,7 +294,7 @@ impl fmt::Display for TypeInfo {
             .into(),
             Boolean => "bool".into(),
             Custom { name, .. } => format!("unresolved {}", name.as_str()),
-            Ref(id, _sp) => format!("T{} ({})", id, (*id)),
+            Ref(id, _) => format!("T..{}", **id),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()

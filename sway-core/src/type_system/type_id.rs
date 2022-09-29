@@ -15,7 +15,7 @@ impl std::ops::Deref for TypeId {
 
 impl fmt::Display for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&look_up_type_id(*self).to_string())
+        f.write_str(&look_up_type_id_raw(*self).to_string())
     }
 }
 
@@ -27,14 +27,13 @@ impl From<usize> for TypeId {
 
 impl CollectTypesMetadata for TypeId {
     fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
-        use TypeInfo::*;
         let span_override = if let TypeInfo::Ref(_, span) = look_up_type_id_raw(*self) {
             Some(span)
         } else {
             None
         };
         let res = match look_up_type_id(*self) {
-            UnknownGeneric { name } => vec![TypeMetadata::UnresolvedType {
+            TypeInfo::UnknownGeneric { name } => vec![TypeMetadata::UnresolvedType {
                 name,
                 span_override,
             }],

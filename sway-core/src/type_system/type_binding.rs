@@ -3,7 +3,7 @@ use sway_types::{Span, Spanned};
 use crate::{
     declaration_engine::declaration_engine::*,
     error::{err, ok},
-    semantic_analysis::{TypeCheckContext, TypedTraitFn},
+    semantic_analysis::TypeCheckContext,
     type_system::{insert_type, EnforceTypeArguments},
     CallPath, CompileResult, TypeInfo, TypedDeclaration,
 };
@@ -158,16 +158,8 @@ impl TypeBinding<CallPath> {
                     errors
                 );
 
-                if new_copy.name.as_str() == "second_if" {
-                    let trait_fn = TypedTraitFn {
-                        name: new_copy.name.clone(),
-                        purity: new_copy.purity,
-                        parameters: new_copy.parameters.clone(),
-                        return_type: new_copy.return_type,
-                        return_type_span: new_copy.return_type_span.clone(),
-                    };
-                    println!("before: {}", new_copy);
-                    println!("before: {:#?}", trait_fn);
+                if new_copy.name.as_str() == "second_if" || new_copy.name.as_str() == "third_if" {
+                    println!("type binding before: {}", new_copy);
                 }
 
                 // monomorphize the copy, in place
@@ -183,16 +175,8 @@ impl TypeBinding<CallPath> {
                     errors
                 );
 
-                if new_copy.name.as_str() == "second_if" {
-                    let trait_fn = TypedTraitFn {
-                        name: new_copy.name.clone(),
-                        purity: new_copy.purity,
-                        parameters: new_copy.parameters.clone(),
-                        return_type: new_copy.return_type,
-                        return_type_span: new_copy.return_type_span.clone(),
-                    };
-                    println!("after: {}", new_copy);
-                    println!("after: {:#?}", trait_fn);
+                if new_copy.name.as_str() == "second_if" || new_copy.name.as_str() == "third_if" {
+                    println!(" type binding after: {}", new_copy);
                 }
 
                 // insert the new copy into the declaration engine

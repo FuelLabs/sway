@@ -365,13 +365,28 @@ impl CopyTypes for TypedExpressionVariant {
             } => {
                 arguments
                     .iter_mut()
-                    .for_each(|(_ident, expr)| expr.copy_types(type_mapping));
+                    .for_each(|(_, expr)| expr.copy_types(type_mapping));
+                if function_decl.name.as_str() == "third_if" {
+                    println!(
+                        "-> about to deep copy type for: {} where {}",
+                        function_decl, type_mapping
+                    );
+                }
                 for type_param in function_decl.type_parameters.iter() {
                     if let Some(matching_id) = type_mapping.find_match(type_param.type_id) {
-                        replace_type_id(type_param.type_id, matching_id);
+                        replace_type_id(
+                            type_param.type_id,
+                            insert_type(TypeInfo::Ref(matching_id, type_param.name_ident.span())),
+                        );
+                        // replace_type_id(type_param.type_id, matching_id);
                     }
                 }
-                //function_decl.copy_types(type_mapping);
+                if function_decl.name.as_str() == "third_if" {
+                    println!(
+                        "->    just deep copy typed for: {} where {}",
+                        function_decl, type_mapping
+                    );
+                }
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).copy_types(type_mapping);

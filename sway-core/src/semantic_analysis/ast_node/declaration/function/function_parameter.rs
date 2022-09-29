@@ -59,13 +59,7 @@ impl PartialEq for TypedFunctionParameter {
 
 impl CopyTypes for TypedFunctionParameter {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        if self.name.as_str() == "aa_value" {
-            println!("about to set type id: {}", *self.type_id);
-        }
         self.type_id.update_type(type_mapping, &self.type_span);
-        if self.name.as_str() == "aa_value" {
-            println!("    just set type id: {}", *self.type_id);
-        }
     }
 }
 
