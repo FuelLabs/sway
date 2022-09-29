@@ -166,7 +166,7 @@ impl TypeBinding<CallPath> {
                         return_type: new_copy.return_type,
                         return_type_span: new_copy.return_type_span.clone(),
                     };
-                    println!("before: {}", trait_fn);
+                    println!("before: {}", new_copy);
                     println!("before: {:#?}", trait_fn);
                 }
 
@@ -191,7 +191,7 @@ impl TypeBinding<CallPath> {
                         return_type: new_copy.return_type,
                         return_type_span: new_copy.return_type_span.clone(),
                     };
-                    println!("after: {}", trait_fn);
+                    println!("after: {}", new_copy);
                     println!("after: {:#?}", trait_fn);
                 }
 

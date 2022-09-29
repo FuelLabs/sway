@@ -13,31 +13,46 @@ use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaratio
 #[derive(Clone, Debug, Eq)]
 pub struct TypedFunctionDeclaration {
     pub name: Ident,
-    pub body: TypedCodeBlock,
+    pub type_parameters: Vec<TypeParameter>,
     pub parameters: Vec<TypedFunctionParameter>,
-    pub span: Span,
     pub return_type: TypeId,
     pub initial_return_type: TypeId,
-    pub type_parameters: Vec<TypeParameter>,
     /// Used for error messages -- the span pointing to the return type
     /// annotation of the function
     pub return_type_span: Span,
+    pub body: TypedCodeBlock,
     pub(crate) visibility: Visibility,
     /// whether this function exists in another contract and requires a call to it or not
     pub(crate) is_contract_call: bool,
     pub(crate) purity: Purity,
+    pub span: Span,
 }
 
 impl fmt::Display for TypedFunctionDeclaration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let trait_fn = TypedTraitFn {
-            name: self.name.clone(),
-            purity: self.purity,
-            parameters: self.parameters.clone(),
-            return_type: self.return_type,
-            return_type_span: self.return_type_span.clone(),
-        };
-        write!(f, "{}", trait_fn)
+        write!(
+            f,
+            "{}{}({}) -> {} {{ .. }}",
+            self.name,
+            if self.type_parameters.is_empty() {
+                "".to_string()
+            } else {
+                format!(
+                    "<{}>",
+                    self.type_parameters
+                        .iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            },
+            self.parameters
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(", "),
+            self.return_type,
+        )
     }
 }
 
@@ -96,6 +111,45 @@ impl MonomorphizeHelper for TypedFunctionDeclaration {
 
     fn name(&self) -> &Ident {
         &self.name
+    }
+}
+
+impl CollectTypesMetadata for TypedFunctionDeclaration {
+    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut body = vec![];
+        for type_param in self.type_parameters.iter() {
+            body.append(&mut check!(
+                type_param.type_id.collect_types_metadata(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        for param in self.parameters.iter() {
+            body.append(&mut check!(
+                param.type_id.collect_types_metadata(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        body.append(&mut check!(
+            self.return_type.collect_types_metadata(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        ));
+        for content in self.body.contents.iter() {
+            body.append(&mut check!(
+                content.collect_types_metadata(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        ok(body, warnings, errors)
     }
 }
 
@@ -160,6 +214,23 @@ impl TypedFunctionDeclaration {
             errors
         );
 
+        if name.as_str() == "second_if" {
+            let tmp = TypedFunctionDeclaration {
+                name: name.clone(),
+                type_parameters: new_type_parameters.clone(),
+                parameters: new_parameters.clone(),
+                return_type,
+                initial_return_type,
+                return_type_span: return_type_span.clone(),
+                body: TypedCodeBlock { contents: vec![] },
+                visibility,
+                is_contract_call: false,
+                purity,
+                span: span.clone(),
+            };
+            println!("currently type checking: {}", tmp);
+        }
+
         // type check the function body
         //
         // If there are no implicit block returns, then we do not want to type check them, so we
@@ -196,7 +267,7 @@ impl TypedFunctionDeclaration {
                     .with_help_text(
                         "Return statement must return the declared function return type."
                     )
-                    .unify_with_self(stmt.return_type, &stmt.span),
+                    .unify_with_type_annotation_and_self(stmt.return_type, &stmt.span),
                 warnings,
                 errors
             );

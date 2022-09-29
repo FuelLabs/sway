@@ -103,22 +103,8 @@ impl TypedFunctionParameter {
             errors.push(CompileError::MutableParameterNotSupported { param_name: name });
             return err(warnings, errors);
         }
-        ctx.namespace.insert_symbol(
-            name.clone(),
-            TypedDeclaration::VariableDeclaration(Box::new(TypedVariableDeclaration {
-                name: name.clone(),
-                body: TypedExpression {
-                    expression: TypedExpressionVariant::FunctionParameter,
-                    return_type: type_id,
-                    is_constant: IsConstant::No,
-                    span: name.span(),
-                },
-                mutability,
-                type_ascription: type_id,
-                type_ascription_span: None,
-            })),
-        );
-        let parameter = TypedFunctionParameter {
+
+        let typed_parameter = TypedFunctionParameter {
             name,
             is_reference,
             is_mutable,
@@ -127,6 +113,23 @@ impl TypedFunctionParameter {
             initial_type_id,
             type_span,
         };
-        ok(parameter, warnings, errors)
+
+        ctx.namespace.insert_symbol(
+            typed_parameter.name.clone(),
+            TypedDeclaration::VariableDeclaration(Box::new(TypedVariableDeclaration {
+                name: typed_parameter.name.clone(),
+                body: TypedExpression {
+                    expression: TypedExpressionVariant::FunctionParameter,
+                    return_type: typed_parameter.type_id,
+                    is_constant: IsConstant::No,
+                    span: typed_parameter.name.span(),
+                },
+                mutability,
+                type_ascription: typed_parameter.type_id,
+                type_ascription_span: Some(typed_parameter.type_span.clone()),
+            })),
+        );
+
+        ok(typed_parameter, warnings, errors)
     }
 }

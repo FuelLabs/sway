@@ -94,7 +94,10 @@ impl TypedMatchBranch {
         // unify the return type from the typed result with the type annotation
         if !typed_result.deterministically_aborts() {
             append!(
-                ctx.unify_with_self(typed_result.return_type, &typed_result.span),
+                ctx.unify_with_type_annotation_and_self(
+                    typed_result.return_type,
+                    &typed_result.span
+                ),
                 warnings,
                 errors
             );

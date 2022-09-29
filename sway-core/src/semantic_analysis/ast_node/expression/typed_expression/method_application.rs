@@ -278,7 +278,7 @@ pub(crate) fn type_check_method_application(
             .by_ref()
             .with_help_text("This argument's type is not castable to the declared parameter type.")
             .with_type_annotation(param.type_id)
-            .unify_with_self(arg.return_type, &arg.span);
+            .unify_with_type_annotation_and_self(arg.return_type, &arg.span);
         warnings.append(&mut new_warnings);
         if !new_errors.is_empty() {
             errors.push(CompileError::ArgumentParameterTypeMismatch {

@@ -69,29 +69,22 @@ impl CollectTypesMetadata for TypedExpression {
         use TypedExpressionVariant::*;
         let mut warnings = vec![];
         let mut errors = vec![];
-        let mut res = check!(
-            self.return_type.collect_types_metadata(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        let mut res = vec![];
         match &self.expression {
             FunctionApplication {
                 arguments,
                 function_decl,
                 ..
             } => {
+                res.append(&mut check!(
+                    function_decl.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
                 for arg in arguments.iter() {
                     res.append(&mut check!(
                         arg.1.collect_types_metadata(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-                for content in function_decl.body.contents.iter() {
-                    res.append(&mut check!(
-                        content.collect_types_metadata(),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -210,13 +203,13 @@ impl CollectTypesMetadata for TypedExpression {
                 ..
             } => {
                 res.append(&mut check!(
-                    prefix.collect_types_metadata(),
+                    resolved_type_of_parent.collect_types_metadata(),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ));
                 res.append(&mut check!(
-                    resolved_type_of_parent.collect_types_metadata(),
+                    prefix.collect_types_metadata(),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -228,13 +221,13 @@ impl CollectTypesMetadata for TypedExpression {
                 ..
             } => {
                 res.append(&mut check!(
-                    prefix.collect_types_metadata(),
+                    resolved_type_of_parent.collect_types_metadata(),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ));
                 res.append(&mut check!(
-                    resolved_type_of_parent.collect_types_metadata(),
+                    prefix.collect_types_metadata(),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -245,9 +238,9 @@ impl CollectTypesMetadata for TypedExpression {
                 contents,
                 ..
             } => {
-                if let Some(contents) = contents {
+                for type_param in enum_decl.type_parameters.iter() {
                     res.append(&mut check!(
-                        contents.collect_types_metadata(),
+                        type_param.type_id.collect_types_metadata(),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -261,9 +254,9 @@ impl CollectTypesMetadata for TypedExpression {
                         errors
                     ));
                 }
-                for type_param in enum_decl.type_parameters.iter() {
+                if let Some(contents) = contents {
                     res.append(&mut check!(
-                        type_param.type_id.collect_types_metadata(),
+                        contents.collect_types_metadata(),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -365,6 +358,12 @@ impl CollectTypesMetadata for TypedExpression {
                 ));
             }
         }
+        res.append(&mut check!(
+            self.return_type.collect_types_metadata(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        ));
         ok(res, warnings, errors)
     }
 }
@@ -822,7 +821,7 @@ impl TypedExpression {
 
         // if the return type cannot be cast into the annotation type then it is a type error
         append!(
-            ctx.unify_with_self(typed_expression.return_type, &expr_span),
+            ctx.unify_with_type_annotation_and_self(typed_expression.return_type, &expr_span),
             warnings,
             errors
         );
@@ -1042,7 +1041,7 @@ impl TypedExpression {
         );
 
         append!(
-            ctx.unify_with_self(block_return_type, &span),
+            ctx.unify_with_type_annotation_and_self(block_return_type, &span),
             warnings,
             errors
         );
@@ -1815,7 +1814,7 @@ impl TypedExpression {
             let (mut new_warnings, mut new_errors) = ctx
                 .by_ref()
                 .with_type_annotation(elem_type)
-                .unify_with_self(typed_elem.return_type, &typed_elem.span);
+                .unify_with_type_annotation_and_self(typed_elem.return_type, &typed_elem.span);
             let no_warnings = new_warnings.is_empty();
             let no_errors = new_errors.is_empty();
             warnings.append(&mut new_warnings);

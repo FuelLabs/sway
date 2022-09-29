@@ -247,12 +247,12 @@ impl TypeMapping {
                 let potential_match = iter_for_match(self, &type_info);
                 //println!("comparing {}, found match: {}", type_id, potential_match.map(|x| x.to_string()).unwrap_or("none".to_string()));
                 potential_match
-            },
+            }
             TypeInfo::UnknownGeneric { .. } => {
                 let potential_match = iter_for_match(self, &type_info);
                 //println!("comparing {}, found match: {}", type_id, potential_match.map(|x| x.to_string()).unwrap_or("none".to_string()));
                 potential_match
-            },
+            }
             TypeInfo::Struct {
                 mut fields,
                 name,
@@ -328,7 +328,7 @@ impl TypeMapping {
             append!(
                 unify(
                     *destination_type,
-                    insert_type(look_up_type_id(type_arg.type_id)),
+                    type_arg.type_id,
                     &type_arg.span,
                     "Type argument is not assignable to generic type parameter.",
                 ),

@@ -35,21 +35,23 @@ impl TypeEngine {
         (initial_type_id, other_type_id)
     }
 
+    /// Gets the size of the [TypeEngine].
     pub fn size(&self) -> usize {
         self.slab.size()
-    }
-
-    /// Gets the size of the [TypeEngine].
-    fn look_up_type_id_raw(&self, id: TypeId) -> TypeInfo {
-        self.slab.get(*id)
     }
 
     /// Performs a lookup of `id` into the [TypeEngine], but only one level
     /// deep. (i.e. lookup will stop after looking up `id` once, even if it
     /// returns a [TypeInfo::Ref(..)])
+    fn look_up_type_id_raw(&self, id: TypeId) -> TypeInfo {
+        self.slab.get(*id)
+    }
+
+    /// Performs a lookup of `id` into the [TypeEngine], following any instances
+    /// of [TypeInfo::Ref(..)].
     pub(crate) fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
         match self.slab.get(*id) {
-            TypeInfo::Ref(other, _sp) => self.look_up_type_id(other),
+            TypeInfo::Ref(other, _) => self.look_up_type_id(other),
             ty => ty,
         }
     }
@@ -208,6 +210,9 @@ impl TypeEngine {
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         use TypeInfo::*;
         let help_text = help_text.into();
+        // let r = self.look_up_type_id(received);
+        // let e = self.look_up_type_id(expected);
+        // match (r, e) {
         match (self.slab.get(*received), self.slab.get(*expected)) {
             // If the types are exactly the same, we are done.
             (Boolean, Boolean) => (vec![], vec![]),
@@ -231,9 +236,10 @@ impl TypeEngine {
             }
 
             // Follow any references
-            (Ref(received, _sp1), Ref(expected, _sp2)) if received == expected => (vec![], vec![]),
-            (Ref(received, _sp), _) => self.unify(received, expected, span, help_text),
-            (_, Ref(expected, _sp)) => self.unify(received, expected, span, help_text),
+            (Ref(received, _), Ref(expected, _)) if received == expected => (vec![], vec![]),
+            (Ref(received, _), Ref(expected, _)) => self.unify(received, expected, span, help_text),
+            (Ref(received, _), _) => self.unify(received, expected, span, help_text),
+            (_, Ref(expected, _)) => self.unify(received, expected, span, help_text),
 
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
@@ -314,7 +320,6 @@ impl TypeEngine {
                 );
                 (vec![], vec![])
             }
-
             (_, ref expected_info @ UnknownGeneric { .. }) => {
                 self.slab.replace(
                     expected,
@@ -651,10 +656,12 @@ impl TypeEngine {
                             te.slab.blind_replace(*old_type_id, new_type_info);
                         }
                         Some(TypedDeclaration::GenericTypeForFunctionScope { name, type_id }) => {
-                            let new_type_id = te.insert_type(TypeInfo::Ref(type_id, name.span()));
+                            if name.as_str() == "Q" {
+                                println!("found match with {}", name);
+                            }
                             // replace the old type id with the new type id
                             te.slab
-                                .blind_replace(*old_type_id, te.look_up_type_id(new_type_id));
+                                .blind_replace(*old_type_id, TypeInfo::Ref(type_id, name.span()));
                         }
                         _ => {
                             errors.push(CompileError::UnknownTypeName {

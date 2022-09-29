@@ -38,14 +38,35 @@ pub(crate) fn instantiate_function_application(
         .into_iter()
         .zip(function_decl.parameters.iter())
         .map(|(arg, param)| {
+            // let ctx = ctx
+            //     .by_ref()
+            //     .with_help_text(
+            //         "The argument that has been provided to this function's type does \
+            //         not match the declared type of the parameter in the function \
+            //         declaration.",
+            //     )
+            //     .with_type_annotation(param.type_id);
+
+            // let exp = check!(
+            //     TypedExpression::type_check(ctx, arg.clone()),
+            //     error_recovery_expr(arg.span()),
+            //     warnings,
+            //     errors
+            // );
+
+            // // check for matching mutability
+            // let param_mutability =
+            //     convert_to_variable_immutability(param.is_reference, param.is_mutable);
+            // if exp.gather_mutability().is_immutable() && param_mutability.is_mutable() {
+            //     errors.push(CompileError::ImmutableArgumentToMutableParameter { span: arg.span() });
+            // }
+
+            // (param.name.clone(), exp)
+
             let ctx = ctx
                 .by_ref()
-                .with_help_text(
-                    "The argument that has been provided to this function's type does \
-                    not match the declared type of the parameter in the function \
-                    declaration.",
-                )
-                .with_type_annotation(param.type_id);
+                .with_type_annotation(insert_type(TypeInfo::Unknown));
+
             let exp = check!(
                 TypedExpression::type_check(ctx, arg.clone()),
                 error_recovery_expr(arg.span()),
@@ -59,6 +80,19 @@ pub(crate) fn instantiate_function_application(
             if exp.gather_mutability().is_immutable() && param_mutability.is_mutable() {
                 errors.push(CompileError::ImmutableArgumentToMutableParameter { span: arg.span() });
             }
+
+            append!(
+                unify(
+                    exp.return_type,
+                    param.type_id,
+                    &exp.span,
+                    "The argument that has been provided to this function's type does \
+                not match the declared type of the parameter in the function \
+                declaration."
+                ),
+                warnings,
+                errors
+            );
 
             (param.name.clone(), exp)
         })

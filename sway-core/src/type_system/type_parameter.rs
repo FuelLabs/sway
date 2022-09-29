@@ -84,6 +84,13 @@ impl TypeParameter {
             name: type_parameter.name_ident.clone(),
         });
 
+        let type_parameter = TypeParameter {
+            name_ident: type_parameter.name_ident,
+            type_id,
+            initial_type_id: type_parameter.initial_type_id,
+            trait_constraints: type_parameter.trait_constraints,
+        };
+
         // insert the type parameter into the namespace as a declaration
         ctx.namespace
             .insert_symbol(
@@ -95,12 +102,6 @@ impl TypeParameter {
             )
             .ok(&mut warnings, &mut errors);
 
-        let type_parameter = TypeParameter {
-            name_ident: type_parameter.name_ident,
-            type_id,
-            initial_type_id: type_parameter.initial_type_id,
-            trait_constraints: type_parameter.trait_constraints,
-        };
         ok(type_parameter, warnings, errors)
     }
 
