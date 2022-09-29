@@ -437,15 +437,12 @@ fn lex_string(
             kind: LexErrorKind::UnclosedStringLiteral { position: index },
             span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
         };
-        let next_character = match char_indices.next() {
-            Some((_, c)) => c,
-            None => return Err(unclosed_string_lit(src.len() - 1)),
-        };
+        let (_, next_character) = char_indices
+            .next()
+            .ok_or_else(|| unclosed_string_lit(src.len() - 1))?;
         parsed.push(match next_character {
-            '\\' => match parse_escape_code(src, char_indices, path) {
-                Ok(c) => c,
-                Err(e) => return Err(e.unwrap_or_else(|| unclosed_string_lit(src.len()))),
-            },
+            '\\' => parse_escape_code(src, char_indices, path)
+                .map_err(|e| e.unwrap_or_else(|| unclosed_string_lit(src.len())))?,
             '"' => break,
             _ => next_character,
         });
