@@ -189,11 +189,7 @@ fn parse_file_error_to_compile_errors(
 ) -> Vec<CompileError> {
     match error {
         Some(sway_parse::ParseFileError::Lex(error)) => vec![CompileError::Lex { error }],
-        Some(sway_parse::ParseFileError::Parse(_)) | None => handler
-            .into_errors()
-            .into_iter()
-            .map(|error| CompileError::Parse { error })
-            .collect(),
+        Some(sway_parse::ParseFileError::Parse(_)) | None => handler.into_errors(),
     }
 }
 

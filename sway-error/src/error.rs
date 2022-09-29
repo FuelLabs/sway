@@ -1,4 +1,5 @@
 use crate::convert_parse_tree_error::ConvertParseTreeError;
+use crate::lex_error::LexError;
 use crate::parser_error::ParseError;
 use crate::type_error::TypeError;
 
@@ -615,7 +616,7 @@ pub enum CompileError {
         error: ConvertParseTreeError,
     },
     #[error("{}", error)]
-    Lex { error: crate::lex_error::LexError },
+    Lex { error: LexError },
     #[error("{}", error)]
     Parse { error: ParseError },
     #[error("\"where\" clauses are not yet supported")]

@@ -25,9 +25,8 @@ pub use crate::{
 };
 
 use sway_ast::Module;
-use sway_error::handler::Handler;
 use sway_error::lex_error::LexError;
-use sway_error::parser_error::ParseError;
+use sway_error::{error::CompileError, handler::Handler};
 
 use std::{path::PathBuf, sync::Arc};
 
@@ -41,8 +40,8 @@ pub enum ParseFileError {
 pub enum ParseFileErrorStandalone {
     #[error(transparent)]
     Lex(LexError),
-    #[error("Unable to parse: {}", .0.iter().map(|x| x.kind.to_string()).collect::<Vec<String>>().join("\n"))]
-    Parse(Vec<ParseError>),
+    #[error("Unable to parse: {}", .0.iter().map(|x| x.to_string()).collect::<Vec<String>>().join("\n"))]
+    Parse(Vec<CompileError>),
 }
 
 pub fn parse_file_standalone(

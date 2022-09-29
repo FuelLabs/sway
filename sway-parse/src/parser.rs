@@ -7,6 +7,7 @@ use sway_ast::token::{
     Delimiter, DocComment, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree,
 };
 use sway_ast::PubToken;
+use sway_error::error::CompileError;
 use sway_error::handler::Handler;
 use sway_error::parser_error::{ParseError, ParseErrorKind};
 use sway_types::{Ident, Span, Spanned};
@@ -47,7 +48,7 @@ impl<'a, 'e> Parser<'a, 'e> {
 
     pub fn emit_error_with_span(&mut self, kind: ParseErrorKind, span: Span) -> ErrorEmitted {
         let error = ParseError { span, kind };
-        self.handler.emit_err(error);
+        self.handler.emit_err(CompileError::Parse { error });
         ErrorEmitted { _priv: () }
     }
 
