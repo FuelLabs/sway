@@ -1,9 +1,11 @@
 mod cli;
 use anyhow::Result;
+use clap::Parser;
 use cli::Command;
 use forc_pkg::{self as pkg, ManifestFile};
 use std::{
     collections::BTreeMap,
+    io::prelude::*,
     {fs, path::PathBuf},
 };
 use sway_core::{
@@ -13,17 +15,37 @@ use sway_core::{
 };
 use sway_types::{Ident, Spanned};
 
-#[derive(Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Eq, PartialEq, Ord, PartialOrd, Debug)]
 enum DescriptorType {
     Struct,
     Enum,
     Trait,
 }
+impl DescriptorType {
+    pub fn to_name(&self) -> &'static str {
+        use DescriptorType::*;
+        match self {
+            Struct => "struct",
+            Enum => "enum",
+            Trait => "trait",
+        }
+    }
+}
 
 #[derive(Eq, PartialEq, Ord, PartialOrd)]
-struct Descriptor {
-    ty: DescriptorType,
-    name: Ident,
+enum Descriptor {
+    Documentable { ty: DescriptorType, name: Ident },
+    NonDocumentable,
+}
+
+impl Descriptor {
+    pub fn to_file_name(&self) -> Option<String> {
+        use Descriptor::*;
+        match self {
+            NonDocumentable => None,
+            Documentable { ty, name } => Some(format!("{}.{}.html", ty.to_name(), name.as_str())),
+        }
+    }
 }
 
 impl From<&Declaration> for Descriptor {
@@ -31,11 +53,19 @@ impl From<&Declaration> for Descriptor {
         use Declaration::*;
         use DescriptorType::*;
         match o {
-            StructDeclaration(ref decl) => Descriptor {
+            StructDeclaration(ref decl) => Descriptor::Documentable {
                 ty: Struct,
                 name: decl.name.clone(),
             },
-            _ => todo!(),
+            EnumDeclaration(ref decl) => Descriptor::Documentable {
+                ty: Enum,
+                name: decl.name.clone(),
+            },
+            TraitDeclaration(ref decl) => Descriptor::Documentable {
+                ty: Trait,
+                name: decl.name.clone(),
+            },
+            _ => Descriptor::NonDocumentable,
         }
     }
 }
@@ -44,19 +74,53 @@ impl From<&TypedDeclaration> for Descriptor {
         use DescriptorType::*;
         use TypedDeclaration::*;
         match o {
-            StructDeclaration(ref decl) => Descriptor {
+            StructDeclaration(ref decl) => Descriptor::Documentable {
                 ty: Struct,
                 name: de_get_struct(decl.clone(), &decl.span())
                     .unwrap()
                     .name
                     .clone(),
             },
-            _ => todo!(),
+            EnumDeclaration(ref decl) => Descriptor::Documentable {
+                ty: Enum,
+                name: de_get_enum(decl.clone(), &decl.span())
+                    .unwrap()
+                    .name
+                    .clone(),
+            },
+            TraitDeclaration(ref decl) => Descriptor::Documentable {
+                ty: Trait,
+                name: de_get_trait(decl.clone(), &decl.span())
+                    .unwrap()
+                    .name
+                    .clone(),
+            },
+            _ => Descriptor::NonDocumentable,
         }
     }
 }
 type TypeInformation = TypedDeclaration;
 type Documentation = BTreeMap<Descriptor, (Vec<Attribute>, TypeInformation)>;
+
+impl RenderedDocumentation {
+    pub fn render(raw: &Documentation) -> Vec<RenderedDocumentation> {
+        let mut buf: Vec<RenderedDocumentation> = Default::default();
+        for (desc, (docs, ty)) in raw {
+            let file_name = match desc.to_file_name() {
+                Some(x) => x,
+                None => continue,
+            };
+            match desc {
+                Descriptor::Documentable { ty, name } => buf.push(Self {
+                    file_contents: HTMLString(format!("Docs for {:?} {:?}", name.as_str(), ty)),
+                    file_name,
+                }),
+                _ => (),
+            }
+        }
+        buf
+    }
+}
 
 struct HTMLString(String);
 
@@ -74,7 +138,7 @@ pub fn main() -> Result<()> {
         silent_mode,
         locked,
         no_deps,
-    } = todo!();
+    } = Command::parse();
 
     let dir = if let Some(ref path) = manifest_path {
         PathBuf::from(path)
@@ -101,10 +165,15 @@ pub fn main() -> Result<()> {
     let docs = get_compiled_docs(&compilation, no_deps);
 
     // render docs to HTML
-    todo!("render");
+    let rendered = RenderedDocumentation::render(&docs);
 
     // write to outfile
-    todo!("write to outfile");
+    for entry in rendered {
+        let mut out_path = out_path.clone();
+        out_path.push(entry.file_name);
+        let mut file = fs::File::create(out_path)?;
+        file.write_all(entry.file_contents.0.as_bytes())?;
+    }
 
     // check if the user wants to open the doc in the browser
     if open_result {
@@ -215,10 +284,9 @@ fn doc_attributes(ast_node: &AstNode) -> Vec<Attribute> {
         })
         .unwrap_or_default()
 }
-fn extract_submodule_docs(submodule: &ParseSubmodule, docs: &mut Vec<Vec<Attribute>>) {
-    for ast_node in &submodule.module.tree.root_nodes {
-        docs.push(doc_attributes(ast_node));
-    }
+fn extract_submodule_docs(submodule: &ParseSubmodule, docs: &mut Documentation) {
+    todo!();
+
     if !submodule.module.submodules.is_empty() {
         while let Some((_, submodule)) = submodule.module.submodules.first() {
             extract_submodule_docs(submodule, docs);
@@ -255,12 +323,14 @@ fn get_compiled_docs(
                 }
             }
         }
+        /*
+         * TODO submodules
         if !no_deps {
-            while let Some((_, submodule)) = parsed_program.root.submodules.first() {
-                todo!()
-                //                extract_submodule_docs(submodule, &mut docs);
+            for (_, ref submodule) in &parsed_program.root.submodules {
+                extract_submodule_docs(submodule, &mut docs);
             }
         }
+        */
     }
 
     docs
