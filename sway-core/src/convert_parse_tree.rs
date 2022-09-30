@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    type_system::{to_typeinfo, TraitConstraint, TypeArgument, TypeBinding, TypeParameter},
+    type_system::{TraitConstraint, TypeArgument, TypeBinding, TypeParameter},
     WhileLoopExpression,
 };
 
@@ -315,13 +315,11 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
         ItemKind::Fn(item_fn) => {
             let function_declaration = item_fn_to_function_declaration(ec, item_fn, attributes)?;
             for param in &function_declaration.parameters {
-                if let Ok(ty) = to_typeinfo(param.type_id, &param.type_span) {
-                    if matches!(ty, TypeInfo::SelfType) {
-                        let error = ConvertParseTreeError::SelfParameterNotAllowedForFreeFn {
-                            span: param.type_span.clone(),
-                        };
-                        return Err(ec.error(error));
-                    }
+                if matches!(param.type_info, TypeInfo::SelfType) {
+                    let error = ConvertParseTreeError::SelfParameterNotAllowedForFreeFn {
+                        span: param.type_span.clone(),
+                    };
+                    return Err(ec.error(error));
                 }
             }
             vec![AstNodeContent::Declaration(
@@ -1064,7 +1062,7 @@ fn fn_args_to_function_parameters(
                 is_reference: ref_self.is_some(),
                 is_mutable: mutable_self.is_some(),
                 mutability_span,
-                type_id: insert_type(TypeInfo::SelfType),
+                type_info: TypeInfo::SelfType,
                 type_span: self_token.span(),
             }];
             if let Some((_comma_token, args)) = args_opt {
@@ -2133,7 +2131,7 @@ fn fn_arg_to_function_parameter(
         is_reference: reference.is_some(),
         is_mutable: mutable.is_some(),
         mutability_span,
-        type_id: insert_type(ty_to_type_info(ec, fn_arg.ty)?),
+        type_info: ty_to_type_info(ec, fn_arg.ty)?,
         type_span,
     };
     Ok(function_parameter)

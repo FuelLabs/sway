@@ -739,12 +739,10 @@ fn collect_function_parameter(parameter: &FunctionParameter, tokens: &TokenMap) 
     );
     tokens.insert(to_ident_key(&parameter.name), token.clone());
 
-    let type_info = sway_core::type_system::look_up_type_id(parameter.type_id);
-
     collect_type_info_token(
         tokens,
         &token,
-        &type_info,
+        &parameter.type_info,
         Some(parameter.type_span.clone()),
         None,
     );
