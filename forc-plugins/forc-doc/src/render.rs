@@ -20,6 +20,7 @@ impl RenderedDocumentation {
                     None => ty.to_name(),
                 };
                 buf.push(Self {
+                    // proof of concept, TODO render actual HTML
                     file_contents: HTMLString(format!("Docs for {:?} {:?}", name_str, ty)),
                     file_name,
                 })
