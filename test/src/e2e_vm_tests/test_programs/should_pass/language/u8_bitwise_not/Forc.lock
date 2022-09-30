@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-9E9A1A69E61DBAE5'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-9E9A1A69E61DBAE5'
+dependencies = ['core']
+
+[[package]]
+name = 'u8_bitwise_not'
+source = 'root'
+dependencies = ['std']

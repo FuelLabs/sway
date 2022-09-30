@@ -331,6 +331,10 @@ pub trait BitwiseXor {
     fn binary_xor(self, other: Self) -> Self;
 }
 
+pub trait BitwiseNot {
+    fn binary_not(self) -> Self;
+}
+
 impl BitwiseAnd for u64 {
     fn binary_and(self, other: Self) -> Self {
         asm(r1: self, r2: other, r3) {
@@ -358,6 +362,39 @@ impl BitwiseXor for u64 {
     }
 }
 
+impl BitwiseNot for u64 {
+    fn binary_not(self) -> Self {
+        asm(r1: self, r2) {
+            not r2 r1;
+            r2: u64
+        }
+    }
+}
+
+impl BitwiseNot for u32 {
+    fn binary_not(self) -> Self {
+        asm(r1: self, r2) {
+            not r2 r1;
+            r2: u32
+        }
+    }
+}
+impl BitwiseNot for u16 {
+    fn binary_not(self) -> Self {
+        asm(r1: self, r2) {
+            not r2 r1;
+            r2: u16
+        }
+    }
+}
+impl BitwiseNot for u8 {
+    fn binary_not(self) -> Self {
+        asm(r1: self, r2) {
+            not r2 r1;
+            r2: u8
+        }
+    }
+}
 impl BitwiseAnd for b256 {
     fn binary_and(val: self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
