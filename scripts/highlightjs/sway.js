@@ -29,6 +29,7 @@ export default function(hljs) {
     "const",
     "continue",
     "contract",
+    "dep",
     "deref",
     "else",
     "enum",
