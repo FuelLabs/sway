@@ -21,6 +21,8 @@ pub struct Backend {
 
 impl Backend {
     pub fn new(client: Client, config: DebugFlags) -> Self {
+        tracing::error!("NEWWW!");
+
         let session = Arc::new(Session::new());
         Backend {
             client,
@@ -30,7 +32,15 @@ impl Backend {
     }
 
     async fn log_info_message(&self, message: &str) {
+        tracing::error!("log_error_message!");
+        tracing::warn!("log_warn_message! 1");
+        tracing::info!("log_info_message!");
+
+        println!("println!!");
+        eprintln!("eprintln!!");
+
         self.client.log_message(MessageType::INFO, message).await;
+        // tracing::info!(message);
     }
 
     async fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
@@ -128,9 +138,11 @@ impl Backend {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, _params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
-        self.client
-            .log_message(MessageType::INFO, "Initializing the Sway Language Server")
-            .await;
+        // self.client
+        //     .log_message(MessageType::INFO, "Initializing the Sway Language Server")
+        //     .await;
+
+        tracing::error!("\n\n\n\n\nInitializing the Sway Language Server (t)\n\n\n\n\n");
 
         // iterate over the project dir, parse all sway files
         let _ = self.parse_and_store_sway_files().await;

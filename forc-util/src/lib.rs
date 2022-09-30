@@ -7,17 +7,14 @@ use annotate_snippets::{
 use ansi_term::Colour;
 use anyhow::{bail, Result};
 use std::ffi::OsStr;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::str;
-use std::{env, io};
 use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
 use sway_types::Spanned;
 use sway_utils::constants;
 use tracing::{Level, Metadata};
-use tracing_subscriber::{
-    filter::{EnvFilter, LevelFilter},
-    fmt::MakeWriter,
-};
+use tracing_subscriber::{filter::LevelFilter, fmt::MakeWriter};
 
 pub mod restricted;
 
@@ -389,7 +386,7 @@ fn construct_window<'a>(
     &input[calculated_start_ix..calculated_end_ix]
 }
 
-const LOG_FILTER: &str = "RUST_LOG";
+// const LOG_FILTER: &str = "RUST_LOG";
 
 // This allows us to write ERROR and WARN level logs to stderr and everything else to stdout.
 // https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
@@ -420,27 +417,28 @@ impl<'a> MakeWriter<'a> for StdioTracingWriter {
 /// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
 ///
 /// `RUST_LOG` environment variable can be used to set different minimum level for the subscriber, default is `INFO`.
-pub fn init_tracing_subscriber(verbosity: Option<u8>) {
-    let env_filter = match env::var_os(LOG_FILTER) {
-        Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
-        None => EnvFilter::new("info"),
-    };
+pub fn init_tracing_subscriber(_verbosity: Option<u8>) {
+    // let env_filter = match env::var_os(LOG_FILTER) {
+    //     Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
+    //     None => EnvFilter::new("info"),
+    // };x
 
-    let level_filter = verbosity.and_then(|verbosity| match verbosity {
-        1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
-        2 => Some(LevelFilter::TRACE), // matches -vv
-        _ => None,
-    });
+    let level_filter = Some(LevelFilter::INFO);
+    // let level_filter = verbosity.and_then(|verbosity| match verbosity {
+    //     1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
+    //     2 => Some(LevelFilter::TRACE), // matches -vv
+    //     _ => None,
+    // });
 
     let builder = tracing_subscriber::fmt::Subscriber::builder()
-        .with_env_filter(env_filter)
-        .with_ansi(true)
-        .with_level(false)
+        // .with_env_filter(env_filter)
+        .with_ansi(false)
+        .with_level(true)
         .with_file(false)
         .with_line_number(false)
-        .without_time()
+        // .without_time()
         .with_target(false)
-        .with_writer(StdioTracingWriter);
+        .with_writer(io::stderr);
 
     // If verbosity is set, it overrides the RUST_LOG setting
     if let Some(level_filter) = level_filter {

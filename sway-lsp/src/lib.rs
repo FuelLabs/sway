@@ -1,3 +1,4 @@
+use forc_util::init_tracing_subscriber;
 use tower_lsp::{LspService, Server};
 
 mod capabilities;
@@ -8,6 +9,10 @@ use server::Backend;
 use utils::debug::DebugFlags;
 
 pub async fn start(config: DebugFlags) {
+    init_tracing_subscriber(None);
+
+    tracing::error!("STARTTTTTT!");
+
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
