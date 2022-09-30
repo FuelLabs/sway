@@ -17,7 +17,7 @@ Sway has the following primitive types:
 2. [Boolean](boolean.md)
    1. `bool` (true or false)
 3. [Strings](string.md)
-   1. `str[]` (fixed-length string)
+   1. `str[n]` (fixed-length string of size n)
 4. [Bytes](b256.md)
    1. `b256` (256 bits / 32 bytes, i.e. a hash)
 
