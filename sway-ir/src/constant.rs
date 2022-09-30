@@ -99,10 +99,6 @@ impl Constant {
         }
     }
 
-    pub fn get_undef(context: &mut Context, ty: Type) -> Value {
-        Value::new_constant(context, Constant::new_undef(context, ty))
-    }
-
     pub fn get_unit(context: &mut Context) -> Value {
         Value::new_constant(context, Constant::new_unit())
     }
