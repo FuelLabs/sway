@@ -9,9 +9,9 @@ use std::{
     {fs, path::PathBuf},
 };
 use sway_core::{
-    declaration_engine::*, AstNode, AstNodeContent, Attribute, AttributeKind, AttributesMap,
-    CompileResult, Declaration, ParseProgram, ParseSubmodule, TypedAstNodeContent,
-    TypedDeclaration, TypedProgram,
+    declaration_engine::*, semantic_analysis::TypedSubmodule, AstNode, AstNodeContent, Attribute,
+    AttributeKind, AttributesMap, CompileResult, Declaration, ParseProgram, ParseSubmodule,
+    TypedAstNodeContent, TypedDeclaration, TypedProgram,
 };
 use sway_types::{Ident, Spanned};
 
@@ -345,11 +345,36 @@ fn doc_attributes(ast_node: &AstNode) -> Vec<Attribute> {
         })
         .unwrap_or_default()
 }
-fn extract_submodule_docs(submodule: &ParseSubmodule, docs: &mut Documentation) {
-    if !submodule.module.submodules.is_empty() {
-        while let Some((_, submodule)) = submodule.module.submodules.first() {
-            extract_submodule_docs(submodule, docs);
+fn extract_typed_submodule(typed_submodule: &TypedSubmodule, docs: &mut Documentation) {
+    for ast_node in &typed_submodule.module.all_nodes {
+        // first, populate the descriptors and type information (decl).
+        if let TypedAstNodeContent::Declaration(ref decl) = ast_node.content {
+            let mut entry = docs
+                .entry(Descriptor::from(decl))
+                .or_insert((Vec::new(), decl.clone()));
+            entry.1 = decl.clone();
         }
+    }
+    // if there is another submodule we need to go a level deeper
+    if let Some((_, submodule)) = typed_submodule.module.submodules.first() {
+        extract_typed_submodule(submodule, docs);
+    }
+}
+fn extract_parse_submodule(parse_submodule: &ParseSubmodule, docs: &mut Documentation) {
+    for ast_node in &parse_submodule.module.tree.root_nodes {
+        if let AstNodeContent::Declaration(ref decl) = ast_node.content {
+            let docstrings = doc_attributes(ast_node);
+            if let Some(entry) = docs.get_mut(&Descriptor::from(decl)) {
+                entry.0 = docstrings;
+            } else {
+                // this could be invalid in the case of a partial compilation. TODO audit this
+                panic!("Invariant violated: we shouldn't have parsed stuff that isnt in the typed tree");
+            }
+        }
+    }
+    // if there is another submodule we need to go a level deeper
+    if let Some((_, submodule)) = parse_submodule.module.submodules.first() {
+        extract_parse_submodule(submodule, docs);
     }
 }
 fn get_compiled_docs(
@@ -360,7 +385,7 @@ fn get_compiled_docs(
 
     // Here we must consolidate the typed ast and the parsed annotations, as the docstrings
     // are not preserved in the typed ast.
-    if let Some((parsed_program, Some(typed_program))) = &compilation.value {
+    if let Some((parse_program, Some(typed_program))) = &compilation.value {
         for ast_node in &typed_program.root.all_nodes {
             // first, populate the descriptors and type information (decl).
             if let TypedAstNodeContent::Declaration(ref decl) = ast_node.content {
@@ -371,7 +396,7 @@ fn get_compiled_docs(
             }
         }
         // then, grab the docstrings
-        for ast_node in &parsed_program.root.tree.root_nodes {
+        for ast_node in &parse_program.root.tree.root_nodes {
             if let AstNodeContent::Declaration(ref decl) = ast_node.content {
                 let docstrings = doc_attributes(ast_node);
                 if let Some(entry) = docs.get_mut(&Descriptor::from(decl)) {
@@ -383,10 +408,16 @@ fn get_compiled_docs(
             }
         }
 
-        //TODO submodules
-        if !no_deps {
-            for (_, ref submodule) in &parsed_program.root.submodules {
-                extract_submodule_docs(submodule, &mut docs);
+        if !no_deps
+            && !typed_program.root.submodules.is_empty()
+            && !parse_program.root.submodules.is_empty()
+        {
+            // this is the same process as before but for dependencies
+            for (_, ref typed_submodule) in &typed_program.root.submodules {
+                extract_typed_submodule(typed_submodule, &mut docs);
+            }
+            for (_, ref parse_submodule) in &parse_program.root.submodules {
+                extract_parse_submodule(parse_submodule, &mut docs);
             }
         }
     }
