@@ -10,8 +10,8 @@ use crate::{
     },
     style::is_upper_camel_case,
     type_system::{insert_type, CopyTypes, TypeMapping},
-    CallPath, CompileError, CompileResult, FunctionDeclaration, FunctionParameter, Namespace,
-    Supertrait, TraitDeclaration, TypeInfo, TypedDeclaration, TypedFunctionDeclaration, Visibility,
+    CallPath, CompileError, CompileResult, FunctionDeclaration, Namespace, Supertrait,
+    TraitDeclaration, TypeInfo, TypedDeclaration, TypedFunctionDeclaration, Visibility,
 };
 
 use super::{EnforceTypeArguments, TypedFunctionParameter, TypedTraitFn};
@@ -185,78 +185,62 @@ fn convert_trait_methods_to_dummy_funcs(
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let dummy_funcs = methods
-        .iter()
-        .map(
-            |FunctionDeclaration {
-                 name,
-                 parameters,
-                 return_type,
-                 return_type_span,
-                 ..
-             }| {
-                let initial_return_type = insert_type(return_type.clone());
-                TypedFunctionDeclaration {
-                    purity: Default::default(),
-                    name: name.clone(),
-                    body: TypedCodeBlock { contents: vec![] },
-                    parameters: parameters
-                        .iter()
-                        .map(|param| {
-                            let FunctionParameter {
-                                name,
-                                is_reference,
-                                is_mutable,
-                                mutability_span,
-                                type_info,
-                                type_span,
-                            } = param;
-                            let initial_type_id = insert_type(type_info.clone());
-                            let type_id = check!(
-                                trait_namespace.resolve_type_with_self(
-                                    initial_type_id,
-                                    insert_type(TypeInfo::SelfType),
-                                    type_span,
-                                    EnforceTypeArguments::Yes,
-                                    None
-                                ),
-                                insert_type(TypeInfo::ErrorRecovery),
-                                warnings,
-                                errors,
-                            );
-                            TypedFunctionParameter {
-                                name: name.clone(),
-                                is_reference: *is_reference,
-                                is_mutable: *is_mutable,
-                                mutability_span: mutability_span.clone(),
-                                type_id,
-                                initial_type_id,
-                                type_span: type_span.clone(),
-                            }
-                        })
-                        .collect(),
-                    span: name.span(),
-                    return_type: check!(
-                        trait_namespace.resolve_type_with_self(
-                            initial_return_type,
-                            insert_type(TypeInfo::SelfType),
-                            return_type_span,
-                            EnforceTypeArguments::Yes,
-                            None
-                        ),
-                        insert_type(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors,
-                    ),
-                    initial_return_type,
-                    return_type_span: return_type_span.clone(),
-                    visibility: Visibility::Public,
-                    type_parameters: vec![],
-                    is_contract_call: false,
-                }
-            },
-        )
-        .collect::<Vec<_>>();
+    let mut dummy_funcs = vec![];
+    for method in methods.iter() {
+        let FunctionDeclaration {
+            name,
+            parameters,
+            return_type,
+            return_type_span,
+            ..
+        } = method;
 
-    ok(dummy_funcs, warnings, errors)
+        // type check the parameters
+        let mut typed_parameters = vec![];
+        for param in parameters.iter() {
+            typed_parameters.push(check!(
+                TypedFunctionParameter::type_check_interface_parameter(
+                    trait_namespace,
+                    param.clone()
+                ),
+                continue,
+                warnings,
+                errors
+            ));
+        }
+
+        // type check the return type
+        let initial_return_type = insert_type(return_type.clone());
+        let return_type = check!(
+            trait_namespace.resolve_type_with_self(
+                initial_return_type,
+                insert_type(TypeInfo::SelfType),
+                return_type_span,
+                EnforceTypeArguments::Yes,
+                None
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
+
+        dummy_funcs.push(TypedFunctionDeclaration {
+            purity: Default::default(),
+            name: name.clone(),
+            body: TypedCodeBlock { contents: vec![] },
+            parameters: typed_parameters,
+            span: name.span(),
+            return_type,
+            initial_return_type,
+            return_type_span: return_type_span.clone(),
+            visibility: Visibility::Public,
+            type_parameters: vec![],
+            is_contract_call: false,
+        });
+    }
+    if errors.is_empty() {
+        ok(dummy_funcs, warnings, errors)
+    } else {
+        err(warnings, errors)
+    }
 }
