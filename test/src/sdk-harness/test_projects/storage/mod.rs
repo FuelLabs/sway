@@ -159,7 +159,11 @@ async fn can_store_tuple() {
 async fn can_store_string() {
     let instance = get_test_storage_instance().await;
     let s = "fastest_modular_execution_layer".to_string();
-    instance.store_string(SizedAsciiString::try_from(s.clone()).unwrap()).call().await.unwrap();
+    instance
+        .store_string(SizedAsciiString::try_from(s.clone()).unwrap())
+        .call()
+        .await
+        .unwrap();
     let result = instance.get_string().call().await.unwrap();
     assert_eq!(result.value, SizedAsciiString::try_from(s).unwrap());
 }
@@ -172,3 +176,15 @@ async fn can_store_array() {
     let result = instance.get_array().call().await.unwrap();
     assert_eq!(result.value, a);
 }
+
+// TEMPORARILY DISABLED.
+//
+// This test can be reinstated when https://github.com/FuelLabs/sway/pull/2885 has been merged (and
+// storage reads are made to the heap).
+//
+//#[tokio::test]
+//async fn can_store_non_inlined() {
+//    let instance = get_test_storage_instance().await;
+//    let result = instance.storage_in_call().call().await.unwrap();
+//    assert_eq!(result.value, 333);
+//}
