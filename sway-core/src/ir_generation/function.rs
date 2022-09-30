@@ -648,7 +648,12 @@ impl FnCompiler {
                     self.compile_expression(context, md_mgr, arguments[0].clone())?;
 
                 // The `revert` instruction
-                Ok(self.current_block.ins(context).revert(revert_code_val))
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .revert(revert_code_val)
+                    .add_metadatum(context, span_md_idx))
             }
         }
     }
