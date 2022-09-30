@@ -611,7 +611,7 @@ impl FnCompiler {
 
                 match log_val.get_stripped_ptr_type(context) {
                     None => Err(CompileError::Internal(
-                        "Unable to determine type for return statement expression.",
+                        "Unable to determine type for logged value.",
                         span,
                     )),
                     Some(log_ty) => {
@@ -642,6 +642,13 @@ impl FnCompiler {
                     .current_block
                     .ins(context)
                     .binary_op(op, lhs_value, rhs_value))
+            }
+            Intrinsic::Revert => {
+                let revert_code_val =
+                    self.compile_expression(context, md_mgr, arguments[0].clone())?;
+
+                // The `revert` instruction
+                Ok(self.current_block.ins(context).revert(revert_code_val))
             }
         }
     }

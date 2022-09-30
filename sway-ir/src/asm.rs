@@ -76,12 +76,4 @@ impl AsmBlock {
     pub fn get_content<'a>(&self, context: &'a Context) -> &'a AsmBlockContent {
         &context.asm_blocks[self.0]
     }
-
-    pub fn is_diverging(&self, context: &Context) -> bool {
-        let content = &context.asm_blocks[self.0];
-        content
-            .body
-            .iter()
-            .any(|asm_instruction| matches!(asm_instruction.name.as_str(), "rvrt" | "ret"))
-    }
 }
