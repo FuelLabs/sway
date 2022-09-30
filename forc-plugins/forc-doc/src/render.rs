@@ -29,3 +29,7 @@ impl RenderedDocumentation {
         buf
     }
 }
+
+pub(crate) fn create_html_file_name(ty: &str, name: &str) -> String {
+    format!("{}.{}.html", ty, name)
+}

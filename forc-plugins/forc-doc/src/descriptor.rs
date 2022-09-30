@@ -1,3 +1,4 @@
+use crate::render::create_html_file_name;
 use sway_core::{declaration_engine::*, AbiName, Declaration, TypeInfo, TypedDeclaration};
 use sway_types::{Ident, Spanned};
 
@@ -48,7 +49,7 @@ impl Descriptor {
                     Some(name) => name.as_str(),
                     None => ty.to_name(),
                 };
-                Some(format!("{}.{}.html", ty.to_name(), name_str))
+                Some(create_html_file_name(ty.to_name(), name_str))
             }
         }
     }
