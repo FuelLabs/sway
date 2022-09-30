@@ -3,12 +3,16 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 language = "en"
 multilingual = false
 src = "src"
-title = "The Sway Programming Language"
+title = "The Sway Book"
 
 [output.html]
 git-repository-url = "https://github.com/FuelLabs/sway"
 
 [preprocessor.forc-documenter]
+
+[output.html.fold]
+enable = true
+level = 100     # Allow them to fold but keep it all visible as the default 
 
 [rust]
 edition = "2021"
