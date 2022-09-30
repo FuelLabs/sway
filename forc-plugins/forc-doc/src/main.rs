@@ -20,6 +20,12 @@ enum DescriptorType {
     Struct,
     Enum,
     Trait,
+    Abi,
+    Storage,
+    ImplSelfDesc,
+    ImplTraitDesc,
+    Function,
+    Const,
 }
 impl DescriptorType {
     pub fn to_name(&self) -> &'static str {
@@ -28,13 +34,22 @@ impl DescriptorType {
             Struct => "struct",
             Enum => "enum",
             Trait => "trait",
+            Abi => "abi",
+            Storage => "storage",
+            ImplSelfDesc => "impl_self",
+            ImplTraitDesc => "impl_trait",
+            Function => "function",
+            Const => "const",
         }
     }
 }
 
 #[derive(Eq, PartialEq, Ord, PartialOrd)]
 enum Descriptor {
-    Documentable { ty: DescriptorType, name: Ident },
+    Documentable {
+        ty: DescriptorType,
+        name: Option<Ident>,
+    },
     NonDocumentable,
 }
 
@@ -43,7 +58,13 @@ impl Descriptor {
         use Descriptor::*;
         match self {
             NonDocumentable => None,
-            Documentable { ty, name } => Some(format!("{}.{}.html", ty.to_name(), name.as_str())),
+            Documentable { ty, name } => {
+                let name_str = match name {
+                    Some(name) => name.as_str(),
+                    None => ty.to_name(),
+                };
+                Some(format!("{}.{}.html", ty.to_name(), name_str))
+            }
         }
     }
 }
@@ -55,15 +76,39 @@ impl From<&Declaration> for Descriptor {
         match o {
             StructDeclaration(ref decl) => Descriptor::Documentable {
                 ty: Struct,
-                name: decl.name.clone(),
+                name: Some(decl.name.clone()),
             },
             EnumDeclaration(ref decl) => Descriptor::Documentable {
                 ty: Enum,
-                name: decl.name.clone(),
+                name: Some(decl.name.clone()),
             },
             TraitDeclaration(ref decl) => Descriptor::Documentable {
                 ty: Trait,
-                name: decl.name.clone(),
+                name: Some(decl.name.clone()),
+            },
+            AbiDeclaration(ref decl) => Descriptor::Documentable {
+                ty: Abi,
+                name: Some(decl.name.clone()),
+            },
+            StorageDeclaration(_) => Descriptor::Documentable {
+                ty: Storage,
+                name: None, // no ident
+            },
+            ImplSelf(_) => Descriptor::Documentable {
+                ty: ImplSelfDesc,
+                name: None, // no ident
+            },
+            ImplTrait(ref decl) => Descriptor::Documentable {
+                ty: ImplTraitDesc,
+                name: Some(decl.trait_name.suffix.clone()),
+            },
+            FunctionDeclaration(ref decl) => Descriptor::Documentable {
+                ty: Function,
+                name: Some(decl.name.clone()),
+            },
+            ConstantDeclaration(ref decl) => Descriptor::Documentable {
+                ty: Const,
+                name: Some(decl.name.clone()),
             },
             _ => Descriptor::NonDocumentable,
         }
@@ -76,15 +121,40 @@ impl From<&TypedDeclaration> for Descriptor {
         match o {
             StructDeclaration(ref decl) => Descriptor::Documentable {
                 ty: Struct,
-                name: de_get_struct(decl.clone(), &decl.span()).unwrap().name,
+                name: Some(de_get_struct(decl.clone(), &decl.span()).unwrap().name),
             },
             EnumDeclaration(ref decl) => Descriptor::Documentable {
                 ty: Enum,
-                name: de_get_enum(decl.clone(), &decl.span()).unwrap().name,
+                name: Some(de_get_enum(decl.clone(), &decl.span()).unwrap().name),
             },
             TraitDeclaration(ref decl) => Descriptor::Documentable {
                 ty: Trait,
-                name: de_get_trait(decl.clone(), &decl.span()).unwrap().name,
+                name: Some(de_get_trait(decl.clone(), &decl.span()).unwrap().name),
+            },
+            AbiDeclaration(ref decl) => Descriptor::Documentable {
+                ty: Abi,
+                name: Some(de_get_abi(decl.clone(), &decl.span()).unwrap().name),
+            },
+            StorageDeclaration(_) => Descriptor::Documentable {
+                ty: Storage,
+                name: None,
+            },
+            ImplTrait(ref decl) => Descriptor::Documentable {
+                ty: ImplTraitDesc,
+                name: Some(
+                    de_get_impl_trait(decl.clone(), &decl.span())
+                        .unwrap()
+                        .trait_name
+                        .suffix,
+                ),
+            },
+            FunctionDeclaration(ref decl) => Descriptor::Documentable {
+                ty: Function,
+                name: Some(de_get_function(decl.clone(), &decl.span()).unwrap().name),
+            },
+            ConstantDeclaration(ref decl) => Descriptor::Documentable {
+                ty: Const,
+                name: Some(de_get_constant(decl.clone(), &decl.span()).unwrap().name),
             },
             _ => Descriptor::NonDocumentable,
         }
@@ -102,8 +172,12 @@ impl RenderedDocumentation {
                 None => continue,
             };
             if let Descriptor::Documentable { ty, name } = desc {
+                let name_str = match name {
+                    Some(name) => name.as_str(),
+                    None => ty.to_name(),
+                };
                 buf.push(Self {
-                    file_contents: HTMLString(format!("Docs for {:?} {:?}", name.as_str(), ty)),
+                    file_contents: HTMLString(format!("Docs for {:?} {:?}", name_str, ty)),
                     file_name,
                 })
             }
@@ -271,14 +345,12 @@ fn doc_attributes(ast_node: &AstNode) -> Vec<Attribute> {
         })
         .unwrap_or_default()
 }
-fn extract_submodule_docs(_submodule: &ParseSubmodule, _docs: &mut Documentation) {
-    todo!();
-
-    // if !submodule.module.submodules.is_empty() {
-    //     while let Some((_, submodule)) = submodule.module.submodules.first() {
-    //         extract_submodule_docs(submodule, docs);
-    //     }
-    // }
+fn extract_submodule_docs(submodule: &ParseSubmodule, docs: &mut Documentation) {
+    if !submodule.module.submodules.is_empty() {
+        while let Some((_, submodule)) = submodule.module.submodules.first() {
+            extract_submodule_docs(submodule, docs);
+        }
+    }
 }
 fn get_compiled_docs(
     compilation: &CompileResult<(ParseProgram, Option<TypedProgram>)>,
