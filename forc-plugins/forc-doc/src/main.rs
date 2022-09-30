@@ -25,6 +25,7 @@ pub fn main() -> Result<()> {
         no_deps,
     } = Command::parse();
 
+    // get manifest directory
     let dir = if let Some(ref path) = manifest_path {
         PathBuf::from(path)
     } else {
@@ -39,10 +40,9 @@ pub fn main() -> Result<()> {
         // create the out path
         fs::create_dir_all(&doc_path)?;
     }
-    // gather docs
 
-    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
     // compile the program and extract the docs
+    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
     let compilation = pkg::check(&plan, silent_mode)?;
     let docs = get_compiled_docs(&compilation, no_deps);
 
