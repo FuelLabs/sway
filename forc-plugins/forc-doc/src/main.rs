@@ -9,9 +9,9 @@ use std::{
     {fs, path::PathBuf},
 };
 use sway_core::{
-    declaration_engine::*, semantic_analysis::TypedSubmodule, AstNode, AstNodeContent, Attribute,
-    AttributeKind, AttributesMap, CompileResult, Declaration, ParseProgram, ParseSubmodule,
-    TypedAstNodeContent, TypedDeclaration, TypedProgram,
+    declaration_engine::*, semantic_analysis::TypedSubmodule, AbiName, AstNode, AstNodeContent,
+    Attribute, AttributeKind, AttributesMap, CompileResult, Declaration, ParseProgram,
+    ParseSubmodule, TypeInfo, TypedAstNodeContent, TypedDeclaration, TypedProgram,
 };
 use sway_types::{Ident, Spanned};
 
@@ -70,10 +70,10 @@ impl Descriptor {
 }
 
 impl From<&Declaration> for Descriptor {
-    fn from(o: &Declaration) -> Self {
+    fn from(d: &Declaration) -> Self {
         use Declaration::*;
         use DescriptorType::*;
-        match o {
+        match d {
             StructDeclaration(ref decl) => Descriptor::Documentable {
                 ty: Struct,
                 name: Some(decl.name.clone()),
@@ -94,9 +94,34 @@ impl From<&Declaration> for Descriptor {
                 ty: Storage,
                 name: None, // no ident
             },
-            ImplSelf(_) => Descriptor::Documentable {
+            ImplSelf(ref decl) => Descriptor::Documentable {
                 ty: ImplSelfDesc,
-                name: None, // no ident
+                // possible ident
+                name: match decl.type_implementing_for {
+                    TypeInfo::UnknownGeneric { ref name } => Some(name.clone()),
+                    TypeInfo::Enum {
+                        ref name,
+                        type_parameters: _,
+                        variant_types: _,
+                    } => Some(name.clone()),
+                    TypeInfo::Struct {
+                        ref name,
+                        type_parameters: _,
+                        fields: _,
+                    } => Some(name.clone()),
+                    TypeInfo::ContractCaller {
+                        ref abi_name,
+                        address: _,
+                    } => match abi_name {
+                        AbiName::Known(name) => Some(name.suffix.clone()),
+                        AbiName::Deferred => None,
+                    },
+                    TypeInfo::Custom {
+                        ref name,
+                        type_arguments: _,
+                    } => Some(name.clone()),
+                    _ => None,
+                },
             },
             ImplTrait(ref decl) => Descriptor::Documentable {
                 ty: ImplTraitDesc,
@@ -115,10 +140,10 @@ impl From<&Declaration> for Descriptor {
     }
 }
 impl From<&TypedDeclaration> for Descriptor {
-    fn from(o: &TypedDeclaration) -> Self {
+    fn from(d: &TypedDeclaration) -> Self {
         use DescriptorType::*;
         use TypedDeclaration::*;
-        match o {
+        match d {
             StructDeclaration(ref decl) => Descriptor::Documentable {
                 ty: Struct,
                 name: Some(de_get_struct(decl.clone(), &decl.span()).unwrap().name),
