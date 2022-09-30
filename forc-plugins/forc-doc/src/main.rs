@@ -156,7 +156,7 @@ pub fn main() -> Result<()> {
 
     // write to outfile
     for entry in rendered {
-        let mut doc_path = out_path.clone();
+        let mut doc_path = doc_path.clone();
         doc_path.push(entry.file_name);
         let mut file = fs::File::create(doc_path)?;
         file.write_all(entry.file_contents.0.as_bytes())?;
@@ -296,7 +296,6 @@ fn get_compiled_docs(
                     .entry(Descriptor::from(decl))
                     .or_insert((Vec::new(), decl.clone()));
                 entry.1 = decl.clone();
-                dbg!(&entry);
             }
         }
         // then, grab the docstrings
