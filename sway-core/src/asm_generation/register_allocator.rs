@@ -1,9 +1,14 @@
-use crate::asm_generation::{
-    register_sequencer::RegisterSequencer, RegisterAllocationStatus, RegisterPool,
+use crate::{
+    asm_generation::{
+        register_sequencer::RegisterSequencer, RegisterAllocationStatus, RegisterPool,
+    },
+    asm_lang::{virtual_register::*, Op, VirtualOp},
 };
-use crate::asm_lang::{virtual_register::*, RealizedOp, VirtualOp};
-use petgraph::graph::NodeIndex;
+
 use std::collections::{BTreeSet, HashMap};
+
+use either::Either;
+use petgraph::graph::NodeIndex;
 
 pub type InterferenceGraph =
     petgraph::stable_graph::StableGraph<VirtualRegister, (), petgraph::Undirected>;
@@ -36,7 +41,7 @@ pub type InterferenceGraph =
 ///     for each instruction op (traversed in reverse topological order of the CFG)
 ///         prev_live_in(op) = live_in(op)
 ///         prev_live_out(op) = live_out(op)
-///         live_out(op) = live_in(s_1) UNIONl ive_in(s_2) UNION live_in(s_3) UNION ...
+///         live_out(op) = live_in(s_1) UNION live_in(s_2) UNION live_in(s_3) UNION ...
 ///                        where s_1, s_2, s_3, ... are all the successors of op in the CFG.
 ///         live_in(op) = use(op) UNION (live_out(op) - def(op))
 /// until     prev_live_in(op) = live_in(op)
@@ -50,17 +55,13 @@ pub type InterferenceGraph =
 /// This function finally returns `live_out` because it has all the liveness information needed.
 /// `live_in` is computed because it is needed to compute `live_out` iteratively.
 ///
-pub(crate) fn liveness_analysis(ops: &[RealizedOp]) -> HashMap<usize, BTreeSet<VirtualRegister>> {
+pub(crate) fn liveness_analysis(ops: &[Op]) -> HashMap<usize, BTreeSet<VirtualRegister>> {
     // Hash maps that will reprsent the live_in and live_out tables. The key of each hash map is
     // simply the index of each instruction in the `ops` vector.
     let mut live_in: HashMap<usize, BTreeSet<VirtualRegister>> =
         HashMap::from_iter((0..ops.len()).into_iter().map(|idx| (idx, BTreeSet::new())));
     let mut live_out: HashMap<usize, BTreeSet<VirtualRegister>> =
         HashMap::from_iter((0..ops.len()).into_iter().map(|idx| (idx, BTreeSet::new())));
-
-    // Simple mapping between the actual offset of an instruction and its index in the `ops`
-    // vector.
-    let offset_to_ix = HashMap::from_iter(ops.iter().enumerate().map(|(idx, op)| (op.offset, idx)));
 
     let mut modified = true;
     while modified {
@@ -71,8 +72,8 @@ pub(crate) fn liveness_analysis(ops: &[RealizedOp]) -> HashMap<usize, BTreeSet<V
             let rev_ix = ops.len() - ix - 1;
 
             // Get use and def vectors without any of the Constant registers
-            let mut op_use = op.opcode.use_registers();
-            let mut op_def = op.opcode.def_registers();
+            let mut op_use = op.use_registers();
+            let mut op_def = op.def_registers();
             op_use.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
             op_def.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
 
@@ -82,7 +83,7 @@ pub(crate) fn liveness_analysis(ops: &[RealizedOp]) -> HashMap<usize, BTreeSet<V
             // Compute live_out(op) = live_in(s_1) UNION live_in(s_2) UNION ..., where s1, s_2, ...
             // are successors of op
             let live_out_op = live_out.get_mut(&rev_ix).expect("ix must exist");
-            for s in &op.opcode.successors(rev_ix, ops, &offset_to_ix) {
+            for s in &op.successors(rev_ix, ops) {
                 for l in live_in.get(s).expect("ix must exist") {
                     live_out_op.insert(l.clone());
                 }
@@ -130,7 +131,7 @@ pub(crate) fn liveness_analysis(ops: &[RealizedOp]) -> HashMap<usize, BTreeSet<V
 /// ===============================================================================================
 ///
 pub(crate) fn create_interference_graph(
-    ops: &[RealizedOp],
+    ops: &[Op],
     live_out: &HashMap<usize, BTreeSet<VirtualRegister>>,
 ) -> (InterferenceGraph, HashMap<VirtualRegister, NodeIndex>) {
     let mut interference_graph = InterferenceGraph::with_capacity(0, 0);
@@ -142,7 +143,7 @@ pub(crate) fn create_interference_graph(
     // Get all virtual registers used by the intermediate assembly and add them to the graph
     ops.iter()
         .fold(BTreeSet::new(), |mut tree, elem| {
-            let mut regs = elem.opcode.registers();
+            let mut regs = elem.registers();
             regs.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
             tree.extend(regs.into_iter());
             tree
@@ -154,7 +155,7 @@ pub(crate) fn create_interference_graph(
 
     for (ix, regs) in live_out {
         match &ops[*ix].opcode {
-            VirtualOp::MOVE(v, c) => {
+            Either::Left(VirtualOp::MOVE(v, c)) => {
                 if let Some(ix1) = reg_to_node_map.get(v) {
                     for b in regs.iter() {
                         if let Some(ix2) = reg_to_node_map.get(b) {
@@ -169,7 +170,7 @@ pub(crate) fn create_interference_graph(
                 }
             }
             _ => {
-                for v in &ops[*ix].opcode.def_registers() {
+                for v in &ops[*ix].def_registers() {
                     if let Some(ix1) = reg_to_node_map.get(v) {
                         for b in regs.iter() {
                             if let Some(ix2) = reg_to_node_map.get(b) {
@@ -202,33 +203,21 @@ pub(crate) fn create_interference_graph(
 /// `jnzi for now).
 ///
 pub(crate) fn coalesce_registers(
-    ops: &[RealizedOp],
+    ops: &[Op],
     interference_graph: &mut InterferenceGraph,
     reg_to_node_map: &mut HashMap<VirtualRegister, NodeIndex>,
     register_sequencer: &mut RegisterSequencer,
-) -> Vec<RealizedOp> {
+) -> Vec<Op> {
     // A map from the virtual registers that are removed to the virtual registers that they are
     // replaced with during the coalescing process.
     let mut reg_to_reg_map: HashMap<VirtualRegister, VirtualRegister> = HashMap::new();
 
     // To hold the final *reduced* list of ops
-    let mut reduced_ops: Vec<RealizedOp> = vec![];
-
-    // To figure out a mapping between the old offset and the new offset for each instruction. Will
-    // help determine the new "immediate values" for jump instructions.
-    let mut offset_map: HashMap<u64, u64> = HashMap::new();
-    let mut num_moves_removed = 0;
+    let mut reduced_ops: Vec<Op> = vec![];
 
     for op in ops {
-        let new_op = RealizedOp {
-            opcode: op.opcode.clone(),
-            owning_span: op.owning_span.clone(),
-            comment: op.comment.clone(),
-            offset: op.offset - num_moves_removed,
-        };
-        offset_map.insert(op.offset, op.offset - num_moves_removed);
         match &op.opcode {
-            VirtualOp::MOVE(x, y) => {
+            Either::Left(VirtualOp::MOVE(x, y)) => {
                 match (x, y) {
                     (VirtualRegister::Virtual(_), VirtualRegister::Virtual(_)) => {
                         // Use reg_to_reg_map to figure out what x and y have been replaced
@@ -253,7 +242,6 @@ pub(crate) fn coalesce_registers(
                         // If r1 and r2 are the same, the MOVE instruction can be safely removed,
                         // i.e., not added to reduced_ops
                         if r1 == r2 {
-                            num_moves_removed += 1;
                             continue;
                         }
 
@@ -261,7 +249,7 @@ pub(crate) fn coalesce_registers(
                         // respective liveness ranges overalp), preserve the MOVE instruction by
                         // adding it to reduced_ops
                         if interference_graph.contains_edge(*ix1, *ix2) {
-                            reduced_ops.push(new_op);
+                            reduced_ops.push(op.clone());
                             continue;
                         }
 
@@ -302,26 +290,19 @@ pub(crate) fn coalesce_registers(
                         reg_to_node_map.insert(r2.clone(), new_ix);
                         reg_to_reg_map.insert(r1.clone(), new_reg.clone());
                         reg_to_reg_map.insert(r2.clone(), new_reg.clone());
-
-                        num_moves_removed += 1;
                     }
                     _ => {
                         // Preserve the MOVE instruction if either registers used in the MOVE is
                         // special registers (i.e. *not* a VirtualRegister::Virtual(_))
-                        reduced_ops.push(new_op);
+                        reduced_ops.push(op.clone());
                     }
                 }
             }
             _ => {
                 // Preserve all other instructions
-                reduced_ops.push(new_op);
+                reduced_ops.push(op.clone());
             }
         }
-    }
-
-    // Update immediate values for jump instructions using offset_map
-    for new_op in &mut reduced_ops {
-        new_op.opcode = new_op.opcode.update_jump_immediate_values(&offset_map);
     }
 
     // Create a *final* reg-to-reg map that We keep looking for mappings within reg_to_reg_map
@@ -337,7 +318,7 @@ pub(crate) fn coalesce_registers(
 
     // Update the registers for all instructions using final_reg_to_reg_map
     for new_op in &mut reduced_ops {
-        new_op.opcode = new_op.opcode.update_register(&final_reg_to_reg_map);
+        *new_op = new_op.update_register(&final_reg_to_reg_map);
     }
 
     reduced_ops
@@ -409,9 +390,9 @@ pub(crate) fn assign_registers(
             } else {
                 // Error out for now if no available register is found
                 unimplemented!(
-                    "The allocator cannot resolve a register mapping for this program. 
-                        This is a temporary artifact of the extremely early stage version of this language. 
-                        Try to lower the number of variables you use."
+                    "The allocator cannot resolve a register mapping for this program. \
+                     This is a temporary artifact of the extremely early stage version \
+                     of this language. Try to lower the number of variables you use."
                 );
             }
         }
