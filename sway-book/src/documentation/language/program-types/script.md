@@ -27,7 +27,7 @@ The SDKs provide an ergonomic interface for interacting with contracts because t
 The following example demonstrates the manual implementation which uses the [wallet smart contract](contract.md) to send some asset to a recipient by calling the `send_funds()` function.
 
 ```sway
-{{#include ../../code/program-types/scripts/transfer/src/main.sw}}
+{{#include ../../../code/language/program-types/scripts/transfer/src/main.sw}}
 ```
 
 Some important points to note are:
@@ -39,4 +39,3 @@ Some important points to note are:
    1. `gas`: a `u64` that represents the gas being forwarded to the contract when it is called
    2. `coins`: a `u64` that represents how many coins are being forwarded with this call
    3. `asset_id`: a `b256` that represents the ID of the _asset type_ of the coins being forwarded
-

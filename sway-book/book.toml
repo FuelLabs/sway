@@ -12,7 +12,7 @@ git-repository-url = "https://github.com/FuelLabs/sway"
 
 [output.html.fold]
 enable = true
-level = 100     # Allow them to fold but keep it all visible as the default 
+level = 0 
 
 [rust]
 edition = "2021"

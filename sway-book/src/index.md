@@ -1,4 +1,4 @@
-# The Sway Programming Language
+# The Sway Book
 
 The Sway Language Book is about demonstrating the syntax of the language in addition to common operations.
 

@@ -21,7 +21,7 @@ The structure begins by using the keyword `abi` followed by the name of the cont
 Inside the declaration are function signatures, annotations denoting the interaction with storage and documentation comments outlining the functionality.
 
 ```sway
-{{#include ../../code/program-types/contracts/interface/src/lib.sw}}
+{{#include ../../../code/language/program-types/contracts/interface/src/lib.sw}}
 ```
 
 ## Implementating the `ABI`
@@ -32,8 +32,6 @@ All functions defined in the `ABI` must be declared in the implementation.
 
 Since the interface is defined outside of the contract we must import it using the `use` syntax before we can use it.
 
-<br>
-
 ```sway
-{{#include ../../code/program-types/contracts/wallet/src/main.sw}}
+{{#include ../../../code/language/program-types/contracts/wallet/src/main.sw}}
 ```

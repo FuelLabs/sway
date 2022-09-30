@@ -13,8 +13,6 @@ A Sway program can be one of four types:
 - [predicate](predicate.md)
   - A set of preconditions to the construction of transaction, the result of which must be a boolean value of `true` in order for the transaction to be considered valid
 
-The first three are all deployable to the blockchain while a _library_ is a project designed for code reuse and is never directly deployed to the chain.
-
 ## Sway Project Types
 
 A project type in Sway refers to which program type is in the main file of the project. 

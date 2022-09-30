@@ -1,15 +1,19 @@
 # Libraries
 
-Libraries are defined using the `library` keyword at the beginning of a file, followed by a name so that they can be imported.
+A library is used to contain code that performs common operations. 
+
+A library cannot be directly deployed to a blockchain however they can be deployed as part of a contract.
+
+Libraries are defined using the `library` keyword at the beginning of a file followed by a name so that they can be identified and imported.
 
 ```sway
-{{#include ../../code/program-types/libraries/internal/my_library/src/my_library.sw:1}}
+{{#include ../../../code/language/program-types/libraries/internal/my_library/src/my_library.sw:module}}
 ```
 
 All of the code inside the library is private by default therefore if the library is meant to expose some functionality then a `pub` keyword should be used in order to expose it.
 
 ```sway
-{{#include ../../code/program-types/libraries/internal/my_library/src/my_library.sw}}
+{{#include ../../../code/language/program-types/libraries/internal/my_library/src/my_library.sw:library}}
 ```
 
 ## Including a library in a project
@@ -38,7 +42,7 @@ To be able to use our library `my_library.sw` in `lib.sw` there are two steps to
 2. Use the `use` keyword to selectively import our code from the library
 
 ```sway
-{{#include ../../code/program-types/libraries/internal/my_library/src/lib.sw}}
+{{#include ../../../code/language/program-types/libraries/internal/my_library/src/lib.sw}}
 ```
 
 ### External Libraries
@@ -69,13 +73,13 @@ If we take a look at each library then we see the following:
 __my_library__
 
 ```sway
-{{#include ../../code/program-types/libraries/external/my_library/src/lib.sw}}
+{{#include ../../../code/language/program-types/libraries/external/my_library/src/lib.sw}}
 ```
 
 __my_other_library__
 
 ```sway
-{{#include ../../code/program-types/libraries/external/my_other_library/src/lib.sw}}
+{{#include ../../../code/language/program-types/libraries/external/my_other_library/src/lib.sw}}
 ```
 
 The code in `my_library` references `my_other_library` however there is one more step required in order to link the two libraries and that is to tell `my_library` where to find `my_other_library`.
@@ -83,7 +87,7 @@ The code in `my_library` references `my_other_library` however there is one more
 This is done by listing `my_other_library` as a dependency in the `Forc.toml` file of `my_library` under the `[dependencies]` section.
 
 ```bash
-{{#include ../../code/program-types/libraries/external/my_library/Forc.toml}}
+{{#include ../../../code/language/program-types/libraries/external/my_library/Forc.toml}}
 ```
 
 > **Note:**
