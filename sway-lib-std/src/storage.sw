@@ -112,9 +112,9 @@ pub struct StorageVec<V> {}
 
 impl<V> StorageVec<V> {
     /// Appends the value to the end of the vector
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `value` - The item being added to the end of the vector
     #[storage(read, write)]
     pub fn push(self, value: V) {
@@ -152,9 +152,9 @@ impl<V> StorageVec<V> {
     }
 
     /// Gets the value in the given index, None if index is out of bounds
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `index` - The index of the vec to retrieve the item from
     #[storage(read)]
     pub fn get(self, index: u64) -> Option<V> {
@@ -173,17 +173,17 @@ impl<V> StorageVec<V> {
 
     /// Removes the element in the given index and moves all the element in the following indexes
     /// Down one index. Also returns the element
-    /// 
+    ///
     /// # WARNING
-    /// 
+    ///
     /// Expensive for larger vecs
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `index` - The index of the vec to remove the item from
-    /// 
+    ///
     /// # Reverts
-    /// 
+    ///
     /// Reverts if index is larger or equal to length of the vec
     #[storage(read, write)]
     pub fn remove(self, index: u64) -> V {
@@ -223,13 +223,13 @@ impl<V> StorageVec<V> {
 
     /// Removes the element at the specified index and fills it with the last element
     /// Does not preserve ordering. Also returns the element
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `index` - The index of the vec to remove the item from
-    /// 
+    ///
     /// # Reverts
-    /// 
+    ///
     /// Reverts if index is larger or equal to length of the vec
     #[storage(read, write)]
     pub fn swap_remove(self, index: u64) -> V {
@@ -256,14 +256,14 @@ impl<V> StorageVec<V> {
         element_to_be_removed
     }
     /// Sets/mutates the value at the given index
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `index` - The index of the vec to set the value at
     /// * `value` - The value to be set
-    /// 
+    ///
     /// # Reverts
-    /// 
+    ///
     /// Reverts if index is larger than or equal to the length of the vec
     #[storage(read, write)]
     pub fn set(self, index: u64, value: V) {
@@ -280,18 +280,18 @@ impl<V> StorageVec<V> {
 
     /// Inserts the value at the given index, moving the current index's value aswell as the following's
     /// Up one index
-    /// 
+    ///
     /// # WARNING
-    /// 
+    ///
     /// Expensive for larger vecs
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `index` - The index of the vec to insert the item into
     /// * `value` - The value to insert into the vec
-    /// 
+    ///
     /// # Reverts
-    /// 
+    ///
     /// Reverts if index is larger than length of the vec
     #[storage(read, write)]
     pub fn insert(self, index: u64, value: V) {
