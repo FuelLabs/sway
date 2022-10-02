@@ -70,7 +70,9 @@ impl Format for ItemEnum {
                         });
 
                         let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
-                        for (var_index, (type_field, comma_token)) in value_pairs_iter.clone() {
+                        while let Some((var_index, (type_field, comma_token))) =
+                            value_pairs_iter.next()
+                        {
                             write!(
                                 formatted_code,
                                 "{}",
@@ -98,12 +100,11 @@ impl Format for ItemEnum {
                                 type_field.colon_token.span().as_str(),
                             )?;
                             type_field.ty.format(formatted_code, formatter)?;
-                            if value_pairs_iter.peek().is_some() {
-                                writeln!(formatted_code, "{}", comma_token.span().as_str())?;
-                            } else if let Some(final_value) = &fields.final_value_opt {
+                            writeln!(formatted_code, "{}", comma_token.span().as_str())?;
+                            if let Some(final_value) = &fields.final_value_opt {
                                 // TODO: Handle annotation
                                 let final_value = &final_value.value;
-                                write!(formatted_code, "{}", final_value.span().as_str())?;
+                                write!(formatted_code, "{}", final_value.span().as_str(),)?;
                             }
                         }
                     }
