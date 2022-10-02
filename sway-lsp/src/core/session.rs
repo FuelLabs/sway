@@ -298,11 +298,9 @@ impl Session {
 
     pub fn token_definition_response(
         &self,
-        params: GotoDefinitionParams,
+        url: Url,
+        position: Position,
     ) -> Option<GotoDefinitionResponse> {
-        let url = params.text_document_position_params.text_document.uri;
-        let position = params.text_document_position_params.position;
-
         self.token_at_position(&url, position)
             .and_then(|(_, token)| self.declared_token_ident(&token))
             .and_then(|decl_ident| {

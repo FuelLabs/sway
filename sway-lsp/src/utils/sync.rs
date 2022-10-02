@@ -161,7 +161,10 @@ fn edit_dependency_paths(
 // }
 
 // Convert the Url path from the client to point to the same file in our temp folder
-pub(crate) fn temp_path_from_url(uri: &Url, dirs: &DashMap<Directory, PathBuf>) -> PathBuf {
+pub(crate) fn workspace_to_temp_url(
+    uri: &Url,
+    dirs: &DashMap<Directory, PathBuf>,
+) -> Result<Url, ()> {
     let path = PathBuf::from(uri.path());
     let manifest_dir = dirs
         .get(&Directory::Manifest)
@@ -172,7 +175,7 @@ pub(crate) fn temp_path_from_url(uri: &Url, dirs: &DashMap<Directory, PathBuf>) 
         .map(|item| item.value().clone())
         .unwrap();
     let p = path.strip_prefix(manifest_dir).unwrap();
-    temp_dir.join(p)
+    Url::from_file_path(temp_dir.join(p))
 }
 
 fn print_project_files(dir: impl AsRef<Path>) {

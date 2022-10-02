@@ -1,17 +1,18 @@
 use std::collections::HashMap;
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{
-    PrepareRenameResponse, RenameParams, TextDocumentPositionParams, TextEdit, WorkspaceEdit,
+    Position, PrepareRenameResponse, TextDocumentPositionParams, TextEdit, Url, WorkspaceEdit,
 };
 
 use crate::core::{session::Session, token::AstToken};
 use crate::utils::common::get_range_from_span;
 
-pub fn rename(session: &Session, params: RenameParams) -> Option<WorkspaceEdit> {
-    let new_name = params.new_name;
-    let url = params.text_document_position.text_document.uri;
-    let position = params.text_document_position.position;
-
+pub fn rename(
+    session: &Session,
+    new_name: String,
+    url: Url,
+    position: Position,
+) -> Option<WorkspaceEdit> {
     if let Some((_, token)) = session.token_at_position(&url, position) {
         let mut edits = Vec::new();
 
@@ -32,10 +33,10 @@ pub fn rename(session: &Session, params: RenameParams) -> Option<WorkspaceEdit> 
 
 pub fn prepare_rename(
     session: &Session,
-    params: TextDocumentPositionParams,
+    url: Url,
+    position: Position,
 ) -> Option<PrepareRenameResponse> {
-    let url = params.text_document.uri;
-    if let Some((ident, token)) = session.token_at_position(&url, params.position) {
+    if let Some((ident, token)) = session.token_at_position(&url, position) {
         match token.parsed {
             AstToken::Reassignment(_) => None,
             _ => Some(PrepareRenameResponse::RangeWithPlaceholder {
