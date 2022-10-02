@@ -28,12 +28,11 @@ exclude = [
 [profile.dev.package.sway-lsp]
 debug = 2
 
-# forc-client reuses some of the crates from within this repo.
-# This patch is to avoid fetching dup
+# This patch is to avoid fetching crates that exist here
+# from crates.io, since forc-client also relies on them.
 [patch.'crates-io']
 forc-pkg = { path = "./forc-pkg" }
 forc-util = { path = "./forc-util" }
 sway-utils = { path = "./sway-utils" }
 sway-core = { path = "./sway-core" }
 sway-types = { path = "./sway-types" }
-
