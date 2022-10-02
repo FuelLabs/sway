@@ -104,7 +104,7 @@ impl Format for ItemEnum {
                             if let Some(final_value) = &fields.final_value_opt {
                                 // TODO: Handle annotation
                                 let final_value = &final_value.value;
-                                write!(formatted_code, "{}", final_value.span().as_str(),)?;
+                                write!(formatted_code, "{}", final_value.span().as_str())?;
                             }
                         }
                     }
