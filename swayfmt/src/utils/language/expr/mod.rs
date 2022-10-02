@@ -710,18 +710,18 @@ fn get_field_width(
 // TODO: Find a better way of handling Boxed version
 impl LeafSpans for Box<Expr> {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
-        visit_expr(self)
+        expr_leaf_spans(self)
     }
 }
 
 impl LeafSpans for Expr {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
-        visit_expr(self)
+        expr_leaf_spans(self)
     }
 }
 
 /// Collects various expr field's ByteSpans.
-fn visit_expr(expr: &Expr) -> Vec<ByteSpan> {
+fn expr_leaf_spans(expr: &Expr) -> Vec<ByteSpan> {
     match expr {
         Expr::Error(_) => vec![expr.span().into()],
         Expr::Path(path) => path.leaf_spans(),
