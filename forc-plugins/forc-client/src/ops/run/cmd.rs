@@ -59,9 +59,9 @@ pub struct RunCommand {
     #[clap(short = 'g', long)]
     pub debug_outfile: Option<String>,
 
-    /// Silent mode. Don't output any warnings or errors to the command line.
-    #[clap(long = "silent", short = 's')]
-    pub silent_mode: bool,
+    /// Terse mode. Limited warning and error output.
+    #[clap(long = "terse", short = 't')]
+    pub terse_mode: bool,
 
     /// Output the time elapsed over each part of the compilation process.
     #[clap(long)]

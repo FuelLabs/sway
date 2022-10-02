@@ -3,7 +3,7 @@ use forc_pkg::{fuel_core_not_running, BuildOptions, ManifestFile};
 use fuel_crypto::Signature;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{AssetId, Output, Transaction, Witness};
-use fuels_core::constants::{BASE_ASSET_ID, DEFAULT_SPENDABLE_COIN_AMOUNT};
+use fuels_core::constants::BASE_ASSET_ID;
 use fuels_signers::{provider::Provider, Wallet};
 use fuels_types::bech32::Bech32Address;
 use futures::TryFutureExt;
@@ -37,7 +37,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         binary_outfile: command.binary_outfile,
         debug_outfile: command.debug_outfile,
         offline_mode: false,
-        silent_mode: command.silent_mode,
+        terse_mode: command.terse_mode,
         output_directory: command.output_directory,
         minify_json_abi: command.minify_json_abi,
         minify_json_storage_slots: command.minify_json_storage_slots,
@@ -73,11 +73,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         let coin_witness_index = inputs.len().try_into()?;
 
         let inputs_to_add = locked_wallet
-            .get_asset_inputs_for_amount(
-                AssetId::default(),
-                DEFAULT_SPENDABLE_COIN_AMOUNT,
-                coin_witness_index,
-            )
+            .get_asset_inputs_for_amount(AssetId::default(), 1_000_000, coin_witness_index)
             .await?;
 
         inputs.extend(inputs_to_add);

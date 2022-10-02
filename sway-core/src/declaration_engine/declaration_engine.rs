@@ -37,6 +37,10 @@ impl DeclarationEngine {
         self.slab.get(*index)
     }
 
+    fn replace_decl_id(&self, index: DeclarationId, wrapper: DeclarationWrapper) {
+        self.slab.replace(index, wrapper);
+    }
+
     fn add_monomorphized_copy(&self, original_id: DeclarationId, new_id: DeclarationId) {
         let mut monomorphized_copies = self.monomorphized_copies.write().unwrap();
         match monomorphized_copies.get_mut(&*original_id) {
@@ -253,6 +257,10 @@ pub(crate) fn de_clear() {
 
 pub(crate) fn de_look_up_decl_id(index: DeclarationId) -> DeclarationWrapper {
     DECLARATION_ENGINE.look_up_decl_id(index)
+}
+
+pub(crate) fn de_replace_decl_id(index: DeclarationId, wrapper: DeclarationWrapper) {
+    DECLARATION_ENGINE.replace_decl_id(index, wrapper)
 }
 
 pub(crate) fn de_add_monomorphized_copy(original_id: DeclarationId, new_id: DeclarationId) {

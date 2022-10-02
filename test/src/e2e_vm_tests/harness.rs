@@ -27,7 +27,7 @@ pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
                 "{}/src/e2e_vm_tests/test_programs/{}",
                 manifest_dir, file_name
             )),
-            silent_mode: !verbose,
+            terse_mode: !verbose,
             locked,
             unsigned: true,
             ..Default::default()
@@ -58,7 +58,7 @@ pub(crate) fn runs_on_node(
             manifest_dir, file_name
         )),
         node_url: Some("http://127.0.0.1:4000".into()),
-        silent_mode: !verbose,
+        terse_mode: !verbose,
         contract: Some(contracts),
         locked,
         unsigned: true,
@@ -150,7 +150,7 @@ pub(crate) fn compile_to_bytes_verbose(
             manifest_dir, file_name
         )),
         locked,
-        silent_mode: !verbose,
+        terse_mode: !verbose,
         ..Default::default()
     });
 
