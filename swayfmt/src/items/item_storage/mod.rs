@@ -62,7 +62,8 @@ impl Format for ItemStorage {
                         });
 
                         let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
-                        for (field_index, (storage_field, comma_token)) in value_pairs_iter.clone()
+                        while let Some((field_index, (storage_field, comma_token))) =
+                            value_pairs_iter.next()
                         {
                             write!(
                                 formatted_code,
@@ -99,9 +100,8 @@ impl Format for ItemStorage {
                             storage_field
                                 .initializer
                                 .format(formatted_code, formatter)?;
-                            if value_pairs_iter.peek().is_some() {
-                                writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
-                            } else if let Some(final_value) = &fields.final_value_opt {
+                            writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
+                            if let Some(final_value) = &fields.final_value_opt {
                                 final_value.format(formatted_code, formatter)?;
                             }
                         }
