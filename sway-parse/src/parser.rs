@@ -8,7 +8,7 @@ use sway_ast::token::{
 };
 use sway_ast::PubToken;
 use sway_error::error::CompileError;
-use sway_error::handler::Handler;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::parser_error::{ParseError, ParseErrorKind};
 use sway_types::{Ident, Span, Spanned};
 
@@ -48,8 +48,7 @@ impl<'a, 'e> Parser<'a, 'e> {
 
     pub fn emit_error_with_span(&mut self, kind: ParseErrorKind, span: Span) -> ErrorEmitted {
         let error = ParseError { span, kind };
-        self.handler.emit_err(CompileError::Parse { error });
-        ErrorEmitted { _priv: () }
+        self.handler.emit_err(CompileError::Parse { error })
     }
 
     /// Eats a `P` in its canonical way by peeking.
@@ -250,11 +249,6 @@ impl<'a> Peeker<'a> {
             _ => Err(self),
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ErrorEmitted {
-    _priv: (),
 }
 
 pub struct ParserConsumed<'a> {

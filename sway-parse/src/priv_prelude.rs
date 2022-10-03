@@ -3,7 +3,7 @@ pub use {
         brackets::ParseBracket,
         expr::op_code::parse_instruction,
         parse::{Parse, ParseToEnd, Peek},
-        parser::{ErrorEmitted, ParseResult, Parser, ParserConsumed, Peeker},
+        parser::{ParseResult, Parser, ParserConsumed, Peeker},
     },
     extension_trait::extension_trait,
     num_bigint::BigUint,

@@ -9,7 +9,7 @@ use sway_ast::token::{
     DocStyle, Punct, PunctKind, Spacing, TokenStream,
 };
 use sway_error::error::CompileError;
-use sway_error::handler::Handler;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::lex_error::{LexError, LexErrorKind};
 use sway_types::{Ident, Span};
 use unicode_xid::UnicodeXID;
@@ -762,7 +762,7 @@ fn span_until(
 }
 
 /// Emit a lexer error.
-fn error(handler: &Handler, error: LexError) {
+fn error(handler: &Handler, error: LexError) -> ErrorEmitted {
     handler.emit_err(CompileError::Lex { error })
 }
 

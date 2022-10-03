@@ -20,12 +20,19 @@ struct HandlerInner {
 
 impl Handler {
     /// Emit the error `err`.
-    pub fn emit_err(&self, err: CompileError) {
+    pub fn emit_err(&self, err: CompileError) -> ErrorEmitted {
         self.inner.borrow_mut().sink.push(err);
+        ErrorEmitted { _priv: () }
     }
 
     /// Extract all the errors from this handler.
     pub fn into_errors(self) -> Vec<CompileError> {
         self.inner.into_inner().sink
     }
+}
+
+/// Proof that an error was emitted through a `Handler`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ErrorEmitted {
+    _priv: (),
 }
