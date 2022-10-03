@@ -92,7 +92,7 @@ fn edit_manifest_dependency_paths(manifest: &ManifestFile, temp_manifest_path: &
     if let Some(deps) = &manifest.dependencies {
         for (name, dep) in deps.iter() {
             if let Dependency::Detailed(details) = dep {
-                if let Some(path) = &details.path {
+                if let Some(_) = &details.path {
                     if let Some(abs_path) = manifest.dep_path(name) {
                         dependency_map.insert(name.clone(), abs_path);
                     }
@@ -186,8 +186,7 @@ fn print_project_files(dir: impl AsRef<Path>) {
 pub(crate) fn create_project_dir(project_name: &str) -> PathBuf {
     //let p = Builder::new().tempdir_in(&Path::new(".")).unwrap();
     let p = Builder::new().tempdir().unwrap();
-    let p = p.path().join(project_name);
-    p.to_path_buf()
+    p.path().join(project_name)
 }
 
 pub(crate) fn clone_manifest_dir_to_temp(dirs: &DashMap<Directory, PathBuf>) {
