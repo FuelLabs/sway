@@ -251,11 +251,14 @@ impl fmt::Display for IrError {
                 "Verification failed: Function {fn_str} return type must match its RET \
                 instructions."
             ),
-            IrError::VerifyBlockArgMalformed =>  {
+            IrError::VerifyBlockArgMalformed => {
                 write!(f, "Verification failed: Block argument is malformed")
             }
-            IrError::VerifyBranchParamsMismatch             => {
-                write!(f, "Verification failed: Block parameter passed in branch is malformed")
+            IrError::VerifyBranchParamsMismatch => {
+                write!(
+                    f,
+                    "Verification failed: Block parameter passed in branch is malformed"
+                )
             }
             IrError::VerifyPtrCastFromNonPointer => {
                 write!(

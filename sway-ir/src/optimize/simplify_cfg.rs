@@ -161,11 +161,7 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
     for to_block in block_chain {
         let from_params = from_block.get_succ_params(context, &to_block);
         // We collect here so that we can have &mut Context later on.
-        let to_blocks: Vec<_> = to_block
-            .arg_iter(context)
-            .copied()
-            .enumerate()
-            .collect();
+        let to_blocks: Vec<_> = to_block.arg_iter(context).copied().enumerate().collect();
         for (arg_idx, to_block_arg) in to_blocks {
             // replace all uses of `to_block_arg` with the parameter from `from_block`.
             function.replace_value(context, to_block_arg, from_params[arg_idx], None);

@@ -86,7 +86,7 @@ impl Function {
             .push(entry_block);
 
         // Setup the arguments.
-        let arguments : Vec<_> = args
+        let arguments: Vec<_> = args
             .into_iter()
             .enumerate()
             .map(|(idx, (name, ty, arg_metadata))| {

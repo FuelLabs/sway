@@ -233,7 +233,7 @@ fn block_to_doc<'a>(
 ) -> Doc {
     let block_content = &context.blocks[block.0];
     Doc::line(
-        Doc::text(format!("{}", block_content.label)).append(
+        Doc::text(block_content.label.to_string()).append(
             Doc::in_parens_comma_sep(
                 block
                     .arg_iter(context)
@@ -350,18 +350,28 @@ fn instruction_to_doc<'a>(
                         .append(md_namer.md_idx_to_doc(context, metadata)),
                     ))
             }
-            Instruction::Branch(to_block) => Doc::line(
-                Doc::text(format!("br {}", context.blocks[to_block.0 .0].label,)).append(
-                    Doc::in_parens_comma_sep(
-                        to_block
-                            .1
-                            .iter()
-                            .map(|arg_val| Doc::text(namer.name(context, arg_val)))
-                            .collect(),
-                    )
-                    .append(md_namer.md_idx_to_doc(context, metadata)),
-                ),
-            ),
+            Instruction::Branch(to_block) =>
+            // Handle possibly constant block parameters
+            {
+                to_block
+                    .1
+                    .iter()
+                    .fold(Doc::Empty, |doc, param| {
+                        doc.append(maybe_constant_to_doc(context, md_namer, namer, param))
+                    })
+                    .append(Doc::line(
+                        Doc::text(format!("br {}", context.blocks[to_block.0 .0].label,)).append(
+                            Doc::in_parens_comma_sep(
+                                to_block
+                                    .1
+                                    .iter()
+                                    .map(|arg_val| Doc::text(namer.name(context, arg_val)))
+                                    .collect(),
+                            )
+                            .append(md_namer.md_idx_to_doc(context, metadata)),
+                        ),
+                    ))
+            }
             Instruction::Call(func, args) => args
                 .iter()
                 .fold(Doc::Empty, |doc, arg_val| {
@@ -403,7 +413,15 @@ fn instruction_to_doc<'a>(
             } => {
                 let true_label = &context.blocks[true_block.0 .0].label;
                 let false_label = &context.blocks[false_block.0 .0].label;
-                Doc::line(
+                // Handle possibly constant block parameters
+                let doc = true_block.1.iter().fold(
+                    maybe_constant_to_doc(context, md_namer, namer, cond_value),
+                    |doc, param| doc.append(maybe_constant_to_doc(context, md_namer, namer, param)),
+                );
+                let doc = false_block.1.iter().fold(doc, |doc, param| {
+                    doc.append(maybe_constant_to_doc(context, md_namer, namer, param))
+                });
+                doc.append(Doc::line(
                     Doc::text(format!("cbr {} ", namer.name(context, cond_value),)).append(
                         Doc::text(true_label).append(
                             Doc::in_parens_comma_sep(
@@ -427,7 +445,7 @@ fn instruction_to_doc<'a>(
                             ),
                         ),
                     ),
-                )
+                ))
             }
             Instruction::ContractCall {
                 return_type,
