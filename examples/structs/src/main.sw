@@ -65,35 +65,17 @@ fn struct_destructuring() {
     };
     // Destructure the values from the nested structs into variables
     let Line {
-        p1:Point { x:x0, y:y0 },
-        p2:Point { x:x1, y:y1 },
+        p1: Point { x: x0, y: y0 },
+        p2: Point { x: x1, y: y1 },
     } = line;
     // You may also destructure tuples nested in structs and structs nested in tuples
     let tuple_in_struct = TupleInStruct {
-        nested_tuple: (
-            42u64,
-            (
-                42u32,
-                (true, "ok"),
-            ),
-        ),
+        nested_tuple: (42u64, (42u32, (true, "ok"))),
     };
     let TupleInStruct {
-        nested_tuple:(
-        a,
-        (
-        b,
-        (
-        c,
-        d,
-),
-),
-),
+        nested_tuple: (a, (b, (c, d))),
     } = tuple_in_struct;
 
-    let struct_in_tuple = (
-        Point { x: 2, y: 4 },
-        Point { x: 3, y: 6 },
-    );
-    let (Point { x:x0, y:y0 }, Point { x:x1, y:y1 }) = struct_in_tuple;
+    let struct_in_tuple = (Point { x: 2, y: 4 }, Point { x: 3, y: 6 });
+    let (Point { x: x0, y: y0 }, Point { x: x1, y: y1 }) = struct_in_tuple;
 }
