@@ -17,7 +17,6 @@ use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position, Url};
 
 pub fn hover_data(session: &Session, url: Url, position: Position) -> Option<Hover> {
-    //let url = &params.text_document_position_params.text_document.uri;
     if let Some((_, token)) = session.token_at_position(&url, position) {
         if let Some(decl_ident) = session.declared_token_ident(&token) {
             if let Some(decl_token) = session

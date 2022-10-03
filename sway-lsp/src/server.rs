@@ -165,11 +165,15 @@ impl LanguageServer for Backend {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         // Create a new temp dir that clones the current workspace
         // and store manifest and temp paths
-        sync::create_temp_dir_from_url(&params.text_document.uri, &self.session.directories);
-        sync::clone_manifest_dir_to_temp(&self.session.directories);
+        self.session
+            .sync
+            .create_temp_dir_from_url(&params.text_document.uri);
+        self.session.sync.clone_manifest_dir_to_temp();
         // convert the client Url to the temp uri
-        if let Ok(uri) =
-            sync::workspace_to_temp_url(&params.text_document.uri, &self.session.directories)
+        if let Ok(uri) = self
+            .session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
         {
             self.session.handle_open_file(&uri);
             self.parse_project(uri).await;
@@ -177,8 +181,10 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        if let Ok(uri) =
-            sync::workspace_to_temp_url(&params.text_document.uri, &self.session.directories)
+        if let Ok(uri) = self
+            .session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
         {
             // update this file with the new changes and write to disk
             if let Some(src) = self
@@ -196,10 +202,12 @@ impl LanguageServer for Backend {
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         // overwrite the contents of the tmp/folder with everything in
         // the current workspace. (resync)
-        sync::clone_manifest_dir_to_temp(&self.session.directories);
+        self.session.sync.clone_manifest_dir_to_temp();
 
-        if let Ok(uri) =
-            sync::workspace_to_temp_url(&params.text_document.uri, &self.session.directories)
+        if let Ok(uri) = self
+            .session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
         {
             self.parse_project(uri).await;
         }
@@ -208,8 +216,7 @@ impl LanguageServer for Backend {
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         for event in params.changes {
             if event.typ == FileChangeType::DELETED {
-                if let Ok(uri) = sync::workspace_to_temp_url(&event.uri, &self.session.directories)
-                {
+                if let Ok(uri) = self.session.sync.workspace_to_temp_url(&event.uri) {
                     let _ = self.session.remove_document(&uri);
                 }
             }
@@ -217,15 +224,14 @@ impl LanguageServer for Backend {
     }
 
     async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
-        sync::workspace_to_temp_url(
-            &params.text_document_position_params.text_document.uri,
-            &self.session.directories,
-        )
-        .map(|uri| {
-            let position = params.text_document_position_params.position;
-            capabilities::hover::hover_data(&self.session, uri, position)
-        })
-        .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document_position_params.text_document.uri)
+            .map(|uri| {
+                let position = params.text_document_position_params.position;
+                capabilities::hover::hover_data(&self.session, uri, position)
+            })
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn completion(
@@ -244,7 +250,9 @@ impl LanguageServer for Backend {
         &self,
         params: DocumentSymbolParams,
     ) -> jsonrpc::Result<Option<DocumentSymbolResponse>> {
-        sync::workspace_to_temp_url(&params.text_document.uri, &self.session.directories)
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
             .map(|uri| {
                 self.session
                     .symbol_information(&uri)
@@ -257,7 +265,9 @@ impl LanguageServer for Backend {
         &self,
         params: SemanticTokensParams,
     ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
-        sync::workspace_to_temp_url(&params.text_document.uri, &self.session.directories)
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
             .map(|uri| capabilities::semantic_tokens::semantic_tokens_full(&self.session, &uri))
             .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
@@ -266,59 +276,60 @@ impl LanguageServer for Backend {
         &self,
         params: DocumentHighlightParams,
     ) -> jsonrpc::Result<Option<Vec<DocumentHighlight>>> {
-        sync::workspace_to_temp_url(
-            &params.text_document_position_params.text_document.uri,
-            &self.session.directories,
-        )
-        .map(|uri| {
-            let position = params.text_document_position_params.position;
-            capabilities::highlight::get_highlights(&self.session, uri, position)
-        })
-        .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document_position_params.text_document.uri)
+            .map(|uri| {
+                let position = params.text_document_position_params.position;
+                capabilities::highlight::get_highlights(&self.session, uri, position)
+            })
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn goto_definition(
         &self,
         params: GotoDefinitionParams,
     ) -> jsonrpc::Result<Option<GotoDefinitionResponse>> {
-        sync::workspace_to_temp_url(
-            &params.text_document_position_params.text_document.uri,
-            &self.session.directories,
-        )
-        .map(|uri| {
-            let position = params.text_document_position_params.position;
-            self.session.token_definition_response(uri, position)
-        })
-        .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document_position_params.text_document.uri)
+            .map(|uri| {
+                let position = params.text_document_position_params.position;
+                self.session.token_definition_response(uri, position)
+            })
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn formatting(
         &self,
         params: DocumentFormattingParams,
     ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
-        sync::workspace_to_temp_url(&params.text_document.uri, &self.session.directories)
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
             .map(|uri| self.session.format_text(&uri))
             .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn rename(&self, params: RenameParams) -> jsonrpc::Result<Option<WorkspaceEdit>> {
-        sync::workspace_to_temp_url(
-            &params.text_document_position.text_document.uri,
-            &self.session.directories,
-        )
-        .map(|uri| {
-            let new_name = params.new_name;
-            let position = params.text_document_position.position;
-            capabilities::rename::rename(&self.session, new_name, uri, position)
-        })
-        .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document_position.text_document.uri)
+            .map(|uri| {
+                let new_name = params.new_name;
+                let position = params.text_document_position.position;
+                capabilities::rename::rename(&self.session, new_name, uri, position)
+            })
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn prepare_rename(
         &self,
         params: TextDocumentPositionParams,
     ) -> jsonrpc::Result<Option<PrepareRenameResponse>> {
-        sync::workspace_to_temp_url(&params.text_document.uri, &self.session.directories)
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
             .map(|uri| {
                 let position = params.position;
                 capabilities::rename::prepare_rename(&self.session, uri, position)

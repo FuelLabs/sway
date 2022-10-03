@@ -11,7 +11,7 @@ use std::{
     fs::{self, File},
     io::{Read, Write},
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, RwLock},
 };
 use tempfile::Builder;
 use tower_lsp::lsp_types::Url;
@@ -20,6 +20,72 @@ use tower_lsp::lsp_types::Url;
 pub enum Directory {
     Manifest,
     Temp,
+}
+
+#[derive(Debug)]
+pub struct SyncWorkspace {
+    pub directories: DashMap<Directory, PathBuf>,
+    pub notify_join_handle: RwLock<Option<tokio::task::JoinHandle<()>>>,
+}
+
+impl SyncWorkspace {
+    pub(crate) fn new() -> Self {
+        Self {
+            directories: DashMap::new(),
+            notify_join_handle: RwLock::new(None),
+        }
+    }
+
+    pub(crate) fn create_temp_dir_from_url(&self, uri: &Url) {
+        // Convert the Uri to a PathBuf
+        let manifest_dir = PathBuf::from(uri.path());
+        if let Ok(manifest) = ManifestFile::from_dir(&manifest_dir) {
+            // strip Forc.toml from the path
+            let manifest_dir = manifest.path().parent().unwrap();
+            // extract the project name from the path
+            let project_name = manifest_dir.file_name().unwrap().to_str().unwrap();
+
+            // Create a new temporary directory that we can clone the current workspace into.
+            let p = Builder::new().tempdir().unwrap();
+            let temp_dir = p.path().join(project_name);
+            eprintln!("path: {:#?}", temp_dir);
+
+            self.directories
+                .insert(Directory::Manifest, manifest_dir.to_path_buf());
+            self.directories.insert(Directory::Temp, temp_dir);
+        }
+    }
+
+    pub(crate) fn clone_manifest_dir_to_temp(&self) {
+        let manifest_dir = self
+            .directories
+            .get(&Directory::Manifest)
+            .map(|item| item.value().clone())
+            .unwrap();
+        let temp_dir = self
+            .directories
+            .get(&Directory::Temp)
+            .map(|item| item.value().clone())
+            .unwrap();
+        copy_dir_contents(manifest_dir, temp_dir);
+    }
+
+    // Convert the Url path from the client to point to the same file in our temp folder
+    pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, ()> {
+        let path = PathBuf::from(uri.path());
+        let manifest_dir = self
+            .directories
+            .get(&Directory::Manifest)
+            .map(|item| item.value().clone())
+            .unwrap();
+        let temp_dir = self
+            .directories
+            .get(&Directory::Temp)
+            .map(|item| item.value().clone())
+            .unwrap();
+        let p = path.strip_prefix(manifest_dir).unwrap();
+        Url::from_file_path(temp_dir.join(p))
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -76,7 +142,7 @@ async fn feature() {
         });
 
         //jh.await;
-        jh.abort();
+        //jh.abort();
     }
 
     loop {
@@ -119,88 +185,6 @@ fn edit_manifest_dependency_paths(manifest: &ManifestFile, temp_manifest_path: &
     }
 }
 
-// #[test]
-// fn feature() {
-//     // did_open
-//     // 1. Create a new dir in /temp/ that clones the current workspace
-//     // 2. store the tmp path in session
-//     let current_open_file = Url::from_directory_path(Path::new("/Users/joshuabatty/Documents/rust/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/language/doc_comments/src/main.sw")).unwrap();
-//     let dirs = create_temp_dir_from_url(&current_open_file).unwrap();
-//     copy_dir_contents(&dirs.manifest_dir, &dirs.temp_dir);
-
-//     print_project_files(&dirs.temp_dir);
-
-//     // did_change
-//     // 3. trim the uri to be the relative file from workspace root
-//     // 4. create a new uri using this that appends to the tmp/path in session
-//     let uri = current_open_file;
-//     let temp_path = temp_path_from_url(&uri, &dirs);
-//     eprintln!("temp_path = {:?}", temp_path);
-//     // 5. update this file with the new changes and write to disk
-//     if let Some(src) = self.session.update_text_document(&uri, params.content_changes) {
-//         if let Ok(mut file) = File::create(temp_path) {
-//             let _ = writeln!(&mut file, "{}", src);
-//         }
-//     }
-//     // 6. pass in the custom uri into parse_project, we can now get the updated
-//     //    AST's back
-//     let temp_uri = Url::from_file_path(temp_path).unwrap();
-//     self.parse_project(temp_uri).await;
-
-//     // did_save
-//     // 7. overwrite the contents of the tmp/folder with everything in
-//     //    the current workspace. (resync)
-//     copy_dir_contents(&dirs.manifest_dir, &dirs.temp_dir);
-// }
-
-// Convert the Url path from the client to point to the same file in our temp folder
-pub(crate) fn workspace_to_temp_url(
-    uri: &Url,
-    dirs: &DashMap<Directory, PathBuf>,
-) -> Result<Url, ()> {
-    let path = PathBuf::from(uri.path());
-    let manifest_dir = dirs
-        .get(&Directory::Manifest)
-        .map(|item| item.value().clone())
-        .unwrap();
-    let temp_dir = dirs
-        .get(&Directory::Temp)
-        .map(|item| item.value().clone())
-        .unwrap();
-    let p = path.strip_prefix(manifest_dir).unwrap();
-    Url::from_file_path(temp_dir.join(p))
-}
-
-fn print_project_files(dir: impl AsRef<Path>) {
-    for entry in fs::read_dir(dir).unwrap() {
-        let entry = entry.unwrap();
-        eprintln!("{:?}", entry);
-        let ty = entry.file_type().unwrap();
-        if ty.is_dir() {
-            print_project_files(entry.path());
-        }
-    }
-}
-
-/// Create a new temporary directory that we can clone the current workspace into.
-pub(crate) fn create_project_dir(project_name: &str) -> PathBuf {
-    //let p = Builder::new().tempdir_in(&Path::new(".")).unwrap();
-    let p = Builder::new().tempdir().unwrap();
-    p.path().join(project_name)
-}
-
-pub(crate) fn clone_manifest_dir_to_temp(dirs: &DashMap<Directory, PathBuf>) {
-    let manifest_dir = dirs
-        .get(&Directory::Manifest)
-        .map(|item| item.value().clone())
-        .unwrap();
-    let temp_dir = dirs
-        .get(&Directory::Temp)
-        .map(|item| item.value().clone())
-        .unwrap();
-    copy_dir_contents(manifest_dir, temp_dir);
-}
-
 /// Copy the contents of the current workspace folder into the targer directory
 fn copy_dir_contents(
     src_dir: impl AsRef<Path>,
@@ -217,22 +201,4 @@ fn copy_dir_contents(
         }
     }
     Ok(())
-}
-
-pub(crate) fn create_temp_dir_from_url(uri: &Url, directories: &DashMap<Directory, PathBuf>) {
-    // Convert the Uri to a PathBuf
-    let manifest_dir = PathBuf::from(uri.path());
-    if let Ok(manifest) = ManifestFile::from_dir(&manifest_dir) {
-        // strip Forc.toml from the path
-        let manifest_dir = manifest.path().parent().unwrap();
-        // extract the project name from the path
-        let project_name = manifest_dir.file_name().unwrap().to_str().unwrap();
-
-        // create a new temp directory and join the project name to the path
-        let temp_dir = create_project_dir(project_name);
-        eprintln!("path: {:#?}", temp_dir);
-
-        directories.insert(Directory::Manifest, manifest_dir.to_path_buf());
-        directories.insert(Directory::Temp, temp_dir);
-    }
 }

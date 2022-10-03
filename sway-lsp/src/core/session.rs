@@ -10,7 +10,7 @@ use crate::{
         {traverse_parse_tree, traverse_typed_tree},
     },
     error::{DocumentError, LanguageServerError},
-    utils::{self, sync},
+    utils::{self, sync::SyncWorkspace},
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
@@ -40,20 +40,20 @@ pub struct CompiledProgram {
 #[derive(Debug)]
 pub struct Session {
     pub documents: Documents,
-    pub directories: DashMap<sync::Directory, PathBuf>,
     pub token_map: TokenMap,
     pub runnables: DashMap<RunnableType, Runnable>,
     pub compiled_program: RwLock<CompiledProgram>,
+    pub sync: SyncWorkspace,
 }
 
 impl Session {
     pub fn new() -> Self {
         Session {
             documents: DashMap::new(),
-            directories: DashMap::new(),
             token_map: DashMap::new(),
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
+            sync: SyncWorkspace::new(),
         }
     }
 
