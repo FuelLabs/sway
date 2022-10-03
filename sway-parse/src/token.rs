@@ -216,7 +216,8 @@ pub fn lex_commented(
             token_trees.push(token);
             continue;
         }
-        if let Some(token) = lex_int_lit(src, &path, &mut char_indices, index, character)? {
+        if let Some(token) = lex_int_lit(handler, src, &path, &mut char_indices, index, character)?
+        {
             token_trees.push(token);
             continue;
         }
@@ -587,6 +588,7 @@ fn parse_escape_code(
 }
 
 fn lex_int_lit(
+    handler: &Handler,
     src: &Arc<str>,
     path: &Option<Arc<PathBuf>>,
     char_indices: &mut CharIndices,
@@ -641,7 +643,7 @@ fn lex_int_lit(
     };
     let end = end_opt.unwrap_or(src.len());
     let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
-    let ty_opt = lex_int_ty_opt(src, path, char_indices)?;
+    let ty_opt = lex_int_ty_opt(handler, src, path, char_indices)?;
     let literal = Literal::Int(LitInt {
         span,
         parsed: big_uint,
@@ -651,6 +653,7 @@ fn lex_int_lit(
 }
 
 fn lex_int_ty_opt(
+    handler: &Handler,
     src: &Arc<str>,
     path: &Option<Arc<PathBuf>>,
     char_indices: &mut CharIndices,
@@ -670,7 +673,31 @@ fn lex_int_ty_opt(
             None => break src.len(),
         }
     };
-    let ty = match &suffix[..] {
+    // Parse the suffix to a known one, or if unknown, recover by throwing it away.
+    let ty = match parse_int_suffix(&suffix) {
+        Some(s) => s,
+        None => {
+            let span = Span::new(
+                src.clone(),
+                suffix_start_position,
+                suffix_end_position,
+                path.clone(),
+            )
+            .unwrap();
+            let kind = LexErrorKind::InvalidIntSuffix {
+                suffix: Ident::new(span.clone()),
+            };
+            error(handler, LexError { kind, span });
+            return Ok(None);
+        }
+    };
+    let span = span_until(src, suffix_start_position, char_indices, path);
+    Ok(Some((ty, span)))
+}
+
+/// Interpret the given `suffix` string as a `LitIntType`.
+fn parse_int_suffix(suffix: &str) -> Option<LitIntType> {
+    Some(match suffix {
         "u8" => LitIntType::U8,
         "u16" => LitIntType::U16,
         "u32" => LitIntType::U32,
@@ -679,25 +706,8 @@ fn lex_int_ty_opt(
         "i16" => LitIntType::I16,
         "i32" => LitIntType::I32,
         "i64" => LitIntType::I64,
-        _ => {
-            // FIXME(Centril, #2865): Recover here by throwing away the suffix.
-            let span = Span::new(
-                src.clone(),
-                suffix_start_position,
-                suffix_end_position,
-                path.clone(),
-            )
-            .unwrap();
-            return Err(LexError {
-                kind: LexErrorKind::InvalidIntSuffix {
-                    suffix: Ident::new(span.clone()),
-                },
-                span,
-            });
-        }
-    };
-    let span = span_until(src, suffix_start_position, char_indices, path);
-    Ok(Some((ty, span)))
+        _ => return None,
+    })
 }
 
 fn parse_digits(
