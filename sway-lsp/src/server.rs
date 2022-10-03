@@ -13,7 +13,7 @@ use crate::{
 };
 use forc_util::find_manifest_dir;
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::Write, ops::Deref, path::Path, str::FromStr, sync::Arc};
+use std::{fs::File, io::Write, ops::Deref, path::Path, sync::Arc};
 use sway_types::Spanned;
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::*;
@@ -58,8 +58,8 @@ impl Backend {
 
     async fn parse_project(&self, uri: Url) {
         // pass in the temp Url into parse_project, we can now get the updated AST's back.
-        match self.session.parse_project(&uri) {
-            Ok(diagnostics) => self.publish_diagnostics(&uri, diagnostics).await,
+        let diagnostics = match self.session.parse_project(&uri) {
+            Ok(diagnostics) => diagnostics,
             Err(err) => {
                 self.log_error_message(err.to_string().as_str()).await;
                 if let LanguageServerError::FailedToParse { diagnostics } = err {
@@ -69,7 +69,7 @@ impl Backend {
                 }
             }
         };
-        self.publish_diagnostics(uri, diagnostics).await;
+        self.publish_diagnostics(&uri, diagnostics).await;
     }
 }
 
