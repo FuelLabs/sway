@@ -4,7 +4,7 @@ use sway_types::{Span, Spanned};
 
 use crate::type_system::{CopyTypes, TypeMapping};
 
-use super::declaration_engine::de_look_up_decl_id;
+use super::declaration_engine::{de_look_up_decl_id, de_replace_decl_id};
 
 /// An ID used to refer to an item in the [DeclarationEngine](super::declaration_engine::DeclarationEngine)
 #[derive(Debug, Eq)]
@@ -53,7 +53,9 @@ impl Spanned for DeclarationId {
 
 impl CopyTypes for DeclarationId {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        de_look_up_decl_id(self.clone()).copy_types(type_mapping)
+        let mut decl = de_look_up_decl_id(self.clone());
+        decl.copy_types(type_mapping);
+        de_replace_decl_id(self.clone(), decl);
     }
 }
 

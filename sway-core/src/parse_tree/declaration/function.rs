@@ -1,5 +1,4 @@
-use crate::{parse_tree::*, type_system::*};
-
+use crate::{parse_tree::*, type_system::*, AttributesMap};
 use sway_types::{ident::Ident, span::Span};
 
 mod purity;
@@ -8,6 +7,7 @@ pub use purity::{promote_purity, Purity};
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration {
     pub purity: Purity,
+    pub attributes: AttributesMap,
     pub name: Ident,
     pub visibility: Visibility,
     pub body: CodeBlock,
@@ -24,6 +24,6 @@ pub struct FunctionParameter {
     pub is_reference: bool,
     pub is_mutable: bool,
     pub mutability_span: Span,
-    pub type_id: TypeId,
+    pub type_info: TypeInfo,
     pub type_span: Span,
 }

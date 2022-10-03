@@ -93,10 +93,11 @@ impl TypedMatchBranch {
 
         // unify the return type from the typed result with the type annotation
         if !typed_result.deterministically_aborts() {
-            let (mut new_warnings, new_errors) =
-                ctx.unify_with_self(typed_result.return_type, &typed_result.span);
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+            append!(
+                ctx.unify_with_self(typed_result.return_type, &typed_result.span),
+                warnings,
+                errors
+            );
         }
 
         // if the typed branch result is a code block, then add the contents

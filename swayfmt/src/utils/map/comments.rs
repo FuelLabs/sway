@@ -55,6 +55,7 @@ pub fn comment_map_from_src(input: Arc<str>) -> Result<CommentMap, FormatterErro
     for comment in tts {
         collect_comments_from_token_stream(comment, &mut comment_map);
     }
+
     Ok(comment_map)
 }
 
@@ -235,7 +236,7 @@ fn insert_after_span(
     let mut pre_module_comment = false;
     for comment_with_context in iter {
         let (comment_value, comment_context) = comment_with_context;
-        if comment_value.span.start() == 0 {
+        if comment_value.span.start() == from.start {
             pre_module_comment = true;
         }
         write!(
@@ -245,16 +246,20 @@ fn insert_after_span(
             &format_comment(comment_value)
         )?;
     }
-    if pre_module_comment {
-        writeln!(comment_str)?;
-    }
     let mut src_rope = Rope::from_str(formatted_code);
     // If the position we are going to be inserting from + 1 is a \n we are moving that \n after
     // this comment so if that is the case we are inserting after the \n
     if formatted_code.chars().nth(from.end + offset + 1) == Some('\n') {
         offset += 1;
     }
-    src_rope.insert(from.end + offset, &comment_str);
+
+    if pre_module_comment {
+        writeln!(comment_str)?;
+
+        src_rope.insert(from.end + offset, comment_str.trim_start());
+    } else {
+        src_rope.insert(from.end + offset, &comment_str);
+    }
     formatted_code.clear();
     formatted_code.push_str(&src_rope.to_string());
     Ok(comment_str.len())

@@ -36,7 +36,7 @@ pub struct App {
 }
 
 fn main() {
-    init_tracing_subscriber(None);
+    init_tracing_subscriber(Default::default());
     if let Err(err) = run() {
         error!("Error: {:?}", err);
         std::process::exit(1);

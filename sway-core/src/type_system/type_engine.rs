@@ -1,6 +1,10 @@
 use super::*;
 use crate::concurrent_slab::ConcurrentSlab;
+use crate::declaration_engine::{
+    de_add_monomorphized_enum_copy, de_add_monomorphized_struct_copy, de_get_enum, de_get_struct,
+};
 use crate::namespace::{Path, Root};
+use crate::TypedDeclaration;
 use lazy_static::lazy_static;
 use sway_types::span::Span;
 use sway_types::{Ident, Spanned};
@@ -147,14 +151,15 @@ impl TypeEngine {
                 }
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
-                        namespace.resolve_type(
+                        self.resolve_type(
                             type_argument.type_id,
                             &type_argument.span,
                             enforce_type_arguments,
                             None,
+                            namespace,
                             mod_path
                         ),
-                        insert_type(TypeInfo::ErrorRecovery),
+                        self.insert_type(TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
@@ -243,14 +248,16 @@ impl TypeEngine {
                 let mut warnings = vec![];
                 let mut errors = vec![];
                 for (field_a, field_b) in fields_a.iter().zip(fields_b.iter()) {
-                    let (new_warnings, new_errors) = self.unify(
-                        field_a.type_id,
-                        field_b.type_id,
-                        &field_a.span,
-                        help_text.clone(),
+                    append!(
+                        self.unify(
+                            field_a.type_id,
+                            field_b.type_id,
+                            &field_a.span,
+                            help_text.clone(),
+                        ),
+                        warnings,
+                        errors
                     );
-                    warnings.extend(new_warnings);
-                    errors.extend(new_errors);
                 }
                 (warnings, errors)
             }
@@ -325,23 +332,26 @@ impl TypeEngine {
                     && a_parameters.len() == b_parameters.len()
                 {
                     a_fields.iter().zip(b_fields.iter()).for_each(|(a, b)| {
-                        let (new_warnings, new_errors) =
-                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone());
-                        warnings.extend(new_warnings);
-                        errors.extend(new_errors);
+                        append!(
+                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone()),
+                            warnings,
+                            errors
+                        );
                     });
                     a_parameters
                         .iter()
                         .zip(b_parameters.iter())
                         .for_each(|(a, b)| {
-                            let (new_warnings, new_errors) = self.unify(
-                                a.type_id,
-                                b.type_id,
-                                &a.name_ident.span(),
-                                help_text.clone(),
+                            append!(
+                                self.unify(
+                                    a.type_id,
+                                    b.type_id,
+                                    &a.name_ident.span(),
+                                    help_text.clone(),
+                                ),
+                                warnings,
+                                errors
                             );
-                            warnings.extend(new_warnings);
-                            errors.extend(new_errors);
                         });
                 } else {
                     errors.push(TypeError::MismatchedType {
@@ -372,23 +382,26 @@ impl TypeEngine {
                     && a_parameters.len() == b_parameters.len()
                 {
                     a_variants.iter().zip(b_variants.iter()).for_each(|(a, b)| {
-                        let (new_warnings, new_errors) =
-                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone());
-                        warnings.extend(new_warnings);
-                        errors.extend(new_errors);
+                        append!(
+                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone()),
+                            warnings,
+                            errors
+                        );
                     });
                     a_parameters
                         .iter()
                         .zip(b_parameters.iter())
                         .for_each(|(a, b)| {
-                            let (new_warnings, new_errors) = self.unify(
-                                a.type_id,
-                                b.type_id,
-                                &a.name_ident.span(),
-                                help_text.clone(),
+                            append!(
+                                self.unify(
+                                    a.type_id,
+                                    b.type_id,
+                                    &a.name_ident.span(),
+                                    help_text.clone(),
+                                ),
+                                warnings,
+                                errors
                             );
-                            warnings.extend(new_warnings);
-                            errors.extend(new_errors);
                         });
                 } else {
                     errors.push(TypeError::MismatchedType {
@@ -505,13 +518,7 @@ impl TypeEngine {
         self.unify(received, expected, span, help_text)
     }
 
-    /// Lookup the given `id` and return a [TypeError] if it is a
-    /// [TypeInfo::Unknown] variant.
-    pub(crate) fn resolve_type(
-        &self,
-        id: TypeId,
-        error_span: &Span,
-    ) -> Result<TypeInfo, TypeError> {
+    pub fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
         match self.look_up_type_id(id) {
             TypeInfo::Unknown => Err(TypeError::UnknownType {
                 span: error_span.clone(),
@@ -524,6 +531,173 @@ impl TypeEngine {
     fn clear(&self) {
         self.slab.clear();
         self.storage_only_types.clear();
+    }
+
+    /// Resolve the type of the given [TypeId], replacing any instances of
+    /// [TypeInfo::Custom] with either a monomorphized struct, monomorphized
+    /// enum, or a reference to a type parameter.
+    fn resolve_type(
+        &self,
+        type_id: TypeId,
+        span: &Span,
+        enforce_type_arguments: EnforceTypeArguments,
+        type_info_prefix: Option<&Path>,
+        namespace: &Root,
+        mod_path: &Path,
+    ) -> CompileResult<TypeId> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let module_path = type_info_prefix.unwrap_or(mod_path);
+        let type_id = match look_up_type_id(type_id) {
+            TypeInfo::Custom {
+                name,
+                type_arguments,
+            } => {
+                match namespace
+                    .resolve_symbol(module_path, &name)
+                    .ok(&mut warnings, &mut errors)
+                    .cloned()
+                {
+                    Some(TypedDeclaration::StructDeclaration(original_id)) => {
+                        // get the copy from the declaration engine
+                        let mut new_copy = check!(
+                            CompileResult::from(de_get_struct(original_id.clone(), &name.span())),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+
+                        // monomorphize the copy, in place
+                        check!(
+                            self.monomorphize(
+                                &mut new_copy,
+                                &mut type_arguments.unwrap_or_default(),
+                                enforce_type_arguments,
+                                span,
+                                namespace,
+                                mod_path
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors,
+                        );
+
+                        // create the type id from the copy
+                        let type_id = new_copy.create_type_id();
+
+                        // add the new copy as a monomorphized copy of the original id
+                        de_add_monomorphized_struct_copy(original_id, new_copy);
+
+                        // return the id
+                        type_id
+                    }
+                    Some(TypedDeclaration::EnumDeclaration(original_id)) => {
+                        // get the copy from the declaration engine
+                        let mut new_copy = check!(
+                            CompileResult::from(de_get_enum(original_id.clone(), &name.span())),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+
+                        // monomorphize the copy, in place
+                        check!(
+                            self.monomorphize(
+                                &mut new_copy,
+                                &mut type_arguments.unwrap_or_default(),
+                                enforce_type_arguments,
+                                span,
+                                namespace,
+                                mod_path
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+
+                        // create the type id from the copy
+                        let type_id = new_copy.create_type_id();
+
+                        // add the new copy as a monomorphized copy of the original id
+                        de_add_monomorphized_enum_copy(original_id, new_copy);
+
+                        // return the id
+                        type_id
+                    }
+                    Some(TypedDeclaration::GenericTypeForFunctionScope { name, type_id }) => {
+                        self.insert_type(TypeInfo::Ref(type_id, name.span()))
+                    }
+                    _ => {
+                        errors.push(CompileError::UnknownTypeName {
+                            name: name.to_string(),
+                            span: name.span(),
+                        });
+                        self.insert_type(TypeInfo::ErrorRecovery)
+                    }
+                }
+            }
+            TypeInfo::Ref(id, _) => id,
+            TypeInfo::Array(type_id, n, initial_type_id) => {
+                let new_type_id = check!(
+                    self.resolve_type(
+                        type_id,
+                        span,
+                        enforce_type_arguments,
+                        None,
+                        namespace,
+                        mod_path
+                    ),
+                    self.insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors
+                );
+                self.insert_type(TypeInfo::Array(new_type_id, n, initial_type_id))
+            }
+            TypeInfo::Tuple(mut type_arguments) => {
+                for type_argument in type_arguments.iter_mut() {
+                    type_argument.type_id = check!(
+                        self.resolve_type(
+                            type_argument.type_id,
+                            span,
+                            enforce_type_arguments,
+                            None,
+                            namespace,
+                            mod_path
+                        ),
+                        self.insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors
+                    );
+                }
+                self.insert_type(TypeInfo::Tuple(type_arguments))
+            }
+            _ => type_id,
+        };
+        ok(type_id, warnings, errors)
+    }
+
+    /// Replace any instances of the [TypeInfo::SelfType] variant with
+    /// `self_type` in `type_id`, then resolve `type_id`.
+    #[allow(clippy::too_many_arguments)]
+    fn resolve_type_with_self(
+        &self,
+        mut type_id: TypeId,
+        self_type: TypeId,
+        span: &Span,
+        enforce_type_arguments: EnforceTypeArguments,
+        type_info_prefix: Option<&Path>,
+        namespace: &Root,
+        mod_path: &Path,
+    ) -> CompileResult<TypeId> {
+        type_id.replace_self_type(self_type);
+        self.resolve_type(
+            type_id,
+            span,
+            enforce_type_arguments,
+            type_info_prefix,
+            namespace,
+            mod_path,
+        )
     }
 }
 
@@ -582,8 +756,12 @@ pub fn unify_with_self(
     self_type: TypeId,
     span: &Span,
     help_text: impl Into<String>,
-) -> (Vec<CompileWarning>, Vec<TypeError>) {
-    TYPE_ENGINE.unify_with_self(a, b, self_type, span, help_text)
+) -> (Vec<CompileWarning>, Vec<CompileError>) {
+    let (warnings, errors) = TYPE_ENGINE.unify_with_self(a, b, self_type, span, help_text);
+    (
+        warnings,
+        errors.into_iter().map(|error| error.into()).collect(),
+    )
 }
 
 pub(crate) fn unify(
@@ -591,16 +769,58 @@ pub(crate) fn unify(
     b: TypeId,
     span: &Span,
     help_text: impl Into<String>,
-) -> (Vec<CompileWarning>, Vec<TypeError>) {
-    TYPE_ENGINE.unify(a, b, span, help_text)
+) -> (Vec<CompileWarning>, Vec<CompileError>) {
+    let (warnings, errors) = TYPE_ENGINE.unify(a, b, span, help_text);
+    (
+        warnings,
+        errors.into_iter().map(|error| error.into()).collect(),
+    )
 }
 
-pub fn resolve_type(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
-    TYPE_ENGINE.resolve_type(id, error_span)
+pub(crate) fn to_typeinfo(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
+    TYPE_ENGINE.to_typeinfo(id, error_span)
 }
 
 pub fn clear_type_engine() {
     TYPE_ENGINE.clear();
+}
+
+pub(crate) fn resolve_type(
+    type_id: TypeId,
+    span: &Span,
+    enforce_type_arguments: EnforceTypeArguments,
+    type_info_prefix: Option<&Path>,
+    namespace: &Root,
+    mod_path: &Path,
+) -> CompileResult<TypeId> {
+    TYPE_ENGINE.resolve_type(
+        type_id,
+        span,
+        enforce_type_arguments,
+        type_info_prefix,
+        namespace,
+        mod_path,
+    )
+}
+
+pub(crate) fn resolve_type_with_self(
+    type_id: TypeId,
+    self_type: TypeId,
+    span: &Span,
+    enforce_type_arguments: EnforceTypeArguments,
+    type_info_prefix: Option<&Path>,
+    namespace: &Root,
+    mod_path: &Path,
+) -> CompileResult<TypeId> {
+    TYPE_ENGINE.resolve_type_with_self(
+        type_id,
+        self_type,
+        span,
+        enforce_type_arguments,
+        type_info_prefix,
+        namespace,
+        mod_path,
+    )
 }
 
 fn numeric_cast_compat(new_size: IntegerBits, old_size: IntegerBits) -> NumericCastCompatResult {

@@ -34,9 +34,11 @@ impl Formatter {
             Err(ConfigError::NotFound) => Config::default(),
             Err(e) => return Err(e),
         };
-        let shape = Shape::default();
 
-        Ok(Self { config, shape })
+        Ok(Self {
+            config,
+            ..Default::default()
+        })
     }
     pub fn format(
         &mut self,
@@ -50,6 +52,7 @@ impl Formatter {
                 .heuristics_pref
                 .to_width_heuristics(self.config.whitespace.max_width),
         );
+        let src = src.trim();
 
         let path = build_config.map(|build_config| build_config.canonical_root_module());
         // Formatted code will be pushed here with raw newline stlye.
@@ -58,14 +61,14 @@ impl Formatter {
         // which will reduce the number of reallocations
         let mut raw_formatted_code = String::with_capacity(src.len());
 
-        let module = sway_parse::parse_file_standalone(src.clone(), path.clone())?;
+        let module = sway_parse::parse_file_standalone(Arc::from(src), path.clone())?;
         module.format(&mut raw_formatted_code, self)?;
 
         let mut formatted_code = String::from(&raw_formatted_code);
 
         // Add comments
         handle_comments(
-            src.clone(),
+            Arc::from(src),
             &module,
             Arc::from(formatted_code.clone()),
             path.clone(),
@@ -73,7 +76,7 @@ impl Formatter {
         )?;
         // Add newline sequences
         handle_newlines(
-            src,
+            Arc::from(src),
             &module,
             Arc::from(formatted_code.clone()),
             path,
@@ -1040,6 +1043,24 @@ fn main() {
     #[test]
     fn comments_before_module_kind() {
         let sway_code_to_format = r#"// something about module kind
+// something else about module kind
+library test_module_kind_with_comments;"#;
+        let correct_sway_code = r#"// something about module kind
+// something else about module kind
+library test_module_kind_with_comments;
+"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
+    }
+    #[test]
+    fn newline_before_comments() {
+        let sway_code_to_format = r#"
+
+
+// something about module kind
 // something else about module kind
 library test_module_kind_with_comments;"#;
         let correct_sway_code = r#"// something about module kind
