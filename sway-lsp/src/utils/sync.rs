@@ -36,13 +36,18 @@ async fn feature() {
     let directories: DashMap<Directory, PathBuf> = DashMap::new();
     let dirs = create_temp_dir_from_url(&current_open_file, &directories);
 
-    // Key = name of the dependancy that has been specified will a relative path
-    // Value = the absolute path that should be used to overwrite the relateive path
-    let mut dependency_map: HashMap<String, PathBuf> = HashMap::new();
+    let temp_manifest_path = directories
+        .get(&Directory::Temp)
+        .map(|item| item.value().clone())
+        .unwrap()
+        .join(sway_utils::constants::TEST_MANIFEST_FILE_NAME);
 
     let manifest_dir = PathBuf::from(current_open_file.path());
     if let Ok(manifest) = ManifestFile::from_dir(&manifest_dir) {
         let manifest_dir = Arc::new(manifest.clone());
+
+        edit_manifest_dependency_paths(&manifest, &temp_manifest_path);
+
         let jh = tokio::spawn(async move {
             let (tx, mut rx) = tokio::sync::mpsc::channel(10);
             // Setup debouncer. No specific tickrate, max debounce time 2 seconds
@@ -60,67 +65,55 @@ async fn feature() {
 
             debouncer
                 .watcher()
-                .watch(manifest_dir.as_ref().path(), RecursiveMode::Recursive)
+                .watch(manifest_dir.as_ref().path(), RecursiveMode::NonRecursive)
                 .unwrap();
 
-            while let Some(events) = rx.recv().await {
-                for e in events {
-                    // Match on did save event. Rescan the Forc.toml and convert
-                    // relative paths to absolute. Save into our temp directory.
-                    println!("event! {:?}", e);
-                }
+            while let Some(_events) = rx.recv().await {
+                // Rescan the Forc.toml and convert
+                // relative paths to absolute. Save into our temp directory.
+                edit_manifest_dependency_paths(&manifest, &temp_manifest_path);
             }
         });
 
-        if let Some(deps) = &manifest.dependencies {
-            for (name, dep) in deps.iter() {
-                if let Dependency::Detailed(details) = dep {
-                    if let Some(path) = &details.path {
-                        if let Some(abs_path) = manifest.dep_path(name) {
-                            dependency_map.insert(name.clone(), abs_path);
-                        }
+        //jh.await;
+        jh.abort();
+    }
+
+    loop {
+        tokio::time::sleep(std::time::Duration::from_millis(1250)).await;
+    }
+}
+
+fn edit_manifest_dependency_paths(manifest: &ManifestFile, temp_manifest_path: &Path) {
+    // Key = name of the dependancy that has been specified will a relative path
+    // Value = the absolute path that should be used to overwrite the relateive path
+    let mut dependency_map: HashMap<String, PathBuf> = HashMap::new();
+
+    if let Some(deps) = &manifest.dependencies {
+        for (name, dep) in deps.iter() {
+            if let Dependency::Detailed(details) = dep {
+                if let Some(path) = &details.path {
+                    if let Some(abs_path) = manifest.dep_path(name) {
+                        dependency_map.insert(name.clone(), abs_path);
                     }
                 }
             }
         }
-
-        if dependency_map.capacity() != 0 {
-            let temp_manifest_path = directories
-                .get(&Directory::Temp)
-                .map(|item| item.value().clone())
-                .unwrap()
-                .join(sway_utils::constants::TEST_MANIFEST_FILE_NAME);
-            edit_dependency_paths(&manifest.path(), &temp_manifest_path, &dependency_map);
-        }
-
-        //jh.await;
     }
 
-    loop_indef().await;
-}
+    if dependency_map.capacity() != 0 {
+        if let Ok(mut file) = File::open(manifest.path()) {
+            let mut toml = String::new();
+            let _ = file.read_to_string(&mut toml);
+            if let Ok(mut manifest_toml) = toml.parse::<toml_edit::Document>() {
+                for (name, abs_path) in dependency_map {
+                    manifest_toml["dependencies"][&name] =
+                        toml_edit::value(abs_path.display().to_string());
+                }
 
-async fn loop_indef() {
-    loop {
-        tokio::time::sleep(std::time::Duration::from_millis(1250));
-    }
-}
-
-fn edit_dependency_paths(
-    manifest_path: &Path,
-    temp_manifest_path: &Path,
-    dependency_map: &HashMap<String, PathBuf>,
-) {
-    if let Ok(mut file) = File::open(manifest_path) {
-        let mut toml = String::new();
-        let _ = file.read_to_string(&mut toml);
-        if let Ok(mut manifest_toml) = toml.parse::<toml_edit::Document>() {
-            for (name, abs_path) in dependency_map {
-                manifest_toml["dependencies"][&name] =
-                    toml_edit::value(abs_path.display().to_string());
-            }
-
-            if let Ok(mut file) = File::create(temp_manifest_path) {
-                let _ = file.write_all(manifest_toml.to_string().as_bytes());
+                if let Ok(mut file) = File::create(temp_manifest_path) {
+                    let _ = file.write_all(manifest_toml.to_string().as_bytes());
+                }
             }
         }
     }
