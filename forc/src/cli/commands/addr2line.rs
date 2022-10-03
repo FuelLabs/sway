@@ -17,7 +17,7 @@ use sway_core::source_map::{LocationRange, SourceMap};
 #[derive(Debug, Parser)]
 pub(crate) struct Command {
     /// Where to search for the project root
-    #[clap(short = 's', long, default_value = ".")]
+    #[clap(short = 'S', long, default_value = ".")]
     pub search_dir: PathBuf,
     /// Source file mapping in JSON format
     #[clap(short = 'g', long)]

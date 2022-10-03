@@ -1,4 +1,4 @@
-use forc_util::init_tracing_subscriber;
+use forc_util::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
 use tower_lsp::{LspService, Server};
 
 mod capabilities;
@@ -6,12 +6,16 @@ mod core;
 mod server;
 pub mod utils;
 use server::Backend;
+use tracing::metadata::LevelFilter;
 use utils::debug::DebugFlags;
 
 pub async fn start(config: DebugFlags) {
-    init_tracing_subscriber(None);
-
-    tracing::error!("STARTTTTTT!");
+    let tracing_options = TracingSubscriberOptions {
+        log_level: Some(LevelFilter::DEBUG), // TODO: Set this based on IDE config
+        writer_mode: Some(TracingWriterMode::Stderr),
+        ..Default::default()
+    };
+    init_tracing_subscriber(tracing_options);
 
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();

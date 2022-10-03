@@ -40,7 +40,7 @@ struct TestDescription {
 }
 
 pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
-    init_tracing_subscriber(None);
+    init_tracing_subscriber(Default::default());
 
     let configured_tests = discover_test_configs().unwrap_or_else(|e| {
         panic!("Discovering tests {e}");

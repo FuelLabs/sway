@@ -17,7 +17,7 @@ fuel-asm = "0.8"
 fuel-crypto = "0.6"
 fuel-tx = "0.18"
 fuel-types = "0.5"
-fuel-vm = "0.15"
+fuel-vm = "0.18"
 hex = { version = "0.4", optional = true }
 im = "15.0"
 itertools = "0.10"

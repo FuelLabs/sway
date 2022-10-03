@@ -6,15 +6,15 @@ use annotate_snippets::{
 };
 use ansi_term::Colour;
 use anyhow::{bail, Result};
-use std::ffi::OsStr;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::str;
+use std::{env, ffi::OsStr};
 use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
 use sway_types::Spanned;
 use sway_utils::constants;
 use tracing::{Level, Metadata};
-use tracing_subscriber::{filter::LevelFilter, fmt::MakeWriter};
+use tracing_subscriber::{filter::LevelFilter, fmt::MakeWriter, EnvFilter};
 
 pub mod restricted;
 
@@ -131,7 +131,7 @@ pub fn git_checkouts_directory() -> PathBuf {
 }
 
 pub fn print_on_success(
-    silent_mode: bool,
+    terse_mode: bool,
     proj_name: &str,
     warnings: &[CompileWarning],
     tree_type: &TreeType,
@@ -143,7 +143,7 @@ pub fn print_on_success(
         TreeType::Library { .. } => "library",
     };
 
-    if !silent_mode {
+    if !terse_mode {
         warnings.iter().for_each(format_warning);
     }
 
@@ -164,8 +164,8 @@ pub fn print_on_success(
     }
 }
 
-pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[CompileWarning]) {
-    if !silent_mode {
+pub fn print_on_success_library(terse_mode: bool, proj_name: &str, warnings: &[CompileWarning]) {
+    if !terse_mode {
         warnings.iter().for_each(format_warning);
     }
 
@@ -185,10 +185,10 @@ pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[
     }
 }
 
-pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: &[CompileError]) {
+pub fn print_on_failure(terse_mode: bool, warnings: &[CompileWarning], errors: &[CompileError]) {
     let e_len = errors.len();
 
-    if !silent_mode {
+    if !terse_mode {
         warnings.iter().for_each(format_warning);
         errors.iter().for_each(format_err);
     }
@@ -386,26 +386,34 @@ fn construct_window<'a>(
     &input[calculated_start_ix..calculated_end_ix]
 }
 
-// const LOG_FILTER: &str = "RUST_LOG";
+const LOG_FILTER: &str = "RUST_LOG";
 
 // This allows us to write ERROR and WARN level logs to stderr and everything else to stdout.
 // https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
-struct StdioTracingWriter;
+struct StdioTracingWriter {
+    writer_mode: TracingWriterMode,
+}
 impl<'a> MakeWriter<'a> for StdioTracingWriter {
     type Writer = Box<dyn io::Write>;
 
     fn make_writer(&'a self) -> Self::Writer {
-        // We must have an implementation of `make_writer` that makes
-        // a "default" writer without any configuring metadata. Let's
-        // just return stdout in that case.
-        Box::new(io::stdout())
+        if self.writer_mode == TracingWriterMode::Stderr {
+            return Box::new(io::stderr());
+        } else {
+            // We must have an implementation of `make_writer` that makes
+            // a "default" writer without any configuring metadata. Let's
+            // just return stdout in that case.
+            return Box::new(io::stdout());
+        }
     }
 
     fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
         // Here's where we can implement our special behavior. We'll
         // check if the metadata's verbosity level is WARN or ERROR,
         // and return stderr in that case.
-        if meta.level() <= &Level::WARN {
+        if self.writer_mode == TracingWriterMode::Stderr
+            || (self.writer_mode == TracingWriterMode::Stdio && meta.level() <= &Level::WARN)
+        {
             return Box::new(io::stderr());
         }
 
@@ -414,33 +422,64 @@ impl<'a> MakeWriter<'a> for StdioTracingWriter {
     }
 }
 
+#[derive(PartialEq)]
+pub enum TracingWriterMode {
+    /// Write ERROR and WARN to stderr and everything else to stdout.
+    Stdio,
+    /// Write everything to stdout.
+    Stdout,
+    /// Write everything to stderr.
+    Stderr,
+}
+
+#[derive(Default)]
+pub struct TracingSubscriberOptions {
+    pub verbosity: Option<u8>,
+    pub silent: Option<bool>,
+    pub log_level: Option<LevelFilter>,
+    pub writer_mode: Option<TracingWriterMode>,
+}
+
 /// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
 ///
 /// `RUST_LOG` environment variable can be used to set different minimum level for the subscriber, default is `INFO`.
-pub fn init_tracing_subscriber(_verbosity: Option<u8>) {
-    // let env_filter = match env::var_os(LOG_FILTER) {
-    //     Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
-    //     None => EnvFilter::new("info"),
-    // };x
+pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
+    let env_filter = match env::var_os(LOG_FILTER) {
+        Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
+        None => EnvFilter::new("info"),
+    };
 
-    let level_filter = Some(LevelFilter::INFO);
-    // let level_filter = verbosity.and_then(|verbosity| match verbosity {
-    //     1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
-    //     2 => Some(LevelFilter::TRACE), // matches -vv
-    //     _ => None,
-    // });
+    let level_filter = options
+        .log_level
+        .or_else(|| {
+            options.verbosity.and_then(|verbosity| {
+                match verbosity {
+                    1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
+                    2 => Some(LevelFilter::TRACE), // matches -vv
+                    _ => None,
+                }
+            })
+        })
+        .or_else(|| {
+            options.silent.and_then(|silent| match silent {
+                true => Some(LevelFilter::OFF),
+                _ => None,
+            })
+        });
 
     let builder = tracing_subscriber::fmt::Subscriber::builder()
-        // .with_env_filter(env_filter)
+        .with_env_filter(env_filter)
         .with_ansi(false)
         .with_level(true)
         .with_file(false)
         .with_line_number(false)
-        // .without_time()
+        .without_time()
         .with_target(false)
-        .with_writer(io::stderr);
+        .with_writer(StdioTracingWriter {
+            writer_mode: options.writer_mode.unwrap_or(TracingWriterMode::Stdio),
+        });
 
-    // If verbosity is set, it overrides the RUST_LOG setting
+    // If log level, verbosity, or silent mode is set, it overrides the RUST_LOG setting
     if let Some(level_filter) = level_filter {
         builder.with_max_level(level_filter).init();
     } else {
