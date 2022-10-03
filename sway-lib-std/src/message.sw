@@ -8,6 +8,8 @@ use ::outputs::{
     };
 use ::revert::revert;
 
+const FAILED_SEND_MESSAGE_SIGNAL = 0xffff_ffff_ffff_0002;
+
 /// Sends a message to `recipient` of length `msg_len` through `output` with amount of `coins`
 ///
 /// # Arguments
@@ -38,7 +40,7 @@ pub fn send_message(coins: u64, msg_len: u64, recipient: b256) {
     }
 
     if !output_found {
-        revert(0);
+        revert(FAILED_SEND_MESSAGE_SIGNAL);
     } else {
         asm(recipient, msg_len, output_index, coins) {
             smo recipient msg_len output_index coins;
