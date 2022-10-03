@@ -14,6 +14,7 @@ use sway_ast::{
     token::{Comment, CommentedTokenTree, CommentedTree},
     Module,
 };
+use sway_error::handler::Handler;
 use sway_parse::lex_commented;
 use sway_types::Spanned;
 
@@ -48,8 +49,10 @@ impl CommentRange for CommentMap {
 pub fn comment_map_from_src(input: Arc<str>) -> Result<CommentMap, FormatterError> {
     let mut comment_map = BTreeMap::new();
 
-    // pass the input through lexer
-    let commented_token_stream = lex_commented(&input, 0, input.len(), None)?;
+    // FIXME: Pass on handler errors.
+    // Pass the input through the lexer.
+    let handler = Handler::default();
+    let commented_token_stream = lex_commented(&handler, &input, 0, input.len(), None)?;
     let tts = commented_token_stream.token_trees().iter();
 
     for comment in tts {

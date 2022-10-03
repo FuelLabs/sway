@@ -2180,6 +2180,7 @@ impl TyExpression {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sway_error::type_error::TypeError;
 
     fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TyExpression> {
         let mut namespace = Namespace::init_root(namespace::Module::default());

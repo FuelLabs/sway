@@ -8,6 +8,8 @@ use sway_ast::token::{
     Comment, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter, DocComment,
     DocStyle, Punct, PunctKind, Spacing, TokenStream,
 };
+use sway_error::error::CompileError;
+use sway_error::handler::Handler;
 use sway_error::lex_error::{LexError, LexErrorKind};
 use sway_types::{Ident, Span};
 use unicode_xid::UnicodeXID;
@@ -84,15 +86,17 @@ impl Iterator for CharIndicesInner<'_> {
 type CharIndices<'a> = std::iter::Peekable<CharIndicesInner<'a>>;
 
 pub fn lex(
+    handler: &Handler,
     src: &Arc<str>,
     start: usize,
     end: usize,
     path: Option<Arc<PathBuf>>,
 ) -> Result<TokenStream, LexError> {
-    lex_commented(src, start, end, path).map(|stream| stream.strip_comments())
+    lex_commented(handler, src, start, end, path).map(|stream| stream.strip_comments())
 }
 
 pub fn lex_commented(
+    handler: &Handler,
     src: &Arc<str>,
     start: usize,
     end: usize,
@@ -208,7 +212,7 @@ pub fn lex_commented(
             token_trees.push(token);
             continue;
         }
-        if let Some(token) = lex_char(src, &path, &mut char_indices, index, character)? {
+        if let Some(token) = lex_char(handler, src, &path, &mut char_indices, index, character)? {
             token_trees.push(token);
             continue;
         }
@@ -383,13 +387,15 @@ fn lex_string(
 }
 
 fn lex_char(
+    handler: &Handler,
     src: &Arc<str>,
     path: &Option<Arc<PathBuf>>,
     char_indices: &mut CharIndices,
     index: usize,
     character: char,
 ) -> Result<Option<CommentedTokenTree>, LexError> {
-    if character != '\'' {
+    let is_quote = |c| c == '\'';
+    if !is_quote(character) {
         return Ok(None);
     }
 
@@ -397,36 +403,61 @@ fn lex_char(
         kind: LexErrorKind::UnclosedCharLiteral { position: index },
         span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
     };
-    let (_, next_character) = char_indices.next().ok_or_else(unclosed_char_lit)?;
-    let parsed = if next_character == '\\' {
-        parse_escape_code(src, char_indices, path)
-            .map_err(|e| e.unwrap_or_else(unclosed_char_lit))?
-    } else {
-        next_character
+    let next = |stream: &mut CharIndices<'_>| stream.next().ok_or_else(unclosed_char_lit);
+    let escape = |stream: &mut CharIndices<'_>, next_char| {
+        if next_char == '\\' {
+            parse_escape_code(src, stream, path).map_err(|e| e.unwrap_or_else(unclosed_char_lit))
+        } else {
+            Ok(next_char)
+        }
     };
 
+    let (_, next_char) = next(char_indices)?;
+    let parsed = escape(char_indices, next_char)?;
+
     // Consume the closing `'`.
-    match char_indices.next() {
-        None => return Err(unclosed_char_lit()),
-        Some((_, '\'')) => {}
-        Some((next_index, unexpected_char)) => {
-            // FIXME(Centril, #2864): Recover as string lit instead of char lit.
-            return Err(LexError {
+    let (next_index, next_char) = next(char_indices)?;
+    let span = span_until(src, index, char_indices, path);
+
+    // Not a closing quote? Then this is e.g., 'ab'.
+    // Most likely the user meant a string literal, so recover as that instead.
+    let literal = if !is_quote(next_char) {
+        let mut string = String::new();
+        string.push(parsed);
+        string.push(escape(char_indices, next_char)?);
+        loop {
+            let (_, next_char) = next(char_indices)?;
+            if is_quote(next_char) {
+                break;
+            }
+            string.push(next_char);
+        }
+
+        // Emit the expected closing quote error.
+        error(
+            handler,
+            LexError {
                 kind: LexErrorKind::ExpectedCloseQuote {
                     position: next_index,
                 },
                 span: Span::new(
                     src.clone(),
                     next_index,
-                    next_index + unexpected_char.len_utf8(),
+                    next_index + string.len(),
                     path.clone(),
                 )
                 .unwrap(),
-            });
-        }
-    }
-    let span = span_until(src, index, char_indices, path);
-    let literal = Literal::Char(LitChar { span, parsed });
+            },
+        );
+
+        Literal::String(LitString {
+            span,
+            parsed: string,
+        })
+    } else {
+        Literal::Char(LitChar { span, parsed })
+    };
+
     Ok(Some(CommentedTokenTree::Tree(literal.into())))
 }
 
@@ -720,13 +751,22 @@ fn span_until(
     Span::new(src.clone(), start, end, path.clone()).unwrap()
 }
 
+/// Emit a lexer error.
+fn error(handler: &Handler, error: LexError) {
+    handler.emit_err(CompileError::Lex { error })
+}
+
 #[cfg(test)]
 mod tests {
-    use super::lex_commented;
+    use super::{lex, lex_commented};
     use crate::priv_prelude::*;
     use assert_matches::assert_matches;
     use std::sync::Arc;
-    use sway_ast::token::{Comment, CommentedTokenTree, CommentedTree, DocComment, DocStyle};
+    use sway_ast::{
+        literal::{LitChar, Literal},
+        token::{Comment, CommentedTokenTree, CommentedTree, DocComment, DocStyle, TokenTree},
+    };
+    use sway_error::handler::Handler;
 
     #[test]
     fn lex_commented_token_stream() {
@@ -743,7 +783,9 @@ mod tests {
         let start = 0;
         let end = input.len();
         let path = None;
-        let stream = lex_commented(&Arc::from(input), start, end, path).unwrap();
+        let handler = Handler::default();
+        let stream = lex_commented(&handler, &Arc::from(input), start, end, path).unwrap();
+        assert!(handler.into_errors().is_empty());
         let mut tts = stream.token_trees().iter();
         assert_eq!(tts.next().unwrap().span().as_str(), "//");
         assert_eq!(
@@ -783,7 +825,9 @@ mod tests {
         let start = 0;
         let end = input.len();
         let path = None;
-        let stream = lex_commented(&Arc::from(input), start, end, path).unwrap();
+        let handler = Handler::default();
+        let stream = lex_commented(&handler, &Arc::from(input), start, end, path).unwrap();
+        assert!(handler.into_errors().is_empty());
         let mut tts = stream.token_trees().iter();
         assert_matches!(
             tts.next(),
@@ -827,6 +871,25 @@ mod tests {
                 span,
                 content_span
             }))) if span.as_str() ==  "/// outer" && content_span.as_str() == " outer"
+        );
+        assert_eq!(tts.next(), None);
+    }
+
+    #[test]
+    fn lex_char_escaped_quote() {
+        let input = r#"
+        '\''
+        "#;
+        let handler = Handler::default();
+        let stream = lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
+        assert!(handler.into_errors().is_empty());
+        let mut tts = stream.token_trees().iter();
+        assert_matches!(
+            tts.next(),
+            Some(TokenTree::Literal(Literal::Char(LitChar {
+                parsed: '\'',
+                ..
+            })))
         );
         assert_eq!(tts.next(), None);
     }

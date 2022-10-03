@@ -60,7 +60,8 @@ pub fn parse_file(
     src: Arc<str>,
     path: Option<Arc<PathBuf>>,
 ) -> Result<Module, ParseFileError> {
-    let token_stream = match lex(&src, 0, src.len(), path) {
+    // FIXME(Centril): Do away with `ParseFileError`.
+    let token_stream = match lex(&handler, &src, 0, src.len(), path) {
         Ok(token_stream) => token_stream,
         Err(error) => return Err(ParseFileError::Lex(error)),
     };
