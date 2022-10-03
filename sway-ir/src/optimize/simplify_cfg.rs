@@ -54,8 +54,7 @@ fn unlink_empty_blocks(context: &mut Context, function: &Function) -> Result<boo
             && to_block.pred_iter(context).any(|to_block_pred| {
                 block
                     .pred_iter(context)
-                    .find(|block_pred| *block_pred == to_block_pred)
-                    .is_some()
+                    .any(|block_pred| block_pred == to_block_pred)
             })
         {
             // We cannot filter this out in candidates itself because this condition

@@ -28,14 +28,19 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
             Instruction::AsmBlock(_, args) => args.iter().filter_map(|aa| aa.initializer).collect(),
             Instruction::BitCast(v, _) => vec![*v],
             Instruction::BinaryOp { op: _, arg1, arg2 } => vec![*arg1, *arg2],
-            Instruction::Branch(_) => vec![],
+            Instruction::Branch((_, params)) => params.clone(),
             Instruction::Call(_, vs) => vs.clone(),
             Instruction::Cmp(_, lhs, rhs) => vec![*lhs, *rhs],
             Instruction::ConditionalBranch {
                 cond_value,
-                true_block: _,
-                false_block: _,
-            } => vec![*cond_value],
+                true_block,
+                false_block,
+            } => {
+                let mut v = vec![*cond_value];
+                v.extend_from_slice(&true_block.1);
+                v.extend_from_slice(&false_block.1);
+                v
+            }
             Instruction::ContractCall {
                 return_type: _,
                 name: _,
