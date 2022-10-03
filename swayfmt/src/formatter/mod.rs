@@ -1081,11 +1081,26 @@ struct Point {
     x: u64,
     y: u64,
 }
+struct TupleInStruct {
+    nested_tuple: (u64, (u32, (bool, str[2]))),
+}
 fn struct_destructuring() {
     let point1 = Point { x: 0, y: 0 };
     let Point{x, y} = point1;
     let point2 = Point { x: 18446744073709551615, y: 18446744073709551615};
     let Point{extremely_long_var_name, other_really_long_var_name} = point2;
+    let tuple_in_struct = TupleInStruct {
+        nested_tuple: (
+            42u64,
+            (
+                42u32,
+                (true, "ok"),
+            ),
+        ),
+    };
+    let TupleInStruct {
+        nested_tuple: (a, (b, (c, d))),
+    } = tuple_in_struct;
 }
 "#;
         let correct_sway_code = r#"library test_destructure_structs;
@@ -1093,6 +1108,9 @@ fn struct_destructuring() {
 struct Point {
     x: u64,
     y: u64,
+}
+struct TupleInStruct {
+    nested_tuple: (u64, (u32, (bool, str[2]))),
 }
 fn struct_destructuring() {
     let point1 = Point { x: 0, y: 0 };
@@ -1105,6 +1123,18 @@ fn struct_destructuring() {
         extremely_long_var_name,
         other_really_long_var_name,
     } = point2;
+    let tuple_in_struct = TupleInStruct {
+        nested_tuple: (
+            42u64,
+            (
+                42u32,
+                (true, "ok"),
+            ),
+        ),
+    };
+    let TupleInStruct {
+        nested_tuple: (a, (b, (c, d))),
+    } = tuple_in_struct;
 }
 "#;
         let mut formatter = Formatter::default();

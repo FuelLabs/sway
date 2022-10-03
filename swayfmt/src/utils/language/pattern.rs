@@ -11,7 +11,8 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{
-    token::Delimiter, Braces, CommaToken, PathExpr, Pattern, PatternStructField, Punctuated,
+    token::Delimiter, Braces, CommaToken, ExprTupleDescriptor, PathExpr, Pattern,
+    PatternStructField, Punctuated,
 };
 use sway_types::Spanned;
 
@@ -75,7 +76,7 @@ impl Format for Pattern {
 
                         // changes to the actual formatter
                         let expr_width = buf.chars().count() as usize;
-                        formatter.shape.code_line.add_width(expr_width);
+                        formatter.shape.code_line.update_width(expr_width);
                         formatter.shape.get_line_style(
                             Some(field_width),
                             Some(body_width),
@@ -89,9 +90,30 @@ impl Format for Pattern {
                 )?;
             }
             Self::Tuple(args) => {
-                Self::open_parenthesis(formatted_code, formatter)?;
-                args.get().format(formatted_code, formatter)?;
-                Self::close_parenthesis(formatted_code, formatter)?;
+                formatter.with_shape(
+                    formatter
+                        .shape
+                        .with_code_line_from(LineStyle::default(), ExprKind::Collection),
+                    |formatter| -> Result<(), FormatterError> {
+                        // get the length in chars of the code_line in a normal line format
+                        let mut buf = FormattedCode::new();
+                        let mut temp_formatter = Formatter::default();
+                        let tuple_descriptor = args.get();
+                        tuple_descriptor.format(&mut buf, &mut temp_formatter)?;
+                        let body_width = buf.chars().count() as usize;
+
+                        formatter.shape.code_line.update_width(body_width);
+                        formatter
+                            .shape
+                            .get_line_style(None, Some(body_width), &formatter.config);
+
+                        ExprTupleDescriptor::open_parenthesis(formatted_code, formatter)?;
+                        tuple_descriptor.format(formatted_code, formatter)?;
+                        ExprTupleDescriptor::close_parenthesis(formatted_code, formatter)?;
+
+                        Ok(())
+                    },
+                )?;
             }
         }
         Ok(())
@@ -172,7 +194,7 @@ impl Format for PatternStructField {
             } => {
                 write!(formatted_code, "{}", field_name.span().as_str())?;
                 if let Some((colon_token, pattern)) = pattern_opt {
-                    write!(formatted_code, "{}", colon_token.span().as_str())?;
+                    write!(formatted_code, "{} ", colon_token.span().as_str())?;
                     pattern.format(formatted_code, formatter)?;
                 }
             }
