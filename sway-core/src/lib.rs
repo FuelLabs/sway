@@ -522,9 +522,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         warnings,
         errors
     );
-    if build_config.print_ir {
-        tracing::info!("{}", ir);
-    }
+
     // Inline function calls from the entry points.
     check!(
         inline_function_calls(&mut ir, &entry_point_functions),

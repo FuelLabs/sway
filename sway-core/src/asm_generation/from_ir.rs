@@ -541,7 +541,12 @@ impl<'ir> AsmBuilder<'ir> {
                     cond_value,
                     true_block,
                     false_block,
-                } => self.compile_conditional_branch(cond_value, true_block, false_block),
+                } => check!(
+                    self.compile_conditional_branch(cond_value, true_block, false_block),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
                 Instruction::ContractCall {
                     params,
                     coins,
@@ -871,7 +876,18 @@ impl<'ir> AsmBuilder<'ir> {
         cond_value: &Value,
         true_block: &(Block, Vec<Value>),
         false_block: &(Block, Vec<Value>),
-    ) {
+    ) -> CompileResult<()> {
+        if true_block == false_block && true_block.0.num_args(self.context) > 0 {
+            return err(
+                Vec::new(),
+                vec![CompileError::Internal(
+                    "Cannot compile CBR with both branches going to same dest block",
+                    self.md_mgr
+                        .val_to_span(self.context, *cond_value)
+                        .unwrap_or_else(Self::empty_span),
+                )],
+            );
+        }
         self.compile_branch_to_phi_value(true_block);
         self.compile_branch_to_phi_value(false_block);
 
@@ -883,6 +899,8 @@ impl<'ir> AsmBuilder<'ir> {
 
         let false_label = self.block_to_label(&false_block.0);
         self.bytecode.push(Op::jump_to_label(false_label));
+
+        ok((), vec![], vec![])
     }
 
     fn compile_branch_to_phi_value(&mut self, to_block: &(Block, Vec<Value>)) {

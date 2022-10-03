@@ -46,6 +46,22 @@ fn unlink_empty_blocks(context: &mut Context, function: &Function) -> Result<boo
         })
         .collect();
     for (block, (to_block, cur_params)) in candidates {
+        // If `to_block`'s predecessors and `block`'s predecessors intersect,
+        // AND `to_block` has an arg, then we have that pred branching to to_block
+        // with different args. While that's valid IR, it's harder to generate
+        // ASM for it, so let's just skip that for now.
+        if to_block.num_args(context) > 0
+            && to_block.pred_iter(context).any(|to_block_pred| {
+                block
+                    .pred_iter(context)
+                    .find(|block_pred| *block_pred == to_block_pred)
+                    .is_some()
+            })
+        {
+            // We cannot filter this out in candidates itself because this condition
+            // may get updated *during* this optimization (i.e., inside this loop).
+            continue;
+        }
         let preds: Vec<_> = block.pred_iter(context).copied().collect();
         for pred in preds {
             // Whatever parameters "block" passed to "to_block", that
