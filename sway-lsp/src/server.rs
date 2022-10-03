@@ -13,7 +13,13 @@ use crate::{
 };
 use forc_util::find_manifest_dir;
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::Write, ops::Deref, path::Path, sync::Arc};
+use std::{
+    fs::File,
+    io::Write,
+    ops::Deref,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use sway_types::Spanned;
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::*;
@@ -36,6 +42,22 @@ impl Backend {
         }
     }
 
+    fn init(&self, uri: &Url) {
+        let manifest_dir = PathBuf::from(uri.path());
+        // Create a new temp dir that clones the current workspace
+        // and store manifest and temp paths
+        self.session
+            .sync
+            .create_temp_dir_from_workspace(&manifest_dir);
+
+        self.session.sync.clone_manifest_dir_to_temp();
+
+        // iterate over the project dir, parse all sway files
+        let _ = self.parse_and_store_sway_files();
+
+        self.session.sync.watch_and_sync_manifest();
+    }
+
     async fn log_info_message(&self, message: &str) {
         self.client.log_message(MessageType::INFO, message).await;
     }
@@ -44,10 +66,16 @@ impl Backend {
         self.client.log_message(MessageType::ERROR, message).await;
     }
 
-    async fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
-        if let Some(path) = find_manifest_dir(&std::env::current_dir().unwrap()) {
+    fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
+        if let Some(temp_dir) = self
+            .session
+            .sync
+            .directories
+            .get(&sync::Directory::Temp)
+            .map(|item| item.value().clone())
+        {
             // Store the documents.
-            for path in get_sway_files(path).iter().filter_map(|fp| fp.to_str()) {
+            for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
                 self.session
                     .store_document(TextDocument::build_from_path(path)?)?;
             }
@@ -140,9 +168,6 @@ impl LanguageServer for Backend {
             .log_message(MessageType::INFO, "Initializing the Sway Language Server")
             .await;
 
-        // iterate over the project dir, parse all sway files
-        let _ = self.parse_and_store_sway_files().await;
-
         Ok(InitializeResult {
             server_info: None,
             capabilities: capabilities(),
@@ -158,17 +183,26 @@ impl LanguageServer for Backend {
     async fn shutdown(&self) -> jsonrpc::Result<()> {
         self.log_info_message("Shutting Down the Sway Language Server")
             .await;
+
+        // shutdown the thread watching the manifest file
+        if let std::sync::LockResult::Ok(handle) = self.session.sync.notify_join_handle.read() {
+            if let Some(join_handle) = &*handle {
+                join_handle.abort();
+            }
+        }
+
         Ok(())
     }
 
     // Document Handlers
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        // Create a new temp dir that clones the current workspace
-        // and store manifest and temp paths
-        self.session
-            .sync
-            .create_temp_dir_from_url(&params.text_document.uri);
-        self.session.sync.clone_manifest_dir_to_temp();
+        if let std::sync::LockResult::Ok(mut init_state) = self.session.sync.init_state.write() {
+            if let sync::InitializedState::Uninitialized = *init_state {
+                *init_state = sync::InitializedState::Initialized;
+                self.init(&params.text_document.uri);
+            }
+        }
+
         // convert the client Url to the temp uri
         if let Ok(uri) = self
             .session
