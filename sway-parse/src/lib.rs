@@ -34,14 +34,14 @@ use std::{path::PathBuf, sync::Arc};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Error)]
 #[error("Unable to parse: {}", self.0.iter().map(|x| x.to_string()).collect::<Vec<String>>().join("\n"))]
-pub struct ParseFileErrorStandalone(Vec<CompileError>);
+pub struct ParseFileError(pub Vec<CompileError>);
 
 pub fn parse_file_standalone(
     src: Arc<str>,
     path: Option<Arc<PathBuf>>,
-) -> Result<Module, ParseFileErrorStandalone> {
+) -> Result<Module, ParseFileError> {
     let handler = Handler::default();
-    parse_file(&handler, src, path).map_err(|_| ParseFileErrorStandalone(handler.into_errors()))
+    parse_file(&handler, src, path).map_err(|_| ParseFileError(handler.into_errors()))
 }
 
 pub fn parse_file(
@@ -49,10 +49,7 @@ pub fn parse_file(
     src: Arc<str>,
     path: Option<Arc<PathBuf>>,
 ) -> Result<Module, ErrorEmitted> {
-    let token_stream = match lex(handler, &src, 0, src.len(), path) {
-        Ok(token_stream) => token_stream,
-        Err(error) => return Err(handler.emit_err(CompileError::Lex { error })),
-    };
+    let token_stream = lex(handler, &src, 0, src.len(), path)?;
     match Parser::new(handler, &token_stream).parse_to_end() {
         Ok((module, _parser_consumed)) => Ok(module),
         Err(error) => Err(error),

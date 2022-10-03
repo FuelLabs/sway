@@ -84,6 +84,7 @@ impl Iterator for CharIndicesInner<'_> {
 }
 
 type CharIndices<'a> = std::iter::Peekable<CharIndicesInner<'a>>;
+type Result<T> = core::result::Result<T, ErrorEmitted>;
 
 pub fn lex(
     handler: &Handler,
@@ -91,7 +92,7 @@ pub fn lex(
     start: usize,
     end: usize,
     path: Option<Arc<PathBuf>>,
-) -> Result<TokenStream, LexError> {
+) -> Result<TokenStream> {
     lex_commented(handler, src, start, end, path).map(|stream| stream.strip_comments())
 }
 
@@ -101,7 +102,7 @@ pub fn lex_commented(
     start: usize,
     end: usize,
     path: Option<Arc<PathBuf>>,
-) -> Result<CommentedTokenStream, LexError> {
+) -> Result<CommentedTokenStream> {
     let mut char_indices = CharIndicesInner {
         src: &src[..end],
         position: start,
@@ -120,7 +121,13 @@ pub fn lex_commented(
                     continue;
                 }
                 Some((_, '*')) => {
-                    token_trees.push(lex_multiline_comment(src, &path, &mut char_indices, index)?);
+                    token_trees.push(lex_multiline_comment(
+                        handler,
+                        src,
+                        &path,
+                        &mut char_indices,
+                        index,
+                    )?);
                     continue;
                 }
                 Some(_) | None => {}
@@ -159,37 +166,35 @@ pub fn lex_commented(
         if let Some(close_delimiter) = character.as_close_delimiter() {
             match parent_token_trees.pop() {
                 None => {
-                    return Err(LexError {
-                        kind: LexErrorKind::UnexpectedCloseDelimiter {
-                            position: index,
+                    let kind = LexErrorKind::UnexpectedCloseDelimiter {
+                        position: index,
+                        close_delimiter,
+                    };
+                    let span = Span::new(
+                        src.clone(),
+                        index,
+                        index + character.len_utf8(),
+                        path.clone(),
+                    )
+                    .unwrap();
+                    return Err(error(handler, LexError { kind, span }));
+                }
+                Some((mut parent, open_index, open_delimiter)) => {
+                    if open_delimiter != close_delimiter {
+                        let kind = LexErrorKind::MismatchedDelimiters {
+                            open_position: open_index,
+                            close_position: index,
+                            open_delimiter,
                             close_delimiter,
-                        },
-                        span: Span::new(
+                        };
+                        let span = Span::new(
                             src.clone(),
                             index,
                             index + character.len_utf8(),
                             path.clone(),
                         )
-                        .unwrap(),
-                    });
-                }
-                Some((mut parent, open_index, open_delimiter)) => {
-                    if open_delimiter != close_delimiter {
-                        return Err(LexError {
-                            kind: LexErrorKind::MismatchedDelimiters {
-                                open_position: open_index,
-                                close_position: index,
-                                open_delimiter,
-                                close_delimiter,
-                            },
-                            span: Span::new(
-                                src.clone(),
-                                index,
-                                index + character.len_utf8(),
-                                path.clone(),
-                            )
-                            .unwrap(),
-                        });
+                        .unwrap();
+                        return Err(error(handler, LexError { kind, span }));
                     }
                     mem::swap(&mut parent, &mut token_trees);
                     let start_index = open_index + open_delimiter.as_open_char().len_utf8();
@@ -208,7 +213,7 @@ pub fn lex_commented(
             }
             continue;
         }
-        if let Some(token) = lex_string(src, &path, &mut char_indices, index, character)? {
+        if let Some(token) = lex_string(handler, src, &path, &mut char_indices, index, character)? {
             token_trees.push(token);
             continue;
         }
@@ -225,34 +230,33 @@ pub fn lex_commented(
             token_trees.push(token);
             continue;
         }
-        return Err(LexError {
-            kind: LexErrorKind::InvalidCharacter {
-                position: index,
-                character,
-            },
-            span: Span::new(
-                src.clone(),
-                index,
-                index + character.len_utf8(),
-                path.clone(),
-            )
-            .unwrap(),
-        });
+
+        let kind = LexErrorKind::InvalidCharacter {
+            position: index,
+            character,
+        };
+        let span = Span::new(
+            src.clone(),
+            index,
+            index + character.len_utf8(),
+            path.clone(),
+        )
+        .unwrap();
+        return Err(error(handler, LexError { kind, span }));
     }
     if let Some((_, open_position, open_delimiter)) = parent_token_trees.pop() {
-        return Err(LexError {
-            kind: LexErrorKind::UnclosedDelimiter {
-                open_position,
-                open_delimiter,
-            },
-            span: Span::new(
-                src.clone(),
-                open_position,
-                open_position + open_delimiter.as_open_char().len_utf8(),
-                path.clone(),
-            )
-            .unwrap(),
-        });
+        let kind = LexErrorKind::UnclosedDelimiter {
+            open_position,
+            open_delimiter,
+        };
+        let span = Span::new(
+            src.clone(),
+            open_position,
+            open_position + open_delimiter.as_open_char().len_utf8(),
+            path.clone(),
+        )
+        .unwrap();
+        return Err(error(handler, LexError { kind, span }));
     }
     let full_span = Span::new(src.clone(), start, end, path).unwrap();
     let token_stream = CommentedTokenStream {
@@ -305,11 +309,12 @@ fn lex_line_comment(
 }
 
 fn lex_multiline_comment(
+    handler: &Handler,
     src: &Arc<str>,
     path: &Option<Arc<PathBuf>>,
     char_indices: &mut CharIndices,
     index: usize,
-) -> Result<CommentedTokenTree, LexError> {
+) -> Result<CommentedTokenTree> {
     // Lexing a multi-line comment.
     let _ = char_indices.next();
     let mut unclosed_indices = vec![index];
@@ -322,10 +327,8 @@ fn lex_multiline_comment(
             path.clone(),
         )
         .unwrap();
-        LexError {
-            kind: LexErrorKind::UnclosedMultilineComment { unclosed_indices },
-            span,
-        }
+        let kind = LexErrorKind::UnclosedMultilineComment { unclosed_indices };
+        error(handler, LexError { kind, span })
     };
 
     loop {
@@ -357,26 +360,32 @@ fn lex_multiline_comment(
 }
 
 fn lex_string(
+    handler: &Handler,
     src: &Arc<str>,
     path: &Option<Arc<PathBuf>>,
     char_indices: &mut CharIndices,
     index: usize,
     character: char,
-) -> Result<Option<CommentedTokenTree>, LexError> {
+) -> Result<Option<CommentedTokenTree>> {
     if character != '"' {
         return Ok(None);
     }
     let mut parsed = String::new();
     loop {
-        let unclosed_string_lit = |end| LexError {
-            kind: LexErrorKind::UnclosedStringLiteral { position: index },
-            span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
+        let unclosed_string_lit = |end| {
+            error(
+                handler,
+                LexError {
+                    kind: LexErrorKind::UnclosedStringLiteral { position: index },
+                    span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
+                },
+            )
         };
         let (_, next_character) = char_indices
             .next()
             .ok_or_else(|| unclosed_string_lit(src.len() - 1))?;
         parsed.push(match next_character {
-            '\\' => parse_escape_code(src, char_indices, path)
+            '\\' => parse_escape_code(handler, src, char_indices, path)
                 .map_err(|e| e.unwrap_or_else(|| unclosed_string_lit(src.len())))?,
             '"' => break,
             _ => next_character,
@@ -394,20 +403,24 @@ fn lex_char(
     char_indices: &mut CharIndices,
     index: usize,
     character: char,
-) -> Result<Option<CommentedTokenTree>, LexError> {
+) -> Result<Option<CommentedTokenTree>> {
     let is_quote = |c| c == '\'';
     if !is_quote(character) {
         return Ok(None);
     }
 
-    let unclosed_char_lit = || LexError {
-        kind: LexErrorKind::UnclosedCharLiteral { position: index },
-        span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
+    let unclosed_char_lit = || {
+        let err = LexError {
+            kind: LexErrorKind::UnclosedCharLiteral { position: index },
+            span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
+        };
+        error(handler, err)
     };
     let next = |stream: &mut CharIndices<'_>| stream.next().ok_or_else(unclosed_char_lit);
     let escape = |stream: &mut CharIndices<'_>, next_char| {
         if next_char == '\\' {
-            parse_escape_code(src, stream, path).map_err(|e| e.unwrap_or_else(unclosed_char_lit))
+            parse_escape_code(handler, src, stream, path)
+                .map_err(|e| e.unwrap_or_else(unclosed_char_lit))
         } else {
             Ok(next_char)
         }
@@ -463,10 +476,13 @@ fn lex_char(
 }
 
 fn parse_escape_code(
+    handler: &Handler,
     src: &Arc<str>,
     char_indices: &mut CharIndices,
     path: &Option<Arc<PathBuf>>,
-) -> Result<char, Option<LexError>> {
+) -> core::result::Result<char, Option<ErrorEmitted>> {
+    let error = |kind, span| Err(Some(error(handler, LexError { kind, span })));
+
     match char_indices.next() {
         None => Err(None),
         Some((_, '"')) => Ok('"'),
@@ -485,10 +501,7 @@ fn parse_escape_code(
                 (Some(high), Some(low)) => (high, low),
                 _ => {
                     let span = span_until(src, index, char_indices, path);
-                    return Err(Some(LexError {
-                        kind: LexErrorKind::InvalidHexEscape,
-                        span,
-                    }));
+                    return error(LexErrorKind::InvalidHexEscape, span);
                 }
             };
             let parsed_character = char::from_u32((high << 4) | low).unwrap();
@@ -499,16 +512,15 @@ fn parse_escape_code(
                 None => return Err(None),
                 Some((_, '{')) => (),
                 Some((_, unexpected_char)) => {
-                    return Err(Some(LexError {
-                        kind: LexErrorKind::UnicodeEscapeMissingBrace { position: index },
-                        span: Span::new(
-                            src.clone(),
-                            index,
-                            index + unexpected_char.len_utf8(),
-                            path.clone(),
-                        )
-                        .unwrap(),
-                    }));
+                    let span = Span::new(
+                        src.clone(),
+                        index,
+                        index + unexpected_char.len_utf8(),
+                        path.clone(),
+                    )
+                    .unwrap();
+                    let kind = LexErrorKind::UnicodeEscapeMissingBrace { position: index };
+                    return error(kind, span);
                 }
             }
             let mut digits_start_position_opt = None;
@@ -524,16 +536,15 @@ fn parse_escape_code(
                 };
                 let digit = match digit.to_digit(16) {
                     None => {
-                        return Err(Some(LexError {
-                            kind: LexErrorKind::InvalidUnicodeEscapeDigit { position },
-                            span: Span::new(
-                                src.clone(),
-                                position,
-                                position + digit.len_utf8(),
-                                path.clone(),
-                            )
-                            .unwrap(),
-                        }));
+                        let span = Span::new(
+                            src.clone(),
+                            position,
+                            position + digit.len_utf8(),
+                            path.clone(),
+                        )
+                        .unwrap();
+                        let kind = LexErrorKind::InvalidUnicodeEscapeDigit { position };
+                        return error(kind, span);
                     }
                     Some(digit) => digit,
                 };
@@ -543,47 +554,45 @@ fn parse_escape_code(
             let digits_start_position = digits_start_position_opt.unwrap_or(digits_end_position);
             let char_value = match u32::try_from(char_value) {
                 Err(..) => {
-                    return Err(Some(LexError {
-                        kind: LexErrorKind::UnicodeEscapeOutOfRange { position: index },
-                        span: Span::new(
-                            src.clone(),
-                            digits_start_position,
-                            digits_end_position,
-                            path.clone(),
-                        )
-                        .unwrap(),
-                    }));
+                    let span = Span::new(
+                        src.clone(),
+                        digits_start_position,
+                        digits_end_position,
+                        path.clone(),
+                    )
+                    .unwrap();
+                    let kind = LexErrorKind::UnicodeEscapeOutOfRange { position: index };
+                    return error(kind, span);
                 }
                 Ok(char_value) => char_value,
             };
             let parsed_character = match char::from_u32(char_value) {
                 None => {
                     let span = span_until(src, index, char_indices, path);
-                    return Err(Some(LexError {
-                        kind: LexErrorKind::UnicodeEscapeInvalidCharValue { span },
-                        span: Span::new(
-                            src.clone(),
-                            digits_start_position,
-                            digits_end_position,
-                            path.clone(),
-                        )
-                        .unwrap(),
-                    }));
+                    let kind = LexErrorKind::UnicodeEscapeInvalidCharValue { span };
+                    let span = Span::new(
+                        src.clone(),
+                        digits_start_position,
+                        digits_end_position,
+                        path.clone(),
+                    )
+                    .unwrap();
+                    return error(kind, span);
                 }
                 Some(parsed_character) => parsed_character,
             };
             Ok(parsed_character)
         }
-        Some((index, unexpected_char)) => Err(Some(LexError {
-            kind: LexErrorKind::InvalidEscapeCode { position: index },
-            span: Span::new(
+        Some((index, unexpected_char)) => error(
+            LexErrorKind::InvalidEscapeCode { position: index },
+            Span::new(
                 src.clone(),
                 index,
                 index + unexpected_char.len_utf8(),
                 path.clone(),
             )
             .unwrap(),
-        })),
+        ),
     }
 }
 
@@ -594,7 +603,7 @@ fn lex_int_lit(
     char_indices: &mut CharIndices,
     index: usize,
     character: char,
-) -> Result<Option<CommentedTokenTree>, LexError> {
+) -> Result<Option<CommentedTokenTree>> {
     let digit = match character.to_digit(10) {
         None => return Ok(None),
         Some(d) => d,
@@ -607,23 +616,24 @@ fn lex_int_lit(
     };
     let (big_uint, end_opt) = if digit == 0 {
         let prefixed_int_lit = |char_indices: &mut CharIndices<'_>, radix| {
-            let incomplete_int_lit = |end| LexError {
-                kind: match radix {
+            let incomplete_int_lit = |end| {
+                let kind = match radix {
                     16 => LexErrorKind::IncompleteHexIntLiteral { position: index },
                     8 => LexErrorKind::IncompleteOctalIntLiteral { position: index },
                     2 => LexErrorKind::IncompleteBinaryIntLiteral { position: index },
                     _ => unreachable!(),
-                },
-                span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
+                };
+                let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
+                Err(error(handler, LexError { kind, span }))
             };
             let _ = char_indices.next();
             let (digit_pos, digit) = match char_indices.next() {
-                None => return Err(incomplete_int_lit(src.len())),
+                None => return incomplete_int_lit(src.len()),
                 Some(d) => d,
             };
             let radix_digit = match digit.to_digit(radix) {
                 Some(rd) => rd,
-                None => return Err(incomplete_int_lit(digit_pos)),
+                None => return incomplete_int_lit(digit_pos),
             };
             let mut big_uint = BigUint::from(radix_digit);
             let end_opt = parse_digits(&mut big_uint, char_indices, radix);
@@ -657,7 +667,7 @@ fn lex_int_ty_opt(
     src: &Arc<str>,
     path: &Option<Arc<PathBuf>>,
     char_indices: &mut CharIndices,
-) -> Result<Option<(LitIntType, Span)>, LexError> {
+) -> Result<Option<(LitIntType, Span)>> {
     let (suffix_start_position, c) = match char_indices.next_if(|(_, c)| c.is_xid_continue()) {
         None => return Ok(None),
         Some(x) => x,

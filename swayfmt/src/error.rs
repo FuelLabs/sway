@@ -1,15 +1,12 @@
 use std::{io, path::PathBuf};
-use sway_error::lex_error::LexError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum FormatterError {
     #[error("Error parsing file: {0}")]
-    ParseFileError(#[from] sway_parse::ParseFileErrorStandalone),
+    ParseFileError(#[from] sway_parse::ParseFileError),
     #[error("Error formatting a message into a stream: {0}")]
     FormatError(#[from] std::fmt::Error),
-    #[error("Error while lexing file: {0}")]
-    LexError(#[from] LexError),
     #[error("Error while adding comments")]
     CommentError,
     #[error("Error while formatting newline sequences")]
