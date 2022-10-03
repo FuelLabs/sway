@@ -78,9 +78,9 @@ impl Module {
             let const_item = format!("const {name}: {type} = {value};");
             let const_item_len = const_item.len();
             let input_arc = std::sync::Arc::from(const_item);
-            let token_stream = lex(&input_arc, 0, const_item_len, None).unwrap();
             let handler = Handler::default();
-            let mut parser = Parser::new(&token_stream, &handler);
+            let token_stream = lex(&input_arc, 0, const_item_len, None).unwrap();
+            let mut parser = Parser::new(&handler, &token_stream);
             // perform the parse
             let const_item: ItemConst = match parser.parse() {
                 Ok(o) => o,
