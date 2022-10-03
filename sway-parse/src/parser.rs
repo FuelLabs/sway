@@ -17,7 +17,7 @@ pub struct Parser<'a, 'e> {
 }
 
 impl<'a, 'e> Parser<'a, 'e> {
-    pub fn new(token_stream: &'a TokenStream, handler: &'e Handler) -> Parser<'a, 'e> {
+    pub fn new(handler: &'e Handler, token_stream: &'a TokenStream) -> Parser<'a, 'e> {
         Parser {
             token_trees: token_stream.token_trees(),
             full_span: token_stream.span(),
