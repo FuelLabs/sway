@@ -1,34 +1,27 @@
 # Structs
 
-Structs in Sway are a named grouping of types. You may also be familiar with structs via another name: _product types_. Sway does not make any significantly unique usages of structs; they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.
+A struct in Sway is a _product type_ which is a data structure that allows grouping of various types under a name, unlike a tuple. The types contained in the structure are named and thus they can be referenced by their names as well.
 
-Firstly, we declare a struct named `Foo` with two fields. The first field is named `bar` and it accepts values of type `u64`, the second field is named `baz` and it accepts `bool` values.
-
-```sway
-{{#include ../../../examples/structs/src/data_structures.sw}}
-```
-
-In order to instantiate the struct we use _struct instantiation syntax_, which is very similar to the declaration syntax except with expressions in place of types.
-
-There are three ways to instantiate the struct.
-
-- Hardcoding values for the fields
-- Passing in variables with names different than the struct fields
-- Using a shorthand notation via variables that are the same as the field names
+The following syntax demonstrates the definition of a struct named `Foo` containing two fields - `bar`, a `u64`, and `baz`, a `bool`.
 
 ```sway
-{{#include ../../../examples/structs/src/main.sw}}
+{{#include ../../../code/language/built-ins/structs/src/lib.sw:definition}}
 ```
 
-> **Note**
-> You can mix and match all 3 ways to instantiate the struct at the same time.
-> Moreover, the order of the fields does not matter when instantiating however we encourage declaring the fields in alphabetical order and instantiating them in the same alphabetical order
+To instatiate a struct the name of the struct must be used followed by `{}` where the fields from the definition above must be specified inside the brackets.
 
-Furthermore, multiple variables can be extracted from a struct using the destructuring syntax.
+```sway
+{{#include ../../../code/language/built-ins/structs/src/lib.sw:instantiation}}
+```
+
+It's also possible to take a struct and access its fields through destructuring.
+
+```sway
+{{#include ../../../code/language/built-ins/structs/src/lib.sw:destructuring}}
+```
 
 ### Struct Memory Layout
 
-> **Note**
-> This information is not vital if you are new to the language, or programming in general
+Structs have zero memory overhead meaning that each field is laid out sequentially in memory. No metadata regarding the struct's name or other properties is preserved at runtime. 
 
-Structs have zero memory overhead. What that means is that in memory, each struct field is laid out sequentially. No metadata regarding the struct's name or other properties is preserved at runtime. In other words, structs are compile-time constructs. This is the same in Rust, but different in other languages with runtimes like Java.
+In other words, structs are compile-time constructs similar to Rust, but different in other languages with runtimes like Java.

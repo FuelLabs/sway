@@ -37,13 +37,6 @@ All of the unsigned integer types are numeric types, and the `byte` type can als
 
 Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, and underscores for delineation.
 
-> TODO: move into code file
-
 ```sway
-0xffffff    // hexadecimal
-0b10101010  // binary
-10          // base-10
-100_000     // underscore delineated base-10
-0x1111_0000 // underscore delineated binary
-0xfff_aaa   // underscore delineated hexadecimal
+{{#include ../../../code/language/built-ins/numerics/src/lib.sw:syntax}}
 ```

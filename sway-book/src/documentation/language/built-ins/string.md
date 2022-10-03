@@ -16,9 +16,7 @@ The reason for this is that the compiler must know the size of the type and the 
 The following three variables show how a string can be instantiated. The length of each string is placed inside the `[]` to let the compiler know that the type is a string of length `[<length>]`.
 
 ```sway
-let fuel: str[4] = "fuel";
-let blockchain: str[10] = "blockchain";
-let crypto: str[6] = "crypto";
+{{#include ../../../code/language/built-ins/strings/src/lib.sw:explicit}}
 ```
 
 It can be seen that the variable `fuel` is a string of length four because "fuel" has four characters (f, e, u and l).
@@ -26,17 +24,16 @@ It can be seen that the variable `fuel` is a string of length four because "fuel
 The example above is a demonstration which emphasizes the fixed-length aspect of strings however the compiler is smart enough to infer the size and thus the string type (and length) does not need to be specified.
 
 ```sway
-let fuel = "fuel";
-let blockchain = "blockchain";
-let crypto = "crypto";
+{{#include ../../../code/language/built-ins/strings/src/lib.sw:implicit}}
 ```
+
+> TODO: single quotes do not currently work for strings but work for single characters?
+> Add section to distinction between single char strings (if they even work in sway) vs longer strings?
 
 Similarly, the double quotes `"` can be replaced with single quotes `'`.
 
 ```sway
-let fuel = 'fuel';
-let blockchain = 'blockchain';
-let crypto = 'crypto';
+{{#include ../../../code/language/built-ins/strings/src/lib.sw:alternative_quotes}}
 ```
 
 > Strings default to UTF-8 in Sway.

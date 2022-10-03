@@ -8,12 +8,6 @@ Something that can be done with a boolean type is to flip its value from `true` 
 
 In the example below we create two boolean variables and [implicitly](../functions/return.md) return a comparison of the values. A `!` is used on the `is_false` variable which will flip its value from `false` to `true` and thus the comparison equates to `true == true`, which is true, and thus the returned boolean value will be `true`.
 
-> TODO: move into code file
-
 ```sway
-fn returns_true() -> bool {
-    let is_true = true;
-    let is_false = false;
-    is_true == !is_false  // implicitly returns the boolean value of `true`
-}
+{{#include ../../../code/language/built-ins/booleans/src/lib.sw:syntax}}
 ```
