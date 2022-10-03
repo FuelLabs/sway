@@ -1449,7 +1449,7 @@ dependencies = [
 
 [[package]]
 name = "forc-client"
-version = "0.24.5"
+version = "0.24.6"
 dependencies = [
  "anyhow",
  "clap 3.2.22",
