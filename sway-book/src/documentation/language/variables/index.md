@@ -16,7 +16,7 @@ By default all variables in Sway are immutable unless declared as mutable. This 
 Let's declare a variable that cannot be changed and it has the value of `5`.
 
 ```sway
-let foo = 5;
+{{#include ../../../code/language/variables/src/lib.sw:immutable}}
 ```
 
 By default `foo` is an immutable `u64` (more info [here](../built-ins/index.md#primitive-types)) with the value of `5`. This means that we can pass `foo` around and its value can be read however it cannot have its value changed from `5` to any other number.
@@ -26,8 +26,25 @@ By default `foo` is an immutable `u64` (more info [here](../built-ins/index.md#p
 This time we want to declare a variable that can have its value changed. Let's also give it the value of `5` and then change it to `6`.
 
 ```sway
-let mut foo = 5;
-foo = 6;
+{{#include ../../../code/language/variables/src/lib.sw:mutable}}
 ```
 
 Using the `mut` keyword marks the variable `foo` as mutable which means we can change its value to another value of the same type, in this case from `5` to `6`.
+
+## Shadowing
+
+After a variable has been declared its type and value can be changed by declaring the variable again.
+
+```sway
+{{#include ../../../code/language/variables/src/lib.sw:reassignment}}
+```
+
+Initially `foo` is declared as an immutable `u64` however it gets changed to be an immutable `str[4]`. After `foo` has been changed it will continue to be a string.
+
+Another way to shadow a variable name is by using block scope to contain the variable for a shorter duration than the outer scope.
+
+```sway
+{{#include ../../../code/language/variables/src/lib.sw:shadowing}}
+```
+
+The `foo` defined inside `{}` only exists in that scope therefore the original `foo` with the value of `5` maintains its value.
