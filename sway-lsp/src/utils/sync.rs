@@ -73,9 +73,7 @@ impl SyncWorkspace {
         let _ = copy_dir_contents(manifest_dir, temp_dir);
     }
 
-    /// Convert the Url path from the client to point to the same file in our temp folder
-    pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, ()> {
-        let path = PathBuf::from(uri.path());
+    pub(crate) fn directories(&self) -> (PathBuf, PathBuf) {
         let manifest_dir = self
             .directories
             .get(&Directory::Manifest)
@@ -86,8 +84,24 @@ impl SyncWorkspace {
             .get(&Directory::Temp)
             .map(|item| item.value().clone())
             .unwrap();
+
+        (manifest_dir, temp_dir)
+    }
+
+    /// Convert the Url path from the client to point to the same file in our temp folder
+    pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, ()> {
+        let path = PathBuf::from(uri.path());
+        let (manifest_dir, temp_dir) = self.directories();
         let p = path.strip_prefix(manifest_dir).unwrap();
         Url::from_file_path(temp_dir.join(p))
+    }
+
+    /// Convert the Url path from the temp folder to point to the same file in the users workspace
+    pub(crate) fn temp_to_workspace_url(&self, uri: &Url) -> Result<Url, ()> {
+        let path = PathBuf::from(uri.path());
+        let (manifest_dir, temp_dir) = self.directories();
+        let p = path.strip_prefix(temp_dir).unwrap();
+        Url::from_file_path(manifest_dir.join(p))
     }
 
     /// 1. watch the manifest directory and check for any save events on Forc.toml
@@ -175,7 +189,7 @@ fn edit_manifest_dependency_paths(manifest: &ManifestFile, temp_manifest_path: &
             let _ = file.read_to_string(&mut toml);
             if let Ok(mut manifest_toml) = toml.parse::<toml_edit::Document>() {
                 for (name, abs_path) in dependency_map {
-                    manifest_toml["dependencies"][&name] =
+                    manifest_toml["dependencies"][&name]["path"] =
                         toml_edit::value(abs_path.display().to_string());
                 }
 
@@ -187,7 +201,7 @@ fn edit_manifest_dependency_paths(manifest: &ManifestFile, temp_manifest_path: &
     }
 }
 
-/// Copy the contents of the current workspace folder into the targer directory
+/// Copy the contents of the current workspace folder into the target directory
 fn copy_dir_contents(
     src_dir: impl AsRef<Path>,
     target_dir: impl AsRef<Path>,

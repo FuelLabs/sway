@@ -84,7 +84,7 @@ impl Backend {
         Ok(())
     }
 
-    async fn parse_project(&self, uri: Url) {
+    async fn parse_project(&self, uri: Url, workspace_uri: Url) {
         // pass in the temp Url into parse_project, we can now get the updated AST's back.
         let diagnostics = match self.session.parse_project(&uri) {
             Ok(diagnostics) => diagnostics,
@@ -97,7 +97,7 @@ impl Backend {
                 }
             }
         };
-        self.publish_diagnostics(&uri, diagnostics).await;
+        self.publish_diagnostics(&workspace_uri, diagnostics).await;
     }
 }
 
@@ -106,25 +106,25 @@ fn capabilities() -> ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Kind(
             TextDocumentSyncKind::INCREMENTAL,
         )),
-        semantic_tokens_provider: Some(
-            SemanticTokensOptions {
-                legend: SemanticTokensLegend {
-                    token_types: capabilities::semantic_tokens::SUPPORTED_TYPES.to_vec(),
-                    token_modifiers: capabilities::semantic_tokens::SUPPORTED_MODIFIERS.to_vec(),
-                },
-                full: Some(SemanticTokensFullOptions::Bool(true)),
-                range: None,
-                ..Default::default()
-            }
-            .into(),
-        ),
-        document_symbol_provider: Some(OneOf::Left(true)),
-        completion_provider: Some(CompletionOptions {
-            resolve_provider: Some(false),
-            trigger_characters: None,
-            ..Default::default()
-        }),
-        document_formatting_provider: Some(OneOf::Left(true)),
+        // semantic_tokens_provider: Some(
+        //     SemanticTokensOptions {
+        //         legend: SemanticTokensLegend {
+        //             token_types: capabilities::semantic_tokens::SUPPORTED_TYPES.to_vec(),
+        //             token_modifiers: capabilities::semantic_tokens::SUPPORTED_MODIFIERS.to_vec(),
+        //         },
+        //         full: Some(SemanticTokensFullOptions::Bool(true)),
+        //         range: None,
+        //         ..Default::default()
+        //     }
+        //     .into(),
+        // ),
+        //document_symbol_provider: Some(OneOf::Left(true)),
+        // completion_provider: Some(CompletionOptions {
+        //     resolve_provider: Some(false),
+        //     trigger_characters: None,
+        //     ..Default::default()
+        // }),
+        //document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
         ..ServerCapabilities::default()
     }
@@ -196,12 +196,23 @@ impl LanguageServer for Backend {
 
     // Document Handlers
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
+        // The first time did_open gets called, we call init which sets up the temp directories
+        // to allow for synchronization between the users workspace and the temp workspacace.
+        // We then set InitializedState to Initialized so the function is never called again.
+        // Ideally we would call this in the `initialize` LSP function but we don't have access
+        // to the correct path of the project until this function.
+        dbg!();
         if let std::sync::LockResult::Ok(mut init_state) = self.session.sync.init_state.write() {
+            dbg!();
             if let sync::InitializedState::Uninitialized = *init_state {
+                dbg!();
                 *init_state = sync::InitializedState::Initialized;
+                dbg!();
                 self.init(&params.text_document.uri);
+                dbg!();
             }
         }
+        dbg!();
 
         // convert the client Url to the temp uri
         if let Ok(uri) = self
@@ -210,7 +221,7 @@ impl LanguageServer for Backend {
             .workspace_to_temp_url(&params.text_document.uri)
         {
             self.session.handle_open_file(&uri);
-            self.parse_project(uri).await;
+            self.parse_project(uri, params.text_document.uri).await;
         }
     }
 
@@ -229,7 +240,7 @@ impl LanguageServer for Backend {
                     let _ = writeln!(&mut file, "{}", src);
                 }
             }
-            self.parse_project(uri).await;
+            self.parse_project(uri, params.text_document.uri).await;
         }
     }
 
@@ -243,7 +254,7 @@ impl LanguageServer for Backend {
             .sync
             .workspace_to_temp_url(&params.text_document.uri)
         {
-            self.parse_project(uri).await;
+            self.parse_project(uri, params.text_document.uri).await;
         }
     }
 
@@ -328,6 +339,9 @@ impl LanguageServer for Backend {
             .sync
             .workspace_to_temp_url(&params.text_document_position_params.text_document.uri)
             .map(|uri| {
+                eprintln!("server goto_definition!");
+                eprintln!("uri {:#?}", uri);
+                eprintln!("workspace_uri {:#?}", workspace_uri);
                 let position = params.text_document_position_params.position;
                 self.session.token_definition_response(uri, position)
             })

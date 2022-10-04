@@ -298,18 +298,26 @@ impl Session {
 
     pub fn token_definition_response(
         &self,
-        url: Url,
+        uri: Url,
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
-        self.token_at_position(&url, position)
+        self.token_at_position(&uri, position)
             .and_then(|(_, token)| self.declared_token_ident(&token))
             .and_then(|decl_ident| {
                 let range = utils::common::get_range_from_span(&decl_ident.span());
                 match decl_ident.span().path() {
-                    Some(path) => match Url::from_file_path(path.as_ref()) {
-                        Ok(url) => Some(GotoDefinitionResponse::Scalar(Location::new(url, range))),
-                        Err(_) => None,
-                    },
+                    Some(path) => {
+                        // If path is part of the users workspace, then convert URL from temp to workspace dir.
+                        // Otherwise, pass through if it points to a dependency path
+                        const LSP_TEMP_PREFIX: &str = "SWAY_LSP_TEMP_DIR";
+                        if uri.as_ref().contains("LSP_TEMP_PREFIX") {}
+                        match Url::from_file_path(path.as_ref()) {
+                            Ok(url) => {
+                                Some(GotoDefinitionResponse::Scalar(Location::new(url, range)))
+                            }
+                            Err(_) => None,
+                        }
+                    }
                     None => None,
                 }
             })
