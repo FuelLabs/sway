@@ -689,11 +689,22 @@ impl FnCompiler {
         // Short-circuit: if LHS is true for AND we still must eval the RHS block; for OR we can
         // skip the RHS block, and vice-versa.
         let lhs_val = self.compile_expression(context, md_mgr, ast_lhs)?;
+        let cond_block_end = self.current_block;
         let rhs_block = self.function.create_block(context, None);
         let final_block = self.function.create_block(context, None);
-        let merge_val_arg_idx = final_block.new_arg(context, lhs_val.get_type(context).unwrap());
-        if !self.current_block.is_terminated(context) {
-            let cond_builder = self.current_block.ins(context);
+
+        self.current_block = rhs_block;
+        let rhs_val = self.compile_expression(context, md_mgr, ast_rhs)?;
+
+        let merge_val_arg_idx = final_block.new_arg(
+            context,
+            lhs_val
+                .get_type(context)
+                .unwrap_or(rhs_val.get_type(context).unwrap_or(Type::Unit)),
+        );
+
+        if !cond_block_end.is_terminated(context) {
+            let cond_builder = cond_block_end.ins(context);
             match ast_op {
                 LazyOp::And => cond_builder.conditional_branch(
                     lhs_val,
@@ -712,9 +723,6 @@ impl FnCompiler {
             }
             .add_metadatum(context, span_md_idx);
         }
-
-        self.current_block = rhs_block;
-        let rhs_val = self.compile_expression(context, md_mgr, ast_rhs)?;
 
         if !self.current_block.is_terminated(context) {
             self.current_block
@@ -1073,7 +1081,12 @@ impl FnCompiler {
 
         let merge_block = self.function.create_block(context, None);
         // Add a single argument to merge_block that merges true_value and false_value.
-        let merge_val_arg_idx = merge_block.new_arg(context, true_value.get_type(context).unwrap());
+        let merge_val_arg_idx = merge_block.new_arg(
+            context,
+            true_value
+                .get_type(context)
+                .unwrap_or(false_value.get_type(context).unwrap_or(Type::Unit)),
+        );
         if !true_block_end.is_terminated(context) {
             true_block_end
                 .ins(context)

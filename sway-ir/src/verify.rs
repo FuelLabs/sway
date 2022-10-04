@@ -361,7 +361,12 @@ impl<'a> InstructionVerifier<'a> {
                         .get_type(self.context)
                         .unwrap()
                         .eq(self.context, &actual.get_type(self.context).unwrap()) => {}
-                _ => return Err(IrError::VerifyBranchParamsMismatch),
+                _ =>
+                // TOOD: https://github.com/FuelLabs/sway/pull/2880
+                // return Err(IrError::VerifyBranchParamsMismatch)
+                {
+                    ()
+                }
             }
         }
         Ok(())
