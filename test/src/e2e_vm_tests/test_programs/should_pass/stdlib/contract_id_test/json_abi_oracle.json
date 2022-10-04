@@ -1,1 +1,22 @@
-[]
+{
+  "functions": [
+    {
+      "inputs": [],
+      "name": "main",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "types": [
+    {
+      "components": null,
+      "type": "bool",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}
