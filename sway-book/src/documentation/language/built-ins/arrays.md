@@ -9,7 +9,3 @@ Unlike a tuple, an array can be iterated over through indexing.
 ```sway
 {{#include ../../../code/language/built-ins/arrays/src/lib.sw:syntax}}
 ```
-
-> **Note**: Arrays are currently immutable which means that changing elements of an array once initialized is not yet possible.
-
-> TODO: add array mutability to known issues and remove the note above

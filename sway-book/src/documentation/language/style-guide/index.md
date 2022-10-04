@@ -1,5 +1,7 @@
-# Code Style Guide
+# Style Guide
 
-## Capitalization
+Programming languages have different ways of styling code i.e. how variables, functions, structures etc. are written.
 
-In Sway, structs, traits, and enums are `CapitalCase`. Modules, variables, and functions are `snake_case`, constants are `SCREAMING_SNAKE_CASE`. The compiler will warn you if your capitalization is ever unidiomatic.
+The following snippets present the style for writing `Sway`.
+
+> TODO: overview of content

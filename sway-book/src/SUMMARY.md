@@ -36,6 +36,12 @@
   - [Structs](./documentation/language/annotations/struct.md)
   - [Functions](./documentation/language/annotations/function.md)
 - [Style Guide](./documentation/language/style-guide/index.md)
+  - [Letter Casing](./documentation/language/style-guide/letter-casing.md)
+  - [Type Annotations](./documentation/language/style-guide/annotations.md)
+  - [Struct Shorthand](./documentation/language/style-guide/structs.md)
+  - [Enums](./documentation/language/style-guide/enums.md)
+  - [Returning](./documentation/language/style-guide/returning.md)
+  - [Getter Functions](./documentation/language/style-guide/getters.md)
 
 # Common Operations
 
@@ -68,9 +74,10 @@
 
 # Miscellaneous
 
-- [Known Issues and Workarounds](./documentation/misc/workarounds/index.md)
+- [Known Issues](./documentation/misc/workarounds/index.md)
   - [General](./documentation/misc/workarounds/general.md)
   - [Missing Features](./documentation/misc/workarounds/missing-features.md)
   - [Predicates](./documentation/misc/workarounds/predicates.md)
+  - [Arrays](./documentation/misc/workarounds/arrays.md)
 
 # Fuel Orchestrator (Forc)

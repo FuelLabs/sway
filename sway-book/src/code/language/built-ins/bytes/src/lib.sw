@@ -1,7 +1,7 @@
 library bytes;
 
-// ANCHOR: syntax
 fn syntax() {
+    // ANCHOR: syntax
     let zero_address = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    // ANCHOR_END: syntax
 }
-// ANCHOR_END: syntax

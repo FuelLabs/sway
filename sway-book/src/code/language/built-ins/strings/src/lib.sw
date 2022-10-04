@@ -1,25 +1,25 @@
 library strings;
 
-// ANCHOR: explicit
 fn explicit() {
+    // ANCHOR: explicit
     let fuel: str[4] = "fuel";
     let blockchain: str[10] = "blockchain";
     let crypto: str[6] = "crypto";
+    // ANCHOR_END: explicit
 }
-// ANCHOR_END: explicit
 
-// ANCHOR: implicit
 fn implicit() {
+    // ANCHOR: implicit
     let fuel = "fuel";
     let blockchain = "blockchain";
     let crypto = "crypto";
+    // ANCHOR_END: implicit
 }
-// ANCHOR_END: implicit
 
-// ANCHOR: alternative_quotes
 fn alternative_quotes() {
+    // ANCHOR: alternative_quotes
     let fuel = 'fuel';
     let blockchain = 'blockchain';
     let crypto = 'crypto';
+    // ANCHOR_END: alternative_quotes
 }
-// ANCHOR_END: alternative_quotes

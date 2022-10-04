@@ -12,8 +12,5 @@ fn syntax() {
         total += array[counter];
         counter += 1;
     }
-
-    // Not currently supported
-    // array[1] = 42;
 }
 // ANCHOR_END: syntax
