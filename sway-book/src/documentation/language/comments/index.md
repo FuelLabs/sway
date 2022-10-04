@@ -1,32 +1,25 @@
 # Comments
 
-Comments in Sway start with two slashes and continue until the end of the line. For comments that extend beyond a single line, you'll need to include `//` on each line.
+Comments in Sway start with two slashes and continue until the end of the line.
 
 ```sway
-// hello world
+{{#include ../../../code/language/comments/src/lib.sw:single_line}}
 ```
 
+Comments that extend beyond a single line need to include `//` on each line.
+
 ```sway
-// let's make a couple of lines
-// commented.
+{{#include ../../../code/language/comments/src/lib.sw:multi_line}}
 ```
 
 You can also place comments at the ends of lines containing code.
 
 ```sway
-fn main() {
-    let baz = 8; // Eight is a lucky number
-}
+{{#include ../../../code/language/comments/src/lib.sw:end_of_line}}
 ```
 
 You can also do block comments
 
 ```sway
-fn main() {
-    /*
-    You can write on multiple lines
-    like this if you want
-    */
-    let baz = 8;
-}
+{{#include ../../../code/language/comments/src/lib.sw:block}}
 ```
