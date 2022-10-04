@@ -469,8 +469,8 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
 
     let builder = tracing_subscriber::fmt::Subscriber::builder()
         .with_env_filter(env_filter)
-        .with_ansi(false)
-        .with_level(true)
+        .with_ansi(true)
+        .with_level(false)
         .with_file(false)
         .with_line_number(false)
         .without_time()
