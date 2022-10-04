@@ -119,7 +119,7 @@ jobs:
         run: |
           cargo install --debug --path ./forc-plugins/forc-fmt
           cargo install --debug --path ./forc-plugins/forc-lsp
-          cargo install --debug --path ./forc-plugins/forc-explore
+          cargo install --debug forc-explore
           cargo install --debug forc-client
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
@@ -369,7 +369,6 @@ jobs:
         run: |
           cargo install toml-cli
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-explore/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-fmt/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-lsp/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-pkg/Cargo.toml
@@ -603,12 +602,6 @@ jobs:
           command: install
           args: --profile=release --path ./forc-plugins/forc-lsp
 
-      - name: Install Forc-Explore
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-explore
-
       - name: Prep Assets
         id: prep_assets
         env:
@@ -619,7 +612,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for binary in forc forc-fmt forc-lsp forc-explore; do
+          for binary in forc forc-fmt forc-lsp; do
             cp $(which ${binary}) ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries
