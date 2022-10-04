@@ -38,7 +38,11 @@ impl CallFramesTest for Contract {
         second_param::<(bool, u64)>()
     }
 
-    fn get_second_param_multiple_params2(arg0: u64, arg1: TestStruct, arg2: TestStruct2) -> (u64, TestStruct, TestStruct2) {
+    fn get_second_param_multiple_params2(
+        arg0: u64,
+        arg1: TestStruct,
+        arg2: TestStruct2,
+    ) -> (u64, TestStruct, TestStruct2) {
         second_param::<(u64, TestStruct, TestStruct2)>()
     }
 }

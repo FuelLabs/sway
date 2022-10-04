@@ -29,6 +29,5 @@ impl ContextTesting for Contract {
         global_gas()
     }
 
-    fn receive_coins() {
-    }
+    fn receive_coins() {}
 }

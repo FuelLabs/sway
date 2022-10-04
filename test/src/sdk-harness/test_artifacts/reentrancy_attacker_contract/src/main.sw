@@ -1,6 +1,13 @@
 contract;
 
-use std::{chain::auth::*, context::call_frames::contract_id, contract_id::ContractId, result::*, revert::revert, identity::Identity};
+use std::{
+    chain::auth::*,
+    context::call_frames::contract_id,
+    contract_id::ContractId,
+    identity::Identity,
+    result::*,
+    revert::revert,
+};
 
 use reentrancy_target_abi::Target;
 use reentrancy_attacker_abi::Attacker;
@@ -14,7 +21,9 @@ fn get_msg_sender_id_or_panic(result: Result<Identity, AuthError>) -> ContractId
                 _ => revert(0),
             }
         },
-        _ => {revert(0);},
+        _ => {
+            revert(0);
+        },
     }
 }
 
@@ -69,6 +78,5 @@ impl Attacker for Contract {
         true
     }
 
-    fn innocent_callback() {
-    }
+    fn innocent_callback() {}
 }

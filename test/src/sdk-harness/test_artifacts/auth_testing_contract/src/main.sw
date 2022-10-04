@@ -21,8 +21,12 @@ impl AuthTesting for Contract {
         }
         let unwrapped = result.unwrap();
         match unwrapped {
-            Identity::ContractId(v) => {ret = true},
-            _ => {ret = false},
+            Identity::ContractId(v) => {
+                ret = true
+            },
+            _ => {
+                ret = false
+            },
         }
         ret
     }
@@ -35,8 +39,12 @@ impl AuthTesting for Contract {
         }
         let unwrapped = result.unwrap();
         match unwrapped {
-            Identity::Address(v) => {ret = true},
-            _ => {ret = false},
+            Identity::Address(v) => {
+                ret = true
+            },
+            _ => {
+                ret = false
+            },
         }
         ret
     }

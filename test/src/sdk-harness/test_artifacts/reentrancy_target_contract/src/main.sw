@@ -1,6 +1,18 @@
 contract;
 
-use std::{assert::assert, chain::auth::*, context::{call_frames::contract_id, gas}, contract_id::ContractId, reentrancy::*, result::*, revert::revert, identity::Identity};
+use std::{
+    assert::assert,
+    chain::auth::*,
+    context::{
+        call_frames::contract_id,
+        gas,
+    },
+    contract_id::ContractId,
+    identity::Identity,
+    reentrancy::*,
+    result::*,
+    revert::revert,
+};
 
 use reentrancy_attacker_abi::Attacker;
 use reentrancy_target_abi::Target;
@@ -14,7 +26,9 @@ fn get_msg_sender_id_or_panic(result: Result<Identity, AuthError>) -> ContractId
                 _ => revert(0),
             }
         },
-        _ => {revert(0);},
+        _ => {
+            revert(0);
+        },
     }
 }
 

@@ -1,6 +1,12 @@
 contract;
 
-use std::{address::Address, context::balance_of, contract_id::ContractId, identity::Identity, token::*};
+use std::{
+    address::Address,
+    context::balance_of,
+    contract_id::ContractId,
+    identity::Identity,
+    token::*,
+};
 
 abi TestFuelCoin {
     fn mint_coins(mint_amount: u64);
