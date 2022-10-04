@@ -529,9 +529,6 @@ impl<'a> InstructionInserter<'a> {
     }
 
     pub fn branch(self, to_block: Block, dest_params: Vec<Value>) -> Value {
-        if to_block.num_args(self.context) != dest_params.len() {
-            panic!("Incorrect number of block parameter values in branch");
-        }
         let br_val =
             Value::new_instruction(self.context, Instruction::Branch((to_block, dest_params)));
         to_block.add_pred(self.context, &self.block);
@@ -563,12 +560,6 @@ impl<'a> InstructionInserter<'a> {
         true_dest_params: Vec<Value>,
         false_dest_params: Vec<Value>,
     ) -> Value {
-        if true_block.num_args(self.context) != true_dest_params.len()
-            || false_block.num_args(self.context) != false_dest_params.len()
-        {
-            panic!("Incorrect number of block parameter values in branch");
-        }
-
         let cbr_val = Value::new_instruction(
             self.context,
             Instruction::ConditionalBranch {

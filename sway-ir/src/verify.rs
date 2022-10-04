@@ -354,6 +354,9 @@ impl<'a> InstructionVerifier<'a> {
         &self,
         (dest_block, dest_params): &(Block, Vec<Value>),
     ) -> Result<(), IrError> {
+        if dest_block.num_args(self.context) != dest_params.len() {
+            return Err(IrError::VerifyBranchParamsMismatch);
+        }
         for (arg_idx, dest_param) in dest_block.arg_iter(self.context).enumerate() {
             match dest_params.get(arg_idx) {
                 Some(actual)

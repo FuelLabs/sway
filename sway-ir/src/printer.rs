@@ -422,8 +422,8 @@ fn instruction_to_doc<'a>(
                     doc.append(maybe_constant_to_doc(context, md_namer, namer, param))
                 });
                 doc.append(Doc::line(
-                    Doc::text(format!("cbr {} ", namer.name(context, cond_value),)).append(
-                        Doc::text(true_label).append(
+                    Doc::text(format!("cbr {}", namer.name(context, cond_value),)).append(
+                        Doc::text(format!(", {true_label}")).append(
                             Doc::in_parens_comma_sep(
                                 true_block
                                     .1
@@ -432,7 +432,7 @@ fn instruction_to_doc<'a>(
                                     .collect(),
                             )
                             .append(
-                                Doc::text(format!(" {false_label}")).append(
+                                Doc::text(format!(", {false_label}")).append(
                                     Doc::in_parens_comma_sep(
                                         false_block
                                             .1
