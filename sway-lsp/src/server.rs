@@ -125,6 +125,7 @@ fn capabilities() -> ServerCapabilities {
         }),
         document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
+        inlay_hint_provider: Some(OneOf::Left(true)),
         ..ServerCapabilities::default()
     }
 }
@@ -170,6 +171,7 @@ impl LanguageServer for Backend {
         Ok(InitializeResult {
             server_info: None,
             capabilities: capabilities(),
+            ..InitializeResult::default()
         })
     }
 
@@ -410,6 +412,16 @@ pub struct ShowAstParams {
 
 // Custom LSP-Server Methods
 impl Backend {
+    pub async fn inlay_hints(&self, params: InlayHintParams) -> jsonrpc::Result<Option<Vec<InlayHint>>> {
+        let config = capabilities::inlay_hints::InlayHintsConfig::default();
+        Ok(capabilities::inlay_hints::inlay_hints(
+            &self.session,
+            &params.text_document.uri,
+            &params.range,
+            &config,
+        ))
+    }
+    
     pub async fn runnables(
         &self,
         _params: RunnableParams,
