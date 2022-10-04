@@ -169,48 +169,47 @@ impl CollectTypesMetadata for TypedDeclaration {
                 ));
                 body
             }
-            FunctionDeclaration(decl_id) => {
-                match de_get_function(decl_id.clone(), &decl_id.span()) {
-                    Ok(decl) => {
-                        let mut body = vec![];
-                        for content in decl.body.contents.iter() {
-                            body.append(&mut check!(
-                                content.collect_types_metadata(),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            ));
-                        }
+            FunctionDeclaration(decl_id) => match de_get_function(decl_id.clone(), &decl_id.span())
+            {
+                Ok(decl) => {
+                    let mut body = vec![];
+                    for content in decl.body.contents.iter() {
                         body.append(&mut check!(
-                            decl.return_type.collect_types_metadata(),
+                            content.collect_types_metadata(),
                             return err(warnings, errors),
                             warnings,
                             errors
                         ));
-                        for type_param in decl.type_parameters.iter() {
-                            body.append(&mut check!(
-                                type_param.type_id.collect_types_metadata(),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            ));
-                        }
-                        for param in decl.parameters.iter() {
-                            body.append(&mut check!(
-                                param.type_id.collect_types_metadata(),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            ));
-                        }
-                        body
                     }
-                    Err(e) => {
-                        errors.push(e);
-                        return err(warnings, errors);
+                    body.append(&mut check!(
+                        decl.return_type.collect_types_metadata(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                    for type_param in decl.type_parameters.iter() {
+                        body.append(&mut check!(
+                            type_param.type_id.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
                     }
+                    for param in decl.parameters.iter() {
+                        body.append(&mut check!(
+                            param.type_id.collect_types_metadata(),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                    body
                 }
-            }
+                Err(e) => {
+                    errors.push(e);
+                    return err(warnings, errors);
+                }
+            },
             ConstantDeclaration(decl_id) => {
                 match de_get_constant(decl_id.clone(), &decl_id.span()) {
                     Ok(TypedConstantDeclaration { value, .. }) => {

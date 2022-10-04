@@ -7,7 +7,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-#[derive(Clone, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct TypeParameter {
     pub type_id: TypeId,
     pub(crate) initial_type_id: TypeId,
@@ -58,12 +58,6 @@ impl ReplaceSelfType for TypeParameter {
 impl fmt::Display for TypeParameter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}: {}", self.name_ident, self.type_id)
-    }
-}
-
-impl fmt::Debug for TypeParameter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {:?}", self.name_ident, self.type_id)
     }
 }
 

@@ -1,5 +1,3 @@
-use std::fmt;
-
 use crate::{
     error::{err, ok},
     semantic_analysis::{
@@ -12,7 +10,7 @@ use crate::{
 
 use sway_types::{span::Span, Spanned};
 
-#[derive(Clone, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct TypedFunctionParameter {
     pub name: Ident,
     pub is_reference: bool,
@@ -21,30 +19,6 @@ pub struct TypedFunctionParameter {
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
     pub type_span: Span,
-}
-
-impl fmt::Display for TypedFunctionParameter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ref_str = if self.is_reference { "" } else { "ref " };
-        let mut_str = if self.is_mutable { "" } else { "mut " };
-        if self.is_self() {
-            write!(f, "{}{}{}", ref_str, mut_str, self.name)
-        } else {
-            write!(f, "{}{}{}: {}", ref_str, mut_str, self.name, self.type_id,)
-        }
-    }
-}
-
-impl fmt::Debug for TypedFunctionParameter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ref_str = if self.is_reference { "" } else { "ref " };
-        let mut_str = if self.is_mutable { "" } else { "mut " };
-        if self.is_self() {
-            write!(f, "{}{}{}", ref_str, mut_str, self.name)
-        } else {
-            write!(f, "{}{}{}: {:?}", ref_str, mut_str, self.name, self.type_id,)
-        }
-    }
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

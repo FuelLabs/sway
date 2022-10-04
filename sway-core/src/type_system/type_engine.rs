@@ -508,7 +508,7 @@ impl TypeEngine {
     /// enum, or a reference to a type parameter.
     fn resolve_type(
         &self,
-        old_type_id: TypeId,
+        type_id: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
@@ -518,7 +518,7 @@ impl TypeEngine {
         let mut warnings = vec![];
         let mut errors = vec![];
         let module_path = type_info_prefix.unwrap_or(mod_path);
-        let type_id = match look_up_type_id(old_type_id) {
+        let type_id = match look_up_type_id(type_id) {
             TypeInfo::Custom {
                 name,
                 type_arguments,
@@ -553,13 +553,13 @@ impl TypeEngine {
                         );
 
                         // create the type id from the copy
-                        let new_type_id = new_copy.create_type_id();
+                        let type_id = new_copy.create_type_id();
 
                         // add the new copy as a monomorphized copy of the original id
                         de_add_monomorphized_struct_copy(original_id, new_copy);
 
                         // return the id
-                        new_type_id
+                        type_id
                     }
                     Some(TypedDeclaration::EnumDeclaration(original_id)) => {
                         // get the copy from the declaration engine
@@ -586,13 +586,13 @@ impl TypeEngine {
                         );
 
                         // create the type id from the copy
-                        let new_type_id = new_copy.create_type_id();
+                        let type_id = new_copy.create_type_id();
 
                         // add the new copy as a monomorphized copy of the original id
                         de_add_monomorphized_enum_copy(original_id, new_copy);
 
                         // return the id
-                        new_type_id
+                        type_id
                     }
                     Some(TypedDeclaration::GenericTypeForFunctionScope { type_id, .. }) => type_id,
                     _ => {
@@ -638,7 +638,7 @@ impl TypeEngine {
                 }
                 self.insert_type(TypeInfo::Tuple(type_arguments))
             }
-            _ => old_type_id,
+            _ => type_id,
         };
         ok(type_id, warnings, errors)
     }
