@@ -48,7 +48,7 @@ impl PartialEq for TypedExpression {
 
 impl CopyTypes for TypedExpression {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.return_type.update_type(type_mapping, &self.span);
+        self.return_type.copy_types(type_mapping);
         self.expression.copy_types(type_mapping);
     }
 }
