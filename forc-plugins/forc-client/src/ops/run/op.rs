@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, Result};
-use forc_pkg::{fuel_core_not_running, BuildOptions, ManifestFile};
+use forc_pkg::{fuel_core_not_running, BuildOptions, PackageManifestFile};
 use fuel_crypto::Signature;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{AssetId, Output, Transaction, Witness};
@@ -21,7 +21,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     } else {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
-    let manifest = ManifestFile::from_dir(&path_dir)?;
+    let manifest = PackageManifestFile::from_dir(&path_dir)?;
     manifest.check_program_type(vec![TreeType::Script])?;
 
     let input_data = &command.data.unwrap_or_else(|| "".into());

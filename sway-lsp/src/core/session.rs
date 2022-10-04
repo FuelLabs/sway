@@ -147,7 +147,7 @@ impl Session {
         let offline = false;
 
         // TODO: match on any errors and report them back to the user in a future PR
-        if let Ok(manifest) = pkg::ManifestFile::from_dir(&manifest_dir) {
+        if let Ok(manifest) = pkg::PackageManifestFile::from_dir(&manifest_dir) {
             if let Ok(plan) = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline) {
                 //we can then use them directly to convert them to a Vec<Diagnostic>
                 if let Ok(CompileResult {

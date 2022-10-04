@@ -157,7 +157,8 @@ fn parse_default_manifest() {
     use sway_utils::constants::MAIN_ENTRY;
     tracing::info!(
         "{:#?}",
-        toml::from_str::<forc_pkg::Manifest>(&default_manifest("test_proj", MAIN_ENTRY)).unwrap()
+        toml::from_str::<forc_pkg::PackageManifest>(&default_manifest("test_proj", MAIN_ENTRY))
+            .unwrap()
     )
 }
 
@@ -165,6 +166,6 @@ fn parse_default_manifest() {
 fn parse_default_tests_manifest() {
     tracing::info!(
         "{:#?}",
-        toml::from_str::<forc_pkg::Manifest>(&default_tests_manifest("test_proj")).unwrap()
+        toml::from_str::<forc_pkg::PackageManifest>(&default_tests_manifest("test_proj")).unwrap()
     )
 }
