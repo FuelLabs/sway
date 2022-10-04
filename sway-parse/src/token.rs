@@ -180,7 +180,7 @@ pub fn lex_commented(
                     let span = span(src, &path, index, index + character.len_utf8());
                     error(handler, LexError { kind, span });
                 }
-                Some((mut parent, open_index, open_delimiter)) => {
+                Some((parent, open_index, open_delimiter)) => {
                     if open_delimiter != close_delimiter {
                         // Recover on e.g., a `{ )` mismatch by having `)` interpreted as `}`.
                         let kind = LexErrorKind::MismatchedDelimiters {
@@ -192,18 +192,16 @@ pub fn lex_commented(
                         let span = span(src, &path, index, index + character.len_utf8());
                         error(handler, LexError { kind, span });
                     }
-                    mem::swap(&mut parent, &mut token_trees);
-                    let start_index = open_index + open_delimiter.as_open_char().len_utf8();
-                    let full_span = span(src, &path, start_index, index);
-                    let group = CommentedGroup {
-                        token_stream: CommentedTokenStream {
-                            token_trees: parent,
-                            full_span,
-                        },
-                        delimiter: open_delimiter,
-                        span: span_until(src, open_index, &mut char_indices, &path),
-                    };
-                    token_trees.push(CommentedTokenTree::Tree(group.into()));
+                    token_trees = lex_close_delimiter(
+                        src,
+                        &path,
+                        &mut char_indices,
+                        index,
+                        parent,
+                        token_trees,
+                        open_index,
+                        open_delimiter,
+                    );
                 }
             }
             continue;
@@ -236,23 +234,56 @@ pub fn lex_commented(
         error(handler, LexError { kind, span });
         continue;
     }
-    if let Some((_, open_position, open_delimiter)) = parent_token_trees.pop() {
+
+    // Recover all unclosed delimiters.
+    while let Some((parent, open_index, open_delimiter)) = parent_token_trees.pop() {
         let kind = LexErrorKind::UnclosedDelimiter {
-            open_position,
+            open_position: open_index,
             open_delimiter,
         };
-        let span = span(
+        let open_end = open_index + open_delimiter.as_open_char().len_utf8();
+        let span = span(src, &path, open_index, open_end);
+        error(handler, LexError { kind, span });
+
+        token_trees = lex_close_delimiter(
             src,
             &path,
-            open_position,
-            open_position + open_delimiter.as_open_char().len_utf8(),
+            &mut char_indices,
+            src.len(),
+            parent,
+            token_trees,
+            open_index,
+            open_delimiter,
         );
-        return Err(error(handler, LexError { kind, span }));
     }
     Ok(CommentedTokenStream {
         token_trees,
         full_span: span(src, &path, start, end),
     })
+}
+
+fn lex_close_delimiter(
+    src: &Arc<str>,
+    path: &Option<Arc<PathBuf>>,
+    char_indices: &mut CharIndices,
+    index: usize,
+    mut parent: Vec<CommentedTokenTree>,
+    token_trees: Vec<CommentedTokenTree>,
+    open_index: usize,
+    delimiter: Delimiter,
+) -> Vec<CommentedTokenTree> {
+    let start_index = open_index + delimiter.as_open_char().len_utf8();
+    let full_span = span(src, &path, start_index, index);
+    let group = CommentedGroup {
+        token_stream: CommentedTokenStream {
+            token_trees,
+            full_span,
+        },
+        delimiter,
+        span: span_until(src, open_index, char_indices, &path),
+    };
+    parent.push(CommentedTokenTree::Tree(group.into()));
+    parent
 }
 
 fn lex_line_comment(
