@@ -226,12 +226,15 @@ pub fn lex_commented(
             continue;
         }
 
+        // Recover by simply ignoring the character.
+        // NOTE(Centril): I'm not sure how good of an idea this is... time will tell.
         let kind = LexErrorKind::InvalidCharacter {
             position: index,
             character,
         };
         let span = span(src, &path, index, index + character.len_utf8());
-        return Err(error(handler, LexError { kind, span }));
+        error(handler, LexError { kind, span });
+        continue;
     }
     if let Some((_, open_position, open_delimiter)) = parent_token_trees.pop() {
         let kind = LexErrorKind::UnclosedDelimiter {
