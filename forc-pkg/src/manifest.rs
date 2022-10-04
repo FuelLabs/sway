@@ -480,3 +480,98 @@ fn default_entry() -> String {
 fn default_url() -> String {
     constants::DEFAULT_NODE_URL.into()
 }
+
+/// A [WorkspaceManifest] that was deserialized from a file at a particular path.
+#[derive(Clone, Debug)]
+pub struct WorkspaceManifestFile {
+    /// The derserialized `Forc.toml`
+    manifest: WorkspaceManifest,
+    /// The path from which the `Forc.toml` file was read.
+    path: PathBuf,
+}
+
+/// A direct mapping to `Forc.toml` if it is a WorkspaceManifest
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "kebab-case")]
+pub struct WorkspaceManifest {
+    pub members: Vec<String>,
+}
+
+impl WorkspaceManifestFile {
+    /// Given a path to a `Forc.toml`, read it and construct a `PackageManifest`
+    ///
+    /// This also `validate`s the manifest, returning an `Err` in the case that given members are
+    /// not present in the manifest dir.
+    pub fn from_file(path: PathBuf) -> Result<Self> {
+        let path = path.canonicalize()?;
+        let parent = path
+            .parent()
+            .ok_or_else(|| anyhow!("Cannot get parent dir of {:?}", path))?;
+        let manifest = WorkspaceManifest::from_file(&path)?;
+        manifest.validate(parent)?;
+        Ok(Self { manifest, path })
+    }
+
+    /// Read the manifest from the `Forc.toml` in the directory specified by the given `path` or
+    /// any of its parent directories.
+    ///
+    /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
+    /// file.
+    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
+        let dir = forc_util::find_manifest_dir(manifest_dir)
+            .ok_or_else(|| manifest_file_missing(manifest_dir))?;
+        let path = dir.join(constants::MANIFEST_FILE_NAME);
+        Self::from_file(path)
+    }
+
+    pub fn members(&self) -> impl Iterator<Item = &String> + '_ {
+        self.members.iter()
+    }
+
+    pub fn member_paths(&self) -> Result<impl Iterator<Item = PathBuf> + '_> {
+        let parent = self
+            .path
+            .parent()
+            .ok_or_else(|| anyhow!("Cannot get parent dir of {:?}", self.path))?;
+        Ok(self.members.iter().map(|member| parent.join(member)))
+    }
+}
+
+impl WorkspaceManifest {
+    /// Given a path to a `Forc.toml`, read it and construct a `WorkspaceManifest`.
+    pub fn from_file(path: &Path) -> Result<Self> {
+        let manifest_str = std::fs::read_to_string(path)
+            .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
+        let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
+        let manifest: Self = serde_ignored::deserialize(toml_de, |path| {
+            let warning = format!("  WARNING! unused manifest key: {}", path);
+            println_yellow_err(&warning);
+        })
+        .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
+        Ok(manifest)
+    }
+
+    /// Validate the `WorkspaceManifest`
+    ///
+    /// This checks if the listed members in the `WorkspaceManifest` are indeed in the given `Forc.toml`'s directory.
+    pub fn validate(&self, path: &Path) -> Result<()> {
+        for member in self.members.iter() {
+            let member_path = path.join(&member).join("Forc.toml");
+            if !member_path.exists() {
+                bail!(
+                    "{:?} is listed as a member of the workspace but {:?} does not exists",
+                    &member,
+                    member_path
+                );
+            }
+        }
+        Ok(())
+    }
+}
+
+impl std::ops::Deref for WorkspaceManifestFile {
+    type Target = WorkspaceManifest;
+    fn deref(&self) -> &Self::Target {
+        &self.manifest
+    }
+}

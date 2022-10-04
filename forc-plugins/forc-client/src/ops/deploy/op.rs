@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use forc_pkg::{BuildOptions, Compiled, PackageManifestFile};
+use forc_pkg::{BuildOptions, Compiled, PackageManifestFile, WorkspaceManifestFile};
 use fuel_crypto::Signature;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, StorageSlot, Transaction};
@@ -9,18 +9,46 @@ use fuels_signers::{provider::Provider, wallet::Wallet};
 use fuels_types::bech32::Bech32Address;
 use std::{io::Write, path::PathBuf, str::FromStr};
 use sway_core::TreeType;
-use sway_utils::constants::DEFAULT_NODE_URL;
+use sway_utils::constants::{DEFAULT_NODE_URL, MANIFEST_FILE_NAME};
 use tracing::info;
 
 use crate::ops::{deploy::cmd::DeployCommand, parameters::TxParameters};
 
-pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
+/// Checks if we have a WorkspaceManifest and if that is the case we will be deploying the packages
+/// listed in the members field of the WorkspaceManifest in the order of their declaration
+pub async fn deploy(command: DeployCommand) -> Result<()> {
+    let mut command = command;
     let curr_dir = if let Some(ref path) = command.path {
         PathBuf::from(path)
     } else {
         std::env::current_dir()?
     };
-    let manifest = PackageManifestFile::from_dir(&curr_dir)?;
+
+    // Decide if we are given/in a package or a workspace
+    if let Ok(workspace_manifest_file) = WorkspaceManifestFile::from_dir(&curr_dir) {
+        for (member_path, member_name) in workspace_manifest_file
+            .member_paths()?
+            .zip(workspace_manifest_file.members())
+        {
+            info!("Deploying {:?} {:?}", member_name, member_path);
+            let path = member_path.to_str().map(|member| member.to_string());
+            command.path = path;
+            deploy_single(command.clone(), member_path).await?;
+        }
+    } else {
+        deploy_single(command, curr_dir).await?;
+    }
+
+    Ok(())
+}
+
+/// Deploy a single package. This function does not check if the given directory is a worksapce or
+/// not. To do so use `deploy(..)`.
+pub async fn deploy_single(
+    command: DeployCommand,
+    curr_dir: PathBuf,
+) -> Result<fuel_tx::ContractId> {
+    let manifest = PackageManifestFile::from_file(curr_dir.join(MANIFEST_FILE_NAME))?;
     manifest.check_program_type(vec![TreeType::Contract])?;
 
     let DeployCommand {
