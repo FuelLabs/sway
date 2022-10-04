@@ -166,15 +166,23 @@ pub fn lex_commented(
         if let Some(close_delimiter) = character.as_close_delimiter() {
             match parent_token_trees.pop() {
                 None => {
+                    // Recover by ignoring the unexpected closing delim,
+                    // giving the parser opportunities to realize the need for an opening delim
+                    // in e.g., this example:
+                    //
+                    // fn foo() // <-- Parser expects grouped tokens in `{ ... }` here.
+                    //     let x = 0;
+                    // } // <- This recovery.
                     let kind = LexErrorKind::UnexpectedCloseDelimiter {
                         position: index,
                         close_delimiter,
                     };
                     let span = span(src, &path, index, index + character.len_utf8());
-                    return Err(error(handler, LexError { kind, span }));
+                    error(handler, LexError { kind, span });
                 }
                 Some((mut parent, open_index, open_delimiter)) => {
                     if open_delimiter != close_delimiter {
+                        // Recover on e.g., a `{ )` mismatch by having `)` interpreted as `}`.
                         let kind = LexErrorKind::MismatchedDelimiters {
                             open_position: open_index,
                             close_position: index,
@@ -182,7 +190,7 @@ pub fn lex_commented(
                             close_delimiter,
                         };
                         let span = span(src, &path, index, index + character.len_utf8());
-                        return Err(error(handler, LexError { kind, span }));
+                        error(handler, LexError { kind, span });
                     }
                     mem::swap(&mut parent, &mut token_trees);
                     let start_index = open_index + open_delimiter.as_open_char().len_utf8();
@@ -192,7 +200,7 @@ pub fn lex_commented(
                             token_trees: parent,
                             full_span,
                         },
-                        delimiter: close_delimiter,
+                        delimiter: open_delimiter,
                         span: span_until(src, open_index, &mut char_indices, &path),
                     };
                     token_trees.push(CommentedTokenTree::Tree(group.into()));
