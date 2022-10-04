@@ -2,7 +2,6 @@ contract;
 
 use std::context::{*, call_frames::*, registers::*};
 use context_testing_abi::*;
-use std::contract_id::ContractId;
 
 impl ContextTesting for Contract {
     fn get_this_balance(asset: ContractId) -> u64 {

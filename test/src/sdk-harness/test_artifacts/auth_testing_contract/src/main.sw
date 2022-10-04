@@ -1,12 +1,7 @@
 contract;
 
-use std::address::Address;
 use std::chain::auth::*;
-use std::contract_id::ContractId;
 use auth_testing_abi::*;
-use std::result::*;
-use std::assert::assert;
-use std::identity::Identity;
 
 impl AuthTesting for Contract {
     fn is_caller_external() -> bool {

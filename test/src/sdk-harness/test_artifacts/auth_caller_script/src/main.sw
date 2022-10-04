@@ -1,9 +1,7 @@
 script;
 
 use auth_testing_abi::AuthTesting;
-use std::contract_id::ContractId;
 use std::chain::auth::*;
-use std::result::*;
 
 fn main() -> u64 {
     // TODO: ContractId for auth_testing_contract should ideally be passed to script as an arg when possible.

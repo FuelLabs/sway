@@ -1,9 +1,7 @@
 contract;
 
-use std::contract_id::ContractId;
 use call_frames_test_abi::{CallFramesTest, TestStruct, TestStruct2};
-use std::context::call_frames::*;
-use std::mem::read;
+use std::{context::call_frames::*, mem::read};
 
 impl CallFramesTest for Contract {
     fn get_id() -> ContractId {

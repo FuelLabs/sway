@@ -1,6 +1,6 @@
 contract;
 
-use std::{option::Option, storage::StorageMap};
+use std::storage::StorageMap;
 
 struct Data {
     value: u64,

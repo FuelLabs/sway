@@ -1,10 +1,7 @@
 contract;
 
 use std::{
-    address::Address,
     context::balance_of,
-    contract_id::ContractId,
-    identity::Identity,
     token::*,
 };
 
