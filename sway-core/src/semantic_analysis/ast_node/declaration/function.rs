@@ -141,51 +141,6 @@ impl MonomorphizeHelper for TypedFunctionDeclaration {
     }
 }
 
-impl CollectTypesMetadata for TypedFunctionDeclaration {
-    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
-        if self.name.as_str() == "third_if"
-            || self.name.as_str() == "second_if"
-            || self.name.as_str() == "first_if"
-        {
-            println!("{}", self);
-        }
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let mut body = vec![];
-        for content in self.body.contents.iter() {
-            body.append(&mut check!(
-                content.collect_types_metadata(),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
-        }
-        body.append(&mut check!(
-            self.return_type.collect_types_metadata(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        ));
-        for type_param in self.type_parameters.iter() {
-            body.append(&mut check!(
-                type_param.type_id.collect_types_metadata(),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
-        }
-        for param in self.parameters.iter() {
-            body.append(&mut check!(
-                param.type_id.collect_types_metadata(),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
-        }
-        ok(body, warnings, errors)
-    }
-}
-
 impl TypedFunctionDeclaration {
     pub fn type_check(ctx: TypeCheckContext, fn_decl: FunctionDeclaration) -> CompileResult<Self> {
         let mut warnings = Vec::new();

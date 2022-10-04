@@ -55,6 +55,14 @@ fn first_if<F>(value: F) -> u64 {
   }
 }
 
+fn double_double<Y, Z>(first: Y, second: Z) -> Z {
+  second
+}
+
+fn double<Y>(the_second: Y) -> Y {
+  double_double(false, the_second)
+}
+
 // fn generic_match<G>(value: G) -> u64 {
 //   match value {
 //     foo => 3u64,
@@ -93,6 +101,12 @@ fn main() -> u64 {
 
   // let h = generic_if(false);
   // assert(h == 3);
+
+  let i = double(10u32);
+  assert(i == 10u32);
+
+  let j = double(true);
+  assert(j);
 
   1
 }
