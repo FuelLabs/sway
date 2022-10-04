@@ -52,6 +52,11 @@ where
         let inner = self.inner.read().unwrap();
         inner.len()
     }
+
+    pub fn blind_replace(&self, index: usize, new_value: T) {
+        let mut inner = self.inner.write().unwrap();
+        inner[index] = new_value;
+    }
 }
 
 impl ConcurrentSlab<TypeInfo> {

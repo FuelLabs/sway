@@ -366,7 +366,14 @@ impl CopyTypes for TypedExpressionVariant {
                 arguments
                     .iter_mut()
                     .for_each(|(_ident, expr)| expr.copy_types(type_mapping));
-                function_decl.copy_types(type_mapping);
+                function_decl
+                    .type_parameters
+                    .iter_mut()
+                    .for_each(|type_param| {
+                        if let Some(matching_id) = type_mapping.find_match(type_param.type_id) {
+                            replace_type_id(type_param.type_id, look_up_type_id(matching_id));
+                        }
+                    });
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).copy_types(type_mapping);

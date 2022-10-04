@@ -309,8 +309,8 @@ impl TypeMapping {
         for ((_, destination_type), type_arg) in self.mapping.iter().zip(type_arguments.iter()) {
             append!(
                 unify(
-                    *destination_type,
                     type_arg.type_id,
+                    *destination_type,
                     &type_arg.span,
                     "Type argument is not assignable to generic type parameter.",
                 ),

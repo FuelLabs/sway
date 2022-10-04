@@ -36,6 +36,10 @@ impl TypeEngine {
         self.slab.get(*id)
     }
 
+    fn replace_type_id(&self, id: TypeId, new_value: TypeInfo) {
+        self.slab.blind_replace(*id, new_value);
+    }
+
     /// Denotes the given [TypeId] as being used with storage.
     fn set_type_as_storage_only(&self, id: TypeId) {
         self.storage_only_types.insert(self.look_up_type_id(id));
@@ -680,6 +684,10 @@ pub fn look_up_type_id(id: TypeId) -> TypeInfo {
     TYPE_ENGINE.look_up_type_id(id)
 }
 
+pub(crate) fn replace_type_id(id: TypeId, new_value: TypeInfo) {
+    TYPE_ENGINE.replace_type_id(id, new_value);
+}
+
 pub fn set_type_as_storage_only(id: TypeId) {
     TYPE_ENGINE.set_type_as_storage_only(id);
 }
@@ -714,13 +722,14 @@ where
 }
 
 pub fn unify_with_self(
-    a: TypeId,
-    b: TypeId,
+    received: TypeId,
+    expected: TypeId,
     self_type: TypeId,
     span: &Span,
     help_text: impl Into<String>,
 ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-    let (warnings, errors) = TYPE_ENGINE.unify_with_self(a, b, self_type, span, help_text);
+    let (warnings, errors) =
+        TYPE_ENGINE.unify_with_self(received, expected, self_type, span, help_text);
     (
         warnings,
         errors.into_iter().map(|error| error.into()).collect(),
@@ -728,12 +737,12 @@ pub fn unify_with_self(
 }
 
 pub(crate) fn unify(
-    a: TypeId,
-    b: TypeId,
+    received: TypeId,
+    expected: TypeId,
     span: &Span,
     help_text: impl Into<String>,
 ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-    let (warnings, errors) = TYPE_ENGINE.unify(a, b, span, help_text);
+    let (warnings, errors) = TYPE_ENGINE.unify(received, expected, span, help_text);
     (
         warnings,
         errors.into_iter().map(|error| error.into()).collect(),

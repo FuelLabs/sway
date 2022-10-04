@@ -81,22 +81,20 @@ impl CollectTypesMetadata for TypedExpression {
                 function_decl,
                 ..
             } => {
-                for arg in arguments.iter() {
+                for (_, arg) in arguments.iter() {
                     res.append(&mut check!(
-                        arg.1.collect_types_metadata(),
+                        arg.collect_types_metadata(),
                         return err(warnings, errors),
                         warnings,
                         errors
                     ));
                 }
-                for content in function_decl.body.contents.iter() {
-                    res.append(&mut check!(
-                        content.collect_types_metadata(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
+                res.append(&mut check!(
+                    function_decl.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
             Tuple { fields } => {
                 for field in fields.iter() {

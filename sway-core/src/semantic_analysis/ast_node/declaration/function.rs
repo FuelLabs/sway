@@ -1,4 +1,6 @@
 mod function_parameter;
+use std::fmt;
+
 pub use function_parameter::*;
 
 use crate::{
@@ -8,7 +10,7 @@ use crate::{
 use sha2::{Digest, Sha256};
 use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Eq)]
 pub struct TypedFunctionDeclaration {
     pub name: Ident,
     pub body: TypedCodeBlock,
@@ -24,6 +26,62 @@ pub struct TypedFunctionDeclaration {
     /// whether this function exists in another contract and requires a call to it or not
     pub(crate) is_contract_call: bool,
     pub(crate) purity: Purity,
+}
+
+impl fmt::Display for TypedFunctionDeclaration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}{}({}) -> {} {{ .. }}",
+            self.name,
+            if self.type_parameters.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "<{}>",
+                    self.type_parameters
+                        .iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            },
+            self.parameters
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(", "),
+            self.return_type,
+        )
+    }
+}
+
+impl fmt::Debug for TypedFunctionDeclaration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}{}({}) -> {:?} {{ .. }}",
+            self.name,
+            if self.type_parameters.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "<{}>",
+                    self.type_parameters
+                        .iter()
+                        .map(|x| format!("{:?}", x))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            },
+            self.parameters
+                .iter()
+                .map(|x| format!("{:?}", x))
+                .collect::<Vec<_>>()
+                .join(", "),
+            self.return_type,
+        )
+    }
 }
 
 impl From<&TypedFunctionDeclaration> for TypedAstNode {
@@ -80,6 +138,51 @@ impl MonomorphizeHelper for TypedFunctionDeclaration {
 
     fn name(&self) -> &Ident {
         &self.name
+    }
+}
+
+impl CollectTypesMetadata for TypedFunctionDeclaration {
+    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
+        if self.name.as_str() == "third_if"
+            || self.name.as_str() == "second_if"
+            || self.name.as_str() == "first_if"
+        {
+            println!("{}", self);
+        }
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut body = vec![];
+        for content in self.body.contents.iter() {
+            body.append(&mut check!(
+                content.collect_types_metadata(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        body.append(&mut check!(
+            self.return_type.collect_types_metadata(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        ));
+        for type_param in self.type_parameters.iter() {
+            body.append(&mut check!(
+                type_param.type_id.collect_types_metadata(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        for param in self.parameters.iter() {
+            body.append(&mut check!(
+                param.type_id.collect_types_metadata(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        ok(body, warnings, errors)
     }
 }
 
