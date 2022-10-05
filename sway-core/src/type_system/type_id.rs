@@ -387,6 +387,35 @@ impl TypeId {
                     })
                     .collect::<Vec<_>>()
             }),
+            TypeInfo::Enum {
+                type_parameters, ..
+            }
+            | TypeInfo::Struct {
+                type_parameters, ..
+            } => {
+                // Here, type_parameters.type_id should contain resolved types
+                let json_type_arguments = type_parameters
+                    .iter()
+                    .map(|v| JsonTypeDeclaration {
+                        type_id: *v.type_id,
+                        type_field: v.type_id.get_json_type_str(v.type_id),
+                        components: v.type_id.get_json_type_components(types, v.type_id),
+                        type_parameters: v.type_id.get_json_type_parameters(types, v.type_id),
+                    })
+                    .collect::<Vec<_>>();
+                types.extend(json_type_arguments);
+
+                Some(
+                    type_parameters
+                        .iter()
+                        .map(|arg| JsonTypeApplication {
+                            name: "".to_string(),
+                            type_id: *arg.type_id,
+                            type_arguments: arg.type_id.get_json_type_arguments(types, arg.type_id),
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            }
             _ => None,
         }
     }
