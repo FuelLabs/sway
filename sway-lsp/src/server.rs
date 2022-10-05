@@ -90,18 +90,6 @@ fn capabilities() -> ServerCapabilities {
         }),
         document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
-        hover_provider: Some(HoverProviderCapability::Simple(true)),
-        document_highlight_provider: Some(OneOf::Left(true)),
-        rename_provider: Some(OneOf::Right(RenameOptions {
-            prepare_provider: Some(true),
-            work_done_progress_options: WorkDoneProgressOptions {
-                work_done_progress: Some(true),
-            },
-        })),
-        execute_command_provider: Some(ExecuteCommandOptions {
-            commands: vec![],
-            ..Default::default()
-        }),
         ..ServerCapabilities::default()
     }
 }
@@ -388,6 +376,7 @@ mod tests {
 
     use super::*;
     use futures::stream::StreamExt;
+    use serial_test::serial;
     use tower_lsp::{
         jsonrpc::{self, Request, Response},
         {ClientSocket, LspService},
@@ -484,6 +473,23 @@ mod tests {
             .finish();
         let response = service.ready().await.unwrap().call(did_open).await;
         assert_eq!(response, Ok(None));
+    }
+
+    async fn did_change_request(
+        service: &mut LspService<Backend>,
+        params: serde_json::value::Value,
+    ) -> Request {
+        let did_change = Request::build("textDocument/didChange")
+            .params(params)
+            .finish();
+        let response = service
+            .ready()
+            .await
+            .unwrap()
+            .call(did_change.clone())
+            .await;
+        assert_eq!(response, Ok(None));
+        did_change
     }
 
     async fn did_close_notification(service: &mut LspService<Backend>) {
@@ -698,7 +704,7 @@ mod tests {
         initialized_notification(service).await;
 
         // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        messages.next().await.unwrap();
+        let _ = messages.next().await;
 
         let (uri, sway_program) = load_sway_example(manifest_dir);
 
@@ -706,7 +712,7 @@ mod tests {
         did_open_notification(service, &uri, &sway_program).await;
 
         // ignore the "textDocument/publishDiagnostics" notification
-        messages.next().await.unwrap();
+        let _ = messages.next().await;
 
         uri
     }
@@ -719,7 +725,8 @@ mod tests {
         exit_notification(service).await;
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
+    #[serial]
     async fn initialize() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
@@ -727,20 +734,25 @@ mod tests {
         let _ = initialize_request(&mut service).await;
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
+    #[serial]
     async fn initialized() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
 
         // send "initialized" notification
         initialized_notification(&mut service).await;
+
+        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
+        let _ = messages.next().await;
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
+    #[serial]
     async fn initializes_only_once() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let initialize = initialize_request(&mut service).await;
@@ -748,21 +760,28 @@ mod tests {
         // send "initialized" notification
         initialized_notification(&mut service).await;
 
+        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
+        let _ = messages.next().await;
+
         // send "initialize" request (again); should error
         let response = service.ready().await.unwrap().call(initialize).await;
         let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
         assert_eq!(response, Ok(Some(err)));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
+    #[serial]
     async fn shutdown() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
 
         // send "initialized" notification
         initialized_notification(&mut service).await;
+
+        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
+        let _ = messages.next().await;
 
         // send "shutdown" request
         let shutdown = shutdown_request(&mut service).await;
@@ -776,12 +795,16 @@ mod tests {
         exit_notification(&mut service).await;
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
+    #[serial]
     async fn refuses_requests_after_shutdown() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
 
         // send "initialize" request
         let _ = initialize_request(&mut service).await;
+
+        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
+        let _ = messages.next().await;
 
         // send "shutdown" request
         let shutdown = shutdown_request(&mut service).await;
@@ -791,16 +814,16 @@ mod tests {
         assert_eq!(response, Ok(Some(err)));
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test(flavor = "current_thread")]
+    #[serial]
     async fn did_open() {
         let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
         let _ = init_and_open(&mut service, &mut messages, e2e_test_dir()).await;
         shutdown_and_exit(&mut service).await;
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test(flavor = "current_thread")]
+    #[serial]
     async fn did_close() {
         let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
         let _ = init_and_open(&mut service, &mut messages, e2e_test_dir()).await;
@@ -811,37 +834,11 @@ mod tests {
         shutdown_and_exit(&mut service).await;
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test(flavor = "current_thread")]
+    #[serial]
     async fn did_change() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        let uri = Url::parse("inmemory:///test").unwrap();
-        let text = r#"script;
-
-        fn main() {
-        
-        }
-        "#;
-
-        // This just an example of the changes made
-        // In reality, the only text that needs to be sent to the language server
-        // is "let x = 0.0;"
-        let _new_text = r#"script;
-
-        fn main() {
-            let x = 0.0;
-        }
-        "#;
-
-        // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, text).await;
+        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
+        let uri = init_and_open(&mut service, &mut messages, e2e_test_dir()).await;
 
         // send "textDocument/didChange" notification for `uri`
         let params = json!({
@@ -866,17 +863,17 @@ mod tests {
                 }
             ]
         });
-        let did_change = Request::build("textDocument/didChange")
-            .params(params)
-            .finish();
-        let response = service.ready().await.unwrap().call(did_change).await;
-        assert_eq!(response, Ok(None));
+
+        let _ = did_change_request(&mut service, params).await;
+
+        // ignore the "textDocument/publishDiagnostics" notification
+        let _ = messages.next().await;
 
         shutdown_and_exit(&mut service).await;
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test(flavor = "current_thread")]
+    #[serial]
     async fn show_ast() {
         let (mut service, mut messages) =
             LspService::build(|client| Backend::new(client, config()))
@@ -908,55 +905,45 @@ mod tests {
         }};
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test(flavor = "current_thread")]
+    #[serial]
     async fn semantic_tokens() {
         // send "textDocument/semanticTokens/full" request
         test_lsp_capability!(doc_comments(), semantic_tokens_request);
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test(flavor = "current_thread")]
+    #[serial]
     async fn document_symbol() {
         // send "textDocument/documentSymbol" request
         test_lsp_capability!(doc_comments(), document_symbol_request);
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test(flavor = "current_thread")]
+    #[serial]
     async fn go_to_definition() {
         // send "textDocument/definition" request
         test_lsp_capability!(doc_comments(), go_to_definition_request);
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test(flavor = "current_thread")]
+    #[serial]
     async fn format() {
         // send "textDocument/formatting" request
         test_lsp_capability!(doc_comments(), format_request);
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test(flavor = "current_thread")]
+    #[serial]
     async fn hover() {
         // send "textDocument/hover" request
         test_lsp_capability!(doc_comments(), hover_request);
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test(flavor = "current_thread")]
+    #[serial]
     async fn highlight() {
         // send "textDocument/documentHighlight" request
-        test_lsp_capability!(doc_comments(), highlight_request);
-    }
-
-    #[tokio::test]
-    async fn test_capabilities() {
-        test_lsp_capability!(doc_comments(), semantic_tokens_request);
-        test_lsp_capability!(doc_comments(), document_symbol_request);
-        test_lsp_capability!(doc_comments(), go_to_definition_request);
-        test_lsp_capability!(doc_comments(), format_request);
-        test_lsp_capability!(doc_comments(), hover_request);
         test_lsp_capability!(doc_comments(), highlight_request);
     }
 }
