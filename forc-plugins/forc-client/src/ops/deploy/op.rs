@@ -14,8 +14,10 @@ use tracing::info;
 
 use crate::ops::{deploy::cmd::DeployCommand, parameters::TxParameters};
 
-/// Checks if we have a WorkspaceManifest and if that is the case we will be deploying the packages
-/// listed in the members field of the WorkspaceManifest in the order of their declaration
+/// If the provided path (`DeployCommand.path`, or if it is not provided the current directory)
+/// contains a workspace manifest file, `deploy` will be deploying the workspace members in the
+/// order that their listing in the manifest file. If the provided path contains only a package
+/// manifest file only that package is going to be deployed.
 pub async fn deploy(command: DeployCommand) -> Result<()> {
     let mut command = command;
     let curr_dir = if let Some(ref path) = command.path {
@@ -33,10 +35,10 @@ pub async fn deploy(command: DeployCommand) -> Result<()> {
             info!("Deploying {:?} {:?}", member_name, member_path);
             let path = member_path.to_str().map(|member| member.to_string());
             command.path = path;
-            deploy_single(command.clone(), member_path).await?;
+            deploy_single(command.clone()).await?;
         }
     } else {
-        deploy_single(command, curr_dir).await?;
+        deploy_single(command).await?;
     }
 
     Ok(())
@@ -44,10 +46,12 @@ pub async fn deploy(command: DeployCommand) -> Result<()> {
 
 /// Deploy a single package. This function does not check if the given directory is a worksapce or
 /// not. To do so use `deploy(..)`.
-pub async fn deploy_single(
-    command: DeployCommand,
-    curr_dir: PathBuf,
-) -> Result<fuel_tx::ContractId> {
+pub async fn deploy_single(command: DeployCommand) -> Result<fuel_tx::ContractId> {
+    let curr_dir = if let Some(ref path) = command.path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir()?
+    };
     let manifest = PackageManifestFile::from_file(curr_dir.join(MANIFEST_FILE_NAME))?;
     manifest.check_program_type(vec![TreeType::Contract])?;
 
