@@ -984,11 +984,16 @@ mod to_u64_map {
                 .value,
             val1
         );
-        // This assert currently fails. Not sure why yet
-        //    assert_eq!(
-        //        instance.get_from_enum_to_u64_map(key2).call().await.unwrap().value,
-        //        val2
-        //    );
+        assert_eq!(
+            instance
+                .methods()
+                .get_from_enum_to_u64_map(key2)
+                .call()
+                .await
+                .unwrap()
+                .value,
+            val2
+        );
         assert_eq!(
             instance
                 .methods()

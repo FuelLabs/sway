@@ -8,11 +8,11 @@ use ::identity::Identity;
 use ::revert::revert;
 use ::outputs::{Output, output_amount, output_count, output_type};
 
-const FAILED_TRANSFER_TO_OUTPUT_SIGNAL = 0xffff_ffff_ffff_0001;
+const FAILED_TRANSFER_TO_ADDRESS_SIGNAL = 0xffff_ffff_ffff_0001;
 
 /// Mint `amount` coins of the current contract's `asset_id` and transfer them
 /// to `to` by calling either force_transfer_to_contract() or
-/// transfer_to_output(), depending on the type of `Identity`.
+/// transfer_to_address(), depending on the type of `Identity`.
 pub fn mint_to(amount: u64, to: Identity) {
     mint(amount);
     transfer(amount, contract_id(), to);
@@ -35,7 +35,7 @@ pub fn mint_to_contract(amount: u64, to: ContractId) {
 /// the Address `to`.
 pub fn mint_to_address(amount: u64, to: Address) {
     mint(amount);
-    transfer_to_output(amount, contract_id(), to);
+    transfer_to_address(amount, contract_id(), to);
 }
 
 /// Mint `amount` coins of the current contract's `asset_id`.
@@ -54,7 +54,7 @@ pub fn burn(amount: u64) {
 
 /// Transfer `amount` coins of the current contract's `asset_id` and send them
 /// to `to` by calling either force_transfer_to_contract() or
-/// transfer_to_output(), depending on the type of `Identity`.
+/// transfer_to_address(), depending on the type of `Identity`.
 ///
 /// CAUTION !!!
 ///
@@ -63,7 +63,7 @@ pub fn burn(amount: u64) {
 /// to the PERMANENT LOSS OF COINS if not used with care.
 pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
     match to {
-        Identity::Address(addr) => transfer_to_output(amount, asset_id, addr),
+        Identity::Address(addr) => transfer_to_address(amount, asset_id, addr),
         Identity::ContractId(id) => force_transfer_to_contract(amount, asset_id, id),
     };
 }
@@ -84,33 +84,25 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: Contrac
 
 /// Transfer `amount` coins of type `asset_id` and send them to
 /// the address `to`.
-pub fn transfer_to_output(amount: u64, asset_id: ContractId, to: Address) {
+pub fn transfer_to_address(amount: u64, asset_id: ContractId, to: Address) {
     // maintain a manual index as we only have `while` loops in sway atm:
     let mut index = 0;
-    let mut output_index = 0;
-    let mut output_found = false;
 
     // If an output of type `OutputVariable` is found, check if its `amount` is
     // zero. As one cannot transfer zero coins to an output without a panic, a
     // variable output with a value of zero is by definition unused.
-    let outputs = output_count();
-    while index < outputs {
-        let type_of_output = output_type(index);
-        if let Output::Variable = type_of_output {
+    let number_of_outputs = output_count();
+    while index < number_of_outputs {
+        if let Output::Variable = output_type(index) {
             if output_amount(index) == 0 {
-                output_index = index;
-                output_found = true;
-                break; // break early and use the output we found
+                asm(r1: to.value, r2: index, r3: amount, r4: asset_id.value) {
+                    tro r1 r2 r3 r4;
+                };
+                return;
             }
         }
         index += 1;
     }
 
-    if !output_found {
-        revert(FAILED_TRANSFER_TO_OUTPUT_SIGNAL);
-    } else {
-        asm(r1: to.value, r2: output_index, r3: amount, r4: asset_id.value) {
-            tro r1 r2 r3 r4;
-        };
-    }
+    revert(FAILED_TRANSFER_TO_ADDRESS_SIGNAL);
 }
