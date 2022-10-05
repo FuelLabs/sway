@@ -133,7 +133,7 @@ async fn get_hashing_instance() -> (HashingTestContract, ContractId) {
     )
     .await
     .unwrap();
-    let instance = HashingTestContractBuilder::new(id.to_string(), wallet).build();
+    let instance = HashingTestContract::new(id.to_string(), wallet);
 
     (instance, id.into())
 }
@@ -149,9 +149,9 @@ mod sha256 {
         let expected_1 = Bits256(hash_u64(254, Hash::Sha256));
         let expected_2 = Bits256(hash_u64(253, Hash::Sha256));
 
-        let call_1 = instance.sha256_u8(254u8).call().await.unwrap();
-        let call_2 = instance.sha256_u8(254u8).call().await.unwrap();
-        let call_3 = instance.sha256_u8(253u8).call().await.unwrap();
+        let call_1 = instance.methods().sha256_u8(254u8).call().await.unwrap();
+        let call_2 = instance.methods().sha256_u8(254u8).call().await.unwrap();
+        let call_3 = instance.methods().sha256_u8(253u8).call().await.unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -167,9 +167,24 @@ mod sha256 {
         let expected_1 = Bits256(hash_u64(65534, Hash::Sha256));
         let expected_2 = Bits256(hash_u64(65533, Hash::Sha256));
 
-        let call_1 = instance.sha256_u16(65534u16).call().await.unwrap();
-        let call_2 = instance.sha256_u16(65534u16).call().await.unwrap();
-        let call_3 = instance.sha256_u16(65533u16).call().await.unwrap();
+        let call_1 = instance
+            .methods()
+            .sha256_u16(65534u16)
+            .call()
+            .await
+            .unwrap();
+        let call_2 = instance
+            .methods()
+            .sha256_u16(65534u16)
+            .call()
+            .await
+            .unwrap();
+        let call_3 = instance
+            .methods()
+            .sha256_u16(65533u16)
+            .call()
+            .await
+            .unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -185,9 +200,24 @@ mod sha256 {
         let expected_1 = Bits256(hash_u64(4294967294, Hash::Sha256));
         let expected_2 = Bits256(hash_u64(4294967293, Hash::Sha256));
 
-        let call_1 = instance.sha256_u32(4294967294u32).call().await.unwrap();
-        let call_2 = instance.sha256_u32(4294967294u32).call().await.unwrap();
-        let call_3 = instance.sha256_u32(4294967293u32).call().await.unwrap();
+        let call_1 = instance
+            .methods()
+            .sha256_u32(4294967294u32)
+            .call()
+            .await
+            .unwrap();
+        let call_2 = instance
+            .methods()
+            .sha256_u32(4294967294u32)
+            .call()
+            .await
+            .unwrap();
+        let call_3 = instance
+            .methods()
+            .sha256_u32(4294967293u32)
+            .call()
+            .await
+            .unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -204,16 +234,19 @@ mod sha256 {
         let expected_2 = Bits256(hash_u64(18446744073709551612, Hash::Sha256));
 
         let call_1 = instance
+            .methods()
             .sha256_u64(18446744073709551613)
             .call()
             .await
             .unwrap();
         let call_2 = instance
+            .methods()
             .sha256_u64(18446744073709551613)
             .call()
             .await
             .unwrap();
         let call_3 = instance
+            .methods()
             .sha256_u64(18446744073709551612)
             .call()
             .await
@@ -233,9 +266,9 @@ mod sha256 {
         let expected_1 = Bits256(hash_bool(true, Hash::Sha256));
         let expected_2 = Bits256(hash_bool(false, Hash::Sha256));
 
-        let call_1 = instance.sha256_bool(true).call().await.unwrap();
-        let call_2 = instance.sha256_bool(true).call().await.unwrap();
-        let call_3 = instance.sha256_bool(false).call().await.unwrap();
+        let call_1 = instance.methods().sha256_bool(true).call().await.unwrap();
+        let call_2 = instance.methods().sha256_bool(true).call().await.unwrap();
+        let call_3 = instance.methods().sha256_bool(false).call().await.unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -252,16 +285,19 @@ mod sha256 {
         let expected_2 = Bits256(hash_str("Nick", Hash::Sha256));
 
         let call_1 = instance
+            .methods()
             .sha256_str(SizedAsciiString::try_from("John").unwrap())
             .call()
             .await
             .unwrap();
         let call_2 = instance
+            .methods()
             .sha256_str(SizedAsciiString::try_from("John").unwrap())
             .call()
             .await
             .unwrap();
         let call_3 = instance
+            .methods()
             .sha256_str(SizedAsciiString::try_from("Nick").unwrap())
             .call()
             .await
@@ -290,9 +326,24 @@ mod sha256 {
         let expected_1 = Bits256(hash_b256(address1, Hash::Sha256));
         let expected_2 = Bits256(hash_b256(address2, Hash::Sha256));
 
-        let call_1 = instance.sha256_b256(Bits256(address1)).call().await.unwrap();
-        let call_2 = instance.sha256_b256(Bits256(address1)).call().await.unwrap();
-        let call_3 = instance.sha256_b256(Bits256(address2)).call().await.unwrap();
+        let call_1 = instance
+            .methods()
+            .sha256_b256(Bits256(address1))
+            .call()
+            .await
+            .unwrap();
+        let call_2 = instance
+            .methods()
+            .sha256_b256(Bits256(address1))
+            .call()
+            .await
+            .unwrap();
+        let call_3 = instance
+            .methods()
+            .sha256_b256(Bits256(address2))
+            .call()
+            .await
+            .unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -314,9 +365,24 @@ mod sha256 {
             Hash::Sha256,
         ));
 
-        let call_1 = instance.sha256_tuple((true, 5)).call().await.unwrap();
-        let call_2 = instance.sha256_tuple((true, 5)).call().await.unwrap();
-        let call_3 = instance.sha256_tuple((true, 6)).call().await.unwrap();
+        let call_1 = instance
+            .methods()
+            .sha256_tuple((true, 5))
+            .call()
+            .await
+            .unwrap();
+        let call_2 = instance
+            .methods()
+            .sha256_tuple((true, 5))
+            .call()
+            .await
+            .unwrap();
+        let call_3 = instance
+            .methods()
+            .sha256_tuple((true, 6))
+            .call()
+            .await
+            .unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -338,9 +404,9 @@ mod sha256 {
             Hash::Sha256,
         ));
 
-        let call_1 = instance.sha256_array(1, 5).call().await.unwrap();
-        let call_2 = instance.sha256_array(1, 5).call().await.unwrap();
-        let call_3 = instance.sha256_array(1, 6).call().await.unwrap();
+        let call_1 = instance.methods().sha256_array(1, 5).call().await.unwrap();
+        let call_2 = instance.methods().sha256_array(1, 5).call().await.unwrap();
+        let call_3 = instance.methods().sha256_array(1, 6).call().await.unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -356,9 +422,9 @@ mod sha256 {
         let expected_1 = Bits256(hash_enum([0, 0, 0, 0, 0, 0, 0, 0], Hash::Sha256));
         let expected_2 = Bits256(hash_enum([0, 0, 0, 0, 0, 0, 0, 1], Hash::Sha256));
 
-        let call_1 = instance.sha256_enum(true).call().await.unwrap();
-        let call_2 = instance.sha256_enum(true).call().await.unwrap();
-        let call_3 = instance.sha256_enum(false).call().await.unwrap();
+        let call_1 = instance.methods().sha256_enum(true).call().await.unwrap();
+        let call_2 = instance.methods().sha256_enum(true).call().await.unwrap();
+        let call_3 = instance.methods().sha256_enum(false).call().await.unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -388,9 +454,14 @@ mod sha256 {
             Hash::Sha256,
         ));
 
-        let call_1 = instance.sha256_struct(true).call().await.unwrap();
-        let call_2 = instance.sha256_struct(true).call().await.unwrap();
-        let call_3 = instance.sha256_struct(false).call().await.unwrap();
+        let call_1 = instance.methods().sha256_struct(true).call().await.unwrap();
+        let call_2 = instance.methods().sha256_struct(true).call().await.unwrap();
+        let call_3 = instance
+            .methods()
+            .sha256_struct(false)
+            .call()
+            .await
+            .unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -411,9 +482,9 @@ mod keccak256 {
         let expected_1 = Bits256(hash_u64(254, Hash::Keccak256));
         let expected_2 = Bits256(hash_u64(253, Hash::Keccak256));
 
-        let call_1 = instance.keccak256_u8(254u8).call().await.unwrap();
-        let call_2 = instance.keccak256_u8(254u8).call().await.unwrap();
-        let call_3 = instance.keccak256_u8(253u8).call().await.unwrap();
+        let call_1 = instance.methods().keccak256_u8(254u8).call().await.unwrap();
+        let call_2 = instance.methods().keccak256_u8(254u8).call().await.unwrap();
+        let call_3 = instance.methods().keccak256_u8(253u8).call().await.unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -429,9 +500,24 @@ mod keccak256 {
         let expected_1 = Bits256(hash_u64(65534, Hash::Keccak256));
         let expected_2 = Bits256(hash_u64(65533, Hash::Keccak256));
 
-        let call_1 = instance.keccak256_u16(65534u16).call().await.unwrap();
-        let call_2 = instance.keccak256_u16(65534u16).call().await.unwrap();
-        let call_3 = instance.keccak256_u16(65533u16).call().await.unwrap();
+        let call_1 = instance
+            .methods()
+            .keccak256_u16(65534u16)
+            .call()
+            .await
+            .unwrap();
+        let call_2 = instance
+            .methods()
+            .keccak256_u16(65534u16)
+            .call()
+            .await
+            .unwrap();
+        let call_3 = instance
+            .methods()
+            .keccak256_u16(65533u16)
+            .call()
+            .await
+            .unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -447,9 +533,24 @@ mod keccak256 {
         let expected_1 = Bits256(hash_u64(4294967294, Hash::Keccak256));
         let expected_2 = Bits256(hash_u64(4294967293, Hash::Keccak256));
 
-        let call_1 = instance.keccak256_u32(4294967294u32).call().await.unwrap();
-        let call_2 = instance.keccak256_u32(4294967294u32).call().await.unwrap();
-        let call_3 = instance.keccak256_u32(4294967293u32).call().await.unwrap();
+        let call_1 = instance
+            .methods()
+            .keccak256_u32(4294967294u32)
+            .call()
+            .await
+            .unwrap();
+        let call_2 = instance
+            .methods()
+            .keccak256_u32(4294967294u32)
+            .call()
+            .await
+            .unwrap();
+        let call_3 = instance
+            .methods()
+            .keccak256_u32(4294967293u32)
+            .call()
+            .await
+            .unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -466,16 +567,19 @@ mod keccak256 {
         let expected_2 = Bits256(hash_u64(18446744073709551612, Hash::Keccak256));
 
         let call_1 = instance
+            .methods()
             .keccak256_u64(18446744073709551613)
             .call()
             .await
             .unwrap();
         let call_2 = instance
+            .methods()
             .keccak256_u64(18446744073709551613)
             .call()
             .await
             .unwrap();
         let call_3 = instance
+            .methods()
             .keccak256_u64(18446744073709551612)
             .call()
             .await
@@ -495,9 +599,24 @@ mod keccak256 {
         let expected_1 = Bits256(hash_bool(true, Hash::Keccak256));
         let expected_2 = Bits256(hash_bool(false, Hash::Keccak256));
 
-        let call_1 = instance.keccak256_bool(true).call().await.unwrap();
-        let call_2 = instance.keccak256_bool(true).call().await.unwrap();
-        let call_3 = instance.keccak256_bool(false).call().await.unwrap();
+        let call_1 = instance
+            .methods()
+            .keccak256_bool(true)
+            .call()
+            .await
+            .unwrap();
+        let call_2 = instance
+            .methods()
+            .keccak256_bool(true)
+            .call()
+            .await
+            .unwrap();
+        let call_3 = instance
+            .methods()
+            .keccak256_bool(false)
+            .call()
+            .await
+            .unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -514,16 +633,19 @@ mod keccak256 {
         let expected_2 = Bits256(hash_str("Nick", Hash::Keccak256));
 
         let call_1 = instance
+            .methods()
             .keccak256_str(SizedAsciiString::try_from("John").unwrap())
             .call()
             .await
             .unwrap();
         let call_2 = instance
+            .methods()
             .keccak256_str(SizedAsciiString::try_from("John").unwrap())
             .call()
             .await
             .unwrap();
         let call_3 = instance
+            .methods()
             .keccak256_str(SizedAsciiString::try_from("Nick").unwrap())
             .call()
             .await
@@ -552,9 +674,24 @@ mod keccak256 {
         let expected_1 = Bits256(hash_b256(address1, Hash::Keccak256));
         let expected_2 = Bits256(hash_b256(address2, Hash::Keccak256));
 
-        let call_1 = instance.keccak256_b256(Bits256(address1)).call().await.unwrap();
-        let call_2 = instance.keccak256_b256(Bits256(address1)).call().await.unwrap();
-        let call_3 = instance.keccak256_b256(Bits256(address2)).call().await.unwrap();
+        let call_1 = instance
+            .methods()
+            .keccak256_b256(Bits256(address1))
+            .call()
+            .await
+            .unwrap();
+        let call_2 = instance
+            .methods()
+            .keccak256_b256(Bits256(address1))
+            .call()
+            .await
+            .unwrap();
+        let call_3 = instance
+            .methods()
+            .keccak256_b256(Bits256(address2))
+            .call()
+            .await
+            .unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -576,9 +713,24 @@ mod keccak256 {
             Hash::Keccak256,
         ));
 
-        let call_1 = instance.keccak256_tuple((true, 5)).call().await.unwrap();
-        let call_2 = instance.keccak256_tuple((true, 5)).call().await.unwrap();
-        let call_3 = instance.keccak256_tuple((true, 6)).call().await.unwrap();
+        let call_1 = instance
+            .methods()
+            .keccak256_tuple((true, 5))
+            .call()
+            .await
+            .unwrap();
+        let call_2 = instance
+            .methods()
+            .keccak256_tuple((true, 5))
+            .call()
+            .await
+            .unwrap();
+        let call_3 = instance
+            .methods()
+            .keccak256_tuple((true, 6))
+            .call()
+            .await
+            .unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -600,9 +752,24 @@ mod keccak256 {
             Hash::Keccak256,
         ));
 
-        let call_1 = instance.keccak256_array(1, 5).call().await.unwrap();
-        let call_2 = instance.keccak256_array(1, 5).call().await.unwrap();
-        let call_3 = instance.keccak256_array(1, 6).call().await.unwrap();
+        let call_1 = instance
+            .methods()
+            .keccak256_array(1, 5)
+            .call()
+            .await
+            .unwrap();
+        let call_2 = instance
+            .methods()
+            .keccak256_array(1, 5)
+            .call()
+            .await
+            .unwrap();
+        let call_3 = instance
+            .methods()
+            .keccak256_array(1, 6)
+            .call()
+            .await
+            .unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -618,9 +785,24 @@ mod keccak256 {
         let expected_1 = Bits256(hash_enum([0, 0, 0, 0, 0, 0, 0, 0], Hash::Keccak256));
         let expected_2 = Bits256(hash_enum([0, 0, 0, 0, 0, 0, 0, 1], Hash::Keccak256));
 
-        let call_1 = instance.keccak256_enum(true).call().await.unwrap();
-        let call_2 = instance.keccak256_enum(true).call().await.unwrap();
-        let call_3 = instance.keccak256_enum(false).call().await.unwrap();
+        let call_1 = instance
+            .methods()
+            .keccak256_enum(true)
+            .call()
+            .await
+            .unwrap();
+        let call_2 = instance
+            .methods()
+            .keccak256_enum(true)
+            .call()
+            .await
+            .unwrap();
+        let call_3 = instance
+            .methods()
+            .keccak256_enum(false)
+            .call()
+            .await
+            .unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
@@ -650,9 +832,24 @@ mod keccak256 {
             Hash::Keccak256,
         ));
 
-        let call_1 = instance.keccak256_struct(true).call().await.unwrap();
-        let call_2 = instance.keccak256_struct(true).call().await.unwrap();
-        let call_3 = instance.keccak256_struct(false).call().await.unwrap();
+        let call_1 = instance
+            .methods()
+            .keccak256_struct(true)
+            .call()
+            .await
+            .unwrap();
+        let call_2 = instance
+            .methods()
+            .keccak256_struct(true)
+            .call()
+            .await
+            .unwrap();
+        let call_3 = instance
+            .methods()
+            .keccak256_struct(false)
+            .call()
+            .await
+            .unwrap();
 
         assert_eq!(call_1.value, call_2.value);
         assert_ne!(call_1.value, call_3.value);
