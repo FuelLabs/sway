@@ -14,7 +14,7 @@ async fn get_evm_test_instance() -> (EvmTestContract, ContractId) {
     )
     .await
     .unwrap();
-    let instance = EvmTestContractBuilder::new(id.to_string(), wallet).build();
+    let instance = EvmTestContract::new(id.to_string(), wallet);
 
     (instance, id.into())
 }
@@ -24,7 +24,12 @@ async fn can_call_from_literal() {
     let (instance, _) = get_evm_test_instance().await;
 
     let raw_address = [6; 32]; // hardcoded in the contract to test calling `from()` with a literal
-    let result = instance.evm_address_from_literal().call().await.unwrap();
+    let result = instance
+        .methods()
+        .evm_address_from_literal()
+        .call()
+        .await
+        .unwrap();
     let returned_value = result.value.value;
     assert_eq!(returned_value.0[0..12], [0; 12]);
     assert_eq!(returned_value.0[12..32], raw_address[12..32]);
@@ -36,6 +41,7 @@ async fn can_call_from_argument() {
 
     let raw_address = [7; 32];
     let result = instance
+        .methods()
         .evm_address_from_argument(Bits256(raw_address))
         .call()
         .await

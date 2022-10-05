@@ -104,7 +104,7 @@ pub fn serialize_to_storage_slots(
             unimplemented!("Arrays in storage have not been implemented yet.")
         }
         (Type::Struct(aggregate), ConstantValue::Struct(vec)) => {
-            match &context.aggregates[aggregate.0] {
+            match aggregate.get_content(context) {
                 AggregateContent::FieldTypes(field_tys) => vec
                     .iter()
                     .zip(field_tys.iter())
@@ -202,7 +202,7 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
             unimplemented!("Arrays in storage have not been implemented yet.")
         }
         (Type::Struct(aggregate), ConstantValue::Struct(vec)) => {
-            match &context.aggregates[aggregate.0] {
+            match aggregate.get_content(context) {
                 AggregateContent::FieldTypes(field_tys) => vec
                     .iter()
                     .zip(field_tys.iter())

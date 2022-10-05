@@ -15,7 +15,7 @@ struct Record {
 
 // check: local ptr { u64, u64 } record
 
-// check: $(record_undef=$VAL) = const { u64, u64 } { u64 undef, u64 undef }
+// check: $(record_undef=$VAL) = get_ptr ptr { u64, u64 } $ID, ptr { u64, u64 }, 0
 // check: $(forty=$VAL) = const u64 40
 // check: $(record_0=$VAL) = insert_value $record_undef, { u64, u64 }, $forty, 0
 // check: $(two=$VAL) = const u64 2

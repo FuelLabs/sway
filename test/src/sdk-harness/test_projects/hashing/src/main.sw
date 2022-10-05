@@ -95,15 +95,19 @@ impl MyContract for Contract {
 
     fn sha256_struct(location: bool) -> b256 {
         sha256(Person {
-            name: "John", age: 18, birth_place: if location {
+            name: "John",
+            age: 18,
+            birth_place: if location {
                 Location::Earth
             } else {
                 Location::Mars
             },
             stats: Stats {
-                strength: 10, agility: 9
+                strength: 10,
+                agility: 9,
             },
-            alive: true, random_b256: ~b256::min()
+            alive: true,
+            random_b256: ~b256::min(),
         })
     }
 
@@ -153,15 +157,19 @@ impl MyContract for Contract {
 
     fn keccak256_struct(location: bool) -> b256 {
         keccak256(Person {
-            name: "John", age: 18, birth_place: if location {
+            name: "John",
+            age: 18,
+            birth_place: if location {
                 Location::Earth
             } else {
                 Location::Mars
             },
             stats: Stats {
-                strength: 10, agility: 9
+                strength: 10,
+                agility: 9,
             },
-            alive: true, random_b256: ~b256::min()
+            alive: true,
+            random_b256: ~b256::min(),
         })
     }
 }

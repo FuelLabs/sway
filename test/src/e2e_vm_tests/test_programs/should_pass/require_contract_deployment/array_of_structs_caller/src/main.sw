@@ -3,16 +3,16 @@ use array_of_structs_abi::{Id, TestContract, Wrapper};
 use std::{assert::assert, hash::sha256};
 
 fn main() -> u64 {
-    let addr = abi(TestContract, 0x4c963e7006e41055f19915d5ac64bd68b971e05efee75ba85a23862b80837d7a);
+    let addr = abi(TestContract, 0xda0aa9fce0e09044c49954b15d9243bedf40c97e8d64be5c36de4b2d25b1a43a);
 
     let input = [Wrapper {
         id: Id {
-            number: 42, 
+            number: 42,
         },
     },
     Wrapper {
         id: Id {
-            number: 66, 
+            number: 66,
         },
     },
     ];

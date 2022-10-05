@@ -67,7 +67,7 @@ pub fn parse_file(
         Ok(token_stream) => token_stream,
         Err(error) => return Err(ParseFileError::Lex(error)),
     };
-    match Parser::new(&token_stream, handler).parse_to_end() {
+    match Parser::new(handler, &token_stream).parse_to_end() {
         Ok((module, _parser_consumed)) => Ok(module),
         Err(error) => Err(ParseFileError::Parse(error)),
     }
