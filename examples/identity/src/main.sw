@@ -17,7 +17,7 @@ use std::{
     },
     token::{
         force_transfer_to_contract,
-        transfer_to_output,
+        transfer_to_address,
     },
 };
 
@@ -48,7 +48,7 @@ impl IdentityExample for Contract {
 
         // ANCHOR: different_executions
         match my_identity {
-            Identity::Address(identity) => transfer_to_output(amount, token_id, identity),
+            Identity::Address(identity) => transfer_to_address(amount, token_id, identity),
             Identity::ContractId(identity) => force_transfer_to_contract(amount, token_id, identity),
         };
         // ANCHOR_END: different_executions

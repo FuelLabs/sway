@@ -8,7 +8,7 @@ use std::{
     context::msg_amount,
     token::{
         mint_to_address,
-        transfer_to_output,
+        transfer_to_address,
     },
 };
 
@@ -39,6 +39,6 @@ impl LiquidityPool for Contract {
         let amount_to_transfer = msg_amount() / 2;
 
         // Transfer base token to recipient.
-        transfer_to_output(amount_to_transfer, BASE_TOKEN, recipient);
+        transfer_to_address(amount_to_transfer, BASE_TOKEN, recipient);
     }
 }
