@@ -23,12 +23,12 @@ struct Entry {
 
 // check: local ptr { b256, { bool, u64 } } record
 
-// check: $(entry_undef=$VAL) = const { bool, u64 } { bool undef, u64 undef }
+// check: $(entry_undef=$VAL) = get_ptr ptr { bool, u64 } $ID, ptr { bool, u64 }, 0
 // check: $(t=$VAL) = const bool true
 // check: $(entry_0=$VAL) = insert_value $entry_undef, { bool, u64 }, $t, 0
 // check: $(sevsix=$VAL) = const u64 76
 // check: $(entry=$VAL) = insert_value $entry_0, { bool, u64 }, $sevsix, 1
-// check: $(record_undef=$VAL) = const { b256, { bool, u64 } } { b256 undef, { bool, u64 } { bool undef, u64 undef } }
+// check: $(record_undef=$VAL) = get_ptr ptr { b256, { bool, u64 } } $ID, ptr { b256, { bool, u64 } }, 0
 // check: $(b256_lit=$VAL) = const b256 0x0102030405060708010203040506070801020304050607080102030405060708
 // check: $(record_0=$VAL) = insert_value $record_undef, { b256, { bool, u64 } }, $b256_lit, 0
 // check: $(record=$VAL) = insert_value $record_0, { b256, { bool, u64 } }, $entry, 1

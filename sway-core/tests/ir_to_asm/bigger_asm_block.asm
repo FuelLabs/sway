@@ -6,7 +6,7 @@ DATA_SECTION_OFFSET[32..64]
 lw   $ds $is 1
 add  $$ds $$ds $is
 move $r2 $sp                  ; save locals base register
-cfei i32                      ; allocate 32 bytes for all locals
+cfei i32                      ; allocate 32 bytes for locals
 addi $r0 $r2 i0               ; get offset reg for get_ptr
 lw   $r1 data_0               ; literal instantiation
 addi $r0 $r2 i0               ; get store offset
@@ -19,5 +19,5 @@ meq  $r0 $r2 $r1 $r0          ; asm block
 ret  $r0
 noop                          ; word-alignment of data section
 .data:
-data_0 .b256 0x0202020202020202020202020202020202020202020202020202020202020202
-data_1 .b256 0x0303030303030303030303030303030303030303030303030303030303030303
+data_0 .bytes[32] 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02 02  ................................
+data_1 .bytes[32] 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03 03  ................................

@@ -30,7 +30,7 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-fuels = {{ version = "0.24", features = ["fuel-core-lib"] }}
+fuels = {{ version = "0.25", features = ["fuel-core-lib"] }}
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 
 [[test]]
@@ -126,7 +126,7 @@ async fn get_contract_instance() -> (MyContract, ContractId) {
     .await
     .unwrap();
 
-    let instance = MyContractBuilder::new(id.to_string(), wallet).build();
+    let instance = MyContract::new(id.to_string(), wallet);
 
     (instance, id.into())
 }

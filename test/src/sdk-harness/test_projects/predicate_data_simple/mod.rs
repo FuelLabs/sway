@@ -159,7 +159,7 @@ async fn valid_predicate_data_simple() {
         amount_to_predicate,
         asset_id,
         receiver_address,
-        predicate_data,
+        predicate_data.resolve(0),
     )
     .await;
 
@@ -196,7 +196,7 @@ async fn invalid_predicate_data_simple() {
         amount_to_predicate,
         asset_id,
         receiver_address,
-        predicate_data,
+        predicate_data.resolve(0),
     )
     .await;
 
