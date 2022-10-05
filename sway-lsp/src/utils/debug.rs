@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use crate::core::token::{AstToken, Token, TokenMap, TypedAstToken};
 use crate::utils::{common::get_range_from_span, token};
-use sway_core::{Expression, ExpressionKind, Literal};
+use sway_core::language::parse_tree::{Expression, ExpressionKind, Literal};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 

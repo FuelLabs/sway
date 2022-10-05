@@ -1,4 +1,4 @@
-use crate::Expression;
+use crate::language::parse_tree::Expression;
 
 #[derive(Debug, Clone)]
 pub struct ReturnStatement {

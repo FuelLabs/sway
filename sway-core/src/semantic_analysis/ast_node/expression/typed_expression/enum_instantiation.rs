@@ -1,4 +1,4 @@
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*};
+use crate::{error::*, language::parse_tree::*, semantic_analysis::*, type_system::*};
 
 use sway_types::{Ident, Spanned};
 

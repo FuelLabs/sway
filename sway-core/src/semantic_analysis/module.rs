@@ -1,6 +1,6 @@
 use crate::{
-    declaration_engine::declaration_engine::*, error::*, parse_tree::*, semantic_analysis::*,
-    type_system::*,
+    declaration_engine::declaration_engine::*, error::*, language::parse_tree::*,
+    semantic_analysis::*, type_system::*,
 };
 
 use sway_types::{Ident, Spanned};

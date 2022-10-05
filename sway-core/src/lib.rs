@@ -10,8 +10,8 @@ mod control_flow_analysis;
 mod convert_parse_tree;
 pub mod declaration_engine;
 pub mod ir_generation;
+pub mod language;
 mod metadata;
-pub mod parse_tree;
 pub mod semantic_analysis;
 pub mod source_map;
 mod style;
@@ -35,13 +35,12 @@ pub use semantic_analysis::{
     TyDeclaration, TyFunctionDeclaration, TyModule, TyProgram, TyProgramKind,
 };
 pub mod types;
-pub use crate::parse_tree::{
-    Declaration, Expression, ParseModule, ParseProgram, TreeType, UseStatement, *,
-};
 
 pub use error::{CompileError, CompileResult, CompileWarning};
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
+
+use language::parse_tree::*;
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
@@ -817,7 +816,7 @@ fn test_parenthesized() {
 
 #[test]
 fn test_unary_ordering() {
-    use crate::parse_tree::declaration::FunctionDeclaration;
+    use crate::language::parse_tree::declaration::FunctionDeclaration;
     let prog = parse(
         r#"
     script;

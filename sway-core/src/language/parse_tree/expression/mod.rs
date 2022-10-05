@@ -1,7 +1,7 @@
 use crate::{
-    parse_tree::{CallPath, Literal},
+    language::parse_tree::{CallPath, CodeBlock, Literal},
     type_system::TypeBinding,
-    CodeBlock, TypeInfo,
+    TypeInfo,
 };
 use sway_types::{ident::Ident, Span, Spanned};
 

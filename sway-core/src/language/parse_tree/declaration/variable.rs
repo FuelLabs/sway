@@ -1,4 +1,4 @@
-use crate::{parse_tree::Expression, type_system::TypeInfo, Ident};
+use crate::{language::parse_tree::Expression, type_system::TypeInfo, Ident};
 
 use sway_types::span::Span;
 

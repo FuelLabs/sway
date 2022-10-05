@@ -1,6 +1,6 @@
 use crate::{
+    language::parse_tree::declaration::Purity,
     namespace::Path,
-    parse_tree::declaration::Purity,
     semantic_analysis::{ast_node::Mode, Namespace},
     type_system::{
         insert_type, monomorphize, unify_with_self, CopyTypes, EnforceTypeArguments,

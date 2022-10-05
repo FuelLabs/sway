@@ -1,4 +1,7 @@
-use crate::{CallPath, Literal, TypeInfo};
+use crate::{
+    language::parse_tree::{CallPath, Literal},
+    TypeInfo,
+};
 
 use sway_types::{ident::Ident, span::Span, Spanned};
 

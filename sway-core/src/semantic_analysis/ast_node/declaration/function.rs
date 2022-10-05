@@ -2,7 +2,7 @@ mod function_parameter;
 pub use function_parameter::*;
 
 use crate::{
-    declaration_engine::declaration_engine::de_insert_function, error::*, parse_tree::*,
+    declaration_engine::declaration_engine::de_insert_function, error::*, language::parse_tree::*,
     semantic_analysis::*, style::*, type_system::*,
 };
 use sha2::{Digest, Sha256};

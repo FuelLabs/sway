@@ -24,8 +24,10 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    semantic_analysis::namespace, source_map::SourceMap, BytecodeOrLib, CompileError,
-    CompileResult, ParseProgram, TreeType, TyProgram,
+    language::parse_tree::{ParseProgram, TreeType},
+    semantic_analysis::namespace,
+    source_map::SourceMap,
+    BytecodeOrLib, CompileError, CompileResult, TyProgram,
 };
 use sway_types::{Ident, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
 use sway_utils::constants;

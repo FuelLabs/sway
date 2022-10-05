@@ -19,7 +19,7 @@ pub use variable::*;
 use crate::{
     declaration_engine::{declaration_engine::*, declaration_id::DeclarationId},
     error::*,
-    parse_tree::*,
+    language::parse_tree::*,
     semantic_analysis::*,
     type_system::*,
 };

@@ -1,4 +1,4 @@
-use crate::AstNode;
+use crate::language::parse_tree::AstNode;
 
 use sway_types::{span::Span, Spanned};
 

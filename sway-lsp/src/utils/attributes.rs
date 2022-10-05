@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::core::token::{AstToken, Token};
-use sway_core::{Attribute, AttributeKind, AttributesMap, Declaration};
+use sway_core::{language::parse_tree::Declaration, Attribute, AttributeKind, AttributesMap};
 
 pub(crate) fn attributes_map(token: &Token) -> Option<AttributesMap> {
     match &token.parsed {

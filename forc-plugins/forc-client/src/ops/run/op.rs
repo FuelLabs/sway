@@ -8,7 +8,7 @@ use fuels_signers::{provider::Provider, Wallet};
 use fuels_types::bech32::Bech32Address;
 use futures::TryFutureExt;
 use std::{io::Write, path::PathBuf, str::FromStr};
-use sway_core::TreeType;
+use sway_core::language::parse_tree::TreeType;
 use tracing::info;
 
 use crate::ops::{parameters::TxParameters, run::cmd::RunCommand};

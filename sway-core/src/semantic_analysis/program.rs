@@ -5,8 +5,8 @@ use super::{
 use crate::{
     declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait, de_get_storage},
     error::*,
+    language::parse_tree::{ParseProgram, Purity, TreeType},
     metadata::MetadataManager,
-    parse_tree::{ParseProgram, Purity, TreeType},
     semantic_analysis::{
         namespace::{self, Namespace},
         TyModule, TypeCheckContext,
