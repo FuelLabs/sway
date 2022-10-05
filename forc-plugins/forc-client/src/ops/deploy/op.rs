@@ -16,7 +16,7 @@ use crate::ops::{deploy::cmd::DeployCommand, parameters::TxParameters};
 
 /// If the provided path (`DeployCommand.path`, or if it is not provided the current directory)
 /// contains a workspace manifest file, `deploy` will be deploying the workspace members in the
-/// order that their listing in the manifest file. If the provided path contains only a package
+/// order of their declaration in the manifest file. If the provided path contains only a package
 /// manifest file only that package is going to be deployed.
 pub async fn deploy(command: DeployCommand) -> Result<()> {
     let mut command = command;
