@@ -177,7 +177,7 @@ pub fn lex_commented(
                         position: index,
                         close_delimiter,
                     };
-                    let span = span(src, &path, index, index + character.len_utf8());
+                    let span = span_one(src, &path, index, character);
                     error(handler, LexError { kind, span });
                 }
                 Some((parent, open_index, open_delimiter)) => {
@@ -189,7 +189,7 @@ pub fn lex_commented(
                             open_delimiter,
                             close_delimiter,
                         };
-                        let span = span(src, &path, index, index + character.len_utf8());
+                        let span = span_one(src, &path, index, character);
                         error(handler, LexError { kind, span });
                     }
                     token_trees = lex_close_delimiter(
@@ -230,7 +230,7 @@ pub fn lex_commented(
             position: index,
             character,
         };
-        let span = span(src, &path, index, index + character.len_utf8());
+        let span = span_one(src, &path, index, character);
         error(handler, LexError { kind, span });
         continue;
     }
@@ -241,8 +241,7 @@ pub fn lex_commented(
             open_position: open_index,
             open_delimiter,
         };
-        let open_end = open_index + open_delimiter.as_open_char().len_utf8();
-        let span = span(src, &path, open_index, open_end);
+        let span = span_one(src, &path, open_index, open_delimiter.as_open_char());
         error(handler, LexError { kind, span });
 
         token_trees = lex_close_delimiter(
@@ -526,7 +525,7 @@ fn parse_escape_code(
                 None => return Err(None),
                 Some((_, '{')) => (),
                 Some((_, unexpected_char)) => {
-                    let span = span(src, path, index, index + unexpected_char.len_utf8());
+                    let span = span_one(src, path, index, unexpected_char);
                     let kind = LexErrorKind::UnicodeEscapeMissingBrace { position: index };
                     return error(kind, span);
                 }
@@ -544,7 +543,7 @@ fn parse_escape_code(
                 };
                 let digit = match digit.to_digit(16) {
                     None => {
-                        let span = span(src, path, position, position + digit.len_utf8());
+                        let span = span_one(src, path, position, digit);
                         let kind = LexErrorKind::InvalidUnicodeEscapeDigit { position };
                         return error(kind, span);
                     }
@@ -575,7 +574,7 @@ fn parse_escape_code(
         }
         Some((index, unexpected_char)) => error(
             LexErrorKind::InvalidEscapeCode { position: index },
-            span(src, path, index, index + unexpected_char.len_utf8()),
+            span_one(src, path, index, unexpected_char),
         ),
     }
 }
@@ -744,6 +743,10 @@ fn span_until(
 ) -> Span {
     let end = char_indices.peek().map_or(src.len(), |(end, _)| *end);
     span(src, path, start, end)
+}
+
+fn span_one(src: &Arc<str>, path: &Option<Arc<PathBuf>>, start: usize, c: char) -> Span {
+    span(src, &path, start, start + c.len_utf8())
 }
 
 fn span(src: &Arc<str>, path: &Option<Arc<PathBuf>>, start: usize, end: usize) -> Span {
