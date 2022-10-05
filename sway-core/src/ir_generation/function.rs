@@ -546,7 +546,7 @@ impl FnCompiler {
                 let val_exp = arguments[1].clone();
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = to_typeinfo(val_exp.return_type, &span).unwrap();
+                let val_ty = to_typeinfo(val_exp.return_type, &span)?;
                 if !val_ty.is_copy_type() {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
@@ -569,7 +569,7 @@ impl FnCompiler {
                 let val_exp = arguments[1].clone();
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = to_typeinfo(val_exp.return_type, &span).unwrap();
+                let val_ty = to_typeinfo(val_exp.return_type, &span)?;
                 if val_ty != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
