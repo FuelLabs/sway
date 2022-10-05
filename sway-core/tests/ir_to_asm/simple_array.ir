@@ -2,7 +2,7 @@ script {
     fn main() -> bool {
         local ptr [bool; 3] a
 
-        entry:
+        entry():
         v0 = const [bool; 3] [bool undef, bool undef, bool undef]
         v1 = const bool false
         v2 = const u64 0

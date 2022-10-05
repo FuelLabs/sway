@@ -2,33 +2,31 @@ script {
     fn main() -> u64 {
         local ptr { u64 } t
 
-        entry:
+        entry():
         v0 = const { u64 } { u64 42 }
-        br block3
+        br block3(v0)
 
-        block3:
-        v1 = phi(entry: v0)
+        block3(v1: u64):
         v2 = const { u64, ( u64 | { u64 } ) } { u64 1, ( u64 | { u64 } ) undef }
         v3 = insert_value v2, { u64, ( u64 | { u64 } ) }, v1, 1
         v4 = extract_value v3, { u64, ( u64 | { u64 } ) }, 0
         v5 = const u64 1
         v6 = cmp eq v4 v5
-        cbr v6, block0, block1
+        cbr v6, block0(), block1()
 
-        block0:
+        block0():
         v7 = extract_value v3, { u64, ( u64 | { u64 } ) }, 1, 1
         v8 = get_ptr ptr { u64 } t, ptr { u64 }, 0
         store v7, ptr v8
         v9 = get_ptr ptr { u64 } t, ptr { u64 }, 0
         v10 = extract_value v9, { u64 }, 0
-        br block2
+        br block2(v10)
 
-        block1:
+        block1():
         v11 = const u64 0
-        br block2
+        br block2(v11)
 
-        block2:
-        v12 = phi(block0: v10, block1: v11)
+        block2(v12: u64):
         ret u64 v12
     }
 }

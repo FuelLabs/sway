@@ -67,10 +67,10 @@ eq   $r0 $r0 $zero            ; asm block
 jnzi $r0 i68
 ji   i71
 rvrt $zero                    ; asm block
-move $r0 $zero                ; branch to phi value
+move $r0 $zero                ; parameter from branch to block argument
 ji   i72
-move $r0 $zero                ; branch to phi value
-move $r0 $zero                ; branch to phi value
+move $r0 $zero                ; parameter from branch to block argument
+move $r0 $zero                ; parameter from branch to block argument
 addi $r0 $r4 i160             ; get offset reg for get_ptr
 move $r1 $sp                  ; save register for temporary stack value
 cfei i32                      ; allocate 32 bytes for temporary struct
@@ -151,10 +151,10 @@ eq   $r0 $r0 $zero            ; asm block
 jnzi $r0 i152
 ji   i155
 rvrt $zero                    ; asm block
-move $r0 $zero                ; branch to phi value
+move $r0 $zero                ; parameter from branch to block argument
 ji   i156
-move $r0 $zero                ; branch to phi value
-move $r0 $zero                ; branch to phi value
+move $r0 $zero                ; parameter from branch to block argument
+move $r0 $zero                ; parameter from branch to block argument
 lw   $r0 data_12              ; literal instantiation
 ret  $r0
 noop                          ; word-alignment of data section

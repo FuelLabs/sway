@@ -13,25 +13,23 @@ contract {
         local ptr u64 size
         local ptr u64 val
 
-        entry:
+        entry():
         v0 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !5
-        br block7, !9
+        br block7(v0), !9
 
-        block7:
-        v1 = phi(entry: v0), !12
+        block7(v1 !12: b256):
         v2 = get_ptr mut ptr b256 result_buffer, ptr b256, 0, !14
         store v1, ptr v2, !15
         v3 = const bool false
         v4 = asm(r1: v3, r2) -> bool r2, !17 {
             eq     r2 r1 zero, !18
         }
-        br block8, !12
+        br block8(v4), !12
 
-        block8:
-        v5 = phi(block7: v4)
-        cbr v5, sha256_0_block0, sha256_0_block1, !19
+        block8(v5: bool):
+        cbr v5, sha256_0_block0(), sha256_0_block1(), !19
 
-        sha256_0_block0:
+        sha256_0_block0():
         v6 = get_ptr mut ptr b256 result_buffer, ptr b256, 0, !21
         v7 = load ptr v6, !22
         v8 = const u64 22, !23
@@ -43,9 +41,9 @@ contract {
             s256   hash buffer eight_bytes, !30
             cfsi    i8, !31
         }
-        br sha256_0_block2, !7
+        br sha256_0_block2(v10), !7
 
-        sha256_0_block1:
+        sha256_0_block1():
         v11 = get_ptr ptr u64 size, ptr u64, 0, !33
         v12 = const u64 8
         store v12, ptr v11, !34
@@ -57,14 +55,12 @@ contract {
         v17 = asm(hash: v14, ptr: v8, bytes: v16) -> b256 hash, !42 {
             s256   hash ptr bytes, !43
         }
-        br sha256_0_block2, !7
+        br sha256_0_block2(v17), !7
 
-        sha256_0_block2:
-        v18 = phi(sha256_0_block0: v10, sha256_0_block1: v17), !7
-        br block6, !7
+        sha256_0_block2(v18 !7: b256):
+        br block6(v18), !7
 
-        block6:
-        v19 = phi(sha256_0_block2: v18), !44
+        block6(v19 !44: b256):
         v20 = get_ptr ptr b256 key, ptr b256, 0, !45
         store v19, ptr v20, !45
         v21 = get_ptr ptr u64 val, ptr u64, 0, !46
@@ -85,42 +81,37 @@ contract {
         v32 = get_ptr ptr u64 val, ptr u64, 0, !53
         v33 = load ptr v32, !53
         v34 = cmp eq v31 v33, !44
-        br block9, !44
+        br block9(v34), !44
 
-        block9:
-        v35 = phi(block6: v34), !56
+        block9(v35 !56: bool):
         v36 = asm(r1: v35, r2) -> bool r2, !57 {
             eq     r2 r1 zero, !18
         }
-        br block11, !58
+        br block11(v36), !58
 
-        block11:
-        v37 = phi(block9: v36)
-        cbr v37, assert_3_block0, assert_3_block1, !59
+        block11(v37: bool):
+        cbr v37, assert_3_block0(), assert_3_block1(), !59
 
-        assert_3_block0:
+        assert_3_block0():
         v38 = const u64 0, !60
         v39 = asm(r1: v38) {
             rvrt   r1, !62
         }
         v40 = const unit ()
-        br block12, !64
+        br block12(v40), !64
 
-        block12:
-        v41 = phi(assert_3_block0: v40)
-        br assert_3_block2, !55
+        block12(v41: ()):
+        br assert_3_block2(v41), !55
 
-        assert_3_block1:
+        assert_3_block1():
         v42 = const unit ()
-        br assert_3_block2, !55
+        br assert_3_block2(v42), !55
 
-        assert_3_block2:
-        v43 = phi(block12: v41, assert_3_block1: v42), !55
+        assert_3_block2(v43 !55: ()):
         v44 = const unit ()
-        br block10, !55
+        br block10(v44), !55
 
-        block10:
-        v45 = phi(assert_3_block2: v44), !65
+        block10(v45: ()):
         v46 = get_ptr ptr { u64, u64, u64, u64 } q, ptr { u64, u64, u64, u64 }, 0, !66
         v47 = const { u64, u64, u64, u64 } { u64 1, u64 2, u64 4, u64 100 }, !67
         store v47, ptr v46, !66
@@ -156,90 +147,76 @@ contract {
         v70 = get_ptr ptr { u64, u64, u64, u64 } r, ptr { u64, u64, u64, u64 }, 0, !84
         v71 = extract_value v70, { u64, u64, u64, u64 }, 0, !83
         v72 = cmp eq v69 v71, !65
-        br block13, !65
+        br block13(v72), !65
 
-        block13:
-        v73 = phi(block10: v72)
-        cbr v73, block0, block1, !85
+        block13(v73: bool):
+        cbr v73, block0(v73), block1(v73), !85
 
-        block0:
-        v74 = phi(block13: v73), !86
+        block0(v74 !86: bool):
         v75 = get_ptr ptr { u64, u64, u64, u64 } q, ptr { u64, u64, u64, u64 }, 0, !87
         v76 = extract_value v75, { u64, u64, u64, u64 }, 1, !88
         v77 = get_ptr ptr { u64, u64, u64, u64 } r, ptr { u64, u64, u64, u64 }, 0, !89
         v78 = extract_value v77, { u64, u64, u64, u64 }, 1, !88
         v79 = cmp eq v76 v78, !86
-        br block14, !86
+        br block14(v79), !86
 
-        block14:
-        v80 = phi(block0: v79)
-        br block1, !85
+        block14(v80: bool):
+        br block1(v80), !85
 
-        block1:
-        v81 = phi(block13: v73, block14: v80)
-        cbr v81, block2, block3, !90
+        block1(v81: bool):
+        cbr v81, block2(v81), block3(v81), !90
 
-        block2:
-        v82 = phi(block1: v81), !91
+        block2(v82 !91: bool):
         v83 = get_ptr ptr { u64, u64, u64, u64 } q, ptr { u64, u64, u64, u64 }, 0, !92
         v84 = extract_value v83, { u64, u64, u64, u64 }, 2, !93
         v85 = get_ptr ptr { u64, u64, u64, u64 } r, ptr { u64, u64, u64, u64 }, 0, !94
         v86 = extract_value v85, { u64, u64, u64, u64 }, 2, !93
         v87 = cmp eq v84 v86, !91
-        br block15, !91
+        br block15(v87), !91
 
-        block15:
-        v88 = phi(block2: v87)
-        br block3, !90
+        block15(v88: bool):
+        br block3(v88), !90
 
-        block3:
-        v89 = phi(block1: v81, block15: v88)
-        cbr v89, block4, block5, !95
+        block3(v89: bool):
+        cbr v89, block4(v89), block5(v89), !95
 
-        block4:
-        v90 = phi(block3: v89), !96
+        block4(v90: bool):
         v91 = get_ptr ptr { u64, u64, u64, u64 } q, ptr { u64, u64, u64, u64 }, 0, !97
         v92 = extract_value v91, { u64, u64, u64, u64 }, 3, !98
         v93 = get_ptr ptr { u64, u64, u64, u64 } r, ptr { u64, u64, u64, u64 }, 0, !99
         v94 = extract_value v93, { u64, u64, u64, u64 }, 3, !98
         v95 = cmp eq v92 v94, !96
-        br block16, !96
+        br block16(v95), !96
 
-        block16:
-        v96 = phi(block4: v95)
-        br block5, !95
+        block16(v96: bool):
+        br block5(v96), !95
 
-        block5:
-        v97 = phi(block3: v89, block16: v96), !100
+        block5(v97 !100: bool):
         v98 = asm(r1: v97, r2) -> bool r2, !101 {
             eq     r2 r1 zero, !18
         }
-        br block21, !102
+        br block21(v98), !102
 
-        block21:
-        v99 = phi(block5: v98)
-        cbr v99, assert_3_block018, assert_3_block119, !103
+        block21(v99: bool):
+        cbr v99, assert_3_block018(), assert_3_block119(), !103
 
-        assert_3_block018:
+        assert_3_block018():
         v38 = const u64 0, !60
         v100 = asm(r1: v38) {
             rvrt   r1, !62
         }
-        br block22, !104
+        br block22(v40), !104
 
-        block22:
-        v101 = phi(assert_3_block018: v40)
-        br assert_3_block220, !55
+        block22(v101: ()):
+        br assert_3_block220(v101), !55
 
-        assert_3_block119:
-        br assert_3_block220, !55
+        assert_3_block119():
+        br assert_3_block220(v42), !55
 
-        assert_3_block220:
-        v102 = phi(block22: v101, assert_3_block119: v42), !55
-        br block17, !55
+        assert_3_block220(v102: ()):
+        br block17(v44), !55
 
-        block17:
-        v103 = phi(assert_3_block220: v44)
+        block17(v103: ()):
         v104 = const u64 128, !105
         ret u64 v104
     }
@@ -248,15 +225,15 @@ contract {
         local mut ptr b256 result_buffer
         local ptr u64 size
 
-        entry:
+        entry(param !106: u64):
         v0 = call min_1(), !8
         v1 = get_ptr mut ptr b256 result_buffer, ptr b256, 0, !13
         store v0, ptr v1, !13
         v2 = const bool false
         v3 = call not_2(v2), !11
-        cbr v3, block0, block1, !11
+        cbr v3, block0(), block1(), !11
 
-        block0:
+        block0():
         v4 = get_ptr mut ptr b256 result_buffer, ptr b256, 0, !20
         v5 = load ptr v4, !20
         v6 = const u64 8, !24
@@ -267,9 +244,9 @@ contract {
             s256   hash buffer eight_bytes, !30
             cfsi    i8, !31
         }
-        br block2
+        br block2(v7)
 
-        block1:
+        block1():
         v8 = get_ptr ptr u64 size, ptr u64, 0, !32
         v9 = const u64 8
         store v9, ptr v8, !32
@@ -280,21 +257,20 @@ contract {
         v14 = asm(hash: v11, ptr: param, bytes: v13) -> b256 hash, !41 {
             s256   hash ptr bytes, !43
         }
-        br block2
+        br block2(v14)
 
-        block2:
-        v15 = phi(block0: v7, block1: v14)
+        block2(v15: b256):
         ret b256 v15
     }
 
     fn min_1() -> b256, !107 {
-        entry:
+        entry():
         v0 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !5
         ret b256 v0
     }
 
     fn not_2(a !108: bool) -> bool, !11 {
-        entry:
+        entry(a !108: bool):
         v0 = asm(r1: a, r2) -> bool r2, !16 {
             eq     r2 r1 zero, !18
         }
@@ -302,27 +278,26 @@ contract {
     }
 
     fn assert_3(condition !109: bool) -> (), !55 {
-        entry:
+        entry(condition !109: bool):
         v0 = call not_4(condition), !11
-        cbr v0, block0, block1, !11
+        cbr v0, block0(), block1(), !11
 
-        block0:
+        block0():
         v1 = const u64 0, !60
         v2 = call revert_5(v1), !63
-        br block2
+        br block2(v2)
 
-        block1:
+        block1():
         v3 = const unit ()
-        br block2
+        br block2(v3)
 
-        block2:
-        v4 = phi(block0: v2, block1: v3)
+        block2(v4: ()):
         v5 = const unit ()
         ret () v5
     }
 
     fn not_4(a !108: bool) -> bool, !11 {
-        entry:
+        entry(a !108: bool):
         v0 = asm(r1: a, r2) -> bool r2, !16 {
             eq     r2 r1 zero, !18
         }
@@ -330,7 +305,7 @@ contract {
     }
 
     fn revert_5(code !110: u64) -> (), !63 {
-        entry:
+        entry(code !110: u64):
         v0 = asm(r1: code) {
             rvrt   r1, !62
         }
@@ -339,31 +314,31 @@ contract {
     }
 
     fn eq_6(self !111: u64, other !112: u64) -> bool, !113 {
-        entry:
+        entry(self !111: u64, other !112: u64):
         v0 = cmp eq self other
         ret bool v0
     }
 
     fn eq_7(self !111: u64, other !112: u64) -> bool, !113 {
-        entry:
+        entry(self !111: u64, other !112: u64):
         v0 = cmp eq self other
         ret bool v0
     }
 
     fn eq_8(self !111: u64, other !112: u64) -> bool, !113 {
-        entry:
+        entry(self !111: u64, other !112: u64):
         v0 = cmp eq self other
         ret bool v0
     }
 
     fn eq_9(self !111: u64, other !112: u64) -> bool, !113 {
-        entry:
+        entry(self !111: u64, other !112: u64):
         v0 = cmp eq self other
         ret bool v0
     }
 
     fn eq_10(self !111: u64, other !112: u64) -> bool, !113 {
-        entry:
+        entry(self !111: u64, other !112: u64):
         v0 = cmp eq self other
         ret bool v0
     }

@@ -25,7 +25,7 @@ sw   $r2 $r1 i0               ; store value
 addi $r0 $r2 i0               ; get offset reg for get_ptr
 lw   $r0 $r2 i0               ; load value
 ji   i27
-move $r0 $zero                ; branch to phi value
+move $r0 $zero                ; parameter from branch to block argument
 ret  $r0
 noop                          ; word-alignment of data section
 .data:

@@ -2654,7 +2654,11 @@ mod tests {
 
         let asm_script = format!("{}", asm);
         if asm_script != expected {
-            print!("{}", prettydiff::diff_lines(&expected, &asm_script));
+            print!(
+                "{}\n{}",
+                path.display(),
+                prettydiff::diff_lines(&expected, &asm_script)
+            );
             panic!();
         }
     }

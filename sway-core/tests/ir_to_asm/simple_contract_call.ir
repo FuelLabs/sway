@@ -7,7 +7,7 @@ script {
         local ptr b256 b
         local ptr { u64, b256 } s
 
-        entry:
+        entry():
         v0 = get_ptr mut ptr { u64 } args_struct_for_get_u64, ptr { u64 }, 0
         v1 = const u64 1111
         v2 = insert_value v0, { u64 }, v1, 0
