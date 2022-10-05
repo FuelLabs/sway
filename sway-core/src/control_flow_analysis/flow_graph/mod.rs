@@ -2,7 +2,7 @@
 //! execution.
 
 use crate::{
-    semantic_analysis::{ast_node::TypedEnumVariant, ast_node::TypedStructField, TypedAstNode},
+    semantic_analysis::{ast_node::TyEnumVariant, ast_node::TyStructField, TyAstNode},
     Ident,
 };
 
@@ -11,7 +11,7 @@ use sway_types::span::Span;
 use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 
 mod namespace;
-use crate::semantic_analysis::declaration::TypedStorageField;
+use crate::semantic_analysis::declaration::TyStorageField;
 use namespace::ControlFlowNamespace;
 pub(crate) use namespace::FunctionNamespaceEntry;
 
@@ -50,7 +50,7 @@ impl std::convert::From<&str> for ControlFlowGraphEdge {
 pub enum ControlFlowGraphNode {
     OrganizationalDominator(String),
     #[allow(clippy::large_enum_variant)]
-    ProgramNode(TypedAstNode),
+    ProgramNode(TyAstNode),
     EnumVariant {
         variant_name: Ident,
         is_public: bool,
@@ -91,22 +91,22 @@ impl std::fmt::Debug for ControlFlowGraphNode {
         f.write_str(&text)
     }
 }
-impl std::convert::From<&TypedStorageField> for ControlFlowGraphNode {
-    fn from(other: &TypedStorageField) -> Self {
+impl std::convert::From<&TyStorageField> for ControlFlowGraphNode {
+    fn from(other: &TyStorageField) -> Self {
         ControlFlowGraphNode::StorageField {
             field_name: other.name.clone(),
         }
     }
 }
 
-impl std::convert::From<&TypedAstNode> for ControlFlowGraphNode {
-    fn from(other: &TypedAstNode) -> Self {
+impl std::convert::From<&TyAstNode> for ControlFlowGraphNode {
+    fn from(other: &TyAstNode) -> Self {
         ControlFlowGraphNode::ProgramNode(other.clone())
     }
 }
 
-impl std::convert::From<&TypedStructField> for ControlFlowGraphNode {
-    fn from(other: &TypedStructField) -> Self {
+impl std::convert::From<&TyStructField> for ControlFlowGraphNode {
+    fn from(other: &TyStructField) -> Self {
         ControlFlowGraphNode::StructField {
             struct_field_name: other.name.clone(),
             span: other.span.clone(),
@@ -153,7 +153,7 @@ impl ControlFlowGraph {
 
 impl ControlFlowGraphNode {
     pub(crate) fn from_enum_variant(
-        other: &TypedEnumVariant,
+        other: &TyEnumVariant,
         is_public: bool,
     ) -> ControlFlowGraphNode {
         ControlFlowGraphNode::EnumVariant {

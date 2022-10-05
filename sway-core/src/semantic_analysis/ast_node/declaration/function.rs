@@ -9,10 +9,10 @@ use sha2::{Digest, Sha256};
 use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
-pub struct TypedFunctionDeclaration {
+pub struct TyFunctionDeclaration {
     pub name: Ident,
-    pub body: TypedCodeBlock,
-    pub parameters: Vec<TypedFunctionParameter>,
+    pub body: TyCodeBlock,
+    pub parameters: Vec<TyFunctionParameter>,
     pub span: Span,
     pub return_type: TypeId,
     pub initial_return_type: TypeId,
@@ -26,11 +26,11 @@ pub struct TypedFunctionDeclaration {
     pub(crate) purity: Purity,
 }
 
-impl From<&TypedFunctionDeclaration> for TypedAstNode {
-    fn from(o: &TypedFunctionDeclaration) -> Self {
+impl From<&TyFunctionDeclaration> for TyAstNode {
+    fn from(o: &TyFunctionDeclaration) -> Self {
         let span = o.span.clone();
-        TypedAstNode {
-            content: TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
+        TyAstNode {
+            content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(
                 de_insert_function(o.clone()),
             )),
             span,
@@ -41,7 +41,7 @@ impl From<&TypedFunctionDeclaration> for TypedAstNode {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedFunctionDeclaration {
+impl PartialEq for TyFunctionDeclaration {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
             && self.body == other.body
@@ -54,7 +54,7 @@ impl PartialEq for TypedFunctionDeclaration {
     }
 }
 
-impl CopyTypes for TypedFunctionDeclaration {
+impl CopyTypes for TyFunctionDeclaration {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.type_parameters
             .iter_mut()
@@ -68,13 +68,13 @@ impl CopyTypes for TypedFunctionDeclaration {
     }
 }
 
-impl Spanned for TypedFunctionDeclaration {
+impl Spanned for TyFunctionDeclaration {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl MonomorphizeHelper for TypedFunctionDeclaration {
+impl MonomorphizeHelper for TyFunctionDeclaration {
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
@@ -84,7 +84,7 @@ impl MonomorphizeHelper for TypedFunctionDeclaration {
     }
 }
 
-impl TypedFunctionDeclaration {
+impl TyFunctionDeclaration {
     pub fn type_check(ctx: TypeCheckContext, fn_decl: FunctionDeclaration) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -125,7 +125,7 @@ impl TypedFunctionDeclaration {
         let mut new_parameters = vec![];
         for parameter in parameters.into_iter() {
             new_parameters.push(check!(
-                TypedFunctionParameter::type_check(ctx.by_ref(), parameter),
+                TyFunctionParameter::type_check(ctx.by_ref(), parameter),
                 continue,
                 warnings,
                 errors
@@ -156,9 +156,9 @@ impl TypedFunctionDeclaration {
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
                 .with_type_annotation(return_type);
             check!(
-                TypedCodeBlock::type_check(ctx, body),
+                TyCodeBlock::type_check(ctx, body),
                 (
-                    TypedCodeBlock { contents: vec![] },
+                    TyCodeBlock { contents: vec![] },
                     insert_type(TypeInfo::ErrorRecovery)
                 ),
                 warnings,
@@ -167,11 +167,11 @@ impl TypedFunctionDeclaration {
         };
 
         // gather the return statements
-        let return_statements: Vec<&TypedExpression> = body
+        let return_statements: Vec<&TyExpression> = body
             .contents
             .iter()
-            .flat_map(|node| -> Vec<&TypedReturnStatement> { node.gather_return_statements() })
-            .map(|TypedReturnStatement { expr, .. }| expr)
+            .flat_map(|node| -> Vec<&TyReturnStatement> { node.gather_return_statements() })
+            .map(|TyReturnStatement { expr, .. }| expr)
             .collect();
 
         // unify the types of the return statements with the function return type
@@ -188,7 +188,7 @@ impl TypedFunctionDeclaration {
             );
         }
 
-        let function_decl = TypedFunctionDeclaration {
+        let function_decl = TyFunctionDeclaration {
             name,
             body,
             parameters: new_parameters,
@@ -211,7 +211,7 @@ impl TypedFunctionDeclaration {
         if !self.parameters.is_empty() {
             self.parameters.iter().fold(
                 self.parameters[0].name.span(),
-                |acc, TypedFunctionParameter { type_span, .. }| Span::join(acc, type_span.clone()),
+                |acc, TyFunctionParameter { type_span, .. }| Span::join(acc, type_span.clone()),
             )
         } else {
             self.name.span()
@@ -233,7 +233,7 @@ impl TypedFunctionDeclaration {
         ok(hash.to_vec(), warnings, errors)
     }
 
-    /// Converts a [TypedFunctionDeclaration] into a value that is to be used in contract function
+    /// Converts a [TyFunctionDeclaration] into a value that is to be used in contract function
     /// selectors.
     /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
     pub fn to_fn_selector_value(&self) -> CompileResult<[u8; 4]> {
@@ -258,7 +258,7 @@ impl TypedFunctionDeclaration {
             .parameters
             .iter()
             .map(
-                |TypedFunctionParameter {
+                |TyFunctionParameter {
                      type_id, type_span, ..
                  }| {
                     to_typeinfo(*type_id, type_span)
@@ -334,10 +334,10 @@ impl TypedFunctionDeclaration {
 #[test]
 fn test_function_selector_behavior() {
     use crate::type_system::IntegerBits;
-    let decl = TypedFunctionDeclaration {
+    let decl = TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_no_span("foo"),
-        body: TypedCodeBlock { contents: vec![] },
+        body: TyCodeBlock { contents: vec![] },
         parameters: vec![],
         span: Span::dummy(),
         return_type: 0.into(),
@@ -355,12 +355,12 @@ fn test_function_selector_behavior() {
 
     assert_eq!(selector_text, "foo()".to_string());
 
-    let decl = TypedFunctionDeclaration {
+    let decl = TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_with_override("bar", Span::dummy()),
-        body: TypedCodeBlock { contents: vec![] },
+        body: TyCodeBlock { contents: vec![] },
         parameters: vec![
-            TypedFunctionParameter {
+            TyFunctionParameter {
                 name: Ident::new_no_span("foo"),
                 is_reference: false,
                 is_mutable: false,
@@ -369,7 +369,7 @@ fn test_function_selector_behavior() {
                 initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
-            TypedFunctionParameter {
+            TyFunctionParameter {
                 name: Ident::new_no_span("baz"),
                 is_reference: false,
                 is_mutable: false,

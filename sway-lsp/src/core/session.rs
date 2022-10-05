@@ -17,7 +17,7 @@ use std::{
     path::PathBuf,
     sync::{Arc, LockResult, RwLock},
 };
-use sway_core::{CompileResult, ParseProgram, TypedProgram, TypedProgramKind};
+use sway_core::{CompileResult, ParseProgram, TyProgram, TyProgramKind};
 use sway_types::{Ident, Spanned};
 use swayfmt::Formatter;
 use tower_lsp::lsp_types::{
@@ -30,7 +30,7 @@ pub type Documents = DashMap<String, TextDocument>;
 #[derive(Default, Debug)]
 pub struct CompiledProgram {
     pub parsed: Option<ParseProgram>,
-    pub typed: Option<TypedProgram>,
+    pub typed: Option<TyProgram>,
 }
 
 #[derive(Debug)]
@@ -211,14 +211,14 @@ impl Session {
 
     fn parse_ast_to_typed_tokens(
         &self,
-        ast_res: CompileResult<TypedProgram>,
+        ast_res: CompileResult<TyProgram>,
     ) -> Result<Vec<Diagnostic>, DocumentError> {
         match ast_res.value {
             None => Err(DocumentError::FailedToParse(
                 capabilities::diagnostic::get_diagnostics(ast_res.warnings, ast_res.errors),
             )),
             Some(typed_program) => {
-                if let TypedProgramKind::Script {
+                if let TyProgramKind::Script {
                     ref main_function, ..
                 } = typed_program.kind
                 {

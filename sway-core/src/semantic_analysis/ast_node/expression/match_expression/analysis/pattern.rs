@@ -3,7 +3,7 @@ use std::{cmp::Ordering, fmt};
 use std::fmt::Write;
 use sway_types::Span;
 
-use crate::semantic_analysis::{TypedScrutinee, TypedScrutineeVariant};
+use crate::semantic_analysis::{TyScrutinee, TyScrutineeVariant};
 use crate::type_system::look_up_type_id;
 use crate::{
     error::{err, ok},
@@ -120,16 +120,16 @@ impl Pattern {
     /// Converts a `Scrutinee` to a `Pattern`.
     pub(crate) fn from_scrutinee(
         namespace: &Namespace,
-        scrutinee: TypedScrutinee,
+        scrutinee: TyScrutinee,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let pat = match scrutinee.variant {
-            TypedScrutineeVariant::CatchAll => Pattern::Wildcard,
-            TypedScrutineeVariant::Variable(_) => Pattern::Wildcard,
-            TypedScrutineeVariant::Literal(value) => Pattern::from_literal(value),
-            TypedScrutineeVariant::Constant(_, value, _) => Pattern::from_literal(value),
-            TypedScrutineeVariant::StructScrutinee(struct_name, fields) => {
+            TyScrutineeVariant::CatchAll => Pattern::Wildcard,
+            TyScrutineeVariant::Variable(_) => Pattern::Wildcard,
+            TyScrutineeVariant::Literal(value) => Pattern::from_literal(value),
+            TyScrutineeVariant::Constant(_, value, _) => Pattern::from_literal(value),
+            TyScrutineeVariant::StructScrutinee(struct_name, fields) => {
                 let mut new_fields = vec![];
                 for field in fields.into_iter() {
                     let f = match field.scrutinee {
@@ -148,7 +148,7 @@ impl Pattern {
                     fields: new_fields,
                 })
             }
-            TypedScrutineeVariant::Tuple(elems) => {
+            TyScrutineeVariant::Tuple(elems) => {
                 let mut new_elems = PatStack::empty();
                 for elem in elems.into_iter() {
                     new_elems.push(check!(
@@ -160,7 +160,7 @@ impl Pattern {
                 }
                 Pattern::Tuple(new_elems)
             }
-            TypedScrutineeVariant::EnumScrutinee {
+            TyScrutineeVariant::EnumScrutinee {
                 call_path, value, ..
             } => {
                 let enum_name = call_path.prefixes.last().unwrap().to_string();

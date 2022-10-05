@@ -40,12 +40,12 @@ pub enum TypeInfo {
     Enum {
         name: Ident,
         type_parameters: Vec<TypeParameter>,
-        variant_types: Vec<TypedEnumVariant>,
+        variant_types: Vec<TyEnumVariant>,
     },
     Struct {
         name: Ident,
         type_parameters: Vec<TypeParameter>,
-        fields: Vec<TypedStructField>,
+        fields: Vec<TyStructField>,
     },
     Boolean,
     /// For the type inference engine to use when a type references another type
@@ -57,7 +57,7 @@ pub enum TypeInfo {
     ContractCaller {
         abi_name: AbiName,
         // boxed for size
-        address: Option<Box<TypedExpression>>,
+        address: Option<Box<TyExpression>>,
     },
     /// A custom type could be a struct or similar if the name is in scope,
     /// or just a generic parameter if it is not.
@@ -84,7 +84,7 @@ pub enum TypeInfo {
     /// Stored without initializers here, as typed struct fields,
     /// so type checking is able to treat it as a struct with fields.
     Storage {
-        fields: Vec<TypedStructField>,
+        fields: Vec<TyStructField>,
     },
 }
 
@@ -1054,7 +1054,7 @@ impl TypeInfo {
     /// iterate through the elements of `subfields` as `subfield`,
     /// and recursively apply `subfield` to `self`.
     ///
-    /// Returns a `TypedStructField` when all `subfields` could be
+    /// Returns a [TyStructField] when all `subfields` could be
     /// applied without error.
     ///
     /// Returns an error when subfields could not be applied:
@@ -1065,7 +1065,7 @@ impl TypeInfo {
         &self,
         subfields: &[Ident],
         span: &Span,
-    ) -> CompileResult<TypedStructField> {
+    ) -> CompileResult<TyStructField> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match (self, subfields.split_first()) {
@@ -1147,7 +1147,7 @@ impl TypeInfo {
         &self,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<(&Ident, &Vec<TypedEnumVariant>)> {
+    ) -> CompileResult<(&Ident, &Vec<TyEnumVariant>)> {
         let warnings = vec![];
         let errors = vec![];
         match self {
@@ -1175,7 +1175,7 @@ impl TypeInfo {
     pub(crate) fn expect_struct(
         &self,
         debug_span: &Span,
-    ) -> CompileResult<(&Ident, &Vec<TypedStructField>)> {
+    ) -> CompileResult<(&Ident, &Vec<TyStructField>)> {
         let warnings = vec![];
         let errors = vec![];
         match self {
