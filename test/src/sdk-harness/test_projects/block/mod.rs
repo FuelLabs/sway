@@ -19,7 +19,7 @@ async fn get_block_instance() -> (BlockTestContract, ContractId) {
     )
     .await
     .unwrap();
-    let instance = BlockTestContractBuilder::new(id.to_string(), wallet).build();
+    let instance = BlockTestContract::new(id.to_string(), wallet);
 
     (instance, id.into())
 }
@@ -27,9 +27,9 @@ async fn get_block_instance() -> (BlockTestContract, ContractId) {
 #[tokio::test]
 async fn can_get_block_height() {
     let (instance, _id) = get_block_instance().await;
-    let block_0 = instance.get_block_height().call().await.unwrap();
-    let block_1 = instance.get_block_height().call().await.unwrap();
-    let block_2 = instance.get_block_height().call().await.unwrap();
+    let block_0 = instance.methods().get_block_height().call().await.unwrap();
+    let block_1 = instance.methods().get_block_height().call().await.unwrap();
+    let block_2 = instance.methods().get_block_height().call().await.unwrap();
 
     // Probably consecutive blocks but we may have multiple tx per block so be conservative to
     // guarantee the stability of the test
@@ -40,7 +40,7 @@ async fn can_get_block_height() {
 #[tokio::test]
 async fn can_get_timestamp() {
     let (instance, _id) = get_block_instance().await;
-    let block_0_time = instance.get_timestamp().call().await.unwrap();
+    let block_0_time = instance.methods().get_timestamp().call().await.unwrap();
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards");
@@ -51,7 +51,7 @@ async fn can_get_timestamp() {
 
     // Wait 1 seconds and request another block
     sleep(Duration::from_secs(1)).await;
-    let block_1_time = instance.get_timestamp().call().await.unwrap();
+    let block_1_time = instance.methods().get_timestamp().call().await.unwrap();
 
     // The difference should be 1 second in most cases, but be conservative to guarantee the
     // stability of the test
@@ -61,7 +61,7 @@ async fn can_get_timestamp() {
     );
     // Wait 2 seconds and request another block
     sleep(Duration::from_secs(2)).await;
-    let block_2_time = instance.get_timestamp().call().await.unwrap();
+    let block_2_time = instance.methods().get_timestamp().call().await.unwrap();
 
     // The difference should be 2 seconds in most cases, but be conservative to guarantee the
     // stability of the test
@@ -75,18 +75,34 @@ async fn can_get_timestamp() {
 async fn can_get_timestamp_of_block() {
     let (instance, _id) = get_block_instance().await;
 
-    let block_0 = instance.get_block_and_timestamp().call().await.unwrap();
+    let block_0 = instance
+        .methods()
+        .get_block_and_timestamp()
+        .call()
+        .await
+        .unwrap();
 
     sleep(Duration::from_secs(1)).await;
-    let block_1 = instance.get_block_and_timestamp().call().await.unwrap();
+    let block_1 = instance
+        .methods()
+        .get_block_and_timestamp()
+        .call()
+        .await
+        .unwrap();
 
     sleep(Duration::from_secs(2)).await;
-    let block_2 = instance.get_block_and_timestamp().call().await.unwrap();
+    let block_2 = instance
+        .methods()
+        .get_block_and_timestamp()
+        .call()
+        .await
+        .unwrap();
 
     // Check that the result of `timestamp_of_block` matches the recorded result of `timestamp()`
     // above called via `get_block_and_timestamp`.
     assert_eq!(
         instance
+            .methods()
             .get_timestamp_of_block(block_0.value.0)
             .call()
             .await
@@ -96,6 +112,7 @@ async fn can_get_timestamp_of_block() {
     );
     assert_eq!(
         instance
+            .methods()
             .get_timestamp_of_block(block_1.value.0)
             .call()
             .await
@@ -105,6 +122,7 @@ async fn can_get_timestamp_of_block() {
     );
     assert_eq!(
         instance
+            .methods()
             .get_timestamp_of_block(block_2.value.0)
             .call()
             .await

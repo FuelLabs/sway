@@ -26,14 +26,8 @@ pub fn get_diagnostics(
 }
 
 fn get_range((start, end): (LineCol, LineCol)) -> Range {
-    let start_line = start.line as u32 - 1;
-    let start_character = start.col as u32 - 1;
-
-    let end_line = end.line as u32 - 1;
-    let end_character = end.col as u32 - 1;
-
-    Range {
-        start: Position::new(start_line, start_character),
-        end: Position::new(end_line, end_character),
-    }
+    let pos = |lc: LineCol| Position::new(lc.line as u32 - 1, lc.col as u32 - 1);
+    let start = pos(start);
+    let end = pos(end);
+    Range { start, end }
 }

@@ -169,7 +169,7 @@ mod tests {
     fn parse_item(input: &str) -> Item {
         let token_stream = crate::token::lex(&Arc::from(input), 0, input.len(), None).unwrap();
         let handler = Handler::default();
-        let mut parser = Parser::new(&token_stream, &handler);
+        let mut parser = Parser::new(&handler, &token_stream);
         match Item::parse(&mut parser) {
             Ok(item) => item,
             Err(_) => {

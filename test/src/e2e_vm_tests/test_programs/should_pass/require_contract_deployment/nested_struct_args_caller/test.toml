@@ -1,1 +1,3 @@
-category = "disabled"
+category = "run_on_node"
+expected_result = { action = "result", value = 1 }
+contracts = ["should_pass/test_contracts/nested_struct_args_contract"]
