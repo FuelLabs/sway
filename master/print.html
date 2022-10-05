@@ -693,7 +693,7 @@ use std::{
         call_frames::msg_asset_id,
         msg_amount,
     },
-    token::transfer_to_output,
+    token::transfer_to_address,
 };
 
 use wallet_abi::Wallet;
@@ -729,10 +729,10 @@ impl Wallet for Contract {
 
         storage.balance = current_balance - amount_to_send;
 
-        // Note: `transfer_to_output()` is not a call and thus not an
+        // Note: `transfer_to_address()` is not a call and thus not an
         // interaction. Regardless, this code conforms to
         // checks-effects-interactions to avoid re-entrancy.
-        transfer_to_output(amount_to_send, BASE_ASSET_ID, recipient_address);
+        transfer_to_address(amount_to_send, BASE_ASSET_ID, recipient_address);
     }
 }
 </code></pre>
@@ -820,10 +820,10 @@ abi Wallet {
 
         storage.balance = current_balance - amount_to_send;
 
-        // Note: `transfer_to_output()` is not a call and thus not an
+        // Note: `transfer_to_address()` is not a call and thus not an
         // interaction. Regardless, this code conforms to
         // checks-effects-interactions to avoid re-entrancy.
-        transfer_to_output(amount_to_send, BASE_ASSET_ID, recipient_address);
+        transfer_to_address(amount_to_send, BASE_ASSET_ID, recipient_address);
     }
 }
 </code></pre>
@@ -1197,8 +1197,8 @@ let forty_two: b256 = my_contract_id.into();
         };
 </code></pre>
 <pre><code class="language-sway">        match my_identity {
-            Identity::Address(identity) =&gt; transfer_to_output(amount, token_id, identity),
-            Identity::ContractId(identity) =&gt; force_transfer_to_contract(amount, token_id, identity),
+            Identity::Address(address) =&gt; transfer_to_address(amount, token_id, address),
+            Identity::ContractId(contract_id) =&gt; force_transfer_to_contract(amount, token_id, contract_id),
         };
 </code></pre>
 <p>A common use case for <code>Identity</code> is for access control. The use of <code>Identity</code> uniquely allows both <code>ContractId</code> and <code>Address</code> to have access control inclusively.</p>
@@ -2053,7 +2053,7 @@ use std::{
     context::msg_amount,
     token::{
         mint_to_address,
-        transfer_to_output,
+        transfer_to_address,
     },
 };
 
@@ -2084,7 +2084,7 @@ impl LiquidityPool for Contract {
         let amount_to_transfer = msg_amount() / 2;
 
         // Transfer base token to recipient.
-        transfer_to_output(amount_to_transfer, BASE_TOKEN, recipient);
+        transfer_to_address(amount_to_transfer, BASE_TOKEN, recipient);
     }
 }
 </code></pre>
@@ -2123,7 +2123,7 @@ impl NativeAssetToken for Contract {
 
     /// Transfer coins to a transaction output to be spent later.
     fn transfer_coins_to_output(coins: u64, asset_id: ContractId, recipient: Address) {
-        transfer_to_output(coins, asset_id, recipient);
+        transfer_to_address(coins, asset_id, recipient);
     }
 
     /// Get the internal balance of a specific coin at a specific contract.

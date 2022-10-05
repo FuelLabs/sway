@@ -209,10 +209,10 @@ abi Wallet {
 
         storage.balance = current_balance - amount_to_send;
 
-        // Note: `transfer_to_output()` is not a call and thus not an
+        // Note: `transfer_to_address()` is not a call and thus not an
         // interaction. Regardless, this code conforms to
         // checks-effects-interactions to avoid re-entrancy.
-        transfer_to_output(amount_to_send, BASE_ASSET_ID, recipient_address);
+        transfer_to_address(amount_to_send, BASE_ASSET_ID, recipient_address);
     }
 }
 </code></pre>

@@ -183,8 +183,8 @@ let forty_two: b256 = my_contract_id.into();
         };
 </code></pre>
 <pre><code class="language-sway">        match my_identity {
-            Identity::Address(identity) =&gt; transfer_to_output(amount, token_id, identity),
-            Identity::ContractId(identity) =&gt; force_transfer_to_contract(amount, token_id, identity),
+            Identity::Address(address) =&gt; transfer_to_address(amount, token_id, address),
+            Identity::ContractId(contract_id) =&gt; force_transfer_to_contract(amount, token_id, contract_id),
         };
 </code></pre>
 <p>A common use case for <code>Identity</code> is for access control. The use of <code>Identity</code> uniquely allows both <code>ContractId</code> and <code>Address</code> to have access control inclusively.</p>
