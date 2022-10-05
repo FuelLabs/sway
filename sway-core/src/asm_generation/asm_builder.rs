@@ -6,8 +6,8 @@ use super::{
 };
 
 use crate::{
-    asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualOp},
     error::*,
+    language::asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualOp},
     metadata::MetadataManager,
     size_bytes_in_words, size_bytes_round_up_to_word_alignment,
 };

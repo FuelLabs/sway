@@ -1,8 +1,8 @@
 use crate::{
     asm_generation::{register_allocator, AllocatedAbstractInstructionSet, RegisterSequencer},
-    asm_lang::{
-        allocated_ops::AllocatedOp, AllocatedAbstractOp, Op, OrganizationalOp, RealizedOp,
-        VirtualOp, VirtualRegister,
+    language::asm_lang::{
+        allocated_ops::{AllocatedOp, AllocatedOpcode},
+        AllocatedAbstractOp, Op, OrganizationalOp, RealizedOp, VirtualOp, VirtualRegister,
     },
 };
 
@@ -202,7 +202,7 @@ impl RealizedAbstractInstructionSet {
 
         if ops.len() & 1 != 0 {
             ops.push(AllocatedOp {
-                opcode: crate::asm_lang::allocated_ops::AllocatedOpcode::NOOP,
+                opcode: AllocatedOpcode::NOOP,
                 comment: "word-alignment of data section".into(),
                 owning_span: None,
             });

@@ -5,11 +5,11 @@ use super::{
 
 use crate::{
     asm_generation::{from_ir::*, Entry},
-    asm_lang::{
+    error::*,
+    language::asm_lang::{
         virtual_register::*, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate24,
         VirtualOp,
     },
-    error::*,
 };
 
 use sway_ir::*;

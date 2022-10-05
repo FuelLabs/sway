@@ -1,6 +1,6 @@
 use super::{DataSection, InstructionSet};
-use crate::asm_lang::allocated_ops::AllocatedOpcode;
 use crate::error::*;
+use crate::language::asm_lang::allocated_ops::AllocatedOpcode;
 use crate::source_map::SourceMap;
 
 use sway_types::span::Span;
