@@ -18,6 +18,7 @@ async fn can_detect_reentrancy() {
     let (_, target_id) = get_target_instance(wallet).await;
 
     let result = attacker_instance
+        .methods()
         .launch_attack(target_id)
         .set_contracts(&[target_id.into()])
         .call()
@@ -35,6 +36,7 @@ async fn can_block_reentrancy() {
     let (_, target_id) = get_target_instance(wallet).await;
 
     attacker_instance
+        .methods()
         .launch_thwarted_attack_1(target_id)
         .set_contracts(&[target_id.into()])
         .call()
@@ -50,6 +52,7 @@ async fn can_block_cross_function_reentrancy() {
     let (_, target_id) = get_target_instance(wallet).await;
 
     attacker_instance
+        .methods()
         .launch_thwarted_attack_2(target_id)
         .set_contracts(&[target_id.into()])
         .call()
@@ -64,6 +67,7 @@ async fn can_call_guarded_function() {
     let (_, target_id) = get_target_instance(wallet).await;
 
     let result = attacker_instance
+        .methods()
         .innocent_call(target_id)
         .set_contracts(&[target_id.into()])
         .call()
@@ -87,7 +91,7 @@ async fn get_attacker_instance(wallet: WalletUnlocked) -> (AttackerContract, Con
     .await
     .unwrap();
 
-    let instance = AttackerContractBuilder::new(id.to_string(), wallet).build();
+    let instance = AttackerContract::new(id.to_string(), wallet);
 
     (instance, id.into())
 }
@@ -106,7 +110,7 @@ async fn get_target_instance(wallet: WalletUnlocked) -> (TargetContract, Contrac
     .await
     .unwrap();
 
-    let instance = TargetContractBuilder::new(id.to_string(), wallet).build();
+    let instance = TargetContract::new(id.to_string(), wallet);
 
     (instance, id.into())
 }

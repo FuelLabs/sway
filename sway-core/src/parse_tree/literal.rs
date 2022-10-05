@@ -126,53 +126,6 @@ impl Literal {
         }
     }
 
-    /// Converts a literal to a big-endian representation. This is padded to words.
-    pub(crate) fn to_bytes(&self) -> Vec<u8> {
-        use Literal::*;
-        match self {
-            U8(val) => vec![0, 0, 0, 0, 0, 0, 0, val.to_be_bytes()[0]],
-            U16(val) => {
-                let bytes = val.to_be_bytes();
-                vec![0, 0, 0, 0, 0, 0, bytes[0], bytes[1]]
-            }
-            U32(val) => {
-                let bytes = val.to_be_bytes();
-                vec![0, 0, 0, 0, bytes[0], bytes[1], bytes[2], bytes[3]]
-            }
-            U64(val) => val.to_be_bytes().to_vec(),
-            Numeric(val) => val.to_be_bytes().to_vec(),
-            Boolean(b) => {
-                vec![
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    if *b { 0b00000001 } else { 0b00000000 },
-                ]
-            }
-            // assume utf8 for now
-            String(st) => {
-                let mut buf = st.as_str().to_string().into_bytes();
-                // pad to word alignment
-                while buf.len() % 8 != 0 {
-                    buf.push(0);
-                }
-                buf
-            }
-            Byte(b) => vec![0, 0, 0, 0, 0, 0, 0, b.to_be_bytes()[0]],
-            B256(b) => b.to_vec(),
-        }
-    }
-
-    /// Used when creating a pointer literal value, typically during code generation for
-    /// values that wouldn't fit in a register.
-    pub(crate) fn new_pointer_literal(offset_bytes: u64) -> Literal {
-        Literal::U64(offset_bytes)
-    }
-
     #[allow(clippy::wildcard_in_or_patterns)]
     pub(crate) fn handle_parse_int_error(
         e: ParseIntError,

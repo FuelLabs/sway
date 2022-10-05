@@ -65,7 +65,7 @@ impl Format for Expr {
 
                         // changes to the actual formatter
                         let expr_width = buf.chars().count() as usize;
-                        formatter.shape.code_line.add_width(expr_width);
+                        formatter.shape.code_line.update_width(expr_width);
                         formatter.shape.get_line_style(
                             Some(field_width),
                             Some(body_width),
@@ -91,7 +91,7 @@ impl Format for Expr {
                         tuple_descriptor.format(&mut buf, &mut temp_formatter)?;
                         let body_width = buf.chars().count() as usize;
 
-                        formatter.shape.code_line.add_width(body_width);
+                        formatter.shape.code_line.update_width(body_width);
                         formatter
                             .shape
                             .get_line_style(None, Some(body_width), &formatter.config);

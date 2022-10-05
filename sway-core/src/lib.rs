@@ -28,7 +28,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_ast::Dependency;
-use sway_ir::{Kind, Module};
+use sway_ir::{Context, Function, Instruction, Kind, Module, Value};
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
@@ -376,8 +376,6 @@ pub fn ast_to_asm(
     }
 }
 
-use sway_ir::{context::Context, function::Function};
-
 pub(crate) fn compile_ast_to_ir_to_asm(
     program: TypedProgram,
     build_config: &BuildConfig,
@@ -405,17 +403,16 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // Find all the entry points.  This is main for scripts and predicates, or ABI methods for
     // contracts, identified by them having a selector.
     let entry_point_functions: Vec<::sway_ir::Function> = ir
-        .functions
-        .iter()
-        .filter_map(|(idx, fc)| {
-            if (matches!(tree_type, TreeType::Script | TreeType::Predicate)
-                && fc.name == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME)
-                || (tree_type == TreeType::Contract && fc.selector.is_some())
-            {
-                Some(::sway_ir::function::Function(idx))
-            } else {
-                None
-            }
+        .module_iter()
+        .flat_map(|module| module.function_iter(&ir))
+        .filter(|func| {
+            let is_script_or_predicate =
+                matches!(tree_type, TreeType::Script | TreeType::Predicate);
+            let is_contract = tree_type == TreeType::Contract;
+            let has_entry_name =
+                func.get_name(&ir) == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME;
+
+            (is_script_or_predicate && has_entry_name) || (is_contract && func.has_selector(&ir))
         })
         .collect();
 
@@ -432,9 +429,15 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors
     );
 
-    // Inline function calls from the entry points.
+    // Now we're working with all functions in the module.
+    let all_functions = ir
+        .module_iter()
+        .flat_map(|module| module.function_iter(&ir))
+        .collect::<Vec<_>>();
+
+    // Inline function calls.
     check!(
-        inline_function_calls(&mut ir, &entry_point_functions),
+        inline_function_calls(&mut ir, &all_functions),
         return err(warnings, errors),
         warnings,
         errors
@@ -443,33 +446,33 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // TODO: Experiment with putting combine-constants and simplify-cfg
     // in a loop, but per function.
     check!(
-        combine_constants(&mut ir, &entry_point_functions),
+        combine_constants(&mut ir, &all_functions),
         return err(warnings, errors),
         warnings,
         errors
     );
     check!(
-        simplify_cfg(&mut ir, &entry_point_functions),
+        simplify_cfg(&mut ir, &all_functions),
         return err(warnings, errors),
         warnings,
         errors
     );
     // Simplify-CFG helps combine constants.
     check!(
-        combine_constants(&mut ir, &entry_point_functions),
+        combine_constants(&mut ir, &all_functions),
         return err(warnings, errors),
         warnings,
         errors
     );
     // And that in-turn enables more simplify-cfg.
     check!(
-        simplify_cfg(&mut ir, &entry_point_functions),
+        simplify_cfg(&mut ir, &all_functions),
         return err(warnings, errors),
         warnings,
         errors
     );
 
-    // Remove dead definitions.
+    // Remove dead definitions based on the entry points root set.
     check!(
         dce(&mut ir, &entry_point_functions),
         return err(warnings, errors),
@@ -485,8 +488,49 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 }
 
 fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+    // Inspect ALL calls and count how often each function is called.
+    let call_counts: HashMap<Function, u64> =
+        functions.iter().fold(HashMap::new(), |mut counts, func| {
+            for (_block, ins) in func.instruction_iter(ir) {
+                if let Some(Instruction::Call(callee, _args)) = ins.get_instruction(ir) {
+                    counts
+                        .entry(*callee)
+                        .and_modify(|count| *count += 1)
+                        .or_insert(1);
+                }
+            }
+            counts
+        });
+
+    let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
+        // For now, pending improvements to ASMgen for calls, we must inline any function which has
+        // a non-copy return type or has too many args.
+        if !func.get_return_type(ctx).is_copy_type()
+            || func.args_iter(ctx).count() as u8
+                > crate::asm_generation::compiler_constants::NUM_ARG_REGISTERS
+        {
+            return true;
+        }
+
+        // If the function is called only once then definitely inline it.
+        let call_count = call_counts.get(func).copied().unwrap_or(0);
+        if call_count == 1 {
+            return true;
+        }
+
+        // If the function is (still) small then also inline it.
+        const MAX_INLINE_INSTRS_COUNT: usize = 4;
+        if func.num_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
+            return true;
+        }
+
+        false
+    };
+
     for function in functions {
-        if let Err(ir_error) = sway_ir::optimize::inline_all_function_calls(ir, function) {
+        if let Err(ir_error) =
+            sway_ir::optimize::inline_some_function_calls(ir, function, inline_heuristic)
+        {
             return err(
                 Vec::new(),
                 vec![CompileError::InternalOwned(
@@ -514,16 +558,24 @@ fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<
     ok((), Vec::new(), Vec::new())
 }
 
-fn dce(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
-    for function in functions {
-        if let Err(ir_error) = sway_ir::optimize::dce(ir, function) {
-            return err(
-                Vec::new(),
-                vec![CompileError::InternalOwned(
-                    ir_error.to_string(),
-                    span::Span::dummy(),
-                )],
-            );
+fn dce(ir: &mut Context, entry_functions: &[Function]) -> CompileResult<()> {
+    // Remove entire dead functions first.
+    for module in ir.module_iter() {
+        sway_ir::optimize::func_dce(ir, &module, entry_functions);
+    }
+
+    // Then DCE all the remaining functions.
+    for module in ir.module_iter() {
+        for function in module.function_iter(ir) {
+            if let Err(ir_error) = sway_ir::optimize::dce(ir, &function) {
+                return err(
+                    Vec::new(),
+                    vec![CompileError::InternalOwned(
+                        ir_error.to_string(),
+                        span::Span::dummy(),
+                    )],
+                );
+            }
         }
     }
     ok((), Vec::new(), Vec::new())
