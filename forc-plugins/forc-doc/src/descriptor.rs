@@ -3,6 +3,7 @@ use sway_core::{declaration_engine::*, AbiName, Declaration, TypeInfo, TypedDecl
 use sway_types::{Ident, Spanned};
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug)]
+/// The type of [Declaration] to be documented by the [Descriptor].
 pub(crate) enum DescriptorType {
     Struct,
     Enum,
@@ -15,6 +16,7 @@ pub(crate) enum DescriptorType {
     Const,
 }
 impl DescriptorType {
+    /// Converts the [DescriptorType] to a `&str` name for HTML file name creation.
     pub fn to_name(&self) -> &'static str {
         use DescriptorType::*;
         match self {
@@ -32,6 +34,7 @@ impl DescriptorType {
 }
 
 #[derive(Eq, PartialEq, Ord, PartialOrd)]
+/// Used in deciding whether or not a [Declaration] is documentable.
 pub(crate) enum Descriptor {
     Documentable {
         ty: DescriptorType,
@@ -40,6 +43,7 @@ pub(crate) enum Descriptor {
     NonDocumentable,
 }
 impl Descriptor {
+    /// Creates the HTML file name from the [Descriptor].
     pub fn to_file_name(&self) -> Option<String> {
         use Descriptor::*;
         match self {
