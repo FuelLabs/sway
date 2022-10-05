@@ -89,12 +89,6 @@ impl CollectTypesMetadata for TypedExpression {
                         errors
                     ));
                 }
-                // if function_decl.name.as_str() == "first_if"
-                //     || function_decl.name.as_str() == "second_if"
-                //     || function_decl.name.as_str() == "third_if"
-                // {
-                //     println!("collecting in expression: {}", function_decl);
-                // }
                 for content in function_decl.body.contents.iter() {
                     res.append(&mut check!(
                         content.collect_types_metadata(),

@@ -54,13 +54,6 @@ pub(crate) fn instantiate_function_application(
                 errors
             );
 
-            // if function_decl.name.as_str() == "first_if"
-            //     || function_decl.name.as_str() == "second_if"
-            //     || function_decl.name.as_str() == "third_if"
-            // {
-            //     println!("about to unify: {} and {}", exp.return_type, param.type_id);
-            // }
-
             append!(
                 unify_right(
                     exp.return_type,
@@ -73,13 +66,6 @@ pub(crate) fn instantiate_function_application(
                 warnings,
                 errors
             );
-
-            // if function_decl.name.as_str() == "first_if"
-            //     || function_decl.name.as_str() == "second_if"
-            //     || function_decl.name.as_str() == "third_if"
-            // {
-            //     println!("  just unified: {} and {}", exp.return_type, param.type_id);
-            // }
 
             // check for matching mutability
             let param_mutability =

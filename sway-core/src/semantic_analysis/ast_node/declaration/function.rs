@@ -1,7 +1,5 @@
 mod function_parameter;
 
-use std::fmt;
-
 pub use function_parameter::*;
 
 use crate::{
@@ -11,7 +9,7 @@ use crate::{
 use sha2::{Digest, Sha256};
 use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
 
-#[derive(Clone, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct TypedFunctionDeclaration {
     pub name: Ident,
     pub body: TypedCodeBlock,
@@ -27,62 +25,6 @@ pub struct TypedFunctionDeclaration {
     /// whether this function exists in another contract and requires a call to it or not
     pub(crate) is_contract_call: bool,
     pub(crate) purity: Purity,
-}
-
-impl fmt::Display for TypedFunctionDeclaration {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}{}({}) -> {} {{ .. }}",
-            self.name,
-            if self.type_parameters.is_empty() {
-                String::new()
-            } else {
-                format!(
-                    "<{}>",
-                    self.type_parameters
-                        .iter()
-                        .map(|x| x.to_string())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-            },
-            self.parameters
-                .iter()
-                .map(|x| x.to_string())
-                .collect::<Vec<_>>()
-                .join(", "),
-            self.return_type,
-        )
-    }
-}
-
-impl fmt::Debug for TypedFunctionDeclaration {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}{}({}) -> {:?} {{ .. }}",
-            self.name,
-            if self.type_parameters.is_empty() {
-                String::new()
-            } else {
-                format!(
-                    "<{}>",
-                    self.type_parameters
-                        .iter()
-                        .map(|x| format!("{:?}", x))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-            },
-            self.parameters
-                .iter()
-                .map(|x| format!("{:?}", x))
-                .collect::<Vec<_>>()
-                .join(", "),
-            self.return_type,
-        )
-    }
 }
 
 impl From<&TypedFunctionDeclaration> for TypedAstNode {
