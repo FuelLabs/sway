@@ -4,13 +4,11 @@ use std::assert::assert;
 
 fn revert<T>() -> T {
     let code = 1u64;
-    asm(r1: code) {
-        rvrt r1;
-    }
+    __revert(code)
 }
 
 fn diverge_in_let_body() -> u64 {
-    let x: bool = {
+    let x: bool =  {
         return 5;
     };
     123
@@ -23,7 +21,7 @@ struct Foo {
 
 fn diverge_in_struct_0() -> u64 {
     let foo: Foo = Foo {
-        x: {
+        x:  {
             return 5;
             true
         },
@@ -35,7 +33,7 @@ fn diverge_in_struct_0() -> u64 {
 fn diverge_in_struct_1() -> u64 {
     let foo: Foo = Foo {
         x: true,
-        y: {
+        y:  {
             return 5;
             123
         },
@@ -45,10 +43,10 @@ fn diverge_in_struct_1() -> u64 {
 
 fn diverge_in_tuple_0() -> u64 {
     let tuple: (bool, u32) = (
-        {
+         {
             return 5;
         },
-        123
+        123,
     );
     123
 }
@@ -56,7 +54,7 @@ fn diverge_in_tuple_0() -> u64 {
 fn diverge_in_tuple_1() -> u64 {
     let tuple: (bool, u32) = (
         true,
-        {
+         {
             return 5;
         },
     );
@@ -64,46 +62,39 @@ fn diverge_in_tuple_1() -> u64 {
 }
 
 fn diverge_in_array() -> u64 {
-    let arr: [bool; 2] = [{ return 5; }; 2];
+    let arr: [bool; 2] = [ {
+            return 5;
+        }; 2    ];
     123
 }
 
 fn diverge_in_return() -> u64 {
-    return {
+    return  {
         return 5;
         6
     };
 }
 
 fn diverge_in_if_condition() -> u64 {
-    let b: bool = if {return 5; } {
-        true
-    } else {
-        false
-    };
+    let b: bool = if  { return 5;     } { true } else { false };
     123
 }
 
 fn diverge_in_if_then() -> u64 {
-    let b: bool = if true {
-        return 5;
-    } else {
-        false
-    };
+    let b: bool = if true { return 5; } else { false };
     123
 }
 
 fn diverge_in_if_else() -> u64 {
-    let b: bool = if false {
-        true
-    } else {
-        return 5;
-    };
+    let b: bool = if false { true } else { return 5; };
     123
 }
 
 fn diverge_in_match_condition() -> u64 {
-    match {return 5; true} {
+    match  {
+        return 5;
+        true
+    } {
         true => 23,
         false => 56,
     }
@@ -130,8 +121,9 @@ fn diverge_in_match_branch_1() -> u64 {
 }
 
 fn diverge_in_while_condition() -> u64 {
-    while {return 5; } {
-    }
+    while  {
+        return 5;
+    } {    }
     123
 }
 
@@ -143,19 +135,17 @@ fn diverge_in_while_body() -> u64 {
 }
 
 fn func(arg: bool) -> u64 {
-    if arg {
-        123
-    } else {
-        456
-    }
+    if arg { 123 } else { 456 }
 }
 
 fn diverge_in_func_arg() -> u64 {
-    func({return 5; })
+    func( {
+        return 5;
+    })
 }
 
 fn diverge_in_array_index_array() -> u64 {
-    let b: bool = {
+    let b: bool =  {
         return 5;
         [true, false]
     }[0];
@@ -164,50 +154,70 @@ fn diverge_in_array_index_array() -> u64 {
 
 fn diverge_in_array_index_index() -> u64 {
     let arr: [bool; 2] = [true, false];
-    let b: bool = arr[{return 5; }];
+    let b: bool = arr[ {
+        return 5;
+    }];
     123
 }
 
 fn diverge_in_op_not() -> u64 {
-    let b: bool = !{
+    let b: bool = ! {
         return 5;
     };
     123
 }
 
 fn diverge_in_op_add_lhs() -> u64 {
-    let x: u32 = ({ return 5; 1u32}) + 2u32;
+    let x: u32 = ( {
+        return 5;
+        1u32
+    }) + 2u32;
     123
 }
 
 fn diverge_in_op_add_rhs() -> u64 {
-    let x: u32 = 1u32 + ({ return 5; 1u32});
+    let x: u32 = 1u32 + ( {
+        return 5;
+        1u32
+    });
     123
 }
 
 fn diverge_in_logical_and_lhs() -> u64 {
-    let b: bool = ({ return 5; true}) && true;
+    let b: bool = ( {
+        return 5;
+        true
+    }) && true;
     123
 }
 
 fn diverge_in_logical_and_rhs() -> u64 {
-    let b: bool = true && ({ return 5; true});
+    let b: bool = true && ( {
+        return 5;
+        true
+    });
     123
 }
 
 fn diverge_in_logical_or_lhs() -> u64 {
-    let b: bool = ({ return 5; true}) || true;
+    let b: bool = ( {
+        return 5;
+        true
+    }) || true;
     123
 }
 
 fn diverge_in_logical_or_rhs() -> u64 {
-    let b: bool = false || ({ return 5; true});
+    let b: bool = false || ( {
+        return 5;
+        true
+    });
     123
 }
 
 fn diverge_in_reassignment() -> u64 {
     let mut b: bool = true;
-    b = {
+    b =  {
         return 5;
     };
     123
