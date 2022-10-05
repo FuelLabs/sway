@@ -6,7 +6,7 @@ script {
         v0 = const { u64 } { u64 42 }
         br block3(v0)
 
-        block3(v1: u64):
+        block3(v1: { u64 }):
         v2 = const { u64, ( u64 | { u64 } ) } { u64 1, ( u64 | { u64 } ) undef }
         v3 = insert_value v2, { u64, ( u64 | { u64 } ) }, v1, 1
         v4 = extract_value v3, { u64, ( u64 | { u64 } ) }, 0
