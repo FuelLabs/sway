@@ -226,35 +226,31 @@ fn shorthand_instantiation() -&gt; Foo {
 fn struct_destructuring() {
     let point1 = Point { x: 0, y: 0 };
     // Destructure the values from the struct into variables
-    let Point{x, y} = point1;
+    let Point { x, y } = point1;
 
     let point2 = Point { x: 1, y: 1 };
     // If you do not care about specific struct fields then use &quot;..&quot; at the end of your variable list
-    let Point{x, ..} = point2;
+    let Point { x, .. } = point2;
 
     let line = Line {
         p1: point1,
         p2: point2,
     };
     // Destructure the values from the nested structs into variables
-    let Line{p1:Point{x:x0, y:y0}, p2:Point{x:x1, y:y1}} = line;
+    let Line {
+        p1: Point { x: x0, y: y0 },
+        p2: Point { x: x1, y: y1 },
+    } = line;
     // You may also destructure tuples nested in structs and structs nested in tuples
     let tuple_in_struct = TupleInStruct {
-        nested_tuple: (
-            42u64,
-            (
-                42u32,
-                (true, &quot;ok&quot;),
-            ),
-        ),
+        nested_tuple: (42u64, (42u32, (true, &quot;ok&quot;))),
     };
-    let TupleInStruct{nested_tuple:(a, (b, (c, d)))} = tuple_in_struct;
+    let TupleInStruct {
+        nested_tuple: (a, (b, (c, d))),
+    } = tuple_in_struct;
 
-    let struct_in_tuple = (
-        Point { x: 2, y: 4 },
-        Point { x: 3, y: 6 },
-    );
-    let (Point{x:x0, y:y0}, Point{x:x1, y:y1}) = struct_in_tuple;
+    let struct_in_tuple = (Point { x: 2, y: 4 }, Point { x: 3, y: 6 });
+    let (Point { x: x0, y: y0 }, Point { x: x1, y: y1 }) = struct_in_tuple;
 }
 </code></pre>
 <blockquote>
@@ -276,18 +272,10 @@ This information is not vital if you are new to the language, or programming in 
 
 fn tuple() {
     // You can declare the types youself
-    let tuple1: (u8, bool, u64) = (
-        100,
-        false,
-        10000,
-    );
+    let tuple1: (u8, bool, u64) = (100, false, 10000);
 
     // Or have the types be inferred
-    let mut tuple2 = (
-        5,
-        true,
-        (&quot;Sway&quot;, 8),
-    );
+    let mut tuple2 = (5, true, (&quot;Sway&quot;, 8));
 
     // Retrieve values from tuples
     let number = tuple1.0;
@@ -303,11 +291,7 @@ fn tuple() {
     tuple2.1 = false;
 
     // Or change the values all at once (must keep the same data types)
-    tuple2 = (
-        9,
-        false,
-        (&quot;Fuel&quot;, 99),
-    );
+    tuple2 = (9, false, (&quot;Fuel&quot;, 99));
 }
 </code></pre>
 <h2 id="enums"><a class="header" href="#enums">Enums</a></h2>
