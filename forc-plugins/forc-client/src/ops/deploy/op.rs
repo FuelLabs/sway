@@ -8,7 +8,7 @@ use fuels_core::constants::BASE_ASSET_ID;
 use fuels_signers::{provider::Provider, wallet::Wallet};
 use fuels_types::bech32::Bech32Address;
 use std::{io::Write, path::PathBuf, str::FromStr};
-use sway_core::language::parse_tree::TreeType;
+use sway_core::language::parsed::TreeType;
 use sway_utils::constants::DEFAULT_NODE_URL;
 use tracing::info;
 

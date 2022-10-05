@@ -1,6 +1,6 @@
 use dashmap::DashMap;
 use sway_core::{
-    language::parse_tree::{
+    language::parsed::{
         Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
         ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
         TraitFn,

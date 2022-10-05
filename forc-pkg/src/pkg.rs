@@ -24,7 +24,7 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    language::parse_tree::{ParseProgram, TreeType},
+    language::parsed::{ParseProgram, TreeType},
     semantic_analysis::namespace,
     source_map::SourceMap,
     BytecodeOrLib, CompileError, CompileResult, TyProgram,

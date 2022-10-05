@@ -40,7 +40,7 @@ pub use error::{CompileError, CompileResult, CompileWarning};
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
-use language::parse_tree::*;
+use language::parsed::*;
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
@@ -816,7 +816,7 @@ fn test_parenthesized() {
 
 #[test]
 fn test_unary_ordering() {
-    use crate::language::parse_tree::declaration::FunctionDeclaration;
+    use crate::language::parsed::declaration::FunctionDeclaration;
     let prog = parse(
         r#"
     script;

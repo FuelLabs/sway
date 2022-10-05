@@ -1,4 +1,4 @@
-use crate::{language::parse_tree::*, type_system::*, AttributesMap};
+use crate::{language::parsed::*, type_system::*, AttributesMap};
 use sway_types::{ident::Ident, span::Span};
 
 mod purity;

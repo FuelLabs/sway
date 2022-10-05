@@ -1,5 +1,5 @@
 use crate::{
-    language::parse_tree::{CallPath, Literal},
+    language::parsed::{CallPath, Literal},
     TypeInfo,
 };
 

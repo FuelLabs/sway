@@ -8,7 +8,7 @@ use std::{
     sync::Arc,
 };
 
-use sway_core::{language::parse_tree::TreeType, parse};
+use sway_core::{language::parsed::TreeType, parse};
 pub use sway_types::ConfigTimeConstant;
 use sway_utils::constants;
 

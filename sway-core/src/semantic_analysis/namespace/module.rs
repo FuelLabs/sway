@@ -1,6 +1,6 @@
 use crate::{
     error::*,
-    language::parse_tree::{Declaration, ExpressionKind, Visibility},
+    language::parsed::{Declaration, ExpressionKind, Visibility},
     semantic_analysis::{
         ast_node::{TyAstNode, TyAstNodeContent, TyVariableDeclaration},
         declaration::VariableMutability,

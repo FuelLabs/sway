@@ -1,7 +1,7 @@
 use crate::{
     declaration_engine::declaration_engine::de_get_constant,
     error::CompileError,
-    language::parse_tree::Visibility,
+    language::parsed::Visibility,
     metadata::MetadataManager,
     semantic_analysis::{ast_node::*, namespace},
     type_system::look_up_type_id,

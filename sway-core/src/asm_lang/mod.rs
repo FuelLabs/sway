@@ -17,7 +17,7 @@ use crate::{
     asm_generation::{DataId, RegisterPool},
     asm_lang::allocated_ops::{AllocatedOpcode, AllocatedRegister},
     error::*,
-    language::parse_tree::AsmRegister,
+    language::parsed::AsmRegister,
     Ident,
 };
 

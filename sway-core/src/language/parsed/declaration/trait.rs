@@ -1,7 +1,7 @@
 use super::{FunctionDeclaration, FunctionParameter};
 
 use crate::{
-    language::parse_tree::{function::Purity, CallPath, Visibility},
+    language::parsed::{function::Purity, CallPath, Visibility},
     type_system::TypeInfo,
     AttributesMap,
 };

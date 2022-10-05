@@ -13,9 +13,8 @@ pub(crate) use mode::*;
 pub(crate) use return_statement::*;
 
 use crate::{
-    declaration_engine::declaration_engine::*, error::*, language::parse_tree::*,
-    semantic_analysis::*, style::*, type_system::*, types::DeterministicallyAborts, AstNode,
-    AstNodeContent, Ident,
+    declaration_engine::declaration_engine::*, error::*, language::parsed::*, semantic_analysis::*,
+    style::*, type_system::*, types::DeterministicallyAborts, AstNode, AstNodeContent, Ident,
 };
 
 use sway_types::{span::Span, state::StateIndex, Spanned};

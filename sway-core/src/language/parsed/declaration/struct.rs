@@ -1,5 +1,5 @@
 use crate::{
-    language::parse_tree::Visibility,
+    language::parsed::Visibility,
     type_system::{TypeInfo, TypeParameter},
     AttributesMap,
 };

@@ -17,7 +17,7 @@ use std::{
     path::PathBuf,
     sync::{Arc, LockResult, RwLock},
 };
-use sway_core::{language::parse_tree::ParseProgram, CompileResult, TyProgram, TyProgramKind};
+use sway_core::{language::parsed::ParseProgram, CompileResult, TyProgram, TyProgramKind};
 use sway_types::{Ident, Spanned};
 use swayfmt::Formatter;
 use tower_lsp::lsp_types::{

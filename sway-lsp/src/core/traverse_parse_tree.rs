@@ -5,7 +5,7 @@ use crate::{
 };
 use sway_core::{
     constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX},
-    language::parse_tree::{
+    language::parsed::{
         AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock, Declaration,
         DelineatedPathExpression, Expression, ExpressionKind, FunctionApplicationExpression,
         FunctionDeclaration, FunctionParameter, IfExpression, IntrinsicFunctionExpression,
