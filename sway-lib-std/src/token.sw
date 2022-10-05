@@ -91,7 +91,8 @@ pub fn transfer_to_address(amount: u64, asset_id: ContractId, to: Address) {
     // If an output of type `OutputVariable` is found, check if its `amount` is
     // zero. As one cannot transfer zero coins to an output without a panic, a
     // variable output with a value of zero is by definition unused.
-    while index < output_count() {
+    let number_of_outputs = output_count();
+    while index < number_of_outputs {
         if let Output::Variable = output_type(index) {
             if output_amount(index) == 0 {
                 asm(r1: to.value, r2: index, r3: amount, r4: asset_id.value) {
