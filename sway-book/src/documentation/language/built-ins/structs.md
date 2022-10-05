@@ -1,6 +1,6 @@
 # Structs
 
-A struct in Sway is a _product type_ which is a data structure that allows grouping of various types under a name, unlike a tuple. The types contained in the structure are named and thus they can be referenced by their names as well.
+A struct in Sway is a `product type` which is a data structure that allows grouping of various types under a name that can be referenced, unlike a tuple. The types contained in the struct are named and thus they can be referenced by their names as well.
 
 The following syntax demonstrates the definition of a struct named `Foo` containing two fields - `bar`, a `u64`, and `baz`, a `bool`.
 

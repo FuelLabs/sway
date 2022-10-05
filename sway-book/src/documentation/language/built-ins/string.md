@@ -27,13 +27,4 @@ The example above is a demonstration which emphasizes the fixed-length aspect of
 {{#include ../../../code/language/built-ins/strings/src/lib.sw:implicit}}
 ```
 
-> TODO: single quotes do not currently work for strings but work for single characters?
-> Add section to distinction between single char strings (if they even work in sway) vs longer strings?
-
-Similarly, the double quotes `"` can be replaced with single quotes `'`.
-
-```sway
-{{#include ../../../code/language/built-ins/strings/src/lib.sw:alternative_quotes}}
-```
-
 > Strings default to UTF-8 in Sway.

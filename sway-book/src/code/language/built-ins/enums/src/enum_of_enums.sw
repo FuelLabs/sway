@@ -1,19 +1,16 @@
 library enum_of_enums;
 
 // ANCHOR: content
-pub enum Error {
-    StateError: StateError,
+enum UserError {
+    InsufficientPermissions: (),
+    Unauthorized: (),
+}
+
+enum Error {
     UserError: UserError,
 }
 
-pub enum StateError {
-    Void: (),
-    Pending: (),
-    Completed: (),
-}
-
-pub enum UserError {
-    InsufficientPermissions: (),
-    Unauthorized: (),
+fn main() {
+    let my_enum = Error::UserError(UserError::Unauthorized);
 }
 // ANCHOR_END: content

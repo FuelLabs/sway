@@ -8,11 +8,11 @@ struct Item {
 }
 
 enum MyEnum {
-    Item: Item,
+    Product: Item,
 }
 
 fn main() {
-    let my_enum = MyEnum::Item(Item {
+    let my_enum = MyEnum::Product(Item {
         price: 5,
         amount: 2,
         id: 42,

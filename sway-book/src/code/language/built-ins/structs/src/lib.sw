@@ -47,7 +47,7 @@ fn destructuring() {
     }
 
     // You may use `..` to omit the remaining fields if the types match
-    // The compiler will fill them in
+    // The compiler will fill them in for you
     let Foo{bar, ..} = foo;
 }
 // ANCHOR_END: destructuring

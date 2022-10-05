@@ -15,11 +15,3 @@ fn implicit() {
     let crypto = "crypto";
     // ANCHOR_END: implicit
 }
-
-fn alternative_quotes() {
-    // ANCHOR: alternative_quotes
-    let fuel = 'fuel';
-    let blockchain = 'blockchain';
-    let crypto = 'crypto';
-    // ANCHOR_END: alternative_quotes
-}

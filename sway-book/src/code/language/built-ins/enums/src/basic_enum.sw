@@ -1,7 +1,6 @@
 library basic_enum;
 
-// ANCHOR: content
-// Declare the enum
+// ANCHOR: definition
 enum Color {
     Blue: (),
     Green: (),
@@ -9,10 +8,12 @@ enum Color {
     Silver: (),
     Grey: (),
 }
+// ANCHOR_END: definition
 
 fn main() {
-    // To instantiate a variable with the value of an enum the syntax is
+    // ANCHOR: init
+    // To instantiate an enum with a variant of the unit type the syntax is
     let blue = Color::Blue;
     let silver = Color::Silver;
+    // ANCHOR_END: init
 }
-// ANCHOR_END: content
