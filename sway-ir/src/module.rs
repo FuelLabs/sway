@@ -23,7 +23,7 @@ pub struct ModuleContent {
 }
 
 /// The different 'kinds' of Sway module: `Contract`, `Library`, `Predicate` or `Script`.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Kind {
     Contract,
     Library,
@@ -60,6 +60,18 @@ impl Module {
     /// Get a named global value from this module, if found.
     pub fn get_global_constant(&self, context: &Context, name: &str) -> Option<Value> {
         context.modules[self.0].globals.get(name).copied()
+    }
+
+    /// Removed a function from the module.  Returns true if function was found and removed.
+    ///
+    /// **Use with care!  Be sure the function is not an entry point nor called at any stage.**
+    pub fn remove_function(&self, context: &mut Context, function: &Function) {
+        context
+            .modules
+            .get_mut(self.0)
+            .expect("Module must exist in context.")
+            .functions
+            .retain(|mod_fn| mod_fn != function);
     }
 }
 

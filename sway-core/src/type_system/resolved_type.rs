@@ -50,20 +50,3 @@ impl Default for ResolvedType {
         ResolvedType::Unit
     }
 }
-
-impl ResolvedType {
-    pub(crate) fn is_copy_type(&self) -> bool {
-        matches!(
-            self,
-            ResolvedType::Boolean
-                | ResolvedType::Byte
-                | ResolvedType::Unit
-                | ResolvedType::UnsignedInteger(_)
-        )
-    }
-
-    #[allow(dead_code)]
-    pub fn is_numeric(&self) -> bool {
-        matches!(self, ResolvedType::UnsignedInteger(_))
-    }
-}

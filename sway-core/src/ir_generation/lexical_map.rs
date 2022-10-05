@@ -8,20 +8,20 @@
 // and remove shadowing symbols, the re-use of symbol names can't be allowed, so all names are
 // reserved even when they're not 'currently' valid.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub(super) struct LexicalMap {
     symbol_map: Vec<HashMap<String, String>>,
-    reserved_sybols: Vec<String>,
+    reserved_sybols: HashSet<String>,
 }
 
 impl LexicalMap {
     pub(super) fn from_iter<I: IntoIterator<Item = String>>(names: I) -> Self {
-        let (root_symbol_map, reserved_sybols): (HashMap<String, String>, Vec<String>) = names
+        let (root_symbol_map, reserved_sybols): (HashMap<String, String>, HashSet<String>) = names
             .into_iter()
-            .fold((HashMap::new(), Vec::new()), |(mut m, mut r), name| {
+            .fold((HashMap::new(), HashSet::new()), |(mut m, mut r), name| {
                 m.insert(name.clone(), name.clone());
-                r.push(name);
+                r.insert(name);
                 (m, r)
             });
 
@@ -53,13 +53,12 @@ impl LexicalMap {
     pub(super) fn insert(&mut self, new_symbol: String) -> String {
         // Insert this new symbol into this lexical scope.  If it has ever existed then the
         // original will be shadowed and the shadower is returned.
-        fn get_new_local_symbol(reserved: &[String], candidate: String) -> String {
-            match reserved.iter().find(|&reserved| reserved == &candidate) {
-                None => candidate,
-                Some(_) => {
-                    // Try again with adjusted candidate.
-                    get_new_local_symbol(reserved, format!("{candidate}_"))
-                }
+        fn get_new_local_symbol(reserved: &HashSet<String>, candidate: String) -> String {
+            if reserved.contains(&candidate) {
+                // Try again with adjusted candidate.
+                get_new_local_symbol(reserved, format!("{candidate}_"))
+            } else {
+                candidate
             }
         }
         let local_symbol = get_new_local_symbol(&self.reserved_sybols, new_symbol.clone());
@@ -67,7 +66,22 @@ impl LexicalMap {
             .last_mut()
             .expect("LexicalMap should always have at least the root scope.")
             .insert(new_symbol, local_symbol.clone());
-        self.reserved_sybols.push(local_symbol.clone());
+        self.reserved_sybols.insert(local_symbol.clone());
         local_symbol
+    }
+
+    // Generate and reserve a unique 'anonymous' symbol.  Is in the form `__anon_X` where `X` is a
+    // unique number.
+    pub(super) fn insert_anon(&mut self) -> String {
+        let anon_symbol = (0..)
+            .map(|n| format!("__anon_{n}"))
+            .find(|candidate| !self.reserved_sybols.contains(candidate))
+            .unwrap();
+        self.symbol_map
+            .last_mut()
+            .expect("LexicalMap should always have at least the root scope.")
+            .insert(anon_symbol.clone(), anon_symbol.clone());
+        self.reserved_sybols.insert(anon_symbol.clone());
+        anon_symbol
     }
 }
