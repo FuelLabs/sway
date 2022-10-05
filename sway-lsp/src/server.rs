@@ -91,6 +91,17 @@ fn capabilities() -> ServerCapabilities {
         document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
+        document_highlight_provider: Some(OneOf::Left(true)),
+        rename_provider: Some(OneOf::Right(RenameOptions {
+            prepare_provider: Some(true),
+            work_done_progress_options: WorkDoneProgressOptions {
+                work_done_progress: Some(true),
+            },
+        })),
+        execute_command_provider: Some(ExecuteCommandOptions {
+            commands: vec![],
+            ..Default::default()
+        }),
         ..ServerCapabilities::default()
     }
 }
@@ -637,6 +648,40 @@ mod tests {
         formatting
     }
 
+    async fn highlight_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+            "position": {
+                "line": 44,
+                "character": 27
+            }
+        });
+        let highlight = Request::build("textDocument/documentHighlight")
+            .params(params)
+            .id(1)
+            .finish();
+        let response = service.ready().await.unwrap().call(highlight.clone()).await;
+        let ok = Response::from_ok(
+            1.into(),
+            json!([{
+                "range": {
+                    "end": {
+                        "character": 27,
+                        "line": 44
+                    },
+                    "start": {
+                        "character": 23,
+                        "line": 44
+                    }
+                }
+            }]),
+        );
+        assert_eq!(response, Ok(Some(ok)));
+        highlight
+    }
+
     fn config() -> DebugFlags {
         Default::default()
     }
@@ -846,7 +891,11 @@ mod tests {
         shutdown_and_exit(&mut service).await;
     }
 
-    // where capability is an async function.
+    // This macro allows us to spin up a server / client for testing
+    // It initializes and performs the necessary handshake and then loads
+    // the sway example that was passed into `example_dir`.
+    // It then runs the specific capability to test before gracefully shutting down.
+    // The capability argument is an async function.
     macro_rules! test_lsp_capability {
         ($example_dir:expr, $capability:expr) => {{
             let (mut service, mut messages) =
@@ -859,38 +908,55 @@ mod tests {
         }};
     }
 
-    #[tokio::test]
+    //#[tokio::test]
     #[allow(dead_code)]
     async fn semantic_tokens() {
         // send "textDocument/semanticTokens/full" request
         test_lsp_capability!(doc_comments(), semantic_tokens_request);
     }
 
-    #[tokio::test]
+    //#[tokio::test]
     #[allow(dead_code)]
     async fn document_symbol() {
         // send "textDocument/documentSymbol" request
         test_lsp_capability!(doc_comments(), document_symbol_request);
     }
 
-    #[tokio::test]
+    //#[tokio::test]
     #[allow(dead_code)]
     async fn go_to_definition() {
         // send "textDocument/definition" request
         test_lsp_capability!(doc_comments(), go_to_definition_request);
     }
 
-    #[tokio::test]
+    //#[tokio::test]
     #[allow(dead_code)]
     async fn format() {
         // send "textDocument/formatting" request
         test_lsp_capability!(doc_comments(), format_request);
     }
 
-    #[tokio::test]
+    //#[tokio::test]
     #[allow(dead_code)]
     async fn hover() {
         // send "textDocument/hover" request
         test_lsp_capability!(doc_comments(), hover_request);
+    }
+
+    //#[tokio::test]
+    #[allow(dead_code)]
+    async fn highlight() {
+        // send "textDocument/documentHighlight" request
+        test_lsp_capability!(doc_comments(), highlight_request);
+    }
+
+    #[tokio::test]
+    async fn test_capabilities() {
+        test_lsp_capability!(doc_comments(), semantic_tokens_request);
+        test_lsp_capability!(doc_comments(), document_symbol_request);
+        test_lsp_capability!(doc_comments(), go_to_definition_request);
+        test_lsp_capability!(doc_comments(), format_request);
+        test_lsp_capability!(doc_comments(), hover_request);
+        test_lsp_capability!(doc_comments(), highlight_request);
     }
 }
