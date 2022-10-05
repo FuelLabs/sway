@@ -393,7 +393,7 @@ impl TypeId {
             | TypeInfo::Struct {
                 type_parameters, ..
             } => {
-                // Here, type_parameters.type_id should contain resolved types
+                // Here, type_id for each type parameter should contain resolved types
                 let json_type_arguments = type_parameters
                     .iter()
                     .map(|v| JsonTypeDeclaration {
