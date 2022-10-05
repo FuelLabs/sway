@@ -15,15 +15,22 @@ async fn can_mint() {
     let asset_id = target.clone();
 
     let mut balance_result = fuelcoin_instance
+        .methods()
         .get_balance(target.clone(), asset_id.clone())
         .call()
         .await
         .unwrap();
     assert_eq!(balance_result.value, 0);
 
-    fuelcoin_instance.mint_coins(11).call().await.unwrap();
+    fuelcoin_instance
+        .methods()
+        .mint_coins(11)
+        .call()
+        .await
+        .unwrap();
 
     balance_result = fuelcoin_instance
+        .methods()
         .get_balance(target, asset_id)
         .call()
         .await
@@ -40,16 +47,28 @@ async fn can_burn() {
     let asset_id = target.clone();
 
     let mut balance_result = fuelcoin_instance
+        .methods()
         .get_balance(target.clone(), asset_id.clone())
         .call()
         .await
         .unwrap();
     assert_eq!(balance_result.value, 0);
 
-    fuelcoin_instance.mint_coins(11).call().await.unwrap();
-    fuelcoin_instance.burn_coins(7).call().await.unwrap();
+    fuelcoin_instance
+        .methods()
+        .mint_coins(11)
+        .call()
+        .await
+        .unwrap();
+    fuelcoin_instance
+        .methods()
+        .burn_coins(7)
+        .call()
+        .await
+        .unwrap();
 
     balance_result = fuelcoin_instance
+        .methods()
         .get_balance(target, asset_id)
         .call()
         .await
@@ -68,15 +87,22 @@ async fn can_force_transfer() {
     let target = balance_id.clone();
 
     let mut balance_result = fuelcoin_instance
+        .methods()
         .get_balance(asset_id.clone(), asset_id.clone())
         .call()
         .await
         .unwrap();
     assert_eq!(balance_result.value, 0);
 
-    fuelcoin_instance.mint_coins(100).call().await.unwrap();
+    fuelcoin_instance
+        .methods()
+        .mint_coins(100)
+        .call()
+        .await
+        .unwrap();
 
     balance_result = fuelcoin_instance
+        .methods()
         .get_balance(asset_id.clone(), asset_id.clone())
         .call()
         .await
@@ -85,6 +111,7 @@ async fn can_force_transfer() {
 
     // confirm initial balance on balance contract (recipient)
     balance_result = fuelcoin_instance
+        .methods()
         .get_balance(asset_id.clone(), target.clone())
         .set_contracts(&[balance_id.into()])
         .call()
@@ -95,6 +122,7 @@ async fn can_force_transfer() {
     let coins = 42u64;
 
     fuelcoin_instance
+        .methods()
         .force_transfer_coins(coins, asset_id.clone(), target.clone())
         .set_contracts(&[balance_id.into()])
         .call()
@@ -103,6 +131,7 @@ async fn can_force_transfer() {
 
     // confirm remaining balance on fuelcoin contract
     balance_result = fuelcoin_instance
+        .methods()
         .get_balance(asset_id.clone(), asset_id.clone())
         .call()
         .await
@@ -111,6 +140,7 @@ async fn can_force_transfer() {
 
     // confirm new balance on balance contract (recipient)
     balance_result = fuelcoin_instance
+        .methods()
         .get_balance(asset_id.clone(), target.clone())
         .set_contracts(&[balance_id.into()])
         .call()
@@ -131,6 +161,7 @@ async fn can_mint_and_send_to_contract() {
     let target = balance_id.clone();
 
     fuelcoin_instance
+        .methods()
         .mint_and_send_to_contract(amount, target.clone())
         .set_contracts(&[balance_id.into()])
         .call()
@@ -138,6 +169,7 @@ async fn can_mint_and_send_to_contract() {
         .unwrap();
 
     let result = fuelcoin_instance
+        .methods()
         .get_balance(asset_id, target)
         .set_contracts(&[balance_id.into()])
         .call()
@@ -159,6 +191,7 @@ async fn can_mint_and_send_to_address() {
     let recipient = address.clone();
 
     fuelcoin_instance
+        .methods()
         .mint_and_send_to_address(amount, recipient.into())
         .append_variable_outputs(1)
         .call()
@@ -185,6 +218,7 @@ async fn can_perform_generic_mint_to_with_address() {
     let address = wallet.address();
 
     fuelcoin_instance
+        .methods()
         .generic_mint_to(amount, Identity::Address(address.into()))
         .append_variable_outputs(1)
         .call()
@@ -221,6 +255,7 @@ async fn can_perform_generic_mint_to_with_contract_id() {
     let target = balance_id.clone();
 
     fuelcoin_instance
+        .methods()
         .generic_mint_to(amount, Identity::ContractId(target))
         .set_contracts(&[balance_id.into()])
         .call()
@@ -228,6 +263,7 @@ async fn can_perform_generic_mint_to_with_contract_id() {
         .unwrap();
 
     let result = fuelcoin_instance
+        .methods()
         .get_balance(fuelcoin_id, target)
         .set_contracts(&[balance_id.into()])
         .call()
@@ -246,9 +282,15 @@ async fn can_perform_generic_transfer_to_address() {
     let asset_id_array: [u8; 32] = fuelcoin_id.into();
     let address = wallet.address();
 
-    fuelcoin_instance.mint_coins(amount).call().await.unwrap();
+    fuelcoin_instance
+        .methods()
+        .mint_coins(amount)
+        .call()
+        .await
+        .unwrap();
 
     fuelcoin_instance
+        .methods()
         .generic_transfer(amount, fuelcoin_id, Identity::Address(address.into()))
         .append_variable_outputs(1)
         .call()
@@ -284,9 +326,15 @@ async fn can_perform_generic_transfer_to_contract() {
     let amount = 44u64;
     let to = balance_id.clone();
 
-    fuelcoin_instance.mint_coins(amount).call().await.unwrap();
+    fuelcoin_instance
+        .methods()
+        .mint_coins(amount)
+        .call()
+        .await
+        .unwrap();
 
     fuelcoin_instance
+        .methods()
         .generic_transfer(amount, fuelcoin_id, Identity::ContractId(to))
         .set_contracts(&[balance_id.into()])
         .call()
@@ -294,6 +342,7 @@ async fn can_perform_generic_transfer_to_contract() {
         .unwrap();
 
     let result = fuelcoin_instance
+        .methods()
         .get_balance(fuelcoin_id, to)
         .set_contracts(&[balance_id.into()])
         .call()
@@ -359,8 +408,7 @@ async fn get_fuelcoin_instance(wallet: WalletUnlocked) -> (TestFuelCoinContract,
     .await
     .unwrap();
 
-    let fuelcoin_instance =
-        TestFuelCoinContractBuilder::new(fuelcoin_id.to_string(), wallet).build();
+    let fuelcoin_instance = TestFuelCoinContract::new(fuelcoin_id.to_string(), wallet);
 
     (fuelcoin_instance, fuelcoin_id.into())
 }

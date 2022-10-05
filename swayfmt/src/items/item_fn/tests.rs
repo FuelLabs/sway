@@ -10,7 +10,7 @@ fn format_code(input: &str) -> String {
     let input_arc = std::sync::Arc::from(input);
     let token_stream = lex(&input_arc, 0, input.len(), None).unwrap();
     let handler = Handler::default();
-    let mut parser = Parser::new(&token_stream, &handler);
+    let mut parser = Parser::new(&handler, &token_stream);
     let expression: ItemFn = parser.parse().unwrap();
 
     let mut buf = Default::default();

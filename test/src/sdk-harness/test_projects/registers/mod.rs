@@ -23,104 +23,114 @@ async fn deploy_test_registers_instance() -> TestRegistersContract {
     .await
     .unwrap();
 
-    TestRegistersContractBuilder::new(id.to_string(), wallet).build()
+    TestRegistersContract::new(id.to_string(), wallet)
 }
 
 #[tokio::test]
 async fn can_get_overflow() {
     let instance = deploy_test_registers_instance().await;
-    let result = instance.get_overflow().call().await.unwrap();
+    let result = instance.methods().get_overflow().call().await.unwrap();
     assert_eq!(result.value, 0);
 }
 
 #[tokio::test]
 async fn can_get_program_counter() {
     let instance = deploy_test_registers_instance().await;
-    let result = instance.get_program_counter().call().await.unwrap();
+    let result = instance
+        .methods()
+        .get_program_counter()
+        .call()
+        .await
+        .unwrap();
     assert!(is_within_range(result.value));
 }
 
 #[tokio::test]
 async fn can_get_stack_start_ptr() {
     let instance = deploy_test_registers_instance().await;
-    let result = instance.get_stack_start_ptr().call().await.unwrap();
+    let result = instance
+        .methods()
+        .get_stack_start_ptr()
+        .call()
+        .await
+        .unwrap();
     assert!(is_within_range(result.value));
 }
 
 #[tokio::test]
 async fn can_get_stack_ptr() {
     let instance = deploy_test_registers_instance().await;
-    let result = instance.get_stack_ptr().call().await.unwrap();
+    let result = instance.methods().get_stack_ptr().call().await.unwrap();
     assert!(is_within_range(result.value));
 }
 
 #[tokio::test]
 async fn can_get_frame_ptr() {
     let instance = deploy_test_registers_instance().await;
-    let result = instance.get_frame_ptr().call().await.unwrap();
+    let result = instance.methods().get_frame_ptr().call().await.unwrap();
     assert!(is_within_range(result.value));
 }
 
 #[tokio::test]
 async fn can_get_heap_ptr() {
     let instance = deploy_test_registers_instance().await;
-    let result = instance.get_heap_ptr().call().await.unwrap();
+    let result = instance.methods().get_heap_ptr().call().await.unwrap();
     assert!(is_within_range(result.value));
 }
 
 #[tokio::test]
 async fn can_get_error() {
     let instance = deploy_test_registers_instance().await;
-    let result = instance.get_error().call().await.unwrap();
+    let result = instance.methods().get_error().call().await.unwrap();
     assert_eq!(result.value, 0);
 }
 
 #[tokio::test]
 async fn can_get_global_gas() {
     let instance = deploy_test_registers_instance().await;
-    let result = instance.get_global_gas().call().await.unwrap();
+    let result = instance.methods().get_global_gas().call().await.unwrap();
     assert!(is_within_range(result.value));
 }
 
 #[tokio::test]
 async fn can_get_context_gas() {
     let instance = deploy_test_registers_instance().await;
-    let result = instance.get_context_gas().call().await.unwrap();
+    let result = instance.methods().get_context_gas().call().await.unwrap();
     assert!(is_within_range(result.value));
 }
 
 #[tokio::test]
 async fn can_get_balance() {
     let instance = deploy_test_registers_instance().await;
-    let result = instance.get_balance().call().await.unwrap();
+    let result = instance.methods().get_balance().call().await.unwrap();
     assert_eq!(result.value, 0);
 }
 
 #[tokio::test]
 async fn can_get_instrs_start() {
     let instance = deploy_test_registers_instance().await;
-    let result = instance.get_instrs_start().call().await.unwrap();
+    let result = instance.methods().get_instrs_start().call().await.unwrap();
     assert!(is_within_range(result.value));
 }
 
 #[tokio::test]
 async fn can_get_return_value() {
     let instance = deploy_test_registers_instance().await;
-    let result = instance.get_return_value().call().await.unwrap();
+    let result = instance.methods().get_return_value().call().await.unwrap();
     assert_eq!(result.value, 0);
 }
 
 #[tokio::test]
 async fn can_get_return_length() {
     let instance = deploy_test_registers_instance().await;
-    let result = instance.get_return_length().call().await.unwrap();
+    let result = instance.methods().get_return_length().call().await.unwrap();
     assert_eq!(result.value, 0);
 }
 
 #[tokio::test]
 async fn can_get_flags() {
     let instance = deploy_test_registers_instance().await;
-    let result = instance.get_flags().call().await.unwrap();
+    let result = instance.methods().get_flags().call().await.unwrap();
     assert_eq!(result.value, 0);
 }
 

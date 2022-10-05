@@ -5,6 +5,6 @@ license = "Apache-2.0"
 name = "reentrancy_attacker_contract"
 
 [dependencies]
+reentrancy_attacker_abi = { path = "../reentrancy_attacker_abi" }
+reentrancy_target_abi = { path = "../reentrancy_target_abi" }
 std = { path = "../../../../../sway-lib-std" }
-reentrancy_target_abi = { path = "../reentrancy_target_abi"}
-reentrancy_attacker_abi = { path = "../reentrancy_attacker_abi"}

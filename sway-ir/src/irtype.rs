@@ -165,6 +165,11 @@ impl Aggregate {
         context.aggregates[self.0].eq(context, &context.aggregates[other.0])
     }
 
+    /// Get a reference to the [`AggregateContent`] for this aggregate.
+    pub fn get_content<'a>(&self, context: &'a Context) -> &'a AggregateContent {
+        &context.aggregates[self.0]
+    }
+
     /// Get the type of (nested) aggregate fields, if found.  If an index is into a `Union` then it
     /// will get the type of the indexed variant.
     pub fn get_field_type(&self, context: &Context, indices: &[u64]) -> Option<Type> {

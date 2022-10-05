@@ -1,7 +1,6 @@
 contract;
 
 use std::{
-    address::Address,
     inputs::{
         Input,
         input_count,
@@ -9,7 +8,6 @@ use std::{
         input_pointer,
         input_type,
     },
-    option::Option,
     outputs::{
         Output,
         output_count,
