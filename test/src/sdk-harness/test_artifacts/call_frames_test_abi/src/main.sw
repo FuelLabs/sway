@@ -1,7 +1,5 @@
 library call_frames_test_abi;
 
-use std::contract_id::ContractId;
-
 pub struct TestStruct {
     value0: u64,
     value1: bool,
