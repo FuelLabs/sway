@@ -89,6 +89,12 @@ impl CollectTypesMetadata for TypedExpression {
                         errors
                     ));
                 }
+                // if function_decl.name.as_str() == "first_if"
+                //     || function_decl.name.as_str() == "second_if"
+                //     || function_decl.name.as_str() == "third_if"
+                // {
+                //     println!("collecting in expression: {}", function_decl);
+                // }
                 for content in function_decl.body.contents.iter() {
                     res.append(&mut check!(
                         content.collect_types_metadata(),
@@ -969,7 +975,7 @@ impl TypedExpression {
     }
 
     fn type_check_function_application(
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         mut call_path_binding: TypeBinding<CallPath>,
         arguments: Vec<Expression>,
         span: Span,
@@ -979,7 +985,7 @@ impl TypedExpression {
 
         // type deck the declaration
         let unknown_decl = check!(
-            TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx),
+            TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref()),
             return err(warnings, errors),
             warnings,
             errors
@@ -1522,7 +1528,7 @@ impl TypedExpression {
     }
 
     fn type_check_delineated_path(
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         call_path_binding: TypeBinding<CallPath>,
         span: Span,
         args: Vec<Expression>,
@@ -1556,7 +1562,7 @@ impl TypedExpression {
         let mut function_probe_errors = Vec::new();
         let maybe_function = {
             let mut call_path_binding = call_path_binding.clone();
-            TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx)
+            TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
                 .flat_map(|unknown_decl| unknown_decl.expect_function(&span))
                 .ok(&mut function_probe_warnings, &mut function_probe_errors)
         };
@@ -1574,7 +1580,7 @@ impl TypedExpression {
                 type_arguments: call_path_binding.type_arguments,
                 span: call_path_binding.span,
             };
-            TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx)
+            TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
                 .flat_map(|unknown_decl| unknown_decl.expect_enum(&call_path_binding.span()))
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
                 .map(|enum_decl| (enum_decl, enum_name, variant_name))

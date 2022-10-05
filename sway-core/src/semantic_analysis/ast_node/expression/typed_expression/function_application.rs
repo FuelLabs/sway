@@ -45,13 +45,41 @@ pub(crate) fn instantiate_function_application(
                     not match the declared type of the parameter in the function \
                     declaration.",
                 )
-                .with_type_annotation(param.type_id);
+                .with_type_annotation(insert_type(TypeInfo::Unknown));
+
             let exp = check!(
                 TypedExpression::type_check(ctx, arg.clone()),
                 error_recovery_expr(arg.span()),
                 warnings,
                 errors
             );
+
+            // if function_decl.name.as_str() == "first_if"
+            //     || function_decl.name.as_str() == "second_if"
+            //     || function_decl.name.as_str() == "third_if"
+            // {
+            //     println!("about to unify: {} and {}", exp.return_type, param.type_id);
+            // }
+
+            append!(
+                unify_right(
+                    exp.return_type,
+                    param.type_id,
+                    &exp.span,
+                    "The argument that has been provided to this function's type does \
+                    not match the declared type of the parameter in the function \
+                    declaration."
+                ),
+                warnings,
+                errors
+            );
+
+            // if function_decl.name.as_str() == "first_if"
+            //     || function_decl.name.as_str() == "second_if"
+            //     || function_decl.name.as_str() == "third_if"
+            // {
+            //     println!("  just unified: {} and {}", exp.return_type, param.type_id);
+            // }
 
             // check for matching mutability
             let param_mutability =

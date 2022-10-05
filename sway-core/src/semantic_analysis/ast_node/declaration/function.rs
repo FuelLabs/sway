@@ -1,5 +1,7 @@
 mod function_parameter;
 
+use std::fmt;
+
 pub use function_parameter::*;
 
 use crate::{
@@ -9,7 +11,7 @@ use crate::{
 use sha2::{Digest, Sha256};
 use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Eq)]
 pub struct TypedFunctionDeclaration {
     pub name: Ident,
     pub body: TypedCodeBlock,
@@ -25,6 +27,62 @@ pub struct TypedFunctionDeclaration {
     /// whether this function exists in another contract and requires a call to it or not
     pub(crate) is_contract_call: bool,
     pub(crate) purity: Purity,
+}
+
+impl fmt::Display for TypedFunctionDeclaration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}{}({}) -> {} {{ .. }}",
+            self.name,
+            if self.type_parameters.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "<{}>",
+                    self.type_parameters
+                        .iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            },
+            self.parameters
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(", "),
+            self.return_type,
+        )
+    }
+}
+
+impl fmt::Debug for TypedFunctionDeclaration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}{}({}) -> {:?} {{ .. }}",
+            self.name,
+            if self.type_parameters.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "<{}>",
+                    self.type_parameters
+                        .iter()
+                        .map(|x| format!("{:?}", x))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            },
+            self.parameters
+                .iter()
+                .map(|x| format!("{:?}", x))
+                .collect::<Vec<_>>()
+                .join(", "),
+            self.return_type,
+        )
+    }
 }
 
 impl From<&TypedFunctionDeclaration> for TypedAstNode {
@@ -101,11 +159,11 @@ impl TypedFunctionDeclaration {
             purity,
             ..
         } = fn_decl;
+
         is_snake_case(&name).ok(&mut warnings, &mut errors);
 
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
-
         let mut ctx = ctx.scoped(&mut fn_namespace).with_purity(purity);
 
         // type check the type parameters
