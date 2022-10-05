@@ -242,6 +242,11 @@ impl Function {
         context.functions[self.0].blocks[0]
     }
 
+    /// Return the attached metadata.
+    pub fn get_metadata(&self, context: &Context) -> Option<MetadataIndex> {
+        context.functions[self.0].metadata
+    }
+
     /// Whether this function has a valid selector.
     pub fn has_selector(&self, context: &Context) -> bool {
         context.functions[self.0].selector.is_some()
@@ -250,6 +255,11 @@ impl Function {
     /// Return the function selector, if it has one.
     pub fn get_selector(&self, context: &Context) -> Option<[u8; 4]> {
         context.functions[self.0].selector
+    }
+
+    // Get the function return type.
+    pub fn get_return_type(&self, context: &Context) -> Type {
+        context.functions[self.0].return_type
     }
 
     /// Get an arg value by name, if found.

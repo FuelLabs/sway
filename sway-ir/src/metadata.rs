@@ -6,6 +6,7 @@
 ///!
 ///! The metadata themselves are opaque to `sway-ir` and are represented with simple value types;
 ///! integers, strings, symbols (tags) and lists.
+use crate::context::Context;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash)]
 pub struct MetadataIndex(pub generational_arena::Index);
@@ -28,7 +29,7 @@ pub enum Metadatum {
 /// This function conveniently has all the logic to return the simplest combination of two
 /// `Option<MetadataIndex>`s.
 pub fn combine(
-    context: &mut crate::context::Context,
+    context: &mut Context,
     md_idx_a: &Option<MetadataIndex>,
     md_idx_b: &Option<MetadataIndex>,
 ) -> Option<MetadataIndex> {
@@ -54,6 +55,40 @@ pub fn combine(
                 context.metadata.insert(Metadatum::List(new_list)),
             ))
         }
+    }
+}
+
+impl MetadataIndex {
+    pub fn new_integer(context: &mut Context, int: u64) -> Self {
+        MetadataIndex(context.metadata.insert(Metadatum::Integer(int)))
+    }
+
+    pub fn new_index(context: &mut Context, idx: MetadataIndex) -> Self {
+        MetadataIndex(context.metadata.insert(Metadatum::Index(idx)))
+    }
+
+    pub fn new_string<S: Into<String>>(context: &mut Context, s: S) -> Self {
+        MetadataIndex(context.metadata.insert(Metadatum::String(s.into())))
+    }
+
+    pub fn new_struct<S: Into<String>>(
+        context: &mut Context,
+        tag: S,
+        fields: Vec<Metadatum>,
+    ) -> Self {
+        MetadataIndex(
+            context
+                .metadata
+                .insert(Metadatum::Struct(tag.into(), fields)),
+        )
+    }
+
+    pub fn new_list(context: &mut Context, els: Vec<MetadataIndex>) -> Self {
+        MetadataIndex(context.metadata.insert(Metadatum::List(els)))
+    }
+
+    pub fn get_content<'a>(&self, context: &'a Context) -> &'a Metadatum {
+        &context.metadata[self.0]
     }
 }
 
@@ -86,6 +121,14 @@ impl Metadatum {
         match self {
             Metadatum::Struct(t, fs) if t == tag && fs.len() == num_fields => Some(fs),
             _otherwise => None,
+        }
+    }
+
+    pub fn unwrap_list(&self) -> Option<&[MetadataIndex]> {
+        if let Metadatum::List(els) = self {
+            Some(els)
+        } else {
+            None
         }
     }
 }
