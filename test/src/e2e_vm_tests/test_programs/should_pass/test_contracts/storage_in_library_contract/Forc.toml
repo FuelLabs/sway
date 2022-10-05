@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+implicit-std = false
+license = "Apache-2.0"
+name = "storage_in_library_contract"
+
+[dependencies]
+storage_in_library_abi = { path = "../../test_abis/storage_in_library_abi" }

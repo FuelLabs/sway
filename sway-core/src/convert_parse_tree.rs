@@ -500,6 +500,14 @@ fn use_tree_to_use_statements(
                 alias: None,
             });
         }
+        UseTree::StorageName { name, alias, .. } => {
+            ret.push(UseStatement {
+                call_path: path.clone(),
+                import_type: ImportType::Storage(name),
+                is_absolute,
+                alias: None,
+            });
+        }
         UseTree::Rename { name, alias, .. } => {
             let import_type = if name.as_str() == "self" {
                 ImportType::SelfImport

@@ -218,6 +218,7 @@ impl TypedAstNode {
                         ImportType::Star => ctx.namespace.star_import(&path),
                         ImportType::SelfImport => ctx.namespace.self_import(&path, a.alias),
                         ImportType::Item(s) => ctx.namespace.item_import(&path, &s, a.alias),
+                        ImportType::Storage(s) => ctx.namespace.item_import(&path, &s, a.alias),
                     };
                     warnings.append(&mut res.warnings);
                     errors.append(&mut res.errors);

@@ -173,6 +173,17 @@ impl Namespace {
         self.root.item_import(src, item, &self.mod_path, alias)
     }
 
+    /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.
+    pub(crate) fn storage_item_import(
+        &mut self,
+        src: &Path,
+        item: &Ident,
+        alias: Option<Ident>,
+    ) -> CompileResult<()> {
+        self.root
+            .storage_item_import(src, item, &self.mod_path, alias)
+    }
+
     /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].
     ///
     /// Here we temporarily change `mod_path` to the given `dep_mod_path` and wrap `self` in a

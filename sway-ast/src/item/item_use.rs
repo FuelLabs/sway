@@ -28,6 +28,15 @@ pub enum UseTree {
     Name {
         name: Ident,
     },
+    StorageName {
+        storage_token_1: StorageToken,
+        dot_token_1: DotToken,
+        name: Ident,
+        as_token: AsToken,
+        storage_token_2: StorageToken,
+        dot_token_2: DotToken,
+        alias: Ident,
+    },
     Rename {
         name: Ident,
         as_token: AsToken,

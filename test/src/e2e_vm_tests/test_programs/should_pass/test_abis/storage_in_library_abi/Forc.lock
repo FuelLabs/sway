@@ -1,0 +1,9 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-76B2D1CD254916E4'
+dependencies = []
+
+[[package]]
+name = 'storage_in_library'
+source = 'root'
+dependencies = ['core']

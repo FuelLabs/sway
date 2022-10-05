@@ -393,6 +393,22 @@ impl Module {
 
         ok((), warnings, errors)
     }
+
+    /// Pull a single `storage item` from the given `src` module and import it into the `dst` module.
+    ///
+    /// Paths are assumed to be relative to `self`.
+    pub(crate) fn storage_item_import(
+        &mut self,
+        src: &Path,
+        item: &Ident,
+        dst: &Path,
+        alias: Option<Ident>,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        ok((), warnings, errors)
+    }
 }
 
 impl std::ops::Deref for Module {

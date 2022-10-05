@@ -5,6 +5,7 @@ pub enum ImportType {
     Star,
     SelfImport,
     Item(Ident),
+    Storage(Ident),
 }
 
 /// A [UseStatement] is a statement that imports something from a module into the local namespace.
