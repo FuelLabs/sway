@@ -3,6 +3,7 @@ contract;
 use std::{
     context::balance_of,
     token::*,
+    message::send_message,
 };
 
 abi TestFuelCoin {
@@ -15,7 +16,7 @@ abi TestFuelCoin {
     fn mint_and_send_to_address(amount: u64, to: Address);
     fn generic_mint_to(amount: u64, to: Identity);
     fn generic_transfer(amount: u64, asset_id: ContractId, to: Identity);
-    fn send_message(coins: u64, msg_len: u64, output: u64, recipient: b256);
+    fn send_message(coins: u64, msg_len: u64, recipient: b256);
 }
 
 impl TestFuelCoin for Contract {
@@ -55,7 +56,7 @@ impl TestFuelCoin for Contract {
         transfer(amount, asset_id, to)
     }
 
-    fn send_message(coins: u64, msg_len: u64, output: u64, recipient: b256) {
-        send_message(coins, msg_len, output, recipient);
+    fn send_message(coins: u64, msg_len: u64, recipient: b256) {
+        send_message(coins, msg_len, recipient);
     }
 }

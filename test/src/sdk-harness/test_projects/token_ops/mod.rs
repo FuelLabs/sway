@@ -371,29 +371,27 @@ async fn can_send_message() {
     let asset_id_array: [u8; 32] = fuelcoin_id.into();
     let recipient = wallets[1].address();
     let recipient_addr: Address = recipient.into();
-    let recipient_array: [u8; 32] = recipient_addr.into();
 
-    fuelcoin_instance.mint_coins(amount).call().await.unwrap();
-
-    // TODO: how to check message, balance here?
+    fuelcoin_instance.methods().mint_coins(amount).call().await.unwrap();
 
     fuelcoin_instance
-        .send_message(amount, 0, 0, recipient_array)
-        .append_variable_outputs(1)
+        .methods()
+        .send_message(amount, 0, Bits256(*recipient_addr))
+        .append_message_outputs(1)
         .call()
         .await
         .unwrap();
 
-    // TODO: how to check message here?
+    // @todo check the receipts for the smo output
 
-    assert_eq!(
-        wallets[1]
-            .get_spendable_coins(AssetId::from(asset_id_array), 1)
-            .await
-            .unwrap()[0]
-            .amount,
-        amount.into()
-    );
+    // assert_eq!(
+    //     wallets[1]
+    //         .get_spendable_coins(AssetId::from(asset_id_array), 1)
+    //         .await
+    //         .unwrap()[0]
+    //         .amount,
+    //     amount.into()
+    // );
 }
 
 async fn get_fuelcoin_instance(wallet: WalletUnlocked) -> (TestFuelCoinContract, ContractId) {
