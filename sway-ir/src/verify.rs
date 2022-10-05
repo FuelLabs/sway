@@ -195,6 +195,7 @@ impl<'a> InstructionVerifier<'a> {
                     Instruction::Phi(pairs) => self.verify_phi(&pairs[..])?,
                     Instruction::ReadRegister(_) => (),
                     Instruction::Ret(val, ty) => self.verify_ret(self.cur_function, val, ty)?,
+                    Instruction::Revert(val) => self.verify_revert(val)?,
                     Instruction::StateLoadWord(key) => self.verify_state_load_word(key)?,
                     Instruction::StateLoadQuadWord {
                         load_val: dst_val,
@@ -647,6 +648,14 @@ impl<'a> InstructionVerifier<'a> {
             || self.opt_ty_not_eq(&val.get_stripped_ptr_type(self.context), &Some(*ty))
         {
             Err(IrError::VerifyMismatchedReturnTypes(function.name.clone()))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn verify_revert(&self, val: &Value) -> Result<(), IrError> {
+        if !matches!(val.get_type(self.context), Some(Type::Uint(64))) {
+            Err(IrError::VerifyRevertCodeBadType)
         } else {
             Ok(())
         }
