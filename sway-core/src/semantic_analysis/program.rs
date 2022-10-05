@@ -144,14 +144,12 @@ impl TypedProgram {
         }
 
         // Some checks that are specific to non-contracts
-        if kind != TreeType::Contract {
+        if kind == TreeType::Script || kind == TreeType::Predicate {
             // impure functions are disallowed in non-contracts
-            if !matches!(kind, TreeType::Library { .. }) {
-                errors.extend(disallow_impure_functions(&declarations, &mains));
-            }
+            errors.extend(disallow_impure_functions(&declarations, &mains));
 
             // `storage` declarations are not allowed in non-contracts
-            /*let storage_decl = declarations
+            let storage_decl = declarations
                 .iter()
                 .find(|decl| matches!(decl, TypedDeclaration::StorageDeclaration(_)));
 
@@ -166,7 +164,7 @@ impl TypedProgram {
                     program_kind: format!("{kind}"),
                     span,
                 });
-            }*/
+            }
         }
 
         // Perform other validation based on the tree type.

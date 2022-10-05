@@ -402,10 +402,30 @@ impl Module {
         src: &Path,
         item: &Ident,
         dst: &Path,
-        alias: Option<Ident>,
+        _alias: Option<Ident>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let src_ns = check!(
+            self.check_submodule(src),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let _src_ns_storage_fields = check!(
+            src_ns.get_storage_field_descriptors(&item.span()),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let dst_ns = &self[dst];
+        let _dst_ns_storage_fields = check!(
+            dst_ns.get_storage_field_descriptors(&item.span()),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         ok((), warnings, errors)
     }

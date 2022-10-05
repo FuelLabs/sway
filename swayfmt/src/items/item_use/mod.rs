@@ -138,7 +138,7 @@ impl Format for UseTree {
                 )?;
                 suffix.format(formatted_code, formatter)?;
             }
-            _ => unreachable!(),
+            _ => todo!(),
         }
 
         Ok(())
@@ -244,7 +244,7 @@ impl LeafSpans for UseTree {
                 collected_spans.append(&mut suffix.leaf_spans());
                 collected_spans
             }
-            _ => unreachable!(),
+            _ => todo!(),
         }
     }
 }

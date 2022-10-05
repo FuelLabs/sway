@@ -11,22 +11,21 @@ impl Parse for UseTree {
             return Ok(UseTree::Glob { star_token });
         }
         if let Some(storage_token_1) = parser.take() {
-            dbg!("are we not here?");
             let dot_token_1 = parser.parse()?;
             let name = parser.parse()?;
             let as_token = parser.parse()?;
             let storage_token_2 = parser.parse()?;
             let dot_token_2 = parser.parse()?;
             let alias = parser.parse()?;
-            return Ok(dbg!(UseTree::StorageName {
+            return Ok(UseTree::StorageName {
                 storage_token_1,
                 dot_token_1,
                 name,
                 as_token,
                 storage_token_2,
                 dot_token_2,
-                alias
-            }));
+                alias,
+            });
         }
         let name = parser
             .take()
@@ -41,11 +40,11 @@ impl Parse for UseTree {
         }
         if let Some(double_colon_token) = parser.take() {
             let suffix = parser.parse()?;
-            return Ok(dbg!(UseTree::Path {
+            return Ok(UseTree::Path {
                 prefix: name,
                 double_colon_token,
                 suffix,
-            }));
+            });
         }
         Ok(UseTree::Name { name })
     }

@@ -232,11 +232,18 @@ fn depends_on(
         // Use statements next.
         (AstNodeContent::IncludeStatement(_), AstNodeContent::UseStatement(_)) => false,
         (AstNodeContent::UseStatement(_), AstNodeContent::UseStatement(_)) => false,
-        (_, AstNodeContent::UseStatement(_)) => true,
+        (_, AstNodeContent::UseStatement(UseStatement { import_type, .. }))
+            if !matches!(import_type, ImportType::Storage(_)) =>
+        {
+            true
+        }
 
         // Then declarations, ordered using the dependecies list.
         (AstNodeContent::IncludeStatement(_), AstNodeContent::Declaration(_)) => false,
-        (AstNodeContent::UseStatement(_), AstNodeContent::Declaration(_)) => false,
+        (
+            AstNodeContent::UseStatement(UseStatement { import_type, .. }),
+            AstNodeContent::Declaration(_),
+        ) if !matches!(import_type, ImportType::Storage(_)) => false,
         (AstNodeContent::Declaration(dependant), AstNodeContent::Declaration(dependee)) => {
             match (decl_name(dependant), decl_name(dependee)) {
                 (Some(dependant_name), Some(dependee_name)) => decl_dependencies

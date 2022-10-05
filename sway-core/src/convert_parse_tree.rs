@@ -505,7 +505,7 @@ fn use_tree_to_use_statements(
                 call_path: path.clone(),
                 import_type: ImportType::Storage(name),
                 is_absolute,
-                alias: None,
+                alias: Some(alias),
             });
         }
         UseTree::Rename { name, alias, .. } => {

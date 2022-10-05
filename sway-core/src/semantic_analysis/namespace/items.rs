@@ -23,6 +23,7 @@ pub(crate) enum GlobImport {
 pub(super) type SymbolMap = im::OrdMap<Ident, TypedDeclaration>;
 pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
+pub(super) type StorageAliases = im::HashMap<String, Ident>;
 
 /// The set of items that exist within some lexical scope via declaration or importing.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -42,6 +43,8 @@ pub struct Items {
     pub(crate) use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
     pub(crate) declared_storage: Option<DeclarationId>,
+    /// Links between storage variables in libraries in storage variables in contracts.
+    pub(crate) storage_aliases: StorageAliases,
 }
 
 impl Items {
