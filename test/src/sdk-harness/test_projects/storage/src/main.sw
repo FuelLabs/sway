@@ -1,6 +1,6 @@
 contract;
 
-use std::storage::{get, store};
+use std::{context::registers::stack_ptr, storage::{get, store}};
 
 pub enum MediumEnum {
     One: u64,
@@ -50,6 +50,7 @@ const S_11: b256 = 0x00000000000000000000000000000000000000000000000000000000000
 const S_12: b256 = 0x0000000000000000000000000000000000000000000000000000000000000012;
 const S_13: b256 = 0x0000000000000000000000000000000000000000000000000000000000000013;
 const S_14: b256 = 0x0000000000000000000000000000000000000000000000000000000000000014;
+const S_15: b256 = 0x0000000000000000000000000000000000000000000000000000000000000015;
 
 abi StorageTest {
     #[storage(write)]
@@ -113,6 +114,9 @@ abi StorageTest {
     fn store_array();
     #[storage(read)]
     fn get_array() -> [b256; 3];
+
+    #[storage(read, write)]
+    fn storage_in_call() -> u64;
 }
 
 impl StorageTest for Contract {
@@ -261,4 +265,40 @@ impl StorageTest for Contract {
     fn get_array() -> [b256; 3] {
         get(S_14)
     }
+
+    #[storage(read, write)]
+    fn storage_in_call() -> u64 {
+        // The point of this test is to call the storage functions from a non-entry point function,
+        // from a function which is _not_ inlined into the entry function.  It then must preserve
+        // the stack properly and not leak data structures read or written on the stack, else the
+        // function call frame will be corrupt.
+        //
+        // To avoid inlining the function must be called multiple times and be sufficiently large.
+        let pre_sp = stack_ptr();
+        let res = non_inlined_function(456_u32) && non_inlined_function(654_u32);
+        let post_sp = stack_ptr();
+
+        if pre_sp != post_sp {
+            111         // Code to indicate bad stack (it would probably crash before here though).
+        } else if !res {
+            222         // Code to indicate storage I/O failure.
+        } else {
+            333         // Code for success - something non-trivial so we can't accidentally succeed.
+        }
+    }
+}
+
+#[storage(read, write)]
+fn non_inlined_function(arg: u32) -> bool {
+    // By storing and reading from a large complex data structure we're ensuring that this function
+    // is too large to be inlined.  The stored value type must be a reference type too, to ensure
+    // the use of memory (not a register) to read it back.
+    store(S_15, LargeStruct {
+        x: arg,
+        y: 0x9999999999999999999999999999999999999999999999999999999999999999,
+        z: arg,
+    });
+
+    let ls: LargeStruct = get(S_15);
+    ls.x == arg
 }

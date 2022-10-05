@@ -72,6 +72,11 @@ impl AsmBlock {
         context.asm_blocks[self.0].return_type
     }
 
+    /// Get a reference to the [`AsmBlockContent`] for this ASM block.
+    pub fn get_content<'a>(&self, context: &'a Context) -> &'a AsmBlockContent {
+        &context.asm_blocks[self.0]
+    }
+
     pub fn is_diverging(&self, context: &Context) -> bool {
         let content = &context.asm_blocks[self.0];
         content

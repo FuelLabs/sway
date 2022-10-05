@@ -408,7 +408,7 @@ impl<'a> InstructionVerifier<'a> {
         //   user args.
         // - The coins and gas must be u64s.
         // - The asset_id must be a B256
-        if let Some(Type::Struct(agg)) = params.get_type(self.context) {
+        if let Some(Type::Struct(agg)) = params.get_stripped_ptr_type(self.context) {
             let fields = self.context.aggregates[agg.0].field_types();
             if fields.len() != 3
                 || !fields[0].eq(self.context, &Type::B256)
@@ -521,7 +521,7 @@ impl<'a> InstructionVerifier<'a> {
                     Err(IrError::VerifyAccessElementInconsistentTypes)
                 } else if self.opt_ty_not_eq(
                     &ty.get_elem_type(self.context),
-                    &value.get_type(self.context),
+                    &value.get_stripped_ptr_type(self.context),
                 ) {
                     Err(IrError::VerifyInsertElementOfIncorrectType)
                 } else if !matches!(index_val.get_type(self.context), Some(Type::Uint(_))) {
