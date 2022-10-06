@@ -457,6 +457,21 @@ impl fmt::Display for Warning {
     }
 }
 
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum InterfaceName {
+    Abi(Ident),
+    Trait(Ident),
+}
+
+impl fmt::Display for InterfaceName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            InterfaceName::Abi(name) => write!(f, "ABI \"{}\"", name),
+            InterfaceName::Trait(name) => write!(f, "trait \"{}\"", name),
+        }
+    }
+}
+
 // TODO: since moving to using Idents instead of strings, there are a lot of redundant spans in
 // this type.
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -593,10 +608,10 @@ pub enum CompileError {
     NotATrait { span: Span, name: Ident },
     #[error("Trait \"{name}\" cannot be found in the current scope.")]
     UnknownTrait { span: Span, name: Ident },
-    #[error("Function \"{name}\" is not a part of trait \"{trait_name}\"'s interface surface.")]
+    #[error("Function \"{name}\" is not a part of {interface_name}'s interface surface.")]
     FunctionNotAPartOfInterfaceSurface {
         name: Ident,
-        trait_name: Ident,
+        interface_name: InterfaceName,
         span: Span,
     },
     #[error("Functions are missing from this trait implementation: {missing_functions}")]
@@ -867,10 +882,10 @@ pub enum CompileError {
     },
     #[error("An ABI can only be implemented for the `Contract` type, so this implementation of an ABI for type \"{ty}\" is invalid.")]
     ImplAbiForNonContract { span: Span, ty: String },
-    #[error("The function \"{fn_name}\" in trait \"{trait_name}\" is defined with {num_parameters} parameters, but the provided implementation has {provided_parameters} parameters.")]
+    #[error("The function \"{fn_name}\" in {interface_name} is defined with {num_parameters} parameters, but the provided implementation has {provided_parameters} parameters.")]
     IncorrectNumberOfInterfaceSurfaceFunctionParameters {
         fn_name: Ident,
-        trait_name: Ident,
+        interface_name: InterfaceName,
         num_parameters: usize,
         provided_parameters: usize,
         span: Span,
@@ -949,24 +964,24 @@ pub enum CompileError {
     )]
     StorageAccessMismatch { attrs: String, span: Span },
     #[error(
-        "The trait function \"{fn_name}\" in trait \"{trait_name}\" is pure, but this \
+        "The function \"{fn_name}\" in {interface_name} is pure, but this \
         implementation is not.  The \"{STORAGE_PURITY_ATTRIBUTE_NAME}\" annotation must be \
         removed, or the trait declaration must be changed to \
         \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\"."
     )]
     TraitDeclPureImplImpure {
         fn_name: Ident,
-        trait_name: Ident,
+        interface_name: InterfaceName,
         attrs: String,
         span: Span,
     },
     #[error(
-        "Storage attribute access mismatch. The trait function \"{fn_name}\" in trait \
-        \"{trait_name}\" requires the storage attribute(s) #[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]."
+        "Storage attribute access mismatch. The function \"{fn_name}\" in \
+        {interface_name} requires the storage attribute(s) #[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]."
     )]
     TraitImplPurityMismatch {
         fn_name: Ident,
-        trait_name: Ident,
+        interface_name: InterfaceName,
         attrs: String,
         span: Span,
     },

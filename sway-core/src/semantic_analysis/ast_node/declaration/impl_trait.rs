@@ -13,8 +13,8 @@ use crate::{
         insert_type, look_up_type_id, set_type_as_storage_only, to_typeinfo, unify_with_self,
         CopyTypes, TypeId, TypeMapping, TypeParameter,
     },
-    CallPath, CompileError, CompileResult, FunctionDeclaration, ImplSelf, ImplTrait, Purity,
-    TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    CallPath, CompileError, CompileResult, FunctionDeclaration, ImplSelf, ImplTrait, InterfaceName,
+    Purity, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::TypedTraitFn;
@@ -493,6 +493,14 @@ fn type_check_trait_implementation(
     block_span: &Span,
     is_contract: bool,
 ) -> CompileResult<Vec<TypedFunctionDeclaration>> {
+    let interface_name = || -> InterfaceName {
+        if is_contract {
+            InterfaceName::Abi(trait_name.suffix.clone())
+        } else {
+            InterfaceName::Trait(trait_name.suffix.clone())
+        }
+    };
+
     let mut errors = vec![];
     let mut warnings = vec![];
 
@@ -534,7 +542,7 @@ fn type_check_trait_implementation(
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
                     name: fn_decl.name.clone(),
-                    trait_name: trait_name.suffix.clone(),
+                    interface_name: interface_name(),
                     span: fn_decl.name.span(),
                 });
                 return err(warnings, errors);
@@ -548,7 +556,7 @@ fn type_check_trait_implementation(
                 CompileError::IncorrectNumberOfInterfaceSurfaceFunctionParameters {
                     span: fn_decl.parameters_span(),
                     fn_name: fn_decl.name.clone(),
-                    trait_name: trait_name.suffix.clone(),
+                    interface_name: interface_name(),
                     num_parameters: fn_signature.parameters.len(),
                     provided_parameters: fn_decl.parameters.len(),
                 },
@@ -603,14 +611,14 @@ fn type_check_trait_implementation(
             errors.push(if fn_signature.purity == Purity::Pure {
                 CompileError::TraitDeclPureImplImpure {
                     fn_name: fn_decl.name.clone(),
-                    trait_name: trait_name.suffix.clone(),
+                    interface_name: interface_name(),
                     attrs: fn_decl.purity.to_attribute_syntax(),
                     span: fn_decl.span.clone(),
                 }
             } else {
                 CompileError::TraitImplPurityMismatch {
                     fn_name: fn_decl.name.clone(),
-                    trait_name: trait_name.suffix.clone(),
+                    interface_name: interface_name(),
                     attrs: fn_signature.purity.to_attribute_syntax(),
                     span: fn_decl.span.clone(),
                 }

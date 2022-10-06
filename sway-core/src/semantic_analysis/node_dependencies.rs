@@ -749,7 +749,6 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Numeric => "numeric",
         TypeInfo::Contract => "contract",
         TypeInfo::ErrorRecovery => "err_recov",
-        TypeInfo::Ref(x, _sp) => return format!("T{}", x),
         TypeInfo::Unknown => "unknown",
         TypeInfo::UnknownGeneric { name } => return format!("generic {}", name),
         TypeInfo::ContractCaller { abi_name, .. } => {

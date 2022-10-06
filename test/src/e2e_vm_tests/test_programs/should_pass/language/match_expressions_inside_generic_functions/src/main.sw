@@ -47,7 +47,7 @@ fn second_if<U>(value: U) -> bool {
 }
 
 fn first_if<T>(value: T) -> u64 {
-  let second = second_match(value);
+  let second = second_if(value);
   if second == false {
     2u64
   } else {
