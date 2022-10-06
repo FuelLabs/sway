@@ -1,5 +1,7 @@
 use fuels::prelude::*;
 use fuels::tx::{AssetId, ContractId};
+use fuel_gql_client::fuel_tx::Receipt;
+
 
 abigen!(
     TestFuelCoinContract,
@@ -353,8 +355,8 @@ async fn can_perform_generic_transfer_to_contract() {
 }
 
 #[tokio::test]
-async fn can_send_message() {
-    let num_wallets = 2;
+async fn can_send_message_output_without_data() {
+    let num_wallets = 1;
     let coins_per_wallet = 1;
     let amount_per_coin = 1_000_000;
 
@@ -368,13 +370,9 @@ async fn can_send_message() {
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
 
     let amount = 33u64;
-    let asset_id_array: [u8; 32] = fuelcoin_id.into();
-    let recipient = wallets[1].address();
-    let recipient_addr: Address = recipient.into();
+    let recipient_addr: Address = wallets[0].address().into();
 
-    fuelcoin_instance.methods().mint_coins(amount).call().await.unwrap();
-
-    fuelcoin_instance
+    let call_response = fuelcoin_instance
         .methods()
         .send_message(amount, 0, Bits256(*recipient_addr))
         .append_message_outputs(1)
@@ -382,16 +380,15 @@ async fn can_send_message() {
         .await
         .unwrap();
 
-    // @todo check the receipts for the smo output
+    let message_receipt = call_response.receipts.iter().find(|&r| {
+        matches!(r, Receipt::MessageOut{..})
+    }).unwrap();
 
-    // assert_eq!(
-    //     wallets[1]
-    //         .get_spendable_coins(AssetId::from(asset_id_array), 1)
-    //         .await
-    //         .unwrap()[0]
-    //         .amount,
-    //     amount.into()
-    // );
+    assert_eq!(*fuelcoin_id, **message_receipt.sender().unwrap());
+    assert_eq!(&recipient_addr, message_receipt.recipient().unwrap());
+    assert_eq!(amount, message_receipt.amount().unwrap());
+    assert_eq!(0, message_receipt.len().unwrap());
+    assert_eq!(Vec::<u8>::new(), message_receipt.data().unwrap());
 }
 
 async fn get_fuelcoin_instance(wallet: WalletUnlocked) -> (TestFuelCoinContract, ContractId) {
