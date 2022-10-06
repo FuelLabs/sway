@@ -56,8 +56,12 @@ pub(crate) fn header(module: String, desc_ty: String, desc_name: String) -> Box<
     }
 }
 /// HTML body component
-pub(crate) fn body() -> Box<dyn RenderBox> {
-    box_html! {}
+pub(crate) fn body(module: String, desc_ty: String, desc_name: String) -> Box<dyn RenderBox> {
+    box_html! {
+        body(class=format!("forc-doc {desc_ty}")) {
+
+        }
+    }
 }
 // TODO: Create `fn index` and `fn all`
 
