@@ -724,6 +724,7 @@ mod tests {
             // send "initialize" request
             let _ = initialize_request(&mut service).await;
         });
+        rt.shutdown_background();
     }
 
     #[test]
@@ -739,6 +740,7 @@ mod tests {
             // send "initialized" notification
             initialized_notification(&mut service).await;
         });
+        rt.shutdown_background();
     }
 
     #[test]
@@ -759,6 +761,7 @@ mod tests {
             let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
             assert_eq!(response, Ok(Some(err)));
         });
+        rt.shutdown_background();
     }
 
     #[test]
@@ -785,6 +788,7 @@ mod tests {
             // send "exit" request
             exit_notification(&mut service).await;
         });
+        rt.shutdown_background();
     }
 
     #[test]
@@ -804,6 +808,7 @@ mod tests {
             let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
             assert_eq!(response, Ok(Some(err)));
         });
+        rt.shutdown_background();
     }
 
     #[test]
@@ -815,9 +820,11 @@ mod tests {
             let _ = init_and_open(&mut service, e2e_test_dir()).await;
             shutdown_and_exit(&mut service).await;
         });
+        rt.shutdown_background();
     }
 
     #[test]
+    #[serial]
     fn did_close() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
@@ -829,6 +836,7 @@ mod tests {
 
             shutdown_and_exit(&mut service).await;
         });
+        rt.shutdown_background();
     }
 
     #[test]
@@ -867,6 +875,7 @@ mod tests {
 
             shutdown_and_exit(&mut service).await;
         });
+        rt.shutdown_background();
     }
 
     #[test]
@@ -885,6 +894,7 @@ mod tests {
 
             shutdown_and_exit(&mut service).await;
         });
+        rt.shutdown_background();
     }
 
     // This macro allows us to spin up a server / client for testing
@@ -903,6 +913,7 @@ mod tests {
 
                 shutdown_and_exit(&mut service).await;
             });
+            rt.shutdown_background();
         }};
     }
 
