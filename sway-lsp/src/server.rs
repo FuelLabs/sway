@@ -702,7 +702,7 @@ mod tests {
         initialized_notification(service).await;
 
         // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        //let _ = messages.next().await;
+        let _ = messages.next().await;
 
         let (uri, sway_program) = load_sway_example(manifest_dir);
 
@@ -710,7 +710,7 @@ mod tests {
         did_open_notification(service, &uri, &sway_program).await;
 
         // ignore the "textDocument/publishDiagnostics" notification
-        //let _ = messages.next().await;
+        let _ = messages.next().await;
 
         uri
     }
@@ -751,7 +751,7 @@ mod tests {
                 initialized_notification(&mut service).await;
 
                 // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-                //let _ = messages.next().await;
+                let _ = messages.next().await;
             })
         });
     }
@@ -771,7 +771,7 @@ mod tests {
                 initialized_notification(&mut service).await;
 
                 // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-                //let _ = messages.next().await;
+                let _ = messages.next().await;
 
                 // send "initialize" request (again); should error
                 let response = service.ready().await.unwrap().call(initialize).await;
@@ -796,7 +796,7 @@ mod tests {
                 initialized_notification(&mut service).await;
 
                 // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-                //let _ = messages.next().await;
+                let _ = messages.next().await;
 
                 // send "shutdown" request
                 let shutdown = shutdown_request(&mut service).await;
@@ -824,7 +824,7 @@ mod tests {
                 let _ = initialize_request(&mut service).await;
 
                 // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-                //let _ = messages.next().await;
+                let _ = messages.next().await;
 
                 // send "shutdown" request
                 let shutdown = shutdown_request(&mut service).await;
@@ -902,7 +902,7 @@ mod tests {
                 let _ = did_change_request(&mut service, params).await;
 
                 // ignore the "textDocument/publishDiagnostics" notification
-                //let _ = messages.next().await;
+                let _ = messages.next().await;
 
                 shutdown_and_exit(&mut service).await;
             })
