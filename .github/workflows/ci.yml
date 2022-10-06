@@ -222,7 +222,7 @@ jobs:
           crate: cargo-toml-lint
           version: "0.1"
       - name: Run Cargo.toml linter
-        run: git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
+        run: git ls-files | grep Cargo.toml$ | grep -v 'templates/sway-test-rs' | xargs --verbose -n 1 cargo-toml-lint
 
   cargo-fmt-check:
     runs-on: ubuntu-latest
