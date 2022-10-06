@@ -43,17 +43,13 @@ $ cargo install cargo-generate
 Let's generate the default test harness with the following:
 
 ```
-cargo generate --init https://github.com/fuellabs/sway-test-rs
+cargo generate --init fuellabs/sway-test-rs --name my-fuel-project
 ```
-
-The cargo generate command will prompt you for your project's name. Make sure
-the name matches your existing `forc` project name! In our case, it's
-`my-fuel-project`.
 
 If all goes well, the output should look as follows:
 
 ```console
-⚠️   Favorite `https://github.com/fuellabs/sway-test-rs` not found in config, using it as a git repository: https://github.com/fuellabs/sway-test-rs
+⚠️   Favorite `fuellabs/sway-test-rs` not found in config, using it as a git repository: https://github.com/fuellabs/sway-test-rs
 🤷   Project Name : my-fuel-project
 🔧   Destination: /home/user/path/to/my-fuel-project ...
 🔧   Generating template ...
