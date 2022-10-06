@@ -372,6 +372,7 @@ impl Backend {
 mod tests {
     use serde_json::json;
     use std::{env, fs, io::Read, path::PathBuf};
+    use futures::stream::StreamExt;
     use tower::{Service, ServiceExt};
 
     use super::*;
