@@ -1,6 +1,6 @@
 use super::*;
 use std::fmt;
-use sway_types::{JsonTypeApplication, JsonTypeDeclaration, Span};
+use sway_types::{JsonTypeApplication, JsonTypeDeclaration};
 
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
@@ -33,17 +33,8 @@ impl From<usize> for TypeId {
 
 impl CollectTypesMetadata for TypeId {
     fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
-        use TypeInfo::*;
-        let span_override = if let TypeInfo::Ref(_, span) = look_up_type_id_raw(*self) {
-            Some(span)
-        } else {
-            None
-        };
         let res = match look_up_type_id(*self) {
-            UnknownGeneric { name } => vec![TypeMetadata::UnresolvedType {
-                name,
-                span_override,
-            }],
+            TypeInfo::UnknownGeneric { name } => vec![TypeMetadata::UnresolvedType(name)],
             _ => vec![],
         };
         ok(res, vec![], vec![])
@@ -80,9 +71,6 @@ impl ReplaceSelfType for TypeId {
                     field.replace_self_type(self_type);
                 }
             }
-            TypeInfo::Ref(mut type_id, _) => {
-                type_id.replace_self_type(self_type);
-            }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.replace_self_type(self_type);
@@ -118,15 +106,17 @@ impl ReplaceSelfType for TypeId {
     }
 }
 
+impl CopyTypes for TypeId {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        if let Some(matching_id) = type_mapping.find_match(*self) {
+            *self = matching_id;
+        }
+    }
+}
+
 impl TypeId {
     pub(super) fn new(index: usize) -> TypeId {
         TypeId(index)
-    }
-
-    pub(crate) fn update_type(&mut self, type_mapping: &TypeMapping, span: &Span) {
-        if let Some(matching_id) = type_mapping.find_match(*self) {
-            *self = insert_type(TypeInfo::Ref(matching_id, span.clone()));
-        }
     }
 
     pub(crate) fn get_type_parameters(&self) -> Option<Vec<TypeParameter>> {
