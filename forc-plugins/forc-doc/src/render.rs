@@ -1,4 +1,5 @@
 use crate::{descriptor::Descriptor, doc::Documentation};
+use horrorshow::{box_html, prelude::*};
 
 pub(crate) struct HTMLString(pub(crate) String);
 
@@ -21,7 +22,7 @@ impl RenderedDocumentation {
                 };
                 buf.push(Self {
                     // proof of concept, TODO render actual HTML
-                    file_contents: HTMLString(format!("Docs for {:?} {:?}", name_str, ty)),
+                    file_contents: HTMLString(todo!()),
                     file_name,
                 })
             }
@@ -33,3 +34,22 @@ impl RenderedDocumentation {
 pub(crate) fn create_html_file_name(ty: &str, name: &str) -> String {
     format!("{}.{}.html", ty, name)
 }
+/// Basic HTML header component
+pub(crate) fn header(module: String, desc_ty: String, desc_name: String) -> Box<dyn RenderBox> {
+    box_html! {
+        head {
+            meta(charset="utf-8");
+            meta(name="viewport", content="width=device-width, initial-scale=1.0");
+            meta(name="generator", content="forc-doc");
+            meta(name="description", content=format!("API documentation for the Sway `{desc_name}` {desc_ty} in crate `{module}`."));
+            meta(name="keywords", content=format!("sway, swaylang, sway-lang, {desc_name}"));
+            title: format!("{desc_name} in {module} - Sway");
+            // TODO: Add links for CSS & Fonts
+        }
+    }
+}
+/// HTML body component
+pub(crate) fn body() -> Box<dyn RenderBox> {
+    box_html! {}
+}
+// TODO: Create `fn index` and `fn all`
