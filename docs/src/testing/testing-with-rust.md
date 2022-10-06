@@ -33,7 +33,7 @@ We're going to add a Rust integration test harness using a cargo generate
 template. Let's make sure we have the `cargo generate` command installed!
 
 ```console
-$ cargo install cargo-generate
+cargo install cargo-generate
 ```
 
 > _**Note**: You can learn more about cargo generate by visiting [its
@@ -43,7 +43,7 @@ $ cargo install cargo-generate
 
 Let's generate the default test harness with the following:
 
-```
+```console
 cargo generate --init fuellabs/sway templates/sway-test-rs --name my-fuel-project
 ```
 
@@ -150,7 +150,6 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 
 If all went well, we should see some output that looks like the above!
 
-
 ## Writing Tests
 
 Now that we've learned how to setup Rust integration testing in our project,
@@ -230,8 +229,9 @@ async fn initialize_and_increment() {
 Let's build our project once more and run the test:
 
 ```console
-$ forc build
+forc build
 ```
+
 ```console
 $ cargo test
    Compiling my-fuel-project v0.1.0 (/home/mindtree/programming/sway/my-fuel-project)
