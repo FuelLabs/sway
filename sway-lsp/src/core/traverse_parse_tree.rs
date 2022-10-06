@@ -720,10 +720,6 @@ fn collect_type_info_token(
         TypeInfo::Tuple(args) => {
             collect_type_args(args, &token, tokens);
         }
-        TypeInfo::Ref(type_id, span) => {
-            token.type_def = Some(TypeDefinition::TypeId(*type_id));
-            tokens.insert(to_ident_key(&Ident::new(span.clone())), token);
-        }
         TypeInfo::Custom {
             name,
             type_arguments,

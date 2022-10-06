@@ -633,7 +633,7 @@ impl ConstructorFactory {
         let mut errors = vec![];
         let mut type_info = None;
         for possible_type in self.possible_types.iter() {
-            let matches = pattern.matches_type_info(possible_type, span);
+            let matches = pattern.matches_type_info(possible_type);
             if matches {
                 type_info = Some(possible_type);
                 break;

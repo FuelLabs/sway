@@ -412,9 +412,7 @@ impl TyDeclaration {
                     fields: storage_decl.fields_as_typed_struct_fields(),
                 })
             }
-            TyDeclaration::GenericTypeForFunctionScope { name, type_id } => {
-                insert_type(TypeInfo::Ref(*type_id, name.span()))
-            }
+            TyDeclaration::GenericTypeForFunctionScope { type_id, .. } => *type_id,
             decl => {
                 errors.push(CompileError::NotAType {
                     span: decl.span(),
@@ -509,8 +507,7 @@ pub struct TyTraitFn {
 
 impl CopyTypes for TyTraitFn {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.return_type
-            .update_type(type_mapping, &self.return_type_span);
+        self.return_type.copy_types(type_mapping);
     }
 }
 
@@ -590,7 +587,6 @@ pub struct TyReassignment {
 impl CopyTypes for TyReassignment {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.rhs.copy_types(type_mapping);
-        self.lhs_type
-            .update_type(type_mapping, &self.lhs_base_name.span());
+        self.lhs_type.copy_types(type_mapping);
     }
 }

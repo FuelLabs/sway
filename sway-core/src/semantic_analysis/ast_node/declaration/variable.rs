@@ -73,8 +73,7 @@ impl PartialEq for TyVariableDeclaration {
 
 impl CopyTypes for TyVariableDeclaration {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_ascription
-            .update_type(type_mapping, &self.body.span);
+        self.type_ascription.copy_types(type_mapping);
         self.body.copy_types(type_mapping)
     }
 }

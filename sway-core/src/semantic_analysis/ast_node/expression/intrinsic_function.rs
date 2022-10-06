@@ -28,7 +28,7 @@ impl CopyTypes for TyIntrinsicFunctionKind {
             arg.copy_types(type_mapping);
         }
         for targ in &mut self.type_arguments {
-            targ.type_id.update_type(type_mapping, &targ.span);
+            targ.type_id.copy_types(type_mapping);
         }
     }
 }

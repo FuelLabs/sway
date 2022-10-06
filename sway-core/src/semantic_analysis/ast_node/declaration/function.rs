@@ -66,8 +66,7 @@ impl CopyTypes for TyFunctionDeclaration {
         self.parameters
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
-        self.return_type
-            .update_type(type_mapping, &self.return_type_span);
+        self.return_type.copy_types(type_mapping);
         self.body.copy_types(type_mapping);
     }
 }

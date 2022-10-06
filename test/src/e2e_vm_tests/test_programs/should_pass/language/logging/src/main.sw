@@ -4,15 +4,20 @@ fn log<T>(value: T) {
     __log::<T>(value);
 }
 
-struct TestStruct {
+struct TestStruct<T> {
     field_1: bool,
-    field_2: b256,
+    field_2: T,
     field_3: u64,
 }
 
 enum TestEnum {
     VariantOne: (),
     VariantTwo: (),
+}
+
+pub enum Option<T> {
+    None: (),
+    Some: T,
 }
 
 fn main() -> bool {
@@ -35,6 +40,11 @@ fn main() -> bool {
     __log(b);
     __log(test_struct);
     __log(test_enum);
+    __log(Option::Some(TestStruct {
+        field_1: true,
+        field_2: 42,
+        field_3: 42,
+    }));
 
     true
 }
