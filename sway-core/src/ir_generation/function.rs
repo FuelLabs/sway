@@ -611,7 +611,7 @@ impl FnCompiler {
 
                 match log_val.get_stripped_ptr_type(context) {
                     None => Err(CompileError::Internal(
-                        "Unable to determine type for return statement expression.",
+                        "Unable to determine type for logged value.",
                         span,
                     )),
                     Some(log_ty) => {
@@ -642,6 +642,18 @@ impl FnCompiler {
                     .current_block
                     .ins(context)
                     .binary_op(op, lhs_value, rhs_value))
+            }
+            Intrinsic::Revert => {
+                let revert_code_val =
+                    self.compile_expression(context, md_mgr, arguments[0].clone())?;
+
+                // The `revert` instruction
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .revert(revert_code_val)
+                    .add_metadatum(context, span_md_idx))
             }
         }
     }
@@ -840,12 +852,26 @@ impl FnCompiler {
             [Type::B256, Type::Uint(64), Type::Uint(64)].to_vec(),
         );
 
-        let addr =
-            self.compile_expression(context, md_mgr, *call_params.contract_address.clone())?;
-        let mut ra_struct_val = Constant::get_undef(context, Type::Struct(ra_struct_aggregate))
+        let ra_struct_ptr = self
+            .function
+            .new_local_ptr(
+                context,
+                self.lexical_map.insert_anon(),
+                Type::Struct(ra_struct_aggregate),
+                false,
+                None,
+            )
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+        let ra_struct_ptr_ty = *ra_struct_ptr.get_type(context);
+        let mut ra_struct_val = self
+            .current_block
+            .ins(context)
+            .get_ptr(ra_struct_ptr, ra_struct_ptr_ty, 0)
             .add_metadatum(context, span_md_idx);
 
         // Insert the contract address
+        let addr =
+            self.compile_expression(context, md_mgr, *call_params.contract_address.clone())?;
         ra_struct_val = self
             .current_block
             .ins(context)
@@ -868,7 +894,6 @@ impl FnCompiler {
             .add_metadatum(context, span_md_idx);
 
         // Insert the user args value.
-
         ra_struct_val = self
             .current_block
             .ins(context)
@@ -1483,8 +1508,18 @@ impl FnCompiler {
         let aggregate = Aggregate::new_array(context, elem_type, contents.len() as u64);
 
         // Compile each element and insert it immediately.
-        let mut array_value = Constant::get_undef(context, Type::Array(aggregate))
+        let temp_name = self.lexical_map.insert_anon();
+        let array_ptr = self
+            .function
+            .new_local_ptr(context, temp_name, Type::Array(aggregate), false, None)
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+        let array_ptr_ty = *array_ptr.get_type(context);
+        let mut array_value = self
+            .current_block
+            .ins(context)
+            .get_ptr(array_ptr, array_ptr_ty, 0)
             .add_metadatum(context, span_md_idx);
+
         for (idx, elem_expr) in contents.into_iter().enumerate() {
             let elem_value = self.compile_expression(context, md_mgr, elem_expr)?;
             if elem_value.is_diverging(context) {
@@ -1510,28 +1545,39 @@ impl FnCompiler {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let array_expr_span = array_expr.span.clone();
+
         let array_val = self.compile_expression(context, md_mgr, array_expr)?;
         if array_val.is_diverging(context) {
             return Ok(array_val);
         }
-        let aggregate = match &context.values[array_val.0].value {
-            ValueDatum::Instruction(instruction) => {
-                instruction.get_aggregate(context).ok_or_else(|| {
-                    CompileError::InternalOwned(format!(
-                        "Unsupported instruction as array value for index expression. {instruction:?}"),
-                        array_expr_span)
-                })
-            }
-            ValueDatum::Argument(Type::Array(aggregate))
-            | ValueDatum::Constant(Constant { ty : Type::Array(aggregate), ..}) => Ok (*aggregate),
-            otherwise => Err(CompileError::InternalOwned(
-                format!("Unsupported array value for index expression: {otherwise:?}"),
+
+        let aggregate = if let Some(instruction) = array_val.get_instruction(context) {
+            instruction.get_aggregate(context).ok_or_else(|| {
+                CompileError::InternalOwned(
+                    format!(
+                        "Unsupported instruction as array value for index expression. \
+                        {instruction:?}"
+                    ),
+                    array_expr_span,
+                )
+            })
+        } else if let Some(Type::Array(agg)) = array_val.get_argument_type(context) {
+            Ok(agg)
+        } else if let Some(Constant {
+            ty: Type::Array(agg),
+            ..
+        }) = array_val.get_constant(context)
+        {
+            Ok(*agg)
+        } else {
+            Err(CompileError::InternalOwned(
+                "Unsupported array value for index expression.".to_owned(),
                 array_expr_span,
-            )),
+            ))
         }?;
 
         // Check for out of bounds if we have a literal index.
-        let (_, count) = context.aggregates[aggregate.0].array_type();
+        let (_, count) = aggregate.get_content(context).array_type();
         if let TypedExpressionVariant::Literal(Literal::U64(index)) = index_expr.expression {
             if index >= *count {
                 // XXX Here is a very specific case where we want to return an Error enum
@@ -1584,10 +1630,20 @@ impl FnCompiler {
             field_types.push(field_ty);
         }
 
-        // Start with a constant empty struct and then fill in the values.
+        // Start with a temporary empty struct and then fill in the values.
         let aggregate = get_aggregate_for_types(context, &field_types)?;
-        let agg_value = Constant::get_undef(context, Type::Struct(aggregate))
+        let temp_name = self.lexical_map.insert_anon();
+        let struct_ptr = self
+            .function
+            .new_local_ptr(context, temp_name, Type::Struct(aggregate), false, None)
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+        let struct_ptr_ty = *struct_ptr.get_type(context);
+        let agg_value = self
+            .current_block
+            .ins(context)
+            .get_ptr(struct_ptr, struct_ptr_ty, 0)
             .add_metadatum(context, span_md_idx);
+
         Ok(inserted_values_indices.into_iter().fold(
             agg_value,
             |agg_value, (insert_val, insert_idx)| {
@@ -1610,27 +1666,25 @@ impl FnCompiler {
     ) -> Result<Value, CompileError> {
         let ast_struct_expr_span = ast_struct_expr.span.clone();
         let struct_val = self.compile_expression(context, md_mgr, ast_struct_expr)?;
-        let aggregate = match &context.values[struct_val.0].value {
-            ValueDatum::Instruction(instruction) => {
-                instruction.get_aggregate(context).ok_or_else(|| {
-                    CompileError::InternalOwned(
-                        format!(
-                            "Unsupported instruction as struct value for \
-                            field expression: {instruction:?}",
-                        ),
-                        ast_struct_expr_span,
-                    )
+        let aggregate = if let Some(instruction) = struct_val.get_instruction(context) {
+            instruction.get_aggregate(context).ok_or_else(|| {
+                    CompileError::InternalOwned(format!(
+                        "Unsupported instruction as struct value for field expression. {instruction:?}"),
+                        ast_struct_expr_span)
                 })
-            }
-            ValueDatum::Argument(Type::Struct(aggregate))
-            | ValueDatum::Constant(Constant {
-                ty: Type::Struct(aggregate),
-                ..
-            }) => Ok(*aggregate),
-            otherwise => Err(CompileError::InternalOwned(
-                format!("Unsupported struct value for field expression: {otherwise:?}",),
+        } else if let Some(Type::Struct(agg)) = struct_val.get_argument_type(context) {
+            Ok(agg)
+        } else if let Some(Constant {
+            ty: Type::Struct(agg),
+            ..
+        }) = struct_val.get_constant(context)
+        {
+            Ok(*agg)
+        } else {
+            Err(CompileError::InternalOwned(
+                "Unsupported struct value for field expression.".to_owned(),
                 ast_struct_expr_span,
-            )),
+            ))
         }?;
 
         let field_kind = ProjectionKind::StructField {
@@ -1679,19 +1733,28 @@ impl FnCompiler {
         let tag_value =
             Constant::get_uint(context, 64, tag as u64).add_metadatum(context, span_md_idx);
 
-        // Start with the undef and insert the tag.
-        let agg_value = Constant::get_undef(context, Type::Struct(aggregate))
+        // Start with a temporary local struct and insert the tag.
+        let temp_name = self.lexical_map.insert_anon();
+        let enum_ptr = self
+            .function
+            .new_local_ptr(context, temp_name, Type::Struct(aggregate), false, None)
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+        let enum_ptr_ty = *enum_ptr.get_type(context);
+        let enum_ptr_value = self
+            .current_block
+            .ins(context)
+            .get_ptr(enum_ptr, enum_ptr_ty, 0)
             .add_metadatum(context, span_md_idx);
         let agg_value = self
             .current_block
             .ins(context)
-            .insert_value(agg_value, aggregate, tag_value, vec![0])
+            .insert_value(enum_ptr_value, aggregate, tag_value, vec![0])
             .add_metadatum(context, span_md_idx);
 
         // If the struct representing the enum has only one field, then that field is basically the
         // tag and all the variants must have unit types, hence the absence of the union.
         // Therefore, there is no need for another `insert_value` instruction here.
-        match &context.aggregates[aggregate.0] {
+        match aggregate.get_content(context) {
             AggregateContent::FieldTypes(field_tys) => {
                 Ok(if field_tys.len() == 1 {
                     agg_value
@@ -1738,7 +1801,18 @@ impl FnCompiler {
             }
 
             let aggregate = Aggregate::new_struct(context, init_types);
-            let agg_value = Constant::get_undef(context, Type::Struct(aggregate))
+            let temp_name = self.lexical_map.insert_anon();
+            let tuple_ptr = self
+                .function
+                .new_local_ptr(context, temp_name, Type::Struct(aggregate), false, None)
+                .map_err(|ir_error| {
+                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                })?;
+            let tuple_ptr_ty = *tuple_ptr.get_type(context);
+            let agg_value = self
+                .current_block
+                .ins(context)
+                .get_ptr(tuple_ptr, tuple_ptr_ty, 0)
                 .add_metadatum(context, span_md_idx);
 
             Ok(init_values.into_iter().enumerate().fold(
@@ -1870,10 +1944,21 @@ impl FnCompiler {
     ) -> Result<Value, CompileError> {
         match ty {
             Type::Struct(aggregate) => {
-                let mut struct_val = Constant::get_undef(context, Type::Struct(*aggregate))
+                let temp_name = self.lexical_map.insert_anon();
+                let struct_ptr = self
+                    .function
+                    .new_local_ptr(context, temp_name, Type::Struct(*aggregate), false, None)
+                    .map_err(|ir_error| {
+                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                    })?;
+                let struct_ptr_ty = *struct_ptr.get_type(context);
+                let mut struct_val = self
+                    .current_block
+                    .ins(context)
+                    .get_ptr(struct_ptr, struct_ptr_ty, 0)
                     .add_metadatum(context, span_md_idx);
 
-                let fields = context.aggregates[aggregate.0].field_types().clone();
+                let fields = aggregate.get_content(context).field_types().clone();
                 for (field_idx, field_type) in fields.into_iter().enumerate() {
                     let field_idx = field_idx as u64;
 
@@ -1990,7 +2075,7 @@ impl FnCompiler {
     ) -> Result<(), CompileError> {
         match ty {
             Type::Struct(aggregate) => {
-                let fields = context.aggregates[aggregate.0].field_types().clone();
+                let fields = aggregate.get_content(context).field_types().clone();
                 for (field_idx, field_type) in fields.into_iter().enumerate() {
                     let field_idx = field_idx as u64;
 

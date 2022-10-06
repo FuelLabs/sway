@@ -10,7 +10,7 @@ fn format_code(input: &str) -> String {
     let input_arc = std::sync::Arc::from(input);
     let token_stream = lex(&input_arc, 0, input.len(), None).unwrap();
     let handler = Handler::default();
-    let mut parser = Parser::new(&token_stream, &handler);
+    let mut parser = Parser::new(&handler, &token_stream);
     let expression: ItemStruct = parser.parse().unwrap();
 
     let mut buf = Default::default();
@@ -88,7 +88,7 @@ fmt_test!(  annotated_struct
 }",
             intermediate_whitespace
 "struct Annotated{
-                #[   storage(write  )]\n    
+                #[   storage(write  )]\n
                 foo    : u32,
                 #[   storage(read  )   ]
                 bar   : String,

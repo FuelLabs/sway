@@ -48,7 +48,7 @@ impl PartialEq for TypedExpression {
 
 impl CopyTypes for TypedExpression {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.return_type.update_type(type_mapping, &self.span);
+        self.return_type.copy_types(type_mapping);
         self.expression.copy_types(type_mapping);
     }
 }
@@ -403,23 +403,12 @@ impl DeterministicallyAborts for TypedExpression {
             ArrayIndex { prefix, index } => {
                 prefix.deterministically_aborts() || index.deterministically_aborts()
             }
-            AsmExpression {
-                registers, body, ..
-            } => {
-                // when asm expression parsing is handled earlier, this will be cleaner. For now,
-                // we rely on string comparison...
-                // jumps are not allowed in asm blocks, so we know this block deterministically
-                // aborts if these opcodes are present
-                let body_deterministically_aborts = body
-                    .iter()
-                    .any(|x| ["rvrt", "ret"].contains(&x.op_name.as_str().to_lowercase().as_str()));
-                registers.iter().any(|x| {
-                    x.initializer
-                        .as_ref()
-                        .map(|x| x.deterministically_aborts())
-                        .unwrap_or(false)
-                }) || body_deterministically_aborts
-            }
+            AsmExpression { registers, .. } => registers.iter().any(|x| {
+                x.initializer
+                    .as_ref()
+                    .map(|x| x.deterministically_aborts())
+                    .unwrap_or(false)
+            }),
             IfExp {
                 condition,
                 then,
@@ -1217,25 +1206,18 @@ impl TypedExpression {
             .clone()
             .map(|x| x.1)
             .unwrap_or_else(|| asm.whole_block_span.clone());
-        let diverges = asm
-            .body
-            .iter()
-            .any(|asm_op| matches!(asm_op.op_name.as_str(), "rvrt" | "ret"));
-        let return_type = if diverges {
-            insert_type(TypeInfo::Unknown)
-        } else {
-            check!(
-                ctx.resolve_type_with_self(
-                    insert_type(asm.return_type.clone()),
-                    &asm_span,
-                    EnforceTypeArguments::No,
-                    None
-                ),
-                insert_type(TypeInfo::ErrorRecovery),
-                warnings,
-                errors,
-            )
-        };
+        let return_type = check!(
+            ctx.resolve_type_with_self(
+                insert_type(asm.return_type.clone()),
+                &asm_span,
+                EnforceTypeArguments::No,
+                None
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
+
         // type check the initializers
         let typed_registers = asm
             .registers

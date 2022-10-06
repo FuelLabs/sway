@@ -4,16 +4,13 @@
 //! that is not the case.
 
 use crate::{type_system::TypeId, CompileResult};
-use sway_types::{span::Span, Ident};
+use sway_types::Ident;
 
 /// If any types contained by this node are unresolved or have yet to be inferred, throw an
 /// error to signal to the user that more type information is needed.
 
 pub enum TypeMetadata {
-    UnresolvedType {
-        name: Ident,
-        span_override: Option<Span>,
-    },
+    UnresolvedType(Ident),
     LoggedType(TypeId),
 }
 

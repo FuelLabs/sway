@@ -20,14 +20,14 @@ use crate::{
 /// managed by the context.
 #[derive(Default)]
 pub struct Context {
-    pub modules: Arena<ModuleContent>,
-    pub functions: Arena<FunctionContent>,
-    pub blocks: Arena<BlockContent>,
-    pub values: Arena<ValueContent>,
-    pub pointers: Arena<PointerContent>,
-    pub aggregates: Arena<AggregateContent>,
-    pub asm_blocks: Arena<AsmBlockContent>,
-    pub metadata: Arena<Metadatum>,
+    pub(crate) modules: Arena<ModuleContent>,
+    pub(crate) functions: Arena<FunctionContent>,
+    pub(crate) blocks: Arena<BlockContent>,
+    pub(crate) values: Arena<ValueContent>,
+    pub(crate) pointers: Arena<PointerContent>,
+    pub(crate) aggregates: Arena<AggregateContent>,
+    pub(crate) asm_blocks: Arena<AsmBlockContent>,
+    pub(crate) metadata: Arena<Metadatum>,
 
     next_unique_sym_tag: u64,
 }

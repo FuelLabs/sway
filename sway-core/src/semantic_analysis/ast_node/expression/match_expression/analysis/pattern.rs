@@ -4,7 +4,6 @@ use std::fmt::Write;
 use sway_types::Span;
 
 use crate::semantic_analysis::{TypedScrutinee, TypedScrutineeVariant};
-use crate::type_system::look_up_type_id;
 use crate::{
     error::{err, ok},
     CompileError, CompileResult, Literal,
@@ -660,11 +659,8 @@ impl Pattern {
         }
     }
 
-    pub(crate) fn matches_type_info(&self, type_info: &TypeInfo, span: &Span) -> bool {
+    pub(crate) fn matches_type_info(&self, type_info: &TypeInfo) -> bool {
         match (self, type_info) {
-            (pattern, TypeInfo::Ref(type_id, _)) => {
-                pattern.matches_type_info(&look_up_type_id(*type_id), span)
-            }
             (
                 Pattern::Enum(EnumPattern {
                     enum_name: l_enum_name,
