@@ -2,7 +2,9 @@ use crate::{
     error::*,
     parse_tree::{Declaration, ExpressionKind, Visibility},
     semantic_analysis::{
-        ast_node::{TypedAstNode, TypedAstNodeContent, TypedVariableDeclaration},
+        ast_node::{
+            TypedAstNode, TypedAstNodeContent, TypedStorageField, TypedVariableDeclaration,
+        },
         declaration::VariableMutability,
         TypeCheckContext,
     },
@@ -18,7 +20,7 @@ use super::{
 use std::collections::BTreeMap;
 use sway_ast::ItemConst;
 use sway_parse::{handler::Handler, lex, Parser};
-use sway_types::{span::Span, ConfigTimeConstant, Spanned};
+use sway_types::{span::Span, state::StateIndex, ConfigTimeConstant, Spanned};
 
 /// A single `Module` within a Sway project.
 ///
@@ -402,30 +404,62 @@ impl Module {
         src: &Path,
         item: &Ident,
         dst: &Path,
-        _alias: Option<Ident>,
+        alias: &Ident,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        // Grab the storage fields from the source namespace
         let src_ns = check!(
             self.check_submodule(src),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let _src_ns_storage_fields = check!(
+        let src_ns_storage_fields = check!(
             src_ns.get_storage_field_descriptors(&item.span()),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let dst_ns = &self[dst];
-        let _dst_ns_storage_fields = check!(
+
+        // Grab the storage fields from the destination namespace
+        let dst_ns = &mut self[dst];
+        let dst_ns_storage_fields = check!(
             dst_ns.get_storage_field_descriptors(&item.span()),
             return err(warnings, errors),
             warnings,
             errors
         );
+
+        // Create a link (via StorageAliases) between `item` from `dst_ns` and `alias` from `src_ns`
+        let alias_idx = match dbg!(dst_ns_storage_fields)
+            .iter()
+            .enumerate()
+            .find(|(_, TypedStorageField { name, .. })| name == alias)
+        {
+            Some((ix, _)) => StateIndex::new(ix),
+            None => {
+                errors.push(CompileError::StorageFieldDoesNotExist {
+                    name: alias.clone(),
+                });
+                return err(warnings, errors);
+            }
+        };
+
+        let item_idx = match src_ns_storage_fields
+            .iter()
+            .enumerate()
+            .find(|(_, TypedStorageField { name, .. })| name == item)
+        {
+            Some((ix, _)) => StateIndex::new(ix),
+            None => {
+                errors.push(CompileError::StorageFieldDoesNotExist { name: item.clone() });
+                return err(warnings, errors);
+            }
+        };
+
+        dst_ns.storage_index_map.insert(item_idx, alias_idx);
 
         ok((), warnings, errors)
     }

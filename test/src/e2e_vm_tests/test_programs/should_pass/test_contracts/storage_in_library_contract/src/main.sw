@@ -15,6 +15,7 @@ impl SomethingElse for Contract {
     #[storage(write)]
     fn call_library_function() {
         storage_lib::mutate_foo();
+        storage_lib::mutate_foo();
         storage.bar = 99;
     }
 }

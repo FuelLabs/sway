@@ -178,7 +178,7 @@ impl Namespace {
         &mut self,
         src: &Path,
         item: &Ident,
-        alias: Option<Ident>,
+        alias: &Ident,
     ) -> CompileResult<()> {
         self.root
             .storage_item_import(src, item, &self.mod_path, alias)
