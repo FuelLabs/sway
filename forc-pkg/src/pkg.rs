@@ -2118,12 +2118,25 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
             let json_storage_slots_path = output_dir
                 .join(&json_storage_slots_stem)
                 .with_extension("json");
-            let file = File::create(json_storage_slots_path)?;
+            let storage_slots_file = File::create(json_storage_slots_path)?;
             let res = if minify_json_storage_slots {
-                serde_json::to_writer(&file, &compiled.storage_slots)
+                serde_json::to_writer(&storage_slots_file, &compiled.storage_slots)
             } else {
-                serde_json::to_writer_pretty(&file, &compiled.storage_slots)
+                serde_json::to_writer_pretty(&storage_slots_file, &compiled.storage_slots)
             };
+            // Construct the contract ID
+            let contract = Contract::from(compiled.bytecode.clone());
+            let salt = fuel_tx::Salt::new([0; 32]);
+            let mut storage_slots = compiled.storage_slots.clone();
+            storage_slots.sort();
+            let state_root = Contract::initial_state_root(storage_slots.iter());
+            let contract_id = contract.id(&salt, &contract.root(), &state_root);
+
+            // Output the contract id to `.out/build_profile/<project-name>-contract-id`
+            let deployment_info_filename = format!("{}-contract-id", &manifest.project.name);
+            let deployment_info_path = output_dir.join(&deployment_info_filename);
+            fs::write(deployment_info_path, hex::encode(contract_id))?;
+
             res?;
         }
         TreeType::Predicate => {
