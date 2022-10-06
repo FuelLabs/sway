@@ -6,6 +6,7 @@ pub(crate) struct HTMLString(pub(crate) String);
 pub(crate) struct RenderedDocumentation {
     pub(crate) file_contents: HTMLString,
     pub(crate) file_name: String,
+    pub(crate) module_prefix: Vec<String>,
 }
 impl RenderedDocumentation {
     pub fn render(raw: &Documentation) -> Vec<RenderedDocumentation> {
@@ -15,12 +16,18 @@ impl RenderedDocumentation {
                 Some(x) => x,
                 None => continue,
             };
-            if let Descriptor::Documentable { ty, name } = desc {
+            if let Descriptor::Documentable {
+                ty,
+                name,
+                module_prefix,
+            } = desc
+            {
                 let name_str = match name {
                     Some(name) => name.as_str(),
                     None => ty.to_name(),
                 };
                 buf.push(Self {
+                    module_prefix: module_prefix.clone(),
                     // proof of concept, TODO render actual HTML
                     file_contents: HTMLString(todo!()),
                     file_name,

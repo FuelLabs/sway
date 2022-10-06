@@ -37,6 +37,8 @@ impl DescriptorType {
 /// Used in deciding whether or not a [Declaration] is documentable.
 pub(crate) enum Descriptor {
     Documentable {
+        /// if empty, then this is the root module.
+        module_prefix: Vec<String>,
         ty: DescriptorType,
         name: Option<Ident>,
     },
@@ -48,7 +50,7 @@ impl Descriptor {
         use Descriptor::*;
         match self {
             NonDocumentable => None,
-            Documentable { ty, name } => {
+            Documentable { ty, name, .. } => {
                 let name_str = match name {
                     Some(name) => name.as_str(),
                     None => ty.to_name(),
@@ -57,33 +59,37 @@ impl Descriptor {
             }
         }
     }
-}
-impl From<&Declaration> for Descriptor {
-    fn from(d: &Declaration) -> Self {
+    pub(crate) fn from_decl(d: &Declaration, module_prefix: Vec<String>) -> Self {
         use Declaration::*;
         use DescriptorType::*;
         match d {
             StructDeclaration(ref decl) => Descriptor::Documentable {
+                module_prefix,
                 ty: Struct,
                 name: Some(decl.name.clone()),
             },
             EnumDeclaration(ref decl) => Descriptor::Documentable {
+                module_prefix,
                 ty: Enum,
                 name: Some(decl.name.clone()),
             },
             TraitDeclaration(ref decl) => Descriptor::Documentable {
+                module_prefix,
                 ty: Trait,
                 name: Some(decl.name.clone()),
             },
             AbiDeclaration(ref decl) => Descriptor::Documentable {
+                module_prefix,
                 ty: Abi,
                 name: Some(decl.name.clone()),
             },
             StorageDeclaration(_) => Descriptor::Documentable {
+                module_prefix,
                 ty: Storage,
                 name: None, // no ident
             },
             ImplSelf(ref decl) => Descriptor::Documentable {
+                module_prefix,
                 ty: ImplSelfDesc,
                 // possible ident
                 name: match decl.type_implementing_for {
@@ -113,47 +119,54 @@ impl From<&Declaration> for Descriptor {
                 },
             },
             ImplTrait(ref decl) => Descriptor::Documentable {
+                module_prefix,
                 ty: ImplTraitDesc,
                 name: Some(decl.trait_name.suffix.clone()),
             },
             FunctionDeclaration(ref decl) => Descriptor::Documentable {
+                module_prefix,
                 ty: Function,
                 name: Some(decl.name.clone()),
             },
             ConstantDeclaration(ref decl) => Descriptor::Documentable {
+                module_prefix,
                 ty: Const,
                 name: Some(decl.name.clone()),
             },
             _ => Descriptor::NonDocumentable,
         }
     }
-}
-impl From<&TypedDeclaration> for Descriptor {
-    fn from(d: &TypedDeclaration) -> Self {
+    pub(crate) fn from_typed_decl(d: &TypedDeclaration, module_prefix: Vec<String>) -> Self {
         use DescriptorType::*;
         use TypedDeclaration::*;
         match d {
             StructDeclaration(ref decl) => Descriptor::Documentable {
+                module_prefix,
                 ty: Struct,
                 name: Some(de_get_struct(decl.clone(), &decl.span()).unwrap().name),
             },
             EnumDeclaration(ref decl) => Descriptor::Documentable {
+                module_prefix,
                 ty: Enum,
                 name: Some(de_get_enum(decl.clone(), &decl.span()).unwrap().name),
             },
             TraitDeclaration(ref decl) => Descriptor::Documentable {
+                module_prefix,
                 ty: Trait,
                 name: Some(de_get_trait(decl.clone(), &decl.span()).unwrap().name),
             },
             AbiDeclaration(ref decl) => Descriptor::Documentable {
+                module_prefix,
                 ty: Abi,
                 name: Some(de_get_abi(decl.clone(), &decl.span()).unwrap().name),
             },
             StorageDeclaration(_) => Descriptor::Documentable {
+                module_prefix,
                 ty: Storage,
                 name: None,
             },
             ImplTrait(ref decl) => Descriptor::Documentable {
+                module_prefix,
                 ty: ImplTraitDesc,
                 name: Some(
                     de_get_impl_trait(decl.clone(), &decl.span())
@@ -163,10 +176,12 @@ impl From<&TypedDeclaration> for Descriptor {
                 ),
             },
             FunctionDeclaration(ref decl) => Descriptor::Documentable {
+                module_prefix,
                 ty: Function,
                 name: Some(de_get_function(decl.clone(), &decl.span()).unwrap().name),
             },
             ConstantDeclaration(ref decl) => Descriptor::Documentable {
+                module_prefix,
                 ty: Const,
                 name: Some(de_get_constant(decl.clone(), &decl.span()).unwrap().name),
             },

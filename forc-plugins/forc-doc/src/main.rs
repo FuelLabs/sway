@@ -52,6 +52,11 @@ pub fn main() -> Result<()> {
     // write to outfile
     for entry in rendered {
         let mut doc_path = doc_path.clone();
+        for prefix in entry.module_prefix {
+            doc_path.push(prefix);
+        }
+
+        fs::create_dir_all(&doc_path)?;
         doc_path.push(entry.file_name);
         let mut file = fs::File::create(doc_path)?;
         file.write_all(entry.file_contents.0.as_bytes())?;

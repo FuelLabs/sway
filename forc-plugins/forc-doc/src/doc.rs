@@ -23,7 +23,7 @@ pub(crate) fn get_compiled_docs(
             // first, populate the descriptors and type information (decl).
             if let TypedAstNodeContent::Declaration(ref decl) = ast_node.content {
                 let mut entry = docs
-                    .entry(Descriptor::from(decl))
+                    .entry(Descriptor::from_typed_decl(decl, vec![]))
                     .or_insert((Vec::new(), decl.clone()));
                 entry.1 = decl.clone();
             }
@@ -32,7 +32,7 @@ pub(crate) fn get_compiled_docs(
         for ast_node in &parse_program.root.tree.root_nodes {
             if let AstNodeContent::Declaration(ref decl) = ast_node.content {
                 let docstrings = doc_attributes(ast_node);
-                if let Some(entry) = docs.get_mut(&Descriptor::from(decl)) {
+                if let Some(entry) = docs.get_mut(&Descriptor::from_decl(decl, vec![])) {
                     entry.0 = docstrings;
                 } else {
                     // this could be invalid in the case of a partial compilation. TODO audit this
@@ -47,36 +47,56 @@ pub(crate) fn get_compiled_docs(
         {
             // this is the same process as before but for dependencies
             for (_, ref typed_submodule) in &typed_program.root.submodules {
-                extract_typed_submodule(typed_submodule, &mut docs);
+                let module_prefix = vec![];
+                extract_typed_submodule(typed_submodule, &mut docs, &module_prefix);
             }
             for (_, ref parse_submodule) in &parse_program.root.submodules {
-                extract_parse_submodule(parse_submodule, &mut docs);
+                let module_prefix = vec![];
+                extract_parse_submodule(parse_submodule, &mut docs, &module_prefix);
             }
         }
     }
 
     docs
 }
-fn extract_typed_submodule(typed_submodule: &TypedSubmodule, docs: &mut Documentation) {
+fn extract_typed_submodule(
+    typed_submodule: &TypedSubmodule,
+    docs: &mut Documentation,
+    module_prefix: &Vec<String>,
+) {
+    let mut new_submodule_prefix = module_prefix.clone();
+    new_submodule_prefix.push(typed_submodule.library_name.as_str().to_string());
     for ast_node in &typed_submodule.module.all_nodes {
         // first, populate the descriptors and type information (decl).
         if let TypedAstNodeContent::Declaration(ref decl) = ast_node.content {
             let mut entry = docs
-                .entry(Descriptor::from(decl))
+                .entry(Descriptor::from_typed_decl(
+                    decl,
+                    new_submodule_prefix.clone(),
+                ))
                 .or_insert((Vec::new(), decl.clone()));
             entry.1 = decl.clone();
         }
     }
     // if there is another submodule we need to go a level deeper
     if let Some((_, submodule)) = typed_submodule.module.submodules.first() {
-        extract_typed_submodule(submodule, docs);
+        extract_typed_submodule(submodule, docs, &new_submodule_prefix);
     }
 }
-fn extract_parse_submodule(parse_submodule: &ParseSubmodule, docs: &mut Documentation) {
+fn extract_parse_submodule(
+    parse_submodule: &ParseSubmodule,
+    docs: &mut Documentation,
+    module_prefix: &Vec<String>,
+) {
+    let mut new_submodule_prefix = module_prefix.clone();
+    new_submodule_prefix.push(parse_submodule.library_name.as_str().to_string());
+
     for ast_node in &parse_submodule.module.tree.root_nodes {
         if let AstNodeContent::Declaration(ref decl) = ast_node.content {
             let docstrings = doc_attributes(ast_node);
-            if let Some(entry) = docs.get_mut(&Descriptor::from(decl)) {
+            if let Some(entry) =
+                docs.get_mut(&Descriptor::from_decl(decl, new_submodule_prefix.clone()))
+            {
                 entry.0 = docstrings;
             } else {
                 // this could be invalid in the case of a partial compilation. TODO audit this
@@ -86,7 +106,7 @@ fn extract_parse_submodule(parse_submodule: &ParseSubmodule, docs: &mut Document
     }
     // if there is another submodule we need to go a level deeper
     if let Some((_, submodule)) = parse_submodule.module.submodules.first() {
-        extract_parse_submodule(submodule, docs);
+        extract_parse_submodule(submodule, docs, &new_submodule_prefix);
     }
 }
 
