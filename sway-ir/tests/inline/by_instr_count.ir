@@ -3,39 +3,38 @@
 script {
     // One instruction.
     fn less_one_block() -> u64 {
-        entry:
+        entry():
         v0 = const u64 11
         ret u64 v0
     }
 
     // Two instructions.
     fn less_two_blocks() -> u64 {
-        entry:
+        entry():
         v0 = const u64 22
-        br block
+        br block(v0)
 
-        block:
-        v1 = phi(entry: v0)
+        block(v1: u64):
         ret u64 v1
     }
 
     // Three instrutions.
     fn less_three_blocks(b: bool) -> u64 {
-        entry:
-        cbr b, then_block, else_block
+        entry(b: bool):
+        cbr b, then_block(), else_block()
 
-        then_block:
+        then_block():
         v0 = const u64 33
         ret u64 v0
 
-        else_block:
+        else_block():
         v1 = const u64 44
         ret u64 v1
     }
 
     // Four cmp instructions and a ret.
     fn more_one_block() -> bool {
-        entry:
+        entry():
         v0 = const u64 55
         v1 = const u64 66
         v2 = cmp eq v0 v1
@@ -51,7 +50,7 @@ script {
 
     // Four cmp instructions, a br and a ret.
     fn more_two_blocks() -> bool {
-        entry:
+        entry():
         v0 = const u64 77
         v1 = const u64 88
         v2 = cmp eq v0 v1
@@ -61,19 +60,18 @@ script {
         v6 = cmp eq v4 v5
         v7 = const bool true
         v8 = cmp eq v6 v7
-        br block
+        br block(v8)
 
-        block:
-        v9 = phi(entry: v8)
+        block(v9: bool):
         ret bool v9
     }
 
     // Four cmp instructions, a cbr an two rets.
     fn more_three_blocks(b: bool) -> bool {
-        entry:
-        cbr b, then_block, else_block
+        entry(b: bool):
+        cbr b, then_block(), else_block()
 
-        then_block:
+        then_block():
         v0 = const u64 99
         v1 = const u64 1010
         v2 = cmp eq v0 v1
@@ -81,7 +79,7 @@ script {
         v4 = cmp eq v2 v3
         ret bool v4
 
-        else_block:
+        else_block():
         v5 = const u64 1111
         v6 = const u64 1212
         v7 = cmp eq v5 v6
@@ -92,7 +90,7 @@ script {
 
     fn main() -> bool {
 // check: fn main() -> bool
-        entry:
+        entry():
 
         v0 = call less_one_block()
 // not: call less_one_block

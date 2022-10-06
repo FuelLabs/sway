@@ -2,29 +2,30 @@
 //
 // regex: VAR=v\d+
 // regex: MD=!\d+
-// regex: LABEL=[[:alpha:]0-9_]+:
+// regex: LABEL=[[:alpha:]0-9_]+
 
 script {
     fn return_storage_key_wrapper() -> b256 {
-        entry:
+        entry():
         v0 = call return_storage_key(), !4
         ret b256 v0
     }
 
     fn return_storage_key() -> b256 {
-        entry:
+        entry():
         v0 = get_storage_key, !2
         ret b256 v0
     }
 
 // check: fn main
     fn main() -> b256 {
-        entry:
+        entry():
         v0 = call return_storage_key_wrapper(), !5
 // check: $(arg0=$VAR) = get_storage_key, $(stk_md=$MD)
-
-// check: $(arg1=$VAR) = phi($LABEL $arg0)
-// check: $(arg2=$VAR) = phi($LABEL $arg1)
+// check: br $(lbl_block1=$LABEL)($arg0)
+// check: $(lbl_block1)($(arg1=$VAR): b256):
+// check: br $(lbl_block0=$LABEL)($arg1)
+// check: $(lbl_block0)($(arg2=$VAR): b256):
 // check: ret b256 $arg2
         ret b256 v0
     }
