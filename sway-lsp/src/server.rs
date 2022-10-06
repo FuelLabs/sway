@@ -370,7 +370,6 @@ impl Backend {
 
 #[cfg(test)]
 mod tests {
-    use futures::stream::StreamExt;
     use serde_json::json;
     use std::{env, fs, io::Read, path::PathBuf};
     use tower::{Service, ServiceExt};
@@ -379,7 +378,7 @@ mod tests {
     use serial_test::serial;
     use tower_lsp::{
         jsonrpc::{self, Request, Response},
-        {ClientSocket, LspService},
+        LspService,
     };
 
     #[allow(dead_code)]
@@ -692,27 +691,17 @@ mod tests {
         Default::default()
     }
 
-    async fn init_and_open(
-        service: &mut LspService<Backend>,
-        messages: &mut ClientSocket,
-        manifest_dir: PathBuf,
-    ) -> Url {
+    async fn init_and_open(service: &mut LspService<Backend>, manifest_dir: PathBuf) -> Url {
         // send "initialize" request
         let _ = initialize_request(service).await;
 
         // send "initialized" notification
         initialized_notification(service).await;
 
-        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        let _ = messages.next().await;
-
         let (uri, sway_program) = load_sway_example(manifest_dir);
 
         // send "textDocument/didOpen" notification for `uri`
         did_open_notification(service, &uri, &sway_program).await;
-
-        // ignore the "textDocument/publishDiagnostics" notification
-        let _ = messages.next().await;
 
         uri
     }
@@ -742,17 +731,13 @@ mod tests {
     fn initialized() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
-            let (mut service, mut messages) =
-                LspService::new(|client| Backend::new(client, config()));
+            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
             // send "initialize" request
             let _ = initialize_request(&mut service).await;
 
             // send "initialized" notification
             initialized_notification(&mut service).await;
-
-            // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-            let _ = messages.next().await;
         });
     }
 
@@ -761,17 +746,13 @@ mod tests {
     fn initializes_only_once() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
-            let (mut service, mut messages) =
-                LspService::new(|client| Backend::new(client, config()));
+            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
             // send "initialize" request
             let initialize = initialize_request(&mut service).await;
 
             // send "initialized" notification
             initialized_notification(&mut service).await;
-
-            // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-            let _ = messages.next().await;
 
             // send "initialize" request (again); should error
             let response = service.ready().await.unwrap().call(initialize).await;
@@ -785,17 +766,13 @@ mod tests {
     fn shutdown() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
-            let (mut service, mut messages) =
-                LspService::new(|client| Backend::new(client, config()));
+            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
             // send "initialize" request
             let _ = initialize_request(&mut service).await;
 
             // send "initialized" notification
             initialized_notification(&mut service).await;
-
-            // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-            let _ = messages.next().await;
 
             // send "shutdown" request
             let shutdown = shutdown_request(&mut service).await;
@@ -815,14 +792,10 @@ mod tests {
     fn refuses_requests_after_shutdown() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
-            let (mut service, mut messages) =
-                LspService::new(|client| Backend::new(client, config()));
+            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
             // send "initialize" request
             let _ = initialize_request(&mut service).await;
-
-            // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-            let _ = messages.next().await;
 
             // send "shutdown" request
             let shutdown = shutdown_request(&mut service).await;
@@ -838,9 +811,8 @@ mod tests {
     fn did_open() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
-            let (mut service, mut messages) =
-                LspService::new(|client| Backend::new(client, config()));
-            let _ = init_and_open(&mut service, &mut messages, e2e_test_dir()).await;
+            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+            let _ = init_and_open(&mut service, e2e_test_dir()).await;
             shutdown_and_exit(&mut service).await;
         });
     }
@@ -849,9 +821,8 @@ mod tests {
     fn did_close() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
-            let (mut service, mut messages) =
-                LspService::new(|client| Backend::new(client, config()));
-            let _ = init_and_open(&mut service, &mut messages, e2e_test_dir()).await;
+            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+            let _ = init_and_open(&mut service, e2e_test_dir()).await;
 
             // send "textDocument/didClose" notification for `uri`
             did_close_notification(&mut service).await;
@@ -865,9 +836,8 @@ mod tests {
     fn did_change() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
-            let (mut service, mut messages) =
-                LspService::new(|client| Backend::new(client, config()));
-            let uri = init_and_open(&mut service, &mut messages, e2e_test_dir()).await;
+            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+            let uri = init_and_open(&mut service, e2e_test_dir()).await;
 
             // send "textDocument/didChange" notification for `uri`
             let params = json!({
@@ -895,9 +865,6 @@ mod tests {
 
             let _ = did_change_request(&mut service, params).await;
 
-            // ignore the "textDocument/publishDiagnostics" notification
-            let _ = messages.next().await;
-
             shutdown_and_exit(&mut service).await;
         });
     }
@@ -907,12 +874,11 @@ mod tests {
     fn show_ast() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
-            let (mut service, mut messages) =
-                LspService::build(|client| Backend::new(client, config()))
-                    .custom_method("sway/show_ast", Backend::show_ast)
-                    .finish();
+            let (mut service, _) = LspService::build(|client| Backend::new(client, config()))
+                .custom_method("sway/show_ast", Backend::show_ast)
+                .finish();
 
-            let uri = init_and_open(&mut service, &mut messages, e2e_test_dir()).await;
+            let uri = init_and_open(&mut service, e2e_test_dir()).await;
 
             // send "sway/show_typed_ast" request
             let _ = show_ast_request(&mut service, &uri).await;
@@ -930,9 +896,8 @@ mod tests {
         ($example_dir:expr, $capability:expr) => {{
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(async {
-                let (mut service, mut messages) =
-                    LspService::new(|client| Backend::new(client, config()));
-                let uri = init_and_open(&mut service, &mut messages, $example_dir).await;
+                let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+                let uri = init_and_open(&mut service, $example_dir).await;
                 // Call the specific LSP capability function that was passed in.
                 let _ = $capability(&mut service, &uri).await;
 
