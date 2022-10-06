@@ -26,5 +26,4 @@ tracing = "0.1"
 [dev-dependencies]
 async-trait = "0.1"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
-serial_test = "0.9.0"
 tower = { version = "0.4.12", default-features = false, features = ["util"] }

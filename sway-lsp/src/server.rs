@@ -375,8 +375,6 @@ mod tests {
     use tower::{Service, ServiceExt};
 
     use super::*;
-    use futures::stream::StreamExt;
-    use serial_test::serial;
     use tower_lsp::{
         jsonrpc::{self, Request, Response},
         {ClientSocket, LspService},
@@ -704,7 +702,7 @@ mod tests {
         initialized_notification(service).await;
 
         // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        let _ = messages.next().await;
+        //let _ = messages.next().await;
 
         let (uri, sway_program) = load_sway_example(manifest_dir);
 
@@ -712,7 +710,7 @@ mod tests {
         did_open_notification(service, &uri, &sway_program).await;
 
         // ignore the "textDocument/publishDiagnostics" notification
-        let _ = messages.next().await;
+        //let _ = messages.next().await;
 
         uri
     }
@@ -725,167 +723,210 @@ mod tests {
         exit_notification(service).await;
     }
 
-    #[tokio::test(flavor = "current_thread")]
-    #[serial]
+    #[tokio::test]
     async fn initialize() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    #[serial]
-    async fn initialized() {
-        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        let _ = messages.next().await;
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    #[serial]
-    async fn initializes_only_once() {
-        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
-        let initialize = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        let _ = messages.next().await;
-
-        // send "initialize" request (again); should error
-        let response = service.ready().await.unwrap().call(initialize).await;
-        let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
-        assert_eq!(response, Ok(Some(err)));
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    #[serial]
-    async fn shutdown() {
-        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        let _ = messages.next().await;
-
-        // send "shutdown" request
-        let shutdown = shutdown_request(&mut service).await;
-
-        // send "shutdown" request (again); should error
-        let response = service.ready().await.unwrap().call(shutdown).await;
-        let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
-        assert_eq!(response, Ok(Some(err)));
-
-        // send "exit" request
-        exit_notification(&mut service).await;
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    #[serial]
-    async fn refuses_requests_after_shutdown() {
-        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        let _ = messages.next().await;
-
-        // send "shutdown" request
-        let shutdown = shutdown_request(&mut service).await;
-
-        let response = service.ready().await.unwrap().call(shutdown).await;
-        let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
-        assert_eq!(response, Ok(Some(err)));
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    #[serial]
-    async fn did_open() {
-        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
-        let _ = init_and_open(&mut service, &mut messages, e2e_test_dir()).await;
-        shutdown_and_exit(&mut service).await;
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    #[serial]
-    async fn did_close() {
-        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
-        let _ = init_and_open(&mut service, &mut messages, e2e_test_dir()).await;
-
-        // send "textDocument/didClose" notification for `uri`
-        did_close_notification(&mut service).await;
-
-        shutdown_and_exit(&mut service).await;
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    #[serial]
-    async fn did_change() {
-        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
-        let uri = init_and_open(&mut service, &mut messages, e2e_test_dir()).await;
-
-        // send "textDocument/didChange" notification for `uri`
-        let params = json!({
-            "textDocument": {
-                "uri": uri,
-                "version": 1
-            },
-            "contentChanges": [
-                {
-                    "range": {
-                        "start": {
-                            "line": 3,
-                            "character": 4
-                        },
-                        "end": {
-                            "line": 3,
-                            "character": 4
-                        }
-                    },
-                    "rangeLength": 0,
-                    "text": "let x = 0.0;",
-                }
-            ]
+                // send "initialize" request
+                let _ = initialize_request(&mut service).await;
+            })
         });
-
-        let _ = did_change_request(&mut service, params).await;
-
-        // ignore the "textDocument/publishDiagnostics" notification
-        let _ = messages.next().await;
-
-        shutdown_and_exit(&mut service).await;
     }
 
-    #[tokio::test(flavor = "current_thread")]
-    #[serial]
+    #[tokio::test]
+    async fn initialized() {
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let (mut service, mut messages) =
+                    LspService::new(|client| Backend::new(client, config()));
+
+                // send "initialize" request
+                let _ = initialize_request(&mut service).await;
+
+                // send "initialized" notification
+                initialized_notification(&mut service).await;
+
+                // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
+                //let _ = messages.next().await;
+            })
+        });
+    }
+
+    #[tokio::test]
+    async fn initializes_only_once() {
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let (mut service, mut messages) =
+                    LspService::new(|client| Backend::new(client, config()));
+
+                // send "initialize" request
+                let initialize = initialize_request(&mut service).await;
+
+                // send "initialized" notification
+                initialized_notification(&mut service).await;
+
+                // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
+                //let _ = messages.next().await;
+
+                // send "initialize" request (again); should error
+                let response = service.ready().await.unwrap().call(initialize).await;
+                let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
+                assert_eq!(response, Ok(Some(err)));
+            })
+        });
+    }
+
+    #[tokio::test]
+    async fn shutdown() {
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let (mut service, mut messages) =
+                    LspService::new(|client| Backend::new(client, config()));
+
+                // send "initialize" request
+                let _ = initialize_request(&mut service).await;
+
+                // send "initialized" notification
+                initialized_notification(&mut service).await;
+
+                // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
+                //let _ = messages.next().await;
+
+                // send "shutdown" request
+                let shutdown = shutdown_request(&mut service).await;
+
+                // send "shutdown" request (again); should error
+                let response = service.ready().await.unwrap().call(shutdown).await;
+                let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
+                assert_eq!(response, Ok(Some(err)));
+
+                // send "exit" request
+                exit_notification(&mut service).await;
+            })
+        });
+    }
+
+    #[tokio::test]
+    async fn refuses_requests_after_shutdown() {
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let (mut service, mut messages) =
+                    LspService::new(|client| Backend::new(client, config()));
+
+                // send "initialize" request
+                let _ = initialize_request(&mut service).await;
+
+                // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
+                //let _ = messages.next().await;
+
+                // send "shutdown" request
+                let shutdown = shutdown_request(&mut service).await;
+
+                let response = service.ready().await.unwrap().call(shutdown).await;
+                let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
+                assert_eq!(response, Ok(Some(err)));
+            })
+        });
+    }
+
+    #[tokio::test]
+    async fn did_open() {
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let (mut service, mut messages) =
+                    LspService::new(|client| Backend::new(client, config()));
+                let _ = init_and_open(&mut service, &mut messages, e2e_test_dir()).await;
+                shutdown_and_exit(&mut service).await;
+            })
+        });
+    }
+
+    #[tokio::test]
+    async fn did_close() {
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let (mut service, mut messages) =
+                    LspService::new(|client| Backend::new(client, config()));
+                let _ = init_and_open(&mut service, &mut messages, e2e_test_dir()).await;
+
+                // send "textDocument/didClose" notification for `uri`
+                did_close_notification(&mut service).await;
+
+                shutdown_and_exit(&mut service).await;
+            })
+        });
+    }
+
+    #[tokio::test]
+    async fn did_change() {
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let (mut service, mut messages) =
+                    LspService::new(|client| Backend::new(client, config()));
+                let uri = init_and_open(&mut service, &mut messages, e2e_test_dir()).await;
+
+                // send "textDocument/didChange" notification for `uri`
+                let params = json!({
+                    "textDocument": {
+                        "uri": uri,
+                        "version": 1
+                    },
+                    "contentChanges": [
+                        {
+                            "range": {
+                                "start": {
+                                    "line": 3,
+                                    "character": 4
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "character": 4
+                                }
+                            },
+                            "rangeLength": 0,
+                            "text": "let x = 0.0;",
+                        }
+                    ]
+                });
+
+                let _ = did_change_request(&mut service, params).await;
+
+                // ignore the "textDocument/publishDiagnostics" notification
+                //let _ = messages.next().await;
+
+                shutdown_and_exit(&mut service).await;
+            })
+        });
+    }
+
+    #[tokio::test]
     async fn show_ast() {
-        let (mut service, mut messages) =
-            LspService::build(|client| Backend::new(client, config()))
-                .custom_method("sway/show_ast", Backend::show_ast)
-                .finish();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let (mut service, mut messages) =
+                    LspService::build(|client| Backend::new(client, config()))
+                        .custom_method("sway/show_ast", Backend::show_ast)
+                        .finish();
 
-        let uri = init_and_open(&mut service, &mut messages, e2e_test_dir()).await;
+                let uri = init_and_open(&mut service, &mut messages, e2e_test_dir()).await;
 
-        // send "sway/show_typed_ast" request
-        let _ = show_ast_request(&mut service, &uri).await;
+                // send "sway/show_typed_ast" request
+                let _ = show_ast_request(&mut service, &uri).await;
 
-        shutdown_and_exit(&mut service).await;
+                shutdown_and_exit(&mut service).await;
+            })
+        });
     }
 
     // This macro allows us to spin up a server / client for testing
@@ -895,53 +936,52 @@ mod tests {
     // The capability argument is an async function.
     macro_rules! test_lsp_capability {
         ($example_dir:expr, $capability:expr) => {{
-            let (mut service, mut messages) =
-                LspService::new(|client| Backend::new(client, config()));
-            let uri = init_and_open(&mut service, &mut messages, $example_dir).await;
-            // Call the specific LSP capability function that was passed in.
-            let _ = $capability(&mut service, &uri).await;
+            std::thread::spawn(move || {
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(async {
+                    let (mut service, mut messages) =
+                        LspService::new(|client| Backend::new(client, config()));
+                    let uri = init_and_open(&mut service, &mut messages, $example_dir).await;
+                    // Call the specific LSP capability function that was passed in.
+                    let _ = $capability(&mut service, &uri).await;
 
-            shutdown_and_exit(&mut service).await;
+                    shutdown_and_exit(&mut service).await;
+                })
+            });
         }};
     }
 
-    #[tokio::test(flavor = "current_thread")]
-    #[serial]
+    #[tokio::test]
     async fn semantic_tokens() {
         // send "textDocument/semanticTokens/full" request
         test_lsp_capability!(doc_comments(), semantic_tokens_request);
     }
 
-    #[tokio::test(flavor = "current_thread")]
-    #[serial]
+    #[tokio::test]
     async fn document_symbol() {
         // send "textDocument/documentSymbol" request
         test_lsp_capability!(doc_comments(), document_symbol_request);
     }
 
-    #[tokio::test(flavor = "current_thread")]
-    #[serial]
+    #[tokio::test]
     async fn go_to_definition() {
         // send "textDocument/definition" request
         test_lsp_capability!(doc_comments(), go_to_definition_request);
     }
 
-    #[tokio::test(flavor = "current_thread")]
-    #[serial]
+    #[tokio::test]
     async fn format() {
         // send "textDocument/formatting" request
         test_lsp_capability!(doc_comments(), format_request);
     }
 
-    #[tokio::test(flavor = "current_thread")]
-    #[serial]
+    #[tokio::test]
     async fn hover() {
         // send "textDocument/hover" request
         test_lsp_capability!(doc_comments(), hover_request);
     }
 
-    #[tokio::test(flavor = "current_thread")]
-    #[serial]
+    #[tokio::test]
     async fn highlight() {
         // send "textDocument/documentHighlight" request
         test_lsp_capability!(doc_comments(), highlight_request);
