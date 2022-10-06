@@ -7,8 +7,9 @@ and our Rust code we can add integration testing.
 ## Adding Rust Integration Testing
 
 To add Rust integration testing to a Forc project we can use [the `sway-test-rs`
-cargo generate template](https://github.com/FuelLabs/sway-test-rs). This
-template makes it easy for Sway devs to add the boilerplate required when
+cargo generate
+template](https://github.com/FuelLabs/sway/tree/master/templates/sway-test-rs).
+This template makes it easy for Sway devs to add the boilerplate required when
 setting up their Rust integration testing.
 
 Let's add a Rust integration test to [the fresh project we created in the
@@ -43,13 +44,13 @@ $ cargo install cargo-generate
 Let's generate the default test harness with the following:
 
 ```
-cargo generate --init fuellabs/sway-test-rs --name my-fuel-project
+cargo generate --init fuellabs/sway templates/sway-test-rs --name my-fuel-project
 ```
 
 If all goes well, the output should look as follows:
 
 ```console
-⚠️   Favorite `fuellabs/sway-test-rs` not found in config, using it as a git repository: https://github.com/fuellabs/sway-test-rs
+⚠️   Favorite `fuellabs/sway` not found in config, using it as a git repository: https://github.com/fuellabs/sway
 🤷   Project Name : my-fuel-project
 🔧   Destination: /home/user/path/to/my-fuel-project ...
 🔧   Generating template ...
