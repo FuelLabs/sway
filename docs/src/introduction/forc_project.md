@@ -55,6 +55,7 @@ We now compile our project with `forc build`, passing the flag `--print-finalize
 
 ```console
 $ forc build --print-finalized-asm
+...
 .program:
 ji   i4
 noop
@@ -62,29 +63,29 @@ DATA_SECTION_OFFSET[0..32]
 DATA_SECTION_OFFSET[32..64]
 lw   $ds $is 1
 add  $$ds $$ds $is
-lw   $r1 $fp i73              ; load input function selector
-lw   $r0 data_1               ; load fn selector for comparison
-eq   $r0 $r1 $r0              ; function selector comparison
-jnzi $r0 i11                  ; jump to selected function
-rvrt $zero                    ; revert if no selectors matched
-lw   $r0 data_0               ; literal instantiation
-ret  $r0
+lw   $r0 $fp i73              ; load input function selector
+lw   $r1 data_0               ; load fn selector for comparison
+eq   $r2 $r0 $r1              ; function selector comparison
+jnzi $r2 i12                  ; jump to selected function
+movi $$tmp i123               ; special code for mismatched selector
+rvrt $$tmp                    ; revert if no selectors matched
+ret  $one
 .data:
-data_0 .bool 0x01
-data_1 .u32 0x2151bd4b
+data_0 .word 559005003
 
   Compiled contract "my-fuel-project".
-  Bytecode size is 68 bytes.
+  Bytecode size is 60 bytes.
 ```
 
-To test this contract, use `forc test`:
+To test this contract, use `cargo test`:
 
 ```console
-$ forc test
+$ cargo test
+...
 running 1 test
 test can_get_contract_id ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
 ```
 
-The `forc test` command tests the contract using the Rust SDK test harness that lives under `tests/`. The default test harness `harness.rs` contains boilerplate code to get you started but doesn't actually call any contract methods. For additional information on testing contracts using the Rust SDK, refer to the [Testing with Rust](../testing/testing-with-rust.md) section.
+The `cargo test` command tests the contract using the Rust SDK test harness that lives under `tests/`. The default test harness `harness.rs` contains boilerplate code to get you started but doesn't actually call any contract methods. For additional information on testing contracts using the Rust SDK, refer to the [Testing with Rust](../testing/testing-with-rust.md) section.
