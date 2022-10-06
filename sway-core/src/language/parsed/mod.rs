@@ -1,22 +1,18 @@
 //! Contains all the code related to parsing Sway source code.
-mod call_path;
 mod code_block;
 pub mod declaration;
 mod expression;
 mod include_statement;
-mod literal;
 mod module;
 mod program;
 mod return_statement;
 mod use_statement;
 mod visibility;
 
-pub use call_path::*;
 pub use code_block::*;
 pub use declaration::*;
 pub use expression::*;
 pub(crate) use include_statement::IncludeStatement;
-pub use literal::Literal;
 pub use module::{DepName, ParseModule, ParseSubmodule};
 pub use program::{ParseProgram, TreeType};
 pub use return_statement::*;

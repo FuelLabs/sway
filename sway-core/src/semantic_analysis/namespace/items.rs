@@ -1,7 +1,7 @@
 use crate::{
     declaration_engine::{declaration_engine::de_get_storage, declaration_id::DeclarationId},
     error::*,
-    language::parsed::*,
+    language::CallPath,
     namespace::*,
     semantic_analysis::*,
     type_system::*,

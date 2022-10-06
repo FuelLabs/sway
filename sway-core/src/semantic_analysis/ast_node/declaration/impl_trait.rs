@@ -5,6 +5,7 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     declaration_engine::declaration_engine::*,
     error::{err, ok},
+    language::CallPath,
     semantic_analysis::{
         Mode, TyAstNodeContent, TyConstantDeclaration, TyExpression, TyExpressionVariant,
         TyIntrinsicFunctionKind, TypeCheckContext,
@@ -13,8 +14,8 @@ use crate::{
         insert_type, look_up_type_id, set_type_as_storage_only, to_typeinfo, unify_with_self,
         CopyTypes, TypeId, TypeMapping, TypeParameter,
     },
-    CallPath, CompileError, CompileResult, FunctionDeclaration, ImplSelf, ImplTrait, Purity,
-    TyDeclaration, TyFunctionDeclaration, TypeInfo,
+    CompileError, CompileResult, FunctionDeclaration, ImplSelf, ImplTrait, Purity, TyDeclaration,
+    TyFunctionDeclaration, TypeInfo,
 };
 
 use super::TyTraitFn;

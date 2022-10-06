@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     declaration_engine::declaration_engine::*,
-    language::parsed::{CallPath, Visibility},
+    language::{parsed::Visibility, CallPath},
     semantic_analysis::{
         ast_node::{
             TyAbiDeclaration, TyCodeBlock, TyConstantDeclaration, TyDeclaration, TyEnumDeclaration,

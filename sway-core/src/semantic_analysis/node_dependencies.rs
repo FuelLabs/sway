@@ -4,7 +4,7 @@ use std::iter::FromIterator;
 use crate::type_system::{TypeArgument, TypeParameter};
 use crate::{
     error::*,
-    language::parsed::*,
+    language::{parsed::*, CallPath},
     type_system::{look_up_type_id, AbiName, IntegerBits},
     AstNode, AstNodeContent, CodeBlock, Declaration, Expression, IntrinsicFunctionExpression,
     TypeInfo, WhileLoopExpression,

@@ -1,6 +1,6 @@
 use super::FunctionDeclaration;
 use crate::{
-    language::parsed::CallPath,
+    language::CallPath,
     type_system::{TypeInfo, TypeParameter},
 };
 

@@ -1,7 +1,7 @@
 use crate::constants;
 use crate::{
     error::*,
-    language::parsed::*,
+    language::{parsed::*, CallPath},
     semantic_analysis::{TyExpressionVariant::VariableExpression, *},
     type_system::*,
 };

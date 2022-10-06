@@ -1,5 +1,5 @@
 use crate::{
-    language::parsed::{CallPath, CodeBlock, Literal},
+    language::{parsed::CodeBlock, CallPath, Literal},
     type_system::TypeBinding,
     TypeInfo,
 };

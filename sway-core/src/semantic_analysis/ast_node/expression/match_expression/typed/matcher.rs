@@ -1,5 +1,6 @@
 use crate::{
     error::{err, ok},
+    language::Literal,
     semantic_analysis::{
         ast_node::expression::typed_expression::{
             instantiate_struct_field_access, instantiate_tuple_index_access,
@@ -9,7 +10,7 @@ use crate::{
         IsConstant, TyEnumVariant, TyExpression, TyExpressionVariant, VariableMutability,
     },
     type_system::unify,
-    CompileResult, Ident, Literal, TypeId,
+    CompileResult, Ident, TypeId,
 };
 
 use sway_types::span::Span;
