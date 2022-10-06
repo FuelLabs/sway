@@ -7,7 +7,6 @@ mod module;
 mod program;
 mod return_statement;
 mod use_statement;
-mod visibility;
 
 pub use code_block::*;
 pub use declaration::*;
@@ -18,7 +17,6 @@ pub use program::{ParseProgram, TreeType};
 pub use return_statement::*;
 use sway_types::span::Span;
 pub use use_statement::{ImportType, UseStatement};
-pub use visibility::Visibility;
 
 /// Represents some exportable information that results from compiling some
 /// Sway source code.

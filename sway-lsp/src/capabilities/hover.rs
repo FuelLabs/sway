@@ -11,7 +11,7 @@ use crate::{
 };
 use sway_core::{
     declaration_engine,
-    language::parsed::{Declaration, Visibility},
+    language::{parsed::Declaration, Visibility},
     semantic_analysis::ast_node::TyDeclaration,
 };
 use sway_types::{Ident, Spanned};

@@ -1,4 +1,4 @@
-use crate::{semantic_analysis::*, type_system::*, Ident, Visibility};
+use crate::{language::Visibility, semantic_analysis::*, type_system::*, Ident};
 use sway_types::Span;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

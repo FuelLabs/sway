@@ -12,7 +12,7 @@ use {
             STORAGE_PURITY_WRITE_NAME, VALID_ATTRIBUTE_NAMES,
         },
         error::{err, ok, CompileError, CompileResult, CompileWarning, Warning},
-        language::{CallPath, Literal},
+        language::{CallPath, Literal, Visibility},
         type_system::{insert_type, AbiName, IntegerBits},
         AbiCastExpression, AbiDeclaration, ArrayIndexExpression, AsmExpression, AsmOp, AsmRegister,
         AsmRegisterDeclaration, AstNode, AstNodeContent, CodeBlock, ConstantDeclaration,
@@ -24,7 +24,7 @@ use {
         ReassignmentTarget, Scrutinee, StorageAccessExpression, StorageDeclaration, StorageField,
         StructDeclaration, StructExpression, StructExpressionField, StructField,
         StructScrutineeField, SubfieldExpression, Supertrait, TraitDeclaration, TraitFn, TreeType,
-        TupleIndexExpression, TypeInfo, UseStatement, VariableDeclaration, Visibility,
+        TupleIndexExpression, TypeInfo, UseStatement, VariableDeclaration,
     },
     std::{
         collections::HashMap,

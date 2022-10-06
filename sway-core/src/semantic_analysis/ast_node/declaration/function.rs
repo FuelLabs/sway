@@ -2,8 +2,12 @@ mod function_parameter;
 pub use function_parameter::*;
 
 use crate::{
-    declaration_engine::declaration_engine::de_insert_function, error::*, language::parsed::*,
-    semantic_analysis::*, style::*, type_system::*,
+    declaration_engine::declaration_engine::de_insert_function,
+    error::*,
+    language::{parsed::*, Visibility},
+    semantic_analysis::*,
+    style::*,
+    type_system::*,
 };
 use sha2::{Digest, Sha256};
 use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};

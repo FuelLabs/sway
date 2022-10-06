@@ -4,7 +4,7 @@ use sway_types::{Ident, Spanned};
 use crate::{
     declaration_engine::declaration_engine::de_get_trait,
     error::{err, ok},
-    language::CallPath,
+    language::{CallPath, Visibility},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
         Mode, TyCodeBlock, TypeCheckContext,
@@ -12,7 +12,7 @@ use crate::{
     style::is_upper_camel_case,
     type_system::{insert_type, CopyTypes, TypeMapping},
     CompileError, CompileResult, FunctionDeclaration, Namespace, Supertrait, TraitDeclaration,
-    TyDeclaration, TyFunctionDeclaration, TypeInfo, Visibility,
+    TyDeclaration, TyFunctionDeclaration, TypeInfo,
 };
 
 use super::{EnforceTypeArguments, TyFunctionParameter, TyTraitFn};

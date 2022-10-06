@@ -1,4 +1,4 @@
-use crate::{language::parsed::Visibility, type_system::*, AttributesMap};
+use crate::{language::Visibility, type_system::*, AttributesMap};
 use sway_types::{ident::Ident, span::Span};
 
 #[derive(Debug, Clone)]
