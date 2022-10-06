@@ -48,9 +48,6 @@ pub enum TypeInfo {
         fields: Vec<TypedStructField>,
     },
     Boolean,
-    /// For the type inference engine to use when a type references another type
-    Ref(TypeId, Span),
-
     Tuple(Vec<TypeArgument>),
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
@@ -171,18 +168,14 @@ impl Hash for TypeInfo {
                 name.hash(state);
                 type_arguments.hash(state);
             }
-            TypeInfo::Ref(id, _sp) => {
+            TypeInfo::Storage { fields } => {
                 state.write_u8(17);
-                look_up_type_id(*id).hash(state);
+                fields.hash(state);
             }
             TypeInfo::Array(elem_ty, count, _) => {
                 state.write_u8(18);
                 look_up_type_id(*elem_ty).hash(state);
                 count.hash(state);
-            }
-            TypeInfo::Storage { fields } => {
-                state.write_u8(19);
-                fields.hash(state);
             }
         }
     }
@@ -243,7 +236,6 @@ impl PartialEq for TypeInfo {
                     type_parameters: r_type_parameters,
                 },
             ) => l_name == r_name && l_fields == r_fields && l_type_parameters == r_type_parameters,
-            (Self::Ref(l, _sp1), Self::Ref(r, _sp2)) => look_up_type_id(*l) == look_up_type_id(*r),
             (Self::Tuple(l), Self::Tuple(r)) => l
                 .iter()
                 .zip(r.iter())
@@ -294,7 +286,6 @@ impl fmt::Display for TypeInfo {
             .into(),
             Boolean => "bool".into(),
             Custom { name, .. } => format!("unresolved {}", name.as_str()),
-            Ref(id, _sp) => format!("T{} ({})", id, (*id)),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
@@ -357,7 +348,6 @@ impl TypeInfo {
             .into(),
             Boolean => "bool".into(),
             Custom { name, .. } => name.to_string(),
-            Ref(id, _sp) => format!("T{} ({})", id, (*id).json_abi_str()),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
@@ -565,7 +555,6 @@ impl TypeInfo {
             TypeInfo::Tuple(fields) => fields
                 .iter()
                 .any(|field_type| look_up_type_id(field_type.type_id).is_uninhabited()),
-            TypeInfo::Ref(type_id, _) => look_up_type_id(*type_id).is_uninhabited(),
             TypeInfo::Array(type_id, size, _) => {
                 *size > 0 && look_up_type_id(*type_id).is_uninhabited()
             }
@@ -616,7 +605,6 @@ impl TypeInfo {
                 }
                 all_zero_sized
             }
-            TypeInfo::Ref(type_id, _) => look_up_type_id(*type_id).is_zero_sized(),
             TypeInfo::Array(type_id, size, _) => {
                 *size == 0 || look_up_type_id(*type_id).is_zero_sized()
             }
@@ -635,7 +623,6 @@ impl TypeInfo {
             TypeInfo::Array(type_id, size, _) => {
                 *size == 0 || look_up_type_id(*type_id).can_safely_ignore()
             }
-            TypeInfo::Ref(type_id, _) => look_up_type_id(*type_id).can_safely_ignore(),
             TypeInfo::ErrorRecovery => true,
             TypeInfo::Unknown => true,
             _ => false,
@@ -670,9 +657,6 @@ impl TypeInfo {
                     span.clone(),
                 ));
                 err(warnings, errors)
-            }
-            TypeInfo::Ref(type_id, _) => {
-                look_up_type_id(type_id).apply_type_arguments(type_arguments, span)
             }
             TypeInfo::Custom {
                 name,
@@ -719,9 +703,6 @@ impl TypeInfo {
         let warnings = vec![];
         let mut errors = vec![];
         match self {
-            TypeInfo::Ref(type_id, _) => {
-                look_up_type_id(*type_id).expect_is_supported_in_match_expressions(span)
-            }
             TypeInfo::UnsignedInteger(_)
             | TypeInfo::Enum { .. }
             | TypeInfo::Struct { .. }
@@ -803,15 +784,6 @@ impl TypeInfo {
                     );
                     all_nested_types.append(&mut nested_types);
                 }
-            }
-            TypeInfo::Ref(type_id, _) => {
-                let mut nested_types = check!(
-                    look_up_type_id(type_id).extract_nested_types(span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                all_nested_types.append(&mut nested_types);
             }
             TypeInfo::Tuple(type_arguments) => {
                 for type_argument in type_arguments.iter() {
@@ -951,9 +923,6 @@ impl TypeInfo {
         match (self, other) {
             // any type is the subset of a generic
             (_, Self::UnknownGeneric { .. }) => true,
-            (Self::Ref(l, _), Self::Ref(r, _)) => {
-                look_up_type_id(*l).is_subset_of(&look_up_type_id(*r))
-            }
             (Self::Array(l0, l1, _), Self::Array(r0, r1, _)) => {
                 look_up_type_id(*l0).is_subset_of(&look_up_type_id(*r0)) && l1 == r1
             }
