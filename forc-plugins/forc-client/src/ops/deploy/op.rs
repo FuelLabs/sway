@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use forc_pkg::{BuildOptions, Compiled, PackageManifestFile, WorkspaceManifestFile};
+use forc_pkg::{BuildOptions, Compiled, PackageManifestFile};
 use fuel_crypto::Signature;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, StorageSlot, Transaction};
@@ -9,50 +9,18 @@ use fuels_signers::{provider::Provider, wallet::Wallet};
 use fuels_types::bech32::Bech32Address;
 use std::{io::Write, path::PathBuf, str::FromStr};
 use sway_core::TreeType;
-use sway_utils::constants::{DEFAULT_NODE_URL, MANIFEST_FILE_NAME};
+use sway_utils::constants::DEFAULT_NODE_URL;
 use tracing::info;
 
 use crate::ops::{deploy::cmd::DeployCommand, parameters::TxParameters};
 
-/// If the provided path (`DeployCommand.path`, or if it is not provided the current directory)
-/// contains a workspace manifest file, `deploy` will be deploying the workspace members in the
-/// order of their declaration in the manifest file. If the provided path contains only a package
-/// manifest file only that package is going to be deployed.
-pub async fn deploy(command: DeployCommand) -> Result<()> {
-    let mut command = command;
+pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     let curr_dir = if let Some(ref path) = command.path {
         PathBuf::from(path)
     } else {
         std::env::current_dir()?
     };
-
-    // Decide if we are given/in a package or a workspace
-    if let Ok(workspace_manifest_file) = WorkspaceManifestFile::from_dir(&curr_dir) {
-        for (member_path, member_name) in workspace_manifest_file
-            .member_paths()?
-            .zip(workspace_manifest_file.members())
-        {
-            info!("Deploying {:?} {:?}", member_name, member_path);
-            let path = member_path.to_str().map(|member| member.to_string());
-            command.path = path;
-            deploy_single(command.clone()).await?;
-        }
-    } else {
-        deploy_single(command).await?;
-    }
-
-    Ok(())
-}
-
-/// Deploy a single package. This function does not check if the given directory is a worksapce or
-/// not. To do so use `deploy(..)`.
-pub async fn deploy_single(command: DeployCommand) -> Result<fuel_tx::ContractId> {
-    let curr_dir = if let Some(ref path) = command.path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir()?
-    };
-    let manifest = PackageManifestFile::from_file(curr_dir.join(MANIFEST_FILE_NAME))?;
+    let manifest = PackageManifestFile::from_dir(&curr_dir)?;
     manifest.check_program_type(vec![TreeType::Contract])?;
 
     let DeployCommand {

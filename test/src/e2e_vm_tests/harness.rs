@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use forc::test::{forc_build, BuildCommand};
 use forc_client::ops::{
-    deploy::{cmd::DeployCommand, op::deploy_single},
+    deploy::{cmd::DeployCommand, op::deploy},
     run::{cmd::RunCommand, op::run},
 };
 use forc_pkg::Compiled;
@@ -22,7 +22,7 @@ pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
 
     tokio::runtime::Runtime::new()
         .unwrap()
-        .block_on(deploy_single(DeployCommand {
+        .block_on(deploy(DeployCommand {
             path: Some(format!(
                 "{}/src/e2e_vm_tests/test_programs/{}",
                 manifest_dir, file_name
