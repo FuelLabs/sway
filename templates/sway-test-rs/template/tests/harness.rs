@@ -27,7 +27,7 @@ async fn get_contract_instance() -> (MyContract, ContractId) {
     .await
     .unwrap();
 
-    let instance = MyContract::new(id.to_string(), wallet).build();
+    let instance = MyContract::new(id.to_string(), wallet);
 
     (instance, id.into())
 }
