@@ -1,5 +1,5 @@
 use crate::{descriptor::Descriptor, doc::Documentation};
-use horrorshow::{box_html, prelude::*};
+use horrorshow::{box_html, html, prelude::*};
 
 pub(crate) struct HTMLString(pub(crate) String);
 
@@ -29,7 +29,7 @@ impl RenderedDocumentation {
                 buf.push(Self {
                     module_prefix: module_prefix.clone(),
                     // proof of concept, TODO render actual HTML
-                    file_contents: HTMLString(todo!()),
+                    file_contents: HTMLString((html! { : desc.render(); }).to_string()),
                     file_name,
                 })
             }
@@ -60,3 +60,22 @@ pub(crate) fn body() -> Box<dyn RenderBox> {
     box_html! {}
 }
 // TODO: Create `fn index` and `fn all`
+
+pub trait Renderable {
+    fn render(&self) -> Box<dyn RenderBox>;
+}
+
+impl Renderable for Descriptor {
+    fn render(&self) -> Box<dyn RenderBox> {
+        match self {
+            Descriptor::Documentable {
+                module_prefix,
+                ty,
+                name,
+            } => {
+                todo!()
+            }
+            _ => todo!("do nothing"),
+        }
+    }
+}

@@ -45,7 +45,6 @@ pub fn main() -> Result<()> {
     let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
     let compilation = pkg::check(&plan, silent_mode)?;
     let docs = get_compiled_docs(&compilation, no_deps);
-
     // render docs to HTML
     let rendered = RenderedDocumentation::render(&docs);
 
@@ -59,7 +58,7 @@ pub fn main() -> Result<()> {
         fs::create_dir_all(&doc_path)?;
         doc_path.push(entry.file_name);
         let mut file = fs::File::create(doc_path)?;
-        file.write_all(entry.file_contents.0.as_bytes())?;
+        file.write_all(dbg!(entry.file_contents.0).as_bytes())?;
     }
 
     // check if the user wants to open the doc in the browser
