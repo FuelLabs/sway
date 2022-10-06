@@ -8,19 +8,19 @@ use std::{collections::HashMap, fmt, fmt::Write};
 #[derive(Clone, Debug)]
 pub struct ContractCallParams {
     pub(crate) func_selector: [u8; 4],
-    pub(crate) contract_address: Box<TypedExpression>,
+    pub(crate) contract_address: Box<TyExpression>,
 }
 
 #[derive(Clone, Debug, Derivative)]
 #[derivative(Eq)]
-pub enum TypedExpressionVariant {
+pub enum TyExpressionVariant {
     Literal(Literal),
     FunctionApplication {
         call_path: CallPath,
         #[derivative(Eq(bound = ""))]
-        contract_call_params: HashMap<String, TypedExpression>,
-        arguments: Vec<(Ident, TypedExpression)>,
-        function_decl: TypedFunctionDeclaration,
+        contract_call_params: HashMap<String, TyExpression>,
+        arguments: Vec<(Ident, TyExpression)>,
+        function_decl: TyFunctionDeclaration,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
@@ -30,8 +30,8 @@ pub enum TypedExpressionVariant {
     LazyOperator {
         #[derivative(Eq(bound = ""))]
         op: LazyOp,
-        lhs: Box<TypedExpression>,
-        rhs: Box<TypedExpression>,
+        lhs: Box<TyExpression>,
+        rhs: Box<TyExpression>,
     },
     VariableExpression {
         name: Ident,
@@ -39,30 +39,30 @@ pub enum TypedExpressionVariant {
         mutability: VariableMutability,
     },
     Tuple {
-        fields: Vec<TypedExpression>,
+        fields: Vec<TyExpression>,
     },
     Array {
-        contents: Vec<TypedExpression>,
+        contents: Vec<TyExpression>,
     },
     ArrayIndex {
-        prefix: Box<TypedExpression>,
-        index: Box<TypedExpression>,
+        prefix: Box<TyExpression>,
+        index: Box<TyExpression>,
     },
     StructExpression {
         struct_name: Ident,
-        fields: Vec<TypedStructExpressionField>,
+        fields: Vec<TyStructExpressionField>,
         span: Span,
     },
-    CodeBlock(TypedCodeBlock),
+    CodeBlock(TyCodeBlock),
     // a flag that this value will later be provided as a parameter, but is currently unknown
     FunctionParameter,
     IfExp {
-        condition: Box<TypedExpression>,
-        then: Box<TypedExpression>,
-        r#else: Option<Box<TypedExpression>>,
+        condition: Box<TyExpression>,
+        then: Box<TyExpression>,
+        r#else: Option<Box<TyExpression>>,
     },
     AsmExpression {
-        registers: Vec<TypedAsmRegisterDeclaration>,
+        registers: Vec<TyAsmRegisterDeclaration>,
         body: Vec<AsmOp>,
         returns: Option<(AsmRegister, Span)>,
         whole_block_span: Span,
@@ -70,24 +70,24 @@ pub enum TypedExpressionVariant {
     // like a variable expression but it has multiple parts,
     // like looking up a field in a struct
     StructFieldAccess {
-        prefix: Box<TypedExpression>,
-        field_to_access: TypedStructField,
+        prefix: Box<TyExpression>,
+        field_to_access: TyStructField,
         field_instantiation_span: Span,
         resolved_type_of_parent: TypeId,
     },
     TupleElemAccess {
-        prefix: Box<TypedExpression>,
+        prefix: Box<TyExpression>,
         elem_to_access_num: usize,
         resolved_type_of_parent: TypeId,
         elem_to_access_span: Span,
     },
     EnumInstantiation {
         /// for printing
-        enum_decl: TypedEnumDeclaration,
+        enum_decl: TyEnumDeclaration,
         /// for printing
         variant_name: Ident,
         tag: usize,
-        contents: Option<Box<TypedExpression>>,
+        contents: Option<Box<TyExpression>>,
         /// If there is an error regarding this instantiation of the enum,
         /// use these spans as it points to the call site and not the declaration.
         /// They are also used in the language server.
@@ -96,39 +96,39 @@ pub enum TypedExpressionVariant {
     },
     AbiCast {
         abi_name: CallPath,
-        address: Box<TypedExpression>,
+        address: Box<TyExpression>,
         #[allow(dead_code)]
         // this span may be used for errors in the future, although it is not right now.
         span: Span,
     },
     StorageAccess(TypeCheckedStorageAccess),
-    IntrinsicFunction(TypedIntrinsicFunctionKind),
+    IntrinsicFunction(TyIntrinsicFunctionKind),
     /// a zero-sized type-system-only compile-time thing that is used for constructing ABI casts.
     AbiName(AbiName),
     /// grabs the enum tag from the particular enum and variant of the `exp`
     EnumTag {
-        exp: Box<TypedExpression>,
+        exp: Box<TyExpression>,
     },
     /// performs an unsafe cast from the `exp` to the type of the given enum `variant`
     UnsafeDowncast {
-        exp: Box<TypedExpression>,
-        variant: TypedEnumVariant,
+        exp: Box<TyExpression>,
+        variant: TyEnumVariant,
     },
     WhileLoop {
-        condition: Box<TypedExpression>,
-        body: TypedCodeBlock,
+        condition: Box<TyExpression>,
+        body: TyCodeBlock,
     },
     Break,
     Continue,
-    Reassignment(Box<TypedReassignment>),
-    StorageReassignment(Box<TypeCheckedStorageReassignment>),
-    Return(Box<TypedReturnStatement>),
+    Reassignment(Box<TyReassignment>),
+    StorageReassignment(Box<TyStorageReassignment>),
+    Return(Box<TyReturnStatement>),
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedExpressionVariant {
+impl PartialEq for TyExpressionVariant {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
@@ -353,9 +353,9 @@ impl PartialEq for TypedExpressionVariant {
     }
 }
 
-impl CopyTypes for TypedExpressionVariant {
+impl CopyTypes for TyExpressionVariant {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        use TypedExpressionVariant::*;
+        use TyExpressionVariant::*;
         match self {
             Literal(..) => (),
             FunctionApplication {
@@ -398,7 +398,7 @@ impl CopyTypes for TypedExpressionVariant {
                 }
             }
             AsmExpression {
-                registers, //: Vec<TypedAsmRegisterDeclaration>,
+                registers, //: Vec<TyAsmRegisterDeclaration>,
                 ..
             } => {
                 registers
@@ -465,20 +465,20 @@ impl CopyTypes for TypedExpressionVariant {
     }
 }
 
-impl fmt::Display for TypedExpressionVariant {
+impl fmt::Display for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            TypedExpressionVariant::Literal(lit) => format!("literal {}", lit),
-            TypedExpressionVariant::FunctionApplication {
+            TyExpressionVariant::Literal(lit) => format!("literal {}", lit),
+            TyExpressionVariant::FunctionApplication {
                 call_path: name, ..
             } => {
                 format!("\"{}\" fn entry", name.suffix.as_str())
             }
-            TypedExpressionVariant::LazyOperator { op, .. } => match op {
+            TyExpressionVariant::LazyOperator { op, .. } => match op {
                 LazyOp::And => "&&".into(),
                 LazyOp::Or => "||".into(),
             },
-            TypedExpressionVariant::Tuple { fields } => {
+            TyExpressionVariant::Tuple { fields } => {
                 let fields = fields
                     .iter()
                     .map(|field| field.to_string())
@@ -486,19 +486,19 @@ impl fmt::Display for TypedExpressionVariant {
                     .join(", ");
                 format!("tuple({})", fields)
             }
-            TypedExpressionVariant::Array { .. } => "array".into(),
-            TypedExpressionVariant::ArrayIndex { .. } => "[..]".into(),
-            TypedExpressionVariant::StructExpression { struct_name, .. } => {
+            TyExpressionVariant::Array { .. } => "array".into(),
+            TyExpressionVariant::ArrayIndex { .. } => "[..]".into(),
+            TyExpressionVariant::StructExpression { struct_name, .. } => {
                 format!("\"{}\" struct init", struct_name.as_str())
             }
-            TypedExpressionVariant::CodeBlock(_) => "code block entry".into(),
-            TypedExpressionVariant::FunctionParameter => "fn param access".into(),
-            TypedExpressionVariant::IfExp { .. } => "if exp".into(),
-            TypedExpressionVariant::AsmExpression { .. } => "inline asm".into(),
-            TypedExpressionVariant::AbiCast { abi_name, .. } => {
+            TyExpressionVariant::CodeBlock(_) => "code block entry".into(),
+            TyExpressionVariant::FunctionParameter => "fn param access".into(),
+            TyExpressionVariant::IfExp { .. } => "if exp".into(),
+            TyExpressionVariant::AsmExpression { .. } => "inline asm".into(),
+            TyExpressionVariant::AbiCast { abi_name, .. } => {
                 format!("abi cast {}", abi_name.suffix.as_str())
             }
-            TypedExpressionVariant::StructFieldAccess {
+            TyExpressionVariant::StructFieldAccess {
                 resolved_type_of_parent,
                 field_to_access,
                 ..
@@ -509,7 +509,7 @@ impl fmt::Display for TypedExpressionVariant {
                     field_to_access.name
                 )
             }
-            TypedExpressionVariant::TupleElemAccess {
+            TyExpressionVariant::TupleElemAccess {
                 resolved_type_of_parent,
                 elem_to_access_num,
                 ..
@@ -520,10 +520,10 @@ impl fmt::Display for TypedExpressionVariant {
                     elem_to_access_num
                 )
             }
-            TypedExpressionVariant::VariableExpression { name, .. } => {
+            TyExpressionVariant::VariableExpression { name, .. } => {
                 format!("\"{}\" variable exp", name.as_str())
             }
-            TypedExpressionVariant::EnumInstantiation {
+            TyExpressionVariant::EnumInstantiation {
                 tag,
                 enum_decl,
                 variant_name,
@@ -536,23 +536,23 @@ impl fmt::Display for TypedExpressionVariant {
                     tag
                 )
             }
-            TypedExpressionVariant::StorageAccess(access) => {
+            TyExpressionVariant::StorageAccess(access) => {
                 format!("storage field {} access", access.storage_field_name())
             }
-            TypedExpressionVariant::IntrinsicFunction(kind) => kind.to_string(),
-            TypedExpressionVariant::AbiName(n) => format!("ABI name {}", n),
-            TypedExpressionVariant::EnumTag { exp } => {
+            TyExpressionVariant::IntrinsicFunction(kind) => kind.to_string(),
+            TyExpressionVariant::AbiName(n) => format!("ABI name {}", n),
+            TyExpressionVariant::EnumTag { exp } => {
                 format!("({} as tag)", look_up_type_id(exp.return_type))
             }
-            TypedExpressionVariant::UnsafeDowncast { exp, variant } => {
+            TyExpressionVariant::UnsafeDowncast { exp, variant } => {
                 format!("({} as {})", look_up_type_id(exp.return_type), variant.name)
             }
-            TypedExpressionVariant::WhileLoop { condition, .. } => {
+            TyExpressionVariant::WhileLoop { condition, .. } => {
                 format!("while loop on {}", condition)
             }
-            TypedExpressionVariant::Break => "break".to_string(),
-            TypedExpressionVariant::Continue => "continue".to_string(),
-            TypedExpressionVariant::Reassignment(reassignment) => {
+            TyExpressionVariant::Break => "break".to_string(),
+            TyExpressionVariant::Continue => "continue".to_string(),
+            TyExpressionVariant::Reassignment(reassignment) => {
                 let mut place = reassignment.lhs_base_name.to_string();
                 for index in &reassignment.lhs_indices {
                     place.push('.');
@@ -565,7 +565,7 @@ impl fmt::Display for TypedExpressionVariant {
                 }
                 format!("reassignment to {}", place)
             }
-            TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
+            TyExpressionVariant::StorageReassignment(storage_reassignment) => {
                 let place: String = {
                     storage_reassignment
                         .fields
@@ -575,7 +575,7 @@ impl fmt::Display for TypedExpressionVariant {
                 };
                 format!("storage reassignment to {}", place)
             }
-            TypedExpressionVariant::Return(stmt) => {
+            TyExpressionVariant::Return(stmt) => {
                 format!("return {}", stmt.expr)
             }
         };
@@ -583,11 +583,11 @@ impl fmt::Display for TypedExpressionVariant {
     }
 }
 
-impl TypedExpressionVariant {
+impl TyExpressionVariant {
     /// Returns `self` as a literal, if possible.
     pub(crate) fn extract_literal_value(&self) -> Option<Literal> {
         match self {
-            TypedExpressionVariant::Literal(value) => Some(value.clone()),
+            TyExpressionVariant::Literal(value) => Some(value.clone()),
             _ => None,
         }
     }
@@ -625,15 +625,15 @@ pub struct TypeCheckedStorageAccessDescriptor {
 }
 
 #[derive(Clone, Debug)]
-pub struct TypedAsmRegisterDeclaration {
-    pub(crate) initializer: Option<TypedExpression>,
+pub struct TyAsmRegisterDeclaration {
+    pub(crate) initializer: Option<TyExpression>,
     pub(crate) name: Ident,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedAsmRegisterDeclaration {
+impl PartialEq for TyAsmRegisterDeclaration {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
             && if let (Some(l), Some(r)) = (self.initializer.clone(), other.initializer.clone()) {
@@ -644,7 +644,7 @@ impl PartialEq for TypedAsmRegisterDeclaration {
     }
 }
 
-impl CopyTypes for TypedAsmRegisterDeclaration {
+impl CopyTypes for TyAsmRegisterDeclaration {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         if let Some(ref mut initializer) = self.initializer {
             initializer.copy_types(type_mapping)

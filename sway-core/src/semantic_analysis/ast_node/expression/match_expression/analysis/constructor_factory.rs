@@ -4,7 +4,7 @@ use sway_types::{Ident, Span};
 
 use crate::{
     error::{err, ok},
-    semantic_analysis::TypedEnumVariant,
+    semantic_analysis::TyEnumVariant,
     type_system::{look_up_type_id, TypeId},
     CompileError, CompileResult, TypeInfo,
 };
@@ -653,7 +653,7 @@ impl ConstructorFactory {
 
     fn resolve_enum(
         enum_name: &Ident,
-        enum_variants: &[TypedEnumVariant],
+        enum_variants: &[TyEnumVariant],
         enum_pattern: &EnumPattern,
         rest: PatStack,
         span: &Span,

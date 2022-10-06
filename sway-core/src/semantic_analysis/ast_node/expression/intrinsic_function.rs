@@ -12,17 +12,17 @@ use crate::{
     CompileError, CompileResult, Expression, Hint,
 };
 
-use super::TypedExpression;
+use super::TyExpression;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TypedIntrinsicFunctionKind {
+pub struct TyIntrinsicFunctionKind {
     pub kind: Intrinsic,
-    pub arguments: Vec<TypedExpression>,
+    pub arguments: Vec<TyExpression>,
     pub type_arguments: Vec<TypeArgument>,
     pub span: Span,
 }
 
-impl CopyTypes for TypedIntrinsicFunctionKind {
+impl CopyTypes for TyIntrinsicFunctionKind {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         for arg in &mut self.arguments {
             arg.copy_types(type_mapping);
@@ -33,7 +33,7 @@ impl CopyTypes for TypedIntrinsicFunctionKind {
     }
 }
 
-impl fmt::Display for TypedIntrinsicFunctionKind {
+impl fmt::Display for TyIntrinsicFunctionKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let targs = self
             .type_arguments
@@ -46,14 +46,14 @@ impl fmt::Display for TypedIntrinsicFunctionKind {
     }
 }
 
-impl DeterministicallyAborts for TypedIntrinsicFunctionKind {
+impl DeterministicallyAborts for TyIntrinsicFunctionKind {
     fn deterministically_aborts(&self) -> bool {
         matches!(self.kind, Intrinsic::Revert)
             || self.arguments.iter().any(|x| x.deterministically_aborts())
     }
 }
 
-impl CollectTypesMetadata for TypedIntrinsicFunctionKind {
+impl CollectTypesMetadata for TyIntrinsicFunctionKind {
     fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -83,7 +83,7 @@ impl CollectTypesMetadata for TypedIntrinsicFunctionKind {
     }
 }
 
-impl TypedIntrinsicFunctionKind {
+impl TyIntrinsicFunctionKind {
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
         kind_binding: TypeBinding<Intrinsic>,
@@ -111,12 +111,12 @@ impl TypedIntrinsicFunctionKind {
                     .with_help_text("")
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let exp = check!(
-                    TypedExpression::type_check(ctx, arguments[0].clone()),
+                    TyExpression::type_check(ctx, arguments[0].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let intrinsic_function = TypedIntrinsicFunctionKind {
+                let intrinsic_function = TyIntrinsicFunctionKind {
                     kind,
                     arguments: vec![exp],
                     type_arguments: vec![],
@@ -163,7 +163,7 @@ impl TypedIntrinsicFunctionKind {
                     warnings,
                     errors,
                 );
-                let intrinsic_function = TypedIntrinsicFunctionKind {
+                let intrinsic_function = TyIntrinsicFunctionKind {
                     kind,
                     arguments: vec![],
                     type_arguments: vec![TypeArgument {
@@ -206,7 +206,7 @@ impl TypedIntrinsicFunctionKind {
                     warnings,
                     errors,
                 );
-                let intrinsic_function = TypedIntrinsicFunctionKind {
+                let intrinsic_function = TyIntrinsicFunctionKind {
                     kind,
                     arguments: vec![],
                     type_arguments: vec![TypeArgument {
@@ -219,7 +219,7 @@ impl TypedIntrinsicFunctionKind {
                 (intrinsic_function, insert_type(TypeInfo::Boolean))
             }
             Intrinsic::GetStorageKey => (
-                TypedIntrinsicFunctionKind {
+                TyIntrinsicFunctionKind {
                     kind,
                     arguments: vec![],
                     type_arguments: vec![],
@@ -242,7 +242,7 @@ impl TypedIntrinsicFunctionKind {
 
                 let lhs = arguments[0].clone();
                 let lhs = check!(
-                    TypedExpression::type_check(ctx.by_ref(), lhs),
+                    TyExpression::type_check(ctx.by_ref(), lhs),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -274,13 +274,13 @@ impl TypedIntrinsicFunctionKind {
                     .with_help_text("Incorrect argument type")
                     .with_type_annotation(lhs.return_type);
                 let rhs = check!(
-                    TypedExpression::type_check(ctx, rhs),
+                    TyExpression::type_check(ctx, rhs),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 (
-                    TypedIntrinsicFunctionKind {
+                    TyIntrinsicFunctionKind {
                         kind,
                         arguments: vec![lhs, rhs],
                         type_arguments: vec![],
@@ -313,7 +313,7 @@ impl TypedIntrinsicFunctionKind {
                     .by_ref()
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let index = check!(
-                    TypedExpression::type_check(ctx.by_ref(), arguments[0].clone()),
+                    TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -324,7 +324,7 @@ impl TypedIntrinsicFunctionKind {
                     .by_ref()
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let tx_field_id = check!(
-                    TypedExpression::type_check(ctx.by_ref(), arguments[1].clone()),
+                    TyExpression::type_check(ctx.by_ref(), arguments[1].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -394,7 +394,7 @@ impl TypedIntrinsicFunctionKind {
                 );
 
                 (
-                    TypedIntrinsicFunctionKind {
+                    TyIntrinsicFunctionKind {
                         kind,
                         arguments: vec![index, tx_field_id],
                         type_arguments: vec![TypeArgument {
@@ -420,7 +420,7 @@ impl TypedIntrinsicFunctionKind {
                     .with_help_text("")
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let exp = check!(
-                    TypedExpression::type_check(ctx, arguments[0].clone()),
+                    TyExpression::type_check(ctx, arguments[0].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -444,7 +444,7 @@ impl TypedIntrinsicFunctionKind {
                     return err(warnings, errors);
                 }
 
-                let intrinsic_function = TypedIntrinsicFunctionKind {
+                let intrinsic_function = TyIntrinsicFunctionKind {
                     kind,
                     arguments: vec![exp],
                     type_arguments: vec![],
@@ -466,7 +466,7 @@ impl TypedIntrinsicFunctionKind {
                     .with_help_text("")
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let exp = check!(
-                    TypedExpression::type_check(ctx, arguments[0].clone()),
+                    TyExpression::type_check(ctx, arguments[0].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -489,7 +489,7 @@ impl TypedIntrinsicFunctionKind {
                     });
                     return err(warnings, errors);
                 }
-                let intrinsic_function = TypedIntrinsicFunctionKind {
+                let intrinsic_function = TyIntrinsicFunctionKind {
                     kind,
                     arguments: vec![exp],
                     type_arguments: vec![],
@@ -519,7 +519,7 @@ impl TypedIntrinsicFunctionKind {
                     .with_help_text("")
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let key_exp = check!(
-                    TypedExpression::type_check(ctx.by_ref(), arguments[0].clone()),
+                    TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -546,7 +546,7 @@ impl TypedIntrinsicFunctionKind {
                     .with_help_text("")
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let val_exp = check!(
-                    TypedExpression::type_check(ctx.by_ref(), arguments[1].clone()),
+                    TyExpression::type_check(ctx.by_ref(), arguments[1].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -581,7 +581,7 @@ impl TypedIntrinsicFunctionKind {
                         span: span.clone(),
                     }
                 });
-                let intrinsic_function = TypedIntrinsicFunctionKind {
+                let intrinsic_function = TyIntrinsicFunctionKind {
                     kind,
                     arguments: vec![key_exp, val_exp],
                     type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
@@ -604,12 +604,12 @@ impl TypedIntrinsicFunctionKind {
                     .with_help_text("")
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let exp = check!(
-                    TypedExpression::type_check(ctx, arguments[0].clone()),
+                    TyExpression::type_check(ctx, arguments[0].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let intrinsic_function = TypedIntrinsicFunctionKind {
+                let intrinsic_function = TyIntrinsicFunctionKind {
                     kind,
                     arguments: vec![exp],
                     type_arguments: vec![],
@@ -642,7 +642,7 @@ impl TypedIntrinsicFunctionKind {
 
                 let lhs = arguments[0].clone();
                 let lhs = check!(
-                    TypedExpression::type_check(ctx.by_ref(), lhs),
+                    TyExpression::type_check(ctx.by_ref(), lhs),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -673,13 +673,13 @@ impl TypedIntrinsicFunctionKind {
                     .with_help_text("Incorrect argument type")
                     .with_type_annotation(lhs.return_type);
                 let rhs = check!(
-                    TypedExpression::type_check(ctx, rhs),
+                    TyExpression::type_check(ctx, rhs),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 (
-                    TypedIntrinsicFunctionKind {
+                    TyIntrinsicFunctionKind {
                         kind,
                         arguments: vec![lhs, rhs],
                         type_arguments: vec![],
@@ -712,7 +712,7 @@ impl TypedIntrinsicFunctionKind {
                     .by_ref()
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let revert_code = check!(
-                    TypedExpression::type_check(ctx.by_ref(), arguments[0].clone()),
+                    TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -731,7 +731,7 @@ impl TypedIntrinsicFunctionKind {
                 }
 
                 (
-                    TypedIntrinsicFunctionKind {
+                    TyIntrinsicFunctionKind {
                         kind,
                         arguments: vec![revert_code],
                         type_arguments: vec![],
