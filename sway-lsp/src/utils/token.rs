@@ -86,10 +86,6 @@ pub(crate) fn type_info_to_symbol_kind(type_info: &TypeInfo) -> SymbolKind {
         TypeInfo::Numeric => SymbolKind::NumericLiteral,
         TypeInfo::Custom { .. } | TypeInfo::Struct { .. } => SymbolKind::Struct,
         TypeInfo::Enum { .. } => SymbolKind::Enum,
-        TypeInfo::Ref(type_id, ..) => {
-            let type_info = sway_core::type_system::look_up_type_id(*type_id);
-            type_info_to_symbol_kind(&type_info)
-        }
         TypeInfo::Array(type_id, ..) => {
             let type_info = sway_core::type_system::look_up_type_id(*type_id);
             type_info_to_symbol_kind(&type_info)

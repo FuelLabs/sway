@@ -413,7 +413,7 @@ impl CopyTypes for TyExpressionVariant {
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                resolved_type_of_parent.update_type(type_mapping, &field_to_access.span);
+                resolved_type_of_parent.copy_types(type_mapping);
                 field_to_access.copy_types(type_mapping);
                 prefix.copy_types(type_mapping);
             }
@@ -422,7 +422,7 @@ impl CopyTypes for TyExpressionVariant {
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                resolved_type_of_parent.update_type(type_mapping, &prefix.span);
+                resolved_type_of_parent.copy_types(type_mapping);
                 prefix.copy_types(type_mapping);
             }
             EnumInstantiation {

@@ -179,7 +179,7 @@ impl PartialEq for TyEnumVariant {
 
 impl CopyTypes for TyEnumVariant {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.update_type(type_mapping, &self.span);
+        self.type_id.copy_types(type_mapping);
     }
 }
 
