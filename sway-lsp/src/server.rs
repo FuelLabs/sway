@@ -370,9 +370,9 @@ impl Backend {
 
 #[cfg(test)]
 mod tests {
+    use futures::stream::StreamExt;
     use serde_json::json;
     use std::{env, fs, io::Read, path::PathBuf};
-    use futures::stream::StreamExt;
     use tower::{Service, ServiceExt};
 
     use super::*;
