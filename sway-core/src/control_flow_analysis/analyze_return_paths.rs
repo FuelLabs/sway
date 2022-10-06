@@ -68,10 +68,7 @@ impl ControlFlowGraph {
         let mut max_iterations = 50;
         while !rovers.is_empty() && rovers[0] != exit_point && max_iterations > 0 {
             max_iterations -= 1;
-            rovers = rovers
-                .into_iter()
-                .filter(|idx| *idx != exit_point)
-                .collect();
+            rovers.retain(|idx| *idx != exit_point);
             let mut next_rovers = vec![];
             let mut last_discovered_span;
             for rover in rovers {
@@ -302,7 +299,7 @@ fn connect_typed_fn_decl(
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,
         exit_point: fn_exit_node,
-        return_type: resolve_type(fn_decl.return_type, &fn_decl.return_type_span)
+        return_type: to_typeinfo(fn_decl.return_type, &fn_decl.return_type_span)
             .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new())),
     };
     graph

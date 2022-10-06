@@ -11,7 +11,7 @@ fuel-core = { version = "0.10", default-features = false }
 fuel-gql-client = { version = "0.10", default-features = false }
 fuel-types = "0.5"
 fuel-vm = "0.15"
-fuels = { version = "0.22", features = ["fuel-core-lib"] }
+fuels = { version = "0.25", features = ["fuel-core-lib"] }
 hex = "0.4.3"
 rand = "0.8"
 sha2 = "0.10"

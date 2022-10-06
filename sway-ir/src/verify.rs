@@ -199,6 +199,7 @@ impl<'a> InstructionVerifier<'a> {
                     Instruction::Nop => (),
                     Instruction::ReadRegister(_) => (),
                     Instruction::Ret(val, ty) => self.verify_ret(self.cur_function, val, ty)?,
+                    Instruction::Revert(val) => self.verify_revert(val)?,
                     Instruction::StateLoadWord(key) => self.verify_state_load_word(key)?,
                     Instruction::StateLoadQuadWord {
                         load_val: dst_val,
@@ -365,10 +366,9 @@ impl<'a> InstructionVerifier<'a> {
                         .unwrap()
                         .eq(self.context, &actual.get_type(self.context).unwrap()) => {}
                 _ =>
-                // TOOD: https://github.com/FuelLabs/sway/pull/2880
-                // return Err(IrError::VerifyBranchParamsMismatch)
+                // TODO: https://github.com/FuelLabs/sway/pull/2880
                 {
-                    ()
+                    // return Err(IrError::VerifyBranchParamsMismatch)
                 }
             }
         }
@@ -440,7 +440,7 @@ impl<'a> InstructionVerifier<'a> {
         //   user args.
         // - The coins and gas must be u64s.
         // - The asset_id must be a B256
-        if let Some(Type::Struct(agg)) = params.get_type(self.context) {
+        if let Some(Type::Struct(agg)) = params.get_stripped_ptr_type(self.context) {
             let fields = self.context.aggregates[agg.0].field_types();
             if fields.len() != 3
                 || !fields[0].eq(self.context, &Type::B256)
@@ -553,7 +553,7 @@ impl<'a> InstructionVerifier<'a> {
                     Err(IrError::VerifyAccessElementInconsistentTypes)
                 } else if self.opt_ty_not_eq(
                     &ty.get_elem_type(self.context),
-                    &value.get_type(self.context),
+                    &value.get_stripped_ptr_type(self.context),
                 ) {
                     Err(IrError::VerifyInsertElementOfIncorrectType)
                 } else if !matches!(index_val.get_type(self.context), Some(Type::Uint(_))) {
@@ -648,6 +648,14 @@ impl<'a> InstructionVerifier<'a> {
             || self.opt_ty_not_eq(&val.get_stripped_ptr_type(self.context), &Some(*ty))
         {
             Err(IrError::VerifyMismatchedReturnTypes(function.name.clone()))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn verify_revert(&self, val: &Value) -> Result<(), IrError> {
+        if !matches!(val.get_type(self.context), Some(Type::Uint(64))) {
+            Err(IrError::VerifyRevertCodeBadType)
         } else {
             Ok(())
         }

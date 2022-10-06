@@ -1,7 +1,5 @@
 script;
 
-use std::assert::assert;
-
 struct Foo {
     f1: u32,
     f2: b256,
@@ -12,11 +10,7 @@ fn main() {
     let array_of_integers: [u8; 5] = [1, 2, 3, 4, 5];
 
     // Array of strings
-    let array_of_strings = [
-        "Bob",
-        "Jan",
-        "Ron",
-    ];
+    let array_of_strings = ["Bob", "Jan", "Ron"];
 
     // Array of structs
     let array_of_structs: [Foo; 2] = [

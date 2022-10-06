@@ -49,6 +49,16 @@ impl Pointer {
         &context.pointers[self.0].ty
     }
 
+    /// Return the initializer for this pointer.
+    pub fn get_initializer<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
+        context.pointers[self.0].initializer.as_ref()
+    }
+
+    /// Return whether the pointer is to a mutable value.
+    pub fn is_mutable(&self, context: &Context) -> bool {
+        context.pointers[self.0].is_mutable
+    }
+
     /// Return whether this pointer is to a [`Type::Struct`] in particular.
     pub fn is_aggregate_ptr(&self, context: &Context) -> bool {
         matches!(

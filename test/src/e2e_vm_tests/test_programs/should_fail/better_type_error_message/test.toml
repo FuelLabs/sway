@@ -1,4 +1,4 @@
 category = "fail"
 
-# check: $()Could not find symbol "Result" in this scope.
-# check: $()Unknown type name "Result".
+# check: $()Could not find symbol "B512" in this scope.
+# check: $()Unknown type name "B512".

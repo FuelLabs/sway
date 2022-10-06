@@ -8,7 +8,7 @@ use super::{
     allocated_ops::{AllocatedOpcode, AllocatedRegister},
     virtual_immediate::*,
     virtual_register::*,
-    DataId, RealizedOp,
+    DataId, Op,
 };
 use crate::asm_generation::RegisterPool;
 
@@ -60,6 +60,7 @@ pub(crate) enum VirtualOp {
     SUBI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     XOR(VirtualRegister, VirtualRegister, VirtualRegister),
     XORI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    JMP(VirtualRegister),
     JI(VirtualImmediate24),
     JNEI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     JNZI(VirtualRegister, VirtualImmediate18),
@@ -182,6 +183,7 @@ impl VirtualOp {
             SUBI(r1, r2, _i) => vec![r1, r2],
             XOR(r1, r2, r3) => vec![r1, r2, r3],
             XORI(r1, r2, _i) => vec![r1, r2],
+            JMP(r1) => vec![r1],
             JI(_im) => vec![],
             JNEI(r1, r2, _i) => vec![r1, r2],
             JNZI(r1, _i) => vec![r1],
@@ -273,6 +275,7 @@ impl VirtualOp {
             SUBI(_r1, r2, _i) => vec![r2],
             XOR(_r1, r2, r3) => vec![r2, r3],
             XORI(_r1, r2, _i) => vec![r2],
+            JMP(r1) => vec![r1],
             JI(_im) => vec![],
             JNEI(r1, r2, _i) => vec![r1, r2],
             JNZI(r1, _i) => vec![r1],
@@ -364,6 +367,7 @@ impl VirtualOp {
             SUBI(r1, _r2, _i) => vec![r1],
             XOR(r1, _r2, _r3) => vec![r1],
             XORI(r1, _r2, _i) => vec![r1],
+            JMP(_r1) => vec![],
             JI(_im) => vec![],
             JNEI(_r1, _r2, _i) => vec![],
             JNZI(_r1, _i) => vec![],
@@ -422,12 +426,7 @@ impl VirtualOp {
     /// instructions `ops`. For most instructions, the successor is simply the next instruction in
     /// `ops`. The exceptions are jump instructions that can have arbitrary successors and RVRT
     /// which does not have any successors.
-    pub(crate) fn successors(
-        &self,
-        index: usize,
-        ops: &[RealizedOp],
-        offset_to_ix: &HashMap<u64, usize>,
-    ) -> Vec<usize> {
+    pub(crate) fn successors(&self, index: usize, ops: &[Op]) -> Vec<usize> {
         use VirtualOp::*;
         let next_op = if index >= ops.len() - 1 {
             vec![]
@@ -436,47 +435,16 @@ impl VirtualOp {
         };
         match self {
             RVRT(_) => vec![],
-            JI(i) => {
-                // Single successor indicated in the jump offset. Use `offset_to_ix` to figure out
-                // the index in `ops` that corresponds to the offset specified.
-                if *offset_to_ix.get(&(i.value as u64)).unwrap() >= ops.len() {
-                    vec![]
-                } else {
-                    vec![*offset_to_ix.get(&(i.value as u64)).unwrap()]
-                }
+            JI(_) | JNEI(..) | JNZI(..) => {
+                unreachable!("At this stage we shouldn't have jumps in the code.")
             }
-            JNEI(_, _, i) => {
-                // Two possible successors: the next instruction as well as the instruction
-                // indicated in the jump offset. Use `offset_to_ix` to figure out the index in
-                // `ops` that corresponds to the offset specified.
-                if *offset_to_ix.get(&(i.value as u64)).unwrap() >= ops.len() {
-                    vec![].into_iter().chain(next_op.into_iter()).collect()
-                } else {
-                    vec![*offset_to_ix.get(&(i.value as u64)).unwrap()]
-                        .into_iter()
-                        .chain(next_op.into_iter())
-                        .collect()
-                }
-            }
-            JNZI(_, i) => {
-                // Two possible successors: the next instruction as well as the instruction
-                // indicated in the jump offset. Use `offset_to_ix` to figure out the index in
-                // `ops` that corresponds to the offset specified.
-                if *offset_to_ix.get(&(i.value as u64)).unwrap() >= ops.len() {
-                    vec![].into_iter().chain(next_op.into_iter()).collect()
-                } else {
-                    vec![*offset_to_ix.get(&(i.value as u64)).unwrap()]
-                        .into_iter()
-                        .chain(next_op.into_iter())
-                        .collect()
-                }
-            }
+
             _ => next_op,
         }
     }
 
     pub(crate) fn update_register(
-        &mut self,
+        &self,
         reg_to_reg_map: &HashMap<VirtualRegister, VirtualRegister>,
     ) -> Self {
         use VirtualOp::*;
@@ -636,6 +604,7 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 i.clone(),
             ),
+            JMP(r1) => Self::JMP(update_reg(reg_to_reg_map, r1)),
             JI(_) => self.clone(),
             JNEI(r1, r2, i) => Self::JNEI(
                 update_reg(reg_to_reg_map, r1),
@@ -845,7 +814,7 @@ impl VirtualOp {
             .clone()
             .into_iter()
             .map(|x| match x {
-                VirtualRegister::Constant(c) => (x, Some(AllocatedRegister::Constant(c.clone()))),
+                VirtualRegister::Constant(c) => (x, Some(AllocatedRegister::Constant(*c))),
                 VirtualRegister::Virtual(_) => (x, pool.get_register(x)),
             })
             .map(|(x, register_opt)| register_opt.map(|register| (x, register)))
@@ -1023,6 +992,7 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
+            JMP(reg1) => AllocatedOpcode::JMP(map_reg(&mapping, reg1)),
             JI(imm) => AllocatedOpcode::JI(imm.clone()),
             JNEI(reg1, reg2, imm) => AllocatedOpcode::JNEI(
                 map_reg(&mapping, reg1),
@@ -1200,7 +1170,7 @@ fn update_reg(
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 /// A label for a spot in the bytecode, to be later compiled to an offset.
 pub(crate) struct Label(pub(crate) usize);
 impl fmt::Display for Label {

@@ -389,13 +389,18 @@ impl TypedAstNode {
                             ctx.namespace.insert_symbol(name, decl.clone());
                             decl
                         }
-                        Declaration::StorageDeclaration(StorageDeclaration { span, fields }) => {
+                        Declaration::StorageDeclaration(StorageDeclaration {
+                            span,
+                            fields,
+                            ..
+                        }) => {
                             let mut fields_buf = Vec::with_capacity(fields.len());
                             for StorageField {
                                 name,
                                 type_info,
                                 initializer,
                                 type_info_span,
+                                ..
                             } in fields
                             {
                                 let type_id = check!(
@@ -494,67 +499,51 @@ fn type_check_interface_surface(
 ) -> CompileResult<Vec<TypedTraitFn>> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let interface_surface = interface_surface
-        .into_iter()
-        .map(
-            |TraitFn {
-                 name,
-                 purity,
-                 parameters,
-                 return_type,
-                 return_type_span,
-             }| TypedTraitFn {
-                name,
-                purity,
-                return_type_span: return_type_span.clone(),
-                parameters: parameters
-                    .into_iter()
-                    .map(
-                        |FunctionParameter {
-                             name,
-                             is_reference,
-                             is_mutable,
-                             mutability_span,
-                             type_id,
-                             type_span,
-                         }| TypedFunctionParameter {
-                            name,
-                            is_reference,
-                            is_mutable,
-                            mutability_span,
-                            type_id: check!(
-                                namespace.resolve_type_with_self(
-                                    type_id,
-                                    insert_type(TypeInfo::SelfType),
-                                    &type_span,
-                                    EnforceTypeArguments::Yes,
-                                    None
-                                ),
-                                insert_type(TypeInfo::ErrorRecovery),
-                                warnings,
-                                errors,
-                            ),
-                            initial_type_id: type_id,
-                            type_span,
-                        },
-                    )
-                    .collect(),
-                return_type: check!(
-                    namespace.resolve_type_with_self(
-                        insert_type(return_type),
-                        insert_type(TypeInfo::SelfType),
-                        &return_type_span,
-                        EnforceTypeArguments::Yes,
-                        None
-                    ),
-                    insert_type(TypeInfo::ErrorRecovery),
-                    warnings,
-                    errors,
-                ),
-            },
-        )
-        .collect::<Vec<_>>();
-    ok(interface_surface, warnings, errors)
+    let mut typed_surface = vec![];
+    for trait_fn in interface_surface.into_iter() {
+        let TraitFn {
+            name,
+            purity,
+            parameters,
+            return_type,
+            return_type_span,
+            ..
+        } = trait_fn;
+
+        // type check the parameters
+        let mut typed_parameters = vec![];
+        for param in parameters.into_iter() {
+            typed_parameters.push(check!(
+                TypedFunctionParameter::type_check_interface_parameter(namespace, param),
+                continue,
+                warnings,
+                errors
+            ));
+        }
+
+        // type check the return type
+        let return_type = check!(
+            namespace.resolve_type_with_self(
+                insert_type(return_type),
+                insert_type(TypeInfo::SelfType),
+                &return_type_span,
+                EnforceTypeArguments::Yes,
+                None
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
+
+        typed_surface.push(TypedTraitFn {
+            name,
+            purity,
+            return_type_span,
+            parameters: typed_parameters,
+            return_type,
+        });
+    }
+    ok(typed_surface, warnings, errors)
 }
 
 fn type_check_trait_methods(
@@ -564,74 +553,49 @@ fn type_check_trait_methods(
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut methods_buf = Vec::new();
-    for FunctionDeclaration {
-        body,
-        name: fn_name,
-        parameters,
-        span,
-        return_type,
-        type_parameters,
-        return_type_span,
-        purity,
-        ..
-    } in methods
-    {
+    for method in methods.into_iter() {
+        let FunctionDeclaration {
+            body,
+            name: fn_name,
+            parameters,
+            span,
+            return_type,
+            type_parameters,
+            return_type_span,
+            purity,
+            ..
+        } = method;
+
         // A context while checking the signature where `self_type` refers to `SelfType`.
         let mut sig_ctx = ctx.by_ref().with_self_type(insert_type(TypeInfo::SelfType));
-        parameters.clone().into_iter().for_each(
-            |FunctionParameter {
-                 name,
-                 is_reference,
-                 is_mutable,
-                 ref type_id,
-                 ..
-             }| {
-                let r#type = check!(
-                    sig_ctx.resolve_type_with_self(
-                        *type_id,
-                        &name.span(),
-                        EnforceTypeArguments::Yes,
-                        None
-                    ),
-                    insert_type(TypeInfo::ErrorRecovery),
-                    warnings,
-                    errors,
-                );
-                sig_ctx.namespace.insert_symbol(
-                    name.clone(),
-                    TypedDeclaration::VariableDeclaration(Box::new(TypedVariableDeclaration {
-                        name: name.clone(),
-                        body: TypedExpression {
-                            expression: TypedExpressionVariant::FunctionParameter,
-                            return_type: r#type,
-                            is_constant: IsConstant::No,
-                            span: name.span(),
-                        },
-                        mutability: convert_to_variable_immutability(is_reference, is_mutable),
-                        type_ascription: r#type,
-                        type_ascription_span: None,
-                    })),
-                );
-            },
-        );
+
+        // type check the function parameters
+        // which will also insert them into the namespace
+        let mut typed_parameters = vec![];
+        for parameter in parameters.into_iter() {
+            typed_parameters.push(check!(
+                TypedFunctionParameter::type_check_method_parameter(sig_ctx.by_ref(), parameter),
+                continue,
+                warnings,
+                errors
+            ));
+        }
+
         // check the generic types in the arguments, make sure they are in
         // the type scope
         let mut generic_params_buf_for_error_message = Vec::new();
-        for param in parameters.iter() {
+        for param in typed_parameters.iter() {
             if let TypeInfo::Custom { ref name, .. } = look_up_type_id(param.type_id) {
                 generic_params_buf_for_error_message.push(name.to_string());
             }
         }
         let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
-        for FunctionParameter {
-            ref type_id, name, ..
-        } in parameters.iter()
-        {
-            let span = name.span().clone();
-            if let TypeInfo::Custom { name, .. } = look_up_type_id(*type_id) {
-                let args_span = parameters.iter().fold(
-                    parameters[0].name.span().clone(),
-                    |acc, FunctionParameter { name, .. }| Span::join(acc, name.span()),
+        for param in typed_parameters.iter() {
+            let span = param.name.span().clone();
+            if let TypeInfo::Custom { name, .. } = look_up_type_id(param.type_id) {
+                let args_span = typed_parameters.iter().fold(
+                    typed_parameters[0].name.span().clone(),
+                    |acc, TypedFunctionParameter { name, .. }| Span::join(acc, name.span()),
                 );
                 if type_parameters.iter().any(|TypeParameter { type_id, .. }| {
                     if let TypeInfo::Custom {
@@ -653,40 +617,8 @@ fn type_check_trait_methods(
                 }
             }
         }
-        let parameters = parameters
-            .into_iter()
-            .map(
-                |FunctionParameter {
-                     name,
-                     type_id,
-                     is_reference,
-                     is_mutable,
-                     mutability_span,
-                     type_span,
-                 }| {
-                    TypedFunctionParameter {
-                        name,
-                        is_reference,
-                        is_mutable,
-                        mutability_span,
-                        type_id: check!(
-                            sig_ctx.resolve_type_with_self(
-                                type_id,
-                                &type_span,
-                                EnforceTypeArguments::Yes,
-                                None
-                            ),
-                            insert_type(TypeInfo::ErrorRecovery),
-                            warnings,
-                            errors,
-                        ),
-                        initial_type_id: type_id,
-                        type_span,
-                    }
-                },
-            )
-            .collect::<Vec<_>>();
 
+        // type check the return type
         // TODO check code block implicit return
         let initial_return_type = insert_type(return_type);
         let return_type = check!(
@@ -700,6 +632,8 @@ fn type_check_trait_methods(
             warnings,
             errors,
         );
+
+        // type check the body
         let ctx = ctx
             .by_ref()
             .with_purity(purity)
@@ -718,7 +652,7 @@ fn type_check_trait_methods(
         methods_buf.push(TypedFunctionDeclaration {
             name: fn_name,
             body,
-            parameters,
+            parameters: typed_parameters,
             span,
             return_type,
             initial_return_type,

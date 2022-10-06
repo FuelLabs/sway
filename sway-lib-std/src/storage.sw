@@ -7,12 +7,11 @@ use ::option::Option;
 use ::result::Result;
 
 /// Store a stack variable in storage.
-#[storage(write)]pub fn store<T>(key: b256, value: T) {
+#[storage(write)]
+pub fn store<T>(key: b256, value: T) {
     if !__is_reference_type::<T>() {
         // If copy type, then it's a single word
-        let value = asm(v: value) {
-            v: u64
-        };
+        let value = asm(v: value) { v: u64 };
         __state_store_word(key, value);
     } else {
         // If reference type, then it can be more than a word. Loop over every 32
@@ -22,9 +21,7 @@ use ::result::Result;
 
         // Cast the pointer to `value` to a u64. This lets us increment
         // this pointer later on to iterate over 32 byte chunks of `value`.
-        let mut ptr_to_value = asm(v: value) {
-            v
-        };
+        let mut ptr_to_value = asm(v: value) { v };
 
         while size_left > 32 {
             // Store a 4 words (32 byte) at a time
@@ -45,13 +42,12 @@ use ::result::Result;
 }
 
 /// Load a stack variable from storage.
-#[storage(read)]pub fn get<T>(key: b256) -> T {
+#[storage(read)]
+pub fn get<T>(key: b256) -> T {
     if !__is_reference_type::<T>() {
         // If copy type, then it's a single word
         let loaded_word = __state_load_word(key);
-        asm(l: loaded_word) {
-            l: T
-        }
+        asm(l: loaded_word) { l: T }
     } else {
         // If reference type, then it can be more than a word. Loop over every 32
         // bytes and read sequentially.
@@ -85,30 +81,34 @@ use ::result::Result;
         __state_load_quad(local_key, current_pointer);
 
         // Return the final result as type T
-        asm(res: result_ptr) {
-            res: T
-        }
+        asm(res: result_ptr) { res: T }
     }
 }
 
-pub struct StorageMap<K, V> {
-}
+pub struct StorageMap<K, V> {}
 
 impl<K, V> StorageMap<K, V> {
-    #[storage(write)]fn insert(self, key: K, value: V) {
-        let key = sha256((key, __get_storage_key()));
+    #[storage(write)]
+    fn insert(self, key: K, value: V) {
+        let key = sha256((
+            key,
+            __get_storage_key(),
+        ));
         store::<V>(key, value);
     }
 
-    #[storage(read)]fn get(self, key: K) -> V {
-        let key = sha256((key, __get_storage_key()));
+    #[storage(read)]
+    fn get(self, key: K) -> V {
+        let key = sha256((
+            key,
+            __get_storage_key(),
+        ));
         get::<V>(key)
     }
 }
 
 /// A persistant vector struct
-pub struct StorageVec<V> {
-}
+pub struct StorageVec<V> {}
 
 impl<V> StorageVec<V> {
     /// Appends the value to the end of the vector
@@ -116,12 +116,16 @@ impl<V> StorageVec<V> {
     /// # Arguments
     ///
     /// * `value` - The item being added to the end of the vector
-    #[storage(read, write)]pub fn push(self, value: V) {
+    #[storage(read, write)]
+    pub fn push(self, value: V) {
         // The length of the vec is stored in the __get_storage_key() slot
         let len = get::<u64>(__get_storage_key());
 
         // Storing the value at the current length index (if this is the first item, starts off at 0)
-        let key = sha256((len, __get_storage_key()));
+        let key = sha256((
+            len,
+            __get_storage_key(),
+        ));
         store::<V>(key, value);
 
         // Incrementing the length
@@ -129,7 +133,8 @@ impl<V> StorageVec<V> {
     }
 
     /// Removes the last element of the vector and returns it, None if empty
-    #[storage(read, write)]pub fn pop(self) -> Option<V> {
+    #[storage(read, write)]
+    pub fn pop(self) -> Option<V> {
         let len = get::<u64>(__get_storage_key());
         // if the length is 0, there is no item to pop from the vec
         if len == 0 {
@@ -139,7 +144,10 @@ impl<V> StorageVec<V> {
         // reduces len by 1, effectively removing the last item in the vec
         store(__get_storage_key(), len - 1);
 
-        let key = sha256((len - 1, __get_storage_key()));
+        let key = sha256((
+            len - 1,
+            __get_storage_key(),
+        ));
         Option::Some::<V>(get::<V>(key))
     }
 
@@ -148,14 +156,18 @@ impl<V> StorageVec<V> {
     /// # Arguments
     ///
     /// * `index` - The index of the vec to retrieve the item from
-    #[storage(read)]pub fn get(self, index: u64) -> Option<V> {
+    #[storage(read)]
+    pub fn get(self, index: u64) -> Option<V> {
         let len = get::<u64>(__get_storage_key());
         // if the index is larger or equal to len, there is no item to return
         if len <= index {
             return Option::None;
         }
 
-        let key = sha256((index, __get_storage_key()));
+        let key = sha256((
+            index,
+            __get_storage_key(),
+        ));
         Option::Some::<V>(get::<V>(key))
     }
 
@@ -173,22 +185,32 @@ impl<V> StorageVec<V> {
     /// # Reverts
     ///
     /// Reverts if index is larger or equal to length of the vec
-    #[storage(read, write)]pub fn remove(self, index: u64) -> V {
+    #[storage(read, write)]
+    pub fn remove(self, index: u64) -> V {
         let len = get::<u64>(__get_storage_key());
         // if the index is larger or equal to len, there is no item to remove
         assert(index < len);
 
         // gets the element before removing it, so it can be returned
-        let removed_element = get::<V>(sha256((index, __get_storage_key())));
+        let removed_element = get::<V>(sha256((
+            index,
+            __get_storage_key(),
+        )));
 
         // for every element in the vec with an index greater than the input index,
         // shifts the index for that element down one
         let mut count = index + 1;
         while count < len {
             // gets the storage location for the previous index
-            let key = sha256((count - 1, __get_storage_key()));
+            let key = sha256((
+                count - 1,
+                __get_storage_key(),
+            ));
             // moves the element of the current index into the previous index
-            store::<V>(key, get::<V>(sha256((count, __get_storage_key()))));
+            store::<V>(key, get::<V>(sha256((
+                count,
+                __get_storage_key(),
+            ))));
 
             count += 1;
         }
@@ -209,16 +231,23 @@ impl<V> StorageVec<V> {
     /// # Reverts
     ///
     /// Reverts if index is larger or equal to length of the vec
-    #[storage(read, write)]pub fn swap_remove(self, index: u64) -> V {
+    #[storage(read, write)]
+    pub fn swap_remove(self, index: u64) -> V {
         let len = get::<u64>(__get_storage_key());
         // if the index is larger or equal to len, there is no item to remove
         assert(index < len);
 
-        let hash_of_to_be_removed = sha256((index, __get_storage_key()));
+        let hash_of_to_be_removed = sha256((
+            index,
+            __get_storage_key(),
+        ));
         // gets the element before removing it, so it can be returned
         let element_to_be_removed = get::<V>(hash_of_to_be_removed);
 
-        let last_element = get::<V>(sha256((len - 1, __get_storage_key())));
+        let last_element = get::<V>(sha256((
+            len - 1,
+            __get_storage_key(),
+        )));
         store::<V>(hash_of_to_be_removed, last_element);
 
         // decrements len by 1
@@ -226,7 +255,6 @@ impl<V> StorageVec<V> {
 
         element_to_be_removed
     }
-
     /// Sets/mutates the value at the given index
     ///
     /// # Arguments
@@ -237,12 +265,16 @@ impl<V> StorageVec<V> {
     /// # Reverts
     ///
     /// Reverts if index is larger than or equal to the length of the vec
-    #[storage(read, write)]pub fn set(self, index: u64, value: V) {
+    #[storage(read, write)]
+    pub fn set(self, index: u64, value: V) {
         let len = get::<u64>(__get_storage_key());
         // if the index is higher than or equal len, there is no element to set
         assert(index < len);
 
-        let key = sha256((index, __get_storage_key()));
+        let key = sha256((
+            index,
+            __get_storage_key(),
+        ));
         store::<V>(key, value);
     }
 
@@ -261,14 +293,18 @@ impl<V> StorageVec<V> {
     /// # Reverts
     ///
     /// Reverts if index is larger than length of the vec
-    #[storage(read, write)]pub fn insert(self, index: u64, value: V) {
+    #[storage(read, write)]
+    pub fn insert(self, index: u64, value: V) {
         let len = get::<u64>(__get_storage_key());
         // if the index is larger than len, there is no space to insert
         assert(index <= len);
 
         // if len is 0, index must also be 0 due to above check
         if len == index {
-            let key = sha256((index, __get_storage_key()));
+            let key = sha256((
+                index,
+                __get_storage_key(),
+            ));
             store::<V>(key, value);
 
             // increments len by 1
@@ -282,15 +318,24 @@ impl<V> StorageVec<V> {
         // performed in reverse to prevent data overwriting
         let mut count = len - 1;
         while count >= index {
-            let key = sha256((count + 1, __get_storage_key()));
+            let key = sha256((
+                count + 1,
+                __get_storage_key(),
+            ));
             // shifts all the values up one index
-            store::<V>(key, get::<V>(sha256((count, __get_storage_key()))));
+            store::<V>(key, get::<V>(sha256((
+                count,
+                __get_storage_key(),
+            ))));
 
             count -= 1
         }
 
         // inserts the value into the now unused index
-        let key = sha256((index, __get_storage_key()));
+        let key = sha256((
+            index,
+            __get_storage_key(),
+        ));
         store::<V>(key, value);
 
         // increments len by 1
@@ -298,18 +343,21 @@ impl<V> StorageVec<V> {
     }
 
     /// Returns the length of the vector
-    #[storage(read)]pub fn len(self) -> u64 {
+    #[storage(read)]
+    pub fn len(self) -> u64 {
         get::<u64>(__get_storage_key())
     }
 
     /// Checks whether the len is 0 or not
-    #[storage(read)]pub fn is_empty(self) -> bool {
+    #[storage(read)]
+    pub fn is_empty(self) -> bool {
         let len = get::<u64>(__get_storage_key());
         len == 0
     }
 
     /// Sets the len to 0
-    #[storage(write)]pub fn clear(self) {
+    #[storage(write)]
+    pub fn clear(self) {
         store(__get_storage_key(), 0);
     }
 }

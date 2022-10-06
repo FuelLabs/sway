@@ -27,7 +27,7 @@ impl TypedMatchBranch {
         mut ctx: TypeCheckContext,
         typed_value: &TypedExpression,
         branch: MatchBranch,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<(TypedMatchBranch, TypedScrutinee)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -47,7 +47,7 @@ impl TypedMatchBranch {
 
         // calculate the requirements map and the declarations map
         let (match_req_map, match_decl_map) = check!(
-            matcher(typed_value, typed_scrutinee, ctx.namespace),
+            matcher(typed_value, typed_scrutinee.clone(), ctx.namespace),
             return err(warnings, errors),
             warnings,
             errors
@@ -93,10 +93,11 @@ impl TypedMatchBranch {
 
         // unify the return type from the typed result with the type annotation
         if !typed_result.deterministically_aborts() {
-            let (mut new_warnings, new_errors) =
-                ctx.unify_with_self(typed_result.return_type, &typed_result.span);
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+            append!(
+                ctx.unify_with_self(typed_result.return_type, &typed_result.span),
+                warnings,
+                errors
+            );
         }
 
         // if the typed branch result is a code block, then add the contents
@@ -138,11 +139,11 @@ impl TypedMatchBranch {
         };
 
         // return!
-        let branch = TypedMatchBranch {
+        let typed_branch = TypedMatchBranch {
             conditions: match_req_map,
             result: new_result,
             span: branch_span,
         };
-        ok(branch, warnings, errors)
+        ok((typed_branch, typed_scrutinee), warnings, errors)
     }
 }

@@ -32,7 +32,7 @@ impl ToString for NewlineSequence {
 type NewlineMap = BTreeMap<ByteSpan, NewlineSequence>;
 
 /// Search for newline sequences in the unformatted code and collect ByteSpan -> NewlineSequence for the input source
-fn newline_map_from_src(unformatted_input: Arc<str>) -> Result<NewlineMap, FormatterError> {
+fn newline_map_from_src(unformatted_input: &str) -> Result<NewlineMap, FormatterError> {
     let mut newline_map = BTreeMap::new();
     // Iterate over the unformatted source code to find NewlineSequences
     let mut input_iter = unformatted_input.chars().enumerate().peekable();
@@ -86,8 +86,12 @@ pub fn handle_newlines(
 ) -> Result<(), FormatterError> {
     // Get newline threshold from config
     let newline_threshold = formatter.config.whitespace.newline_threshold;
-    // Collect ByteSpan -> NewlineSequence mapping from unformatted input
-    let newline_map = newline_map_from_src(unformatted_input.clone())?;
+    // Collect ByteSpan -> NewlineSequence mapping from unformatted input.
+    //
+    // We remove the extra whitespace the beginning of a file before creating a map of newlines.
+    // This is to avoid conflicts with logic that determine comment formatting, and ensure
+    // formatting the code a second time will still produce the same result.
+    let newline_map = newline_map_from_src(&unformatted_input)?;
     // After the formatting existing items should be the same (type of the item) but their spans will be changed since we applied formatting to them.
     let formatted_module = sway_parse::parse_file_standalone(formatted_input, path)?;
     // Actually find & insert the newline sequences
@@ -232,9 +236,8 @@ fn get_newline_sequences_between_spans(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use super::newline_map_from_src;
+
     #[test]
     fn test_newline_map() {
         let raw_src = r#"script;
@@ -251,7 +254,7 @@ fn main() {
 
 }"#;
 
-        let newline_map = newline_map_from_src(Arc::from(raw_src)).unwrap();
+        let newline_map = newline_map_from_src(raw_src.trim_start()).unwrap();
         let newline_sequence_lengths = Vec::from_iter(
             newline_map
                 .iter()
@@ -271,7 +274,7 @@ fn main() {
         
         (11);"#;
 
-        let newline_map = newline_map_from_src(Arc::from(raw_src)).unwrap();
+        let newline_map = newline_map_from_src(raw_src.trim_start()).unwrap();
         let newline_sequence_lengths = Vec::from_iter(
             newline_map
                 .iter()

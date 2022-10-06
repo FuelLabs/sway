@@ -17,7 +17,7 @@ pub struct Parser<'a, 'e> {
 }
 
 impl<'a, 'e> Parser<'a, 'e> {
-    pub fn new(token_stream: &'a TokenStream, handler: &'e Handler) -> Parser<'a, 'e> {
+    pub fn new(handler: &'e Handler, token_stream: &'a TokenStream) -> Parser<'a, 'e> {
         Parser {
             token_trees: token_stream.token_trees(),
             full_span: token_stream.span(),
@@ -121,7 +121,7 @@ impl<'a, 'e> Parser<'a, 'e> {
 
     pub fn check_empty(&self) -> Option<ParserConsumed<'a>> {
         self.is_empty()
-            .then(|| ParserConsumed { _priv: PhantomData })
+            .then_some(ParserConsumed { _priv: PhantomData })
     }
 
     pub fn debug_tokens(&self) -> &[TokenTree] {

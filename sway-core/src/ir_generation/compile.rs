@@ -230,7 +230,9 @@ fn compile_fn_with_args(
         ret_val = Constant::get_unit(context);
     }
 
-    let already_returns = compiler.current_block.is_terminated_by_ret(context);
+    let already_returns = compiler
+        .current_block
+        .is_terminated_by_ret_or_revert(context);
 
     // Another special case: if the last expression in a function is a return then we don't want to
     // add another implicit return instruction here, as `ret_val` will be unit regardless of the

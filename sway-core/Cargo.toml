@@ -1,6 +1,6 @@
 [package]
 name = "sway-core"
-version = "0.24.3"
+version = "0.25.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -17,7 +17,7 @@ fuel-asm = "0.8"
 fuel-crypto = "0.6"
 fuel-tx = "0.18"
 fuel-types = "0.5"
-fuel-vm = "0.15"
+fuel-vm = "0.18"
 hex = { version = "0.4", optional = true }
 im = "15.0"
 itertools = "0.10"
@@ -27,11 +27,11 @@ prettydiff = "0.5"
 serde = { version = "1.0", features = ["derive"] }
 sha2 = "0.9"
 smallvec = "1.7"
-sway-ast = { version = "0.24.3", path = "../sway-ast" }
-sway-ir = { version = "0.24.3", path = "../sway-ir" }
-sway-parse = { version = "0.24.3", path = "../sway-parse" }
-sway-types = { version = "0.24.3", path = "../sway-types" }
-sway-utils = { version = "0.24.3", path = "../sway-utils" }
+sway-ast = { version = "0.25.0", path = "../sway-ast" }
+sway-ir = { version = "0.25.0", path = "../sway-ir" }
+sway-parse = { version = "0.25.0", path = "../sway-parse" }
+sway-types = { version = "0.25.0", path = "../sway-types" }
+sway-utils = { version = "0.25.0", path = "../sway-utils" }
 thiserror = "1.0"
 tracing = "0.1"
 uint = "0.9"

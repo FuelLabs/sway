@@ -403,23 +403,12 @@ impl DeterministicallyAborts for TypedExpression {
             ArrayIndex { prefix, index } => {
                 prefix.deterministically_aborts() || index.deterministically_aborts()
             }
-            AsmExpression {
-                registers, body, ..
-            } => {
-                // when asm expression parsing is handled earlier, this will be cleaner. For now,
-                // we rely on string comparison...
-                // jumps are not allowed in asm blocks, so we know this block deterministically
-                // aborts if these opcodes are present
-                let body_deterministically_aborts = body
-                    .iter()
-                    .any(|x| ["rvrt", "ret"].contains(&x.op_name.as_str().to_lowercase().as_str()));
-                registers.iter().any(|x| {
-                    x.initializer
-                        .as_ref()
-                        .map(|x| x.deterministically_aborts())
-                        .unwrap_or(false)
-                }) || body_deterministically_aborts
-            }
+            AsmExpression { registers, .. } => registers.iter().any(|x| {
+                x.initializer
+                    .as_ref()
+                    .map(|x| x.deterministically_aborts())
+                    .unwrap_or(false)
+            }),
             IfExp {
                 condition,
                 then,
@@ -632,10 +621,17 @@ impl TypedExpression {
         }
     }
 
+    /// Returns `self` as a literal, if possible.
+    pub(crate) fn extract_literal_value(&self) -> Option<Literal> {
+        self.expression.extract_literal_value()
+    }
+
     pub(crate) fn type_check(mut ctx: TypeCheckContext, expr: Expression) -> CompileResult<Self> {
         let expr_span = expr.span();
         let span = expr_span.clone();
         let res = match expr.kind {
+            // We've already emitted an error for the `::Error` case.
+            ExpressionKind::Error(_) => ok(error_recovery_expr(span), vec![], vec![]),
             ExpressionKind::Literal(lit) => Self::type_check_literal(lit, span),
             ExpressionKind::Variable(name) => {
                 Self::type_check_variable_expression(ctx.namespace, name, span)
@@ -814,10 +810,11 @@ impl TypedExpression {
         let mut errors = res.errors;
 
         // if the return type cannot be cast into the annotation type then it is a type error
-        let (mut new_warnings, new_errors) =
-            ctx.unify_with_self(typed_expression.return_type, &expr_span);
-        warnings.append(&mut new_warnings);
-        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+        append!(
+            ctx.unify_with_self(typed_expression.return_type, &expr_span),
+            warnings,
+            errors
+        );
 
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = check!(
@@ -1034,9 +1031,12 @@ impl TypedExpression {
             errors
         );
 
-        let (mut new_warnings, new_errors) = ctx.unify_with_self(block_return_type, &span);
-        warnings.append(&mut new_warnings);
-        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+        append!(
+            ctx.unify_with_self(block_return_type, &span),
+            warnings,
+            errors
+        );
+
         let exp = TypedExpression {
             expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
                 contents: typed_block.contents,
@@ -1135,6 +1135,7 @@ impl TypedExpression {
         };
         let type_id = typed_value.return_type;
 
+        // check to make sure that the type of the value is something that can be matched upon
         check!(
             look_up_type_id(type_id).expect_is_supported_in_match_expressions(&typed_value.span),
             return err(warnings, errors),
@@ -1142,13 +1143,8 @@ impl TypedExpression {
             errors
         );
 
-        let scrutinees = branches
-            .iter()
-            .map(|branch| branch.scrutinee.clone())
-            .collect::<Vec<_>>();
-
         // type check the match expression and create a TypedMatchExpression object
-        let typed_match_expression = {
+        let (typed_match_expression, typed_scrutinees) = {
             let ctx = ctx.by_ref().with_help_text("");
             check!(
                 TypedMatchExpression::type_check(ctx, typed_value, branches, span.clone()),
@@ -1160,15 +1156,20 @@ impl TypedExpression {
 
         // check to see if the match expression is exhaustive and if all match arms are reachable
         let (witness_report, arms_reachability) = check!(
-            check_match_expression_usefulness(type_id, scrutinees, span.clone()),
+            check_match_expression_usefulness(
+                ctx.namespace,
+                type_id,
+                typed_scrutinees,
+                span.clone()
+            ),
             return err(warnings, errors),
             warnings,
             errors
         );
-        for (arm, reachable) in arms_reachability.into_iter() {
-            if !reachable {
+        for reachable_report in arms_reachability.into_iter() {
+            if !reachable_report.reachable {
                 warnings.push(CompileWarning {
-                    span: arm.span(),
+                    span: reachable_report.span,
                     warning_content: Warning::MatchExpressionUnreachableArm,
                 });
             }
@@ -1205,25 +1206,18 @@ impl TypedExpression {
             .clone()
             .map(|x| x.1)
             .unwrap_or_else(|| asm.whole_block_span.clone());
-        let diverges = asm
-            .body
-            .iter()
-            .any(|asm_op| matches!(asm_op.op_name.as_str(), "rvrt" | "ret"));
-        let return_type = if diverges {
-            insert_type(TypeInfo::Unknown)
-        } else {
-            check!(
-                ctx.resolve_type_with_self(
-                    insert_type(asm.return_type.clone()),
-                    &asm_span,
-                    EnforceTypeArguments::No,
-                    None
-                ),
-                insert_type(TypeInfo::ErrorRecovery),
-                warnings,
-                errors,
-            )
-        };
+        let return_type = check!(
+            ctx.resolve_type_with_self(
+                insert_type(asm.return_type.clone()),
+                &asm_span,
+                EnforceTypeArguments::No,
+                None
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
+
         // type check the initializers
         let typed_registers = asm
             .registers
@@ -1804,14 +1798,14 @@ impl TypedExpression {
 
         let elem_type = typed_contents[0].return_type;
         for typed_elem in &typed_contents[1..] {
-            let (mut new_warnings, new_errors) = ctx
+            let (mut new_warnings, mut new_errors) = ctx
                 .by_ref()
                 .with_type_annotation(elem_type)
                 .unify_with_self(typed_elem.return_type, &typed_elem.span);
             let no_warnings = new_warnings.is_empty();
             let no_errors = new_errors.is_empty();
             warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+            errors.append(&mut new_errors);
             // In both cases, if there are warnings or errors then break here, since we don't
             // need to spam type errors for every element once we have one.
             if !no_warnings && !no_errors {

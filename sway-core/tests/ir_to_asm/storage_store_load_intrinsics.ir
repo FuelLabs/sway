@@ -221,56 +221,8 @@ contract {
         ret u64 v104
     }
 
-    fn sha256_0(param !106: u64) -> b256, !7 {
-        local mut ptr b256 result_buffer
-        local ptr u64 size
-
-        entry(param !106: u64):
-        v0 = call min_1(), !8
-        v1 = get_ptr mut ptr b256 result_buffer, ptr b256, 0, !13
-        store v0, ptr v1, !13
-        v2 = const bool false
-        v3 = call not_2(v2), !11
-        cbr v3, block0(), block1(), !11
-
-        block0():
-        v4 = get_ptr mut ptr b256 result_buffer, ptr b256, 0, !20
-        v5 = load ptr v4, !20
-        v6 = const u64 8, !24
-        v7 = asm(buffer, ptr: param, eight_bytes: v6, hash: v5) -> b256 hash, !25 {
-            move   buffer sp, !27
-            cfei    i8, !28
-            sw     buffer ptr i0, !29
-            s256   hash buffer eight_bytes, !30
-            cfsi    i8, !31
-        }
-        br block2(v7)
-
-        block1():
-        v8 = get_ptr ptr u64 size, ptr u64, 0, !32
-        v9 = const u64 8
-        store v9, ptr v8, !32
-        v10 = get_ptr mut ptr b256 result_buffer, ptr b256, 0, !35
-        v11 = load ptr v10, !35
-        v12 = get_ptr ptr u64 size, ptr u64, 0, !38
-        v13 = load ptr v12, !38
-        v14 = asm(hash: v11, ptr: param, bytes: v13) -> b256 hash, !41 {
-            s256   hash ptr bytes, !43
-        }
-        br block2(v14)
-
-        block2(v15: b256):
-        ret b256 v15
-    }
-
-    fn min_1() -> b256, !107 {
-        entry():
-        v0 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000, !5
-        ret b256 v0
-    }
-
     fn not_2(a !108: bool) -> bool, !11 {
-        entry(a !108: bool):
+        entry(a: bool):
         v0 = asm(r1: a, r2) -> bool r2, !16 {
             eq     r2 r1 zero, !18
         }

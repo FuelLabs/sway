@@ -1,6 +1,6 @@
 script;
 
-use std::{address::Address, constants::ZERO_B256};
+use std::constants::ZERO_B256;
 use wallet_abi::Wallet;
 
 fn main() {

@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use self::commands::{
     addr2line, build, check, clean, completions, init, new, parse_bytecode, plugins, template,
     test, update,
@@ -6,15 +8,17 @@ use addr2line::Command as Addr2LineCommand;
 use anyhow::{anyhow, Result};
 pub use build::Command as BuildCommand;
 pub use check::Command as CheckCommand;
-use clap::Parser;
+use clap::{Parser, Subcommand};
 pub use clean::Command as CleanCommand;
 pub use completions::Command as CompletionsCommand;
+use forc_util::{init_tracing_subscriber, TracingSubscriberOptions};
 pub use init::Command as InitCommand;
 pub use new::Command as NewCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use plugins::Command as PluginsCommand;
 pub use template::Command as TemplateCommand;
 use test::Command as TestCommand;
+use tracing::metadata::LevelFilter;
 pub use update::Command as UpdateCommand;
 
 mod commands;
@@ -23,12 +27,24 @@ mod plugin;
 #[derive(Debug, Parser)]
 #[clap(name = "forc", about = "Fuel Orchestrator", version)]
 struct Opt {
-    /// the command to run
+    /// The command to run
     #[clap(subcommand)]
     command: Forc,
+
+    /// Use verbose output
+    #[clap(short, long, parse(from_occurrences), global = true)]
+    verbose: u8,
+
+    /// Silence all output
+    #[clap(short, long, global = true)]
+    silent: bool,
+
+    /// Set the log level
+    #[clap(short='L', long, global = true, parse(try_from_str = LevelFilter::from_str))]
+    log_level: Option<LevelFilter>,
 }
 
-#[derive(Debug, Parser)]
+#[derive(Subcommand, Debug)]
 enum Forc {
     #[clap(name = "addr2line")]
     Addr2Line(Addr2LineCommand),
@@ -59,6 +75,14 @@ enum Forc {
 
 pub async fn run_cli() -> Result<()> {
     let opt = Opt::parse();
+    let tracing_options = TracingSubscriberOptions {
+        verbosity: Some(opt.verbose),
+        silent: Some(opt.silent),
+        log_level: opt.log_level,
+    };
+
+    init_tracing_subscriber(tracing_options);
+
     match opt.command {
         Forc::Addr2Line(command) => addr2line::exec(command),
         Forc::Build(command) => build::exec(command),

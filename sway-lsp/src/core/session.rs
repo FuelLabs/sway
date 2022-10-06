@@ -9,17 +9,15 @@ use crate::{
         token::{Token, TokenMap, TypeDefinition},
         {traverse_parse_tree, traverse_typed_tree},
     },
-    sway_config::SwayConfig,
     utils,
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
-use serde_json::Value;
 use std::{
     path::PathBuf,
     sync::{Arc, LockResult, RwLock},
 };
-use sway_core::{CompileAstResult, CompileResult, ParseProgram, TypedProgram, TypedProgramKind};
+use sway_core::{CompileResult, ParseProgram, TypedProgram, TypedProgramKind};
 use sway_types::{Ident, Spanned};
 use swayfmt::Formatter;
 use tower_lsp::lsp_types::{
@@ -38,7 +36,6 @@ pub struct CompiledProgram {
 #[derive(Debug)]
 pub struct Session {
     pub documents: Documents,
-    pub config: RwLock<SwayConfig>,
     pub token_map: TokenMap,
     pub runnables: DashMap<RunnableType, Runnable>,
     pub compiled_program: RwLock<CompiledProgram>,
@@ -48,7 +45,6 @@ impl Session {
     pub fn new() -> Self {
         Session {
             documents: DashMap::new(),
-            config: RwLock::new(SwayConfig::default()),
             token_map: DashMap::new(),
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
@@ -124,13 +120,6 @@ impl Session {
         &self.token_map
     }
 
-    // update sway config
-    pub fn update_config(&self, options: Value) {
-        if let LockResult::Ok(mut config) = self.config.write() {
-            *config = SwayConfig::with_options(options);
-        }
-    }
-
     // Document
     pub fn store_document(&self, text_document: TextDocument) -> Result<(), DocumentError> {
         match self
@@ -154,7 +143,6 @@ impl Session {
         self.runnables.clear();
 
         let manifest_dir = PathBuf::from(uri.path());
-        let silent_mode = true;
         let locked = false;
         let offline = false;
 
@@ -162,13 +150,24 @@ impl Session {
         if let Ok(manifest) = pkg::ManifestFile::from_dir(&manifest_dir) {
             if let Ok(plan) = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline) {
                 //we can then use them directly to convert them to a Vec<Diagnostic>
-                if let Ok((parsed_res, ast_res)) = pkg::check(&plan, silent_mode) {
-                    // First, populate our token_map with un-typed ast nodes
+                if let Ok(CompileResult {
+                    value,
+                    warnings,
+                    errors,
+                }) = pkg::check(&plan, true)
+                {
+                    // FIXME(Centril): Refactor parse_ast_to_tokens + parse_ast_to_typed_tokens
+                    // due to the new API.
+                    let (parsed, typed) = match value {
+                        None => (None, None),
+                        Some((pp, tp)) => (Some(pp), tp),
+                    };
+                    // First, populate our token_map with un-typed ast nodes.
+                    let parsed_res = CompileResult::new(parsed, warnings.clone(), errors.clone());
                     let _ = self.parse_ast_to_tokens(parsed_res);
-                    // Next, populate our token_map with typed ast nodes
-                    let res = self.parse_ast_to_typed_tokens(ast_res);
-                    //self.test_typed_parse(ast_res);
-                    return res;
+                    // Next, populate our token_map with typed ast nodes.
+                    let ast_res = CompileResult::new(typed, warnings, errors);
+                    return self.parse_ast_to_typed_tokens(ast_res);
                 }
             }
         }
@@ -212,17 +211,13 @@ impl Session {
 
     fn parse_ast_to_typed_tokens(
         &self,
-        ast_res: CompileAstResult,
+        ast_res: CompileResult<TypedProgram>,
     ) -> Result<Vec<Diagnostic>, DocumentError> {
-        match ast_res {
-            CompileAstResult::Failure { warnings, errors } => {
-                let diagnostics = capabilities::diagnostic::get_diagnostics(warnings, errors);
-                Err(DocumentError::FailedToParse(diagnostics))
-            }
-            CompileAstResult::Success {
-                typed_program,
-                warnings,
-            } => {
+        match ast_res.value {
+            None => Err(DocumentError::FailedToParse(
+                capabilities::diagnostic::get_diagnostics(ast_res.warnings, ast_res.errors),
+            )),
+            Some(typed_program) => {
                 if let TypedProgramKind::Script {
                     ref main_function, ..
                 } = typed_program.kind
@@ -233,47 +228,25 @@ impl Session {
                     self.runnables.insert(RunnableType::MainFn, runnable);
                 }
 
-                for node in &typed_program.root.all_nodes {
-                    traverse_typed_tree::traverse_node(node, &self.token_map);
-                }
-
-                for (_, submodule) in &typed_program.root.submodules {
-                    for node in &submodule.module.all_nodes {
-                        traverse_typed_tree::traverse_node(node, &self.token_map);
-                    }
-                }
+                let root_nodes = typed_program.root.all_nodes.iter();
+                let sub_nodes = typed_program
+                    .root
+                    .submodules
+                    .iter()
+                    .flat_map(|(_, submodule)| &submodule.module.all_nodes);
+                root_nodes
+                    .chain(sub_nodes)
+                    .for_each(|node| traverse_typed_tree::traverse_node(node, &self.token_map));
 
                 if let LockResult::Ok(mut program) = self.compiled_program.write() {
-                    program.typed = Some(*typed_program);
+                    program.typed = Some(typed_program);
                 }
 
-                Ok(capabilities::diagnostic::get_diagnostics(warnings, vec![]))
+                Ok(capabilities::diagnostic::get_diagnostics(
+                    ast_res.warnings,
+                    ast_res.errors,
+                ))
             }
-        }
-    }
-
-    pub fn _test_typed_parse(&mut self, _ast_res: CompileAstResult, uri: &Url) {
-        for item in self.token_map.iter() {
-            let ((ident, _span), token) = item.pair();
-            utils::debug::debug_print_ident_and_token(ident, token);
-        }
-
-        //let cursor_position = Position::new(25, 14); //Cursor's hovered over the position var decl in main()
-        let cursor_position = Position::new(29, 18); //Cursor's hovered over the ~Particle in p = decl in main()
-
-        if let Some((_, token)) = self.token_at_position(uri, cursor_position) {
-            // Look up the tokens TypeId
-            if let Some(type_id) = utils::token::type_id(&token) {
-                tracing::info!("type_id = {:#?}", type_id);
-
-                // Use the TypeId to look up the actual type
-                let type_info = sway_core::type_system::look_up_type_id(type_id);
-                tracing::info!("type_info = {:#?}", type_info);
-            }
-
-            // Find the ident / span on the returned type
-
-            // Contruct a go_to LSP request from the declarations span
         }
     }
 
@@ -348,14 +321,8 @@ impl Session {
 
     pub fn format_text(&self, url: &Url) -> Option<Vec<TextEdit>> {
         if let Some(document) = self.documents.get(url.path()) {
-            match self.config.read() {
-                std::sync::LockResult::Ok(config) => {
-                    let config: SwayConfig = *config;
-                    let mut formatter = Formatter::from(config);
-                    get_format_text_edits(Arc::from(document.get_text()), &mut formatter)
-                }
-                _ => None,
-            }
+            let mut formatter = Formatter::default();
+            get_format_text_edits(Arc::from(document.get_text()), &mut formatter)
         } else {
             None
         }

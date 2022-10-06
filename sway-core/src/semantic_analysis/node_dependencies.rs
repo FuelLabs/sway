@@ -325,7 +325,7 @@ impl Dependencies {
                 })
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                        deps.gather_from_typeinfo(&look_up_type_id(param.type_id))
+                        deps.gather_from_typeinfo(&param.type_info)
                     })
                     .gather_from_typeinfo(&sig.return_type)
                 })
@@ -361,7 +361,7 @@ impl Dependencies {
             }) => self
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                        deps.gather_from_typeinfo(&look_up_type_id(param.type_id))
+                        deps.gather_from_typeinfo(&param.type_info)
                     })
                     .gather_from_typeinfo(&sig.return_type)
                 })
@@ -384,7 +384,7 @@ impl Dependencies {
             ..
         } = fn_decl;
         self.gather_from_iter(parameters.iter(), |deps, param| {
-            deps.gather_from_typeinfo(&look_up_type_id(param.type_id))
+            deps.gather_from_typeinfo(&param.type_info)
         })
         .gather_from_typeinfo(return_type)
         .gather_from_block(body)
@@ -479,22 +479,24 @@ impl Dependencies {
                 self.gather_from_call_path(&abi_cast_expression.abi_name, false, false)
             }
 
-            ExpressionKind::Literal(_) => self,
+            ExpressionKind::Literal(_)
+            | ExpressionKind::Break
+            | ExpressionKind::Continue
+            | ExpressionKind::StorageAccess(_)
+            | ExpressionKind::Error(_) => self,
+
             ExpressionKind::Tuple(fields) => {
                 self.gather_from_iter(fields.iter(), |deps, field| deps.gather_from_expr(field))
             }
             ExpressionKind::TupleIndex(TupleIndexExpression { prefix, .. }) => {
                 self.gather_from_expr(prefix)
             }
-            ExpressionKind::StorageAccess(_) => self,
             ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
                 arguments, ..
             }) => self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
             ExpressionKind::WhileLoop(WhileLoopExpression {
                 condition, body, ..
             }) => self.gather_from_expr(condition).gather_from_block(body),
-            ExpressionKind::Break => self,
-            ExpressionKind::Continue => self,
             ExpressionKind::Reassignment(reassignment) => self.gather_from_expr(&reassignment.rhs),
             ExpressionKind::Return(expr) => self.gather_from_expr(expr),
         }

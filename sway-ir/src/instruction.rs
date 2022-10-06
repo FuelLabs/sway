@@ -109,6 +109,8 @@ pub enum Instruction {
     ReadRegister(Register),
     /// Return from a function.
     Ret(Value, Type),
+    /// Revert VM execution.
+    Revert(Value),
     /// Read a quad word from a storage slot. Type of `load_val` must be a B256 ptr.
     StateLoadQuadWord {
         load_val: Value,
@@ -224,6 +226,7 @@ impl Instruction {
             Instruction::Branch(_) => None,
             Instruction::ConditionalBranch { .. } => None,
             Instruction::Ret(..) => None,
+            Instruction::Revert(..) => None,
 
             Instruction::StateLoadQuadWord { .. } => Some(Type::Unit),
             Instruction::StateStoreQuadWord { .. } => Some(Type::Unit),
@@ -355,6 +358,7 @@ impl Instruction {
             Instruction::Nop => (),
             Instruction::ReadRegister { .. } => (),
             Instruction::Ret(ret_val, _) => replace(ret_val),
+            Instruction::Revert(revert_val) => replace(revert_val),
             Instruction::StateLoadQuadWord { load_val, key } => {
                 replace(load_val);
                 replace(key);
@@ -406,6 +410,7 @@ impl Instruction {
                 | Instruction::Branch(_)
                 | Instruction::ConditionalBranch { .. }
                 | Instruction::Ret(..)
+                | Instruction::Revert(..)
                 | Instruction::Nop => false,
         }
     }
@@ -413,7 +418,10 @@ impl Instruction {
     pub fn is_terminator(&self) -> bool {
         matches!(
             self,
-            Instruction::Branch(_) | Instruction::ConditionalBranch { .. } | Instruction::Ret(..)
+            Instruction::Branch(_)
+                | Instruction::ConditionalBranch { .. }
+                | Instruction::Ret(..)
+                | Instruction::Revert(..)
         )
     }
 }
@@ -746,6 +754,14 @@ impl<'a> InstructionInserter<'a> {
         let ret_val = Value::new_instruction(self.context, Instruction::Ret(value, ty));
         self.context.blocks[self.block.0].instructions.push(ret_val);
         ret_val
+    }
+
+    pub fn revert(self, value: Value) -> Value {
+        let revert_val = Value::new_instruction(self.context, Instruction::Revert(value));
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(revert_val);
+        revert_val
     }
 
     pub fn state_load_quad_word(self, load_val: Value, key: Value) -> Value {

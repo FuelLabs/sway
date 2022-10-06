@@ -57,6 +57,7 @@ pub enum IrError {
     VerifyInvalidGtfIndexType,
     VerifyLogId,
     VerifyMismatchedLoggedTypes,
+    VerifyRevertCodeBadType,
 }
 
 impl std::error::Error for IrError {}
@@ -304,6 +305,12 @@ impl fmt::Display for IrError {
                 write!(
                     f,
                     "Verification failed: log type must match the type of the value being logged."
+                )
+            }
+            IrError::VerifyRevertCodeBadType => {
+                write!(
+                    f,
+                    "Verification failed: error code for revert must be a u64."
                 )
             }
         }

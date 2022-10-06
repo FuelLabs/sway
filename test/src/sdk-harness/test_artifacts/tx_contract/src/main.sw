@@ -1,8 +1,6 @@
 contract;
 
 use std::{
-    address::Address,
-    option::Option,
     inputs::{
         Input,
         input_count,
@@ -17,7 +15,7 @@ use std::{
         output_type,
     },
     tx::*,
-    };
+};
 
 abi TxContractTest {
     fn get_tx_type() -> Transaction;
@@ -31,6 +29,7 @@ abi TxContractTest {
     fn get_tx_witnesses_count() -> u64;
     fn get_tx_receipts_root() -> b256;
     fn get_tx_script_start_pointer() -> u64;
+    fn get_tx_script_bytecode_hash() -> b256;
 
     fn get_input_type(index: u64) -> Input;
     fn get_tx_input_pointer(index: u64) -> u64;
@@ -74,6 +73,9 @@ impl TxContractTest for Contract {
     }
     fn get_tx_script_start_pointer() -> u64 {
         tx_script_start_pointer()
+    }
+    fn get_tx_script_bytecode_hash() -> b256 {
+        tx_script_bytecode_hash()
     }
     fn get_tx_input_pointer(index: u64) -> u64 {
         input_pointer(index)

@@ -1,17 +1,11 @@
 use crate::{
-    declaration_engine::{
-        de_add_monomorphized_struct_copy,
-        declaration_engine::{de_add_monomorphized_enum_copy, de_get_enum, de_get_struct},
-    },
-    error::*,
-    semantic_analysis::*,
-    type_system::*,
-    CallPath, CompileResult, Ident, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    error::*, semantic_analysis::*, type_system::*, CallPath, CompileResult, Ident, TypeInfo,
+    TypedDeclaration, TypedFunctionDeclaration,
 };
 
 use super::{module::Module, namespace::Namespace, Path};
 
-use sway_types::{span::Span, Spanned};
+use sway_types::Spanned;
 
 use std::collections::VecDeque;
 
@@ -70,159 +64,6 @@ impl Root {
         })
     }
 
-    pub(crate) fn resolve_type_with_self(
-        &mut self,
-        mut type_id: TypeId,
-        self_type: TypeId,
-        span: &Span,
-        enforce_type_arguments: EnforceTypeArguments,
-        type_info_prefix: Option<&Path>,
-        mod_path: &Path,
-    ) -> CompileResult<TypeId> {
-        type_id.replace_self_type(self_type);
-        self.resolve_type(
-            type_id,
-            span,
-            enforce_type_arguments,
-            type_info_prefix,
-            mod_path,
-        )
-    }
-
-    pub(crate) fn resolve_type(
-        &self,
-        type_id: TypeId,
-        span: &Span,
-        enforce_type_arguments: EnforceTypeArguments,
-        type_info_prefix: Option<&Path>,
-        mod_path: &Path,
-    ) -> CompileResult<TypeId> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let module_path = match type_info_prefix {
-            Some(type_info_prefix) => type_info_prefix,
-            None => mod_path,
-        };
-        let type_id = match look_up_type_id(type_id) {
-            TypeInfo::Custom {
-                name,
-                type_arguments,
-            } => {
-                match self
-                    .resolve_symbol(module_path, &name)
-                    .ok(&mut warnings, &mut errors)
-                    .cloned()
-                {
-                    Some(TypedDeclaration::StructDeclaration(original_id)) => {
-                        // get the copy from the declaration engine
-                        let mut new_copy = check!(
-                            CompileResult::from(de_get_struct(original_id.clone(), &name.span())),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-
-                        // monomorphize the copy, in place
-                        check!(
-                            monomorphize(
-                                &mut new_copy,
-                                &mut type_arguments.unwrap_or_default(),
-                                enforce_type_arguments,
-                                span,
-                                self,
-                                mod_path
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors,
-                        );
-
-                        // create the type id from the copy
-                        let type_id = new_copy.create_type_id();
-
-                        // add the new copy as a monomorphized copy of the original id
-                        de_add_monomorphized_struct_copy(original_id, new_copy);
-
-                        // return the id
-                        type_id
-                    }
-                    Some(TypedDeclaration::EnumDeclaration(original_id)) => {
-                        // get the copy from the declaration engine
-                        let mut new_copy = check!(
-                            CompileResult::from(de_get_enum(original_id.clone(), &name.span())),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-
-                        // monomorphize the copy, in place
-                        check!(
-                            monomorphize(
-                                &mut new_copy,
-                                &mut type_arguments.unwrap_or_default(),
-                                enforce_type_arguments,
-                                span,
-                                self,
-                                mod_path
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-
-                        // create the type id from the copy
-                        let type_id = new_copy.create_type_id();
-
-                        // add the new copy as a monomorphized copy of the original id
-                        de_add_monomorphized_enum_copy(original_id, new_copy);
-
-                        // return the id
-                        type_id
-                    }
-                    Some(TypedDeclaration::GenericTypeForFunctionScope { name, type_id }) => {
-                        insert_type(TypeInfo::Ref(type_id, name.span()))
-                    }
-                    _ => {
-                        errors.push(CompileError::UnknownTypeName {
-                            name: name.to_string(),
-                            span: name.span(),
-                        });
-                        insert_type(TypeInfo::ErrorRecovery)
-                    }
-                }
-            }
-            TypeInfo::Ref(id, _) => id,
-            TypeInfo::Array(type_id, n, initial_type_id) => {
-                let new_type_id = check!(
-                    self.resolve_type(type_id, span, enforce_type_arguments, None, mod_path),
-                    insert_type(TypeInfo::ErrorRecovery),
-                    warnings,
-                    errors
-                );
-                insert_type(TypeInfo::Array(new_type_id, n, initial_type_id))
-            }
-            TypeInfo::Tuple(mut type_arguments) => {
-                for type_argument in type_arguments.iter_mut() {
-                    type_argument.type_id = check!(
-                        self.resolve_type(
-                            type_argument.type_id,
-                            span,
-                            enforce_type_arguments,
-                            None,
-                            mod_path
-                        ),
-                        insert_type(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors
-                    );
-                }
-                insert_type(TypeInfo::Tuple(type_arguments))
-            }
-            o => insert_type(o),
-        };
-        ok(type_id, warnings, errors)
-    }
-
     /// Given a method and a type (plus a `self_type` to potentially resolve it), find that method
     /// in the namespace. Requires `args_buf` because of some special casing for the standard
     /// library where we pull the type from the arguments buffer.
@@ -258,11 +99,12 @@ impl Root {
 
         // resolve the type
         let type_id = check!(
-            self.resolve_type(
+            resolve_type(
                 type_id,
                 &method_name.span(),
                 EnforceTypeArguments::No,
                 None,
+                self,
                 method_prefix
             ),
             insert_type(TypeInfo::ErrorRecovery),

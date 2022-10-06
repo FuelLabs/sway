@@ -84,6 +84,7 @@ impl LexError {
 
 #[extension_trait]
 impl CharExt for char {
+    /// Converts the character into an opening delimiter, if any.
     fn as_open_delimiter(self) -> Option<Delimiter> {
         match self {
             '(' => Some(Delimiter::Parenthesis),
@@ -93,6 +94,7 @@ impl CharExt for char {
         }
     }
 
+    /// Converts the character into a closing delimiter, if any.
     fn as_close_delimiter(self) -> Option<Delimiter> {
         match self {
             ')' => Some(Delimiter::Parenthesis),
@@ -102,6 +104,7 @@ impl CharExt for char {
         }
     }
 
+    /// Determines what sort of punctuation this character is, if any.
     fn as_punct_kind(self) -> Option<PunctKind> {
         match self {
             ';' => Some(PunctKind::Semicolon),
@@ -133,15 +136,12 @@ struct CharIndicesInner<'a> {
     position: usize,
 }
 
-impl<'a> Iterator for CharIndicesInner<'a> {
+impl Iterator for CharIndicesInner<'_> {
     type Item = (usize, char);
 
     fn next(&mut self) -> Option<(usize, char)> {
         let mut char_indices = self.src[self.position..].char_indices();
-        let c = match char_indices.next() {
-            Some((_, c)) => c,
-            None => return None,
-        };
+        let (_, c) = char_indices.next()?;
         let ret = (self.position, c);
         match char_indices.next() {
             Some((char_width, _)) => self.position += char_width,
@@ -182,141 +182,35 @@ pub fn lex_commented(
         if character == '/' {
             match char_indices.peek() {
                 Some((_, '/')) => {
-                    let _ = char_indices.next();
-
-                    let end = match char_indices.find(|(_, character)| *character == '\n') {
-                        // Reached EOF
-                        None => end,
-                        // Found "\n"
-                        Some((end, _)) => end,
-                    };
-                    let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
-
-                    let doc_style =
-                        match (span.as_str().chars().nth(2), span.as_str().chars().nth(3)) {
-                            // `//!` is an inner line doc comment.
-                            (Some('!'), _) => {
-                                // TODO: Add support for inner line doc comments.
-                                // Some(DocStyle::Inner)
-                                None
-                            }
-                            // `////` (more than 3 slashes) is not considered a doc comment.
-                            (Some('/'), Some('/')) => None,
-                            // `///` is an outer line doc comment.
-                            (Some('/'), _) => Some(DocStyle::Outer),
-                            _ => None,
-                        };
-
-                    token_trees.push(if let Some(doc_style) = doc_style {
-                        let content_span =
-                            Span::new(src.clone(), index + 3, end, path.clone()).unwrap();
-                        let doc_comment = DocComment {
-                            span,
-                            doc_style,
-                            content_span,
-                        };
-                        CommentedTokenTree::Tree(doc_comment.into())
-                    } else {
-                        let comment = Comment { span };
-                        comment.into()
-                    });
+                    token_trees.push(lex_line_comment(end, src, &path, &mut char_indices, index));
+                    continue;
                 }
                 Some((_, '*')) => {
-                    let _ = char_indices.next();
-                    let mut unclosed_indices = vec![index];
-
-                    let unclosed_multiline_comment = |unclosed_indices: Vec<_>| {
-                        let span = Span::new(
-                            src.clone(),
-                            *unclosed_indices.last().unwrap(),
-                            src.len() - 1,
-                            path.clone(),
-                        )
-                        .unwrap();
-                        LexError {
-                            kind: LexErrorKind::UnclosedMultilineComment { unclosed_indices },
-                            span,
-                        }
-                    };
-
-                    loop {
-                        match char_indices.next() {
-                            None => return Err(unclosed_multiline_comment(unclosed_indices)),
-                            Some((_, '*')) => match char_indices.next() {
-                                None => return Err(unclosed_multiline_comment(unclosed_indices)),
-                                Some((slash_ix, '/')) => {
-                                    let start = unclosed_indices.pop().unwrap();
-                                    let end = slash_ix + '/'.len_utf8();
-                                    let span =
-                                        Span::new(src.clone(), start, end, path.clone()).unwrap();
-                                    let comment = Comment { span };
-                                    token_trees.push(comment.into());
-                                    if unclosed_indices.is_empty() {
-                                        break;
-                                    }
-                                }
-                                Some((_, _)) => (),
-                            },
-                            Some((next_index, '/')) => match char_indices.next() {
-                                None => return Err(unclosed_multiline_comment(unclosed_indices)),
-                                Some((_, '*')) => {
-                                    unclosed_indices.push(next_index);
-                                }
-                                Some((_, _)) => (),
-                            },
-                            Some((_, _)) => (),
-                        }
-                    }
+                    token_trees.push(lex_multiline_comment(src, &path, &mut char_indices, index)?);
+                    continue;
                 }
-                Some(&(end, next_character)) => {
-                    let spacing = if let Some(..) = next_character.as_punct_kind() {
-                        Spacing::Joint
-                    } else {
-                        Spacing::Alone
-                    };
-                    let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
-                    let punct = Punct {
-                        kind: PunctKind::ForwardSlash,
-                        spacing,
-                        span,
-                    };
-                    token_trees.push(CommentedTokenTree::Tree(punct.into()));
-                }
-                None => {
-                    let span = Span::new(src.clone(), start, end, path.clone()).unwrap();
-                    let punct = Punct {
-                        kind: PunctKind::ForwardSlash,
-                        spacing: Spacing::Alone,
-                        span,
-                    };
-                    token_trees.push(CommentedTokenTree::Tree(punct.into()));
-                }
+                Some(_) | None => {}
             }
-            continue;
         }
         if character.is_xid_start() || character == '_' {
+            // Raw identifier, e.g., `r#foo`? Then mark as such, stripping the prefix `r#`.
             let is_raw_ident = character == 'r' && matches!(char_indices.peek(), Some((_, '#')));
             if is_raw_ident {
                 char_indices.next();
-                if let Some((_, next_character)) = char_indices.peek() {
-                    character = *next_character;
-                    if let Some((next_index, _)) = char_indices.next() {
-                        index = next_index;
-                    }
+                if let Some((next_index, next_character)) = char_indices.next() {
+                    character = next_character;
+                    index = next_index;
                 }
             }
-            let is_single_underscore = character == '_'
-                && match char_indices.peek() {
-                    Some((_, next_character)) => !next_character.is_xid_continue(),
-                    None => true,
-                };
-            if !is_single_underscore {
-                while let Some((_, next_character)) = char_indices.peek() {
-                    if !next_character.is_xid_continue() {
-                        break;
-                    }
-                    let _ = char_indices.next();
-                }
+
+            // Don't accept just `_` as an identifier.
+            let not_is_single_underscore = character != '_'
+                || char_indices
+                    .peek()
+                    .map_or(false, |(_, next)| next.is_xid_continue());
+            if not_is_single_underscore {
+                // Consume until we hit other than `XID_CONTINUE`.
+                while char_indices.next_if(|(_, c)| c.is_xid_continue()).is_some() {}
                 let span = span_until(src, index, &mut char_indices, &path);
                 let ident = Ident::new_with_raw(span, is_raw_ident);
                 token_trees.push(CommentedTokenTree::Tree(ident.into()));
@@ -380,299 +274,20 @@ pub fn lex_commented(
             }
             continue;
         }
-        if character == '"' {
-            let mut parsed = String::new();
-            loop {
-                let next_character = match char_indices.next() {
-                    Some((_, next_character)) => next_character,
-                    None => {
-                        return Err(LexError {
-                            kind: LexErrorKind::UnclosedStringLiteral { position: index },
-                            span: Span::new(src.clone(), index, src.len() - 1, path.clone())
-                                .unwrap(),
-                        });
-                    }
-                };
-                match next_character {
-                    '\\' => {
-                        let parsed_character =
-                            match parse_escape_code(src, &mut char_indices, &path) {
-                                Ok(parsed_character) => parsed_character,
-                                Err(None) => {
-                                    return Err(LexError {
-                                        kind: LexErrorKind::UnclosedStringLiteral {
-                                            position: index,
-                                        },
-                                        span: Span::new(
-                                            src.clone(),
-                                            index,
-                                            src.len(),
-                                            path.clone(),
-                                        )
-                                        .unwrap(),
-                                    });
-                                }
-                                Err(Some(err)) => return Err(err),
-                            };
-                        parsed.push(parsed_character);
-                    }
-                    '"' => break,
-                    _ => {
-                        parsed.push(next_character);
-                    }
-                }
-            }
-            let span = span_until(src, index, &mut char_indices, &path);
-            let literal = Literal::String(LitString { span, parsed });
-            token_trees.push(CommentedTokenTree::Tree(literal.into()));
+        if let Some(token) = lex_string(src, &path, &mut char_indices, index, character)? {
+            token_trees.push(token);
             continue;
         }
-        if character == '\'' {
-            let next_character = match char_indices.next() {
-                Some((_, next_character)) => next_character,
-                None => {
-                    return Err(LexError {
-                        kind: LexErrorKind::UnclosedCharLiteral { position: index },
-                        span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
-                    });
-                }
-            };
-            let parsed = if next_character == '\\' {
-                match parse_escape_code(src, &mut char_indices, &path) {
-                    Ok(parsed) => parsed,
-                    Err(None) => {
-                        return Err(LexError {
-                            kind: LexErrorKind::UnclosedCharLiteral { position: index },
-                            span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
-                        });
-                    }
-                    Err(Some(err)) => return Err(err),
-                }
-            } else {
-                next_character
-            };
-            match char_indices.next() {
-                None => {
-                    return Err(LexError {
-                        kind: LexErrorKind::UnclosedCharLiteral { position: index },
-                        span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
-                    });
-                }
-                Some((_, '\'')) => (),
-                Some((next_index, unexpected_char)) => {
-                    return Err(LexError {
-                        kind: LexErrorKind::ExpectedCloseQuote {
-                            position: next_index,
-                        },
-                        span: Span::new(
-                            src.clone(),
-                            next_index,
-                            next_index + unexpected_char.len_utf8(),
-                            path.clone(),
-                        )
-                        .unwrap(),
-                    });
-                }
-            }
-            let span = span_until(src, index, &mut char_indices, &path);
-            let literal = Literal::Char(LitChar { span, parsed });
-            token_trees.push(CommentedTokenTree::Tree(literal.into()));
+        if let Some(token) = lex_char(src, &path, &mut char_indices, index, character)? {
+            token_trees.push(token);
             continue;
         }
-        if let Some(digit) = character.to_digit(10) {
-            let (big_uint, end_opt) = if digit == 0 {
-                match char_indices.peek() {
-                    Some((_, 'x')) => {
-                        let _ = char_indices.next();
-                        let (hex_digit_position, hex_digit) = match char_indices.next() {
-                            None => {
-                                return Err(LexError {
-                                    kind: LexErrorKind::IncompleteHexIntLiteral { position: index },
-                                    span: Span::new(src.clone(), index, src.len(), path.clone())
-                                        .unwrap(),
-                                });
-                            }
-                            Some((hex_digit_position, hex_digit)) => {
-                                (hex_digit_position, hex_digit)
-                            }
-                        };
-                        let hex_digit = match hex_digit.to_digit(16) {
-                            Some(hex_digit) => hex_digit,
-                            None => {
-                                return Err(LexError {
-                                    kind: LexErrorKind::IncompleteHexIntLiteral { position: index },
-                                    span: Span::new(
-                                        src.clone(),
-                                        index,
-                                        hex_digit_position,
-                                        path.clone(),
-                                    )
-                                    .unwrap(),
-                                });
-                            }
-                        };
-                        let mut big_uint = BigUint::from(hex_digit);
-                        let end_opt = parse_digits(&mut big_uint, &mut char_indices, 16);
-                        (big_uint, end_opt)
-                    }
-                    Some((_, 'b')) => {
-                        let _ = char_indices.next();
-                        let (bin_digit_position, bin_digit) = match char_indices.next() {
-                            None => {
-                                return Err(LexError {
-                                    kind: LexErrorKind::IncompleteBinaryIntLiteral {
-                                        position: index,
-                                    },
-                                    span: Span::new(src.clone(), index, src.len(), path.clone())
-                                        .unwrap(),
-                                });
-                            }
-                            Some((bin_digit_position, bin_digit)) => {
-                                (bin_digit_position, bin_digit)
-                            }
-                        };
-                        let bin_digit = match bin_digit.to_digit(2) {
-                            Some(bin_digit) => bin_digit,
-                            None => {
-                                return Err(LexError {
-                                    kind: LexErrorKind::IncompleteBinaryIntLiteral {
-                                        position: index,
-                                    },
-                                    span: Span::new(
-                                        src.clone(),
-                                        index,
-                                        bin_digit_position,
-                                        path.clone(),
-                                    )
-                                    .unwrap(),
-                                });
-                            }
-                        };
-                        let mut big_uint = BigUint::from(bin_digit);
-                        let end_opt = parse_digits(&mut big_uint, &mut char_indices, 2);
-                        (big_uint, end_opt)
-                    }
-                    Some((_, 'o')) => {
-                        let _ = char_indices.next();
-                        let (oct_digit_position, oct_digit) = match char_indices.next() {
-                            None => {
-                                return Err(LexError {
-                                    kind: LexErrorKind::IncompleteOctalIntLiteral {
-                                        position: index,
-                                    },
-                                    span: Span::new(src.clone(), index, src.len(), path.clone())
-                                        .unwrap(),
-                                });
-                            }
-                            Some((oct_digit_position, oct_digit)) => {
-                                (oct_digit_position, oct_digit)
-                            }
-                        };
-                        let oct_digit = match oct_digit.to_digit(2) {
-                            Some(oct_digit) => oct_digit,
-                            None => {
-                                return Err(LexError {
-                                    kind: LexErrorKind::IncompleteOctalIntLiteral {
-                                        position: index,
-                                    },
-                                    span: Span::new(
-                                        src.clone(),
-                                        index,
-                                        oct_digit_position,
-                                        path.clone(),
-                                    )
-                                    .unwrap(),
-                                });
-                            }
-                        };
-                        let mut big_uint = BigUint::from(oct_digit);
-                        let end_opt = parse_digits(&mut big_uint, &mut char_indices, 8);
-                        (big_uint, end_opt)
-                    }
-                    Some((_, '_')) | Some((_, '0'..='9')) => {
-                        let mut big_uint = BigUint::from(0u32);
-                        let end_opt = parse_digits(&mut big_uint, &mut char_indices, 10);
-                        (big_uint, end_opt)
-                    }
-                    Some(&(next_index, _)) => (BigUint::from(0u32), Some(next_index)),
-                    None => (BigUint::from(0u32), None),
-                }
-            } else {
-                let mut big_uint = BigUint::from(digit);
-                let end_opt = parse_digits(&mut big_uint, &mut char_indices, 10);
-                (big_uint, end_opt)
-            };
-            let end = end_opt.unwrap_or(src.len());
-            let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
-            let ty_opt = match char_indices.peek() {
-                Some((_, c)) if c.is_xid_continue() => {
-                    let (suffix_start_position, c) = char_indices.next().unwrap();
-                    let mut suffix = String::from(c);
-                    let suffix_end_position = loop {
-                        match char_indices.peek() {
-                            Some((position, c)) => {
-                                if c.is_xid_continue() {
-                                    suffix.push(*c);
-                                    let _ = char_indices.next();
-                                } else {
-                                    break *position;
-                                }
-                            }
-                            None => break src.len(),
-                        }
-                    };
-                    let ty = match &suffix[..] {
-                        "u8" => LitIntType::U8,
-                        "u16" => LitIntType::U16,
-                        "u32" => LitIntType::U32,
-                        "u64" => LitIntType::U64,
-                        "i8" => LitIntType::I8,
-                        "i16" => LitIntType::I16,
-                        "i32" => LitIntType::I32,
-                        "i64" => LitIntType::I64,
-                        _ => {
-                            let span = Span::new(
-                                src.clone(),
-                                suffix_start_position,
-                                suffix_end_position,
-                                path.clone(),
-                            )
-                            .unwrap();
-                            return Err(LexError {
-                                kind: LexErrorKind::InvalidIntSuffix {
-                                    suffix: Ident::new(span.clone()),
-                                },
-                                span,
-                            });
-                        }
-                    };
-                    let span = span_until(src, suffix_start_position, &mut char_indices, &path);
-                    Some((ty, span))
-                }
-                _ => None,
-            };
-            let literal = Literal::Int(LitInt {
-                span,
-                parsed: big_uint,
-                ty_opt,
-            });
-            token_trees.push(CommentedTokenTree::Tree(literal.into()));
+        if let Some(token) = lex_int_lit(src, &path, &mut char_indices, index, character)? {
+            token_trees.push(token);
             continue;
         }
-        if let Some(kind) = character.as_punct_kind() {
-            let spacing = match char_indices.peek() {
-                Some((_, next_character)) if next_character.as_punct_kind().is_some() => {
-                    Spacing::Joint
-                }
-                _ => Spacing::Alone,
-            };
-            let span = span_until(src, index, &mut char_indices, &path);
-            let punct = Punct {
-                kind,
-                spacing,
-                span,
-            };
-            token_trees.push(CommentedTokenTree::Tree(punct.into()));
+        if let Some(token) = lex_punctuation(src, &path, &mut char_indices, index, character) {
+            token_trees.push(token);
             continue;
         }
         return Err(LexError {
@@ -710,6 +325,179 @@ pub fn lex_commented(
         full_span,
     };
     Ok(token_stream)
+}
+
+fn lex_line_comment(
+    end: usize,
+    src: &Arc<str>,
+    path: &Option<Arc<PathBuf>>,
+    char_indices: &mut CharIndices,
+    index: usize,
+) -> CommentedTokenTree {
+    let _ = char_indices.next();
+
+    // Find end; either at EOF or at `\n`.
+    let end = char_indices
+        .find(|(_, character)| *character == '\n')
+        .map_or(end, |(end, _)| end);
+    let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
+
+    let doc_style = match (span.as_str().chars().nth(2), span.as_str().chars().nth(3)) {
+        // `//!` is an inner line doc comment.
+        (Some('!'), _) => {
+            // TODO: Add support for inner line doc comments.
+            // Some(DocStyle::Inner)
+            None
+        }
+        // `////` (more than 3 slashes) is not considered a doc comment.
+        (Some('/'), Some('/')) => None,
+        // `///` is an outer line doc comment.
+        (Some('/'), _) => Some(DocStyle::Outer),
+        _ => None,
+    };
+
+    if let Some(doc_style) = doc_style {
+        let content_span = Span::new(src.clone(), index + 3, end, path.clone()).unwrap();
+        let doc_comment = DocComment {
+            span,
+            doc_style,
+            content_span,
+        };
+        CommentedTokenTree::Tree(doc_comment.into())
+    } else {
+        Comment { span }.into()
+    }
+}
+
+fn lex_multiline_comment(
+    src: &Arc<str>,
+    path: &Option<Arc<PathBuf>>,
+    char_indices: &mut CharIndices,
+    index: usize,
+) -> Result<CommentedTokenTree, LexError> {
+    // Lexing a multi-line comment.
+    let _ = char_indices.next();
+    let mut unclosed_indices = vec![index];
+
+    let unclosed_multiline_comment = |unclosed_indices: Vec<_>| {
+        let span = Span::new(
+            src.clone(),
+            *unclosed_indices.last().unwrap(),
+            src.len() - 1,
+            path.clone(),
+        )
+        .unwrap();
+        LexError {
+            kind: LexErrorKind::UnclosedMultilineComment { unclosed_indices },
+            span,
+        }
+    };
+
+    loop {
+        match char_indices.next() {
+            None => return Err(unclosed_multiline_comment(unclosed_indices)),
+            Some((_, '*')) => match char_indices.next() {
+                None => return Err(unclosed_multiline_comment(unclosed_indices)),
+                Some((slash_ix, '/')) => {
+                    let start = unclosed_indices.pop().unwrap();
+                    if unclosed_indices.is_empty() {
+                        // For the purposes of lexing,
+                        // nested multi-line comments constitute a single multi-line comment.
+                        // We could represent them as several ones, but that's unnecessary.
+                        let end = slash_ix + '/'.len_utf8();
+                        let span = Span::new(src.clone(), start, end, path.clone()).unwrap();
+                        return Ok(Comment { span }.into());
+                    }
+                }
+                Some(_) => {}
+            },
+            Some((next_index, '/')) => match char_indices.next() {
+                None => return Err(unclosed_multiline_comment(unclosed_indices)),
+                Some((_, '*')) => unclosed_indices.push(next_index),
+                Some(_) => {}
+            },
+            Some(_) => {}
+        }
+    }
+}
+
+fn lex_string(
+    src: &Arc<str>,
+    path: &Option<Arc<PathBuf>>,
+    char_indices: &mut CharIndices,
+    index: usize,
+    character: char,
+) -> Result<Option<CommentedTokenTree>, LexError> {
+    if character != '"' {
+        return Ok(None);
+    }
+    let mut parsed = String::new();
+    loop {
+        let unclosed_string_lit = |end| LexError {
+            kind: LexErrorKind::UnclosedStringLiteral { position: index },
+            span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
+        };
+        let (_, next_character) = char_indices
+            .next()
+            .ok_or_else(|| unclosed_string_lit(src.len() - 1))?;
+        parsed.push(match next_character {
+            '\\' => parse_escape_code(src, char_indices, path)
+                .map_err(|e| e.unwrap_or_else(|| unclosed_string_lit(src.len())))?,
+            '"' => break,
+            _ => next_character,
+        });
+    }
+    let span = span_until(src, index, char_indices, path);
+    let literal = Literal::String(LitString { span, parsed });
+    Ok(Some(CommentedTokenTree::Tree(literal.into())))
+}
+
+fn lex_char(
+    src: &Arc<str>,
+    path: &Option<Arc<PathBuf>>,
+    char_indices: &mut CharIndices,
+    index: usize,
+    character: char,
+) -> Result<Option<CommentedTokenTree>, LexError> {
+    if character != '\'' {
+        return Ok(None);
+    }
+
+    let unclosed_char_lit = || LexError {
+        kind: LexErrorKind::UnclosedCharLiteral { position: index },
+        span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
+    };
+    let (_, next_character) = char_indices.next().ok_or_else(unclosed_char_lit)?;
+    let parsed = if next_character == '\\' {
+        parse_escape_code(src, char_indices, path)
+            .map_err(|e| e.unwrap_or_else(unclosed_char_lit))?
+    } else {
+        next_character
+    };
+
+    // Consume the closing `'`.
+    match char_indices.next() {
+        None => return Err(unclosed_char_lit()),
+        Some((_, '\'')) => {}
+        Some((next_index, unexpected_char)) => {
+            // FIXME(Centril, #2864): Recover as string lit instead of char lit.
+            return Err(LexError {
+                kind: LexErrorKind::ExpectedCloseQuote {
+                    position: next_index,
+                },
+                span: Span::new(
+                    src.clone(),
+                    next_index,
+                    next_index + unexpected_char.len_utf8(),
+                    path.clone(),
+                )
+                .unwrap(),
+            });
+        }
+    }
+    let span = span_until(src, index, char_indices, path);
+    let literal = Literal::Char(LitChar { span, parsed });
+    Ok(Some(CommentedTokenTree::Tree(literal.into())))
 }
 
 fn parse_escape_code(
@@ -837,6 +625,120 @@ fn parse_escape_code(
     }
 }
 
+fn lex_int_lit(
+    src: &Arc<str>,
+    path: &Option<Arc<PathBuf>>,
+    char_indices: &mut CharIndices,
+    index: usize,
+    character: char,
+) -> Result<Option<CommentedTokenTree>, LexError> {
+    let digit = match character.to_digit(10) {
+        None => return Ok(None),
+        Some(d) => d,
+    };
+
+    let decimal_int_lit = |char_indices, digit: u32| {
+        let mut big_uint = BigUint::from(digit);
+        let end_opt = parse_digits(&mut big_uint, char_indices, 10);
+        (big_uint, end_opt)
+    };
+    let (big_uint, end_opt) = if digit == 0 {
+        let prefixed_int_lit = |char_indices: &mut CharIndices<'_>, radix| {
+            let incomplete_int_lit = |end| LexError {
+                kind: match radix {
+                    16 => LexErrorKind::IncompleteHexIntLiteral { position: index },
+                    8 => LexErrorKind::IncompleteOctalIntLiteral { position: index },
+                    2 => LexErrorKind::IncompleteBinaryIntLiteral { position: index },
+                    _ => unreachable!(),
+                },
+                span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
+            };
+            let _ = char_indices.next();
+            let (digit_pos, digit) = match char_indices.next() {
+                None => return Err(incomplete_int_lit(src.len())),
+                Some(d) => d,
+            };
+            let radix_digit = match digit.to_digit(radix) {
+                Some(rd) => rd,
+                None => return Err(incomplete_int_lit(digit_pos)),
+            };
+            let mut big_uint = BigUint::from(radix_digit);
+            let end_opt = parse_digits(&mut big_uint, char_indices, radix);
+            Ok((big_uint, end_opt))
+        };
+
+        match char_indices.peek() {
+            Some((_, 'x')) => prefixed_int_lit(char_indices, 16)?,
+            Some((_, 'o')) => prefixed_int_lit(char_indices, 8)?,
+            Some((_, 'b')) => prefixed_int_lit(char_indices, 2)?,
+            Some((_, '_' | '0'..='9')) => decimal_int_lit(char_indices, 0),
+            Some(&(next_index, _)) => (BigUint::from(0u32), Some(next_index)),
+            None => (BigUint::from(0u32), None),
+        }
+    } else {
+        decimal_int_lit(char_indices, digit)
+    };
+    let end = end_opt.unwrap_or(src.len());
+    let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
+    let ty_opt = lex_int_ty_opt(src, path, char_indices)?;
+    let literal = Literal::Int(LitInt {
+        span,
+        parsed: big_uint,
+        ty_opt,
+    });
+    Ok(Some(CommentedTokenTree::Tree(literal.into())))
+}
+
+fn lex_int_ty_opt(
+    src: &Arc<str>,
+    path: &Option<Arc<PathBuf>>,
+    char_indices: &mut CharIndices,
+) -> Result<Option<(LitIntType, Span)>, LexError> {
+    let (suffix_start_position, c) = match char_indices.next_if(|(_, c)| c.is_xid_continue()) {
+        None => return Ok(None),
+        Some(x) => x,
+    };
+    let mut suffix = String::from(c);
+    let suffix_end_position = loop {
+        match char_indices.peek() {
+            Some((_, c)) if c.is_xid_continue() => {
+                suffix.push(*c);
+                let _ = char_indices.next();
+            }
+            Some((pos, _)) => break *pos,
+            None => break src.len(),
+        }
+    };
+    let ty = match &suffix[..] {
+        "u8" => LitIntType::U8,
+        "u16" => LitIntType::U16,
+        "u32" => LitIntType::U32,
+        "u64" => LitIntType::U64,
+        "i8" => LitIntType::I8,
+        "i16" => LitIntType::I16,
+        "i32" => LitIntType::I32,
+        "i64" => LitIntType::I64,
+        _ => {
+            // FIXME(Centril, #2865): Recover here by throwing away the suffix.
+            let span = Span::new(
+                src.clone(),
+                suffix_start_position,
+                suffix_end_position,
+                path.clone(),
+            )
+            .unwrap();
+            return Err(LexError {
+                kind: LexErrorKind::InvalidIntSuffix {
+                    suffix: Ident::new(span.clone()),
+                },
+                span,
+            });
+        }
+    };
+    let span = span_until(src, suffix_start_position, char_indices, path);
+    Ok(Some((ty, span)))
+}
+
 fn parse_digits(
     big_uint: &mut BigUint,
     char_indices: &mut CharIndices,
@@ -860,16 +762,31 @@ fn parse_digits(
     }
 }
 
+fn lex_punctuation(
+    src: &Arc<str>,
+    path: &Option<Arc<PathBuf>>,
+    char_indices: &mut CharIndices,
+    index: usize,
+    character: char,
+) -> Option<CommentedTokenTree> {
+    let punct = Punct {
+        kind: character.as_punct_kind()?,
+        spacing: match char_indices.peek() {
+            Some((_, next_character)) if next_character.as_punct_kind().is_some() => Spacing::Joint,
+            _ => Spacing::Alone,
+        },
+        span: span_until(src, index, char_indices, path),
+    };
+    Some(CommentedTokenTree::Tree(punct.into()))
+}
+
 fn span_until(
     src: &Arc<str>,
     start: usize,
     char_indices: &mut CharIndices,
     path: &Option<Arc<PathBuf>>,
 ) -> Span {
-    let end = match char_indices.peek() {
-        Some(&(end, _)) => end,
-        None => src.len(),
-    };
+    let end = char_indices.peek().map_or(src.len(), |(end, _)| *end);
     Span::new(src.clone(), start, end, path.clone()).unwrap()
 }
 
@@ -931,7 +848,7 @@ mod tests {
         ////none
         //!inner
         ///outer
-        /// outer 
+        /// outer
         "#;
         let start = 0;
         let end = input.len();
@@ -979,7 +896,7 @@ mod tests {
                 doc_style: DocStyle::Outer,
                 span,
                 content_span
-            }))) if span.as_str() ==  "/// outer " && content_span.as_str() == " outer "
+            }))) if span.as_str() ==  "/// outer" && content_span.as_str() == " outer"
         );
         assert_eq!(tts.next(), None);
     }

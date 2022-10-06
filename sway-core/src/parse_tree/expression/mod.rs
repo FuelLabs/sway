@@ -117,6 +117,12 @@ pub struct ReassignmentExpression {
 
 #[derive(Debug, Clone)]
 pub enum ExpressionKind {
+    /// A malformed expression.
+    ///
+    /// Used for parser recovery when we cannot form a more specific node.
+    /// The list of `Span`s are for consumption by the LSP and are,
+    /// when joined, the same as that stored in `expr.span`.
+    Error(Box<[Span]>),
     Literal(Literal),
     FunctionApplication(Box<FunctionApplicationExpression>),
     LazyOperator(LazyOperatorExpression),

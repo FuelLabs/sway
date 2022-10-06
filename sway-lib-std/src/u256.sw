@@ -42,14 +42,17 @@ pub trait From {
 
 impl From for U256 {
     fn from(a: u64, b: u64, c: u64, d: u64) -> U256 {
-        U256 {
-            a, b, c, d, 
-        }
+        U256 { a, b, c, d }
     }
 
     /// Function for extracting 4 u64s from a U256.
     fn into(self) -> (u64, u64, u64, u64) {
-        (self.a, self.b, self.c, self.d)
+        (
+            self.a,
+            self.b,
+            self.c,
+            self.d,
+        )
     }
 }
 
@@ -109,7 +112,12 @@ impl U256 {
 
     /// Get 4 64 bit words from a single U256 value.
     fn decompose(self) -> (u64, u64, u64, u64) {
-        (self.a, self.b, self.c, self.d)
+        (
+            self.a,
+            self.b,
+            self.c,
+            self.d,
+        )
     }
 }
 
@@ -125,8 +133,8 @@ impl core::ops::Ord for U256 {
 
 impl core::ops::BitwiseAnd for U256 {
     fn binary_and(self, other: Self) -> Self {
-        let(value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();
-        let(other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
+        let (value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
         let word_1 = value_word_1 & other_word_1;
         let word_2 = value_word_2 & other_word_2;
         let word_3 = value_word_3 & other_word_3;
@@ -137,8 +145,8 @@ impl core::ops::BitwiseAnd for U256 {
 
 impl core::ops::BitwiseOr for U256 {
     fn binary_or(self, other: Self) -> Self {
-        let(value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();
-        let(other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
+        let (value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
         let word_1 = value_word_1 | other_word_1;
         let word_2 = value_word_2 | other_word_2;
         let word_3 = value_word_3 | other_word_3;
@@ -149,8 +157,8 @@ impl core::ops::BitwiseOr for U256 {
 
 impl core::ops::BitwiseXor for U256 {
     fn binary_xor(self, other: Self) -> Self {
-        let(value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();
-        let(other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
+        let (value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
         let word_1 = value_word_1 ^ other_word_1;
         let word_2 = value_word_2 ^ other_word_2;
         let word_3 = value_word_3 ^ other_word_3;
@@ -161,7 +169,7 @@ impl core::ops::BitwiseXor for U256 {
 
 impl core::ops::Shiftable for U256 {
     fn lsh(self, shift_amount: u64) -> Self {
-        let(word_1, word_2, word_3, word_4) = self.decompose();
+        let (word_1, word_2, word_3, word_4) = self.decompose();
         let mut w1 = 0;
         let mut w2 = 0;
         let mut w3 = 0;
@@ -169,23 +177,22 @@ impl core::ops::Shiftable for U256 {
 
         let w = shift_amount / 64; // num of whole words to shift in addition to b
         let b = shift_amount % 64; // num of bits to shift within each word
-
         if w == 0 {
-            let(shifted_2, carry_2) = lsh_with_carry(word_2, b);
+            let (shifted_2, carry_2) = lsh_with_carry(word_2, b);
             w1 = (word_1 << b) + carry_2;
-            let(shifted_3, carry_3) = lsh_with_carry(word_3, b);
+            let (shifted_3, carry_3) = lsh_with_carry(word_3, b);
             w2 = shifted_2 + carry_3;
-            let(shifted_4, carry_4) = lsh_with_carry(word_4, b);
+            let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
             w3 = shifted_3 + carry_4;
             w4 = shifted_4;
         } else if w == 1 {
-            let(shifted_3, carry_3) = lsh_with_carry(word_3, b);
+            let (shifted_3, carry_3) = lsh_with_carry(word_3, b);
             w1 = (word_2 << b) + carry_3;
-            let(shifted_4, carry_4) = lsh_with_carry(word_4, b);
+            let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
             w2 = shifted_3 + carry_4;
             w3 = shifted_4;
         } else if w == 2 {
-            let(shifted_4, carry_4) = lsh_with_carry(word_4, b);
+            let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
             w1 = (word_3 << b) + carry_4;
             w2 = shifted_4;
         } else if w == 3 {
@@ -196,7 +203,7 @@ impl core::ops::Shiftable for U256 {
     }
 
     fn rsh(self, shift_amount: u64) -> Self {
-        let(word_1, word_2, word_3, word_4) = self.decompose();
+        let (word_1, word_2, word_3, word_4) = self.decompose();
         let mut w1 = 0;
         let mut w2 = 0;
         let mut w3 = 0;
@@ -204,23 +211,22 @@ impl core::ops::Shiftable for U256 {
 
         let w = shift_amount / 64; // num of whole words to shift in addition to b
         let b = shift_amount % 64; // num of bits to shift within each word
-
         if w == 0 {
-            let(shifted_3, carry_3) = rsh_with_carry(word_3, b);
+            let (shifted_3, carry_3) = rsh_with_carry(word_3, b);
             w4 = (word_4 >> b) + carry_3;
-            let(shifted_2, carry_2) = rsh_with_carry(word_2, b);
+            let (shifted_2, carry_2) = rsh_with_carry(word_2, b);
             w3 = shifted_3 + carry_2;
-            let(shifted_1, carry_1) = rsh_with_carry(word_1, b);
+            let (shifted_1, carry_1) = rsh_with_carry(word_1, b);
             w2 = shifted_2 + carry_1;
             w1 = shifted_1;
         } else if w == 1 {
-            let(shifted_2, carry_2) = rsh_with_carry(word_2, b);
+            let (shifted_2, carry_2) = rsh_with_carry(word_2, b);
             w4 = (word_3 >> b) + carry_2;
-            let(shifted_1, carry_1) = rsh_with_carry(word_1, b);
+            let (shifted_1, carry_1) = rsh_with_carry(word_1, b);
             w3 = shifted_2 + carry_1;
             w2 = shifted_1;
         } else if w == 2 {
-            let(shifted_1, carry_1) = rsh_with_carry(word_1, b);
+            let (shifted_1, carry_1) = rsh_with_carry(word_1, b);
             w4 = (word_2 >> b) + carry_1;
             w3 = shifted_1;
         } else if w == 3 {
@@ -234,8 +240,8 @@ impl core::ops::Shiftable for U256 {
 impl core::ops::Add for U256 {
     /// Add a U256 to a U256. Panics on overflow.
     fn add(self, other: Self) -> Self {
-        let(word_1, word_2, word_3, word_4) = self.decompose();
-        let(other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
+        let (word_1, word_2, word_3, word_4) = self.decompose();
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
 
         let mut overflow = 0;
         let mut local_res = ~U128::from(0, word_4) + ~U128::from(0, other_word_4);
@@ -264,8 +270,8 @@ impl core::ops::Subtract for U256 {
         // If trying to subtract a larger number, panic.
         assert(!(self < other));
 
-        let(word_1, word_2, word_3, word_4) = self.decompose();
-        let(other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
+        let (word_1, word_2, word_3, word_4) = self.decompose();
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
 
         let mut result_a = word_1 - other_word_1;
 

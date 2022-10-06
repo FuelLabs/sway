@@ -101,6 +101,7 @@ impl Value {
                 Instruction::Branch(_)
                     | Instruction::ConditionalBranch { .. }
                     | Instruction::Ret(_, _)
+                    | Instruction::Revert(_)
             ),
             _ => false,
         }
@@ -108,13 +109,13 @@ impl Value {
 
     pub fn is_diverging(&self, context: &Context) -> bool {
         match &context.values[self.0].value {
-            ValueDatum::Instruction(ins) => match ins {
+            ValueDatum::Instruction(ins) => matches!(
+                ins,
                 Instruction::Branch(..)
-                | Instruction::ConditionalBranch { .. }
-                | Instruction::Ret(..) => true,
-                Instruction::AsmBlock(asm_block, ..) => asm_block.is_diverging(context),
-                _ => false,
-            },
+                    | Instruction::ConditionalBranch { .. }
+                    | Instruction::Ret(..)
+                    | Instruction::Revert(..)
+            ),
             ValueDatum::Argument(..) | ValueDatum::Constant(..) => false,
         }
     }
@@ -134,6 +135,16 @@ impl Value {
         context.values[self.0].value = other;
     }
 
+    /// Get a reference to this value as an instruction, iff it is one.
+    pub fn get_instruction<'a>(&self, context: &'a Context) -> Option<&'a Instruction> {
+        if let ValueDatum::Instruction(instruction) = &context.values.get(self.0).unwrap().value {
+            Some(instruction)
+        } else {
+            None
+        }
+    }
+
+    /// Get a mutable reference to this value as an instruction, iff it is one.
     pub fn get_instruction_mut<'a>(&self, context: &'a mut Context) -> Option<&'a mut Instruction> {
         if let ValueDatum::Instruction(instruction) =
             &mut context.values.get_mut(self.0).unwrap().value
@@ -144,18 +155,21 @@ impl Value {
         }
     }
 
-    pub fn get_instruction<'a>(&self, context: &'a Context) -> Option<&'a Instruction> {
-        if let ValueDatum::Instruction(instruction) = &context.values.get(self.0).unwrap().value {
-            Some(instruction)
+    /// Get a reference to this value as a constant, iff it is one.
+    pub fn get_constant<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
+        if let ValueDatum::Constant(cn) = &context.values.get(self.0).unwrap().value {
+            Some(cn)
         } else {
             None
         }
     }
 
-    /// Get reference to the Constant inside this value, if it's one.
-    pub fn get_constant<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
-        if let ValueDatum::Constant(cn) = &context.values.get(self.0).unwrap().value {
-            Some(cn)
+    /// Iff this value is an argument, return its type.
+    pub fn get_argument_type(&self, context: &Context) -> Option<Type> {
+        if let ValueDatum::Argument(BlockArgument { ty, .. }) =
+            &context.values.get(self.0).unwrap().value
+        {
+            Some(*ty)
         } else {
             None
         }

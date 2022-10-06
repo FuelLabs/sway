@@ -88,7 +88,7 @@ pub struct BuildProfile {
     pub print_ir: bool,
     pub print_finalized_asm: bool,
     pub print_intermediate_asm: bool,
-    pub silent: bool,
+    pub terse: bool,
     pub time_phases: bool,
     pub generate_logged_types: bool,
 }
@@ -403,7 +403,7 @@ impl BuildProfile {
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
-            silent: false,
+            terse: false,
             time_phases: false,
             generate_logged_types: false,
         }
@@ -415,7 +415,7 @@ impl BuildProfile {
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
-            silent: false,
+            terse: false,
             time_phases: false,
             generate_logged_types: false,
         }
@@ -437,20 +437,39 @@ impl Default for BuildProfile {
 
 /// The definition for the implicit `std` dependency.
 fn implicit_std_dep() -> Dependency {
-    // The `forc-pkg` crate version formatted with the `v` prefix. E.g. "v1.2.3".
+    // Here, we use the `forc-pkg` crate version formatted with the `v` prefix (e.g. "v1.2.3"),
+    // or the revision commit hash (e.g. "abcdefg").
     //
-    // This git tag is used during `Manifest` construction to pin the version of the implicit `std`
-    // dependency to the `forc-pkg` version.
+    // This git tag or revision is used during `Manifest` construction to pin the version of the
+    // implicit `std` dependency to the `forc-pkg` version.
     //
     // This is important to ensure that the version of `sway-core` that is baked into `forc-pkg` is
     // compatible with the version of the `std` lib.
-    const SWAY_GIT_TAG: &str = concat!("v", env!("CARGO_PKG_VERSION"));
+    const VERSION: &str = env!("CARGO_PKG_VERSION");
     const SWAY_GIT_REPO_URL: &str = "https://github.com/fuellabs/sway";
-    let det = DependencyDetails {
+
+    fn rev_from_build_metadata(build_metadata: &str) -> Option<String> {
+        // Nightlies are in the format v<version>+nightly.<date>.<hash>
+        build_metadata.split('.').last().map(|r| r.to_string())
+    }
+
+    let sway_git_tag: String = "v".to_string() + VERSION;
+
+    let mut det = DependencyDetails {
         git: Some(SWAY_GIT_REPO_URL.to_string()),
-        tag: Some(SWAY_GIT_TAG.to_string()),
+        tag: Some(sway_git_tag),
         ..Default::default()
     };
+
+    if let Some((_tag, build_metadata)) = VERSION.split_once('+') {
+        let rev = rev_from_build_metadata(build_metadata);
+
+        // If some revision is available and parsed from the 'nightly' build metadata,
+        // we always prefer the revision over the tag.
+        det.tag = None;
+        det.rev = rev;
+    };
+
     Dependency::Detailed(det)
 }
 

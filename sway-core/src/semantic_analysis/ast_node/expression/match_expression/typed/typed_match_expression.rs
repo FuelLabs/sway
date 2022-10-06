@@ -12,7 +12,7 @@ use crate::{
     CompileError, CompileResult, LazyOp, Literal, MatchBranch, TypeInfo,
 };
 
-use super::typed_match_branch::TypedMatchBranch;
+use super::{typed_match_branch::TypedMatchBranch, typed_scrutinee::TypedScrutinee};
 
 #[derive(Debug)]
 pub(crate) struct TypedMatchExpression {
@@ -28,34 +28,36 @@ impl TypedMatchExpression {
         typed_value: TypedExpression,
         branches: Vec<MatchBranch>,
         span: Span,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<(TypedMatchExpression, Vec<TypedScrutinee>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         // type check all of the branches
         let mut typed_branches = vec![];
+        let mut typed_scrutinees = vec![];
         let mut ctx =
             ctx.with_help_text("all branches of a match statement must return the same type");
         for branch in branches.into_iter() {
-            let typed_branch = check!(
+            let (typed_branch, typed_scrutinee) = check!(
                 TypedMatchBranch::type_check(ctx.by_ref(), &typed_value, branch),
                 continue,
                 warnings,
                 errors
             );
             typed_branches.push(typed_branch);
+            typed_scrutinees.push(typed_scrutinee);
         }
 
         if !errors.is_empty() {
             return err(warnings, errors);
         }
 
-        let exp = TypedMatchExpression {
+        let typed_exp = TypedMatchExpression {
             branches: typed_branches,
             return_type_id: ctx.type_annotation(),
             span,
         };
-        ok(exp, warnings, errors)
+        ok((typed_exp, typed_scrutinees), warnings, errors)
     }
 
     pub(crate) fn convert_to_typed_if_expression(

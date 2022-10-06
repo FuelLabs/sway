@@ -656,6 +656,12 @@ fn instruction_to_doc<'a>(
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 ))
             }
+            Instruction::Revert(v) => {
+                maybe_constant_to_doc(context, md_namer, namer, v).append(Doc::line(
+                    Doc::text(format!("revert {}", namer.name(context, v),))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                ))
+            }
             Instruction::StateLoadQuadWord { load_val, key } => Doc::line(
                 Doc::text(format!(
                     "state_load_quad_word ptr {}, key ptr {}",

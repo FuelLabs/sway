@@ -8,9 +8,7 @@ use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
     print_on_failure, print_on_success, print_on_success_library,
 };
-// Using `fuel_tx` directly instead of `fuel_gql_client` transitively is causing some weird issue.
-// See https://github.com/FuelLabs/sway/issues/2659
-use fuel_gql_client::fuel_tx::{Contract, StorageSlot};
+use fuel_tx::{Contract, StorageSlot};
 use petgraph::{
     self,
     visit::{Bfs, Dfs, EdgeRef, Walker},
@@ -26,8 +24,8 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    semantic_analysis::namespace, source_map::SourceMap, BytecodeCompilationResult,
-    CompileAstResult, CompileError, CompileResult, ParseProgram, TreeType,
+    semantic_analysis::namespace, source_map::SourceMap, BytecodeOrLib, CompileError,
+    CompileResult, ParseProgram, TreeType, TypedProgram,
 };
 use sway_types::{Ident, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
 use sway_utils::constants;
@@ -189,6 +187,31 @@ pub enum SourceGitPinnedParseError {
     Reference,
     CommitHash,
 }
+
+/// Represents the Head's commit hash and time (in seconds) from epoch
+type HeadWithTime = (String, i64);
+
+/// Everything needed to recognize a checkout in offline mode
+///
+/// Since we are omiting `.git` folder to save disk space, we need an indexing file
+/// to recognize a checkout while searching local checkouts in offline mode
+#[derive(Serialize, Deserialize)]
+pub struct GitSourceIndex {
+    /// Type of the git reference
+    pub git_reference: GitReference,
+    pub head_with_time: HeadWithTime,
+}
+
+impl GitSourceIndex {
+    pub fn new(time: i64, git_reference: GitReference, commit_hash: String) -> GitSourceIndex {
+        GitSourceIndex {
+            git_reference,
+            head_with_time: (commit_hash, time),
+        }
+    }
+}
+
+const DEFAULT_REMOTE_NAME: &str = "origin";
 
 /// Error returned upon failed parsing of `SourcePinned::from_str`.
 #[derive(Clone, Debug)]
@@ -608,7 +631,7 @@ impl GitReference {
     pub fn resolve(&self, repo: &git2::Repository) -> Result<git2::Oid> {
         // Find the commit associated with this tag.
         fn resolve_tag(repo: &git2::Repository, tag: &str) -> Result<git2::Oid> {
-            let refname = format!("refs/remotes/origin/tags/{}", tag);
+            let refname = format!("refs/remotes/{}/tags/{}", DEFAULT_REMOTE_NAME, tag);
             let id = repo.refname_to_id(&refname)?;
             let obj = repo.find_object(id, None)?;
             let obj = obj.peel(git2::ObjectType::Commit)?;
@@ -617,7 +640,7 @@ impl GitReference {
 
         // Resolve to the target for the given branch.
         fn resolve_branch(repo: &git2::Repository, branch: &str) -> Result<git2::Oid> {
-            let name = format!("origin/{}", branch);
+            let name = format!("{}/{}", DEFAULT_REMOTE_NAME, branch);
             let b = repo
                 .find_branch(&name, git2::BranchType::Remote)
                 .with_context(|| format!("failed to find branch `{}`", branch))?;
@@ -628,7 +651,8 @@ impl GitReference {
 
         // Use the HEAD commit when default branch is specified.
         fn resolve_default_branch(repo: &git2::Repository) -> Result<git2::Oid> {
-            let head_id = repo.refname_to_id("refs/remotes/origin/HEAD")?;
+            let head_id =
+                repo.refname_to_id(&format!("refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME))?;
             let head = repo.find_object(head_id, None)?;
             Ok(head.peel(git2::ObjectType::Commit)?.id())
         }
@@ -1170,10 +1194,16 @@ fn git_ref_to_refspecs(reference: &GitReference) -> (Vec<String>, bool) {
     let mut tags = false;
     match reference {
         GitReference::Branch(s) => {
-            refspecs.push(format!("+refs/heads/{0}:refs/remotes/origin/{0}", s));
+            refspecs.push(format!(
+                "+refs/heads/{1}:refs/remotes/{0}/{1}",
+                DEFAULT_REMOTE_NAME, s
+            ));
         }
         GitReference::Tag(s) => {
-            refspecs.push(format!("+refs/tags/{0}:refs/remotes/origin/tags/{0}", s));
+            refspecs.push(format!(
+                "+refs/tags/{1}:refs/remotes/{0}/tags/{1}",
+                DEFAULT_REMOTE_NAME, s
+            ));
         }
         GitReference::Rev(s) => {
             if s.starts_with("refs/") {
@@ -1181,13 +1211,16 @@ fn git_ref_to_refspecs(reference: &GitReference) -> (Vec<String>, bool) {
             } else {
                 // We can't fetch the commit directly, so we fetch all branches and tags in order
                 // to find it.
-                refspecs.push("+refs/heads/*:refs/remotes/origin/*".to_string());
-                refspecs.push("+HEAD:refs/remotes/origin/HEAD".to_string());
+                refspecs.push(format!(
+                    "+refs/heads/*:refs/remotes/{}/*",
+                    DEFAULT_REMOTE_NAME
+                ));
+                refspecs.push(format!("+HEAD:refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME));
                 tags = true;
             }
         }
         GitReference::DefaultBranch => {
-            refspecs.push("+HEAD:refs/remotes/origin/HEAD".to_string());
+            refspecs.push(format!("+HEAD:refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME));
         }
     }
     (refspecs, tags)
@@ -1219,7 +1252,12 @@ where
     }
     repo.remote_anonymous(source.repo.as_str())?
         .fetch(&refspecs, Some(&mut fetch_opts), None)
-        .with_context(|| format!("failed to fetch `{}`", &source.repo))?;
+        .with_context(|| {
+            format!(
+                "failed to fetch `{}`. Check your connection or run in `--offline` mode",
+                &source.repo
+            )
+        })?;
 
     // Call the user function.
     let output = f(repo)?;
@@ -1281,19 +1319,57 @@ fn pin_pkg(
             pinned
         }
         Source::Git(ref git_source) => {
-            // TODO: If the git source directly specifies a full commit hash, we should first check
+            // If the git source directly specifies a full commit hash, we should check
             // to see if we have a local copy. Otherwise we cannot know what commit we should pin
             // to without fetching the repo into a temporary directory.
-            if offline {
-                bail!(
-                    "Unable to fetch pkg {:?} from {:?} in offline mode",
-                    name,
-                    git_source.repo
-                );
-            }
-            let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
-            let repo_path =
-                git_commit_path(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
+            let (pinned_git, repo_path) = if offline {
+                let (local_path, commit_hash) = search_git_source_locally(&name, git_source)?
+                    .ok_or_else(|| {
+                        anyhow!(
+                            "Unable to fetch pkg {:?} from  {:?} in offline mode",
+                            name,
+                            git_source.repo
+                        )
+                    })?;
+                let pinned_git = SourceGitPinned {
+                    source: git_source.clone(),
+                    commit_hash,
+                };
+                (pinned_git, local_path)
+            } else if let GitReference::DefaultBranch | GitReference::Branch(_) =
+                git_source.reference
+            {
+                // If the reference is to a branch or to the default branch we need to fetch
+                // from remote even though we may have it locally. Because remote may contain a
+                // newer commit.
+                let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
+                let repo_path =
+                    git_commit_path(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
+                (pinned_git, repo_path)
+            } else {
+                // If we are in online mode and the reference is to a specific commit (tag or
+                // rev) we can first search it locally and re-use it.
+                match search_git_source_locally(&name, git_source) {
+                    Ok(Some((local_path, commit_hash))) => {
+                        let pinned_git = SourceGitPinned {
+                            source: git_source.clone(),
+                            commit_hash,
+                        };
+                        (pinned_git, local_path)
+                    }
+                    _ => {
+                        // If the checkout we are looking for does not exists locally or an
+                        // error happened during the search fetch it
+                        let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
+                        let repo_path = git_commit_path(
+                            &name,
+                            &pinned_git.source.repo,
+                            &pinned_git.commit_hash,
+                        );
+                        (pinned_git, repo_path)
+                    }
+                }
+            };
             let source = SourcePinned::Git(pinned_git.clone());
             let pinned = Pinned { name, source };
             let id = pinned.id();
@@ -1353,13 +1429,11 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 /// Returns the location of the checked out commit.
 pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
-
     // Checkout the pinned hash to the path.
     with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
-
         if path.exists() {
             let _ = std::fs::remove_dir_all(&path);
         }
@@ -1369,10 +1443,157 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         let mut checkout = git2::build::CheckoutBuilder::new();
         checkout.force().target_dir(&path);
         repo.checkout_head(Some(&mut checkout))?;
+
+        // Fetch HEAD time and create an index
+        let current_head = repo.revparse_single("HEAD")?;
+        let head_commit = current_head
+            .as_commit()
+            .ok_or_else(|| anyhow!("Cannot get commit from {}", current_head.id().to_string()))?;
+        let head_time = head_commit.time().seconds();
+        let source_index = GitSourceIndex::new(
+            head_time,
+            pinned.source.reference.clone(),
+            pinned.commit_hash.clone(),
+        );
+        // Write the index file
+        fs::write(
+            path.join(".forc_index"),
+            serde_json::to_string(&source_index)?,
+        )?;
         Ok(())
     })?;
-
     Ok(path)
+}
+
+/// Search local checkout dir for git sources, for non-branch git references tries to find the
+/// exact match. For branch references, tries to find the most recent repo present locally with the given repo
+fn search_git_source_locally(
+    name: &str,
+    git_source: &SourceGit,
+) -> Result<Option<(PathBuf, String)>> {
+    // In the checkouts dir iterate over dirs whose name starts with `name`
+    let checkouts_dir = git_checkouts_directory();
+    match &git_source.reference {
+        GitReference::Branch(branch) => {
+            // Collect repos from this branch with their HEAD time
+            let repos_from_branch = collect_local_repos_with_branch(checkouts_dir, name, branch)?;
+            // Get the newest repo by their HEAD commit times
+            let newest_branch_repo = repos_from_branch
+                .into_iter()
+                .max_by_key(|&(_, (_, time))| time)
+                .map(|(repo_path, (hash, _))| (repo_path, hash));
+            Ok(newest_branch_repo)
+        }
+        _ => find_exact_local_repo_with_reference(checkouts_dir, name, &git_source.reference),
+    }
+}
+
+/// Search and collect repos from checkouts_dir that are from given branch and for the given package
+fn collect_local_repos_with_branch(
+    checkouts_dir: PathBuf,
+    package_name: &str,
+    branch_name: &str,
+) -> Result<Vec<(PathBuf, HeadWithTime)>> {
+    let mut list_of_repos = Vec::new();
+    with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
+        // Check if the repo's HEAD commit to verify it is from desired branch
+        if let GitReference::Branch(branch) = repo_index.git_reference {
+            if branch == branch_name {
+                list_of_repos.push((repo_dir_path, repo_index.head_with_time));
+            }
+        }
+        Ok(())
+    })?;
+    Ok(list_of_repos)
+}
+
+/// Search an exact reference in locally available repos
+fn find_exact_local_repo_with_reference(
+    checkouts_dir: PathBuf,
+    package_name: &str,
+    git_reference: &GitReference,
+) -> Result<Option<(PathBuf, String)>> {
+    let mut found_local_repo = None;
+    if let GitReference::Tag(tag) = git_reference {
+        found_local_repo = find_repo_with_tag(tag, package_name, checkouts_dir)?;
+    } else if let GitReference::Rev(rev) = git_reference {
+        found_local_repo = find_repo_with_rev(rev, package_name, checkouts_dir)?;
+    }
+    Ok(found_local_repo)
+}
+
+/// Search and find the match repo between the given tag and locally available options
+fn find_repo_with_tag(
+    tag: &str,
+    package_name: &str,
+    checkouts_dir: PathBuf,
+) -> Result<Option<(PathBuf, String)>> {
+    let mut found_local_repo = None;
+    with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
+        // Get current head of the repo
+        let current_head = repo_index.head_with_time.0;
+        if let GitReference::Tag(curr_repo_tag) = repo_index.git_reference {
+            if curr_repo_tag == tag {
+                found_local_repo = Some((repo_dir_path, current_head))
+            }
+        }
+        Ok(())
+    })?;
+    Ok(found_local_repo)
+}
+
+/// Search and find the match repo between the given rev and locally available options
+fn find_repo_with_rev(
+    rev: &str,
+    package_name: &str,
+    checkouts_dir: PathBuf,
+) -> Result<Option<(PathBuf, String)>> {
+    let mut found_local_repo = None;
+    with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
+        // Get current head of the repo
+        let current_head = repo_index.head_with_time.0;
+        if let GitReference::Rev(curr_repo_rev) = repo_index.git_reference {
+            if curr_repo_rev == rev {
+                found_local_repo = Some((repo_dir_path, current_head));
+            }
+        }
+        Ok(())
+    })?;
+    Ok(found_local_repo)
+}
+
+/// Search local checkouts directory and apply the given function. This is used for iterating over
+/// possible options of a given package.
+fn with_search_checkouts<F>(checkouts_dir: PathBuf, package_name: &str, mut f: F) -> Result<()>
+where
+    F: FnMut(GitSourceIndex, PathBuf) -> Result<()>,
+{
+    for entry in fs::read_dir(checkouts_dir)? {
+        let entry = entry?;
+        let folder_name = entry
+            .file_name()
+            .into_string()
+            .map_err(|_| anyhow!("invalid folder name"))?;
+        if folder_name.starts_with(package_name) {
+            // Search if the dir we are looking starts with the name of our package
+            for repo_dir in fs::read_dir(entry.path())? {
+                // Iterate over all dirs inside the `name-***` directory and try to open repo from
+                // each dirs inside this one
+                let repo_dir = repo_dir
+                    .map_err(|e| anyhow!("Cannot find local repo at checkouts dir {}", e))?;
+                if repo_dir.file_type()?.is_dir() {
+                    // Get the path of the current repo
+                    let repo_dir_path = repo_dir.path();
+                    // Get the index file from the found path
+                    if let Ok(index_file) = fs::read_to_string(repo_dir_path.join(".forc_index")) {
+                        let index = serde_json::from_str(&index_file)?;
+                        f(index, repo_dir_path)?;
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Given the path to a package and a `Dependency` parsed from one of its forc dependencies,
@@ -1579,7 +1800,7 @@ pub fn compile_ast(
     manifest: &ManifestFile,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
-) -> Result<CompileAstResult> {
+) -> Result<CompileResult<TypedProgram>> {
     let source = manifest.entry_string()?;
     let sway_build_config =
         sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
@@ -1635,83 +1856,82 @@ pub fn compile(
         "produce `sway_core::BuildConfig`",
         sway_build_config(manifest.dir(), &entry_path, build_profile,)?
     );
-    let silent_mode = build_profile.silent;
+    let terse_mode = build_profile.terse;
+    let fail = |warnings, errors| {
+        print_on_failure(terse_mode, warnings, errors);
+        bail!("Failed to compile {}", pkg.name);
+    };
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
         compile_ast(manifest, build_profile, namespace,)?
     );
-    match &ast_res {
-        CompileAstResult::Failure { warnings, errors } => {
-            print_on_failure(silent_mode, warnings, errors);
-            bail!("Failed to compile {}", pkg.name);
+    let typed_program = match ast_res.value.as_ref() {
+        None => return fail(&ast_res.warnings, &ast_res.errors),
+        Some(typed_program) => typed_program,
+    };
+
+    if build_profile.print_ast {
+        tracing::info!("{:#?}", typed_program);
+    }
+
+    let mut types = vec![];
+    let json_abi_program = time_expr!(
+        "generate JSON ABI program",
+        typed_program.generate_json_abi_program(&mut types)
+    );
+
+    let storage_slots = typed_program.storage_slots.clone();
+    let tree_type = typed_program.kind.tree_type();
+    match tree_type {
+        // On errors, do not proceed to compiling bytecode, as semantic analysis did not pass.
+        _ if !ast_res.errors.is_empty() => {
+            return fail(&ast_res.warnings, &ast_res.errors);
         }
-        CompileAstResult::Success {
-            typed_program,
-            warnings,
-        } => {
-            if build_profile.print_ast {
-                tracing::info!("{:#?}", typed_program);
-            }
-
-            let mut types = vec![];
-            let json_abi_program = time_expr!(
-                "generate JSON ABI program",
-                typed_program.generate_json_abi_program(&mut types)
-            );
-
-            let storage_slots = typed_program.storage_slots.clone();
-            let tree_type = typed_program.kind.tree_type();
-            match tree_type {
-                // If we're compiling a library, we don't need to compile any further.
-                // Instead, we update the namespace with the library's top-level module.
-                TreeType::Library { .. } => {
-                    print_on_success_library(silent_mode, &pkg.name, warnings);
-                    let bytecode = vec![];
-                    let lib_namespace = typed_program.root.namespace.clone();
-                    let compiled = Compiled {
-                        json_abi_program,
-                        storage_slots,
-                        bytecode,
-                        tree_type,
-                    };
-                    Ok((compiled, Some(lib_namespace.into())))
-                }
-
-                // For all other program types, we'll compile the bytecode.
-                TreeType::Contract | TreeType::Predicate | TreeType::Script => {
-                    let asm_res = time_expr!(
-                        "compile ast to asm",
-                        sway_core::ast_to_asm(ast_res, &sway_build_config)
-                    );
-                    let bc_res = time_expr!(
-                        "compile asm to bytecode",
-                        sway_core::asm_to_bytecode(asm_res, source_map)
-                    );
-                    match bc_res {
-                        BytecodeCompilationResult::Success { bytes, warnings } => {
-                            print_on_success(silent_mode, &pkg.name, &warnings, &tree_type);
-                            let bytecode = bytes;
-                            let compiled = Compiled {
-                                json_abi_program,
-                                storage_slots,
-                                bytecode,
-                                tree_type,
-                            };
-                            Ok((compiled, None))
-                        }
-                        BytecodeCompilationResult::Library { .. } => {
-                            unreachable!("compilation of library program types is handled above")
-                        }
-                        BytecodeCompilationResult::Failure { errors, warnings } => {
-                            print_on_failure(silent_mode, &warnings, &errors);
-                            bail!("Failed to compile {}", pkg.name);
-                        }
-                    }
-                }
-            }
+        // If we're compiling a library, we don't need to compile any further.
+        // Instead, we update the namespace with the library's top-level module.
+        TreeType::Library { .. } => {
+            print_on_success_library(terse_mode, &pkg.name, &ast_res.warnings);
+            let bytecode = vec![];
+            let lib_namespace = typed_program.root.namespace.clone();
+            let compiled = Compiled {
+                json_abi_program,
+                storage_slots,
+                bytecode,
+                tree_type,
+            };
+            return Ok((compiled, Some(lib_namespace.into())));
         }
+        // For all other program types, we'll compile the bytecode.
+        TreeType::Contract | TreeType::Predicate | TreeType::Script => {}
+    }
+
+    let asm_res = time_expr!(
+        "compile ast to asm",
+        sway_core::ast_to_asm(ast_res, &sway_build_config)
+    );
+    let bc_res = time_expr!(
+        "compile asm to bytecode",
+        sway_core::asm_to_bytecode(asm_res, source_map)
+    );
+
+    match bc_res.value {
+        Some(BytecodeOrLib::Library) => {
+            unreachable!("compilation of library program types is handled above")
+        }
+        Some(BytecodeOrLib::Bytecode(bytes)) if bc_res.errors.is_empty() => {
+            print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
+            let bytecode = bytes;
+            let compiled = Compiled {
+                json_abi_program,
+                storage_slots,
+                bytecode,
+                tree_type,
+            };
+            Ok((compiled, None))
+        }
+        Some(BytecodeOrLib::Bytecode(_)) | None => fail(&bc_res.warnings, &bc_res.errors),
     }
 }
 #[derive(Default)]
@@ -1738,8 +1958,8 @@ pub struct BuildOptions {
     /// Offline mode, prevents Forc from using the network when managing dependencies.
     /// Meaning it will only try to use previously downloaded dependencies.
     pub offline_mode: bool,
-    /// Silent mode. Don't output any warnings or errors to the command line.
-    pub silent_mode: bool,
+    /// Terse mode. Limited warning and error output.
+    pub terse_mode: bool,
     /// The directory in which the sway compiler output artifacts are placed.
     ///
     /// By default, this is `<project-root>/out`.
@@ -1788,7 +2008,7 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
         print_intermediate_asm,
         print_ir,
         offline_mode,
-        silent_mode,
+        terse_mode,
         output_directory,
         minify_json_abi,
         minify_json_storage_slots,
@@ -1845,7 +2065,7 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
     profile.print_ir |= print_ir;
     profile.print_finalized_asm |= print_finalized_asm;
     profile.print_intermediate_asm |= print_intermediate_asm;
-    profile.silent |= silent_mode;
+    profile.terse |= terse_mode;
     profile.time_phases |= time_phases;
     profile.generate_logged_types |= generate_logged_types;
 
@@ -1955,7 +2175,7 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
         {
             Ok(o) => o,
             Err(errs) => {
-                print_on_failure(profile.silent, &[], &errs);
+                print_on_failure(profile.terse, &[], &errs);
                 bail!("Failed to compile {}", pkg.name);
             }
         };
@@ -2114,11 +2334,11 @@ fn update_json_type_declaration(
     }
 }
 
-/// Compile the entire forc package and return a CompileAstResult.
+/// Compile the entire forc package and return a typed program, if any.
 pub fn check(
     plan: &BuildPlan,
-    silent_mode: bool,
-) -> anyhow::Result<(CompileResult<ParseProgram>, CompileAstResult)> {
+    terse_mode: bool,
+) -> anyhow::Result<CompileResult<(ParseProgram, Option<TypedProgram>)>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
     let mut namespace_map = Default::default();
@@ -2129,18 +2349,27 @@ pub fn check(
         let constants = manifest.config_time_constants();
         let dep_namespace =
             dependency_namespace(&namespace_map, &plan.graph, node, constants).expect("TODO");
-        let parsed_result = parse(manifest, silent_mode)?;
+        let CompileResult {
+            value,
+            mut warnings,
+            mut errors,
+        } = parse(manifest, terse_mode)?;
 
-        let parse_program = match &parsed_result.value {
-            None => bail!("unable to parse"),
+        let parse_program = match value {
+            None => return Ok(CompileResult::new(None, warnings, errors)),
             Some(program) => program,
         };
 
-        let ast_result = sway_core::parsed_to_ast(parse_program, dep_namespace, false);
+        let ast_result = sway_core::parsed_to_ast(&parse_program, dep_namespace, false);
+        warnings.extend(ast_result.warnings);
+        errors.extend(ast_result.errors);
 
-        let typed_program = match &ast_result {
-            CompileAstResult::Failure { .. } => bail!("unable to type check"),
-            CompileAstResult::Success { typed_program, .. } => typed_program,
+        let typed_program = match ast_result.value {
+            None => {
+                let value = Some((parse_program, None));
+                return Ok(CompileResult::new(value, warnings, errors));
+            }
+            Some(typed_program) => typed_program,
         };
 
         if let TreeType::Library { .. } = typed_program.kind.tree_type() {
@@ -2149,9 +2378,10 @@ pub fn check(
 
         source_map.insert_dependency(manifest.dir());
 
-        // We only need to return the final CompileAstResult
+        // We only need to return the final `TypedProgram`.
         if i == plan.compilation_order.len() - 1 {
-            return Ok((parsed_result, ast_result));
+            let value = Some((parse_program, Some(typed_program)));
+            return Ok(CompileResult::new(value, warnings, errors));
         }
     }
     bail!("unable to check sway program: build plan contains no packages")
@@ -2160,10 +2390,10 @@ pub fn check(
 /// Returns a parsed AST from the supplied [ManifestFile]
 pub fn parse(
     manifest: &ManifestFile,
-    silent_mode: bool,
+    terse_mode: bool,
 ) -> anyhow::Result<CompileResult<ParseProgram>> {
     let profile = BuildProfile {
-        silent: silent_mode,
+        terse: terse_mode,
         ..BuildProfile::debug()
     };
     let source = manifest.entry_string()?;

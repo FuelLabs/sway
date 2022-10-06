@@ -419,6 +419,7 @@ fn inline_instruction(
             Instruction::Ret(val, _) => new_block
                 .ins(context)
                 .branch(*post_block, vec![map_value(val)]),
+            Instruction::Revert(val) => new_block.ins(context).revert(map_value(val)),
             Instruction::StateLoadQuadWord { load_val, key } => new_block
                 .ins(context)
                 .state_load_quad_word(map_value(load_val), map_value(key)),

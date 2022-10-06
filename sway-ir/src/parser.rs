@@ -153,6 +153,7 @@ mod ir_builder {
                 / op_nop()
                 / op_read_register()
                 / op_ret()
+                / op_revert()
                 / op_state_load_quad_word()
                 / op_state_load_word()
                 / op_state_store_quad_word()
@@ -285,6 +286,11 @@ mod ir_builder {
             rule op_ret() -> IrAstOperation
                 = "ret" _ ty:ast_ty() vn:id() {
                     IrAstOperation::Ret(ty, vn)
+                }
+
+            rule op_revert() -> IrAstOperation
+                = "revert" _ vn:id() {
+                    IrAstOperation::Revert(vn)
                 }
 
             rule op_state_load_quad_word() -> IrAstOperation
@@ -635,6 +641,7 @@ mod ir_builder {
         Nop,
         ReadRegister(String),
         Ret(IrAstTy, String),
+        Revert(String),
         StateLoadQuadWord(String, String),
         StateLoadWord(String),
         StateStoreQuadWord(String, String),
@@ -836,7 +843,7 @@ mod ir_builder {
                 context,
                 self.module,
                 fn_decl.name,
-                args.clone(),
+                args,
                 ret_type,
                 fn_decl.selector,
                 false,
@@ -1172,6 +1179,10 @@ mod ir_builder {
                             .ret(*val_map.get(&ret_val_name).unwrap(), ty)
                             .add_metadatum(context, opt_metadata)
                     }
+                    IrAstOperation::Revert(ret_val_name) => block
+                        .ins(context)
+                        .revert(*val_map.get(&ret_val_name).unwrap())
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::StateLoadQuadWord(dst, key) => block
                         .ins(context)
                         .state_load_quad_word(

@@ -27,7 +27,7 @@ pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
                 "{}/src/e2e_vm_tests/test_programs/{}",
                 manifest_dir, file_name
             )),
-            silent_mode: !verbose,
+            terse_mode: !verbose,
             locked,
             unsigned: true,
             ..Default::default()
@@ -58,7 +58,7 @@ pub(crate) fn runs_on_node(
             manifest_dir, file_name
         )),
         node_url: Some("http://127.0.0.1:4000".into()),
-        silent_mode: !verbose,
+        terse_mode: !verbose,
         contract: Some(contracts),
         locked,
         unsigned: true,
@@ -135,10 +135,12 @@ pub(crate) fn compile_to_bytes_verbose(
     use std::io::Read;
     tracing::info!(" Compiling {}", file_name);
 
-    let mut buf: Option<gag::BufferRedirect> = None;
+    let mut buf_stdout: Option<gag::BufferRedirect> = None;
+    let mut buf_stderr: Option<gag::BufferRedirect> = None;
     if capture_output {
-        // Capture stdout to a buffer, compile the test and save stdout to a string.
-        buf = Some(gag::BufferRedirect::stdout().unwrap());
+        // Capture both stdout and stderr to buffers, compile the test and save to a string.
+        buf_stdout = Some(gag::BufferRedirect::stdout().unwrap());
+        buf_stderr = Some(gag::BufferRedirect::stderr().unwrap());
     }
 
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
@@ -148,15 +150,18 @@ pub(crate) fn compile_to_bytes_verbose(
             manifest_dir, file_name
         )),
         locked,
-        silent_mode: !verbose,
+        terse_mode: !verbose,
         ..Default::default()
     });
 
     let mut output = String::new();
     if capture_output {
-        let mut buf = buf.unwrap();
-        buf.read_to_string(&mut output).unwrap();
-        drop(buf);
+        let mut buf_stdout = buf_stdout.unwrap();
+        let mut buf_stderr = buf_stderr.unwrap();
+        buf_stdout.read_to_string(&mut output).unwrap();
+        buf_stderr.read_to_string(&mut output).unwrap();
+        drop(buf_stdout);
+        drop(buf_stderr);
     }
 
     (compiled, output)

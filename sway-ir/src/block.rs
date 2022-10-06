@@ -277,9 +277,10 @@ impl Block {
     }
 
     /// Return whether this block is already terminated specifically by a Ret instruction.
-    pub fn is_terminated_by_ret(&self, context: &Context) -> bool {
-        self.get_terminator(context)
-            .map_or(false, |i| matches!(i, Instruction::Ret { .. }))
+    pub fn is_terminated_by_ret_or_revert(&self, context: &Context) -> bool {
+        self.get_terminator(context).map_or(false, |i| {
+            matches!(i, Instruction::Ret(..) | Instruction::Revert(..))
+        })
     }
 
     /// Replace a value within this block.

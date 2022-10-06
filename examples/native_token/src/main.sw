@@ -1,6 +1,6 @@
 contract;
 
-use std::{address::Address, assert::assert, context::*, contract_id::ContractId, token::*};
+use std::{context::*, token::*};
 
 abi NativeAssetToken {
     fn mint_coins(mint_amount: u64);
@@ -31,7 +31,7 @@ impl NativeAssetToken for Contract {
 
     /// Transfer coins to a transaction output to be spent later.
     fn transfer_coins_to_output(coins: u64, asset_id: ContractId, recipient: Address) {
-        transfer_to_output(coins, asset_id, recipient);
+        transfer_to_address(coins, asset_id, recipient);
     }
 
     /// Get the internal balance of a specific coin at a specific contract.

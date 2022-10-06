@@ -78,9 +78,9 @@ impl Module {
             let const_item = format!("const {name}: {type} = {value};");
             let const_item_len = const_item.len();
             let input_arc = std::sync::Arc::from(const_item);
-            let token_stream = lex(&input_arc, 0, const_item_len, None).unwrap();
             let handler = Handler::default();
-            let mut parser = Parser::new(&token_stream, &handler);
+            let token_stream = lex(&input_arc, 0, const_item_len, None).unwrap();
+            let mut parser = Parser::new(&handler, &token_stream);
             // perform the parse
             let const_item: ItemConst = match parser.parse() {
                 Ok(o) => o,
@@ -96,19 +96,20 @@ impl Module {
 
             // perform the conversions from parser code to parse tree types
             let name = const_item.name.clone();
+            let attributes = std::collections::HashMap::new();
             // convert to const decl
-            let const_decl =
-                match crate::convert_parse_tree::item_const_to_constant_declaration(ec, const_item)
-                {
-                    Ok(o) => o,
-                    Err(_emit_signal) => {
-                        // if an error was emitted, grab errors from the error context
-                        errors.append(&mut ec.errors.clone());
-                        warnings.append(&mut ec.warnings.clone());
+            let const_decl = match crate::convert_parse_tree::item_const_to_constant_declaration(
+                ec, const_item, attributes,
+            ) {
+                Ok(o) => o,
+                Err(_emit_signal) => {
+                    // if an error was emitted, grab errors from the error context
+                    errors.append(&mut ec.errors.clone());
+                    warnings.append(&mut ec.warnings.clone());
 
-                        return err(warnings, errors);
-                    }
-                };
+                    return err(warnings, errors);
+                }
+            };
 
             // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.
             if !matches!(const_decl.value.kind, ExpressionKind::Literal(_)) {

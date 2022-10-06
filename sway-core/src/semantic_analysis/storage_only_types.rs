@@ -2,9 +2,9 @@ use sway_types::{Span, Spanned};
 
 use crate::declaration_engine::declaration_engine::*;
 use crate::error::err;
-use crate::type_system::{is_type_info_storage_only, resolve_type, TypeId};
+use crate::type_system::{is_type_info_storage_only, to_typeinfo, TypeId};
 use crate::{error::ok, semantic_analysis, CompileError, CompileResult, CompileWarning};
-use crate::{TypedDeclaration, TypedFunctionDeclaration};
+use crate::{TypeInfo, TypedDeclaration, TypedFunctionDeclaration};
 
 use crate::semantic_analysis::{
     TypedAstNodeContent, TypedConstantDeclaration, TypedExpression, TypedExpressionVariant,
@@ -144,15 +144,20 @@ fn check_type(ty: TypeId, span: Span, ignore_self: bool) -> CompileResult<()> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut errors: Vec<CompileError> = vec![];
 
-    let ti = resolve_type(ty, &span).unwrap();
+    let type_info = check!(
+        CompileResult::from(to_typeinfo(ty, &span).map_err(CompileError::from)),
+        TypeInfo::ErrorRecovery,
+        warnings,
+        errors
+    );
     let nested_types = check!(
-        ti.clone().extract_nested_types(&span),
+        type_info.clone().extract_nested_types(&span),
         vec![],
         warnings,
         errors
     );
     for ty in nested_types {
-        if ignore_self && ty == ti {
+        if ignore_self && ty == type_info {
             continue;
         }
         if is_type_info_storage_only(&ty) {

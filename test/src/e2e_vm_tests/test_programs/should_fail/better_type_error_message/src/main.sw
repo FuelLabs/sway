@@ -2,12 +2,15 @@ script;
 
 use std::chain::auth::*;
 use std::identity::*;
-//use std::result::*;
+//use std::b512::*;
 
-fn bogus() -> Identity {
-    let sender: Result<Identity, AuthError> = msg_sender();
-    sender.unwrap()
+fn bogus() {
+    let value = B512 {
+        bytes: [
+            0x0101010101010101010101010101010101010101010101010101010101010101,
+            0x0101010101010101010101010101010101010101010101010101010101010101,
+        ],
+    };
 }
 
-fn main() {
-}
+fn main() {}

@@ -5,12 +5,9 @@
 //!   2. At the time of inspecting a definition, if it has no uses, it is removed.
 //! This pass does not do CFG transformations. That is handled by simplify_cfg.
 
-use crate::{
-    context::Context, error::IrError, function::Function, instruction::Instruction,
-    value::ValueDatum, Block, Value,
-};
+use crate::{Block, Context, Function, Instruction, IrError, Module, Value, ValueDatum};
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 fn can_eliminate_instruction(context: &Context, val: Value) -> bool {
     let inst = val.get_instruction(context).unwrap();
@@ -93,6 +90,7 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
             Instruction::Nop => vec![],
             Instruction::ReadRegister(_) => vec![],
             Instruction::Ret(v, _) => vec![*v],
+            Instruction::Revert(v) => vec![*v],
             Instruction::StateLoadQuadWord { load_val, key } => vec![*load_val, *key],
             Instruction::StateLoadWord(key) => vec![*key],
             Instruction::StateStoreQuadWord { stored_val, key } => vec![*stored_val, *key],
@@ -154,4 +152,55 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
     }
 
     Ok(modified)
+}
+
+/// Remove entire functions from a module based on whether they are called or not, using a list of
+/// root 'entry' functions to perform a search.
+///
+/// Functions which are `pub` will not be removed and only functions within the passed [`Module`]
+/// are considered for removal.
+pub fn func_dce(context: &mut Context, module: &Module, entry_fns: &[Function]) -> bool {
+    // Recursively find all the functions called by an entry function.
+    fn grow_called_function_set(
+        context: &Context,
+        caller: Function,
+        called_set: &mut HashSet<Function>,
+    ) {
+        if called_set.insert(caller) {
+            // We haven't seen caller before.  Iterate for all that it calls.
+            for func in caller
+                .instruction_iter(context)
+                .filter_map(|(_block, ins_value)| {
+                    ins_value
+                        .get_instruction(context)
+                        .and_then(|ins| match ins {
+                            Instruction::Call(f, _args) => Some(f),
+                            _otherwise => None,
+                        })
+                })
+            {
+                grow_called_function_set(context, *func, called_set);
+            }
+        }
+    }
+
+    // Gather our entry functions together into a set.
+    let mut called_fns: HashSet<Function> = HashSet::new();
+    for entry_fn in entry_fns {
+        grow_called_function_set(context, *entry_fn, &mut called_fns);
+    }
+
+    // Gather the functions in the module which aren't called.  It's better to collect them
+    // separately first so as to avoid any issues with invalidating the function iterator.
+    let dead_fns = module
+        .function_iter(context)
+        .filter(|f| !called_fns.contains(f))
+        .collect::<Vec<_>>();
+
+    let modified = !dead_fns.is_empty();
+    for dead_fn in dead_fns {
+        module.remove_function(context, &dead_fn);
+    }
+
+    modified
 }
