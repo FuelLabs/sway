@@ -167,7 +167,17 @@ jobs:
         run: forc build --path test-proj
       # TODO: Re-add this upon landing unit test support: #1832
       # - name: Run test project's test suite
-      #   run: cd test-proj && forc test
+      #   run: (cd test-proj && forc test)
+      - name: Install cargo-generate
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-generate
+      - name: Generate Rust Integration Tests
+        run: (cd test-proj && cargo generate --init --path ../templates/sway-test-rs --name test-proj)
+      - name: Build and Run Default Integration Test
+        run: (cd test-proj && cargo test)
+
 
   cargo-build-workspace:
     runs-on: ubuntu-latest
