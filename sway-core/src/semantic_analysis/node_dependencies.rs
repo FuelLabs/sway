@@ -6,8 +6,7 @@ use crate::{
     error::*,
     language::{parsed::*, CallPath},
     type_system::{look_up_type_id, AbiName, IntegerBits},
-    AstNode, AstNodeContent, CodeBlock, Declaration, Expression, IntrinsicFunctionExpression,
-    TypeInfo, WhileLoopExpression,
+    TypeInfo,
 };
 
 use sway_types::Spanned;

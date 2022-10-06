@@ -1,9 +1,9 @@
 use sway_types::Span;
 
 use crate::{
+    language::parsed::LazyOp,
     semantic_analysis::{IsConstant, TyExpressionVariant},
     type_system::TypeId,
-    LazyOp,
 };
 
 use super::TyExpression;

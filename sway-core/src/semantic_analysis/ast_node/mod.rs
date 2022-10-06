@@ -20,7 +20,7 @@ use crate::{
     style::*,
     type_system::*,
     types::DeterministicallyAborts,
-    AstNode, AstNodeContent, Ident,
+    Ident,
 };
 
 use sway_types::{span::Span, state::StateIndex, Spanned};

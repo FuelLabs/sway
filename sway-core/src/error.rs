@@ -3,10 +3,9 @@
 use crate::{
     constants::STORAGE_PURITY_ATTRIBUTE_NAME,
     convert_parse_tree::ConvertParseTreeError,
-    language::CallPath,
+    language::{parsed::*, CallPath},
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_system::*,
-    VariableDeclaration,
 };
 use sway_types::{ident::Ident, span::Span, Spanned};
 
