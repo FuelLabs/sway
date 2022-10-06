@@ -284,12 +284,9 @@ pub fn parsed_to_ast(
 
     // All unresolved types lead to compile errors.
     errors.extend(types_metadata.iter().filter_map(|m| match m {
-        TypeMetadata::UnresolvedType {
-            name,
-            span_override,
-        } => Some(CompileError::UnableToInferGeneric {
+        TypeMetadata::UnresolvedType(name) => Some(CompileError::UnableToInferGeneric {
             ty: name.as_str().to_string(),
-            span: span_override.clone().unwrap_or_else(|| name.span()),
+            span: name.span(),
         }),
         _ => None,
     }));

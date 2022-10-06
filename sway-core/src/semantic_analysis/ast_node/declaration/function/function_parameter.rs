@@ -34,7 +34,7 @@ impl PartialEq for TypedFunctionParameter {
 
 impl CopyTypes for TypedFunctionParameter {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.update_type(type_mapping, &self.type_span);
+        self.type_id.copy_types(type_mapping);
     }
 }
 
