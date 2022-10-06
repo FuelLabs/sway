@@ -1,5 +1,3 @@
-use super::{CopyTypes, TyExpression, TypeMapping};
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TyReturnStatement {
     pub expr: TyExpression,

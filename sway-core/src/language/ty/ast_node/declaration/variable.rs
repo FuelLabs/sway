@@ -1,6 +1,3 @@
-use crate::{language::Visibility, semantic_analysis::*, type_system::*, Ident};
-use sway_types::Span;
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum VariableMutability {
     // private + mutable
@@ -19,6 +16,7 @@ impl Default for VariableMutability {
         VariableMutability::Immutable
     }
 }
+
 impl VariableMutability {
     pub fn is_mutable(&self) -> bool {
         matches!(

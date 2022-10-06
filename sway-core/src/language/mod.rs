@@ -5,6 +5,7 @@ mod lazy_op;
 mod literal;
 pub mod parsed;
 mod purity;
+mod ty;
 mod visibility;
 
 pub use asm::*;
