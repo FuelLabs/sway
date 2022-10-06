@@ -43,7 +43,7 @@ pub(super) fn compile_contract(
 
     compile_constants(context, &mut md_mgr, module, namespace)?;
     compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
-    dbg!(namespace.storage_index_map()); // Carry this all the way in?
+    dbg!(namespace.storage_var_path()); // Carry this all the way in?
     for decl in abi_entries {
         compile_abi_method(context, &mut md_mgr, module, decl)?;
     }

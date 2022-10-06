@@ -20,7 +20,7 @@ use super::{
 use std::collections::BTreeMap;
 use sway_ast::ItemConst;
 use sway_parse::{handler::Handler, lex, Parser};
-use sway_types::{span::Span, state::StateIndex, ConfigTimeConstant, Spanned};
+use sway_types::{span::Span, ConfigTimeConstant, Spanned};
 
 /// A single `Module` within a Sway project.
 ///
@@ -433,12 +433,12 @@ impl Module {
         );
 
         // Create a link (via StorageAliases) between `item` from `dst_ns` and `alias` from `src_ns`
-        let alias_idx = match dbg!(dst_ns_storage_fields)
+        let alias_name = match dst_ns_storage_fields
             .iter()
             .enumerate()
             .find(|(_, TypedStorageField { name, .. })| name == alias)
         {
-            Some((ix, _)) => StateIndex::new(ix),
+            Some((_, tsf)) => &tsf.name,
             None => {
                 errors.push(CompileError::StorageFieldDoesNotExist {
                     name: alias.clone(),
@@ -447,19 +447,22 @@ impl Module {
             }
         };
 
-        let item_idx = match src_ns_storage_fields
+        let item_name = match src_ns_storage_fields
             .iter()
             .enumerate()
             .find(|(_, TypedStorageField { name, .. })| name == item)
         {
-            Some((ix, _)) => StateIndex::new(ix),
+            Some((_, tsf)) => &tsf.name,
             None => {
                 errors.push(CompileError::StorageFieldDoesNotExist { name: item.clone() });
                 return err(warnings, errors);
             }
         };
 
-        dst_ns.storage_index_map.insert(item_idx, alias_idx);
+        dst_ns.storage_var_path.insert(
+            (src.to_vec(), item_name.clone()),
+            (dst.to_vec(), alias_name.clone()),
+        );
 
         ok((), warnings, errors)
     }
