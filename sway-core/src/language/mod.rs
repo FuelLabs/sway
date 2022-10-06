@@ -1,3 +1,4 @@
+mod asm;
 pub(crate) mod asm_lang;
 mod call_path;
 mod lazy_op;
@@ -6,6 +7,7 @@ pub mod parsed;
 mod purity;
 mod visibility;
 
+pub use asm::*;
 pub use call_path::*;
 pub use lazy_op::*;
 pub use literal::*;
