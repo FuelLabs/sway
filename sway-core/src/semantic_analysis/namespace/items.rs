@@ -45,7 +45,7 @@ pub struct Items {
     /// If there is a storage declaration (which are only valid in contracts), store it here.
     pub(crate) declared_storage: Option<DeclarationId>,
     /// Links between storage variables in libraries in storage variables in contracts.
-    pub(crate) storage_var_path: StorageVarPath,
+    pub(crate) storage_var_path_map: StorageVarPath,
 }
 
 impl Items {
@@ -54,8 +54,8 @@ impl Items {
         &self.symbols
     }
 
-    pub fn storage_var_path(&self) -> &StorageVarPath {
-        &self.storage_var_path
+    pub fn storage_var_path_map(&self) -> &StorageVarPath {
+        &self.storage_var_path_map
     }
 
     pub fn apply_storage_load(

@@ -37,10 +37,16 @@ pub(super) struct FnCompiler {
     pub(super) current_fn_param: Option<TypedFunctionParameter>,
     lexical_map: LexicalMap,
     recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
+    storage_var_path_map: HashMap<(Vec<Ident>, Ident), (Vec<Ident>, Ident)>,
 }
 
 impl FnCompiler {
-    pub(super) fn new(context: &mut Context, module: Module, function: Function) -> Self {
+    pub(super) fn new(
+        context: &mut Context,
+        module: Module,
+        function: Function,
+        storage_var_path_map: &HashMap<(Vec<Ident>, Ident), (Vec<Ident>, Ident)>,
+    ) -> Self {
         let lexical_map = LexicalMap::from_iter(
             function
                 .args_iter(context)
@@ -55,6 +61,7 @@ impl FnCompiler {
             lexical_map,
             recreated_fns: HashMap::new(),
             current_fn_param: None,
+            storage_var_path_map: storage_var_path_map.clone(),
         }
     }
 
@@ -362,15 +369,17 @@ impl FnCompiler {
             TypedExpressionVariant::Reassignment(reassignment) => {
                 self.compile_reassignment(context, md_mgr, *reassignment, span_md_idx)
             }
-            TypedExpressionVariant::StorageReassignment(storage_reassignment) => self
-                .compile_storage_reassignment(
+            TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
+                dbg!(&storage_reassignment);
+                self.compile_storage_reassignment(
                     context,
                     md_mgr,
                     &storage_reassignment.fields,
                     &storage_reassignment.ix,
                     &storage_reassignment.rhs,
                     span_md_idx,
-                ),
+                )
+            },
             TypedExpressionVariant::Return(stmt) => {
                 self.compile_return_statement(context, md_mgr, stmt.expr)
             }

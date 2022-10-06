@@ -14,7 +14,7 @@ use super::{
 };
 
 use sway_ir::{metadata::combine as md_combine, *};
-use sway_types::{span::Span, Spanned};
+use sway_types::{span::Span, Ident, Spanned};
 
 pub(super) fn compile_script(
     context: &mut Context,
@@ -43,9 +43,9 @@ pub(super) fn compile_contract(
 
     compile_constants(context, &mut md_mgr, module, namespace)?;
     compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
-    dbg!(namespace.storage_var_path()); // Carry this all the way in?
+    //    dbg!(namespace.storage_var_path_map()); // Carry this all the way in?
     for decl in abi_entries {
-        compile_abi_method(context, &mut md_mgr, module, decl)?;
+        compile_abi_method(context, &mut md_mgr, module, namespace, decl)?;
     }
 
     Ok(module)
@@ -157,7 +157,16 @@ pub(super) fn compile_function(
             .map(|param| convert_fn_param(context, param))
             .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
-        compile_fn_with_args(context, md_mgr, module, ast_fn_decl, args, None).map(&Some)
+        compile_fn_with_args(
+            context,
+            md_mgr,
+            module,
+            ast_fn_decl,
+            args,
+            None,
+            &std::collections::HashMap::new(),
+        )
+        .map(&Some)
     }
 }
 
@@ -185,6 +194,7 @@ fn compile_fn_with_args(
     ast_fn_decl: TypedFunctionDeclaration,
     args: Vec<(String, Type, Span)>,
     selector: Option<[u8; 4]>,
+    storage_var_path_map: &std::collections::HashMap<(Vec<Ident>, Ident), (Vec<Ident>, Ident)>,
 ) -> Result<Function, CompileError> {
     let TypedFunctionDeclaration {
         name,
@@ -218,7 +228,7 @@ fn compile_fn_with_args(
 
     // We clone the struct symbols here, as they contain the globals; any new local declarations
     // may remain within the function scope.
-    let mut compiler = FnCompiler::new(context, module, func);
+    let mut compiler = FnCompiler::new(context, module, func, storage_var_path_map);
 
     let mut ret_val = compiler.compile_code_block(context, md_mgr, body)?;
 
@@ -289,6 +299,7 @@ fn compile_abi_method(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
+    module_ns: &namespace::Module,
     ast_fn_decl: TypedFunctionDeclaration,
 ) -> Result<Function, CompileError> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
@@ -321,5 +332,13 @@ fn compile_abi_method(
         })
         .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
-    compile_fn_with_args(context, md_mgr, module, ast_fn_decl, args, Some(selector))
+    compile_fn_with_args(
+        context,
+        md_mgr,
+        module,
+        ast_fn_decl,
+        args,
+        Some(selector),
+        &module_ns.storage_var_path_map,
+    )
 }

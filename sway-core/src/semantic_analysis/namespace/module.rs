@@ -459,7 +459,7 @@ impl Module {
             }
         };
 
-        dst_ns.storage_var_path.insert(
+        dst_ns.storage_var_path_map.insert(
             (src.to_vec(), item_name.clone()),
             (dst.to_vec(), alias_name.clone()),
         );
