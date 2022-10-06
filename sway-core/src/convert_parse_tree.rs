@@ -7,7 +7,7 @@ use {
             STORAGE_PURITY_WRITE_NAME, VALID_ATTRIBUTE_NAMES,
         },
         error::{err, ok, CompileError, CompileResult, CompileWarning, Warning},
-        language::{parsed::*, CallPath, Literal, Visibility},
+        language::{parsed::*, *},
         type_system::{
             insert_type, AbiName, IntegerBits, TraitConstraint, TypeArgument, TypeBinding,
             TypeParameter,

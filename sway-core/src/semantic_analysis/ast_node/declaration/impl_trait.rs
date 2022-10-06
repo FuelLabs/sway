@@ -5,7 +5,7 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     declaration_engine::declaration_engine::*,
     error::{err, ok, InterfaceName},
-    language::{parsed::*, CallPath},
+    language::{parsed::*, *},
     semantic_analysis::{
         Mode, TyAstNodeContent, TyConstantDeclaration, TyExpression, TyExpressionVariant,
         TyIntrinsicFunctionKind, TypeCheckContext,

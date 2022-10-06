@@ -5,7 +5,10 @@ use super::{
 use crate::{
     declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait, de_get_storage},
     error::*,
-    language::parsed::{ParseProgram, Purity, TreeType},
+    language::{
+        parsed::{ParseProgram, TreeType},
+        *,
+    },
     metadata::MetadataManager,
     semantic_analysis::{
         namespace::{self, Namespace},

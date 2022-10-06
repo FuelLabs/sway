@@ -819,7 +819,7 @@ fn test_parenthesized() {
 
 #[test]
 fn test_unary_ordering() {
-    use crate::language::parsed;
+    use crate::language::{self, parsed};
 
     let prog = parse(
         r#"
@@ -857,7 +857,7 @@ fn test_unary_ordering() {
             ..
         } = &body.contents[2]
         {
-            assert_eq!(op, &parsed::LazyOp::And)
+            assert_eq!(op, &language::LazyOp::And)
         } else {
             panic!("Was not lazy operator.")
         }

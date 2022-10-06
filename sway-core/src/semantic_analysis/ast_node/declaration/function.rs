@@ -4,7 +4,7 @@ pub use function_parameter::*;
 use crate::{
     declaration_engine::declaration_engine::de_insert_function,
     error::*,
-    language::{parsed::*, Visibility},
+    language::{parsed::*, *},
     semantic_analysis::*,
     style::*,
     type_system::*,

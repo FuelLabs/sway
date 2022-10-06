@@ -1,5 +1,5 @@
 use crate::{
-    language::parsed::declaration::Purity,
+    language::Purity,
     namespace::Path,
     semantic_analysis::{ast_node::Mode, Namespace},
     type_system::{

@@ -1,10 +1,6 @@
 use super::{FunctionDeclaration, FunctionParameter};
 
-use crate::{
-    language::{parsed::function::Purity, CallPath, Visibility},
-    type_system::TypeInfo,
-    AttributesMap,
-};
+use crate::{language::*, type_system::TypeInfo, AttributesMap};
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 #[derive(Debug, Clone)]

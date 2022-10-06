@@ -1,6 +1,6 @@
 use crate::{
     error::*,
-    language::parsed::{promote_purity, Purity},
+    language::{promote_purity, Purity},
     metadata::{MetadataManager, StorageOperation},
 };
 

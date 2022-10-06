@@ -1,7 +1,7 @@
 use sway_types::Span;
 
 use crate::{
-    language::parsed::LazyOp,
+    language::LazyOp,
     semantic_analysis::{IsConstant, TyExpressionVariant},
     type_system::TypeId,
 };

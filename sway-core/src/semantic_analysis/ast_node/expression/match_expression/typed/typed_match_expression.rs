@@ -2,7 +2,7 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
-    language::{parsed::*, Literal},
+    language::{parsed::*, *},
     semantic_analysis::{
         ast_node::expression::typed_expression::{
             instantiate_if_expression, instantiate_lazy_operator,
