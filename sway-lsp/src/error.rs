@@ -7,11 +7,11 @@ pub enum LanguageServerError {
     DocumentError(#[from] DocumentError),
 
     #[error("Failed to create build plan. {0}")]
-    BuildPlanError(anyhow::Error),
+    BuildPlanFailed(anyhow::Error),
     #[error("Failed to compile. {0}")]
-    CompileError(anyhow::Error),
+    FailedToCompile(anyhow::Error),
     #[error("Failed to parse document. {:?}", diagnostics)]
-    ParseError { diagnostics: Vec<Diagnostic> },
+    FailedToParse { diagnostics: Vec<Diagnostic> },
 }
 
 #[derive(Debug, Error)]

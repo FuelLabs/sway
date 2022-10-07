@@ -4,7 +4,7 @@ use sway_core::{error::LineCol, CompileError, CompileWarning};
 
 pub fn get_diagnostics(
     warnings: Vec<CompileWarning>,
-    errors: Vec<CompileError>,
+    errors: Vec<FailedToCompile>,
 ) -> Vec<Diagnostic> {
     let errors = errors.iter().map(|error| Diagnostic {
         range: get_range(error.line_col()),

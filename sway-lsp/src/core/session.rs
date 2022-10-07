@@ -154,14 +154,14 @@ impl Session {
         })?;
 
         let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)
-            .map_err(|err| LanguageServerError::BuildPlanError(err))?;
+            .map_err(LanguageServerError::BuildPlanFailed)?;
 
         // We can convert these destructured elements to a Vec<Diagnostic> later on.
         let CompileResult {
             value,
             warnings,
             errors,
-        } = pkg::check(&plan, true).map_err(|err| LanguageServerError::CompileError(err))?;
+        } = pkg::check(&plan, true).map_err(LanguageServerError::FailedToCompile)?;
 
         // FIXME(Centril): Refactor parse_ast_to_tokens + parse_ast_to_typed_tokens
         // due to the new API.g
@@ -175,7 +175,7 @@ impl Session {
         // Next, populate our token_map with typed ast nodes.
         let ast_res = CompileResult::new(typed, warnings, errors);
 
-        Ok(self.parse_ast_to_typed_tokens(ast_res)?)
+        self.parse_ast_to_typed_tokens(ast_res)
     }
 
     fn parse_ast_to_tokens(
@@ -187,7 +187,7 @@ impl Session {
                 parsed_result.warnings.clone(),
                 parsed_result.errors.clone(),
             );
-            LanguageServerError::ParseError { diagnostics }
+            LanguageServerError::FailedToParse { diagnostics }
         })?;
 
         for node in &parse_program.root.tree.root_nodes {
@@ -214,7 +214,7 @@ impl Session {
         &self,
         ast_res: CompileResult<TyProgram>,
     ) -> Result<Vec<Diagnostic>, LanguageServerError> {
-        let typed_program = ast_res.value.ok_or(LanguageServerError::ParseError {
+        let typed_program = ast_res.value.ok_or(LanguageServerError::FailedToParse {
             diagnostics: capabilities::diagnostic::get_diagnostics(
                 ast_res.warnings.clone(),
                 ast_res.errors.clone(),

@@ -58,7 +58,7 @@ impl Backend {
             Ok(diagnostics) => diagnostics,
             Err(err) => {
                 self.log_error_message(err.to_string().as_str()).await;
-                if let LanguageServerError::ParseError { diagnostics } = err {
+                if let LanguageServerError::FailedToParse { diagnostics } = err {
                     diagnostics
                 } else {
                     vec![]
