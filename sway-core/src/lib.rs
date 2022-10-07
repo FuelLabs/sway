@@ -494,9 +494,11 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 }
 
 // Inline function calls based on two conditions:
-// 1. The program we're compiling is a "predicate". Predicate cannot jump backwards which means
-//    that supporting function calls (i.e. without inlining) is not possible
-// 2. Based on some heuristic that is described below in the `inline_heuristc` lambda.
+// 1. The program we're compiling is a "predicate". Predicates cannot jump backwards which means
+//    that supporting function calls (i.e. without inlining) is not possible. This is a protocl
+//    restriction and not a heuristic.
+// 2. If the program is not a "predicate" then, we rely on some heuristic which is described below
+//    in the `inline_heuristc` closure.
 //
 fn inline_function_calls(
     ir: &mut Context,
