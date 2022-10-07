@@ -10,7 +10,7 @@ use crate::{
     },
 };
 use sway_core::{
-    declaration_engine, semantic_analysis::ast_node::TypedDeclaration, Declaration, Visibility,
+    declaration_engine, semantic_analysis::ast_node::TyDeclaration, Declaration, Visibility,
 };
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Hover, HoverContents, HoverParams, MarkupContent, MarkupKind};
@@ -57,26 +57,26 @@ fn hover_format(token: &Token, ident: &Ident) -> Hover {
     let value = match &token.typed {
         Some(typed_token) => match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {
-                TypedDeclaration::VariableDeclaration(var_decl) => {
+                TyDeclaration::VariableDeclaration(var_decl) => {
                     let type_name = format!("{}", var_decl.type_ascription);
                     format_variable_hover(var_decl.mutability.is_mutable(), type_name)
                 }
-                TypedDeclaration::FunctionDeclaration(func) => extract_fn_signature(&func.span()),
-                TypedDeclaration::StructDeclaration(decl_id) => {
+                TyDeclaration::FunctionDeclaration(func) => extract_fn_signature(&func.span()),
+                TyDeclaration::StructDeclaration(decl_id) => {
                     declaration_engine::de_get_struct(decl_id.clone(), &decl.span())
                         .map(|struct_decl| {
                             format_visibility_hover(struct_decl.visibility, decl.friendly_name())
                         })
                         .unwrap_or(token_name)
                 }
-                TypedDeclaration::TraitDeclaration(ref decl_id) => {
+                TyDeclaration::TraitDeclaration(ref decl_id) => {
                     declaration_engine::de_get_trait(decl_id.clone(), &decl.span())
                         .map(|trait_decl| {
                             format_visibility_hover(trait_decl.visibility, decl.friendly_name())
                         })
                         .unwrap_or(token_name)
                 }
-                TypedDeclaration::EnumDeclaration(decl_id) => {
+                TyDeclaration::EnumDeclaration(decl_id) => {
                     declaration_engine::de_get_enum(decl_id.clone(), &decl.span())
                         .map(|enum_decl| {
                             format_visibility_hover(enum_decl.visibility, decl.friendly_name())

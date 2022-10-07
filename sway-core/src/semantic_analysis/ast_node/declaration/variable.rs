@@ -51,9 +51,9 @@ pub fn convert_to_variable_immutability(
 }
 
 #[derive(Clone, Debug, Eq)]
-pub struct TypedVariableDeclaration {
+pub struct TyVariableDeclaration {
     pub name: Ident,
-    pub body: TypedExpression,
+    pub body: TyExpression,
     pub mutability: VariableMutability,
     pub type_ascription: TypeId,
     pub type_ascription_span: Option<Span>,
@@ -62,7 +62,7 @@ pub struct TypedVariableDeclaration {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedVariableDeclaration {
+impl PartialEq for TyVariableDeclaration {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
             && self.body == other.body
@@ -71,7 +71,7 @@ impl PartialEq for TypedVariableDeclaration {
     }
 }
 
-impl CopyTypes for TypedVariableDeclaration {
+impl CopyTypes for TyVariableDeclaration {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.type_ascription.copy_types(type_mapping);
         self.body.copy_types(type_mapping)
