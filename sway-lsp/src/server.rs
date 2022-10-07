@@ -651,25 +651,15 @@ mod tests {
     }
 
     async fn init_and_open(service: &mut LspService<Backend>, manifest_dir: PathBuf) -> Url {
-        // send "initialize" request
         let _ = initialize_request(service).await;
-
-        // send "initialized" notification
         initialized_notification(service).await;
-
         let (uri, sway_program) = load_sway_example(manifest_dir);
-
-        // send "textDocument/didOpen" notification for `uri`
         did_open_notification(service, &uri, &sway_program).await;
-
         uri
     }
 
     async fn shutdown_and_exit(service: &mut LspService<Backend>) {
-        // send "shutdown" request
         let _ = shutdown_request(service).await;
-
-        // send "exit" request
         exit_notification(service).await;
     }
 
@@ -677,8 +667,6 @@ mod tests {
     #[serial]
     async fn initialize() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
         let _ = initialize_request(&mut service).await;
     }
 
@@ -686,11 +674,7 @@ mod tests {
     #[serial]
     async fn initialized() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
         let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
         initialized_notification(&mut service).await;
     }
 
@@ -698,16 +682,9 @@ mod tests {
     #[serial]
     async fn initializes_only_once() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
         let initialize = initialize_request(&mut service).await;
-
-        // send "initialized" notification
         initialized_notification(&mut service).await;
-
-        // send "initialize" request (again); should error
         let response = call_request(&mut service, initialize).await;
-
         let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
         assert_eq!(response, Ok(Some(err)));
     }
@@ -716,22 +693,12 @@ mod tests {
     #[serial]
     async fn shutdown() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
         let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
         initialized_notification(&mut service).await;
-
-        // send "shutdown" request
         let shutdown = shutdown_request(&mut service).await;
-
-        // send "shutdown" request (again); should error
         let response = call_request(&mut service, shutdown).await;
         let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
         assert_eq!(response, Ok(Some(err)));
-
-        // send "exit" request
         exit_notification(&mut service).await;
     }
 
@@ -739,13 +706,8 @@ mod tests {
     #[serial]
     async fn refuses_requests_after_shutdown() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
         let _ = initialize_request(&mut service).await;
-
-        // send "shutdown" request
         let shutdown = shutdown_request(&mut service).await;
-
         let response = call_request(&mut service, shutdown).await;
         let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
         assert_eq!(response, Ok(Some(err)));
@@ -764,10 +726,7 @@ mod tests {
     async fn did_close() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
         let _ = init_and_open(&mut service, e2e_test_dir()).await;
-
-        // send "textDocument/didClose" notification for `uri`
         did_close_notification(&mut service).await;
-
         shutdown_and_exit(&mut service).await;
     }
 
@@ -777,7 +736,6 @@ mod tests {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
         let uri = init_and_open(&mut service, e2e_test_dir()).await;
 
-        // send "textDocument/didChange" notification for `uri`
         let params = json!({
             "textDocument": {
                 "uri": uri,
@@ -802,7 +760,6 @@ mod tests {
         });
 
         let _ = did_change_request(&mut service, params).await;
-
         shutdown_and_exit(&mut service).await;
     }
 
@@ -814,10 +771,7 @@ mod tests {
             .finish();
 
         let uri = init_and_open(&mut service, e2e_test_dir()).await;
-
-        // send "sway/show_typed_ast" request
         let _ = show_ast_request(&mut service, &uri).await;
-
         shutdown_and_exit(&mut service).await;
     }
 
@@ -832,7 +786,6 @@ mod tests {
             let uri = init_and_open(&mut service, $example_dir).await;
             // Call the specific LSP capability function that was passed in.
             let _ = $capability(&mut service, &uri).await;
-
             shutdown_and_exit(&mut service).await;
         }};
     }
@@ -840,42 +793,36 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn semantic_tokens() {
-        // send "textDocument/semanticTokens/full" request
         test_lsp_capability!(doc_comments_dir(), semantic_tokens_request);
     }
 
     #[tokio::test]
     #[serial]
     async fn document_symbol() {
-        // send "textDocument/documentSymbol" request
         test_lsp_capability!(doc_comments_dir(), document_symbol_request);
     }
 
     #[tokio::test]
     #[serial]
     async fn go_to_definition() {
-        // send "textDocument/definition" request
         test_lsp_capability!(doc_comments_dir(), go_to_definition_request);
     }
 
     #[tokio::test]
     #[serial]
     async fn format() {
-        // send "textDocument/formatting" request
         test_lsp_capability!(doc_comments_dir(), format_request);
     }
 
     #[tokio::test]
     #[serial]
     async fn hover() {
-        // send "textDocument/hover" request
         test_lsp_capability!(doc_comments_dir(), hover_request);
     }
 
     #[tokio::test]
     #[serial]
     async fn highlight() {
-        // send "textDocument/documentHighlight" request
         test_lsp_capability!(doc_comments_dir(), highlight_request);
     }
 }
