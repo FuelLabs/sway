@@ -1,6 +1,7 @@
 #[macro_use]
 pub mod error;
 
+pub mod analysis;
 mod asm_generation;
 mod build_config;
 mod concurrent_slab;
@@ -11,7 +12,6 @@ pub mod declaration_engine;
 pub mod ir_generation;
 pub mod language;
 mod metadata;
-pub mod semantic_analysis;
 pub mod source_map;
 mod style;
 pub mod type_system;
