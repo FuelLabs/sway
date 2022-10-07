@@ -5,7 +5,7 @@ use crate::{
         compiler_constants, AbstractInstructionSet, AllocatedAbstractInstructionSet, DataSection,
         Entry, RegisterSequencer,
     },
-    language::asm_lang::{
+    asm_lang::{
         allocated_ops::{AllocatedOpcode, AllocatedRegister},
         AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, VirtualImmediate12,
         VirtualImmediate18,

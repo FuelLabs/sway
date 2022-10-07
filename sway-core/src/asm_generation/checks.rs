@@ -2,9 +2,9 @@
 //!
 //! This is _not_ the place for optimization passes.
 use crate::asm_generation::FinalizedAsm;
+use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
+use crate::asm_lang::*;
 use crate::error::*;
-use crate::language::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
-use crate::language::asm_lang::*;
 
 /// Checks for disallowed opcodes in non-contract code.
 /// i.e., if this is a script or predicate, we can't use certain contract opcodes.

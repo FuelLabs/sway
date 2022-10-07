@@ -2,7 +2,7 @@ use crate::{
     asm_generation::{
         register_sequencer::RegisterSequencer, RegisterAllocationStatus, RegisterPool,
     },
-    language::asm_lang::{virtual_register::*, Op, VirtualOp},
+    asm_lang::{virtual_register::*, Op, VirtualOp},
 };
 
 use std::collections::{BTreeSet, HashMap};

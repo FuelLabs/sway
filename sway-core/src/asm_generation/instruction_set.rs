@@ -1,4 +1,4 @@
-use crate::language::asm_lang::allocated_ops::AllocatedOp;
+use crate::asm_lang::allocated_ops::AllocatedOp;
 use std::fmt;
 
 /// An [InstructionSet] is produced by allocating registers on an [AbstractInstructionSet].

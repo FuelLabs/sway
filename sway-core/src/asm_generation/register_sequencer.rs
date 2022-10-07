@@ -1,4 +1,4 @@
-use crate::language::asm_lang::{Label, VirtualRegister};
+use crate::asm_lang::{Label, VirtualRegister};
 /// The [RegisterSequencer] is basically an iterator over integers -- it distributes unique ids in
 /// the form of integers while ASM is being generated to ensure a monotonically increasing unique
 /// register Id for every virtual register that is used.

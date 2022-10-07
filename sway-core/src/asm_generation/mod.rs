@@ -1,4 +1,4 @@
-use crate::language::asm_lang::{allocated_ops::AllocatedRegister, virtual_register::*};
+use crate::asm_lang::{allocated_ops::AllocatedRegister, virtual_register::*};
 
 use std::collections::BTreeSet;
 

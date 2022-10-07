@@ -7,7 +7,7 @@ use super::{
     DataSection, InstructionSet,
 };
 
-use crate::language::asm_lang::Label;
+use crate::asm_lang::Label;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum ProgramKind {

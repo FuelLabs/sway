@@ -1,5 +1,4 @@
 mod asm;
-pub(crate) mod asm_lang;
 mod call_path;
 mod lazy_op;
 mod literal;
