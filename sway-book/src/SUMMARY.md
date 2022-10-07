@@ -79,6 +79,7 @@
 - [Known Issues](./documentation/misc/workarounds/index.md)
   - [General](./documentation/misc/workarounds/general.md)
   - [Missing Features](./documentation/misc/workarounds/missing-features.md)
+  - [Importing](./documentation/misc/workarounds/importing.md)
   - [Arrays](./documentation/misc/workarounds/arrays.md)
   - [Strings](./documentation/misc/workarounds/strings.md)
   - [Predicates](./documentation/misc/workarounds/predicates.md)

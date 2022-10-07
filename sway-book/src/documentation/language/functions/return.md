@@ -4,8 +4,9 @@ In the previous sections we have seen how functions return values without much i
 
 There are two ways to return:
 
-- [Explicit Return](#explicit-return)
-- [Implicit Return](#implicit-return)
+<!-- no toc-->
+- [Explicitly](#explicit-return)
+- [Implicitly](#implicit-return)
 
 When returning data from a function the return types must match up with the return types declared in the function signature. This means that if the first return type is a `u64` then the type of the first value being returned must also be a `u64`.
 
@@ -58,5 +59,3 @@ fn return_data(parameter_one: u64, parameter_two: b256, parameter_three: bool) -
     (parameter_two, false, 42)
 }
 ```
-
-Implicit returns are preferred over explicit returns however both are acceptable.

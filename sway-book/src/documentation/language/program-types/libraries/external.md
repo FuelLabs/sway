@@ -42,6 +42,3 @@ This is done by listing `my_other_library` as a dependency in the `Forc.toml` fi
 ```bash
 {{#include ../../../../code/language/program-types/libraries/external/my_library/Forc.toml}}
 ```
-
-> **Note:**
-> Only libraries can be included in the manifest file. Other program types will error.
