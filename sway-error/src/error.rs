@@ -531,7 +531,7 @@ pub enum CompileError {
     },
     #[error(
         "Storage attribute access mismatch. The function \"{fn_name}\" in \
-        \"{interface_name}\" requires the storage attribute(s) #[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]."
+        {interface_name} requires the storage attribute(s) #[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]."
     )]
     TraitImplPurityMismatch {
         fn_name: Ident,
