@@ -365,7 +365,7 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use std::{env, fs, io::Read, path::PathBuf};
+    use std::{borrow::Cow, env, fs, io::Read, path::PathBuf};
     use tower::{Service, ServiceExt};
 
     use super::*;
@@ -412,11 +412,11 @@ mod tests {
         (uri, sway_program)
     }
 
-    fn build_request_with_id<M, I>(method: M, params: serde_json::Value, id: I) -> Request
-    where
-        M: Into<std::borrow::Cow<'static, str>>,
-        I: Into<Id>,
-    {
+    fn build_request_with_id(
+        method: impl Into<Cow<'static, str>>,
+        params: serde_json::Value,
+        id: impl Into<Id>,
+    ) -> Request {
         Request::build(method).params(params).id(id).finish()
     }
 
@@ -784,39 +784,20 @@ mod tests {
         }};
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn semantic_tokens() {
-        test_lsp_capability!(doc_comments_dir(), semantic_tokens_request);
+    macro_rules! lsp_capability_test {
+        ($test:ident, $capability:expr) => {
+            #[tokio::test]
+            #[serial]
+            async fn $test() {
+                test_lsp_capability!(doc_comments_dir(), $capability);
+            }
+        };
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn document_symbol() {
-        test_lsp_capability!(doc_comments_dir(), document_symbol_request);
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn go_to_definition() {
-        test_lsp_capability!(doc_comments_dir(), go_to_definition_request);
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn format() {
-        test_lsp_capability!(doc_comments_dir(), format_request);
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn hover() {
-        test_lsp_capability!(doc_comments_dir(), hover_request);
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn highlight() {
-        test_lsp_capability!(doc_comments_dir(), highlight_request);
-    }
+    lsp_capability_test!(semantic_tokens, semantic_tokens_request);
+    lsp_capability_test!(document_symbol, document_symbol_request);
+    lsp_capability_test!(go_to_definition, go_to_definition_request);
+    lsp_capability_test!(format, format_request);
+    lsp_capability_test!(hover, hover_request);
+    lsp_capability_test!(highlight, highlight_request);
 }
