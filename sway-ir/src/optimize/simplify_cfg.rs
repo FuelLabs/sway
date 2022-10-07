@@ -69,7 +69,7 @@ fn unlink_empty_blocks(context: &mut Context, function: &Function) -> Result<boo
             let new_params = cur_params
                 .iter()
                 .map(|cur_param| match &context.values[cur_param.0].value {
-                    ValueDatum::Argument(arg) => {
+                    ValueDatum::Argument(arg) if arg.block == block => {
                         // An argument should map to the actual parameter passed.
                         params_from_pred[arg.idx]
                     }

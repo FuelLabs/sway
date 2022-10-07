@@ -395,7 +395,7 @@ impl Block {
 
                 _ => Vec::new(),
             } {
-                to_block.replace_pred(context, &*self, &new_block);
+                to_block.replace_pred(context, self, &new_block);
             }
 
             (*self, new_block)
