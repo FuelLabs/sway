@@ -155,16 +155,15 @@ impl Session {
         let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)
             .map_err(|err| LanguageServerError::BuildPlanError(err))?;
 
+        // We can convert these destructured elements to a Vec<Diagnostic> later on.
         let CompileResult {
             value,
             warnings,
             errors,
         } = pkg::check(&plan, true).map_err(|err| LanguageServerError::CompileError(err))?;
 
-        // We can then use them directly to convert them to a Vec<Diagnostic>
-
         // FIXME(Centril): Refactor parse_ast_to_tokens + parse_ast_to_typed_tokens
-        // due to the new API.
+        // due to the new API.g
         let (parsed, typed) = match value {
             None => (None, None),
             Some((pp, tp)) => (Some(pp), tp),
