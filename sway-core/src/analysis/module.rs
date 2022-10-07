@@ -1,23 +1,3 @@
-use crate::{
-    declaration_engine::declaration_engine::*, error::*, language::parsed::*, semantic_analysis::*,
-    type_system::*,
-};
-
-use sway_types::{Ident, Spanned};
-
-#[derive(Clone, Debug)]
-pub struct TyModule {
-    pub submodules: Vec<(DepName, TySubmodule)>,
-    pub namespace: namespace::Module,
-    pub all_nodes: Vec<TyAstNode>,
-}
-
-#[derive(Clone, Debug)]
-pub struct TySubmodule {
-    pub library_name: Ident,
-    pub module: TyModule,
-}
-
 impl TyModule {
     /// Type-check the given parsed module to produce a typed module.
     ///

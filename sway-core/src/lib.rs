@@ -29,7 +29,7 @@ use std::sync::Arc;
 use sway_ast::Dependency;
 use sway_ir::{Context, Function, Instruction, Kind, Module, Value};
 
-pub use semantic_analysis::namespace::{self, Namespace};
+//pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
 
 pub use error::{CompileError, CompileResult, CompileWarning};

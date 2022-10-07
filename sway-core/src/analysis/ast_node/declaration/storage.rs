@@ -1,35 +1,3 @@
-use crate::{
-    error::*,
-    ir_generation::{
-        const_eval::compile_constant_expression_to_constant, storage::serialize_to_storage_slots,
-    },
-    metadata::MetadataManager,
-    semantic_analysis::{
-        TyExpression, TyStructField, TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor,
-    },
-    type_system::{look_up_type_id, TypeId, TypeInfo},
-    Ident,
-};
-use derivative::Derivative;
-use fuel_tx::StorageSlot;
-use sway_ir::{Context, Module};
-use sway_types::{state::StateIndex, Span, Spanned};
-
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
-pub struct TyStorageDeclaration {
-    pub fields: Vec<TyStorageField>,
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub span: Span,
-}
-
-impl Spanned for TyStorageDeclaration {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
 impl TyStorageDeclaration {
     pub fn new(fields: Vec<TyStorageField>, span: Span) -> Self {
         TyStorageDeclaration { fields, span }
@@ -172,26 +140,6 @@ impl TyStorageDeclaration {
             true => ok(storage_slots, vec![], vec![]),
             false => err(vec![], errors),
         }
-    }
-}
-
-#[derive(Clone, Debug, Eq)]
-pub struct TyStorageField {
-    pub name: Ident,
-    pub type_id: TypeId,
-    pub type_span: Span,
-    pub initializer: TyExpression,
-    pub(crate) span: Span,
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyStorageField {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
-            && self.initializer == other.initializer
     }
 }
 
