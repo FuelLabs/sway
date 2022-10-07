@@ -123,7 +123,7 @@ pub fn lex_commented(
     };
 
     let mut parent_token_trees = Vec::new();
-    let mut token_trees: Vec<CommentedTokenTree> = Vec::new();
+    let mut token_trees = Vec::new();
     while let Some((mut index, mut character)) = l.stream.next() {
         if character.is_whitespace() {
             continue;
@@ -135,7 +135,9 @@ pub fn lex_commented(
                     continue;
                 }
                 Some((_, '*')) => {
-                    token_trees.push(lex_multiline_comment(&mut l, index)?);
+                    if let Some(token) = lex_multiline_comment(&mut l, index) {
+                        token_trees.push(token);
+                    }
                     continue;
                 }
                 Some(_) | None => {}
@@ -321,7 +323,7 @@ fn lex_line_comment(l: &mut Lexer<'_>, end: usize, index: usize) -> CommentedTok
     }
 }
 
-fn lex_multiline_comment(l: &mut Lexer<'_>, index: usize) -> Result<CommentedTokenTree> {
+fn lex_multiline_comment(l: &mut Lexer<'_>, index: usize) -> Option<CommentedTokenTree> {
     // Lexing a multi-line comment.
     let _ = l.stream.next();
     let mut unclosed_indices = vec![index];
@@ -329,14 +331,16 @@ fn lex_multiline_comment(l: &mut Lexer<'_>, index: usize) -> Result<CommentedTok
     let unclosed_multiline_comment = |l: &Lexer<'_>, unclosed_indices: Vec<_>| {
         let span = span(l, *unclosed_indices.last().unwrap(), l.src.len() - 1);
         let kind = LexErrorKind::UnclosedMultilineComment { unclosed_indices };
-        error(l.handler, LexError { kind, span })
+        error(l.handler, LexError { kind, span });
+        None
     };
 
     loop {
         match l.stream.next() {
-            None => return Err(unclosed_multiline_comment(l, unclosed_indices)),
+            None => return unclosed_multiline_comment(l, unclosed_indices),
             Some((_, '*')) => match l.stream.next() {
-                None => return Err(unclosed_multiline_comment(l, unclosed_indices)),
+                None => return unclosed_multiline_comment(l, unclosed_indices),
+                // Matched `*/`, so we're closing some multi-line comment. It could be nested.
                 Some((slash_ix, '/')) => {
                     let start = unclosed_indices.pop().unwrap();
                     if unclosed_indices.is_empty() {
@@ -345,13 +349,14 @@ fn lex_multiline_comment(l: &mut Lexer<'_>, index: usize) -> Result<CommentedTok
                         // We could represent them as several ones, but that's unnecessary.
                         let end = slash_ix + '/'.len_utf8();
                         let span = span(l, start, end);
-                        return Ok(Comment { span }.into());
+                        return Some(Comment { span }.into());
                     }
                 }
                 Some(_) => {}
             },
+            // Found nested multi-line comment.
             Some((next_index, '/')) => match l.stream.next() {
-                None => return Err(unclosed_multiline_comment(l, unclosed_indices)),
+                None => return unclosed_multiline_comment(l, unclosed_indices),
                 Some((_, '*')) => unclosed_indices.push(next_index),
                 Some(_) => {}
             },
