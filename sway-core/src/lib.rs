@@ -443,7 +443,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     // Inline function calls.
     check!(
-        inline_function_calls(&mut ir, &all_functions),
+        inline_function_calls(&mut ir, &all_functions, &tree_type),
         return err(warnings, errors),
         warnings,
         errors
@@ -493,10 +493,21 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     compile_ir_to_asm(&ir, Some(build_config))
 }
 
-fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+// Inline function calls based on two conditions:
+// 1. The program we're compiling is a "predicate". Predicate cannot jump backwards which means
+//    that supporting function calls (i.e. without inlining) is not possible
+// 2. Based on some heuristic that is described below in the `inline_heuristc` lambda.
+//
+fn inline_function_calls(
+    ir: &mut Context,
+    functions: &[Function],
+    tree_type: &parsed::TreeType,
+) -> CompileResult<()> {
     // Inspect ALL calls and count how often each function is called.
-    let call_counts: HashMap<Function, u64> =
-        functions.iter().fold(HashMap::new(), |mut counts, func| {
+    // This is not required for predicates because we don't inline their function calls
+    let call_counts: HashMap<Function, u64> = match tree_type {
+        parsed::TreeType::Predicate => HashMap::new(),
+        _ => functions.iter().fold(HashMap::new(), |mut counts, func| {
             for (_block, ins) in func.instruction_iter(ir) {
                 if let Some(Instruction::Call(callee, _args)) = ins.get_instruction(ir) {
                     counts
@@ -506,7 +517,8 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
                 }
             }
             counts
-        });
+        }),
+    };
 
     let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
         // For now, pending improvements to ASMgen for calls, we must inline any function which has
@@ -534,9 +546,13 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
     };
 
     for function in functions {
-        if let Err(ir_error) =
-            sway_ir::optimize::inline_some_function_calls(ir, function, inline_heuristic)
-        {
+        if let Err(ir_error) = match tree_type {
+            parsed::TreeType::Predicate => {
+                // Inline everything for predicates
+                sway_ir::optimize::inline_all_function_calls(ir, function)
+            }
+            _ => sway_ir::optimize::inline_some_function_calls(ir, function, inline_heuristic),
+        } {
             return err(
                 Vec::new(),
                 vec![CompileError::InternalOwned(
