@@ -7,7 +7,7 @@ fn main() -> u64 {
     else {
         return 1;
     }
-    return 2; // Make sure this return statement does not show up in IR
+    return 2;
 }
 
 // check: $(entry=$ID)():
@@ -23,5 +23,5 @@ fn main() -> u64 {
 // check: ret u64 $else_val
 
 // check: $(merge_block=$ID)
-// REMOVE-THIS check: ret
+// check: ret
 // nextln: } 
