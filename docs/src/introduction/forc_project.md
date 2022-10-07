@@ -81,7 +81,6 @@ To test this contract, use `forc test`:
 
 ```console
 $ forc test
-...
 running 1 test
 test can_get_contract_id ... ok
 
