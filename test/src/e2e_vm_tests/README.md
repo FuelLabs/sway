@@ -34,7 +34,7 @@ For instance, the following command
 cargo run --bin=test -- abi_impl
 ```
 
-would onlyu run tests with the `abi_impl` substring in their names and might
+would only run tests with the `abi_impl` substring in their names and might
 produce output similar to the following:
 
 ```console
