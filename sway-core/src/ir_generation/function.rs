@@ -13,8 +13,8 @@ use crate::{
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
     },
+    language::*,
     metadata::MetadataManager,
-    parse_tree::{AsmOp, AsmRegister, LazyOp, Literal},
     semantic_analysis::*,
     type_system::{look_up_type_id, to_typeinfo, IntegerBits, TypeId, TypeInfo},
 };

@@ -1,6 +1,6 @@
 use crate::{
-    error::*, semantic_analysis::*, type_system::*, CallPath, CompileResult, Ident, TyDeclaration,
-    TyFunctionDeclaration, TypeInfo,
+    error::*, language::CallPath, semantic_analysis::*, type_system::*, CompileResult, Ident,
+    TyDeclaration, TyFunctionDeclaration, TypeInfo,
 };
 
 use super::{module::Module, namespace::Namespace, Path};

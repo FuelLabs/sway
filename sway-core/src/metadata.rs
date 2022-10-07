@@ -1,4 +1,4 @@
-use crate::parse_tree::Purity;
+use crate::language::Purity;
 
 use sway_ir::{Context, MetadataIndex, Metadatum, Value};
 use sway_types::Span;

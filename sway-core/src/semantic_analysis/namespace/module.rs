@@ -1,12 +1,12 @@
 use crate::{
     error::*,
-    parse_tree::{Declaration, ExpressionKind, Visibility},
+    language::{parsed::*, Visibility},
     semantic_analysis::{
         ast_node::{TyAstNode, TyAstNodeContent, TyStorageField, TyVariableDeclaration},
         declaration::VariableMutability,
         TypeCheckContext,
     },
-    AstNode, AstNodeContent, CompileResult, Ident, Namespace, TyDeclaration,
+    CompileResult, Ident, Namespace, TyDeclaration,
 };
 
 use super::{

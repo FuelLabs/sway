@@ -2,6 +2,7 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     error::{err, ok},
+    language::parsed::MatchBranch,
     semantic_analysis::{
         ast_node::expression::match_expression::typed::typed_scrutinee::TyScrutinee, IsConstant,
         TyAstNode, TyAstNodeContent, TyCodeBlock, TyExpression, TyExpressionVariant,
@@ -9,7 +10,7 @@ use crate::{
     },
     type_system::insert_type,
     types::DeterministicallyAborts,
-    CompileResult, MatchBranch, TyDeclaration, TypeInfo,
+    CompileResult, TyDeclaration, TypeInfo,
 };
 
 use super::matcher::{matcher, MatchReqMap};

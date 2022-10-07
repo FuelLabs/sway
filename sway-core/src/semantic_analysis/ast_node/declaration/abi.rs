@@ -3,12 +3,13 @@ use sway_types::{Ident, Span};
 
 use crate::{
     error::{err, ok},
+    language::parsed::*,
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
         TypeCheckContext,
     },
     type_system::{insert_type, AbiName, TypeId},
-    AbiDeclaration, CompileError, CompileResult, FunctionDeclaration, TypeInfo,
+    CompileError, CompileResult, TypeInfo,
 };
 
 use super::{CreateTypeId, TyTraitFn};

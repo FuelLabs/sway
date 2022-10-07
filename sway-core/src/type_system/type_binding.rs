@@ -3,9 +3,10 @@ use sway_types::{Span, Spanned};
 use crate::{
     declaration_engine::declaration_engine::*,
     error::{err, ok},
+    language::CallPath,
     semantic_analysis::TypeCheckContext,
     type_system::{insert_type, EnforceTypeArguments},
-    CallPath, CompileResult, TyDeclaration, TypeInfo,
+    CompileResult, TyDeclaration, TypeInfo,
 };
 
 use super::{ReplaceSelfType, TypeArgument, TypeId};

@@ -10,7 +10,9 @@ use crate::{
     },
 };
 use sway_core::{
-    declaration_engine, semantic_analysis::ast_node::TyDeclaration, Declaration, Visibility,
+    declaration_engine,
+    language::{parsed::Declaration, Visibility},
+    semantic_analysis::ast_node::TyDeclaration,
 };
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Hover, HoverContents, HoverParams, MarkupContent, MarkupKind};

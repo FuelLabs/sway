@@ -5,14 +5,20 @@ use crate::{
 };
 use sway_core::{
     constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX},
-    parse_tree::{Literal, MethodName},
+    language::{
+        parsed::{
+            AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock,
+            Declaration, DelineatedPathExpression, Expression, ExpressionKind,
+            FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
+            IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
+            MethodApplicationExpression, MethodName, ReassignmentTarget, Scrutinee,
+            StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
+            TraitFn, TupleIndexExpression, WhileLoopExpression,
+        },
+        Literal,
+    },
     type_system::{TypeArgument, TypeParameter},
-    AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock, Declaration,
-    DelineatedPathExpression, Expression, ExpressionKind, FunctionApplicationExpression,
-    FunctionDeclaration, FunctionParameter, IfExpression, IntrinsicFunctionExpression,
-    LazyOperatorExpression, MatchExpression, MethodApplicationExpression, ReassignmentTarget,
-    Scrutinee, StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
-    TraitFn, TupleIndexExpression, TypeInfo, WhileLoopExpression,
+    TypeInfo,
 };
 use sway_types::{Ident, Span, Spanned};
 
