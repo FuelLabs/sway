@@ -3,11 +3,11 @@ pub mod error;
 
 mod asm_generation;
 mod asm_lang;
+pub mod ast_transformation;
 mod build_config;
 mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
-mod convert_parse_tree;
 pub mod declaration_engine;
 pub mod ir_generation;
 pub mod language;
@@ -22,7 +22,6 @@ pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
-pub use convert_parse_tree::{Attribute, AttributeKind, AttributesMap};
 use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -40,6 +39,7 @@ pub use error::{CompileError, CompileResult, CompileWarning};
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
+use ast_transformation::convert_parse_tree;
 use language::parsed;
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].

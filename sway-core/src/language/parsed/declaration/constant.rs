@@ -1,7 +1,7 @@
 use crate::{
+    ast_transformation::convert_parse_tree::AttributesMap,
     language::{parsed::Expression, Visibility},
     type_system::TypeInfo,
-    AttributesMap,
 };
 use sway_types::{Ident, Span};
 
