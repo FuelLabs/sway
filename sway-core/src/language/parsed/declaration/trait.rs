@@ -1,6 +1,8 @@
 use super::{FunctionDeclaration, FunctionParameter};
 
-use crate::{language::*, type_system::TypeInfo, AttributesMap};
+use crate::{
+    ast_transformation::convert_parse_tree::AttributesMap, language::*, type_system::TypeInfo,
+};
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 #[derive(Debug, Clone)]

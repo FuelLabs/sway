@@ -1,4 +1,6 @@
-use crate::{language::Visibility, type_system::*, AttributesMap};
+use crate::{
+    ast_transformation::convert_parse_tree::AttributesMap, language::Visibility, type_system::*,
+};
 use sway_types::{ident::Ident, span::Span};
 
 #[derive(Debug, Clone)]
