@@ -81,8 +81,7 @@ pub(crate) fn type_info_to_symbol_kind(type_info: &TypeInfo) -> SymbolKind {
         TypeInfo::UnsignedInteger(..)
         | TypeInfo::Boolean
         | TypeInfo::Str(..)
-        | TypeInfo::B256
-        | TypeInfo::Byte => SymbolKind::BuiltinType,
+        | TypeInfo::B256 => SymbolKind::BuiltinType,
         TypeInfo::Numeric => SymbolKind::NumericLiteral,
         TypeInfo::Custom { .. } | TypeInfo::Struct { .. } => SymbolKind::Struct,
         TypeInfo::Enum { .. } => SymbolKind::Enum,

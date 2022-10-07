@@ -97,7 +97,6 @@ impl ReplaceSelfType for TypeId {
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
-            | TypeInfo::Byte
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::Contract

@@ -11,7 +11,6 @@ pub enum ResolvedType {
     UnsignedInteger(IntegerBits),
     Boolean,
     Unit,
-    Byte,
     B256,
     #[allow(dead_code)]
     Struct {
