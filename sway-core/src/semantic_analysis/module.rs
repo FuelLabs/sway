@@ -1,24 +1,24 @@
 use crate::{
-    declaration_engine::declaration_engine::*, error::*, parse_tree::*, semantic_analysis::*,
+    declaration_engine::declaration_engine::*, error::*, language::parsed::*, semantic_analysis::*,
     type_system::*,
 };
 
 use sway_types::{Ident, Spanned};
 
 #[derive(Clone, Debug)]
-pub struct TypedModule {
-    pub submodules: Vec<(DepName, TypedSubmodule)>,
+pub struct TyModule {
+    pub submodules: Vec<(DepName, TySubmodule)>,
     pub namespace: namespace::Module,
-    pub all_nodes: Vec<TypedAstNode>,
+    pub all_nodes: Vec<TyAstNode>,
 }
 
 #[derive(Clone, Debug)]
-pub struct TypedSubmodule {
+pub struct TySubmodule {
     pub library_name: Ident,
-    pub module: TypedModule,
+    pub module: TyModule,
 }
 
-impl TypedModule {
+impl TyModule {
     /// Type-check the given parsed module to produce a typed module.
     ///
     /// Recursively type-checks submodules first.
@@ -28,7 +28,7 @@ impl TypedModule {
         // Type-check submodules first in order of declaration.
         let mut submodules_res = ok(vec![], vec![], vec![]);
         for (name, submodule) in submodules {
-            let submodule_res = TypedSubmodule::type_check(ctx.by_ref(), name.clone(), submodule);
+            let submodule_res = TySubmodule::type_check(ctx.by_ref(), name.clone(), submodule);
             submodules_res = submodules_res.flat_map(|mut submodules| {
                 submodule_res.map(|submodule| {
                     submodules.push((name.clone(), submodule));
@@ -61,19 +61,19 @@ impl TypedModule {
     fn type_check_nodes(
         mut ctx: TypeCheckContext,
         nodes: Vec<AstNode>,
-    ) -> CompileResult<Vec<TypedAstNode>> {
+    ) -> CompileResult<Vec<TyAstNode>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let typed_nodes = nodes
             .into_iter()
-            .map(|node| TypedAstNode::type_check(ctx.by_ref(), node))
+            .map(|node| TyAstNode::type_check(ctx.by_ref(), node))
             .filter_map(|res| res.ok(&mut warnings, &mut errors))
             .collect();
         ok(typed_nodes, warnings, errors)
     }
 }
 
-impl TypedSubmodule {
+impl TySubmodule {
     pub fn type_check(
         parent_ctx: TypeCheckContext,
         dep_name: DepName,
@@ -84,8 +84,8 @@ impl TypedSubmodule {
             module,
         } = submodule;
         parent_ctx.enter_submodule(dep_name, |submod_ctx| {
-            let module_res = TypedModule::type_check(submod_ctx, module);
-            module_res.map(|module| TypedSubmodule {
+            let module_res = TyModule::type_check(submod_ctx, module);
+            module_res.map(|module| TySubmodule {
                 library_name: library_name.clone(),
                 module,
             })
@@ -100,16 +100,11 @@ impl TypedSubmodule {
 ///
 /// This nicely works for transitive supertraits as well.
 ///
-fn check_supertraits(
-    typed_tree_nodes: &[TypedAstNode],
-    namespace: &Namespace,
-) -> Vec<CompileError> {
+fn check_supertraits(typed_tree_nodes: &[TyAstNode], namespace: &Namespace) -> Vec<CompileError> {
     let mut errors = vec![];
     for node in typed_tree_nodes {
-        if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(decl_id)) =
-            &node.content
-        {
-            let TypedImplTrait {
+        if let TyAstNodeContent::Declaration(TyDeclaration::ImplTrait(decl_id)) = &node.content {
+            let TyImplTrait {
                 trait_name,
                 span,
                 implementing_for_type_id,
@@ -122,7 +117,7 @@ fn check_supertraits(
                 }
             };
             if let CompileResult {
-                value: Some(TypedDeclaration::TraitDeclaration(decl_id)),
+                value: Some(TyDeclaration::TraitDeclaration(decl_id)),
                 ..
             } = namespace.resolve_call_path(&trait_name)
             {
@@ -135,11 +130,10 @@ fn check_supertraits(
                 };
                 for supertrait in &tr.supertraits {
                     if !typed_tree_nodes.iter().any(|search_node| {
-                        if let TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait(
-                            decl_id,
-                        )) = &search_node.content
+                        if let TyAstNodeContent::Declaration(TyDeclaration::ImplTrait(decl_id)) =
+                            &search_node.content
                         {
-                            let TypedImplTrait {
+                            let TyImplTrait {
                                 trait_name: search_node_trait_name,
                                 implementing_for_type_id: search_node_type_implementing_for,
                                 ..
@@ -152,11 +146,11 @@ fn check_supertraits(
                             };
                             if let (
                                 CompileResult {
-                                    value: Some(TypedDeclaration::TraitDeclaration(decl_id1)),
+                                    value: Some(TyDeclaration::TraitDeclaration(decl_id1)),
                                     ..
                                 },
                                 CompileResult {
-                                    value: Some(TypedDeclaration::TraitDeclaration(decl_id2)),
+                                    value: Some(TyDeclaration::TraitDeclaration(decl_id2)),
                                     ..
                                 },
                             ) = (

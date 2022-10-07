@@ -3,13 +3,12 @@ use std::{cmp::Ordering, fmt};
 use std::fmt::Write;
 use sway_types::Span;
 
-use crate::semantic_analysis::{TypedScrutinee, TypedScrutineeVariant};
-use crate::type_system::look_up_type_id;
 use crate::{
     error::{err, ok},
-    CompileError, CompileResult, Literal,
+    language::Literal,
+    semantic_analysis::{TyScrutinee, TyScrutineeVariant},
+    CompileError, CompileResult, Namespace, TypeInfo,
 };
-use crate::{Namespace, TypeInfo};
 
 use super::{patstack::PatStack, range::Range};
 
@@ -120,16 +119,16 @@ impl Pattern {
     /// Converts a `Scrutinee` to a `Pattern`.
     pub(crate) fn from_scrutinee(
         namespace: &Namespace,
-        scrutinee: TypedScrutinee,
+        scrutinee: TyScrutinee,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let pat = match scrutinee.variant {
-            TypedScrutineeVariant::CatchAll => Pattern::Wildcard,
-            TypedScrutineeVariant::Variable(_) => Pattern::Wildcard,
-            TypedScrutineeVariant::Literal(value) => Pattern::from_literal(value),
-            TypedScrutineeVariant::Constant(_, value, _) => Pattern::from_literal(value),
-            TypedScrutineeVariant::StructScrutinee(struct_name, fields) => {
+            TyScrutineeVariant::CatchAll => Pattern::Wildcard,
+            TyScrutineeVariant::Variable(_) => Pattern::Wildcard,
+            TyScrutineeVariant::Literal(value) => Pattern::from_literal(value),
+            TyScrutineeVariant::Constant(_, value, _) => Pattern::from_literal(value),
+            TyScrutineeVariant::StructScrutinee(struct_name, fields) => {
                 let mut new_fields = vec![];
                 for field in fields.into_iter() {
                     let f = match field.scrutinee {
@@ -148,7 +147,7 @@ impl Pattern {
                     fields: new_fields,
                 })
             }
-            TypedScrutineeVariant::Tuple(elems) => {
+            TyScrutineeVariant::Tuple(elems) => {
                 let mut new_elems = PatStack::empty();
                 for elem in elems.into_iter() {
                     new_elems.push(check!(
@@ -160,7 +159,7 @@ impl Pattern {
                 }
                 Pattern::Tuple(new_elems)
             }
-            TypedScrutineeVariant::EnumScrutinee {
+            TyScrutineeVariant::EnumScrutinee {
                 call_path, value, ..
             } => {
                 let enum_name = call_path.prefixes.last().unwrap().to_string();
@@ -660,11 +659,8 @@ impl Pattern {
         }
     }
 
-    pub(crate) fn matches_type_info(&self, type_info: &TypeInfo, span: &Span) -> bool {
+    pub(crate) fn matches_type_info(&self, type_info: &TypeInfo) -> bool {
         match (self, type_info) {
-            (pattern, TypeInfo::Ref(type_id, _)) => {
-                pattern.matches_type_info(&look_up_type_id(*type_id), span)
-            }
             (
                 Pattern::Enum(EnumPattern {
                     enum_name: l_enum_name,

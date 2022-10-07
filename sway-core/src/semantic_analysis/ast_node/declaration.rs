@@ -19,7 +19,7 @@ pub use variable::*;
 use crate::{
     declaration_engine::{declaration_engine::*, declaration_id::DeclarationId},
     error::*,
-    parse_tree::*,
+    language::*,
     semantic_analysis::*,
     type_system::*,
 };
@@ -28,8 +28,8 @@ use std::{borrow::Cow, fmt};
 use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum TypedDeclaration {
-    VariableDeclaration(Box<TypedVariableDeclaration>),
+pub enum TyDeclaration {
+    VariableDeclaration(Box<TyVariableDeclaration>),
     ConstantDeclaration(DeclarationId),
     FunctionDeclaration(DeclarationId),
     TraitDeclaration(DeclarationId),
@@ -44,11 +44,11 @@ pub enum TypedDeclaration {
     StorageDeclaration(DeclarationId),
 }
 
-impl CopyTypes for TypedDeclaration {
+impl CopyTypes for TyDeclaration {
     /// The entry point to monomorphizing typed declarations. Instantiates all new type ids,
     /// assuming `self` has already been copied.
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        use TypedDeclaration::*;
+        use TyDeclaration::*;
         match self {
             VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
             FunctionDeclaration(ref mut fn_decl) => fn_decl.copy_types(type_mapping),
@@ -66,9 +66,9 @@ impl CopyTypes for TypedDeclaration {
     }
 }
 
-impl Spanned for TypedDeclaration {
+impl Spanned for TyDeclaration {
     fn span(&self) -> Span {
-        use TypedDeclaration::*;
+        use TyDeclaration::*;
         match self {
             VariableDeclaration(decl) => decl.name.span(),
             ConstantDeclaration(decl_id) => decl_id.span(),
@@ -86,15 +86,15 @@ impl Spanned for TypedDeclaration {
     }
 }
 
-impl fmt::Display for TypedDeclaration {
+impl fmt::Display for TyDeclaration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{} declaration ({})",
             self.friendly_name(),
             match self {
-                TypedDeclaration::VariableDeclaration(decl) => {
-                    let TypedVariableDeclaration {
+                TyDeclaration::VariableDeclaration(decl) => {
+                    let TyVariableDeclaration {
                         mutability,
                         name,
                         type_ascription,
@@ -117,27 +117,27 @@ impl fmt::Display for TypedDeclaration {
                     builder.push_str(&body.to_string());
                     builder
                 }
-                TypedDeclaration::FunctionDeclaration(decl_id) => {
+                TyDeclaration::FunctionDeclaration(decl_id) => {
                     match de_get_function(decl_id.clone(), &decl_id.span()) {
-                        Ok(TypedFunctionDeclaration { name, .. }) => name.as_str().into(),
+                        Ok(TyFunctionDeclaration { name, .. }) => name.as_str().into(),
                         Err(_) => "unknown function".into(),
                     }
                 }
-                TypedDeclaration::TraitDeclaration(decl_id) => {
+                TyDeclaration::TraitDeclaration(decl_id) => {
                     match de_get_trait(decl_id.clone(), &decl_id.span()) {
-                        Ok(TypedTraitDeclaration { name, .. }) => name.as_str().into(),
+                        Ok(TyTraitDeclaration { name, .. }) => name.as_str().into(),
                         Err(_) => "unknown trait".into(),
                     }
                 }
-                TypedDeclaration::StructDeclaration(decl_id) => {
+                TyDeclaration::StructDeclaration(decl_id) => {
                     match de_get_struct(decl_id.clone(), &decl_id.span()) {
-                        Ok(TypedStructDeclaration { name, .. }) => name.as_str().into(),
+                        Ok(TyStructDeclaration { name, .. }) => name.as_str().into(),
                         Err(_) => "unknown struct".into(),
                     }
                 }
-                TypedDeclaration::EnumDeclaration(decl_id) => {
+                TyDeclaration::EnumDeclaration(decl_id) => {
                     match de_get_enum(decl_id.clone(), &decl_id.span()) {
-                        Ok(TypedEnumDeclaration { name, .. }) => name.as_str().into(),
+                        Ok(TyEnumDeclaration { name, .. }) => name.as_str().into(),
                         Err(_) => "unknown enum".into(),
                     }
                 }
@@ -147,10 +147,10 @@ impl fmt::Display for TypedDeclaration {
     }
 }
 
-impl CollectTypesMetadata for TypedDeclaration {
+impl CollectTypesMetadata for TyDeclaration {
     // this is only run on entry nodes, which must have all well-formed types
     fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
-        use TypedDeclaration::*;
+        use TyDeclaration::*;
         let mut warnings = vec![];
         let mut errors = vec![];
         let metadata = match self {
@@ -212,7 +212,7 @@ impl CollectTypesMetadata for TypedDeclaration {
             },
             ConstantDeclaration(decl_id) => {
                 match de_get_constant(decl_id.clone(), &decl_id.span()) {
-                    Ok(TypedConstantDeclaration { value, .. }) => {
+                    Ok(TyConstantDeclaration { value, .. }) => {
                         check!(
                             value.collect_types_metadata(),
                             return err(warnings, errors),
@@ -243,13 +243,13 @@ impl CollectTypesMetadata for TypedDeclaration {
     }
 }
 
-impl TypedDeclaration {
+impl TyDeclaration {
     /// Retrieves the declaration as an enum declaration.
     ///
-    /// Returns an error if `self` is not a `TypedEnumDeclaration`.
-    pub(crate) fn expect_enum(&self, access_span: &Span) -> CompileResult<TypedEnumDeclaration> {
+    /// Returns an error if `self` is not a [TyEnumDeclaration].
+    pub(crate) fn expect_enum(&self, access_span: &Span) -> CompileResult<TyEnumDeclaration> {
         match self {
-            TypedDeclaration::EnumDeclaration(decl_id) => {
+            TyDeclaration::EnumDeclaration(decl_id) => {
                 CompileResult::from(de_get_enum(decl_id.clone(), access_span))
             }
             decl => err(
@@ -264,15 +264,12 @@ impl TypedDeclaration {
 
     /// Retrieves the declaration as a struct declaration.
     ///
-    /// Returns an error if `self` is not a `TypedStructDeclaration`.
-    pub(crate) fn expect_struct(
-        &self,
-        access_span: &Span,
-    ) -> CompileResult<TypedStructDeclaration> {
+    /// Returns an error if `self` is not a [TyStructDeclaration].
+    pub(crate) fn expect_struct(&self, access_span: &Span) -> CompileResult<TyStructDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match self {
-            TypedDeclaration::StructDeclaration(decl_id) => {
+            TyDeclaration::StructDeclaration(decl_id) => {
                 let decl = check!(
                     CompileResult::from(de_get_struct(decl_id.clone(), access_span)),
                     return err(warnings, errors),
@@ -293,15 +290,15 @@ impl TypedDeclaration {
 
     /// Retrieves the declaration as a function declaration.
     ///
-    /// Returns an error if `self` is not a `TypedFunctionDeclaration`.
+    /// Returns an error if `self` is not a [TyFunctionDeclaration].
     pub(crate) fn expect_function(
         &self,
         access_span: &Span,
-    ) -> CompileResult<TypedFunctionDeclaration> {
+    ) -> CompileResult<TyFunctionDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match self {
-            TypedDeclaration::FunctionDeclaration(decl_id) => {
+            TyDeclaration::FunctionDeclaration(decl_id) => {
                 let decl = check!(
                     CompileResult::from(de_get_function(decl_id.clone(), access_span)),
                     return err(warnings, errors),
@@ -322,12 +319,12 @@ impl TypedDeclaration {
 
     /// Retrieves the declaration as a variable declaration.
     ///
-    /// Returns an error if `self` is not a `TypedVariableDeclaration`.
-    pub(crate) fn expect_variable(&self) -> CompileResult<&TypedVariableDeclaration> {
+    /// Returns an error if `self` is not a [TyVariableDeclaration].
+    pub(crate) fn expect_variable(&self) -> CompileResult<&TyVariableDeclaration> {
         let warnings = vec![];
         let mut errors = vec![];
         match self {
-            TypedDeclaration::VariableDeclaration(decl) => ok(decl, warnings, errors),
+            TyDeclaration::VariableDeclaration(decl) => ok(decl, warnings, errors),
             decl => {
                 errors.push(CompileError::DeclIsNotAVariable {
                     actually: decl.friendly_name().to_string(),
@@ -340,10 +337,10 @@ impl TypedDeclaration {
 
     /// Retrieves the declaration as an Abi declaration.
     ///
-    /// Returns an error if `self` is not a `TypedAbiDeclaration`.
-    pub(crate) fn expect_abi(&self, access_span: &Span) -> CompileResult<TypedAbiDeclaration> {
+    /// Returns an error if `self` is not a [TyAbiDeclaration].
+    pub(crate) fn expect_abi(&self, access_span: &Span) -> CompileResult<TyAbiDeclaration> {
         match self {
-            TypedDeclaration::AbiDeclaration(decl_id) => {
+            TyDeclaration::AbiDeclaration(decl_id) => {
                 CompileResult::from(de_get_abi(decl_id.clone(), access_span))
             }
             decl => err(
@@ -358,7 +355,7 @@ impl TypedDeclaration {
 
     /// friendly name string used for error reporting.
     pub fn friendly_name(&self) -> &'static str {
-        use TypedDeclaration::*;
+        use TyDeclaration::*;
         match self {
             VariableDeclaration(_) => "variable",
             ConstantDeclaration(_) => "constant",
@@ -378,15 +375,15 @@ impl TypedDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_id = match self {
-            TypedDeclaration::VariableDeclaration(decl) => decl.body.return_type,
-            TypedDeclaration::FunctionDeclaration { .. } => {
+            TyDeclaration::VariableDeclaration(decl) => decl.body.return_type,
+            TyDeclaration::FunctionDeclaration { .. } => {
                 errors.push(CompileError::Unimplemented(
                     "Function pointers have not yet been implemented.",
                     self.span(),
                 ));
                 return err(warnings, errors);
             }
-            TypedDeclaration::StructDeclaration(decl_id) => {
+            TyDeclaration::StructDeclaration(decl_id) => {
                 let decl = check!(
                     CompileResult::from(de_get_struct(decl_id.clone(), &self.span())),
                     return err(warnings, errors),
@@ -395,7 +392,7 @@ impl TypedDeclaration {
                 );
                 decl.create_type_id()
             }
-            TypedDeclaration::EnumDeclaration(decl_id) => {
+            TyDeclaration::EnumDeclaration(decl_id) => {
                 let decl = check!(
                     CompileResult::from(de_get_enum(decl_id.clone(), access_span)),
                     return err(warnings, errors),
@@ -404,7 +401,7 @@ impl TypedDeclaration {
                 );
                 decl.create_type_id()
             }
-            TypedDeclaration::StorageDeclaration(decl_id) => {
+            TyDeclaration::StorageDeclaration(decl_id) => {
                 let storage_decl = check!(
                     CompileResult::from(de_get_storage(decl_id.clone(), &self.span())),
                     return err(warnings, errors),
@@ -415,9 +412,7 @@ impl TypedDeclaration {
                     fields: storage_decl.fields_as_typed_struct_fields(),
                 })
             }
-            TypedDeclaration::GenericTypeForFunctionScope { name, type_id } => {
-                insert_type(TypeInfo::Ref(*type_id, name.span()))
-            }
+            TyDeclaration::GenericTypeForFunctionScope { type_id, .. } => *type_id,
             decl => {
                 errors.push(CompileError::NotAType {
                     span: decl.span(),
@@ -431,12 +426,12 @@ impl TypedDeclaration {
     }
 
     pub(crate) fn visibility(&self) -> CompileResult<Visibility> {
-        use TypedDeclaration::*;
+        use TyDeclaration::*;
         let mut warnings = vec![];
         let mut errors = vec![];
         let visibility = match self {
             TraitDeclaration(decl_id) => {
-                let TypedTraitDeclaration { visibility, .. } = check!(
+                let TyTraitDeclaration { visibility, .. } = check!(
                     CompileResult::from(de_get_trait(decl_id.clone(), &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
@@ -445,7 +440,7 @@ impl TypedDeclaration {
                 visibility
             }
             ConstantDeclaration(decl_id) => {
-                let TypedConstantDeclaration { visibility, .. } = check!(
+                let TyConstantDeclaration { visibility, .. } = check!(
                     CompileResult::from(de_get_constant(decl_id.clone(), &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
@@ -454,7 +449,7 @@ impl TypedDeclaration {
                 visibility
             }
             StructDeclaration(decl_id) => {
-                let TypedStructDeclaration { visibility, .. } = check!(
+                let TyStructDeclaration { visibility, .. } = check!(
                     CompileResult::from(de_get_struct(decl_id.clone(), &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
@@ -463,7 +458,7 @@ impl TypedDeclaration {
                 visibility
             }
             EnumDeclaration(decl_id) => {
-                let TypedEnumDeclaration { visibility, .. } = check!(
+                let TyEnumDeclaration { visibility, .. } = check!(
                     CompileResult::from(de_get_enum(decl_id.clone(), &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
@@ -472,7 +467,7 @@ impl TypedDeclaration {
                 visibility
             }
             FunctionDeclaration(decl_id) => {
-                let TypedFunctionDeclaration { visibility, .. } = check!(
+                let TyFunctionDeclaration { visibility, .. } = check!(
                     CompileResult::from(de_get_function(decl_id.clone(), &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
@@ -492,40 +487,39 @@ impl TypedDeclaration {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TypedConstantDeclaration {
+pub struct TyConstantDeclaration {
     pub name: Ident,
-    pub value: TypedExpression,
+    pub value: TyExpression,
     pub(crate) visibility: Visibility,
 }
 
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
-pub struct TypedTraitFn {
+pub struct TyTraitFn {
     pub name: Ident,
     pub(crate) purity: Purity,
-    pub parameters: Vec<TypedFunctionParameter>,
+    pub parameters: Vec<TyFunctionParameter>,
     pub return_type: TypeId,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
     pub return_type_span: Span,
 }
 
-impl CopyTypes for TypedTraitFn {
+impl CopyTypes for TyTraitFn {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.return_type
-            .update_type(type_mapping, &self.return_type_span);
+        self.return_type.copy_types(type_mapping);
     }
 }
 
-impl TypedTraitFn {
+impl TyTraitFn {
     /// This function is used in trait declarations to insert "placeholder" functions
     /// in the methods. This allows the methods to use functions declared in the
     /// interface surface.
-    pub(crate) fn to_dummy_func(&self, mode: Mode) -> TypedFunctionDeclaration {
-        TypedFunctionDeclaration {
+    pub(crate) fn to_dummy_func(&self, mode: Mode) -> TyFunctionDeclaration {
+        TyFunctionDeclaration {
             purity: self.purity,
             name: self.name.clone(),
-            body: TypedCodeBlock { contents: vec![] },
+            body: TyCodeBlock { contents: vec![] },
             parameters: self.parameters.clone(),
             span: self.name.span(),
             return_type: self.return_type,
@@ -581,19 +575,18 @@ impl ProjectionKind {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TypedReassignment {
+pub struct TyReassignment {
     // either a direct variable, so length of 1, or
     // at series of struct fields/array indices (array syntax)
     pub lhs_base_name: Ident,
     pub lhs_type: TypeId,
     pub lhs_indices: Vec<ProjectionKind>,
-    pub rhs: TypedExpression,
+    pub rhs: TyExpression,
 }
 
-impl CopyTypes for TypedReassignment {
+impl CopyTypes for TyReassignment {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.rhs.copy_types(type_mapping);
-        self.lhs_type
-            .update_type(type_mapping, &self.lhs_base_name.span());
+        self.lhs_type.copy_types(type_mapping);
     }
 }

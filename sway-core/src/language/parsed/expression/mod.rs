@@ -1,7 +1,7 @@
 use crate::{
-    parse_tree::{CallPath, Literal},
+    language::{parsed::CodeBlock, *},
     type_system::TypeBinding,
-    CodeBlock, TypeInfo,
+    TypeInfo,
 };
 use sway_types::{ident::Ident, Span, Spanned};
 
@@ -186,12 +186,6 @@ pub enum ExpressionKind {
 pub enum ReassignmentTarget {
     VariableExpression(Box<Expression>),
     StorageField(Vec<Ident>),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum LazyOp {
-    And,
-    Or,
 }
 
 #[derive(Debug, Clone)]

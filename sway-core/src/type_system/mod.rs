@@ -33,13 +33,13 @@ use std::fmt::Debug;
 
 #[test]
 fn generic_enum_resolution() {
-    use crate::semantic_analysis::ast_node::TypedEnumVariant;
+    use crate::semantic_analysis::ast_node::TyEnumVariant;
     use crate::{span::Span, Ident};
     let engine = TypeEngine::default();
 
     let sp = Span::dummy();
 
-    let variant_types = vec![TypedEnumVariant {
+    let variant_types = vec![TyEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
         tag: 0,
         type_id: engine.insert_type(TypeInfo::UnknownGeneric {
@@ -58,7 +58,7 @@ fn generic_enum_resolution() {
         type_parameters: vec![],
     });
 
-    let variant_types = vec![TypedEnumVariant {
+    let variant_types = vec![TyEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
         tag: 0,
         type_id: engine.insert_type(TypeInfo::Boolean),
@@ -112,43 +112,43 @@ fn basic_numeric_unknown() {
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     );
 }
+
 #[test]
-fn chain_of_refs() {
+fn unify_numerics() {
     use sway_types::Span;
     let engine = TypeEngine::default();
     let sp = Span::dummy();
+
     // numerics
     let id = engine.insert_type(TypeInfo::Numeric);
-    let id2 = engine.insert_type(TypeInfo::Ref(id, sp.clone()));
-    let id3 = engine.insert_type(TypeInfo::Ref(id, sp.clone()));
-    let id4 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id2 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = engine.unify(id4, id2, &sp, "");
+    let (_, errors) = engine.unify(id2, id, &sp, "");
     assert!(errors.is_empty());
 
     assert_eq!(
-        engine.to_typeinfo(id3, &Span::dummy()).unwrap(),
+        engine.to_typeinfo(id, &Span::dummy()).unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     );
 }
+
 #[test]
-fn chain_of_refs_2() {
+fn unify_numerics_2() {
     use sway_types::Span;
     let engine = TypeEngine::default();
     let sp = Span::dummy();
+
     // numerics
     let id = engine.insert_type(TypeInfo::Numeric);
-    let id2 = engine.insert_type(TypeInfo::Ref(id, sp.clone()));
-    let id3 = engine.insert_type(TypeInfo::Ref(id, sp.clone()));
-    let id4 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id2 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = engine.unify(id2, id4, &sp, "");
+    let (_, errors) = engine.unify(id, id2, &sp, "");
     assert!(errors.is_empty());
 
     assert_eq!(
-        engine.to_typeinfo(id3, &Span::dummy()).unwrap(),
+        engine.to_typeinfo(id, &Span::dummy()).unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     );
 }

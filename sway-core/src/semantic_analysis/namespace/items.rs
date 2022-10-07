@@ -1,8 +1,8 @@
 use crate::{
     declaration_engine::{declaration_engine::de_get_storage, declaration_id::DeclarationId},
     error::*,
+    language::CallPath,
     namespace::*,
-    parse_tree::*,
     semantic_analysis::*,
     type_system::*,
 };
@@ -20,7 +20,7 @@ pub(crate) enum GlobImport {
     No,
 }
 
-pub(super) type SymbolMap = im::OrdMap<Ident, TypedDeclaration>;
+pub(super) type SymbolMap = im::OrdMap<Ident, TyDeclaration>;
 pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 
@@ -53,7 +53,7 @@ impl Items {
     pub fn apply_storage_load(
         &self,
         fields: Vec<Ident>,
-        storage_fields: &[TypedStorageField],
+        storage_fields: &[TyStorageField],
         access_span: &Span,
     ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
         let mut warnings = vec![];
@@ -94,22 +94,17 @@ impl Items {
         self.symbols().keys()
     }
 
-    pub(crate) fn insert_symbol(
-        &mut self,
-        name: Ident,
-        item: TypedDeclaration,
-    ) -> CompileResult<()> {
+    pub(crate) fn insert_symbol(&mut self, name: Ident, item: TyDeclaration) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
         // purposefully do not preemptively return errors so that the
         // new definition allows later usages to compile
         if self.symbols.get(&name).is_some() {
             match item {
-                TypedDeclaration::EnumDeclaration { .. }
-                | TypedDeclaration::StructDeclaration { .. } => {
+                TyDeclaration::EnumDeclaration { .. } | TyDeclaration::StructDeclaration { .. } => {
                     errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
                 }
-                TypedDeclaration::GenericTypeForFunctionScope { .. } => {
+                TyDeclaration::GenericTypeForFunctionScope { .. } => {
                     errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
                 }
                 _ => {
@@ -124,7 +119,7 @@ impl Items {
         ok((), warnings, errors)
     }
 
-    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&TypedDeclaration, CompileError> {
+    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&TyDeclaration, CompileError> {
         self.symbols
             .get(name)
             .ok_or_else(|| CompileError::SymbolNotFound { name: name.clone() })
@@ -134,7 +129,7 @@ impl Items {
         &mut self,
         trait_name: CallPath,
         implementing_for_type_id: TypeId,
-        functions_buf: Vec<TypedFunctionDeclaration>,
+        functions_buf: Vec<TyFunctionDeclaration>,
     ) {
         let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
@@ -157,7 +152,7 @@ impl Items {
     pub(crate) fn get_methods_for_type(
         &self,
         implementing_for_type_id: TypeId,
-    ) -> Vec<TypedFunctionDeclaration> {
+    ) -> Vec<TyFunctionDeclaration> {
         self.implemented_traits
             .get_methods_for_type(implementing_for_type_id)
     }
@@ -176,7 +171,7 @@ impl Items {
     pub(crate) fn get_storage_field_descriptors(
         &self,
         access_span: &Span,
-    ) -> CompileResult<Vec<TypedStorageField>> {
+    ) -> CompileResult<Vec<TyStorageField>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match self.declared_storage {
@@ -245,7 +240,7 @@ impl Items {
                 ) => {
                     let field_type_opt = {
                         fields.iter().find_map(
-                            |TypedStructField {
+                            |TyStructField {
                                  type_id: r#type,
                                  name,
                                  ..

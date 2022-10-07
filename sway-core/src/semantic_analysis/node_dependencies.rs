@@ -4,10 +4,9 @@ use std::iter::FromIterator;
 use crate::type_system::{TypeArgument, TypeParameter};
 use crate::{
     error::*,
-    parse_tree::*,
+    language::{parsed::*, CallPath},
     type_system::{look_up_type_id, AbiName, IntegerBits},
-    AstNode, AstNodeContent, CodeBlock, Declaration, Expression, IntrinsicFunctionExpression,
-    TypeInfo, WhileLoopExpression,
+    TypeInfo,
 };
 
 use sway_types::Spanned;
@@ -742,7 +741,6 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Numeric => "numeric",
         TypeInfo::Contract => "contract",
         TypeInfo::ErrorRecovery => "err_recov",
-        TypeInfo::Ref(x, _sp) => return format!("T{}", x),
         TypeInfo::Unknown => "unknown",
         TypeInfo::UnknownGeneric { name } => return format!("generic {}", name),
         TypeInfo::ContractCaller { abi_name, .. } => {
