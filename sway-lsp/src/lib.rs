@@ -2,6 +2,7 @@ use tower_lsp::{LspService, Server};
 
 mod capabilities;
 mod core;
+pub mod error;
 mod server;
 pub mod utils;
 use server::Backend;

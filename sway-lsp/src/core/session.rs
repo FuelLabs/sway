@@ -5,10 +5,11 @@ use crate::{
         runnable::{Runnable, RunnableType},
     },
     core::{
-        document::{DocumentError, TextDocument},
+        document::TextDocument,
         token::{Token, TokenMap, TypeDefinition},
         {traverse_parse_tree, traverse_typed_tree},
     },
+    error::{DocumentError, LanguageServerError},
     utils,
 };
 use dashmap::DashMap;
@@ -122,23 +123,22 @@ impl Session {
 
     // Document
     pub fn store_document(&self, text_document: TextDocument) -> Result<(), DocumentError> {
-        match self
-            .documents
+        self.documents
             .insert(text_document.get_uri().into(), text_document)
-        {
-            None => Ok(()),
-            _ => Err(DocumentError::DocumentAlreadyStored),
-        }
+            .ok_or(DocumentError::DocumentAlreadyStored)
+            .map(|_| ())
     }
 
     pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
-        match self.documents.remove(url.path()) {
-            Some((_, text_document)) => Ok(text_document),
-            None => Err(DocumentError::DocumentNotFound),
-        }
+        self.documents
+            .remove(url.path())
+            .ok_or(DocumentError::DocumentNotFound {
+                path: url.path().to_string(),
+            })
+            .map(|(_, text_document)| text_document)
     }
 
-    pub fn parse_project(&self, uri: &Url) -> Result<Vec<Diagnostic>, DocumentError> {
+    pub fn parse_project(&self, uri: &Url) -> Result<Vec<Diagnostic>, LanguageServerError> {
         self.token_map.clear();
         self.runnables.clear();
 
@@ -146,108 +146,108 @@ impl Session {
         let locked = false;
         let offline = false;
 
-        // TODO: match on any errors and report them back to the user in a future PR
-        if let Ok(manifest) = pkg::ManifestFile::from_dir(&manifest_dir) {
-            if let Ok(plan) = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline) {
-                //we can then use them directly to convert them to a Vec<Diagnostic>
-                if let Ok(CompileResult {
-                    value,
-                    warnings,
-                    errors,
-                }) = pkg::check(&plan, true)
-                {
-                    // FIXME(Centril): Refactor parse_ast_to_tokens + parse_ast_to_typed_tokens
-                    // due to the new API.
-                    let (parsed, typed) = match value {
-                        None => (None, None),
-                        Some((pp, tp)) => (Some(pp), tp),
-                    };
-                    // First, populate our token_map with un-typed ast nodes.
-                    let parsed_res = CompileResult::new(parsed, warnings.clone(), errors.clone());
-                    let _ = self.parse_ast_to_tokens(parsed_res);
-                    // Next, populate our token_map with typed ast nodes.
-                    let ast_res = CompileResult::new(typed, warnings, errors);
-                    return self.parse_ast_to_typed_tokens(ast_res);
-                }
+        let manifest = pkg::ManifestFile::from_dir(&manifest_dir).map_err(|_| {
+            DocumentError::ManifestFileNotFound {
+                dir: uri.path().into(),
             }
-        }
-        Err(DocumentError::FailedToParse(vec![]))
+        })?;
+
+        let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)
+            .map_err(|err| LanguageServerError::BuildPlanError(err))?;
+
+        let CompileResult {
+            value,
+            warnings,
+            errors,
+        } = pkg::check(&plan, true).map_err(|err| LanguageServerError::CompileError(err))?;
+
+        // We can then use them directly to convert them to a Vec<Diagnostic>
+
+        // FIXME(Centril): Refactor parse_ast_to_tokens + parse_ast_to_typed_tokens
+        // due to the new API.
+        let (parsed, typed) = match value {
+            None => (None, None),
+            Some((pp, tp)) => (Some(pp), tp),
+        };
+        // First, populate our token_map with un-typed ast nodes.
+        let parsed_res = CompileResult::new(parsed, warnings.clone(), errors.clone());
+        let _ = self.parse_ast_to_tokens(parsed_res);
+        // Next, populate our token_map with typed ast nodes.
+        let ast_res = CompileResult::new(typed, warnings, errors);
+
+        Ok(self.parse_ast_to_typed_tokens(ast_res)?)
     }
 
     fn parse_ast_to_tokens(
         &self,
         parsed_result: CompileResult<ParseProgram>,
-    ) -> Result<Vec<Diagnostic>, DocumentError> {
-        match parsed_result.value {
-            None => {
-                let diagnostics = capabilities::diagnostic::get_diagnostics(
-                    parsed_result.warnings,
-                    parsed_result.errors,
-                );
-                Err(DocumentError::FailedToParse(diagnostics))
-            }
-            Some(parse_program) => {
-                for node in &parse_program.root.tree.root_nodes {
-                    traverse_parse_tree::traverse_node(node, &self.token_map);
-                }
+    ) -> Result<Vec<Diagnostic>, LanguageServerError> {
+        let parse_program = parsed_result.value.ok_or_else(|| {
+            let diagnostics = capabilities::diagnostic::get_diagnostics(
+                parsed_result.warnings.clone(),
+                parsed_result.errors.clone(),
+            );
+            LanguageServerError::ParseError { diagnostics }
+        })?;
 
-                for (_, submodule) in &parse_program.root.submodules {
-                    for node in &submodule.module.tree.root_nodes {
-                        traverse_parse_tree::traverse_node(node, &self.token_map);
-                    }
-                }
+        for node in &parse_program.root.tree.root_nodes {
+            traverse_parse_tree::traverse_node(node, &self.token_map);
+        }
 
-                if let LockResult::Ok(mut program) = self.compiled_program.write() {
-                    program.parsed = Some(parse_program);
-                }
-
-                Ok(capabilities::diagnostic::get_diagnostics(
-                    parsed_result.warnings,
-                    parsed_result.errors,
-                ))
+        for (_, submodule) in &parse_program.root.submodules {
+            for node in &submodule.module.tree.root_nodes {
+                traverse_parse_tree::traverse_node(node, &self.token_map);
             }
         }
+
+        if let LockResult::Ok(mut program) = self.compiled_program.write() {
+            program.parsed = Some(parse_program);
+        }
+
+        Ok(capabilities::diagnostic::get_diagnostics(
+            parsed_result.warnings,
+            parsed_result.errors,
+        ))
     }
 
     fn parse_ast_to_typed_tokens(
         &self,
         ast_res: CompileResult<TyProgram>,
-    ) -> Result<Vec<Diagnostic>, DocumentError> {
-        match ast_res.value {
-            None => Err(DocumentError::FailedToParse(
-                capabilities::diagnostic::get_diagnostics(ast_res.warnings, ast_res.errors),
-            )),
-            Some(typed_program) => {
-                if let TyProgramKind::Script {
-                    ref main_function, ..
-                } = typed_program.kind
-                {
-                    let main_fn_location =
-                        utils::common::get_range_from_span(&main_function.name.span());
-                    let runnable = Runnable::new(main_fn_location, typed_program.kind.tree_type());
-                    self.runnables.insert(RunnableType::MainFn, runnable);
-                }
+    ) -> Result<Vec<Diagnostic>, LanguageServerError> {
+        let typed_program = ast_res.value.ok_or(LanguageServerError::ParseError {
+            diagnostics: capabilities::diagnostic::get_diagnostics(
+                ast_res.warnings.clone(),
+                ast_res.errors.clone(),
+            ),
+        })?;
 
-                let root_nodes = typed_program.root.all_nodes.iter();
-                let sub_nodes = typed_program
-                    .root
-                    .submodules
-                    .iter()
-                    .flat_map(|(_, submodule)| &submodule.module.all_nodes);
-                root_nodes
-                    .chain(sub_nodes)
-                    .for_each(|node| traverse_typed_tree::traverse_node(node, &self.token_map));
-
-                if let LockResult::Ok(mut program) = self.compiled_program.write() {
-                    program.typed = Some(typed_program);
-                }
-
-                Ok(capabilities::diagnostic::get_diagnostics(
-                    ast_res.warnings,
-                    ast_res.errors,
-                ))
-            }
+        if let TyProgramKind::Script {
+            ref main_function, ..
+        } = typed_program.kind
+        {
+            let main_fn_location = utils::common::get_range_from_span(&main_function.name.span());
+            let runnable = Runnable::new(main_fn_location, typed_program.kind.tree_type());
+            self.runnables.insert(RunnableType::MainFn, runnable);
         }
+
+        let root_nodes = typed_program.root.all_nodes.iter();
+        let sub_nodes = typed_program
+            .root
+            .submodules
+            .iter()
+            .flat_map(|(_, submodule)| &submodule.module.all_nodes);
+        root_nodes
+            .chain(sub_nodes)
+            .for_each(|node| traverse_typed_tree::traverse_node(node, &self.token_map));
+
+        if let LockResult::Ok(mut program) = self.compiled_program.write() {
+            program.typed = Some(typed_program);
+        }
+
+        Ok(capabilities::diagnostic::get_diagnostics(
+            ast_res.warnings,
+            ast_res.errors,
+        ))
     }
 
     pub fn contains_sway_file(&self, url: &Url) -> bool {

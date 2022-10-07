@@ -1,8 +1,7 @@
 use crate::capabilities;
-use crate::core::{
-    document::{DocumentError, TextDocument},
-    session::Session,
-};
+use crate::core::{document::TextDocument, session::Session};
+pub use crate::error::DocumentError;
+use crate::error::LanguageServerError;
 use crate::utils::debug::{self, DebugFlags};
 use forc_util::find_manifest_dir;
 use serde::{Deserialize, Serialize};
@@ -54,7 +53,9 @@ impl Backend {
         let diagnostics = match self.session.parse_project(uri) {
             Ok(diagnostics) => diagnostics,
             Err(err) => {
-                if let DocumentError::FailedToParse(diagnostics) = err {
+                // TODO: Replace this with tracing::error
+                eprintln!("{}", &err);
+                if let LanguageServerError::ParseError { diagnostics } = err {
                     diagnostics
                 } else {
                     vec![]

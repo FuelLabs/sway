@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 use ropey::Rope;
-use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
+use tower_lsp::lsp_types::{Position, Range, TextDocumentContentChangeEvent};
+
+use crate::error::DocumentError;
 
 #[derive(Debug)]
 pub struct TextDocument {
@@ -14,15 +16,14 @@ pub struct TextDocument {
 
 impl TextDocument {
     pub fn build_from_path(path: &str) -> Result<Self, DocumentError> {
-        match std::fs::read_to_string(&path) {
-            Ok(content) => Ok(Self {
+        std::fs::read_to_string(&path)
+            .map(|content| Self {
                 language_id: "sway".into(),
                 version: 1,
                 uri: path.into(),
                 content: Rope::from_str(&content),
-            }),
-            Err(_) => Err(DocumentError::DocumentNotFound),
-        }
+            })
+            .map_err(|_| DocumentError::DocumentNotFound { path: path.into() })
     }
 
     pub fn get_uri(&self) -> &str {
@@ -104,11 +105,4 @@ struct EditText<'text> {
     start_index: usize,
     end_index: usize,
     change_text: &'text str,
-}
-
-#[derive(Debug)]
-pub enum DocumentError {
-    FailedToParse(Vec<Diagnostic>),
-    DocumentNotFound,
-    DocumentAlreadyStored,
 }
