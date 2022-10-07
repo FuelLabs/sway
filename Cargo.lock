@@ -4250,7 +4250,7 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "extension-trait",
  "num-bigint",
