@@ -261,6 +261,7 @@ pub fn lex_commented(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn lex_close_delimiter(
     src: &Arc<str>,
     path: &Option<Arc<PathBuf>>,
@@ -272,14 +273,14 @@ fn lex_close_delimiter(
     delimiter: Delimiter,
 ) -> Vec<CommentedTokenTree> {
     let start_index = open_index + delimiter.as_open_char().len_utf8();
-    let full_span = span(src, &path, start_index, index);
+    let full_span = span(src, path, start_index, index);
     let group = CommentedGroup {
         token_stream: CommentedTokenStream {
             token_trees,
             full_span,
         },
         delimiter,
-        span: span_until(src, open_index, char_indices, &path),
+        span: span_until(src, open_index, char_indices, path),
     };
     parent.push(CommentedTokenTree::Tree(group.into()));
     parent
@@ -746,7 +747,7 @@ fn span_until(
 }
 
 fn span_one(src: &Arc<str>, path: &Option<Arc<PathBuf>>, start: usize, c: char) -> Span {
-    span(src, &path, start, start + c.len_utf8())
+    span(src, path, start, start + c.len_utf8())
 }
 
 fn span(src: &Arc<str>, path: &Option<Arc<PathBuf>>, start: usize, end: usize) -> Span {

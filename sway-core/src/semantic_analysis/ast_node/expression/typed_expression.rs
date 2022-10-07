@@ -2223,8 +2223,8 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected.to_string() == "bool"
-                                && received.to_string() == "u64"));
+                         }) if expected == "bool"
+                                && received == "u64"));
     }
 
     #[test]
@@ -2251,15 +2251,15 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected.to_string() == "u64"
-                                && received.to_string() == "bool"));
+                         }) if expected == "u64"
+                                && received == "bool"));
         assert!(matches!(&comp_res.errors[1],
                          CompileError::TypeError(TypeError::MismatchedType {
                              expected,
                              received,
                              ..
-                         }) if expected.to_string() == "[bool; 2]"
-                                && received.to_string() == "[u64; 2]"));
+                         }) if expected == "[bool; 2]"
+                                && received == "[u64; 2]"));
     }
 
     #[test]
@@ -2290,8 +2290,8 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected.to_string() == "[bool; 2]"
-                                && received.to_string() == "[bool; 3]"));
+                         }) if expected == "[bool; 2]"
+                                && received == "[bool; 3]"));
     }
 
     #[test]
