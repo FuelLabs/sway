@@ -1,6 +1,6 @@
 use crate::{
     error::CompileError,
-    parse_tree::Literal,
+    language::Literal,
     type_system::{to_typeinfo, TypeId, TypeInfo},
 };
 
