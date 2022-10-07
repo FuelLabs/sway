@@ -17,6 +17,15 @@ Tests passed.
 _n_ tests run (0 skipped)
 ```
 
+By default, `cargo` uses the debug build mode which might result in slow
+execution. To speed testing up, you might want to use the release build mode:
+
+```sh
+cargo run --release --bin=test
+```
+
+This may speed the tests up by an order of magnitude.
+
 ## Running specific tests
 
 From the `sway` directory run:
