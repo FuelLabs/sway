@@ -4,7 +4,7 @@ use forc_pkg::{self as pkg, PackageManifestFile};
 use std::path::PathBuf;
 use sway_core::CompileResult;
 
-pub fn check(command: CheckCommand) -> Result<CompileResult<sway_core::TypedProgram>> {
+pub fn check(command: CheckCommand) -> Result<CompileResult<sway_core::TyProgram>> {
     let CheckCommand {
         path,
         offline_mode: offline,

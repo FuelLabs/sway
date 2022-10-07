@@ -13,8 +13,8 @@ use crate::{
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
     },
+    language::*,
     metadata::MetadataManager,
-    parse_tree::{AsmOp, AsmRegister, LazyOp, Literal},
     semantic_analysis::*,
     type_system::{look_up_type_id, to_typeinfo, IntegerBits, TypeId, TypeInfo},
 };
@@ -34,7 +34,7 @@ pub(super) struct FnCompiler {
     pub(super) current_block: Block,
     pub(super) block_to_break_to: Option<Block>,
     pub(super) block_to_continue_to: Option<Block>,
-    pub(super) current_fn_param: Option<TypedFunctionParameter>,
+    pub(super) current_fn_param: Option<TyFunctionParameter>,
     lexical_map: LexicalMap,
     recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
 }
@@ -72,7 +72,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_block: TypedCodeBlock,
+        ast_block: TyCodeBlock,
     ) -> Result<Value, CompileError> {
         self.compile_with_new_scope(|fn_compiler| {
             fn_compiler.compile_code_block_inner(context, md_mgr, ast_block)
@@ -83,7 +83,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_block: TypedCodeBlock,
+        ast_block: TyCodeBlock,
     ) -> Result<Value, CompileError> {
         self.lexical_map.enter_scope();
 
@@ -108,41 +108,37 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_node: TypedAstNode,
+        ast_node: TyAstNode,
     ) -> Result<Option<Value>, CompileError> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_node.span);
         match ast_node.content {
-            TypedAstNodeContent::Declaration(td) => match td {
-                TypedDeclaration::VariableDeclaration(tvd) => {
+            TyAstNodeContent::Declaration(td) => match td {
+                TyDeclaration::VariableDeclaration(tvd) => {
                     self.compile_var_decl(context, md_mgr, *tvd, span_md_idx)
                 }
-                TypedDeclaration::ConstantDeclaration(decl_id) => {
+                TyDeclaration::ConstantDeclaration(decl_id) => {
                     let tcd = declaration_engine::de_get_constant(decl_id, &ast_node.span)?;
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
                 }
-                TypedDeclaration::FunctionDeclaration(_) => {
-                    Err(CompileError::UnexpectedDeclaration {
-                        decl_type: "function",
-                        span: ast_node.span,
-                    })
-                }
-                TypedDeclaration::TraitDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
+                TyDeclaration::FunctionDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
+                    decl_type: "function",
+                    span: ast_node.span,
+                }),
+                TyDeclaration::TraitDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
                     decl_type: "trait",
                     span: ast_node.span,
                 }),
-                TypedDeclaration::StructDeclaration(_) => {
-                    Err(CompileError::UnexpectedDeclaration {
-                        decl_type: "struct",
-                        span: ast_node.span,
-                    })
-                }
-                TypedDeclaration::EnumDeclaration(decl_id) => {
+                TyDeclaration::StructDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
+                    decl_type: "struct",
+                    span: ast_node.span,
+                }),
+                TyDeclaration::EnumDeclaration(decl_id) => {
                     let ted = declaration_engine::de_get_enum(decl_id, &ast_node.span)?;
                     create_enum_aggregate(context, ted.variants).map(|_| ())?;
                     Ok(None)
                 }
-                TypedDeclaration::ImplTrait(_) => {
+                TyDeclaration::ImplTrait(_) => {
                     // XXX What if we ignore the trait implementation???  Potentially since
                     // we currently inline everything and below we 'recreate' the functions
                     // lazily as they are called, nothing needs to be done here.  BUT!
@@ -150,30 +146,26 @@ impl FnCompiler {
                     // compile and then call these properly.
                     Ok(None)
                 }
-                TypedDeclaration::AbiDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
+                TyDeclaration::AbiDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
                     decl_type: "abi",
                     span: ast_node.span,
                 }),
-                TypedDeclaration::GenericTypeForFunctionScope { .. } => {
+                TyDeclaration::GenericTypeForFunctionScope { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "abi",
                         span: ast_node.span,
                     })
                 }
-                TypedDeclaration::ErrorRecovery { .. } => {
-                    Err(CompileError::UnexpectedDeclaration {
-                        decl_type: "error recovery",
-                        span: ast_node.span,
-                    })
-                }
-                TypedDeclaration::StorageDeclaration(_) => {
-                    Err(CompileError::UnexpectedDeclaration {
-                        decl_type: "storage",
-                        span: ast_node.span,
-                    })
-                }
+                TyDeclaration::ErrorRecovery { .. } => Err(CompileError::UnexpectedDeclaration {
+                    decl_type: "error recovery",
+                    span: ast_node.span,
+                }),
+                TyDeclaration::StorageDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
+                    decl_type: "storage",
+                    span: ast_node.span,
+                }),
             },
-            TypedAstNodeContent::Expression(te) => {
+            TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.
                 let value = self.compile_expression(context, md_mgr, te)?;
                 if value.is_diverging(context) {
@@ -182,13 +174,13 @@ impl FnCompiler {
                     Ok(None)
                 }
             }
-            TypedAstNodeContent::ImplicitReturnExpression(te) => {
+            TyAstNodeContent::ImplicitReturnExpression(te) => {
                 let value = self.compile_expression(context, md_mgr, te)?;
                 Ok(Some(value))
             }
             // a side effect can be () because it just impacts the type system/namespacing.
             // There should be no new IR generated.
-            TypedAstNodeContent::SideEffect => Ok(None),
+            TyAstNodeContent::SideEffect => Ok(None),
         }
     }
 
@@ -196,14 +188,14 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_expr: TypedExpression,
+        ast_expr: TyExpression,
     ) -> Result<Value, CompileError> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
         match ast_expr.expression {
-            TypedExpressionVariant::Literal(l) => {
+            TyExpressionVariant::Literal(l) => {
                 Ok(convert_literal_to_value(context, &l).add_metadatum(context, span_md_idx))
             }
-            TypedExpressionVariant::FunctionApplication {
+            TyExpressionVariant::FunctionApplication {
                 call_path: name,
                 contract_call_params,
                 arguments,
@@ -233,32 +225,32 @@ impl FnCompiler {
                     )
                 }
             }
-            TypedExpressionVariant::LazyOperator { op, lhs, rhs } => {
+            TyExpressionVariant::LazyOperator { op, lhs, rhs } => {
                 self.compile_lazy_op(context, md_mgr, op, *lhs, *rhs, span_md_idx)
             }
-            TypedExpressionVariant::VariableExpression { name, .. } => {
+            TyExpressionVariant::VariableExpression { name, .. } => {
                 self.compile_var_expr(context, name.as_str(), span_md_idx)
             }
-            TypedExpressionVariant::Array { contents } => {
+            TyExpressionVariant::Array { contents } => {
                 self.compile_array_expr(context, md_mgr, contents, span_md_idx)
             }
-            TypedExpressionVariant::ArrayIndex { prefix, index } => {
+            TyExpressionVariant::ArrayIndex { prefix, index } => {
                 self.compile_array_index(context, md_mgr, *prefix, *index, span_md_idx)
             }
-            TypedExpressionVariant::StructExpression { fields, .. } => {
+            TyExpressionVariant::StructExpression { fields, .. } => {
                 self.compile_struct_expr(context, md_mgr, fields, span_md_idx)
             }
-            TypedExpressionVariant::CodeBlock(cb) => self.compile_code_block(context, md_mgr, cb),
-            TypedExpressionVariant::FunctionParameter => Err(CompileError::Internal(
+            TyExpressionVariant::CodeBlock(cb) => self.compile_code_block(context, md_mgr, cb),
+            TyExpressionVariant::FunctionParameter => Err(CompileError::Internal(
                 "Unexpected function parameter declaration.",
                 ast_expr.span,
             )),
-            TypedExpressionVariant::IfExp {
+            TyExpressionVariant::IfExp {
                 condition,
                 then,
                 r#else,
             } => self.compile_if(context, md_mgr, *condition, *then, r#else),
-            TypedExpressionVariant::AsmExpression {
+            TyExpressionVariant::AsmExpression {
                 registers,
                 body,
                 returns,
@@ -275,7 +267,7 @@ impl FnCompiler {
                     span_md_idx,
                 )
             }
-            TypedExpressionVariant::StructFieldAccess {
+            TyExpressionVariant::StructFieldAccess {
                 prefix,
                 field_to_access,
                 resolved_type_of_parent,
@@ -291,26 +283,26 @@ impl FnCompiler {
                     span_md_idx,
                 )
             }
-            TypedExpressionVariant::EnumInstantiation {
+            TyExpressionVariant::EnumInstantiation {
                 enum_decl,
                 tag,
                 contents,
                 ..
             } => self.compile_enum_expr(context, md_mgr, enum_decl, tag, contents),
-            TypedExpressionVariant::Tuple { fields } => {
+            TyExpressionVariant::Tuple { fields } => {
                 self.compile_tuple_expr(context, md_mgr, fields, span_md_idx)
             }
-            TypedExpressionVariant::TupleElemAccess {
+            TyExpressionVariant::TupleElemAccess {
                 prefix,
                 elem_to_access_num: idx,
                 elem_to_access_span: span,
                 resolved_type_of_parent: tuple_type,
             } => self.compile_tuple_elem_expr(context, md_mgr, *prefix, tuple_type, idx, span),
-            TypedExpressionVariant::AbiCast { span, .. } => {
+            TyExpressionVariant::AbiCast { span, .. } => {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
             }
-            TypedExpressionVariant::StorageAccess(access) => {
+            TyExpressionVariant::StorageAccess(access) => {
                 let span_md_idx = md_mgr.span_to_md(context, &access.span());
                 self.compile_storage_access(
                     context,
@@ -320,20 +312,20 @@ impl FnCompiler {
                     span_md_idx,
                 )
             }
-            TypedExpressionVariant::IntrinsicFunction(kind) => {
+            TyExpressionVariant::IntrinsicFunction(kind) => {
                 self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span)
             }
-            TypedExpressionVariant::AbiName(_) => {
+            TyExpressionVariant::AbiName(_) => {
                 Ok(Value::new_constant(context, Constant::new_unit()))
             }
-            TypedExpressionVariant::UnsafeDowncast { exp, variant } => {
+            TyExpressionVariant::UnsafeDowncast { exp, variant } => {
                 self.compile_unsafe_downcast(context, md_mgr, exp, variant)
             }
-            TypedExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, md_mgr, exp),
-            TypedExpressionVariant::WhileLoop { body, condition } => {
+            TyExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, md_mgr, exp),
+            TyExpressionVariant::WhileLoop { body, condition } => {
                 self.compile_while_loop(context, md_mgr, body, *condition, span_md_idx)
             }
-            TypedExpressionVariant::Break => {
+            TyExpressionVariant::Break => {
                 match self.block_to_break_to {
                     // If `self.block_to_break_to` is not None, then it has been set inside
                     // a loop and the use of `break` here is legal, so create a branch
@@ -347,7 +339,7 @@ impl FnCompiler {
                     }),
                 }
             }
-            TypedExpressionVariant::Continue { .. } => match self.block_to_continue_to {
+            TyExpressionVariant::Continue { .. } => match self.block_to_continue_to {
                 // If `self.block_to_continue_to` is not None, then it has been set inside
                 // a loop and the use of `continue` here is legal, so create a branch
                 // instruction. Error out otherwise.
@@ -359,10 +351,10 @@ impl FnCompiler {
                     span: ast_expr.span,
                 }),
             },
-            TypedExpressionVariant::Reassignment(reassignment) => {
+            TyExpressionVariant::Reassignment(reassignment) => {
                 self.compile_reassignment(context, md_mgr, *reassignment, span_md_idx)
             }
-            TypedExpressionVariant::StorageReassignment(storage_reassignment) => self
+            TyExpressionVariant::StorageReassignment(storage_reassignment) => self
                 .compile_storage_reassignment(
                     context,
                     md_mgr,
@@ -371,7 +363,7 @@ impl FnCompiler {
                     &storage_reassignment.rhs,
                     span_md_idx,
                 ),
-            TypedExpressionVariant::Return(stmt) => {
+            TyExpressionVariant::Return(stmt) => {
                 self.compile_return_statement(context, md_mgr, stmt.expr)
             }
         }
@@ -381,12 +373,12 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        TypedIntrinsicFunctionKind {
+        TyIntrinsicFunctionKind {
             kind,
             arguments,
             type_arguments,
             span: _,
-        }: TypedIntrinsicFunctionKind,
+        }: TyIntrinsicFunctionKind,
         span: Span,
     ) -> Result<Value, CompileError> {
         fn store_key_in_local_mem(
@@ -611,7 +603,7 @@ impl FnCompiler {
 
                 match log_val.get_stripped_ptr_type(context) {
                     None => Err(CompileError::Internal(
-                        "Unable to determine type for return statement expression.",
+                        "Unable to determine type for logged value.",
                         span,
                     )),
                     Some(log_ty) => {
@@ -643,6 +635,18 @@ impl FnCompiler {
                     .ins(context)
                     .binary_op(op, lhs_value, rhs_value))
             }
+            Intrinsic::Revert => {
+                let revert_code_val =
+                    self.compile_expression(context, md_mgr, arguments[0].clone())?;
+
+                // The `revert` instruction
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .revert(revert_code_val)
+                    .add_metadatum(context, span_md_idx))
+            }
         }
     }
 
@@ -650,7 +654,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_expr: TypedExpression,
+        ast_expr: TyExpression,
     ) -> Result<Value, CompileError> {
         // Nothing to do if the current block already has a terminator
         if self.current_block.is_terminated(context) {
@@ -682,8 +686,8 @@ impl FnCompiler {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_op: LazyOp,
-        ast_lhs: TypedExpression,
-        ast_rhs: TypedExpression,
+        ast_lhs: TyExpression,
+        ast_rhs: TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // Short-circuit: if LHS is true for AND we still must eval the RHS block; for OR we can
@@ -724,9 +728,9 @@ impl FnCompiler {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         call_params: &ContractCallParams,
-        contract_call_parameters: &HashMap<String, TypedExpression>,
+        contract_call_parameters: &HashMap<String, TyExpression>,
         ast_name: &str,
-        ast_args: Vec<(Ident, TypedExpression)>,
+        ast_args: Vec<(Ident, TyExpression)>,
         return_type: TypeId,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -946,8 +950,8 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_args: Vec<(Ident, TypedExpression)>,
-        callee: TypedFunctionDeclaration,
+        ast_args: Vec<(Ident, TyExpression)>,
+        callee: TyFunctionDeclaration,
         self_state_idx: Option<StateIndex>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -976,7 +980,7 @@ impl FnCompiler {
         let new_callee = match self.recreated_fns.get(&fn_key).copied() {
             Some(func) => func,
             None => {
-                let callee_fn_decl = TypedFunctionDeclaration {
+                let callee_fn_decl = TyFunctionDeclaration {
                     type_parameters: Vec::new(),
                     name: Ident::new(Span::from_string(format!(
                         "{}_{}",
@@ -1025,9 +1029,9 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_condition: TypedExpression,
-        ast_then: TypedExpression,
-        ast_else: Option<Box<TypedExpression>>,
+        ast_condition: TyExpression,
+        ast_then: TyExpression,
+        ast_else: Option<Box<TyExpression>>,
     ) -> Result<Value, CompileError> {
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
@@ -1089,8 +1093,8 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        exp: Box<TypedExpression>,
-        variant: TypedEnumVariant,
+        exp: Box<TyExpression>,
+        variant: TyEnumVariant,
     ) -> Result<Value, CompileError> {
         // retrieve the aggregate info for the enum
         let enum_aggregate = match convert_resolved_typeid(context, &exp.return_type, &exp.span)? {
@@ -1116,7 +1120,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        exp: Box<TypedExpression>,
+        exp: Box<TyExpression>,
     ) -> Result<Value, CompileError> {
         let tag_span_md_idx = md_mgr.span_to_md(context, &exp.span);
         let enum_aggregate = match convert_resolved_typeid(context, &exp.return_type, &exp.span)? {
@@ -1137,8 +1141,8 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        body: TypedCodeBlock,
-        condition: TypedExpression,
+        body: TyCodeBlock,
+        condition: TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // We're dancing around a bit here to make the blocks sit in the right order.  Ideally we
@@ -1257,10 +1261,10 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_var_decl: TypedVariableDeclaration,
+        ast_var_decl: TyVariableDeclaration,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Option<Value>, CompileError> {
-        let TypedVariableDeclaration {
+        let TyVariableDeclaration {
             name,
             body,
             mutability,
@@ -1319,12 +1323,12 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_const_decl: TypedConstantDeclaration,
+        ast_const_decl: TyConstantDeclaration,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<(), CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
-        let TypedConstantDeclaration { name, value, .. } = ast_const_decl;
+        let TyConstantDeclaration { name, value, .. } = ast_const_decl;
         let const_expr_val =
             compile_constant_expression(context, md_mgr, self.module, None, &value)?;
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
@@ -1361,7 +1365,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_reassignment: TypedReassignment,
+        ast_reassignment: TyReassignment,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let name = self
@@ -1442,9 +1446,9 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        fields: &[TypeCheckedStorageReassignDescriptor],
+        fields: &[TyStorageReassignDescriptor],
         ix: &StateIndex,
-        rhs: &TypedExpression,
+        rhs: &TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // Compile the RHS into a value
@@ -1482,7 +1486,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        contents: Vec<TypedExpression>,
+        contents: Vec<TyExpression>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let elem_type = if contents.is_empty() {
@@ -1528,8 +1532,8 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        array_expr: TypedExpression,
-        index_expr: TypedExpression,
+        array_expr: TyExpression,
+        index_expr: TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let array_expr_span = array_expr.span.clone();
@@ -1566,7 +1570,7 @@ impl FnCompiler {
 
         // Check for out of bounds if we have a literal index.
         let (_, count) = aggregate.get_content(context).array_type();
-        if let TypedExpressionVariant::Literal(Literal::U64(index)) = index_expr.expression {
+        if let TyExpressionVariant::Literal(Literal::U64(index)) = index_expr.expression {
             if index >= *count {
                 // XXX Here is a very specific case where we want to return an Error enum
                 // specifically, if not an actual CompileError.  This should be a
@@ -1595,7 +1599,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        fields: Vec<TypedStructExpressionField>,
+        fields: Vec<TyStructExpressionField>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // NOTE: This is a struct instantiation with initialisers for each field of a named struct.
@@ -1647,9 +1651,9 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_struct_expr: TypedExpression,
+        ast_struct_expr: TyExpression,
         struct_type_id: TypeId,
-        ast_field: TypedStructField,
+        ast_field: TyStructField,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let ast_struct_expr_span = ast_struct_expr.span.clone();
@@ -1706,9 +1710,9 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        enum_decl: TypedEnumDeclaration,
+        enum_decl: TyEnumDeclaration,
         tag: usize,
-        contents: Option<Box<TypedExpression>>,
+        contents: Option<Box<TyExpression>>,
     ) -> Result<Value, CompileError> {
         // XXX The enum instantiation AST node includes the full declaration.  If the enum was
         // declared in a different module then it seems for now there's no easy way to pre-analyse
@@ -1768,7 +1772,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        fields: Vec<TypedExpression>,
+        fields: Vec<TyExpression>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         if fields.is_empty() {
@@ -1819,7 +1823,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        tuple: TypedExpression,
+        tuple: TyExpression,
         tuple_type: TypeId,
         idx: usize,
         span: Span,
@@ -1870,7 +1874,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        registers: Vec<TypedAsmRegisterDeclaration>,
+        registers: Vec<TyAsmRegisterDeclaration>,
         body: Vec<AsmOp>,
         return_type: TypeId,
         returns: Option<(AsmRegister, Span)>,
@@ -1879,7 +1883,7 @@ impl FnCompiler {
         let registers = registers
             .into_iter()
             .map(
-                |TypedAsmRegisterDeclaration {
+                |TyAsmRegisterDeclaration {
                      initializer, name, ..
                  }| {
                     // Take the optional initialiser, map it to an Option<Result<Value>>,

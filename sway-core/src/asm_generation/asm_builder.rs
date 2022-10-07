@@ -222,6 +222,7 @@ impl<'ir> AsmBuilder<'ir> {
                         self.compile_ret_from_call(instr_val, ret_val, ty)
                     }
                 }
+                Instruction::Revert(revert_val) => self.compile_revert(instr_val, revert_val),
                 Instruction::StateLoadQuadWord { load_val, key } => check!(
                     self.compile_state_access_quad_word(
                         instr_val,
@@ -1306,6 +1307,17 @@ impl<'ir> AsmBuilder<'ir> {
                 });
             }
         }
+    }
+
+    fn compile_revert(&mut self, instr_val: &Value, revert_val: &Value) {
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+        let revert_reg = self.value_to_register(revert_val);
+
+        self.cur_bytecode.push(Op {
+            owning_span,
+            opcode: Either::Left(VirtualOp::RVRT(revert_reg)),
+            comment: "".into(),
+        });
     }
 
     fn offset_reg(

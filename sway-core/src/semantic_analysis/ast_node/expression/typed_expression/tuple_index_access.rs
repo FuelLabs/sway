@@ -2,17 +2,17 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
-    semantic_analysis::{IsConstant, TypedExpression, TypedExpressionVariant},
+    semantic_analysis::{IsConstant, TyExpression, TyExpressionVariant},
     type_system::look_up_type_id,
     CompileError, CompileResult,
 };
 
 pub(crate) fn instantiate_tuple_index_access(
-    parent: TypedExpression,
+    parent: TyExpression,
     index: usize,
     index_span: Span,
     span: Span,
-) -> CompileResult<TypedExpression> {
+) -> CompileResult<TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut tuple_type_arg_to_access = None;
@@ -39,8 +39,8 @@ pub(crate) fn instantiate_tuple_index_access(
             return err(warnings, errors);
         }
     };
-    let exp = TypedExpression {
-        expression: TypedExpressionVariant::TupleElemAccess {
+    let exp = TyExpression {
+        expression: TyExpressionVariant::TupleElemAccess {
             resolved_type_of_parent: parent.return_type,
             prefix: Box::new(parent),
             elem_to_access_num: index,

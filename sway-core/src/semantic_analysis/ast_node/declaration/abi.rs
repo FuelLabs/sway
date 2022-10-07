@@ -3,24 +3,25 @@ use sway_types::{Ident, Span};
 
 use crate::{
     error::{err, ok},
+    language::parsed::*,
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
         TypeCheckContext,
     },
     type_system::{insert_type, AbiName, TypeId},
-    AbiDeclaration, CompileError, CompileResult, FunctionDeclaration, TypeInfo,
+    CompileError, CompileResult, TypeInfo,
 };
 
-use super::{CreateTypeId, TypedTraitFn};
+use super::{CreateTypeId, TyTraitFn};
 
-/// A `TypedAbiDeclaration` contains the type-checked version of the parse tree's `AbiDeclaration`.
+/// A [TyAbiDeclaration] contains the type-checked version of the parse tree's `AbiDeclaration`.
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
-pub struct TypedAbiDeclaration {
+pub struct TyAbiDeclaration {
     /// The name of the abi trait (also known as a "contract trait")
     pub name: Ident,
     /// The methods a contract is required to implement in order opt in to this interface
-    pub interface_surface: Vec<TypedTraitFn>,
+    pub interface_surface: Vec<TyTraitFn>,
     /// The methods provided to a contract "for free" upon opting in to this interface
     // NOTE: It may be important in the future to include this component
     #[derivative(PartialEq = "ignore")]
@@ -31,7 +32,7 @@ pub struct TypedAbiDeclaration {
     pub(crate) span: Span,
 }
 
-impl CreateTypeId for TypedAbiDeclaration {
+impl CreateTypeId for TyAbiDeclaration {
     fn create_type_id(&self) -> TypeId {
         let ty = TypeInfo::ContractCaller {
             abi_name: AbiName::Known(self.name.clone().into()),
@@ -41,7 +42,7 @@ impl CreateTypeId for TypedAbiDeclaration {
     }
 }
 
-impl TypedAbiDeclaration {
+impl TyAbiDeclaration {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         abi_decl: AbiDeclaration,
@@ -95,7 +96,7 @@ impl TypedAbiDeclaration {
             }
         }
 
-        let abi_decl = TypedAbiDeclaration {
+        let abi_decl = TyAbiDeclaration {
             interface_surface,
             methods,
             name,

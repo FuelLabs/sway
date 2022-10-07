@@ -86,6 +86,7 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
             Instruction::Phi(ins) => ins.iter().map(|v| v.1).collect(),
             Instruction::ReadRegister(_) => vec![],
             Instruction::Ret(v, _) => vec![*v],
+            Instruction::Revert(v) => vec![*v],
             Instruction::StateLoadQuadWord { load_val, key } => vec![*load_val, *key],
             Instruction::StateLoadWord(key) => vec![*key],
             Instruction::StateStoreQuadWord { stored_val, key } => vec![*stored_val, *key],

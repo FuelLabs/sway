@@ -1,4 +1,4 @@
-use crate::{parse_tree::Expression, type_system::*, AttributesMap};
+use crate::{language::parsed::Expression, type_system::*, AttributesMap};
 use sway_types::{ident::Ident, span::Span};
 
 #[derive(Debug, Clone)]

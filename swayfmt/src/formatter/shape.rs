@@ -256,7 +256,7 @@ impl Shape {
             }
             ExprKind::Collection => {
                 if self.code_line.width > config.whitespace.max_width
-                    || body_width.unwrap_or(0) > self.width_heuristics.structure_lit_width
+                    || body_width.unwrap_or(0) > self.width_heuristics.collection_width
                 {
                     self.code_line.update_line_style(LineStyle::Multiline)
                 } else {

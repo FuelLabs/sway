@@ -4,7 +4,7 @@ use sway_types::{Ident, Span};
 
 use crate::{
     error::{err, ok},
-    semantic_analysis::TypedEnumVariant,
+    semantic_analysis::TyEnumVariant,
     type_system::{look_up_type_id, TypeId},
     CompileError, CompileResult, TypeInfo,
 };
@@ -633,7 +633,7 @@ impl ConstructorFactory {
         let mut errors = vec![];
         let mut type_info = None;
         for possible_type in self.possible_types.iter() {
-            let matches = pattern.matches_type_info(possible_type, span);
+            let matches = pattern.matches_type_info(possible_type);
             if matches {
                 type_info = Some(possible_type);
                 break;
@@ -653,7 +653,7 @@ impl ConstructorFactory {
 
     fn resolve_enum(
         enum_name: &Ident,
-        enum_variants: &[TypedEnumVariant],
+        enum_variants: &[TyEnumVariant],
         enum_pattern: &EnumPattern,
         rest: PatStack,
         span: &Span,

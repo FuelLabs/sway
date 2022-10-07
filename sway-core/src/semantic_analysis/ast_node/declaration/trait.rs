@@ -4,23 +4,23 @@ use sway_types::{Ident, Spanned};
 use crate::{
     declaration_engine::declaration_engine::de_get_trait,
     error::{err, ok},
+    language::{parsed::*, CallPath, Visibility},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
-        Mode, TypeCheckContext, TypedCodeBlock,
+        Mode, TyCodeBlock, TypeCheckContext,
     },
     style::is_upper_camel_case,
     type_system::{insert_type, CopyTypes, TypeMapping},
-    CallPath, CompileError, CompileResult, FunctionDeclaration, Namespace, Supertrait,
-    TraitDeclaration, TypeInfo, TypedDeclaration, TypedFunctionDeclaration, Visibility,
+    CompileError, CompileResult, Namespace, TyDeclaration, TyFunctionDeclaration, TypeInfo,
 };
 
-use super::{EnforceTypeArguments, TypedFunctionParameter, TypedTraitFn};
+use super::{EnforceTypeArguments, TyFunctionParameter, TyTraitFn};
 
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
-pub struct TypedTraitDeclaration {
+pub struct TyTraitDeclaration {
     pub name: Ident,
-    pub interface_surface: Vec<TypedTraitFn>,
+    pub interface_surface: Vec<TyTraitFn>,
     // NOTE: deriving partialeq and hash on this element may be important in the
     // future, but I am not sure. For now, adding this would 2x the amount of
     // work, so I am just going to exclude it
@@ -31,7 +31,7 @@ pub struct TypedTraitDeclaration {
     pub visibility: Visibility,
 }
 
-impl CopyTypes for TypedTraitDeclaration {
+impl CopyTypes for TyTraitDeclaration {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.interface_surface
             .iter_mut()
@@ -40,7 +40,7 @@ impl CopyTypes for TypedTraitDeclaration {
     }
 }
 
-impl TypedTraitDeclaration {
+impl TyTraitDeclaration {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         trait_decl: TraitDeclaration,
@@ -92,7 +92,7 @@ impl TypedTraitDeclaration {
             warnings,
             errors
         );
-        let typed_trait_decl = TypedTraitDeclaration {
+        let typed_trait_decl = TyTraitDeclaration {
             name: trait_decl.name.clone(),
             interface_surface,
             methods: trait_decl.methods.to_vec(),
@@ -118,8 +118,8 @@ fn handle_supertraits(
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(TypedDeclaration::TraitDeclaration(decl_id)) => {
-                let TypedTraitDeclaration {
+            Some(TyDeclaration::TraitDeclaration(decl_id)) => {
+                let TyTraitDeclaration {
                     ref interface_surface,
                     ref methods,
                     ref supertraits,
@@ -163,11 +163,9 @@ fn handle_supertraits(
                     errors
                 );
             }
-            Some(TypedDeclaration::AbiDeclaration(_)) => {
-                errors.push(CompileError::AbiAsSupertrait {
-                    span: supertrait.name.span().clone(),
-                })
-            }
+            Some(TyDeclaration::AbiDeclaration(_)) => errors.push(CompileError::AbiAsSupertrait {
+                span: supertrait.name.span().clone(),
+            }),
             _ => errors.push(CompileError::TraitNotFound {
                 name: supertrait.name.clone(),
             }),
@@ -177,12 +175,12 @@ fn handle_supertraits(
     ok((), warnings, errors)
 }
 
-/// Convert a vector of FunctionDeclarations into a vector of TypedFunctionDeclarations where only
+/// Convert a vector of FunctionDeclarations into a vector of [TyFunctionDeclaration]'s where only
 /// the parameters and the return types are type checked.
 fn convert_trait_methods_to_dummy_funcs(
     methods: &[FunctionDeclaration],
     trait_namespace: &mut Namespace,
-) -> CompileResult<Vec<TypedFunctionDeclaration>> {
+) -> CompileResult<Vec<TyFunctionDeclaration>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut dummy_funcs = vec![];
@@ -199,10 +197,7 @@ fn convert_trait_methods_to_dummy_funcs(
         let mut typed_parameters = vec![];
         for param in parameters.iter() {
             typed_parameters.push(check!(
-                TypedFunctionParameter::type_check_interface_parameter(
-                    trait_namespace,
-                    param.clone()
-                ),
+                TyFunctionParameter::type_check_interface_parameter(trait_namespace, param.clone()),
                 continue,
                 warnings,
                 errors
@@ -224,10 +219,10 @@ fn convert_trait_methods_to_dummy_funcs(
             errors,
         );
 
-        dummy_funcs.push(TypedFunctionDeclaration {
+        dummy_funcs.push(TyFunctionDeclaration {
             purity: Default::default(),
             name: name.clone(),
-            body: TypedCodeBlock { contents: vec![] },
+            body: TyCodeBlock { contents: vec![] },
             parameters: typed_parameters,
             span: name.span(),
             return_type,

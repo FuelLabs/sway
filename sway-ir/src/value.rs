@@ -100,6 +100,7 @@ impl Value {
                 Instruction::Branch(_)
                     | Instruction::ConditionalBranch { .. }
                     | Instruction::Ret(_, _)
+                    | Instruction::Revert(_)
             ),
             _ => false,
         }
@@ -110,9 +111,9 @@ impl Value {
             ValueDatum::Instruction(ins) => match ins {
                 Instruction::Branch(..)
                 | Instruction::ConditionalBranch { .. }
-                | Instruction::Ret(..) => true,
+                | Instruction::Ret(..)
+                | Instruction::Revert(..) => true,
                 Instruction::Phi(alts) => alts.is_empty(),
-                Instruction::AsmBlock(asm_block, ..) => asm_block.is_diverging(context),
                 _ => false,
             },
             ValueDatum::Argument(..) | ValueDatum::Constant(..) => false,
