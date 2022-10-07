@@ -1,6 +1,6 @@
 # Methods
 
-_Methods_ are defined within the context of a struct (or enum) and either refer to the type or mutate it. The first parameter of a method is always `self`, which represents the instance of the struct the method is being called on.
+Methods are defined within the context of a [struct](../built-ins/structs.md) (or [enum](../built-ins/enums.md)) and either refer to the type or mutate it. The first parameter of a method is always `self`, which represents the instance of the struct the method is being called on.
 
 ### Decleration
 

@@ -33,7 +33,7 @@ The following example demonstrates the manual implementation which uses the [wal
 Some important points to note are:
 
 1. The return value and parameters are optional
-   1. A simple `fn main() { ... }` is sufficient
+   1. A `fn main() { ... }` is sufficient
 2. The `abi(<interface>, <b256-address>)` creates a callable type
 3. There are optional arguments wrapped in `{}` for the `send_funds()` function
    1. `gas`: a `u64` that represents the gas being forwarded to the contract when it is called

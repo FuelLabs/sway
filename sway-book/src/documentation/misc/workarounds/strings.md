@@ -5,3 +5,9 @@ Sway strings are declared using double-quotes `"` therefore single quotes `'` ca
 ```sway
 {{#include ../../../code/misc/known-issues/strings/src/lib.sw:single_quotes}}
 ```
+
+Strings are UTF-8 encoded therefore they cannot be indexed.
+
+```sway
+{{#include ../../../code/misc/known-issues/strings/src/lib.sw:indexing}}
+```

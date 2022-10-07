@@ -2,7 +2,7 @@
 
 An enum, also known as a `sum type`, is a type that consists of several variants where each variant is named and has a type.
 
-Let's take a look at a simple example where we define an enum called `Color` and a few color variations.
+Let's take a look at an example where we define an enum called `Color` with a few color variations.
 
 ```sway
 {{#include ../../../code/language/built-ins/enums/src/basic_enum.sw:definition}}

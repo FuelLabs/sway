@@ -27,4 +27,4 @@ The example above is a demonstration which emphasizes the fixed-length aspect of
 {{#include ../../../code/language/built-ins/strings/src/lib.sw:implicit}}
 ```
 
-> Strings default to UTF-8 in Sway.
+Strings default to UTF-8 in Sway.

@@ -3,9 +3,17 @@
 library my_library;
 // ANCHOR_END: module
 
-// library code
+// Cannot import because the `pub` keyword is missing
 fn foo() {}
 
-// Publicly accessible
+// Can import everything below because they are using the `pub` keyword
+pub const ONE = "1";
+
+pub struct MyStruct {}
+
+pub enum MyEnum {
+    Variant: ()
+}
+
 pub fn bar() {}
 // ANCHOR_END: library
