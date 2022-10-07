@@ -733,7 +733,7 @@ mod tests {
         let end = input.len();
         let path = None;
         let handler = Handler::default();
-        let stream = lex_commented(&handler, &Arc::from(input), start, end, path).unwrap();
+        let stream = lex_commented(&handler, &Arc::from(input), start, end, &path).unwrap();
         assert!(handler.into_errors().is_empty());
         let mut tts = stream.token_trees().iter();
         assert_eq!(tts.next().unwrap().span().as_str(), "//");
@@ -775,7 +775,7 @@ mod tests {
         let end = input.len();
         let path = None;
         let handler = Handler::default();
-        let stream = lex_commented(&handler, &Arc::from(input), start, end, path).unwrap();
+        let stream = lex_commented(&handler, &Arc::from(input), start, end, &path).unwrap();
         assert!(handler.into_errors().is_empty());
         let mut tts = stream.token_trees().iter();
         assert_matches!(
