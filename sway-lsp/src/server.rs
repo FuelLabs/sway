@@ -673,188 +673,152 @@ mod tests {
         exit_notification(service).await;
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn initialize() {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+    async fn initialize() {
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
-            // send "initialize" request
-            let _ = initialize_request(&mut service).await;
-        });
-        rt.shutdown_background();
+        // send "initialize" request
+        let _ = initialize_request(&mut service).await;
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn initialized() {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+    async fn initialized() {
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
-            // send "initialize" request
-            let _ = initialize_request(&mut service).await;
+        // send "initialize" request
+        let _ = initialize_request(&mut service).await;
 
-            // send "initialized" notification
-            initialized_notification(&mut service).await;
-        });
-        rt.shutdown_background();
+        // send "initialized" notification
+        initialized_notification(&mut service).await;
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn initializes_only_once() {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+    async fn initializes_only_once() {
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
-            // send "initialize" request
-            let initialize = initialize_request(&mut service).await;
+        // send "initialize" request
+        let initialize = initialize_request(&mut service).await;
 
-            // send "initialized" notification
-            initialized_notification(&mut service).await;
+        // send "initialized" notification
+        initialized_notification(&mut service).await;
 
-            // send "initialize" request (again); should error
-            let response = call_request(&mut service, initialize).await;
+        // send "initialize" request (again); should error
+        let response = call_request(&mut service, initialize).await;
 
-            let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
-            assert_eq!(response, Ok(Some(err)));
-        });
-        rt.shutdown_background();
+        let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
+        assert_eq!(response, Ok(Some(err)));
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn shutdown() {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+    async fn shutdown() {
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
-            // send "initialize" request
-            let _ = initialize_request(&mut service).await;
+        // send "initialize" request
+        let _ = initialize_request(&mut service).await;
 
-            // send "initialized" notification
-            initialized_notification(&mut service).await;
+        // send "initialized" notification
+        initialized_notification(&mut service).await;
 
-            // send "shutdown" request
-            let shutdown = shutdown_request(&mut service).await;
+        // send "shutdown" request
+        let shutdown = shutdown_request(&mut service).await;
 
-            // send "shutdown" request (again); should error
-            let response = call_request(&mut service, shutdown).await;
-            let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
-            assert_eq!(response, Ok(Some(err)));
+        // send "shutdown" request (again); should error
+        let response = call_request(&mut service, shutdown).await;
+        let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
+        assert_eq!(response, Ok(Some(err)));
 
-            // send "exit" request
-            exit_notification(&mut service).await;
-        });
-        rt.shutdown_background();
+        // send "exit" request
+        exit_notification(&mut service).await;
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn refuses_requests_after_shutdown() {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+    async fn refuses_requests_after_shutdown() {
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
 
-            // send "initialize" request
-            let _ = initialize_request(&mut service).await;
+        // send "initialize" request
+        let _ = initialize_request(&mut service).await;
 
-            // send "shutdown" request
-            let shutdown = shutdown_request(&mut service).await;
+        // send "shutdown" request
+        let shutdown = shutdown_request(&mut service).await;
 
-            let response = call_request(&mut service, shutdown).await;
-            let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
-            assert_eq!(response, Ok(Some(err)));
-        });
-        rt.shutdown_background();
+        let response = call_request(&mut service, shutdown).await;
+        let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
+        assert_eq!(response, Ok(Some(err)));
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn did_open() {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-            let _ = init_and_open(&mut service, e2e_test_dir()).await;
-            shutdown_and_exit(&mut service).await;
-        });
-        rt.shutdown_background();
+    async fn did_open() {
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let _ = init_and_open(&mut service, e2e_test_dir()).await;
+        shutdown_and_exit(&mut service).await;
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn did_close() {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-            let _ = init_and_open(&mut service, e2e_test_dir()).await;
+    async fn did_close() {
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let _ = init_and_open(&mut service, e2e_test_dir()).await;
 
-            // send "textDocument/didClose" notification for `uri`
-            did_close_notification(&mut service).await;
+        // send "textDocument/didClose" notification for `uri`
+        did_close_notification(&mut service).await;
 
-            shutdown_and_exit(&mut service).await;
-        });
-        rt.shutdown_background();
+        shutdown_and_exit(&mut service).await;
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn did_change() {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-            let uri = init_and_open(&mut service, e2e_test_dir()).await;
+    async fn did_change() {
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let uri = init_and_open(&mut service, e2e_test_dir()).await;
 
-            // send "textDocument/didChange" notification for `uri`
-            let params = json!({
-                "textDocument": {
-                    "uri": uri,
-                    "version": 1
-                },
-                "contentChanges": [
-                    {
-                        "range": {
-                            "start": {
-                                "line": 3,
-                                "character": 4
-                            },
-                            "end": {
-                                "line": 3,
-                                "character": 4
-                            }
+        // send "textDocument/didChange" notification for `uri`
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+                "version": 1
+            },
+            "contentChanges": [
+                {
+                    "range": {
+                        "start": {
+                            "line": 3,
+                            "character": 4
                         },
-                        "rangeLength": 0,
-                        "text": "let x = 0.0;",
-                    }
-                ]
-            });
-
-            let _ = did_change_request(&mut service, params).await;
-
-            shutdown_and_exit(&mut service).await;
+                        "end": {
+                            "line": 3,
+                            "character": 4
+                        }
+                    },
+                    "rangeLength": 0,
+                    "text": "let x = 0.0;",
+                }
+            ]
         });
-        rt.shutdown_background();
+
+        let _ = did_change_request(&mut service, params).await;
+
+        shutdown_and_exit(&mut service).await;
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn show_ast() {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let (mut service, _) = LspService::build(|client| Backend::new(client, config()))
-                .custom_method("sway/show_ast", Backend::show_ast)
-                .finish();
+    async fn show_ast() {
+        let (mut service, _) = LspService::build(|client| Backend::new(client, config()))
+            .custom_method("sway/show_ast", Backend::show_ast)
+            .finish();
 
-            let uri = init_and_open(&mut service, e2e_test_dir()).await;
+        let uri = init_and_open(&mut service, e2e_test_dir()).await;
 
-            // send "sway/show_typed_ast" request
-            let _ = show_ast_request(&mut service, &uri).await;
+        // send "sway/show_typed_ast" request
+        let _ = show_ast_request(&mut service, &uri).await;
 
-            shutdown_and_exit(&mut service).await;
-        });
-        rt.shutdown_background();
+        shutdown_and_exit(&mut service).await;
     }
 
     // This macro allows us to spin up a server / client for testing
@@ -864,57 +828,53 @@ mod tests {
     // The capability argument is an async function.
     macro_rules! test_lsp_capability {
         ($example_dir:expr, $capability:expr) => {{
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
-                let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-                let uri = init_and_open(&mut service, $example_dir).await;
-                // Call the specific LSP capability function that was passed in.
-                let _ = $capability(&mut service, &uri).await;
+            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+            let uri = init_and_open(&mut service, $example_dir).await;
+            // Call the specific LSP capability function that was passed in.
+            let _ = $capability(&mut service, &uri).await;
 
-                shutdown_and_exit(&mut service).await;
-            });
-            rt.shutdown_background();
+            shutdown_and_exit(&mut service).await;
         }};
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn semantic_tokens() {
+    async fn semantic_tokens() {
         // send "textDocument/semanticTokens/full" request
         test_lsp_capability!(doc_comments_dir(), semantic_tokens_request);
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn document_symbol() {
+    async fn document_symbol() {
         // send "textDocument/documentSymbol" request
         test_lsp_capability!(doc_comments_dir(), document_symbol_request);
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn go_to_definition() {
+    async fn go_to_definition() {
         // send "textDocument/definition" request
         test_lsp_capability!(doc_comments_dir(), go_to_definition_request);
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn format() {
+    async fn format() {
         // send "textDocument/formatting" request
         test_lsp_capability!(doc_comments_dir(), format_request);
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn hover() {
+    async fn hover() {
         // send "textDocument/hover" request
         test_lsp_capability!(doc_comments_dir(), hover_request);
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn highlight() {
+    async fn highlight() {
         // send "textDocument/documentHighlight" request
         test_lsp_capability!(doc_comments_dir(), highlight_request);
     }
