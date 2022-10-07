@@ -431,12 +431,12 @@ impl Module {
         );
 
         // Create a link (via StorageAliases) between `item` from `dst_ns` and `alias` from `src_ns`
-        let alias_name = match dst_ns_storage_fields
+        let alias_ix = match dst_ns_storage_fields
             .iter()
             .enumerate()
             .find(|(_, TyStorageField { name, .. })| name == alias)
         {
-            Some((_, tsf)) => &tsf.name,
+            Some((ix, _)) => ix,
             None => {
                 errors.push(CompileError::StorageFieldDoesNotExist {
                     name: alias.clone(),
@@ -457,10 +457,13 @@ impl Module {
             }
         };
 
-        dst_ns.storage_var_path_map.insert(
-            (src.to_vec(), item_name.clone()),
-            (dst.to_vec(), alias_name.clone()),
-        );
+        dst_ns
+            .storage_var_path_map
+            .insert(item_name.as_str().to_string(), alias_ix);
+
+        // TODO: More error checking.
+        // TODO: Handle call path instead of raw identifiers.
+        // TODO: Handle storage imports from library into another.
 
         ok((), warnings, errors)
     }

@@ -14,7 +14,7 @@ use super::{
 };
 
 use sway_ir::{metadata::combine as md_combine, *};
-use sway_types::{span::Span, Ident, Spanned};
+use sway_types::{span::Span, Spanned};
 
 pub(super) fn compile_script(
     context: &mut Context,
@@ -27,7 +27,13 @@ pub(super) fn compile_script(
 
     compile_constants(context, &mut md_mgr, module, namespace)?;
     compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
-    compile_function(context, &mut md_mgr, module, main_function)?;
+    compile_function(
+        context,
+        &mut md_mgr,
+        module,
+        &namespace.storage_var_path_map,
+        main_function,
+    )?;
 
     Ok(module)
 }
@@ -43,9 +49,14 @@ pub(super) fn compile_contract(
 
     compile_constants(context, &mut md_mgr, module, namespace)?;
     compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
-    //    dbg!(namespace.storage_var_path_map()); // Carry this all the way in?
     for decl in abi_entries {
-        compile_abi_method(context, &mut md_mgr, module, namespace, decl)?;
+        compile_abi_method(
+            context,
+            &mut md_mgr,
+            module,
+            &namespace.storage_var_path_map,
+            decl,
+        )?;
     }
 
     Ok(module)
@@ -144,6 +155,7 @@ pub(super) fn compile_function(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
+    storage_var_path_map: &std::collections::HashMap<String, usize>,
     ast_fn_decl: TyFunctionDeclaration,
 ) -> Result<Option<Function>, CompileError> {
     // Currently monomorphisation of generics is inlined into main() and the functions with generic
@@ -164,7 +176,7 @@ pub(super) fn compile_function(
             ast_fn_decl,
             args,
             None,
-            &std::collections::HashMap::new(),
+            storage_var_path_map,
         )
         .map(&Some)
     }
@@ -194,7 +206,7 @@ fn compile_fn_with_args(
     ast_fn_decl: TyFunctionDeclaration,
     args: Vec<(String, Type, Span)>,
     selector: Option<[u8; 4]>,
-    storage_var_path_map: &std::collections::HashMap<(Vec<Ident>, Ident), (Vec<Ident>, Ident)>,
+    storage_var_path_map: &std::collections::HashMap<String, usize>,
 ) -> Result<Function, CompileError> {
     let TyFunctionDeclaration {
         name,
@@ -299,7 +311,7 @@ fn compile_abi_method(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    module_ns: &namespace::Module,
+    storage_var_path_map: &std::collections::HashMap<String, usize>,
     ast_fn_decl: TyFunctionDeclaration,
 ) -> Result<Function, CompileError> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
@@ -339,6 +351,6 @@ fn compile_abi_method(
         ast_fn_decl,
         args,
         Some(selector),
-        &module_ns.storage_var_path_map,
+        storage_var_path_map,
     )
 }

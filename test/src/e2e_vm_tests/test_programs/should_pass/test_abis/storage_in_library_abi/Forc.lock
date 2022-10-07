@@ -1,9 +1,4 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-76B2D1CD254916E4'
-dependencies = []
-
-[[package]]
-name = 'storage_in_library'
+name = 'storage_in_library_abi'
 source = 'root'
-dependencies = ['core']
+dependencies = []

@@ -1,4 +1,9 @@
 [[package]]
+name = 'core'
+source = 'path+from-root-4E0A145611975FB2'
+dependencies = []
+
+[[package]]
 name = 'storage_in_library_abi'
 source = 'path+from-root-4E0A145611975FB2'
 dependencies = []
@@ -6,4 +11,7 @@ dependencies = []
 [[package]]
 name = 'storage_in_library_contract'
 source = 'root'
-dependencies = ['storage_in_library_abi']
+dependencies = [
+    'core',
+    'storage_in_library_abi',
+]

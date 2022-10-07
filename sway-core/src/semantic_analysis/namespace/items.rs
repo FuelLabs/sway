@@ -23,8 +23,7 @@ pub(crate) enum GlobImport {
 pub(super) type SymbolMap = im::OrdMap<Ident, TyDeclaration>;
 pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
-pub(super) type StorageVarPath =
-    std::collections::HashMap<(Vec<Ident>, Ident), (Vec<Ident>, Ident)>;
+pub(super) type StorageVarPath = std::collections::HashMap<String, usize>;
 
 /// The set of items that exist within some lexical scope via declaration or importing.
 #[derive(Clone, Debug, Default, PartialEq)]

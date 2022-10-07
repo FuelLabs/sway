@@ -37,7 +37,7 @@ pub(super) struct FnCompiler {
     pub(super) current_fn_param: Option<TyFunctionParameter>,
     lexical_map: LexicalMap,
     recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
-    storage_var_path_map: HashMap<(Vec<Ident>, Ident), (Vec<Ident>, Ident)>,
+    storage_var_path_map: HashMap<String, usize>,
 }
 
 impl FnCompiler {
@@ -45,7 +45,7 @@ impl FnCompiler {
         context: &mut Context,
         module: Module,
         function: Function,
-        storage_var_path_map: &HashMap<(Vec<Ident>, Ident), (Vec<Ident>, Ident)>,
+        storage_var_path_map: &HashMap<String, usize>,
     ) -> Self {
         let lexical_map = LexicalMap::from_iter(
             function
@@ -997,8 +997,14 @@ impl FnCompiler {
                     parameters: callee.parameters.clone(),
                     ..callee
                 };
-                let new_func =
-                    compile_function(context, md_mgr, self.module, callee_fn_decl)?.unwrap();
+                let new_func = compile_function(
+                    context,
+                    md_mgr,
+                    self.module,
+                    &self.storage_var_path_map,
+                    callee_fn_decl,
+                )?
+                .unwrap();
                 self.recreated_fns.insert(fn_key, new_func);
                 new_func
             }
@@ -1475,12 +1481,19 @@ impl FnCompiler {
         let base_type = fields[0].type_id;
         let field_idcs = get_indices_for_struct_access(base_type, &fields[1..])?;
 
+        let actual_ix = StateIndex::new(
+            *self
+                .storage_var_path_map
+                .get(&fields[0].name.as_str().to_string())
+                .unwrap_or(&ix.to_usize()),
+        );
+
         // Do the actual work. This is a recursive function because we want to drill down
         // to store each primitive type in the storage field in its own storage slot.
         self.compile_storage_write(
             context,
             md_mgr,
-            ix,
+            &actual_ix,
             &field_idcs,
             &access_type,
             rhs,
@@ -1871,9 +1884,23 @@ impl FnCompiler {
         let base_type = fields[0].type_id;
         let field_idcs = get_indices_for_struct_access(base_type, &fields[1..])?;
 
+        let actual_ix = StateIndex::new(
+            *self
+                .storage_var_path_map
+                .get(&fields[0].name.as_str().to_string())
+                .unwrap_or(&ix.to_usize()),
+        );
+
         // Do the actual work. This is a recursive function because we want to drill down
         // to load each primitive type in the storage field in its own storage slot.
-        self.compile_storage_read(context, md_mgr, ix, &field_idcs, &access_type, span_md_idx)
+        self.compile_storage_read(
+            context,
+            md_mgr,
+            &actual_ix,
+            &field_idcs,
+            &access_type,
+            span_md_idx,
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
