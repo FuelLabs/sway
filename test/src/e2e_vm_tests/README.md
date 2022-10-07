@@ -7,7 +7,7 @@ This document assumes you have `fuel-core` running on the default port.
 In a second terminal, `cd` into the `sway` repo and run:
 
 ```sh
-cargo run --bin test
+cargo run --bin=test
 ```
 
 After the test suite runs, you should see:
