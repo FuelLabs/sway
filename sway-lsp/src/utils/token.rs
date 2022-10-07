@@ -41,7 +41,7 @@ pub(crate) fn to_ident_key(ident: &Ident) -> (Ident, Span) {
 /// Uses the TypeId to find the associated TypedDeclaration in the TokenMap.
 pub(crate) fn declaration_of_type_id(type_id: &TypeId, tokens: &TokenMap) -> Option<TyDeclaration> {
     ident_of_type_id(type_id)
-        .and_then(|decl_ident| tokens.get(&to_ident_key(&decl_ident)))
+        .and_then(|decl_ident| tokens.try_get(&to_ident_key(&decl_ident)).try_unwrap())
         .map(|item| item.value().clone())
         .and_then(|token| token.typed)
         .and_then(|typed_token| match typed_token {
