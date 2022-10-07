@@ -39,7 +39,7 @@ impl PartialEq for TypeParameter {
 
 impl CopyTypes for TypeParameter {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.update_type(type_mapping, &self.span());
+        self.type_id.copy_types(type_mapping);
     }
 }
 
@@ -78,7 +78,7 @@ impl TypeParameter {
         let type_id = insert_type(TypeInfo::UnknownGeneric {
             name: type_parameter.name_ident.clone(),
         });
-        let type_parameter_decl = TypedDeclaration::GenericTypeForFunctionScope {
+        let type_parameter_decl = TyDeclaration::GenericTypeForFunctionScope {
             name: type_parameter.name_ident.clone(),
             type_id,
         };

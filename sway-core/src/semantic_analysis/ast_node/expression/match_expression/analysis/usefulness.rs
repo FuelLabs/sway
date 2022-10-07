@@ -2,7 +2,7 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
-    semantic_analysis::TypedScrutinee,
+    semantic_analysis::TyScrutinee,
     type_system::TypeId,
     CompileError, CompileResult, Namespace,
 };
@@ -199,7 +199,7 @@ use super::{
 pub(crate) fn check_match_expression_usefulness(
     namespace: &Namespace,
     type_id: TypeId,
-    scrutinees: Vec<TypedScrutinee>,
+    scrutinees: Vec<TyScrutinee>,
     span: Span,
 ) -> CompileResult<(WitnessReport, Vec<ReachableReport>)> {
     let mut warnings = vec![];

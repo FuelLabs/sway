@@ -1,8 +1,8 @@
 use crate::{
     error::CompileError,
     semantic_analysis::{
-        ProjectionKind, TypeCheckedStorageAccessDescriptor, TypeCheckedStorageReassignDescriptor,
-        TypedEnumVariant,
+        ProjectionKind, TyEnumVariant, TyStorageReassignDescriptor,
+        TypeCheckedStorageAccessDescriptor,
     },
     type_system::{to_typeinfo, TypeId, TypeInfo},
 };
@@ -14,7 +14,7 @@ use sway_types::span::Spanned;
 
 pub(super) fn create_enum_aggregate(
     context: &mut Context,
-    variants: Vec<TypedEnumVariant>,
+    variants: Vec<TyEnumVariant>,
 ) -> Result<Aggregate, CompileError> {
     // Create the enum aggregate first.  NOTE: single variant enums don't need an aggregate but are
     // getting one here anyway.  They don't need to be a tagged union either.
@@ -115,7 +115,7 @@ impl TypedNamedField for ProjectionKind {
 }
 
 impl_typed_named_field_for!(TypeCheckedStorageAccessDescriptor);
-impl_typed_named_field_for!(TypeCheckedStorageReassignDescriptor);
+impl_typed_named_field_for!(TyStorageReassignDescriptor);
 
 pub(super) fn get_indices_for_struct_access<F: TypedNamedField>(
     base_type: TypeId,

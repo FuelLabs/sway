@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()The function "f" in ABI "MyContract" is defined with 0 parameters, but the provided implementation has 1 parameters.
