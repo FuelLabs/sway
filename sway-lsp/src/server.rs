@@ -32,6 +32,10 @@ impl Backend {
         self.client.log_message(MessageType::INFO, message).await;
     }
 
+    async fn log_error_message(&self, message: &str) {
+        self.client.log_message(MessageType::ERROR, message).await;
+    }
+
     async fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
         let curr_dir = std::env::current_dir().unwrap();
 
@@ -53,8 +57,7 @@ impl Backend {
         let diagnostics = match self.session.parse_project(uri) {
             Ok(diagnostics) => diagnostics,
             Err(err) => {
-                // TODO: Replace this with tracing::error
-                eprintln!("{}", &err);
+                self.log_error_message(err.to_string().as_str()).await;
                 if let LanguageServerError::ParseError { diagnostics } = err {
                     diagnostics
                 } else {
