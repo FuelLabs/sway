@@ -9,7 +9,7 @@ mod types;
 
 use crate::{
     error::CompileError,
-    semantic_analysis::{TyProgram, TyProgramKind},
+    language::ty::{TyProgram, TyProgramKind},
 };
 
 use sway_ir::Context;

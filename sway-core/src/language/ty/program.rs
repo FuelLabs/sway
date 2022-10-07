@@ -1,3 +1,8 @@
+use fuel_tx::StorageSlot;
+use sway_types::Ident;
+
+use crate::{language::ty::*, TypeId};
+
 #[derive(Debug)]
 pub struct TyProgram {
     pub kind: TyProgramKind,

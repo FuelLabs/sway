@@ -1,7 +1,9 @@
-use crate::semantic_analysis::TyExpression;
-use crate::type_system::*;
-use crate::{language::CallPath, semantic_analysis::ast_node::TyStructField, Ident};
+use crate::{
+    language::{ty::*, *},
+    type_system::*,
+};
 use derivative::Derivative;
+use sway_types::Ident;
 
 #[derive(Derivative)]
 #[derivative(Debug, Clone, Eq, PartialEq, Hash)]

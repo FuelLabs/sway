@@ -1,5 +1,8 @@
 use super::*;
-use crate::{language::CallPath, semantic_analysis::*, Ident};
+use crate::{
+    language::{ty::*, CallPath},
+    Ident,
+};
 use sway_types::span::Span;
 
 use derivative::Derivative;

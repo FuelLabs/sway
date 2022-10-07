@@ -1,4 +1,21 @@
-//! Type checking for Sway.
-pub mod ast_node;
+mod ast_node;
+mod code_block;
+mod declaration;
+mod expression;
+mod is_constant;
+mod mode;
 mod module;
 mod program;
+mod return_statement;
+mod storage;
+
+pub use ast_node::*;
+pub use code_block::*;
+pub use declaration::*;
+pub use expression::*;
+pub use is_constant::*;
+pub use mode::*;
+pub(crate) use module::*;
+pub(crate) use program::*;
+pub(crate) use return_statement::*;
+pub use storage::*;

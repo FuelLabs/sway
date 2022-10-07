@@ -1,3 +1,9 @@
+use sway_types::Ident;
+
+use crate::{language::parsed::DepName, namespace};
+
+use super::ast_node::TyAstNode;
+
 #[derive(Clone, Debug)]
 pub struct TyModule {
     pub submodules: Vec<(DepName, TySubmodule)>,

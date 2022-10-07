@@ -33,7 +33,7 @@ use std::fmt::Debug;
 
 #[test]
 fn generic_enum_resolution() {
-    use crate::semantic_analysis::ast_node::TyEnumVariant;
+    use crate::language::ty::TyEnumVariant;
     use crate::{span::Span, Ident};
     let engine = TypeEngine::default();
 
