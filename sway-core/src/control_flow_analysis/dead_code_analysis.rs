@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     declaration_engine::declaration_engine::*,
-    parse_tree::{CallPath, Visibility},
+    language::{parsed::TreeType, CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
             TyAbiDeclaration, TyCodeBlock, TyConstantDeclaration, TyDeclaration, TyEnumDeclaration,
@@ -12,7 +12,7 @@ use crate::{
         TyIntrinsicFunctionKind, TyStorageDeclaration,
     },
     type_system::{to_typeinfo, TypeInfo},
-    CompileError, CompileWarning, Ident, TreeType, Warning,
+    CompileError, CompileWarning, Ident, Warning,
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::BTreeSet;

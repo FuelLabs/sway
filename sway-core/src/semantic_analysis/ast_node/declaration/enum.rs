@@ -1,6 +1,6 @@
 use crate::{
     error::*,
-    parse_tree::*,
+    language::{parsed::*, Visibility},
     semantic_analysis::*,
     type_system::{
         insert_type, look_up_type_id, CopyTypes, CreateTypeId, EnforceTypeArguments,

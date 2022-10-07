@@ -1,8 +1,9 @@
-use crate::{parse_tree::*, type_system::*, AttributesMap};
+use crate::{
+    language::{parsed::*, *},
+    type_system::*,
+    AttributesMap,
+};
 use sway_types::{ident::Ident, span::Span};
-
-mod purity;
-pub use purity::{promote_purity, Purity};
 
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration {

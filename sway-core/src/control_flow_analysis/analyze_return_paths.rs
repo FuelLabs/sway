@@ -5,7 +5,7 @@ use crate::{
     control_flow_analysis::*,
     declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait},
     error::*,
-    parse_tree::*,
+    language::CallPath,
     semantic_analysis::*,
     type_system::*,
 };

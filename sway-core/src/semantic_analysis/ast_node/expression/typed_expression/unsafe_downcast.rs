@@ -1,12 +1,13 @@
 use sway_types::Span;
 
 use crate::{
+    language::Literal,
     semantic_analysis::{
         ast_node::expression::match_expression::MatchReqMap, IsConstant, TyEnumVariant,
         TyExpressionVariant,
     },
     type_system::{insert_type, IntegerBits},
-    Literal, TypeInfo,
+    TypeInfo,
 };
 
 use super::TyExpression;

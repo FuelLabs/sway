@@ -6,10 +6,11 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
+    language::parsed::Expression,
     semantic_analysis::TypeCheckContext,
     type_system::*,
     types::DeterministicallyAborts,
-    CompileError, CompileResult, Expression, Hint,
+    CompileError, CompileResult, Hint,
 };
 
 use super::TyExpression;
