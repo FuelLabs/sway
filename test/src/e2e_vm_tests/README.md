@@ -1,6 +1,6 @@
 # Running end-to-end VM tests
 
-This document assumes you have `fuel-core` running in your terminal.
+This document assumes you have `fuel-core` running on the default port.
 
 ## Running all tests
 
