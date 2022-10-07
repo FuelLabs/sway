@@ -150,21 +150,20 @@ impl LanguageServer for Backend {
 
     // Document Handlers
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let uri = params.text_document.uri.clone();
-        self.session.handle_open_file(&uri);
-        self.parse_project(&uri).await;
+        let uri = &params.text_document.uri;
+        self.session.handle_open_file(uri);
+        self.parse_project(uri).await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let uri = params.text_document.uri.clone();
+        let uri = &params.text_document.uri;
         self.session
-            .update_text_document(&uri, params.content_changes);
-        self.parse_project(&uri).await;
+            .update_text_document(uri, params.content_changes);
+        self.parse_project(uri).await;
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        let uri = params.text_document.uri.clone();
-        self.parse_project(&uri).await;
+        self.parse_project(&params.text_document.uri).await;
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
