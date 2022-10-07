@@ -1,13 +1,13 @@
 contract;
 
-use std::{option::Option, storage::StorageMap};
+use std::storage::StorageMap;
 
 struct Data {
-    value: u64
+    value: u64,
 }
 
 storage {
-    value: StorageMap<u64, Option<Data>> = StorageMap {}
+    value: StorageMap<u64, Option<Data>> = StorageMap {},
 }
 
 abi MyContract {

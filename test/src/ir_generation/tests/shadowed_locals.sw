@@ -23,7 +23,7 @@ fn main() -> u64 {
 // check: $(a__ptr=$VAL) = get_ptr ptr u64 a_, ptr u64, 0
 // check: store $int_val, ptr $a__ptr
 
-// check: $(struct_undef=$VAL) = const { u64 } { u64 undef }
+// check: $(struct_undef=$VAL) = get_ptr ptr { u64 } $ID, ptr { u64 }, 0
 // check: $(struct_set=$VAL) = insert_value $struct_undef, { u64 }, v9, 0
 // check: $(a___ptr=$VAL) = get_ptr ptr { u64 } a__, ptr { u64 }, 0
 // check: store $struct_set, ptr $a___ptr

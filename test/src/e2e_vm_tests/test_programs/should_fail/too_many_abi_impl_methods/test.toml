@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Function "f" is not a part of ABI "MyContract"'s interface surface.

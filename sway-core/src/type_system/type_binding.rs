@@ -5,7 +5,7 @@ use crate::{
     error::{err, ok},
     semantic_analysis::TypeCheckContext,
     type_system::{insert_type, EnforceTypeArguments},
-    CallPath, CompileResult, TypeInfo, TypedDeclaration,
+    CallPath, CompileResult, TyDeclaration, TypeInfo,
 };
 
 use super::{ReplaceSelfType, TypeArgument, TypeId};
@@ -130,7 +130,7 @@ impl TypeBinding<CallPath> {
     pub(crate) fn type_check_with_ident(
         &mut self,
         mut ctx: TypeCheckContext,
-    ) -> CompileResult<TypedDeclaration> {
+    ) -> CompileResult<TyDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -155,7 +155,7 @@ impl TypeBinding<CallPath> {
 
         // monomorphize the declaration, if needed
         let new_decl = match unknown_decl {
-            TypedDeclaration::FunctionDeclaration(original_id) => {
+            TyDeclaration::FunctionDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
                     CompileResult::from(de_get_function(original_id.clone(), &self.span())),
@@ -183,9 +183,9 @@ impl TypeBinding<CallPath> {
                 // add the new copy as a monomorphized copy of the original id
                 de_add_monomorphized_copy(original_id, new_id.clone());
 
-                TypedDeclaration::FunctionDeclaration(new_id)
+                TyDeclaration::FunctionDeclaration(new_id)
             }
-            TypedDeclaration::EnumDeclaration(original_id) => {
+            TyDeclaration::EnumDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
                     CompileResult::from(de_get_enum(original_id.clone(), &self.span())),
@@ -213,9 +213,9 @@ impl TypeBinding<CallPath> {
                 // add the new copy as a monomorphized copy of the original id
                 de_add_monomorphized_copy(original_id, new_id.clone());
 
-                TypedDeclaration::EnumDeclaration(new_id)
+                TyDeclaration::EnumDeclaration(new_id)
             }
-            TypedDeclaration::StructDeclaration(original_id) => {
+            TyDeclaration::StructDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
                     CompileResult::from(de_get_struct(original_id.clone(), &self.span())),
@@ -243,7 +243,7 @@ impl TypeBinding<CallPath> {
                 // add the new copy as a monomorphized copy of the original id
                 de_add_monomorphized_copy(original_id, new_id.clone());
 
-                TypedDeclaration::StructDeclaration(new_id)
+                TyDeclaration::StructDeclaration(new_id)
             }
             _ => unknown_decl,
         };

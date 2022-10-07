@@ -1,17 +1,17 @@
 use crate::{
     error::{err, ok},
     semantic_analysis::{
-        convert_to_variable_immutability, IsConstant, TypeCheckContext, TypedExpression,
-        TypedExpressionVariant, TypedVariableDeclaration, VariableMutability,
+        convert_to_variable_immutability, IsConstant, TyExpression, TyExpressionVariant,
+        TyVariableDeclaration, TypeCheckContext, VariableMutability,
     },
     type_system::*,
-    CompileError, CompileResult, FunctionParameter, Ident, Namespace, TypedDeclaration,
+    CompileError, CompileResult, FunctionParameter, Ident, Namespace, TyDeclaration,
 };
 
 use sway_types::{span::Span, Spanned};
 
-#[derive(Clone, Debug, Eq)]
-pub struct TypedFunctionParameter {
+#[derive(Debug, Clone, Eq)]
+pub struct TyFunctionParameter {
     pub name: Ident,
     pub is_reference: bool,
     pub is_mutable: bool,
@@ -24,7 +24,7 @@ pub struct TypedFunctionParameter {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedFunctionParameter {
+impl PartialEq for TyFunctionParameter {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
             && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
@@ -32,13 +32,13 @@ impl PartialEq for TypedFunctionParameter {
     }
 }
 
-impl CopyTypes for TypedFunctionParameter {
+impl CopyTypes for TyFunctionParameter {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.type_id.copy_types(type_mapping);
     }
 }
 
-impl TypedFunctionParameter {
+impl TyFunctionParameter {
     pub fn is_self(&self) -> bool {
         self.name.as_str() == "self"
     }
@@ -79,7 +79,7 @@ impl TypedFunctionParameter {
             return err(warnings, errors);
         }
 
-        let typed_parameter = TypedFunctionParameter {
+        let typed_parameter = TyFunctionParameter {
             name,
             is_reference,
             is_mutable,
@@ -124,7 +124,7 @@ impl TypedFunctionParameter {
             errors,
         );
 
-        let typed_parameter = TypedFunctionParameter {
+        let typed_parameter = TyFunctionParameter {
             name,
             is_reference,
             is_mutable,
@@ -170,7 +170,7 @@ impl TypedFunctionParameter {
             errors,
         );
 
-        let typed_parameter = TypedFunctionParameter {
+        let typed_parameter = TyFunctionParameter {
             name,
             is_reference,
             is_mutable,
@@ -184,13 +184,13 @@ impl TypedFunctionParameter {
     }
 }
 
-fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &TypedFunctionParameter) {
+fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &TyFunctionParameter) {
     ctx.namespace.insert_symbol(
         typed_parameter.name.clone(),
-        TypedDeclaration::VariableDeclaration(Box::new(TypedVariableDeclaration {
+        TyDeclaration::VariableDeclaration(Box::new(TyVariableDeclaration {
             name: typed_parameter.name.clone(),
-            body: TypedExpression {
-                expression: TypedExpressionVariant::FunctionParameter,
+            body: TyExpression {
+                expression: TyExpressionVariant::FunctionParameter,
                 return_type: typed_parameter.type_id,
                 is_constant: IsConstant::No,
                 span: typed_parameter.name.span(),

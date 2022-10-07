@@ -25,7 +25,7 @@ use std::{
 };
 use sway_core::{
     semantic_analysis::namespace, source_map::SourceMap, BytecodeOrLib, CompileError,
-    CompileResult, ParseProgram, TreeType, TypedProgram,
+    CompileResult, ParseProgram, TreeType, TyProgram,
 };
 use sway_types::{Ident, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
 use sway_utils::constants;
@@ -1800,7 +1800,7 @@ pub fn compile_ast(
     manifest: &ManifestFile,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
-) -> Result<CompileResult<TypedProgram>> {
+) -> Result<CompileResult<TyProgram>> {
     let source = manifest.entry_string()?;
     let sway_build_config =
         sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
@@ -2338,7 +2338,7 @@ fn update_json_type_declaration(
 pub fn check(
     plan: &BuildPlan,
     terse_mode: bool,
-) -> anyhow::Result<CompileResult<(ParseProgram, Option<TypedProgram>)>> {
+) -> anyhow::Result<CompileResult<(ParseProgram, Option<TyProgram>)>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
     let mut namespace_map = Default::default();

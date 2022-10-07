@@ -2,7 +2,7 @@ use sway_types::{Ident, Span};
 
 use crate::{
     error::{TypeError, Warning},
-    semantic_analysis::{TypedEnumVariant, TypedStructField},
+    semantic_analysis::{TyEnumVariant, TyStructField},
     CompileWarning, IntegerBits, TypeArgument, TypeId, TypeParameter,
 };
 use sway_types::Spanned;
@@ -108,8 +108,8 @@ pub(super) fn unify_structs<F>(
     expected: TypeId,
     span: &Span,
     help_text: &str,
-    r: (Ident, Vec<TypeParameter>, Vec<TypedStructField>),
-    e: (Ident, Vec<TypeParameter>, Vec<TypedStructField>),
+    r: (Ident, Vec<TypeParameter>, Vec<TyStructField>),
+    e: (Ident, Vec<TypeParameter>, Vec<TyStructField>),
     unifier: F,
 ) -> (Vec<CompileWarning>, Vec<TypeError>)
 where
@@ -150,8 +150,8 @@ pub(super) fn unify_enums<F>(
     expected: TypeId,
     span: &Span,
     help_text: &str,
-    r: (Ident, Vec<TypeParameter>, Vec<TypedEnumVariant>),
-    e: (Ident, Vec<TypeParameter>, Vec<TypedEnumVariant>),
+    r: (Ident, Vec<TypeParameter>, Vec<TyEnumVariant>),
+    e: (Ident, Vec<TypeParameter>, Vec<TyEnumVariant>),
     unifier: F,
 ) -> (Vec<CompileWarning>, Vec<TypeError>)
 where

@@ -1,3 +1,3 @@
 category = "fail"
 
-# check: $()Storage attribute access mismatch. The trait function "f" in trait "A" requires the storage attribute(s) #[storage(read)].
+# check: $()Storage attribute access mismatch. The function "f" in trait "A" requires the storage attribute(s) #[storage(read)].

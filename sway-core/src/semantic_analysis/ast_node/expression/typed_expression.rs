@@ -26,8 +26,8 @@ use std::{
 };
 
 #[derive(Clone, Debug, Eq)]
-pub struct TypedExpression {
-    pub expression: TypedExpressionVariant,
+pub struct TyExpression {
+    pub expression: TyExpressionVariant,
     pub return_type: TypeId,
     /// whether or not this expression is constantly evaluable (if the result is known at compile
     /// time)
@@ -38,7 +38,7 @@ pub struct TypedExpression {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedExpression {
+impl PartialEq for TyExpression {
     fn eq(&self, other: &Self) -> bool {
         self.expression == other.expression
             && look_up_type_id(self.return_type) == look_up_type_id(other.return_type)
@@ -46,14 +46,14 @@ impl PartialEq for TypedExpression {
     }
 }
 
-impl CopyTypes for TypedExpression {
+impl CopyTypes for TyExpression {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.return_type.copy_types(type_mapping);
         self.expression.copy_types(type_mapping);
     }
 }
 
-impl fmt::Display for TypedExpression {
+impl fmt::Display for TyExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -64,9 +64,9 @@ impl fmt::Display for TypedExpression {
     }
 }
 
-impl CollectTypesMetadata for TypedExpression {
+impl CollectTypesMetadata for TyExpression {
     fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
-        use TypedExpressionVariant::*;
+        use TyExpressionVariant::*;
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut res = check!(
@@ -332,7 +332,7 @@ impl CollectTypesMetadata for TypedExpression {
             )),
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
-            // `TypedExpression::return_type`. Variable expressions are just names of variables.
+            // `TyExpression::return_type`. Variable expressions are just names of variables.
             VariableExpression { .. }
             | StorageAccess { .. }
             | Literal(_)
@@ -369,9 +369,9 @@ impl CollectTypesMetadata for TypedExpression {
     }
 }
 
-impl DeterministicallyAborts for TypedExpression {
+impl DeterministicallyAborts for TyExpression {
     fn deterministically_aborts(&self) -> bool {
-        use TypedExpressionVariant::*;
+        use TyExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
                 function_decl,
@@ -403,23 +403,12 @@ impl DeterministicallyAborts for TypedExpression {
             ArrayIndex { prefix, index } => {
                 prefix.deterministically_aborts() || index.deterministically_aborts()
             }
-            AsmExpression {
-                registers, body, ..
-            } => {
-                // when asm expression parsing is handled earlier, this will be cleaner. For now,
-                // we rely on string comparison...
-                // jumps are not allowed in asm blocks, so we know this block deterministically
-                // aborts if these opcodes are present
-                let body_deterministically_aborts = body
-                    .iter()
-                    .any(|x| ["rvrt", "ret"].contains(&x.op_name.as_str().to_lowercase().as_str()));
-                registers.iter().any(|x| {
-                    x.initializer
-                        .as_ref()
-                        .map(|x| x.deterministically_aborts())
-                        .unwrap_or(false)
-                }) || body_deterministically_aborts
-            }
+            AsmExpression { registers, .. } => registers.iter().any(|x| {
+                x.initializer
+                    .as_ref()
+                    .map(|x| x.deterministically_aborts())
+                    .unwrap_or(false)
+            }),
             IfExp {
                 condition,
                 then,
@@ -458,9 +447,9 @@ impl DeterministicallyAborts for TypedExpression {
     }
 }
 
-pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
-    TypedExpression {
-        expression: TypedExpressionVariant::Tuple { fields: vec![] },
+pub(crate) fn error_recovery_expr(span: Span) -> TyExpression {
+    TyExpression {
+        expression: TyExpressionVariant::Tuple { fields: vec![] },
         return_type: crate::type_system::insert_type(TypeInfo::ErrorRecovery),
         is_constant: IsConstant::No,
         span,
@@ -468,12 +457,12 @@ pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
 }
 
 #[allow(clippy::too_many_arguments)]
-impl TypedExpression {
+impl TyExpression {
     pub(crate) fn core_ops_eq(
         ctx: TypeCheckContext,
-        arguments: Vec<TypedExpression>,
+        arguments: Vec<TyExpression>,
         span: Span,
-    ) -> CompileResult<TypedExpression> {
+    ) -> CompileResult<TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let call_path = CallPath {
@@ -518,9 +507,9 @@ impl TypedExpression {
     /// do indeed return the correct type
     /// This does _not_ extract implicit return statements as those are not control flow! This is
     /// _only_ for explicit returns.
-    pub(crate) fn gather_return_statements(&self) -> Vec<&TypedReturnStatement> {
+    pub(crate) fn gather_return_statements(&self) -> Vec<&TyReturnStatement> {
         match &self.expression {
-            TypedExpressionVariant::IfExp {
+            TyExpressionVariant::IfExp {
                 condition,
                 then,
                 r#else,
@@ -532,65 +521,65 @@ impl TypedExpression {
                 }
                 buf
             }
-            TypedExpressionVariant::CodeBlock(TypedCodeBlock { contents, .. }) => {
+            TyExpressionVariant::CodeBlock(TyCodeBlock { contents, .. }) => {
                 let mut buf = vec![];
                 for node in contents {
                     buf.append(&mut node.gather_return_statements())
                 }
                 buf
             }
-            TypedExpressionVariant::WhileLoop { condition, body } => {
+            TyExpressionVariant::WhileLoop { condition, body } => {
                 let mut buf = condition.gather_return_statements();
                 for node in &body.contents {
                     buf.append(&mut node.gather_return_statements())
                 }
                 buf
             }
-            TypedExpressionVariant::Reassignment(reassignment) => {
+            TyExpressionVariant::Reassignment(reassignment) => {
                 reassignment.rhs.gather_return_statements()
             }
-            TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
+            TyExpressionVariant::StorageReassignment(storage_reassignment) => {
                 storage_reassignment.rhs.gather_return_statements()
             }
-            TypedExpressionVariant::LazyOperator { lhs, rhs, .. } => [lhs, rhs]
+            TyExpressionVariant::LazyOperator { lhs, rhs, .. } => [lhs, rhs]
                 .into_iter()
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
-            TypedExpressionVariant::Tuple { fields } => fields
+            TyExpressionVariant::Tuple { fields } => fields
                 .iter()
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
-            TypedExpressionVariant::Array { contents } => contents
+            TyExpressionVariant::Array { contents } => contents
                 .iter()
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
-            TypedExpressionVariant::ArrayIndex { prefix, index } => [prefix, index]
+            TyExpressionVariant::ArrayIndex { prefix, index } => [prefix, index]
                 .into_iter()
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
-            TypedExpressionVariant::StructFieldAccess { prefix, .. } => {
+            TyExpressionVariant::StructFieldAccess { prefix, .. } => {
                 prefix.gather_return_statements()
             }
-            TypedExpressionVariant::TupleElemAccess { prefix, .. } => {
+            TyExpressionVariant::TupleElemAccess { prefix, .. } => {
                 prefix.gather_return_statements()
             }
-            TypedExpressionVariant::EnumInstantiation { contents, .. } => contents
+            TyExpressionVariant::EnumInstantiation { contents, .. } => contents
                 .iter()
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
-            TypedExpressionVariant::AbiCast { address, .. } => address.gather_return_statements(),
-            TypedExpressionVariant::IntrinsicFunction(intrinsic_function_kind) => {
+            TyExpressionVariant::AbiCast { address, .. } => address.gather_return_statements(),
+            TyExpressionVariant::IntrinsicFunction(intrinsic_function_kind) => {
                 intrinsic_function_kind
                     .arguments
                     .iter()
                     .flat_map(|expr| expr.gather_return_statements())
                     .collect()
             }
-            TypedExpressionVariant::StructExpression { fields, .. } => fields
+            TyExpressionVariant::StructExpression { fields, .. } => fields
                 .iter()
                 .flat_map(|field| field.value.gather_return_statements())
                 .collect(),
-            TypedExpressionVariant::FunctionApplication {
+            TyExpressionVariant::FunctionApplication {
                 contract_call_params,
                 arguments,
                 selector,
@@ -605,29 +594,29 @@ impl TypedExpression {
                 )
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
-            TypedExpressionVariant::EnumTag { exp } => exp.gather_return_statements(),
-            TypedExpressionVariant::UnsafeDowncast { exp, .. } => exp.gather_return_statements(),
+            TyExpressionVariant::EnumTag { exp } => exp.gather_return_statements(),
+            TyExpressionVariant::UnsafeDowncast { exp, .. } => exp.gather_return_statements(),
 
-            TypedExpressionVariant::Return(stmt) => {
+            TyExpressionVariant::Return(stmt) => {
                 vec![stmt]
             }
             // if it is impossible for an expression to contain a return _statement_ (not an
             // implicit return!), put it in the pattern below.
-            TypedExpressionVariant::Literal(_)
-            | TypedExpressionVariant::FunctionParameter { .. }
-            | TypedExpressionVariant::AsmExpression { .. }
-            | TypedExpressionVariant::VariableExpression { .. }
-            | TypedExpressionVariant::AbiName(_)
-            | TypedExpressionVariant::StorageAccess { .. }
-            | TypedExpressionVariant::Break
-            | TypedExpressionVariant::Continue => vec![],
+            TyExpressionVariant::Literal(_)
+            | TyExpressionVariant::FunctionParameter { .. }
+            | TyExpressionVariant::AsmExpression { .. }
+            | TyExpressionVariant::VariableExpression { .. }
+            | TyExpressionVariant::AbiName(_)
+            | TyExpressionVariant::StorageAccess { .. }
+            | TyExpressionVariant::Break
+            | TyExpressionVariant::Continue => vec![],
         }
     }
 
     /// gathers the mutability of the expressions within
     pub(crate) fn gather_mutability(&self) -> VariableMutability {
         match &self.expression {
-            TypedExpressionVariant::VariableExpression { mutability, .. } => *mutability,
+            TyExpressionVariant::VariableExpression { mutability, .. } => *mutability,
             _ => VariableMutability::Immutable,
         }
     }
@@ -757,8 +746,8 @@ impl TypedExpression {
                 Self::type_check_while_loop(ctx.by_ref(), *condition, body, span)
             }
             ExpressionKind::Break => {
-                let expr = TypedExpression {
-                    expression: TypedExpressionVariant::Break,
+                let expr = TyExpression {
+                    expression: TyExpressionVariant::Break,
                     return_type: insert_type(TypeInfo::Unknown),
                     is_constant: IsConstant::No,
                     span,
@@ -766,8 +755,8 @@ impl TypedExpression {
                 ok(expr, vec![], vec![])
             }
             ExpressionKind::Continue => {
-                let expr = TypedExpression {
-                    expression: TypedExpressionVariant::Continue,
+                let expr = TyExpression {
+                    expression: TyExpressionVariant::Continue,
                     return_type: insert_type(TypeInfo::Unknown),
                     is_constant: IsConstant::No,
                     span,
@@ -797,14 +786,14 @@ impl TypedExpression {
                 let mut errors = vec![];
                 let expr_span = expr.span();
                 let expr = check!(
-                    TypedExpression::type_check(ctx, *expr),
+                    TyExpression::type_check(ctx, *expr),
                     error_recovery_expr(expr_span),
                     warnings,
                     errors,
                 );
-                let stmt = TypedReturnStatement { expr };
-                let typed_expr = TypedExpression {
-                    expression: TypedExpressionVariant::Return(Box::new(stmt)),
+                let stmt = TyReturnStatement { expr };
+                let typed_expr = TyExpression {
+                    expression: TyExpressionVariant::Return(Box::new(stmt)),
                     return_type: insert_type(TypeInfo::Unknown),
                     // FIXME: This should be Yes?
                     is_constant: IsConstant::No,
@@ -842,7 +831,7 @@ impl TypedExpression {
 
         // Literals of type Numeric can now be resolved if typed_expression.return_type is
         // an UnsignedInteger or a Numeric
-        if let TypedExpressionVariant::Literal(lit) = typed_expression.clone().expression {
+        if let TyExpressionVariant::Literal(lit) = typed_expression.clone().expression {
             if let Literal::Numeric(_) = lit {
                 match look_up_type_id(typed_expression.return_type) {
                     TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => {
@@ -865,7 +854,7 @@ impl TypedExpression {
         ok(typed_expression, warnings, errors)
     }
 
-    fn type_check_literal(lit: Literal, span: Span) -> CompileResult<TypedExpression> {
+    fn type_check_literal(lit: Literal, span: Span) -> CompileResult<TyExpression> {
         let return_type = match &lit {
             Literal::String(s) => TypeInfo::Str(s.as_str().len() as u64),
             Literal::Numeric(_) => TypeInfo::Numeric,
@@ -878,8 +867,8 @@ impl TypedExpression {
             Literal::B256(_) => TypeInfo::B256,
         };
         let id = crate::type_system::insert_type(return_type);
-        let exp = TypedExpression {
-            expression: TypedExpressionVariant::Literal(lit),
+        let exp = TyExpression {
+            expression: TyExpressionVariant::Literal(lit),
             return_type: id,
             is_constant: IsConstant::Yes,
             span,
@@ -891,21 +880,21 @@ impl TypedExpression {
         namespace: &Namespace,
         name: Ident,
         span: Span,
-    ) -> CompileResult<TypedExpression> {
+    ) -> CompileResult<TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let exp = match namespace.resolve_symbol(&name).value {
-            Some(TypedDeclaration::VariableDeclaration(decl)) => {
-                let TypedVariableDeclaration {
+            Some(TyDeclaration::VariableDeclaration(decl)) => {
+                let TyVariableDeclaration {
                     name: decl_name,
                     body,
                     mutability,
                     ..
                 } = &**decl;
-                TypedExpression {
+                TyExpression {
                     return_type: body.return_type,
                     is_constant: body.is_constant,
-                    expression: TypedExpressionVariant::VariableExpression {
+                    expression: TyExpressionVariant::VariableExpression {
                         name: decl_name.clone(),
                         span: name.span(),
                         mutability: *mutability,
@@ -913,8 +902,8 @@ impl TypedExpression {
                     span,
                 }
             }
-            Some(TypedDeclaration::ConstantDeclaration(decl_id)) => {
-                let TypedConstantDeclaration {
+            Some(TyDeclaration::ConstantDeclaration(decl_id)) => {
+                let TyConstantDeclaration {
                     name: decl_name,
                     value,
                     ..
@@ -924,12 +913,12 @@ impl TypedExpression {
                     warnings,
                     errors
                 );
-                TypedExpression {
+                TyExpression {
                     return_type: value.return_type,
                     is_constant: IsConstant::Yes,
                     // Although this isn't strictly a 'variable' expression we can treat it as one for
                     // this context.
-                    expression: TypedExpressionVariant::VariableExpression {
+                    expression: TyExpressionVariant::VariableExpression {
                         name: decl_name,
                         span: name.span(),
                         mutability: VariableMutability::Immutable,
@@ -937,17 +926,17 @@ impl TypedExpression {
                     span,
                 }
             }
-            Some(TypedDeclaration::AbiDeclaration(decl_id)) => {
+            Some(TyDeclaration::AbiDeclaration(decl_id)) => {
                 let decl = check!(
                     CompileResult::from(de_get_abi(decl_id.clone(), &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                TypedExpression {
+                TyExpression {
                     return_type: decl.create_type_id(),
                     is_constant: IsConstant::Yes,
-                    expression: TypedExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
+                    expression: TyExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
                     span,
                 }
             }
@@ -973,7 +962,7 @@ impl TypedExpression {
         mut call_path_binding: TypeBinding<CallPath>,
         arguments: Vec<Expression>,
         span: Span,
-    ) -> CompileResult<TypedExpression> {
+    ) -> CompileResult<TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -1002,19 +991,19 @@ impl TypedExpression {
         lhs: Expression,
         rhs: Expression,
         span: Span,
-    ) -> CompileResult<TypedExpression> {
+    ) -> CompileResult<TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut ctx = ctx.with_help_text("");
         let typed_lhs = check!(
-            TypedExpression::type_check(ctx.by_ref(), lhs.clone()),
+            TyExpression::type_check(ctx.by_ref(), lhs.clone()),
             error_recovery_expr(lhs.span()),
             warnings,
             errors
         );
 
         let typed_rhs = check!(
-            TypedExpression::type_check(ctx.by_ref(), rhs.clone()),
+            TyExpression::type_check(ctx.by_ref(), rhs.clone()),
             error_recovery_expr(rhs.span()),
             warnings,
             errors
@@ -1029,13 +1018,13 @@ impl TypedExpression {
         mut ctx: TypeCheckContext,
         contents: CodeBlock,
         span: Span,
-    ) -> CompileResult<TypedExpression> {
+    ) -> CompileResult<TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (typed_block, block_return_type) = check!(
-            TypedCodeBlock::type_check(ctx.by_ref(), contents),
+            TyCodeBlock::type_check(ctx.by_ref(), contents),
             (
-                TypedCodeBlock { contents: vec![] },
+                TyCodeBlock { contents: vec![] },
                 crate::type_system::insert_type(TypeInfo::Tuple(Vec::new()))
             ),
             warnings,
@@ -1048,8 +1037,8 @@ impl TypedExpression {
             errors
         );
 
-        let exp = TypedExpression {
-            expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
+        let exp = TyExpression {
+            expression: TyExpressionVariant::CodeBlock(TyCodeBlock {
                 contents: typed_block.contents,
             }),
             return_type: block_return_type,
@@ -1067,7 +1056,7 @@ impl TypedExpression {
         then: Expression,
         r#else: Option<Expression>,
         span: Span,
-    ) -> CompileResult<TypedExpression> {
+    ) -> CompileResult<TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let condition = {
@@ -1076,7 +1065,7 @@ impl TypedExpression {
                 .with_help_text("The condition of an if expression must be a boolean expression.")
                 .with_type_annotation(insert_type(TypeInfo::Boolean));
             check!(
-                TypedExpression::type_check(ctx, condition.clone()),
+                TyExpression::type_check(ctx, condition.clone()),
                 error_recovery_expr(condition.span()),
                 warnings,
                 errors
@@ -1088,7 +1077,7 @@ impl TypedExpression {
                 .with_help_text("")
                 .with_type_annotation(insert_type(TypeInfo::Unknown));
             check!(
-                TypedExpression::type_check(ctx, then.clone()),
+                TyExpression::type_check(ctx, then.clone()),
                 error_recovery_expr(then.span()),
                 warnings,
                 errors
@@ -1100,7 +1089,7 @@ impl TypedExpression {
                 .with_help_text("")
                 .with_type_annotation(insert_type(TypeInfo::Unknown));
             check!(
-                TypedExpression::type_check(ctx, expr.clone()),
+                TyExpression::type_check(ctx, expr.clone()),
                 error_recovery_expr(expr.span()),
                 warnings,
                 errors
@@ -1127,7 +1116,7 @@ impl TypedExpression {
         value: Expression,
         branches: Vec<MatchBranch>,
         span: Span,
-    ) -> CompileResult<TypedExpression> {
+    ) -> CompileResult<TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -1138,7 +1127,7 @@ impl TypedExpression {
                 .with_help_text("")
                 .with_type_annotation(insert_type(TypeInfo::Unknown));
             check!(
-                TypedExpression::type_check(ctx, value.clone()),
+                TyExpression::type_check(ctx, value.clone()),
                 error_recovery_expr(value.span()),
                 warnings,
                 errors
@@ -1154,11 +1143,11 @@ impl TypedExpression {
             errors
         );
 
-        // type check the match expression and create a TypedMatchExpression object
+        // type check the match expression and create a TyMatchExpression object
         let (typed_match_expression, typed_scrutinees) = {
             let ctx = ctx.by_ref().with_help_text("");
             check!(
-                TypedMatchExpression::type_check(ctx, typed_value, branches, span.clone()),
+                TyMatchExpression::type_check(ctx, typed_value, branches, span.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1209,7 +1198,7 @@ impl TypedExpression {
         mut ctx: TypeCheckContext,
         asm: AsmExpression,
         span: Span,
-    ) -> CompileResult<TypedExpression> {
+    ) -> CompileResult<TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let asm_span = asm
@@ -1217,31 +1206,24 @@ impl TypedExpression {
             .clone()
             .map(|x| x.1)
             .unwrap_or_else(|| asm.whole_block_span.clone());
-        let diverges = asm
-            .body
-            .iter()
-            .any(|asm_op| matches!(asm_op.op_name.as_str(), "rvrt" | "ret"));
-        let return_type = if diverges {
-            insert_type(TypeInfo::Unknown)
-        } else {
-            check!(
-                ctx.resolve_type_with_self(
-                    insert_type(asm.return_type.clone()),
-                    &asm_span,
-                    EnforceTypeArguments::No,
-                    None
-                ),
-                insert_type(TypeInfo::ErrorRecovery),
-                warnings,
-                errors,
-            )
-        };
+        let return_type = check!(
+            ctx.resolve_type_with_self(
+                insert_type(asm.return_type.clone()),
+                &asm_span,
+                EnforceTypeArguments::No,
+                None
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
+
         // type check the initializers
         let typed_registers = asm
             .registers
             .into_iter()
             .map(
-                |AsmRegisterDeclaration { name, initializer }| TypedAsmRegisterDeclaration {
+                |AsmRegisterDeclaration { name, initializer }| TyAsmRegisterDeclaration {
                     name,
                     initializer: initializer.map(|initializer| {
                         let ctx = ctx
@@ -1249,7 +1231,7 @@ impl TypedExpression {
                             .with_help_text("")
                             .with_type_annotation(insert_type(TypeInfo::Unknown));
                         check!(
-                            TypedExpression::type_check(ctx, initializer.clone()),
+                            TyExpression::type_check(ctx, initializer.clone()),
                             error_recovery_expr(initializer.span()),
                             warnings,
                             errors
@@ -1262,8 +1244,8 @@ impl TypedExpression {
         for op in &asm.body {
             check!(disallow_opcode(&op.op_name), continue, warnings, errors)
         }
-        let exp = TypedExpression {
-            expression: TypedExpressionVariant::AsmExpression {
+        let exp = TyExpression {
+            expression: TyExpressionVariant::AsmExpression {
                 whole_block_span: asm.whole_block_span,
                 body: asm.body,
                 registers: typed_registers,
@@ -1282,7 +1264,7 @@ impl TypedExpression {
         call_path_binding: TypeBinding<CallPath<(TypeInfo, Span)>>,
         fields: Vec<StructExpressionField>,
         span: Span,
-    ) -> CompileResult<TypedExpression> {
+    ) -> CompileResult<TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -1316,10 +1298,10 @@ impl TypedExpression {
                             struct_name: struct_name.clone(),
                             span: span.clone(),
                         });
-                        typed_fields_buf.push(TypedStructExpressionField {
+                        typed_fields_buf.push(TyStructExpressionField {
                             name: def_field.name.clone(),
-                            value: TypedExpression {
-                                expression: TypedExpressionVariant::Tuple { fields: vec![] },
+                            value: TyExpression {
+                                expression: TyExpressionVariant::Tuple { fields: vec![] },
                                 return_type: insert_type(TypeInfo::ErrorRecovery),
                                 is_constant: IsConstant::No,
                                 span: span.clone(),
@@ -1336,14 +1318,14 @@ impl TypedExpression {
                 )
                 .with_type_annotation(def_field.type_id);
             let typed_field = check!(
-                TypedExpression::type_check(ctx, expr_field.value),
+                TyExpression::type_check(ctx, expr_field.value),
                 continue,
                 warnings,
                 errors
             );
 
             def_field.span = typed_field.span.clone();
-            typed_fields_buf.push(TypedStructExpressionField {
+            typed_fields_buf.push(TyStructExpressionField {
                 value: typed_field,
                 name: expr_field.name.clone(),
             });
@@ -1359,8 +1341,8 @@ impl TypedExpression {
                 });
             }
         }
-        let exp = TypedExpression {
-            expression: TypedExpressionVariant::StructExpression {
+        let exp = TyExpression {
+            expression: TyExpressionVariant::StructExpression {
                 struct_name: struct_name.clone(),
                 fields: typed_fields_buf,
                 span: call_path_binding.inner.suffix.1.clone(),
@@ -1378,14 +1360,14 @@ impl TypedExpression {
         prefix: Expression,
         span: Span,
         field_to_access: Ident,
-    ) -> CompileResult<TypedExpression> {
+    ) -> CompileResult<TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let ctx = ctx
             .with_help_text("")
             .with_type_annotation(insert_type(TypeInfo::Unknown));
         let parent = check!(
-            TypedExpression::type_check(ctx, prefix),
+            TyExpression::type_check(ctx, prefix),
             return err(warnings, errors),
             warnings,
             errors
@@ -1426,7 +1408,7 @@ impl TypedExpression {
                 .with_help_text("tuple field type does not match the expected type")
                 .with_type_annotation(field_type.type_id);
             let typed_field = check!(
-                TypedExpression::type_check(ctx, field),
+                TyExpression::type_check(ctx, field),
                 error_recovery_expr(field_span),
                 warnings,
                 errors
@@ -1441,8 +1423,8 @@ impl TypedExpression {
             });
             typed_fields.push(typed_field);
         }
-        let exp = TypedExpression {
-            expression: TypedExpressionVariant::Tuple {
+        let exp = TyExpression {
+            expression: TyExpressionVariant::Tuple {
                 fields: typed_fields,
             },
             return_type: crate::type_system::insert_type(TypeInfo::Tuple(typed_field_types)),
@@ -1483,8 +1465,8 @@ impl TypedExpression {
             errors
         );
         ok(
-            TypedExpression {
-                expression: TypedExpressionVariant::StorageAccess(storage_access),
+            TyExpression {
+                expression: TyExpressionVariant::StorageAccess(storage_access),
                 return_type,
                 is_constant: IsConstant::No,
                 span: span.clone(),
@@ -1500,14 +1482,14 @@ impl TypedExpression {
         index: usize,
         index_span: Span,
         span: Span,
-    ) -> CompileResult<TypedExpression> {
+    ) -> CompileResult<TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let ctx = ctx
             .with_help_text("")
             .with_type_annotation(insert_type(TypeInfo::Unknown));
         let parent = check!(
-            TypedExpression::type_check(ctx, prefix),
+            TyExpression::type_check(ctx, prefix),
             return err(warnings, errors),
             warnings,
             errors
@@ -1526,7 +1508,7 @@ impl TypedExpression {
         call_path_binding: TypeBinding<CallPath>,
         span: Span,
         args: Vec<Expression>,
-    ) -> CompileResult<TypedExpression> {
+    ) -> CompileResult<TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -1654,7 +1636,7 @@ impl TypedExpression {
                 .with_help_text("An address that is being ABI cast must be of type b256")
                 .with_type_annotation(insert_type(TypeInfo::B256));
             check!(
-                TypedExpression::type_check(ctx, address),
+                TyExpression::type_check(ctx, address),
                 error_recovery_expr(err_span),
                 warnings,
                 errors
@@ -1668,7 +1650,7 @@ impl TypedExpression {
             errors
         );
         let abi = match abi {
-            TypedDeclaration::AbiDeclaration(decl_id) => {
+            TyDeclaration::AbiDeclaration(decl_id) => {
                 check!(
                     CompileResult::from(de_get_abi(decl_id, &span)),
                     return err(warnings, errors),
@@ -1676,8 +1658,8 @@ impl TypedExpression {
                     errors
                 )
             }
-            TypedDeclaration::VariableDeclaration(ref decl) => {
-                let TypedVariableDeclaration { body: expr, .. } = &**decl;
+            TyDeclaration::VariableDeclaration(ref decl) => {
+                let TyVariableDeclaration { body: expr, .. } = &**decl;
                 let ret_ty = look_up_type_id(expr.return_type);
                 let abi_name = match ret_ty {
                     TypeInfo::ContractCaller { abi_name, .. } => abi_name,
@@ -1707,12 +1689,12 @@ impl TypedExpression {
                     }
                     AbiName::Deferred => {
                         return ok(
-                            TypedExpression {
+                            TyExpression {
                                 return_type: insert_type(TypeInfo::ContractCaller {
                                     abi_name: AbiName::Deferred,
                                     address: None,
                                 }),
-                                expression: TypedExpressionVariant::Tuple { fields: vec![] },
+                                expression: TyExpressionVariant::Tuple { fields: vec![] },
                                 is_constant: IsConstant::Yes,
                                 span,
                             },
@@ -1751,7 +1733,7 @@ impl TypedExpression {
                 .with_type_annotation(insert_type(TypeInfo::Unknown))
                 .with_mode(Mode::ImplAbiFn);
             type_checked_fn_buf.push(check!(
-                TypedFunctionDeclaration::type_check(ctx, method.clone()),
+                TyFunctionDeclaration::type_check(ctx, method.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1761,8 +1743,8 @@ impl TypedExpression {
         functions_buf.append(&mut type_checked_fn_buf);
         ctx.namespace
             .insert_trait_implementation(abi_name.clone(), return_type, functions_buf);
-        let exp = TypedExpression {
-            expression: TypedExpressionVariant::AbiCast {
+        let exp = TyExpression {
+            expression: TyExpressionVariant::AbiCast {
                 abi_name,
                 address: Box::new(address_expr),
                 span: span.clone(),
@@ -1782,8 +1764,8 @@ impl TypedExpression {
         if contents.is_empty() {
             let unknown_type = insert_type(TypeInfo::Unknown);
             return ok(
-                TypedExpression {
-                    expression: TypedExpressionVariant::Array {
+                TyExpression {
+                    expression: TyExpressionVariant::Array {
                         contents: Vec::new(),
                     },
                     return_type: insert_type(TypeInfo::Array(unknown_type, 0, unknown_type)),
@@ -1797,7 +1779,7 @@ impl TypedExpression {
 
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let typed_contents: Vec<TypedExpression> = contents
+        let typed_contents: Vec<TyExpression> = contents
             .into_iter()
             .map(|expr| {
                 let span = expr.span();
@@ -1833,8 +1815,8 @@ impl TypedExpression {
 
         let array_count = typed_contents.len();
         ok(
-            TypedExpression {
-                expression: TypedExpressionVariant::Array {
+            TyExpression {
+                expression: TyExpressionVariant::Array {
                     contents: typed_contents,
                 },
                 return_type: insert_type(TypeInfo::Array(elem_type, array_count, elem_type)),
@@ -1861,29 +1843,29 @@ impl TypedExpression {
                 .with_help_text("")
                 .with_type_annotation(insert_type(TypeInfo::Unknown));
             check!(
-                TypedExpression::type_check(ctx, prefix.clone()),
+                TyExpression::type_check(ctx, prefix.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
             )
         };
 
-        // If the return type is a static array then create a TypedArrayIndex.
+        // If the return type is a static array then create a `TyExpressionVariant::ArrayIndex`.
         if let TypeInfo::Array(elem_type_id, _, _) = look_up_type_id(prefix_te.return_type) {
             let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
             let ctx = ctx
                 .with_help_text("")
                 .with_type_annotation(insert_type(type_info_u64));
             let index_te = check!(
-                TypedExpression::type_check(ctx, index),
+                TyExpression::type_check(ctx, index),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
 
             ok(
-                TypedExpression {
-                    expression: TypedExpressionVariant::ArrayIndex {
+                TyExpression {
+                    expression: TyExpressionVariant::ArrayIndex {
                         prefix: Box::new(prefix_te),
                         index: Box::new(index_te),
                     },
@@ -1923,13 +1905,13 @@ impl TypedExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (intrinsic_function, return_type) = check!(
-            TypedIntrinsicFunctionKind::type_check(ctx, kind_binding, arguments, span.clone()),
+            TyIntrinsicFunctionKind::type_check(ctx, kind_binding, arguments, span.clone()),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let exp = TypedExpression {
-            expression: TypedExpressionVariant::IntrinsicFunction(intrinsic_function),
+        let exp = TyExpression {
+            expression: TyExpressionVariant::IntrinsicFunction(intrinsic_function),
             return_type,
             is_constant: IsConstant::No,
             span,
@@ -1951,7 +1933,7 @@ impl TypedExpression {
                 .with_type_annotation(insert_type(TypeInfo::Boolean))
                 .with_help_text("A while loop's loop condition must be a boolean expression.");
             check!(
-                TypedExpression::type_check(ctx, condition),
+                TyExpression::type_check(ctx, condition),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1965,13 +1947,13 @@ impl TypedExpression {
                  instead.",
         );
         let (typed_body, _block_implicit_return) = check!(
-            TypedCodeBlock::type_check(ctx, body),
+            TyCodeBlock::type_check(ctx, body),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let exp = TypedExpression {
-            expression: TypedExpressionVariant::WhileLoop {
+        let exp = TyExpression {
+            expression: TyExpressionVariant::WhileLoop {
                 condition: Box::new(typed_condition),
                 body: typed_body,
             },
@@ -2056,22 +2038,20 @@ impl TypedExpression {
                 let ctx = ctx.with_type_annotation(ty_of_field).with_help_text("");
                 let rhs_span = rhs.span();
                 let rhs = check!(
-                    TypedExpression::type_check(ctx, rhs),
+                    TyExpression::type_check(ctx, rhs),
                     error_recovery_expr(rhs_span),
                     warnings,
                     errors
                 );
 
                 ok(
-                    TypedExpression {
-                        expression: TypedExpressionVariant::Reassignment(Box::new(
-                            TypedReassignment {
-                                lhs_base_name: base_name,
-                                lhs_type: final_return_type,
-                                lhs_indices: names_vec,
-                                rhs,
-                            },
-                        )),
+                    TyExpression {
+                        expression: TyExpressionVariant::Reassignment(Box::new(TyReassignment {
+                            lhs_base_name: base_name,
+                            lhs_type: final_return_type,
+                            lhs_indices: names_vec,
+                            rhs,
+                        })),
                         return_type: crate::type_system::insert_type(TypeInfo::Tuple(Vec::new())),
                         // TODO: if the rhs is constant then this should be constant, no?
                         is_constant: IsConstant::No,
@@ -2092,8 +2072,8 @@ impl TypedExpression {
                     errors,
                 );
                 ok(
-                    TypedExpression {
-                        expression: TypedExpressionVariant::StorageReassignment(Box::new(
+                    TyExpression {
+                        expression: TyExpressionVariant::StorageReassignment(Box::new(
                             reassignment,
                         )),
                         return_type: crate::type_system::insert_type(TypeInfo::Tuple(Vec::new())),
@@ -2111,7 +2091,7 @@ impl TypedExpression {
         lit: Literal,
         span: Span,
         new_type: TypeId,
-    ) -> CompileResult<TypedExpression> {
+    ) -> CompileResult<TyExpression> {
         let mut errors = vec![];
 
         // Parse and resolve a Numeric(span) based on new_type.
@@ -2176,8 +2156,8 @@ impl TypedExpression {
 
         match val {
             Ok(v) => {
-                let exp = TypedExpression {
-                    expression: TypedExpressionVariant::Literal(v),
+                let exp = TyExpression {
+                    expression: TyExpressionVariant::Literal(v),
                     return_type: new_integer_type,
                     is_constant: IsConstant::Yes,
                     span,
@@ -2197,13 +2177,13 @@ impl TypedExpression {
 mod tests {
     use super::*;
 
-    fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
+    fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TyExpression> {
         let mut namespace = Namespace::init_root(namespace::Module::default());
         let ctx = TypeCheckContext::from_root(&mut namespace).with_type_annotation(type_annotation);
-        TypedExpression::type_check(ctx, expr)
+        TyExpression::type_check(ctx, expr)
     }
 
-    fn do_type_check_for_boolx2(expr: Expression) -> CompileResult<TypedExpression> {
+    fn do_type_check_for_boolx2(expr: Expression) -> CompileResult<TyExpression> {
         do_type_check(
             expr,
             insert_type(TypeInfo::Array(

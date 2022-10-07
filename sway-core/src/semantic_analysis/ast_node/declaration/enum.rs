@@ -12,10 +12,10 @@ use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
-pub struct TypedEnumDeclaration {
+pub struct TyEnumDeclaration {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
-    pub variants: Vec<TypedEnumVariant>,
+    pub variants: Vec<TyEnumVariant>,
     pub(crate) span: Span,
     pub visibility: Visibility,
 }
@@ -23,7 +23,7 @@ pub struct TypedEnumDeclaration {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedEnumDeclaration {
+impl PartialEq for TyEnumDeclaration {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
             && self.type_parameters == other.type_parameters
@@ -32,7 +32,7 @@ impl PartialEq for TypedEnumDeclaration {
     }
 }
 
-impl CopyTypes for TypedEnumDeclaration {
+impl CopyTypes for TyEnumDeclaration {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.variants
             .iter_mut()
@@ -43,7 +43,7 @@ impl CopyTypes for TypedEnumDeclaration {
     }
 }
 
-impl CreateTypeId for TypedEnumDeclaration {
+impl CreateTypeId for TyEnumDeclaration {
     fn create_type_id(&self) -> TypeId {
         insert_type(TypeInfo::Enum {
             name: self.name.clone(),
@@ -53,13 +53,13 @@ impl CreateTypeId for TypedEnumDeclaration {
     }
 }
 
-impl Spanned for TypedEnumDeclaration {
+impl Spanned for TyEnumDeclaration {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl MonomorphizeHelper for TypedEnumDeclaration {
+impl MonomorphizeHelper for TyEnumDeclaration {
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
@@ -69,7 +69,7 @@ impl MonomorphizeHelper for TypedEnumDeclaration {
     }
 }
 
-impl TypedEnumDeclaration {
+impl TyEnumDeclaration {
     pub fn type_check(ctx: TypeCheckContext, decl: EnumDeclaration) -> CompileResult<Self> {
         let mut errors = vec![];
         let mut warnings = vec![];
@@ -103,7 +103,7 @@ impl TypedEnumDeclaration {
         let mut variants_buf = vec![];
         for variant in variants {
             variants_buf.push(check!(
-                TypedEnumVariant::type_check(ctx.by_ref(), variant.clone()),
+                TyEnumVariant::type_check(ctx.by_ref(), variant.clone()),
                 continue,
                 warnings,
                 errors
@@ -111,7 +111,7 @@ impl TypedEnumDeclaration {
         }
 
         // create the enum decl
-        let decl = TypedEnumDeclaration {
+        let decl = TyEnumDeclaration {
             name,
             type_parameters: new_type_parameters,
             variants: variants_buf,
@@ -124,7 +124,7 @@ impl TypedEnumDeclaration {
     pub(crate) fn expect_variant_from_name(
         &self,
         variant_name: &Ident,
-    ) -> CompileResult<&TypedEnumVariant> {
+    ) -> CompileResult<&TyEnumVariant> {
         let warnings = vec![];
         let mut errors = vec![];
         match self
@@ -146,7 +146,7 @@ impl TypedEnumDeclaration {
 }
 
 #[derive(Debug, Clone, Eq)]
-pub struct TypedEnumVariant {
+pub struct TyEnumVariant {
     pub name: Ident,
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
@@ -158,7 +158,7 @@ pub struct TypedEnumVariant {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl Hash for TypedEnumVariant {
+impl Hash for TyEnumVariant {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
         look_up_type_id(self.type_id).hash(state);
@@ -169,7 +169,7 @@ impl Hash for TypedEnumVariant {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedEnumVariant {
+impl PartialEq for TyEnumVariant {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
             && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
@@ -177,19 +177,19 @@ impl PartialEq for TypedEnumVariant {
     }
 }
 
-impl CopyTypes for TypedEnumVariant {
+impl CopyTypes for TyEnumVariant {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.type_id.copy_types(type_mapping);
     }
 }
 
-impl ReplaceSelfType for TypedEnumVariant {
+impl ReplaceSelfType for TyEnumVariant {
     fn replace_self_type(&mut self, self_type: TypeId) {
         self.type_id.replace_self_type(self_type);
     }
 }
 
-impl TypedEnumVariant {
+impl TyEnumVariant {
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
         variant: EnumVariant,
@@ -209,7 +209,7 @@ impl TypedEnumVariant {
             errors,
         );
         ok(
-            TypedEnumVariant {
+            TyEnumVariant {
                 name: variant.name.clone(),
                 type_id: enum_variant_type,
                 initial_type_id,
