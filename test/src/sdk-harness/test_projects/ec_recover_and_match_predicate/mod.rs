@@ -47,7 +47,9 @@ async fn ec_recover_and_match_predicate_test() -> Result<(), Error> {
         .iter_mut()
         .for_each(|wallet| wallet.set_provider(provider.clone()));
 
-    let predicate = Predicate::load_from("out/debug/predicate_test.bin")?;
+    let predicate = Predicate::load_from(
+        "test_projects/ec_recover_and_match_predicate/out/debug/ec_recover_and_match_predicate.bin",
+    )?;
 
     let predicate_code = predicate.code();
     let predicate_address = predicate.address();
