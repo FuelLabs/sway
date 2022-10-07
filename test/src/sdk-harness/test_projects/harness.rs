@@ -4,6 +4,7 @@ mod auth;
 mod block;
 mod call_frames;
 mod context;
+mod ec_recover_and_match_predicate;
 mod evm;
 mod exponentiation;
 mod hashing;
