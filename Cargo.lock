@@ -1521,6 +1521,7 @@ dependencies = [
  "fuel-crypto",
  "fuel-tx 0.18.0",
  "git2",
+ "hex",
  "petgraph",
  "semver 1.0.14",
  "serde",
