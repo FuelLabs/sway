@@ -10,7 +10,7 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::str;
 use std::{env, io};
-use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
+use sway_core::{error::LineCol, language::parsed::TreeType, CompileError, CompileWarning};
 use sway_types::Spanned;
 use sway_utils::constants;
 use tracing::{Level, Metadata};

@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::declaration_engine::*, error::*, parse_tree::*, semantic_analysis::*,
+    declaration_engine::declaration_engine::*, error::*, language::parsed::*, semantic_analysis::*,
     type_system::*,
 };
 

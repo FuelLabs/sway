@@ -1,6 +1,6 @@
 use crate::{
-    semantic_analysis::ast_node::TyExpression, type_system::*, CallPath, CompileResult, Ident,
-    TyDeclaration, TyFunctionDeclaration,
+    language::CallPath, semantic_analysis::ast_node::TyExpression, type_system::*, CompileResult,
+    Ident, TyDeclaration, TyFunctionDeclaration,
 };
 
 use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};

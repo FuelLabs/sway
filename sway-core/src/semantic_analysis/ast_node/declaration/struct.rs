@@ -1,4 +1,9 @@
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*};
+use crate::{
+    error::*,
+    language::{parsed::*, Visibility},
+    semantic_analysis::*,
+    type_system::*,
+};
 use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Span, Spanned};
 

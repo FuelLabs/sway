@@ -3,12 +3,12 @@ use std::{cmp::Ordering, fmt};
 use std::fmt::Write;
 use sway_types::Span;
 
-use crate::semantic_analysis::{TyScrutinee, TyScrutineeVariant};
 use crate::{
     error::{err, ok},
-    CompileError, CompileResult, Literal,
+    language::Literal,
+    semantic_analysis::{TyScrutinee, TyScrutineeVariant},
+    CompileError, CompileResult, Namespace, TypeInfo,
 };
-use crate::{Namespace, TypeInfo};
 
 use super::{patstack::PatStack, range::Range};
 

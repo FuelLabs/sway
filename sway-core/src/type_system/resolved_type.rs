@@ -1,6 +1,6 @@
 use crate::semantic_analysis::TyExpression;
 use crate::type_system::*;
-use crate::{semantic_analysis::ast_node::TyStructField, CallPath, Ident};
+use crate::{language::CallPath, semantic_analysis::ast_node::TyStructField, Ident};
 use derivative::Derivative;
 
 #[derive(Derivative)]

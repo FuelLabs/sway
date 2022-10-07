@@ -1,5 +1,5 @@
 use super::*;
-use crate::CodeBlock;
+use crate::language::parsed::CodeBlock;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TyCodeBlock {

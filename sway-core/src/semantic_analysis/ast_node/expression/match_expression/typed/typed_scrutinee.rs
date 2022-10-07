@@ -3,10 +3,10 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     declaration_engine::de_get_constant,
     error::{err, ok},
+    language::{parsed::*, CallPath, Literal},
     semantic_analysis::{TyEnumVariant, TypeCheckContext},
     type_system::{insert_type, CreateTypeId, EnforceTypeArguments, TypeArgument, TypeId},
-    CallPath, CompileError, CompileResult, Literal, Scrutinee, StructScrutineeField, TyDeclaration,
-    TypeInfo,
+    CompileError, CompileResult, TyDeclaration, TypeInfo,
 };
 
 #[derive(Debug, Clone)]

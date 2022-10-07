@@ -13,8 +13,12 @@ pub(crate) use self::{
 };
 
 use crate::{
-    declaration_engine::declaration_engine::*, error::*, parse_tree::*, semantic_analysis::*,
-    type_system::*, types::DeterministicallyAborts,
+    declaration_engine::declaration_engine::*,
+    error::*,
+    language::{parsed::*, *},
+    semantic_analysis::*,
+    type_system::*,
+    types::DeterministicallyAborts,
 };
 
 use sway_ast::intrinsics::Intrinsic;
@@ -1289,7 +1293,7 @@ impl TyExpression {
         // match up the names with their type annotations from the declaration
         let mut typed_fields_buf = vec![];
         for def_field in struct_fields.iter_mut() {
-            let expr_field: crate::parse_tree::StructExpressionField =
+            let expr_field: StructExpressionField =
                 match fields.iter().find(|x| x.name == def_field.name) {
                     Some(val) => val.clone(),
                     None => {
