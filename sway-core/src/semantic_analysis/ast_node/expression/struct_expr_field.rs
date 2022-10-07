@@ -2,12 +2,12 @@ use crate::Ident;
 use crate::{semantic_analysis::*, type_system::*};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TypedStructExpressionField {
+pub struct TyStructExpressionField {
     pub name: Ident,
-    pub value: TypedExpression,
+    pub value: TyExpression,
 }
 
-impl CopyTypes for TypedStructExpressionField {
+impl CopyTypes for TyStructExpressionField {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.value.copy_types(type_mapping);
     }

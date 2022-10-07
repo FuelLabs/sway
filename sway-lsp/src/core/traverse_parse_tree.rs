@@ -5,14 +5,20 @@ use crate::{
 };
 use sway_core::{
     constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX},
-    parse_tree::{Literal, MethodName},
+    language::{
+        parsed::{
+            AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock,
+            Declaration, DelineatedPathExpression, Expression, ExpressionKind,
+            FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
+            IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
+            MethodApplicationExpression, MethodName, ReassignmentTarget, Scrutinee,
+            StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
+            TraitFn, TupleIndexExpression, WhileLoopExpression,
+        },
+        Literal,
+    },
     type_system::{TypeArgument, TypeParameter},
-    AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock, Declaration,
-    DelineatedPathExpression, Expression, ExpressionKind, FunctionApplicationExpression,
-    FunctionDeclaration, FunctionParameter, IfExpression, IntrinsicFunctionExpression,
-    LazyOperatorExpression, MatchExpression, MethodApplicationExpression, ReassignmentTarget,
-    Scrutinee, StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
-    TraitFn, TupleIndexExpression, TypeInfo, WhileLoopExpression,
+    TypeInfo,
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -713,10 +719,6 @@ fn collect_type_info_token(
         }
         TypeInfo::Tuple(args) => {
             collect_type_args(args, &token, tokens);
-        }
-        TypeInfo::Ref(type_id, span) => {
-            token.type_def = Some(TypeDefinition::TypeId(*type_id));
-            tokens.insert(to_ident_key(&Ident::new(span.clone())), token);
         }
         TypeInfo::Custom {
             name,
