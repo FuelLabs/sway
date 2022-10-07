@@ -54,7 +54,7 @@ Ran 4 out of 322 E2E tests (0 disabled).
 No IR generation tests were run. Regex filter "abi_impl" filtered out all 48 tests.
 ```
 
-Note that if you `cd` into the `sway/test` directory, you can just say `cargo run <test-name>`.
+Note that if you `cd` into the `sway/test` directory, you can just say `cargo run [pattern]`.
 
 ## Getting more information while running tests
 
