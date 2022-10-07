@@ -377,36 +377,33 @@ mod tests {
     use super::*;
     use serial_test::serial;
     use tower_lsp::{
-        jsonrpc::{self, Request, Response},
-        LspService,
+        jsonrpc::{self, Id, Request, Response},
+        ExitedError, LspService,
     };
+
+    fn sway_workspace_dir() -> PathBuf {
+        env::current_dir().unwrap().parent().unwrap().to_path_buf()
+    }
+
+    fn e2e_language_dir() -> PathBuf {
+        PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass/language")
+    }
 
     #[allow(dead_code)]
     fn e2e_test_dir() -> PathBuf {
-        env::current_dir()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
+        sway_workspace_dir()
+            .join(e2e_language_dir())
             .join("struct_field_access")
     }
 
     #[allow(dead_code)]
     fn sway_example_dir() -> PathBuf {
-        env::current_dir()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("examples/storage_variables")
+        sway_workspace_dir().join("examples/storage_variables")
     }
 
-    #[allow(dead_code)]
-    fn doc_comments() -> PathBuf {
-        env::current_dir()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
+    fn doc_comments_dir() -> PathBuf {
+        sway_workspace_dir()
+            .join(e2e_language_dir())
             .join("doc_comments")
     }
 
@@ -421,17 +418,25 @@ mod tests {
         (uri, sway_program)
     }
 
+    fn build_request_with_id<M, I>(method: M, params: serde_json::Value, id: I) -> Request
+    where
+        M: Into<std::borrow::Cow<'static, str>>,
+        I: Into<Id>,
+    {
+        Request::build(method).params(params).id(id).finish()
+    }
+
+    async fn call_request(
+        service: &mut LspService<Backend>,
+        req: Request,
+    ) -> Result<Option<Response>, ExitedError> {
+        service.ready().await?.call(req).await
+    }
+
     async fn initialize_request(service: &mut LspService<Backend>) -> Request {
-        let initialize = Request::build("initialize")
-            .params(json!({ "capabilities": capabilities() }))
-            .id(1)
-            .finish();
-        let response = service
-            .ready()
-            .await
-            .unwrap()
-            .call(initialize.clone())
-            .await;
+        let params = json!({ "capabilities": capabilities() });
+        let initialize = build_request_with_id("initialize", params, 1);
+        let response = call_request(service, initialize.clone()).await;
         let ok = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
         assert_eq!(response, Ok(Some(ok)));
         initialize
@@ -439,13 +444,13 @@ mod tests {
 
     async fn initialized_notification(service: &mut LspService<Backend>) {
         let initialized = Request::build("initialized").finish();
-        let response = service.ready().await.unwrap().call(initialized).await;
+        let response = call_request(service, initialized).await;
         assert_eq!(response, Ok(None));
     }
 
     async fn shutdown_request(service: &mut LspService<Backend>) -> Request {
         let shutdown = Request::build("shutdown").id(1).finish();
-        let response = service.ready().await.unwrap().call(shutdown.clone()).await;
+        let response = call_request(service, shutdown.clone()).await;
         let ok = Response::from_ok(1.into(), json!(null));
         assert_eq!(response, Ok(Some(ok)));
         shutdown
@@ -453,24 +458,24 @@ mod tests {
 
     async fn exit_notification(service: &mut LspService<Backend>) {
         let exit = Request::build("exit").finish();
-        let response = service.ready().await.unwrap().call(exit.clone()).await;
+        let response = call_request(service, exit.clone()).await;
         assert_eq!(response, Ok(None));
     }
 
     async fn did_open_notification(service: &mut LspService<Backend>, uri: &Url, text: &str) {
-        let language_id = "sway";
         let params = json!({
             "textDocument": {
                 "uri": uri,
-                "languageId": language_id,
+                "languageId": "sway",
                 "version": 1,
                 "text": text,
             },
         });
+
         let did_open = Request::build("textDocument/didOpen")
             .params(params)
             .finish();
-        let response = service.ready().await.unwrap().call(did_open).await;
+        let response = call_request(service, did_open).await;
         assert_eq!(response, Ok(None));
     }
 
@@ -481,19 +486,14 @@ mod tests {
         let did_change = Request::build("textDocument/didChange")
             .params(params)
             .finish();
-        let response = service
-            .ready()
-            .await
-            .unwrap()
-            .call(did_change.clone())
-            .await;
+        let response = call_request(service, did_change.clone()).await;
         assert_eq!(response, Ok(None));
         did_change
     }
 
     async fn did_close_notification(service: &mut LspService<Backend>) {
         let exit = Request::build("textDocument/didClose").finish();
-        let response = service.ready().await.unwrap().call(exit.clone()).await;
+        let response = call_request(service, exit.clone()).await;
         assert_eq!(response, Ok(None));
     }
 
@@ -504,11 +504,8 @@ mod tests {
             },
             "astKind": "typed",
         });
-        let show_ast = Request::build("sway/show_ast")
-            .params(params)
-            .id(1)
-            .finish();
-        let response = service.ready().await.unwrap().call(show_ast.clone()).await;
+        let show_ast = build_request_with_id("sway/show_ast", params, 1);
+        let response = call_request(service, show_ast.clone()).await;
         let ok = Response::from_ok(1.into(), json!({"uri": "file:///tmp/typed_ast.rs"}));
         assert_eq!(response, Ok(Some(ok)));
         show_ast
@@ -520,16 +517,8 @@ mod tests {
                 "uri": uri,
             },
         });
-        let semantic_tokens = Request::build("textDocument/semanticTokens/full")
-            .params(params)
-            .id(1)
-            .finish();
-        let _response = service
-            .ready()
-            .await
-            .unwrap()
-            .call(semantic_tokens.clone())
-            .await;
+        let semantic_tokens = build_request_with_id("textDocument/semanticTokens/full", params, 1);
+        let _response = call_request(service, semantic_tokens.clone()).await;
         semantic_tokens
     }
 
@@ -539,16 +528,8 @@ mod tests {
                 "uri": uri,
             },
         });
-        let document_symbol = Request::build("textDocument/documentSymbol")
-            .params(params)
-            .id(1)
-            .finish();
-        let _response = service
-            .ready()
-            .await
-            .unwrap()
-            .call(document_symbol.clone())
-            .await;
+        let document_symbol = build_request_with_id("textDocument/documentSymbol", params, 1);
+        let _response = call_request(service, document_symbol.clone()).await;
         document_symbol
     }
 
@@ -562,16 +543,8 @@ mod tests {
                 "character": 24
             }
         });
-        let definition = Request::build("textDocument/definition")
-            .params(params)
-            .id(1)
-            .finish();
-        let response = service
-            .ready()
-            .await
-            .unwrap()
-            .call(definition.clone())
-            .await;
+        let definition = build_request_with_id("textDocument/definition", params, 1);
+        let response = call_request(service, definition.clone()).await;
         let ok = Response::from_ok(
             1.into(),
             json!({
@@ -602,11 +575,8 @@ mod tests {
                 "character": 24
             }
         });
-        let hover = Request::build("textDocument/hover")
-            .params(params)
-            .id(1)
-            .finish();
-        let response = service.ready().await.unwrap().call(hover.clone()).await;
+        let hover = build_request_with_id("textDocument/hover", params, 1);
+        let response = call_request(service, hover.clone()).await;
         let ok = Response::from_ok(
             1.into(),
             json!({
@@ -640,16 +610,8 @@ mod tests {
                 "insertSpaces": true
             },
         });
-        let formatting = Request::build("textDocument/formatting")
-            .params(params)
-            .id(1)
-            .finish();
-        let _response = service
-            .ready()
-            .await
-            .unwrap()
-            .call(formatting.clone())
-            .await;
+        let formatting = build_request_with_id("textDocument/formatting", params, 1);
+        let _response = call_request(service, formatting.clone()).await;
         formatting
     }
 
@@ -663,11 +625,8 @@ mod tests {
                 "character": 27
             }
         });
-        let highlight = Request::build("textDocument/documentHighlight")
-            .params(params)
-            .id(1)
-            .finish();
-        let response = service.ready().await.unwrap().call(highlight.clone()).await;
+        let highlight = build_request_with_id("textDocument/documentHighlight", params, 1);
+        let response = call_request(service, highlight.clone()).await;
         let ok = Response::from_ok(
             1.into(),
             json!([{
@@ -757,7 +716,8 @@ mod tests {
             initialized_notification(&mut service).await;
 
             // send "initialize" request (again); should error
-            let response = service.ready().await.unwrap().call(initialize).await;
+            let response = call_request(&mut service, initialize).await;
+
             let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
             assert_eq!(response, Ok(Some(err)));
         });
@@ -781,7 +741,7 @@ mod tests {
             let shutdown = shutdown_request(&mut service).await;
 
             // send "shutdown" request (again); should error
-            let response = service.ready().await.unwrap().call(shutdown).await;
+            let response = call_request(&mut service, shutdown).await;
             let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
             assert_eq!(response, Ok(Some(err)));
 
@@ -804,7 +764,7 @@ mod tests {
             // send "shutdown" request
             let shutdown = shutdown_request(&mut service).await;
 
-            let response = service.ready().await.unwrap().call(shutdown).await;
+            let response = call_request(&mut service, shutdown).await;
             let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
             assert_eq!(response, Ok(Some(err)));
         });
@@ -921,41 +881,41 @@ mod tests {
     #[serial]
     fn semantic_tokens() {
         // send "textDocument/semanticTokens/full" request
-        test_lsp_capability!(doc_comments(), semantic_tokens_request);
+        test_lsp_capability!(doc_comments_dir(), semantic_tokens_request);
     }
 
     #[test]
     #[serial]
     fn document_symbol() {
         // send "textDocument/documentSymbol" request
-        test_lsp_capability!(doc_comments(), document_symbol_request);
+        test_lsp_capability!(doc_comments_dir(), document_symbol_request);
     }
 
     #[test]
     #[serial]
     fn go_to_definition() {
         // send "textDocument/definition" request
-        test_lsp_capability!(doc_comments(), go_to_definition_request);
+        test_lsp_capability!(doc_comments_dir(), go_to_definition_request);
     }
 
     #[test]
     #[serial]
     fn format() {
         // send "textDocument/formatting" request
-        test_lsp_capability!(doc_comments(), format_request);
+        test_lsp_capability!(doc_comments_dir(), format_request);
     }
 
     #[test]
     #[serial]
     fn hover() {
         // send "textDocument/hover" request
-        test_lsp_capability!(doc_comments(), hover_request);
+        test_lsp_capability!(doc_comments_dir(), hover_request);
     }
 
     #[test]
     #[serial]
     fn highlight() {
         // send "textDocument/documentHighlight" request
-        test_lsp_capability!(doc_comments(), highlight_request);
+        test_lsp_capability!(doc_comments_dir(), highlight_request);
     }
 }
