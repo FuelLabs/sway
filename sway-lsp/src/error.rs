@@ -21,5 +21,5 @@ pub enum DocumentError {
     #[error("Missing Forc.toml in {:?}", dir)]
     ManifestFileNotFound { dir: String },
     #[error("Document is already stored.")]
-    DocumentAlreadyStored,
+    DocumentAlreadyStored { path: String },
 }

@@ -123,9 +123,10 @@ impl Session {
 
     // Document
     pub fn store_document(&self, text_document: TextDocument) -> Result<(), DocumentError> {
+        let uri = text_document.get_uri().to_string();
         self.documents
-            .insert(text_document.get_uri().into(), text_document)
-            .ok_or(DocumentError::DocumentAlreadyStored)
+            .insert(uri.clone(), text_document)
+            .ok_or(DocumentError::DocumentAlreadyStored { path: uri })
             .map(|_| ())
     }
 
