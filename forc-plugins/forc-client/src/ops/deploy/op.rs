@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use forc_pkg::{BuildOptions, Compiled, ManifestFile};
+use forc_pkg::{BuildOptions, Compiled, PackageManifestFile};
 use fuel_crypto::Signature;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, StorageSlot, Transaction};
@@ -20,7 +20,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     } else {
         std::env::current_dir()?
     };
-    let manifest = ManifestFile::from_dir(&curr_dir)?;
+    let manifest = PackageManifestFile::from_dir(&curr_dir)?;
     manifest.check_program_type(vec![TreeType::Contract])?;
 
     let DeployCommand {
