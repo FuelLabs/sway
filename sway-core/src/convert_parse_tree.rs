@@ -1266,16 +1266,21 @@ fn struct_path_and_fields_to_struct_expression(
 fn method_call_fields_to_method_application_expression(
     ec: &mut ErrorContext,
     target: Box<Expr>,
-    name: Ident,
+    path_seg: PathExprSegment,
     contract_args_opt: Option<Braces<Punctuated<ExprStructField, CommaToken>>>,
     args: Parens<Punctuated<Expr, CommaToken>>,
 ) -> Result<Box<MethodApplicationExpression>, ErrorEmitted> {
+    let (method_name, type_arguments) = path_expr_segment_to_ident_or_type_argument(ec, path_seg)?;
+
+    let span = match &*type_arguments {
+        [] => method_name.span(),
+        [.., last] => Span::join(method_name.span(), last.span.clone()),
+    };
+
     let method_name_binding = TypeBinding {
-        inner: MethodName::FromModule {
-            method_name: name.clone(),
-        },
-        type_arguments: vec![],
-        span: name.span(),
+        inner: MethodName::FromModule { method_name },
+        type_arguments,
+        span,
     };
     let contract_call_params = match contract_args_opt {
         None => Vec::new(),
@@ -1691,7 +1696,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
         },
         Expr::MethodCall {
             target,
-            name,
+            path_seg,
             args,
             contract_args_opt,
             ..
@@ -1700,7 +1705,7 @@ fn expr_to_expression(ec: &mut ErrorContext, expr: Expr) -> Result<Expression, E
                 method_call_fields_to_method_application_expression(
                     ec,
                     target,
-                    name,
+                    path_seg,
                     contract_args_opt,
                     args,
                 )?;
@@ -2273,9 +2278,8 @@ fn path_expr_segment_to_ident_or_type_argument(
         };
         return Err(ec.error(error));
     }
-    let generic_args = generics_opt.map(|(_, y)| y);
-    let type_args = match generic_args {
-        Some(x) => generic_args_to_type_arguments(ec, x)?,
+    let type_args = match generics_opt {
+        Some((_, x)) => generic_args_to_type_arguments(ec, x)?,
         None => Default::default(),
     };
     Ok((name, type_args))
