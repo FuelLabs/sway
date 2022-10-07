@@ -24,10 +24,10 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    language::parsed::{ParseProgram, TreeType},
+    language::{parsed, ty},
     semantic_analysis::namespace,
     source_map::SourceMap,
-    BytecodeOrLib, CompileError, CompileResult, TyProgram,
+    BytecodeOrLib, CompileError, CompileResult,
 };
 use sway_types::{Ident, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
 use sway_utils::constants;
@@ -53,7 +53,7 @@ pub struct Compiled {
     pub json_abi_program: JsonABIProgram,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
-    pub tree_type: TreeType,
+    pub tree_type: parsed::TreeType,
 }
 
 /// A package uniquely identified by name along with its source.
@@ -504,7 +504,10 @@ fn validate_dep(
 /// Part of dependency validation, any checks related to the depenency's manifest content.
 fn validate_dep_manifest(dep: &Pinned, dep_manifest: &ManifestFile) -> Result<()> {
     // Ensure that the dependency is a library.
-    if !matches!(dep_manifest.program_type()?, TreeType::Library { .. }) {
+    if !matches!(
+        dep_manifest.program_type()?,
+        parsed::TreeType::Library { .. }
+    ) {
         bail!(
             "\"{}\" is not a library! Depending on a non-library package is not supported.",
             dep.name
@@ -1802,7 +1805,7 @@ pub fn compile_ast(
     manifest: &ManifestFile,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
-) -> Result<CompileResult<TyProgram>> {
+) -> Result<CompileResult<ty::TyProgram>> {
     let source = manifest.entry_string()?;
     let sway_build_config =
         sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
@@ -1893,7 +1896,7 @@ pub fn compile(
         }
         // If we're compiling a library, we don't need to compile any further.
         // Instead, we update the namespace with the library's top-level module.
-        TreeType::Library { .. } => {
+        parsed::TreeType::Library { .. } => {
             print_on_success_library(terse_mode, &pkg.name, &ast_res.warnings);
             let bytecode = vec![];
             let lib_namespace = typed_program.root.namespace.clone();
@@ -1906,7 +1909,7 @@ pub fn compile(
             return Ok((compiled, Some(lib_namespace.into())));
         }
         // For all other program types, we'll compile the bytecode.
-        TreeType::Contract | TreeType::Predicate | TreeType::Script => {}
+        parsed::TreeType::Contract | parsed::TreeType::Predicate | parsed::TreeType::Script => {}
     }
 
     let asm_res = time_expr!(
@@ -2114,7 +2117,7 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
 
     // Additional ops required depending on the program type
     match compiled.tree_type {
-        TreeType::Contract => {
+        parsed::TreeType::Contract => {
             // For contracts, emit a JSON file with all the initialized storage slots.
             let json_storage_slots_stem = format!("{}-storage_slots", manifest.project.name);
             let json_storage_slots_path = output_dir
@@ -2128,7 +2131,7 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
             };
             res?;
         }
-        TreeType::Predicate => {
+        parsed::TreeType::Predicate => {
             // get the root hash of the bytecode for predicates and store the result in a file in the output directory
             let root = format!("0x{}", Contract::root_from_code(&compiled.bytecode));
             let root_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_ROOT_SUFFIX);
@@ -2136,7 +2139,7 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
             fs::write(root_path, &root)?;
             info!("  Predicate root: {}", root);
         }
-        TreeType::Script => {
+        parsed::TreeType::Script => {
             // hash the bytecode for scripts and store the result in a file in the output directory
             let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
             let hash_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_HASH_SUFFIX);
@@ -2340,7 +2343,7 @@ fn update_json_type_declaration(
 pub fn check(
     plan: &BuildPlan,
     terse_mode: bool,
-) -> anyhow::Result<CompileResult<(ParseProgram, Option<TyProgram>)>> {
+) -> anyhow::Result<CompileResult<(parsed::ParseProgram, Option<ty::TyProgram>)>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
     let mut namespace_map = Default::default();
@@ -2374,7 +2377,7 @@ pub fn check(
             Some(typed_program) => typed_program,
         };
 
-        if let TreeType::Library { .. } = typed_program.kind.tree_type() {
+        if let parsed::TreeType::Library { .. } = typed_program.kind.tree_type() {
             namespace_map.insert(node, typed_program.root.namespace.clone());
         }
 
@@ -2393,7 +2396,7 @@ pub fn check(
 pub fn parse(
     manifest: &ManifestFile,
     terse_mode: bool,
-) -> anyhow::Result<CompileResult<ParseProgram>> {
+) -> anyhow::Result<CompileResult<parsed::ParseProgram>> {
     let profile = BuildProfile {
         terse: terse_mode,
         ..BuildProfile::debug()
@@ -2509,8 +2512,8 @@ pub fn parsing_failed(project_name: &str, errors: Vec<CompileError>) -> anyhow::
 /// Format an error message if an incorrect program type is present.
 pub fn wrong_program_type(
     project_name: &str,
-    expected_types: Vec<TreeType>,
-    parse_type: TreeType,
+    expected_types: Vec<parsed::TreeType>,
+    parse_type: parsed::TreeType,
 ) -> anyhow::Error {
     let message = format!(
         "{} is not a '{:?}' it is a '{:?}'",

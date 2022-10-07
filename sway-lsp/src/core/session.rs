@@ -17,7 +17,10 @@ use std::{
     path::PathBuf,
     sync::{Arc, LockResult, RwLock},
 };
-use sway_core::{language::parsed::ParseProgram, CompileResult, TyProgram, TyProgramKind};
+use sway_core::{
+    language::{parsed, ty},
+    CompileResult,
+};
 use sway_types::{Ident, Spanned};
 use swayfmt::Formatter;
 use tower_lsp::lsp_types::{
@@ -29,8 +32,8 @@ pub type Documents = DashMap<String, TextDocument>;
 
 #[derive(Default, Debug)]
 pub struct CompiledProgram {
-    pub parsed: Option<ParseProgram>,
-    pub typed: Option<TyProgram>,
+    pub parsed: Option<parsed::ParseProgram>,
+    pub typed: Option<ty::TyProgram>,
 }
 
 #[derive(Debug)]
@@ -176,7 +179,7 @@ impl Session {
 
     fn parse_ast_to_tokens(
         &self,
-        parsed_result: CompileResult<ParseProgram>,
+        parsed_result: CompileResult<parsed::ParseProgram>,
     ) -> Result<Vec<Diagnostic>, DocumentError> {
         match parsed_result.value {
             None => {
@@ -211,14 +214,14 @@ impl Session {
 
     fn parse_ast_to_typed_tokens(
         &self,
-        ast_res: CompileResult<TyProgram>,
+        ast_res: CompileResult<ty::TyProgram>,
     ) -> Result<Vec<Diagnostic>, DocumentError> {
         match ast_res.value {
             None => Err(DocumentError::FailedToParse(
                 capabilities::diagnostic::get_diagnostics(ast_res.warnings, ast_res.errors),
             )),
             Some(typed_program) => {
-                if let TyProgramKind::Script {
+                if let ty::TyProgramKind::Script {
                     ref main_function, ..
                 } = typed_program.kind
                 {

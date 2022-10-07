@@ -5,10 +5,7 @@ use super::{
 use crate::{
     declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait, de_get_storage},
     error::*,
-    language::{
-        parsed::{ParseProgram, TreeType},
-        *,
-    },
+    language::{parsed::*, ty::*, *},
     metadata::MetadataManager,
     semantic_analysis::{
         namespace::{self, Namespace},
@@ -16,20 +13,11 @@ use crate::{
     },
     type_system::*,
 };
-use fuel_tx::StorageSlot;
+
 use sway_ir::{Context, Module};
 use sway_types::{
-    span::Span, Ident, JsonABIProgram, JsonLoggedType, JsonTypeApplication, JsonTypeDeclaration,
-    Spanned,
+    span::Span, JsonABIProgram, JsonLoggedType, JsonTypeApplication, JsonTypeDeclaration, Spanned,
 };
-
-#[derive(Debug)]
-pub struct TyProgram {
-    pub kind: TyProgramKind,
-    pub root: TyModule,
-    pub storage_slots: Vec<StorageSlot>,
-    pub logged_types: Vec<TypeId>,
-}
 
 impl TyProgram {
     /// Type-check the given parsed program to produce a typed program.
@@ -455,37 +443,6 @@ impl TyProgram {
                 },
             })
             .collect()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum TyProgramKind {
-    Contract {
-        abi_entries: Vec<TyFunctionDeclaration>,
-        declarations: Vec<TyDeclaration>,
-    },
-    Library {
-        name: Ident,
-    },
-    Predicate {
-        main_function: TyFunctionDeclaration,
-        declarations: Vec<TyDeclaration>,
-    },
-    Script {
-        main_function: TyFunctionDeclaration,
-        declarations: Vec<TyDeclaration>,
-    },
-}
-
-impl TyProgramKind {
-    /// The parse tree type associated with this program kind.
-    pub fn tree_type(&self) -> TreeType {
-        match self {
-            TyProgramKind::Contract { .. } => TreeType::Contract,
-            TyProgramKind::Library { name } => TreeType::Library { name: name.clone() },
-            TyProgramKind::Predicate { .. } => TreeType::Predicate,
-            TyProgramKind::Script { .. } => TreeType::Script,
-        }
     }
 }
 

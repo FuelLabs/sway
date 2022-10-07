@@ -2,9 +2,9 @@ use crate::cli::CheckCommand;
 use anyhow::Result;
 use forc_pkg::{self as pkg, ManifestFile};
 use std::path::PathBuf;
-use sway_core::CompileResult;
+use sway_core::{language::ty, CompileResult};
 
-pub fn check(command: CheckCommand) -> Result<CompileResult<sway_core::TyProgram>> {
+pub fn check(command: CheckCommand) -> Result<CompileResult<ty::TyProgram>> {
     let CheckCommand {
         path,
         offline_mode: offline,
