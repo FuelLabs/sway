@@ -1,8 +1,8 @@
 use crate::constants;
 use crate::{
     error::*,
-    parse_tree::*,
-    semantic_analysis::{TypedExpressionVariant::VariableExpression, *},
+    language::{parsed::*, *},
+    semantic_analysis::{TyExpressionVariant::VariableExpression, *},
     type_system::*,
 };
 use std::collections::{HashMap, VecDeque};
@@ -16,7 +16,7 @@ pub(crate) fn type_check_method_application(
     contract_call_params: Vec<StructExpressionField>,
     arguments: Vec<Expression>,
     span: Span,
-) -> CompileResult<TypedExpression> {
+) -> CompileResult<TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -28,7 +28,7 @@ pub(crate) fn type_check_method_application(
             .with_help_text("")
             .with_type_annotation(insert_type(TypeInfo::Unknown));
         args_buf.push_back(check!(
-            TypedExpression::type_check(ctx, arg.clone()),
+            TyExpression::type_check(ctx, arg.clone()),
             error_recovery_expr(span.clone()),
             warnings,
             errors
@@ -99,7 +99,7 @@ pub(crate) fn type_check_method_application(
                     contract_call_params_map.insert(
                         param.name.to_string(),
                         check!(
-                            TypedExpression::type_check(ctx, param.value),
+                            TyExpression::type_check(ctx, param.value),
                             error_recovery_expr(span.clone()),
                             warnings,
                             errors
@@ -133,7 +133,7 @@ pub(crate) fn type_check_method_application(
                 let self_state_idx = match storage_fields
                     .iter()
                     .enumerate()
-                    .find(|(_, TypedStorageField { name, .. })| name == &first_field)
+                    .find(|(_, TyStorageField { name, .. })| name == &first_field)
                 {
                     Some((ix, _)) => StateIndex::new(ix),
                     None => {
@@ -171,11 +171,11 @@ pub(crate) fn type_check_method_application(
     // Validate mutability of self. Check that the variable that the method is called on is mutable
     // _if_ the method requires mutable self.
     if let (
-        Some(TypedExpression {
+        Some(TyExpression {
             expression: VariableExpression { name, .. },
             ..
         }),
-        Some(TypedFunctionParameter { is_mutable, .. }),
+        Some(TyFunctionParameter { is_mutable, .. }),
     ) = (args_buf.get(0), method.parameters.get(0))
     {
         let unknown_decl = check!(
@@ -186,7 +186,7 @@ pub(crate) fn type_check_method_application(
         );
 
         let is_decl_mutable = match unknown_decl {
-            TypedDeclaration::ConstantDeclaration(_) => false,
+            TyDeclaration::ConstantDeclaration(_) => false,
             _ => {
                 let variable_decl = check!(
                     unknown_decl.expect_variable().cloned(),
@@ -311,8 +311,8 @@ pub(crate) fn type_check_method_application(
 pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
     method_name: &TypeBinding<MethodName>,
-    arguments: VecDeque<TypedExpression>,
-) -> CompileResult<TypedFunctionDeclaration> {
+    arguments: VecDeque<TyExpression>,
+) -> CompileResult<TyFunctionDeclaration> {
     let mut warnings = vec![];
     let mut errors = vec![];
 

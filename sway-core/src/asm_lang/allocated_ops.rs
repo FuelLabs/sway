@@ -21,7 +21,7 @@ const COMMENT_START_COLUMN: usize = 30;
 
 /// Represents registers that have gone through register allocation. The value in the [Allocated]
 /// variant is guaranteed to be between 0 and [compiler_constants::NUM_ALLOCATABLE_REGISTERS].
-#[derive(Hash, PartialEq, Eq, Debug, Clone)]
+#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 pub enum AllocatedRegister {
     Allocated(u8),
     Constant(super::ConstantRegister),
@@ -92,6 +92,7 @@ pub(crate) enum AllocatedOpcode {
     SUBI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     XOR(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     XORI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
+    JMP(AllocatedRegister),
     JI(VirtualImmediate24),
     JNEI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     JNZI(AllocatedRegister, VirtualImmediate18),
@@ -172,6 +173,192 @@ pub(crate) enum AllocatedOpcode {
     DataSectionRegisterLoadPlaceholder,
 }
 
+impl AllocatedOpcode {
+    pub(crate) fn def_registers(&self) -> BTreeSet<&AllocatedRegister> {
+        use AllocatedOpcode::*;
+        (match self {
+            ADD(r1, _r2, _r3) => vec![r1],
+            ADDI(r1, _r2, _i) => vec![r1],
+            AND(r1, _r2, _r3) => vec![r1],
+            ANDI(r1, _r2, _i) => vec![r1],
+            DIV(r1, _r2, _r3) => vec![r1],
+            DIVI(r1, _r2, _i) => vec![r1],
+            EQ(r1, _r2, _r3) => vec![r1],
+            EXP(r1, _r2, _r3) => vec![r1],
+            EXPI(r1, _r2, _i) => vec![r1],
+            GT(r1, _r2, _r3) => vec![r1],
+            GTF(r1, _r2, _i) => vec![r1],
+            LT(r1, _r2, _r3) => vec![r1],
+            MLOG(r1, _r2, _r3) => vec![r1],
+            MROO(r1, _r2, _r3) => vec![r1],
+            MOD(r1, _r2, _r3) => vec![r1],
+            MODI(r1, _r2, _i) => vec![r1],
+            MOVE(r1, _r2) => vec![r1],
+            MOVI(r1, _i) => vec![r1],
+            MUL(r1, _r2, _r3) => vec![r1],
+            MULI(r1, _r2, _i) => vec![r1],
+            NOT(r1, _r2) => vec![r1],
+            OR(r1, _r2, _r3) => vec![r1],
+            ORI(r1, _r2, _i) => vec![r1],
+            SLL(r1, _r2, _r3) => vec![r1],
+            SLLI(r1, _r2, _i) => vec![r1],
+            SMO(_r1, _r2, _r3, _r4) => vec![],
+            SRL(r1, _r2, _r3) => vec![r1],
+            SRLI(r1, _r2, _i) => vec![r1],
+            SUB(r1, _r2, _r3) => vec![r1],
+            SUBI(r1, _r2, _i) => vec![r1],
+            XOR(r1, _r2, _r3) => vec![r1],
+            XORI(r1, _r2, _i) => vec![r1],
+            JMP(_r1) => vec![],
+            JI(_im) => vec![],
+            JNEI(_r1, _r2, _i) => vec![],
+            JNZI(_r1, _i) => vec![],
+            RET(_r1) => vec![],
+            RETD(_r1, _r2) => vec![],
+            CFEI(_imm) => vec![],
+            CFSI(_imm) => vec![],
+            LB(r1, _r2, _i) => vec![r1],
+            LWDataId(r1, _i) => vec![r1],
+            LW(r1, _r2, _i) => vec![r1],
+            ALOC(_r1) => vec![],
+            MCL(_r1, _r2) => vec![],
+            MCLI(_r1, _imm) => vec![],
+            MCP(_r1, _r2, _r3) => vec![],
+            MEQ(r1, _r2, _r3, _r4) => vec![r1],
+            MCPI(_r1, _r2, _imm) => vec![],
+            SB(_r1, _r2, _i) => vec![],
+            SW(_r1, _r2, _i) => vec![],
+            BAL(r1, _r2, _r3) => vec![r1],
+            BHSH(_r1, _r2) => vec![],
+            BHEI(r1) => vec![r1],
+            BURN(_r1) => vec![],
+            CALL(_r1, _r2, _r3, _r4) => vec![],
+            CCP(_r1, _r2, _r3, _r4) => vec![],
+            CROO(_r1, _r2) => vec![],
+            CSIZ(r1, _r2) => vec![r1],
+            CB(_r1) => vec![],
+            LDC(_r1, _r2, _r3) => vec![],
+            LOG(_r1, _r2, _r3, _r4) => vec![],
+            LOGD(_r1, _r2, _r3, _r4) => vec![],
+            MINT(_r1) => vec![],
+            RVRT(_r1) => vec![],
+            SRW(r1, _r2) => vec![r1],
+            SRWQ(_r1, _r2) => vec![],
+            SWW(_r1, _r2) => vec![],
+            SWWQ(_r1, _r2) => vec![],
+            TIME(r1, _r2) => vec![r1],
+            TR(_r1, _r2, _r3) => vec![],
+            TRO(_r1, _r2, _r3, _r4) => vec![],
+            ECR(_r1, _r2, _r3) => vec![],
+            K256(_r1, _r2, _r3) => vec![],
+            S256(_r1, _r2, _r3) => vec![],
+            NOOP => vec![],
+            FLAG(_r1) => vec![],
+            GM(r1, _imm) => vec![r1],
+            Undefined | DataSectionOffsetPlaceholder => vec![],
+            DataSectionRegisterLoadPlaceholder => vec![&AllocatedRegister::Constant(
+                ConstantRegister::DataSectionStart,
+            )],
+        })
+        .into_iter()
+        .collect()
+    }
+}
+
+impl fmt::Display for AllocatedOpcode {
+    fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use AllocatedOpcode::*;
+        match self {
+            ADD(a, b, c) => write!(fmtr, "add  {} {} {}", a, b, c),
+            ADDI(a, b, c) => write!(fmtr, "addi {} {} {}", a, b, c),
+            AND(a, b, c) => write!(fmtr, "and  {} {} {}", a, b, c),
+            ANDI(a, b, c) => write!(fmtr, "andi {} {} {}", a, b, c),
+            DIV(a, b, c) => write!(fmtr, "div  {} {} {}", a, b, c),
+            DIVI(a, b, c) => write!(fmtr, "divi {} {} {}", a, b, c),
+            EQ(a, b, c) => write!(fmtr, "eq   {} {} {}", a, b, c),
+            EXP(a, b, c) => write!(fmtr, "exp  {} {} {}", a, b, c),
+            EXPI(a, b, c) => write!(fmtr, "expi {} {} {}", a, b, c),
+            GT(a, b, c) => write!(fmtr, "gt   {} {} {}", a, b, c),
+            GTF(a, b, c) => write!(fmtr, "gtf  {} {} {}", a, b, c),
+            LT(a, b, c) => write!(fmtr, "lt   {} {} {}", a, b, c),
+            MLOG(a, b, c) => write!(fmtr, "mlog {} {} {}", a, b, c),
+            MROO(a, b, c) => write!(fmtr, "mroo {} {} {}", a, b, c),
+            MOD(a, b, c) => write!(fmtr, "mod  {} {} {}", a, b, c),
+            MODI(a, b, c) => write!(fmtr, "modi {} {} {}", a, b, c),
+            MOVE(a, b) => write!(fmtr, "move {} {}", a, b),
+            MOVI(a, b) => write!(fmtr, "movi {} {}", a, b),
+            MUL(a, b, c) => write!(fmtr, "mul  {} {} {}", a, b, c),
+            MULI(a, b, c) => write!(fmtr, "muli {} {} {}", a, b, c),
+            NOT(a, b) => write!(fmtr, "not  {} {}", a, b),
+            OR(a, b, c) => write!(fmtr, "or   {} {} {}", a, b, c),
+            ORI(a, b, c) => write!(fmtr, "ori  {} {} {}", a, b, c),
+            SLL(a, b, c) => write!(fmtr, "sll  {} {} {}", a, b, c),
+            SLLI(a, b, c) => write!(fmtr, "slli {} {} {}", a, b, c),
+            SMO(a, b, c, d) => write!(fmtr, "smo  {} {} {} {}", a, b, c, d),
+            SRL(a, b, c) => write!(fmtr, "srl  {} {} {}", a, b, c),
+            SRLI(a, b, c) => write!(fmtr, "srli {} {} {}", a, b, c),
+            SUB(a, b, c) => write!(fmtr, "sub  {} {} {}", a, b, c),
+            SUBI(a, b, c) => write!(fmtr, "subi {} {} {}", a, b, c),
+            XOR(a, b, c) => write!(fmtr, "xor  {} {} {}", a, b, c),
+            XORI(a, b, c) => write!(fmtr, "xori {} {} {}", a, b, c),
+            JMP(a) => write!(fmtr, "jmp {}", a),
+            JI(a) => write!(fmtr, "ji   {}", a),
+            JNEI(a, b, c) => write!(fmtr, "jnei {} {} {}", a, b, c),
+            JNZI(a, b) => write!(fmtr, "jnzi {} {}", a, b),
+            RET(a) => write!(fmtr, "ret  {}", a),
+            RETD(a, b) => write!(fmtr, "retd  {} {}", a, b),
+            CFEI(a) => write!(fmtr, "cfei {}", a),
+            CFSI(a) => write!(fmtr, "cfsi {}", a),
+            LB(a, b, c) => write!(fmtr, "lb   {} {} {}", a, b, c),
+            LWDataId(a, b) => write!(fmtr, "lw   {} {}", a, b),
+            LW(a, b, c) => write!(fmtr, "lw   {} {} {}", a, b, c),
+            ALOC(a) => write!(fmtr, "aloc {}", a),
+            MCL(a, b) => write!(fmtr, "mcl  {} {}", a, b),
+            MCLI(a, b) => write!(fmtr, "mcli {} {}", a, b),
+            MCP(a, b, c) => write!(fmtr, "mcp  {} {} {}", a, b, c),
+            MCPI(a, b, c) => write!(fmtr, "mcpi {} {} {}", a, b, c),
+            MEQ(a, b, c, d) => write!(fmtr, "meq  {} {} {} {}", a, b, c, d),
+            SB(a, b, c) => write!(fmtr, "sb   {} {} {}", a, b, c),
+            SW(a, b, c) => write!(fmtr, "sw   {} {} {}", a, b, c),
+            BAL(a, b, c) => write!(fmtr, "bal  {} {} {}", a, b, c),
+            BHSH(a, b) => write!(fmtr, "bhsh {} {}", a, b),
+            BHEI(a) => write!(fmtr, "bhei {}", a),
+            BURN(a) => write!(fmtr, "burn {}", a),
+            CALL(a, b, c, d) => write!(fmtr, "call {} {} {} {}", a, b, c, d),
+            CCP(a, b, c, d) => write!(fmtr, "ccp  {} {} {} {}", a, b, c, d),
+            CROO(a, b) => write!(fmtr, "croo {} {}", a, b),
+            CSIZ(a, b) => write!(fmtr, "csiz {} {}", a, b),
+            CB(a) => write!(fmtr, "cb   {}", a),
+            LDC(a, b, c) => write!(fmtr, "ldc  {} {} {}", a, b, c),
+            LOG(a, b, c, d) => write!(fmtr, "log  {} {} {} {}", a, b, c, d),
+            LOGD(a, b, c, d) => write!(fmtr, "logd {} {} {} {}", a, b, c, d),
+            MINT(a) => write!(fmtr, "mint {}", a),
+            RVRT(a) => write!(fmtr, "rvrt {}", a),
+            SRW(a, b) => write!(fmtr, "srw  {} {}", a, b),
+            SRWQ(a, b) => write!(fmtr, "srwq {} {}", a, b),
+            SWW(a, b) => write!(fmtr, "sww  {} {}", a, b),
+            SWWQ(a, b) => write!(fmtr, "swwq {} {}", a, b),
+            TIME(a, b) => write!(fmtr, "time {} {}", a, b),
+            TR(a, b, c) => write!(fmtr, "tr   {} {} {}", a, b, c),
+            TRO(a, b, c, d) => write!(fmtr, "tro  {} {} {} {}", a, b, c, d),
+            ECR(a, b, c) => write!(fmtr, "ecr  {} {} {}", a, b, c),
+            K256(a, b, c) => write!(fmtr, "k256 {} {} {}", a, b, c),
+            S256(a, b, c) => write!(fmtr, "s256 {} {} {}", a, b, c),
+            NOOP => write!(fmtr, "noop"),
+            FLAG(a) => write!(fmtr, "flag {}", a),
+            GM(a, b) => write!(fmtr, "gm {} {}", a, b),
+            Undefined => write!(fmtr, "undefined op"),
+            DataSectionOffsetPlaceholder => {
+                write!(
+                    fmtr,
+                    "DATA_SECTION_OFFSET[0..32]\nDATA_SECTION_OFFSET[32..64]"
+                )
+            }
+            DataSectionRegisterLoadPlaceholder => write!(fmtr, "lw   $ds $is 1"),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct AllocatedOp {
     pub(crate) opcode: AllocatedOpcode,
@@ -182,93 +369,9 @@ pub(crate) struct AllocatedOp {
 
 impl fmt::Display for AllocatedOp {
     fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use AllocatedOpcode::*;
-        #[rustfmt::skip]
-        let string = match &self.opcode {
-            ADD(a, b, c)    => format!("add  {} {} {}", a, b, c),
-            ADDI(a, b, c)   => format!("addi {} {} {}", a, b, c),
-            AND(a, b, c)    => format!("and  {} {} {}", a, b, c),
-            ANDI(a, b, c)   => format!("andi {} {} {}", a, b, c),
-            DIV(a, b, c)    => format!("div  {} {} {}", a, b, c),
-            DIVI(a, b, c)   => format!("divi {} {} {}", a, b, c),
-            EQ(a, b, c)     => format!("eq   {} {} {}", a, b, c),
-            EXP(a, b, c)    => format!("exp  {} {} {}", a, b, c),
-            EXPI(a, b, c)   => format!("expi {} {} {}", a, b, c),
-            GT(a, b, c)     => format!("gt   {} {} {}", a, b, c),
-            GTF(a, b, c)    => format!("gtf  {} {} {}", a, b, c),
-            LT(a, b, c)     => format!("lt   {} {} {}", a, b, c),
-            MLOG(a, b, c)   => format!("mlog {} {} {}", a, b, c),
-            MROO(a, b, c)   => format!("mroo {} {} {}", a, b, c),
-            MOD(a, b, c)    => format!("mod  {} {} {}", a, b, c),
-            MODI(a, b, c)   => format!("modi {} {} {}", a, b, c),
-            MOVE(a, b)      => format!("move {} {}", a, b),
-            MOVI(a, b)      => format!("movi {} {}", a, b),
-            MUL(a, b, c)    => format!("mul  {} {} {}", a, b, c),
-            MULI(a, b, c)   => format!("muli {} {} {}", a, b, c),
-            NOT(a, b)       => format!("not  {} {}", a, b),
-            OR(a, b, c)     => format!("or   {} {} {}", a, b, c),
-            ORI(a, b, c)    => format!("ori  {} {} {}", a, b, c),
-            SLL(a, b, c)    => format!("sll  {} {} {}", a, b, c),
-            SLLI(a, b, c)   => format!("slli {} {} {}", a, b, c),
-            SMO(a, b, c, d) => format!("smo  {} {} {} {}", a, b, c, d),
-            SRL(a, b, c)    => format!("srl  {} {} {}", a, b, c),
-            SRLI(a, b, c)   => format!("srli {} {} {}", a, b, c),
-            SUB(a, b, c)    => format!("sub  {} {} {}", a, b, c),
-            SUBI(a, b, c)   => format!("subi {} {} {}", a, b, c),
-            XOR(a, b, c)    => format!("xor  {} {} {}", a, b, c),
-            XORI(a, b, c)   => format!("xori {} {} {}", a, b, c),
-            JI(a)           => format!("ji   {}", a),
-            JNEI(a, b, c)   => format!("jnei {} {} {}", a, b, c),
-            JNZI(a, b)      => format!("jnzi {} {}", a, b),
-            RET(a)          => format!("ret  {}", a),
-            RETD(a, b)      => format!("retd  {} {}", a, b),
-            CFEI(a)         => format!("cfei {}", a),
-            CFSI(a)         => format!("cfsi {}", a),
-            LB(a, b, c)     => format!("lb   {} {} {}", a, b, c),
-            LWDataId(a, b)  => format!("lw   {} {}", a, b),
-            LW(a, b, c)     => format!("lw   {} {} {}", a, b, c),
-            ALOC(a)         => format!("aloc {}", a),
-            MCL(a, b)       => format!("mcl  {} {}", a, b),
-            MCLI(a, b)      => format!("mcli {} {}", a, b),
-            MCP(a, b, c)    => format!("mcp  {} {} {}", a, b, c),
-            MCPI(a, b, c)   => format!("mcpi {} {} {}", a, b, c),
-            MEQ(a, b, c, d) => format!("meq  {} {} {} {}", a, b, c, d),
-            SB(a, b, c)     => format!("sb   {} {} {}", a, b, c),
-            SW(a, b, c)     => format!("sw   {} {} {}", a, b, c),
-            BAL(a, b, c)    => format!("bal  {} {} {}", a, b, c),
-            BHSH(a, b)      => format!("bhsh {} {}", a, b),
-            BHEI(a)         => format!("bhei {}", a),
-            BURN(a)         => format!("burn {}", a),
-            CALL(a, b, c, d)=> format!("call {} {} {} {}", a, b, c, d),
-            CCP(a, b, c, d) => format!("ccp  {} {} {} {}", a, b, c, d),
-            CROO(a, b)      => format!("croo {} {}", a, b),
-            CSIZ(a, b)      => format!("csiz {} {}", a, b),
-            CB(a)           => format!("cb   {}", a),
-            LDC(a, b, c)    => format!("ldc  {} {} {}", a, b, c),
-            LOG(a, b, c, d) => format!("log  {} {} {} {}", a, b, c, d),
-            LOGD(a, b, c, d)=> format!("logd {} {} {} {}", a, b, c, d),
-            MINT(a)         => format!("mint {}", a),
-            RVRT(a)         => format!("rvrt {}", a),
-            SRW(a, b)       => format!("srw  {} {}", a, b),
-            SRWQ(a, b)      => format!("srwq {} {}", a, b),
-            SWW(a, b)       => format!("sww  {} {}", a, b),
-            SWWQ(a, b)      => format!("swwq {} {}", a, b),
-            TIME(a, b)      => format!("time {} {}", a, b),
-            TR(a, b, c)     => format!("tr   {} {} {}", a, b, c),
-            TRO(a, b, c, d) => format!("tro  {} {} {} {}", a, b, c, d),
-            ECR(a, b, c)    => format!("ecr  {} {} {}", a, b, c),
-            K256(a, b, c)   => format!("k256 {} {} {}", a, b, c),
-            S256(a, b, c)   => format!("s256 {} {} {}", a, b, c),
-            NOOP            => "noop".to_string(),
-            FLAG(a)         => format!("flag {}", a),
-            GM(a, b)         => format!("gm {} {}", a, b),
-            Undefined       => "undefined op".into(),
-            DataSectionOffsetPlaceholder => "DATA_SECTION_OFFSET[0..32]\nDATA_SECTION_OFFSET[32..64]".into(),
-            DataSectionRegisterLoadPlaceholder => "lw   $ds $is 1".into(),
-        };
-        // we want the comment to always be COMMENT_START_COLUMN characters offset to the right
-        // to not interfere with the ASM but to be aligned
-        let mut op_and_comment = string;
+        // We want the comment to always be COMMENT_START_COLUMN characters offset to the right to
+        // not interfere with the ASM but to be aligned.
+        let mut op_and_comment = self.opcode.to_string();
         if !self.comment.is_empty() {
             while op_and_comment.len() < COMMENT_START_COLUMN {
                 op_and_comment.push(' ');
@@ -323,6 +426,7 @@ impl AllocatedOp {
             SUBI(a, b, c)   => VmOp::SUBI(a.to_register_id(), b.to_register_id(), c.value),
             XOR (a, b, c)   => VmOp::XOR (a.to_register_id(), b.to_register_id(), c.to_register_id()),
             XORI(a, b, c)   => VmOp::XORI(a.to_register_id(), b.to_register_id(), c.value),
+            JMP(a)          => VmOp::JMP(a.to_register_id()),
             JI  (a)         => VmOp::JI  (a.value),
             JNEI(a, b, c)   => VmOp::JNEI(a.to_register_id(), b.to_register_id(), c.value),
             JNZI(a, b)      => VmOp::JNZI(a.to_register_id(), b.value),
@@ -396,10 +500,10 @@ fn realize_lw(
     // if this data is larger than a word, instead of loading the data directly
     // into the register, we want to load a pointer to the data into the register
     // this appends onto the data section and mutates it by adding the pointer as a literal
-    let type_of_data = data_section.type_of_data(data_id).expect(
+    let has_copy_type = data_section.has_copy_type(data_id).expect(
         "Internal miscalculation in data section -- data id did not match up to any actual data",
     );
-    if !type_of_data.is_copy_type() {
+    if !has_copy_type {
         // load the pointer itself into the register
         // `offset_to_data_section` is in bytes. We want a byte
         // address here

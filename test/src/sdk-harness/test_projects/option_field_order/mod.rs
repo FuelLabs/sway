@@ -8,7 +8,7 @@ abigen!(
 #[tokio::test]
 async fn default_is_none() {
     let instance = setup().await;
-    assert!(instance.is_none().call().await.unwrap().value);
+    assert!(instance.methods().is_none().call().await.unwrap().value);
 }
 
 async fn setup() -> MyContract {
@@ -26,7 +26,7 @@ async fn setup() -> MyContract {
     .await
     .unwrap();
 
-    let instance = MyContractBuilder::new(id.to_string(), wallet).build();
+    let instance = MyContract::new(id.to_string(), wallet);
 
     instance
 }

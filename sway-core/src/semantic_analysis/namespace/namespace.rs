@@ -1,6 +1,6 @@
 use crate::{
-    semantic_analysis::ast_node::TypedExpression, type_system::*, CallPath, CompileResult, Ident,
-    TypedDeclaration, TypedFunctionDeclaration,
+    language::CallPath, semantic_analysis::ast_node::TyExpression, type_system::*, CompileResult,
+    Ident, TyDeclaration, TyFunctionDeclaration,
 };
 
 use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
@@ -85,15 +85,12 @@ impl Namespace {
     }
 
     /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
-    pub(crate) fn resolve_symbol(&self, symbol: &Ident) -> CompileResult<&TypedDeclaration> {
+    pub(crate) fn resolve_symbol(&self, symbol: &Ident) -> CompileResult<&TyDeclaration> {
         self.root.resolve_symbol(&self.mod_path, symbol)
     }
 
     /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path(
-        &self,
-        call_path: &CallPath,
-    ) -> CompileResult<&TypedDeclaration> {
+    pub(crate) fn resolve_call_path(&self, call_path: &CallPath) -> CompileResult<&TyDeclaration> {
         self.root.resolve_call_path(&self.mod_path, call_path)
     }
 
@@ -141,8 +138,8 @@ impl Namespace {
         method_prefix: &Path,
         method_name: &Ident,
         self_type: TypeId,
-        args_buf: &VecDeque<TypedExpression>,
-    ) -> CompileResult<TypedFunctionDeclaration> {
+        args_buf: &VecDeque<TyExpression>,
+    ) -> CompileResult<TyFunctionDeclaration> {
         self.root.find_method_for_type(
             &self.mod_path,
             r#type,

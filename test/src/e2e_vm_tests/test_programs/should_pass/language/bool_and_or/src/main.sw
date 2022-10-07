@@ -2,8 +2,7 @@ script;
 
 fn abort() -> bool {
     asm() {
-        ret one; // Failure.
-        zero: bool
+        one: bool // Failure.
     }
 }
 

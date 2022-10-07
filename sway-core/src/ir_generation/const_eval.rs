@@ -3,9 +3,8 @@ use crate::{
     error::CompileError,
     metadata::MetadataManager,
     semantic_analysis::{
-        declaration::ProjectionKind, namespace, TypedAstNode, TypedAstNodeContent,
-        TypedConstantDeclaration, TypedDeclaration, TypedExpression, TypedExpressionVariant,
-        TypedStructExpressionField,
+        declaration::ProjectionKind, namespace, TyAstNode, TyAstNodeContent, TyConstantDeclaration,
+        TyDeclaration, TyExpression, TyExpressionVariant, TyStructExpressionField,
     },
 };
 
@@ -44,8 +43,8 @@ pub(crate) fn compile_const_decl(
             // See if we it's a global const and whether we can compile it *now*.
             let decl = module_ns.check_symbol(name)?;
             let decl_name_value = match decl {
-                TypedDeclaration::ConstantDeclaration(decl_id) => {
-                    let TypedConstantDeclaration { name, value, .. } =
+                TyDeclaration::ConstantDeclaration(decl_id) => {
+                    let TyConstantDeclaration { name, value, .. } =
                         de_get_constant(decl_id.clone(), &name.span())?;
                     Some((name, value))
                 }
@@ -75,7 +74,7 @@ pub(super) fn compile_constant_expression(
     md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: Option<&namespace::Module>,
-    const_expr: &TypedExpression,
+    const_expr: &TyExpression,
 ) -> Result<Value, CompileError> {
     let span_id_idx = md_mgr.span_to_md(context, &const_expr.span);
 
@@ -89,7 +88,7 @@ pub(crate) fn compile_constant_expression_to_constant(
     md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: Option<&namespace::Module>,
-    const_expr: &TypedExpression,
+    const_expr: &TyExpression,
 ) -> Result<Constant, CompileError> {
     let lookup = &mut LookupEnv {
         context,
@@ -102,7 +101,7 @@ pub(crate) fn compile_constant_expression_to_constant(
     let err = match &const_expr.expression {
         // Special case functions because the span in `const_expr` is to the inlined function
         // definition, rather than the actual call site.
-        TypedExpressionVariant::FunctionApplication { call_path, .. } => {
+        TyExpressionVariant::FunctionApplication { call_path, .. } => {
             Err(CompileError::NonConstantDeclValue {
                 span: call_path.span(),
             })
@@ -163,11 +162,11 @@ impl<K: std::cmp::Eq + std::hash::Hash, V> Default for MappedStack<K, V> {
 fn const_eval_typed_expr(
     lookup: &mut LookupEnv,
     known_consts: &mut MappedStack<Ident, Constant>,
-    expr: &TypedExpression,
+    expr: &TyExpression,
 ) -> Option<Constant> {
     match &expr.expression {
-        TypedExpressionVariant::Literal(l) => Some(convert_literal_to_constant(l)),
-        TypedExpressionVariant::FunctionApplication {
+        TyExpressionVariant::Literal(l) => Some(convert_literal_to_constant(l)),
+        TyExpressionVariant::FunctionApplication {
             arguments,
             function_decl,
             ..
@@ -201,24 +200,21 @@ fn const_eval_typed_expr(
             }
             res
         }
-        TypedExpressionVariant::VariableExpression { name, .. } => match known_consts.get(name) {
+        TyExpressionVariant::VariableExpression { name, .. } => match known_consts.get(name) {
             // 1. Check if name is in known_consts.
             Some(cvs) => Some(cvs.clone()),
             None => {
                 // 2. Check if name is a global constant.
-                use sway_ir::value::ValueDatum::Constant;
-                (lookup.lookup)(lookup, name).ok().flatten().and_then(|v| {
-                    match &lookup.context.values[(v.0)].value {
-                        Constant(cv) => Some(cv.clone()),
-                        _ => None,
-                    }
-                })
+                (lookup.lookup)(lookup, name)
+                    .ok()
+                    .flatten()
+                    .and_then(|v| v.get_constant(lookup.context).cloned())
             }
         },
-        TypedExpressionVariant::StructExpression { fields, .. } => {
+        TyExpressionVariant::StructExpression { fields, .. } => {
             let (field_typs, field_vals): (Vec<_>, Vec<_>) = fields
                 .iter()
-                .filter_map(|TypedStructExpressionField { name: _, value, .. }| {
+                .filter_map(|TyStructExpressionField { name: _, value, .. }| {
                     const_eval_typed_expr(lookup, known_consts, value)
                         .map(|cv| (value.return_type, cv))
                 })
@@ -230,7 +226,7 @@ fn const_eval_typed_expr(
             let aggregate = get_aggregate_for_types(lookup.context, &field_typs).unwrap();
             Some(Constant::new_struct(&aggregate, field_vals))
         }
-        TypedExpressionVariant::Tuple { fields } => {
+        TyExpressionVariant::Tuple { fields } => {
             let (field_typs, field_vals): (Vec<_>, Vec<_>) = fields
                 .iter()
                 .filter_map(|value| {
@@ -245,7 +241,7 @@ fn const_eval_typed_expr(
             let aggregate = create_tuple_aggregate(lookup.context, field_typs).unwrap();
             Some(Constant::new_struct(&aggregate, field_vals))
         }
-        TypedExpressionVariant::Array { contents } => {
+        TyExpressionVariant::Array { contents } => {
             let (element_typs, element_vals): (Vec<_>, Vec<_>) = contents
                 .iter()
                 .filter_map(|value| {
@@ -274,7 +270,7 @@ fn const_eval_typed_expr(
             .unwrap();
             Some(Constant::new_array(&aggregate, element_vals))
         }
-        TypedExpressionVariant::EnumInstantiation {
+        TyExpressionVariant::EnumInstantiation {
             enum_decl,
             tag,
             contents,
@@ -284,16 +280,17 @@ fn const_eval_typed_expr(
                 create_enum_aggregate(lookup.context, enum_decl.variants.clone()).unwrap();
             let tag_value = Constant::new_uint(64, *tag as u64);
             let mut fields: Vec<Constant> = vec![tag_value];
-            contents.iter().for_each(|subexpr| {
-                const_eval_typed_expr(lookup, known_consts, subexpr)
+            match contents {
+                None => fields.push(Constant::new_unit()),
+                Some(subexpr) => const_eval_typed_expr(lookup, known_consts, subexpr)
                     .into_iter()
                     .for_each(|enum_val| {
                         fields.push(enum_val);
-                    })
-            });
+                    }),
+            }
             Some(Constant::new_struct(&aggregate, fields))
         }
-        TypedExpressionVariant::StructFieldAccess {
+        TyExpressionVariant::StructFieldAccess {
             prefix,
             field_to_access,
             resolved_type_of_parent,
@@ -314,7 +311,7 @@ fn const_eval_typed_expr(
             }
             _ => None,
         },
-        TypedExpressionVariant::TupleElemAccess {
+        TyExpressionVariant::TupleElemAccess {
             prefix,
             elem_to_access_num,
             ..
@@ -325,42 +322,42 @@ fn const_eval_typed_expr(
             }) => fields.get(*elem_to_access_num).cloned(),
             _ => None,
         },
-        TypedExpressionVariant::Return(stmt) => {
+        TyExpressionVariant::Return(stmt) => {
             const_eval_typed_expr(lookup, known_consts, &stmt.expr)
         }
-        TypedExpressionVariant::ArrayIndex { .. }
-        | TypedExpressionVariant::IntrinsicFunction(_)
-        | TypedExpressionVariant::CodeBlock(_)
-        | TypedExpressionVariant::Reassignment(_)
-        | TypedExpressionVariant::StorageReassignment(_)
-        | TypedExpressionVariant::FunctionParameter
-        | TypedExpressionVariant::IfExp { .. }
-        | TypedExpressionVariant::AsmExpression { .. }
-        | TypedExpressionVariant::LazyOperator { .. }
-        | TypedExpressionVariant::AbiCast { .. }
-        | TypedExpressionVariant::StorageAccess(_)
-        | TypedExpressionVariant::AbiName(_)
-        | TypedExpressionVariant::EnumTag { .. }
-        | TypedExpressionVariant::UnsafeDowncast { .. }
-        | TypedExpressionVariant::Break
-        | TypedExpressionVariant::Continue
-        | TypedExpressionVariant::WhileLoop { .. } => None,
+        TyExpressionVariant::ArrayIndex { .. }
+        | TyExpressionVariant::IntrinsicFunction(_)
+        | TyExpressionVariant::CodeBlock(_)
+        | TyExpressionVariant::Reassignment(_)
+        | TyExpressionVariant::StorageReassignment(_)
+        | TyExpressionVariant::FunctionParameter
+        | TyExpressionVariant::IfExp { .. }
+        | TyExpressionVariant::AsmExpression { .. }
+        | TyExpressionVariant::LazyOperator { .. }
+        | TyExpressionVariant::AbiCast { .. }
+        | TyExpressionVariant::StorageAccess(_)
+        | TyExpressionVariant::AbiName(_)
+        | TyExpressionVariant::EnumTag { .. }
+        | TyExpressionVariant::UnsafeDowncast { .. }
+        | TyExpressionVariant::Break
+        | TyExpressionVariant::Continue
+        | TyExpressionVariant::WhileLoop { .. } => None,
     }
 }
 
 fn const_eval_typed_ast_node(
     lookup: &mut LookupEnv,
     known_consts: &mut MappedStack<Ident, Constant>,
-    expr: &TypedAstNode,
+    expr: &TyAstNode,
 ) -> Option<Constant> {
     match &expr.content {
-        TypedAstNodeContent::Declaration(_) => {
+        TyAstNodeContent::Declaration(_) => {
             // TODO: add the binding to known_consts (if it's a const) and proceed.
             None
         }
-        TypedAstNodeContent::Expression(e) | TypedAstNodeContent::ImplicitReturnExpression(e) => {
+        TyAstNodeContent::Expression(e) | TyAstNodeContent::ImplicitReturnExpression(e) => {
             const_eval_typed_expr(lookup, known_consts, e)
         }
-        TypedAstNodeContent::SideEffect => None,
+        TyAstNodeContent::SideEffect => None,
     }
 }
