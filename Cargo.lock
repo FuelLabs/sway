@@ -4255,11 +4255,9 @@ dependencies = [
  "extension-trait",
  "num-bigint",
  "num-traits",
- "phf",
  "sway-ast",
  "sway-types",
  "thiserror",
- "unicode-xid",
 ]
 
 [[package]]

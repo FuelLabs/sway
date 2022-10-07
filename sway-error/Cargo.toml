@@ -12,8 +12,6 @@ description = "Sway's error handling"
 extension-trait = "1.0.1"
 num-bigint = "0.4.3"
 num-traits = "0.2.14"
-phf = { version = "0.10.1", features = ["macros"] }
 sway-ast = { version = "0.25.1", path = "../sway-ast" }
 sway-types = { version = "0.25.1", path = "../sway-types" }
 thiserror = "1.0"
-unicode-xid = "0.2.2"
