@@ -17,7 +17,6 @@ pub enum Literal {
     String(span::Span),
     Numeric(u64),
     Boolean(bool),
-    Byte(u8),
     B256([u8; 32]),
 }
 
@@ -56,12 +55,8 @@ impl Hash for Literal {
                 state.write_u8(7);
                 x.hash(state);
             }
-            Byte(x) => {
-                state.write_u8(8);
-                x.hash(state);
-            }
             B256(x) => {
-                state.write_u8(9);
+                state.write_u8(8);
                 x.hash(state);
             }
         }
@@ -81,7 +76,6 @@ impl PartialEq for Literal {
             (Self::String(l0), Self::String(r0)) => *l0.as_str() == *r0.as_str(),
             (Self::Numeric(l0), Self::Numeric(r0)) => l0 == r0,
             (Self::Boolean(l0), Self::Boolean(r0)) => l0 == r0,
-            (Self::Byte(l0), Self::Byte(r0)) => l0 == r0,
             (Self::B256(l0), Self::B256(r0)) => l0 == r0,
             _ => false,
         }
@@ -98,7 +92,6 @@ impl fmt::Display for Literal {
             Literal::Numeric(content) => content.to_string(),
             Literal::String(content) => content.as_str().to_string(),
             Literal::Boolean(content) => content.to_string(),
-            Literal::Byte(content) => content.to_string(),
             Literal::B256(content) => content
                 .iter()
                 .map(|x| x.to_string())
@@ -121,7 +114,6 @@ impl Literal {
             Numeric(_) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
             String(inner) => ResolvedType::Str(inner.as_str().len() as u64),
             Boolean(_) => ResolvedType::Boolean,
-            Byte(_) => ResolvedType::Byte,
             B256(_) => ResolvedType::B256,
         }
     }
@@ -160,7 +152,6 @@ impl Literal {
             Literal::U32(_) => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
             Literal::U64(_) => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
             Literal::Boolean(_) => TypeInfo::Boolean,
-            Literal::Byte(_) => TypeInfo::Byte,
             Literal::B256(_) => TypeInfo::B256,
         }
     }

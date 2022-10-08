@@ -187,7 +187,6 @@ impl TypeEngine {
             // If the types are exactly the same, we are done.
             (Boolean, Boolean) => (vec![], vec![]),
             (SelfType, SelfType) => (vec![], vec![]),
-            (Byte, Byte) => (vec![], vec![]),
             (B256, B256) => (vec![], vec![]),
             (Numeric, Numeric) => (vec![], vec![]),
             (Contract, Contract) => (vec![], vec![]),
