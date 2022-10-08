@@ -118,7 +118,6 @@ fn literal_to_string(literal: &Literal) -> String {
         Literal::Numeric(_) => "u64".into(),
         Literal::String(len) => format!("str[{}]", len.as_str().len()),
         Literal::Boolean(_) => "bool".into(),
-        Literal::Byte(_) => "u8".into(),
         Literal::B256(_) => "b256".into(),
     }
 }

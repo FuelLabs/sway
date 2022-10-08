@@ -78,11 +78,9 @@ pub(crate) fn ident_of_type_id(type_id: &TypeId) -> Option<Ident> {
 
 pub(crate) fn type_info_to_symbol_kind(type_info: &TypeInfo) -> SymbolKind {
     match type_info {
-        TypeInfo::UnsignedInteger(..)
-        | TypeInfo::Boolean
-        | TypeInfo::Str(..)
-        | TypeInfo::B256
-        | TypeInfo::Byte => SymbolKind::BuiltinType,
+        TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::Str(..) | TypeInfo::B256 => {
+            SymbolKind::BuiltinType
+        }
         TypeInfo::Numeric => SymbolKind::NumericLiteral,
         TypeInfo::Custom { .. } | TypeInfo::Struct { .. } => SymbolKind::Struct,
         TypeInfo::Enum { .. } => SymbolKind::Enum,
