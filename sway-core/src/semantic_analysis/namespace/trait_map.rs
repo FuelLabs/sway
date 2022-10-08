@@ -1,6 +1,7 @@
 use crate::{
+    language::CallPath,
     type_system::{look_up_type_id, CopyTypes, TypeId},
-    CallPath, TypeInfo, TypeMapping, TypedFunctionDeclaration,
+    TyFunctionDeclaration, TypeInfo, TypeMapping,
 };
 
 type TraitName = CallPath;
@@ -28,7 +29,7 @@ type TraitName = CallPath;
 // difference between 3 and 4, as in practice, 1 and 2 might not yet
 // be resolved.
 type TraitMapInner = im::Vector<((TraitName, TypeId), TraitMethods)>;
-type TraitMethods = im::HashMap<String, TypedFunctionDeclaration>;
+type TraitMethods = im::HashMap<String, TyFunctionDeclaration>;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct TraitMap {
@@ -40,7 +41,7 @@ impl TraitMap {
         &mut self,
         trait_name: TraitName,
         incoming_type_id: TypeId,
-        methods: Vec<TypedFunctionDeclaration>,
+        methods: Vec<TyFunctionDeclaration>,
     ) {
         let mut methods_map = im::HashMap::new();
         for method in methods.into_iter() {
@@ -63,7 +64,7 @@ impl TraitMap {
     pub(crate) fn get_call_path_and_type_info(
         &self,
         incoming_type_id: TypeId,
-    ) -> Vec<((TraitName, TypeId), Vec<TypedFunctionDeclaration>)> {
+    ) -> Vec<((TraitName, TypeId), Vec<TyFunctionDeclaration>)> {
         let mut ret = vec![];
         for ((call_path, map_type_id), methods) in self.trait_map.iter() {
             if look_up_type_id(incoming_type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
@@ -79,7 +80,7 @@ impl TraitMap {
     pub(crate) fn get_methods_for_type(
         &self,
         incoming_type_id: TypeId,
-    ) -> Vec<TypedFunctionDeclaration> {
+    ) -> Vec<TyFunctionDeclaration> {
         let mut methods = vec![];
         // small performance gain in bad case
         if look_up_type_id(incoming_type_id) == TypeInfo::ErrorRecovery {

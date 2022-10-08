@@ -4,7 +4,7 @@ use crate::declaration_engine::{
     de_add_monomorphized_enum_copy, de_add_monomorphized_struct_copy, de_get_enum, de_get_struct,
 };
 use crate::namespace::{Path, Root};
-use crate::TypedDeclaration;
+use crate::TyDeclaration;
 use lazy_static::lazy_static;
 use sway_types::span::Span;
 use sway_types::{Ident, Spanned};
@@ -187,7 +187,6 @@ impl TypeEngine {
             // If the types are exactly the same, we are done.
             (Boolean, Boolean) => (vec![], vec![]),
             (SelfType, SelfType) => (vec![], vec![]),
-            (Byte, Byte) => (vec![], vec![]),
             (B256, B256) => (vec![], vec![]),
             (Numeric, Numeric) => (vec![], vec![]),
             (Contract, Contract) => (vec![], vec![]),
@@ -528,7 +527,7 @@ impl TypeEngine {
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(TypedDeclaration::StructDeclaration(original_id)) => {
+                    Some(TyDeclaration::StructDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
                             CompileResult::from(de_get_struct(original_id.clone(), &name.span())),
@@ -561,7 +560,7 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(TypedDeclaration::EnumDeclaration(original_id)) => {
+                    Some(TyDeclaration::EnumDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
                             CompileResult::from(de_get_enum(original_id.clone(), &name.span())),
@@ -594,7 +593,7 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(TypedDeclaration::GenericTypeForFunctionScope { type_id, .. }) => type_id,
+                    Some(TyDeclaration::GenericTypeForFunctionScope { type_id, .. }) => type_id,
                     _ => {
                         errors.push(CompileError::UnknownTypeName {
                             name: name.to_string(),

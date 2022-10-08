@@ -8,8 +8,8 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.65"
 clap = { version = "4.0.4", features = ["derive"] }
-forc-pkg = { version = "0.24.5", path = "../../forc-pkg" }
+forc-pkg = { version = "0.25.2", path = "../../forc-pkg" }
 horrorshow = "0.8.4"
-sway-core = { version = "0.24.5", path = "../../sway-core" }
-sway-types = { version = "0.24.5", path = "../../sway-types" }
+sway-core = { version = "0.25.2", path = "../../sway-core" }
+sway-types = { version = "0.25.2", path = "../../sway-types" }
 

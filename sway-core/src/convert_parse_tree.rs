@@ -1,10 +1,5 @@
 use std::collections::HashSet;
 
-use crate::{
-    type_system::{TraitConstraint, TypeArgument, TypeBinding, TypeParameter},
-    WhileLoopExpression,
-};
-
 use {
     crate::{
         constants::{
@@ -12,19 +7,12 @@ use {
             STORAGE_PURITY_WRITE_NAME, VALID_ATTRIBUTE_NAMES,
         },
         error::{err, ok, CompileError, CompileResult, CompileWarning, Warning},
-        type_system::{insert_type, AbiName, IntegerBits},
-        AbiCastExpression, AbiDeclaration, ArrayIndexExpression, AsmExpression, AsmOp, AsmRegister,
-        AsmRegisterDeclaration, AstNode, AstNodeContent, CallPath, CodeBlock, ConstantDeclaration,
-        Declaration, DelineatedPathExpression, EnumDeclaration, EnumVariant, Expression,
-        ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
-        IfExpression, ImplSelf, ImplTrait, ImportType, IncludeStatement,
-        IntrinsicFunctionExpression, LazyOp, LazyOperatorExpression, Literal, MatchBranch,
-        MatchExpression, MethodApplicationExpression, MethodName, ParseTree, Purity,
-        ReassignmentExpression, ReassignmentTarget, Scrutinee, StorageAccessExpression,
-        StorageDeclaration, StorageField, StructDeclaration, StructExpression,
-        StructExpressionField, StructField, StructScrutineeField, SubfieldExpression, Supertrait,
-        TraitDeclaration, TraitFn, TreeType, TupleIndexExpression, TypeInfo, UseStatement,
-        VariableDeclaration, Visibility,
+        language::{parsed::*, *},
+        type_system::{
+            insert_type, AbiName, IntegerBits, TraitConstraint, TypeArgument, TypeBinding,
+            TypeParameter,
+        },
+        TypeInfo,
     },
     std::{
         collections::HashMap,
@@ -1099,7 +1087,6 @@ fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "u64" => Some(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
         "bool" => Some(TypeInfo::Boolean),
         "unit" => Some(TypeInfo::Tuple(Vec::new())),
-        "byte" => Some(TypeInfo::Byte),
         "b256" => Some(TypeInfo::B256),
         "Self" | "self" => Some(TypeInfo::SelfType),
         "Contract" => Some(TypeInfo::Contract),

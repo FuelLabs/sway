@@ -1,17 +1,18 @@
 use crate::descriptor::Descriptor;
 use std::collections::BTreeMap;
 use sway_core::{
-    semantic_analysis::TypedSubmodule, AstNode, AstNodeContent, Attribute, AttributeKind,
-    AttributesMap, CompileResult, Declaration, ParseProgram, ParseSubmodule, TypedAstNodeContent,
-    TypedDeclaration, TypedProgram,
+    language::parsed::{AstNode, AstNodeContent, Declaration, ParseProgram, ParseSubmodule},
+    semantic_analysis::TySubmodule,
+    Attribute, AttributeKind, AttributesMap, CompileResult, TyAstNodeContent, TyDeclaration,
+    TyProgram,
 };
 
-type TypeInformation = TypedDeclaration;
+type TypeInformation = TyDeclaration;
 pub(crate) type Documentation = BTreeMap<Descriptor, (Vec<Attribute>, TypeInformation)>;
 
 /// Gather [Documentation] from the [CompileResult].
 pub(crate) fn get_compiled_docs(
-    compilation: &CompileResult<(ParseProgram, Option<TypedProgram>)>,
+    compilation: &CompileResult<(ParseProgram, Option<TyProgram>)>,
     no_deps: bool,
 ) -> Documentation {
     let mut docs: Documentation = Default::default();
@@ -21,7 +22,7 @@ pub(crate) fn get_compiled_docs(
     if let Some((parse_program, Some(typed_program))) = &compilation.value {
         for ast_node in &typed_program.root.all_nodes {
             // first, populate the descriptors and type information (decl).
-            if let TypedAstNodeContent::Declaration(ref decl) = ast_node.content {
+            if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
                 let mut entry = docs
                     .entry(Descriptor::from_typed_decl(decl, vec![]))
                     .or_insert((Vec::new(), decl.clone()));
@@ -60,7 +61,7 @@ pub(crate) fn get_compiled_docs(
     docs
 }
 fn extract_typed_submodule(
-    typed_submodule: &TypedSubmodule,
+    typed_submodule: &TySubmodule,
     docs: &mut Documentation,
     module_prefix: &Vec<String>,
 ) {
@@ -68,7 +69,7 @@ fn extract_typed_submodule(
     new_submodule_prefix.push(typed_submodule.library_name.as_str().to_string());
     for ast_node in &typed_submodule.module.all_nodes {
         // first, populate the descriptors and type information (decl).
-        if let TypedAstNodeContent::Declaration(ref decl) = ast_node.content {
+        if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
             let mut entry = docs
                 .entry(Descriptor::from_typed_decl(
                     decl,

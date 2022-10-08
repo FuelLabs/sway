@@ -3,9 +3,9 @@
 use crate::{
     constants::STORAGE_PURITY_ATTRIBUTE_NAME,
     convert_parse_tree::ConvertParseTreeError,
+    language::{parsed::*, CallPath},
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_system::*,
-    CallPath, VariableDeclaration,
 };
 use sway_types::{ident::Ident, span::Span, Spanned};
 
@@ -512,8 +512,8 @@ pub enum CompileError {
     )]
     InternalOwned(String, Span),
     #[error(
-        "Byte literal had length of {byte_length}. Byte literals must be either one byte long (8 \
-         binary digits or 2 hex digits) or 32 bytes long (256 binary digits or 64 hex digits)"
+        "Byte literal had length of {byte_length}. Byte literals must be 32 bytes long \
+         (256 binary digits or 64 hex digits)"
     )]
     InvalidByteLiteralLength { byte_length: usize, span: Span },
     #[error("Expected an expression to follow operator \"{op}\"")]

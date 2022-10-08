@@ -1,6 +1,6 @@
 use sway_types::Span;
 
-use crate::parse_tree::CallPath;
+use crate::language::CallPath;
 use crate::type_system::TypeBinding;
 use crate::{Ident, TypeInfo};
 

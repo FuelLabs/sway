@@ -10,8 +10,8 @@ mod control_flow_analysis;
 mod convert_parse_tree;
 pub mod declaration_engine;
 pub mod ir_generation;
+pub mod language;
 mod metadata;
-pub mod parse_tree;
 pub mod semantic_analysis;
 pub mod source_map;
 mod style;
@@ -32,17 +32,16 @@ use sway_ir::{Context, Function, Instruction, Kind, Module, Value};
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
-    TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration, TypedModule,
-    TypedProgram, TypedProgramKind,
+    TyAstNode, TyAstNodeContent, TyDeclaration, TyFunctionDeclaration, TyModule, TyProgram,
+    TyProgramKind,
 };
 pub mod types;
-pub use crate::parse_tree::{
-    Declaration, Expression, ParseModule, ParseProgram, TreeType, UseStatement, *,
-};
 
 pub use error::{CompileError, CompileResult, CompileWarning};
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
+
+use language::parsed;
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
@@ -57,7 +56,7 @@ pub use type_system::*;
 ///
 /// # Panics
 /// Panics if the parser panics.
-pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<ParseProgram> {
+pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<parsed::ParseProgram> {
     match config {
         None => parse_in_memory(input),
         Some(config) => parse_files(input, config),
@@ -81,12 +80,12 @@ fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> CompileResult<sway_a
 }
 
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
-fn parse_in_memory(src: Arc<str>) -> CompileResult<ParseProgram> {
+fn parse_in_memory(src: Arc<str>) -> CompileResult<parsed::ParseProgram> {
     parse_file(src, None).flat_map(|module| {
         convert_parse_tree::convert_parse_tree(module).flat_map(|(kind, tree)| {
             let submodules = Default::default();
-            let root = ParseModule { tree, submodules };
-            let program = ParseProgram { kind, root };
+            let root = parsed::ParseModule { tree, submodules };
+            let program = parsed::ParseProgram { kind, root };
             ok(program, vec![], vec![])
         })
     })
@@ -94,10 +93,10 @@ fn parse_in_memory(src: Arc<str>) -> CompileResult<ParseProgram> {
 
 /// When a `BuildConfig` is given, the module source may declare `dep`s that must be parsed from
 /// other files.
-fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<ParseProgram> {
+fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<parsed::ParseProgram> {
     let root_mod_path = config.canonical_root_module();
     parse_module_tree(src, root_mod_path).flat_map(|(kind, root)| {
-        let program = ParseProgram { kind, root };
+        let program = parsed::ParseProgram { kind, root };
         ok(program, vec![], vec![])
     })
 }
@@ -106,7 +105,7 @@ fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<ParseProgra
 fn parse_submodules(
     deps: &[Dependency],
     module_dir: &Path,
-) -> CompileResult<Vec<(Ident, ParseSubmodule)>> {
+) -> CompileResult<Vec<(Ident, parsed::ParseSubmodule)>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
@@ -134,7 +133,7 @@ fn parse_submodules(
 
         if let Some((kind, module)) = mt_res.value {
             let library_name = match kind {
-                TreeType::Library { name } => name,
+                parsed::TreeType::Library { name } => name,
                 _ => {
                     let span = span::Span::new(dep_str, 0, 0, Some(dep_path)).unwrap();
                     errors.push(CompileError::ImportMustBeLibrary { span });
@@ -146,7 +145,7 @@ fn parse_submodules(
             // is where we should use it.
             let dep_alias = None;
             let dep_name = dep_alias.unwrap_or_else(|| library_name.clone());
-            let submodule = ParseSubmodule {
+            let submodule = parsed::ParseSubmodule {
                 library_name,
                 module,
             };
@@ -159,7 +158,10 @@ fn parse_submodules(
 
 /// Given the source of the module along with its path,
 /// parse this module including all of its submodules.
-fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeType, ParseModule)> {
+fn parse_module_tree(
+    src: Arc<str>,
+    path: Arc<PathBuf>,
+) -> CompileResult<(parsed::TreeType, parsed::ParseModule)> {
     // Parse this module first.
     parse_file(src, Some(path.clone())).flat_map(|module| {
         let module_dir = path.parent().expect("module file has no parent directory");
@@ -169,7 +171,7 @@ fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeTy
 
         // Convert from the raw parsed module to the `ParseTree` ready for type-check.
         convert_parse_tree::convert_parse_tree(module).flat_map(|(prog_kind, tree)| {
-            submodules_res.map(|submodules| (prog_kind, ParseModule { tree, submodules }))
+            submodules_res.map(|submodules| (prog_kind, parsed::ParseModule { tree, submodules }))
         })
     })
 }
@@ -212,16 +214,16 @@ pub enum BytecodeOrLib {
 }
 
 pub fn parsed_to_ast(
-    parse_program: &ParseProgram,
+    parse_program: &parsed::ParseProgram,
     initial_namespace: namespace::Module,
     generate_logged_types: bool,
-) -> CompileResult<TypedProgram> {
+) -> CompileResult<TyProgram> {
     // Type check the program.
     let CompileResult {
         value: typed_program_opt,
         mut warnings,
         mut errors,
-    } = TypedProgram::type_check(parse_program, initial_namespace);
+    } = TyProgram::type_check(parse_program, initial_namespace);
     let mut typed_program = match typed_program_opt {
         Some(typed_program) => typed_program,
         None => return err(warnings, errors),
@@ -302,7 +304,7 @@ pub fn compile_to_ast(
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
-) -> CompileResult<TypedProgram> {
+) -> CompileResult<TyProgram> {
     // Parse the program to a concrete syntax tree (CST).
     let CompileResult {
         value: parse_program_opt,
@@ -347,7 +349,7 @@ pub fn compile_to_asm(
 /// try compiling to a `AsmOrLib`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn ast_to_asm(
-    ast_res: CompileResult<TypedProgram>,
+    ast_res: CompileResult<TyProgram>,
     build_config: &BuildConfig,
 ) -> CompileResult<AsmOrLib> {
     match ast_res.value {
@@ -358,7 +360,9 @@ pub fn ast_to_asm(
 
             let tree_type = typed_program.kind.tree_type();
             match tree_type {
-                TreeType::Contract | TreeType::Script | TreeType::Predicate => {
+                parsed::TreeType::Contract
+                | parsed::TreeType::Script
+                | parsed::TreeType::Predicate => {
                     let asm = check!(
                         compile_ast_to_ir_to_asm(typed_program, build_config),
                         return deduped_err(warnings, errors),
@@ -367,7 +371,7 @@ pub fn ast_to_asm(
                     );
                     ok(AsmOrLib::Asm(asm), warnings, errors)
                 }
-                TreeType::Library { name } => {
+                parsed::TreeType::Library { name } => {
                     let namespace = Box::new(typed_program.root.namespace.into());
                     let lib = AsmOrLib::Library { name, namespace };
                     ok(lib, warnings, errors)
@@ -378,7 +382,7 @@ pub fn ast_to_asm(
 }
 
 pub(crate) fn compile_ast_to_ir_to_asm(
-    program: TypedProgram,
+    program: TyProgram,
     build_config: &BuildConfig,
 ) -> CompileResult<FinalizedAsm> {
     let mut warnings = Vec::new();
@@ -407,9 +411,11 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         .module_iter()
         .flat_map(|module| module.function_iter(&ir))
         .filter(|func| {
-            let is_script_or_predicate =
-                matches!(tree_type, TreeType::Script | TreeType::Predicate);
-            let is_contract = tree_type == TreeType::Contract;
+            let is_script_or_predicate = matches!(
+                tree_type,
+                parsed::TreeType::Script | parsed::TreeType::Predicate
+            );
+            let is_contract = tree_type == parsed::TreeType::Contract;
             let has_entry_name =
                 func.get_name(&ir) == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME;
 
@@ -438,7 +444,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     // Inline function calls.
     check!(
-        inline_function_calls(&mut ir, &all_functions),
+        inline_function_calls(&mut ir, &all_functions, &tree_type),
         return err(warnings, errors),
         warnings,
         errors
@@ -488,10 +494,23 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     compile_ir_to_asm(&ir, Some(build_config))
 }
 
-fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+// Inline function calls based on two conditions:
+// 1. The program we're compiling is a "predicate". Predicates cannot jump backwards which means
+//    that supporting function calls (i.e. without inlining) is not possible. This is a protocl
+//    restriction and not a heuristic.
+// 2. If the program is not a "predicate" then, we rely on some heuristic which is described below
+//    in the `inline_heuristc` closure.
+//
+fn inline_function_calls(
+    ir: &mut Context,
+    functions: &[Function],
+    tree_type: &parsed::TreeType,
+) -> CompileResult<()> {
     // Inspect ALL calls and count how often each function is called.
-    let call_counts: HashMap<Function, u64> =
-        functions.iter().fold(HashMap::new(), |mut counts, func| {
+    // This is not required for predicates because we don't inline their function calls
+    let call_counts: HashMap<Function, u64> = match tree_type {
+        parsed::TreeType::Predicate => HashMap::new(),
+        _ => functions.iter().fold(HashMap::new(), |mut counts, func| {
             for (_block, ins) in func.instruction_iter(ir) {
                 if let Some(Instruction::Call(callee, _args)) = ins.get_instruction(ir) {
                     counts
@@ -501,7 +520,8 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
                 }
             }
             counts
-        });
+        }),
+    };
 
     let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
         // For now, pending improvements to ASMgen for calls, we must inline any function which has
@@ -529,9 +549,13 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
     };
 
     for function in functions {
-        if let Err(ir_error) =
-            sway_ir::optimize::inline_some_function_calls(ir, function, inline_heuristic)
-        {
+        if let Err(ir_error) = match tree_type {
+            parsed::TreeType::Predicate => {
+                // Inline everything for predicates
+                sway_ir::optimize::inline_all_function_calls(ir, function)
+            }
+            _ => sway_ir::optimize::inline_some_function_calls(ir, function, inline_heuristic),
+        } {
             return err(
                 Vec::new(),
                 vec![CompileError::InternalOwned(
@@ -639,9 +663,9 @@ pub fn clear_lazy_statics() {
     declaration_engine::declaration_engine::de_clear();
 }
 
-/// Given a [TypedProgram], which is type-checked Sway source, construct a graph to analyze
+/// Given a [TyProgram], which is type-checked Sway source, construct a graph to analyze
 /// control flow and determine if it is valid.
-fn perform_control_flow_analysis(program: &TypedProgram) -> CompileResult<()> {
+fn perform_control_flow_analysis(program: &TyProgram) -> CompileResult<()> {
     let dca_res = dead_code_analysis(program);
     let rpa_errors = return_path_analysis(program);
     let rpa_res = if rpa_errors.is_empty() {
@@ -656,7 +680,7 @@ fn perform_control_flow_analysis(program: &TypedProgram) -> CompileResult<()> {
 /// code.
 ///
 /// Returns the graph that was used for analysis.
-fn dead_code_analysis(program: &TypedProgram) -> CompileResult<ControlFlowGraph> {
+fn dead_code_analysis(program: &TyProgram) -> CompileResult<ControlFlowGraph> {
     let mut dead_code_graph = Default::default();
     let tree_type = program.kind.tree_type();
     module_dead_code_analysis(&program.root, &tree_type, &mut dead_code_graph).flat_map(|_| {
@@ -667,8 +691,8 @@ fn dead_code_analysis(program: &TypedProgram) -> CompileResult<ControlFlowGraph>
 
 /// Recursively collect modules into the given `ControlFlowGraph` ready for dead code analysis.
 fn module_dead_code_analysis(
-    module: &TypedModule,
-    tree_type: &TreeType,
+    module: &TyModule,
+    tree_type: &parsed::TreeType,
     graph: &mut ControlFlowGraph,
 ) -> CompileResult<()> {
     let init_res = ok((), vec![], vec![]);
@@ -677,7 +701,7 @@ fn module_dead_code_analysis(
         .iter()
         .fold(init_res, |res, (_, submodule)| {
             let name = submodule.library_name.clone();
-            let tree_type = TreeType::Library { name };
+            let tree_type = parsed::TreeType::Library { name };
             res.flat_map(|_| module_dead_code_analysis(&submodule.module, &tree_type, graph))
         });
     submodules_res.flat_map(|()| {
@@ -687,13 +711,13 @@ fn module_dead_code_analysis(
     })
 }
 
-fn return_path_analysis(program: &TypedProgram) -> Vec<CompileError> {
+fn return_path_analysis(program: &TyProgram) -> Vec<CompileError> {
     let mut errors = vec![];
     module_return_path_analysis(&program.root, &mut errors);
     errors
 }
 
-fn module_return_path_analysis(module: &TypedModule, errors: &mut Vec<CompileError>) {
+fn module_return_path_analysis(module: &TyModule, errors: &mut Vec<CompileError>) {
     for (_, submodule) in &module.submodules {
         module_return_path_analysis(&submodule.module, errors);
     }
@@ -815,7 +839,8 @@ fn test_parenthesized() {
 
 #[test]
 fn test_unary_ordering() {
-    use crate::parse_tree::declaration::FunctionDeclaration;
+    use crate::language::{self, parsed};
+
     let prog = parse(
         r#"
     script;
@@ -832,25 +857,27 @@ fn test_unary_ordering() {
     let prog = prog.unwrap(&mut warnings, &mut errors);
     // this should parse as `(!a) && b`, not `!(a && b)`. So, the top level
     // expression should be `&&`
-    if let AstNode {
+    if let parsed::AstNode {
         content:
-            AstNodeContent::Declaration(Declaration::FunctionDeclaration(FunctionDeclaration {
-                body,
-                ..
-            })),
+            parsed::AstNodeContent::Declaration(parsed::Declaration::FunctionDeclaration(
+                parsed::FunctionDeclaration { body, .. },
+            )),
         ..
     } = &prog.root.tree.root_nodes[0]
     {
-        if let AstNode {
+        if let parsed::AstNode {
             content:
-                AstNodeContent::Expression(Expression {
-                    kind: ExpressionKind::LazyOperator(LazyOperatorExpression { op, .. }),
+                parsed::AstNodeContent::Expression(parsed::Expression {
+                    kind:
+                        parsed::ExpressionKind::LazyOperator(parsed::LazyOperatorExpression {
+                            op, ..
+                        }),
                     ..
                 }),
             ..
         } = &body.contents[2]
         {
-            assert_eq!(op, &LazyOp::And)
+            assert_eq!(op, &language::LazyOp::And)
         } else {
             panic!("Was not lazy operator.")
         }

@@ -1,6 +1,6 @@
-use crate::semantic_analysis::TypedExpression;
+use crate::semantic_analysis::TyExpression;
 use crate::type_system::*;
-use crate::{semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
+use crate::{language::CallPath, semantic_analysis::ast_node::TyStructField, Ident};
 use derivative::Derivative;
 
 #[derive(Derivative)]
@@ -11,12 +11,11 @@ pub enum ResolvedType {
     UnsignedInteger(IntegerBits),
     Boolean,
     Unit,
-    Byte,
     B256,
     #[allow(dead_code)]
     Struct {
         name: Ident,
-        fields: Vec<TypedStructField>,
+        fields: Vec<TyStructField>,
     },
     #[allow(dead_code)]
     Enum {
@@ -33,7 +32,7 @@ pub enum ResolvedType {
     ContractCaller {
         abi_name: CallPath,
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
-        address: Box<TypedExpression>,
+        address: Box<TyExpression>,
     },
     #[allow(dead_code)]
     Function {

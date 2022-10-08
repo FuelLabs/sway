@@ -1,5 +1,7 @@
 use crate::render::create_html_file_name;
-use sway_core::{declaration_engine::*, AbiName, Declaration, TypeInfo, TypedDeclaration};
+use sway_core::{
+    declaration_engine::*, language::parsed::Declaration, AbiName, TyDeclaration, TypeInfo,
+};
 use sway_types::{Ident, Spanned};
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug)]
@@ -136,9 +138,9 @@ impl Descriptor {
             _ => Descriptor::NonDocumentable,
         }
     }
-    pub(crate) fn from_typed_decl(d: &TypedDeclaration, module_prefix: Vec<String>) -> Self {
+    pub(crate) fn from_typed_decl(d: &TyDeclaration, module_prefix: Vec<String>) -> Self {
         use DescriptorType::*;
-        use TypedDeclaration::*;
+        use TyDeclaration::*;
         match d {
             StructDeclaration(ref decl) => Descriptor::Documentable {
                 module_prefix,

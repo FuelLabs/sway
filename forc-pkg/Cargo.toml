@@ -1,6 +1,6 @@
 [package]
 name = "forc-pkg"
-version = "0.25.1"
+version = "0.25.2"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -10,18 +10,19 @@ description = "Building, locking, fetching and updating Sway projects as Forc pa
 
 [dependencies]
 anyhow = "1"
-forc-util = { version = "0.25.1", path = "../forc-util" }
+forc-util = { version = "0.25.2", path = "../forc-util" }
 fuel-crypto = "0.6"
 fuel-tx = { version = "0.18", features = ["serde"] }
 git2 = { version = "0.14", features = ["vendored-libgit2", "vendored-openssl"] }
+hex = "0.4.3" 
 petgraph = { version = "0.6", features = ["serde-1"] }
 semver = { version = "1.0", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_ignored = "0.1"
 serde_json = "1.0"
-sway-core = { version = "0.25.1", path = "../sway-core" }
-sway-types = { version = "0.25.1", path = "../sway-types" }
-sway-utils = { version = "0.25.1", path = "../sway-utils" }
+sway-core = { version = "0.25.2", path = "../sway-core" }
+sway-types = { version = "0.25.2", path = "../sway-types" }
+sway-utils = { version = "0.25.2", path = "../sway-utils" }
 toml = "0.5"
 tracing = "0.1"
 url = { version = "2.2", features = ["serde"] }

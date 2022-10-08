@@ -12,7 +12,7 @@ use std::{
 };
 
 use crate::{doc::get_compiled_docs, render::RenderedDocumentation};
-use forc_pkg::{self as pkg, ManifestFile};
+use forc_pkg::{self as pkg, PackageManifestFile};
 
 /// Main method for `forc doc`.
 pub fn main() -> Result<()> {
@@ -31,7 +31,7 @@ pub fn main() -> Result<()> {
     } else {
         std::env::current_dir()?
     };
-    let manifest = ManifestFile::from_dir(&dir)?;
+    let manifest = PackageManifestFile::from_dir(&dir)?;
 
     // check if the out path exists
     let out_path = PathBuf::from(&manifest.dir()).join("out");

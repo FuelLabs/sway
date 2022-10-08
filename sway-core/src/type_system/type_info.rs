@@ -1,5 +1,5 @@
 use super::*;
-use crate::{semantic_analysis::*, CallPath, Ident};
+use crate::{language::CallPath, semantic_analysis::*, Ident};
 use sway_types::span::Span;
 
 use derivative::Derivative;
@@ -40,12 +40,12 @@ pub enum TypeInfo {
     Enum {
         name: Ident,
         type_parameters: Vec<TypeParameter>,
-        variant_types: Vec<TypedEnumVariant>,
+        variant_types: Vec<TyEnumVariant>,
     },
     Struct {
         name: Ident,
         type_parameters: Vec<TypeParameter>,
-        fields: Vec<TypedStructField>,
+        fields: Vec<TyStructField>,
     },
     Boolean,
     Tuple(Vec<TypeArgument>),
@@ -54,7 +54,7 @@ pub enum TypeInfo {
     ContractCaller {
         abi_name: AbiName,
         // boxed for size
-        address: Option<Box<TypedExpression>>,
+        address: Option<Box<TyExpression>>,
     },
     /// A custom type could be a struct or similar if the name is in scope,
     /// or just a generic parameter if it is not.
@@ -65,7 +65,6 @@ pub enum TypeInfo {
         type_arguments: Option<Vec<TypeArgument>>,
     },
     SelfType,
-    Byte,
     B256,
     /// This means that specific type of a number is not yet known. It will be
     /// determined via inference at a later time.
@@ -81,7 +80,7 @@ pub enum TypeInfo {
     /// Stored without initializers here, as typed struct fields,
     /// so type checking is able to treat it as a struct with fields.
     Storage {
-        fields: Vec<TypedStructField>,
+        fields: Vec<TyStructField>,
     },
 }
 
@@ -109,18 +108,15 @@ impl Hash for TypeInfo {
                 state.write_u8(5);
                 fields.hash(state);
             }
-            TypeInfo::Byte => {
-                state.write_u8(6);
-            }
             TypeInfo::B256 => {
-                state.write_u8(7);
+                state.write_u8(6);
             }
             TypeInfo::Enum {
                 name,
                 variant_types,
                 type_parameters,
             } => {
-                state.write_u8(8);
+                state.write_u8(7);
                 name.hash(state);
                 variant_types.hash(state);
                 type_parameters.hash(state);
@@ -130,13 +126,13 @@ impl Hash for TypeInfo {
                 fields,
                 type_parameters,
             } => {
-                state.write_u8(9);
+                state.write_u8(8);
                 name.hash(state);
                 fields.hash(state);
                 type_parameters.hash(state);
             }
             TypeInfo::ContractCaller { abi_name, address } => {
-                state.write_u8(10);
+                state.write_u8(9);
                 abi_name.hash(state);
                 let address = address
                     .as_ref()
@@ -145,35 +141,35 @@ impl Hash for TypeInfo {
                 address.hash(state);
             }
             TypeInfo::Contract => {
-                state.write_u8(11);
+                state.write_u8(10);
             }
             TypeInfo::ErrorRecovery => {
-                state.write_u8(12);
+                state.write_u8(11);
             }
             TypeInfo::Unknown => {
-                state.write_u8(13);
+                state.write_u8(12);
             }
             TypeInfo::SelfType => {
-                state.write_u8(14);
+                state.write_u8(13);
             }
             TypeInfo::UnknownGeneric { name } => {
-                state.write_u8(15);
+                state.write_u8(14);
                 name.hash(state);
             }
             TypeInfo::Custom {
                 name,
                 type_arguments,
             } => {
-                state.write_u8(16);
+                state.write_u8(15);
                 name.hash(state);
                 type_arguments.hash(state);
             }
             TypeInfo::Storage { fields } => {
-                state.write_u8(17);
+                state.write_u8(16);
                 fields.hash(state);
             }
             TypeInfo::Array(elem_ty, count, _) => {
-                state.write_u8(18);
+                state.write_u8(17);
                 look_up_type_id(*elem_ty).hash(state);
                 count.hash(state);
             }
@@ -190,7 +186,6 @@ impl PartialEq for TypeInfo {
             (Self::Unknown, Self::Unknown) => true,
             (Self::Boolean, Self::Boolean) => true,
             (Self::SelfType, Self::SelfType) => true,
-            (Self::Byte, Self::Byte) => true,
             (Self::B256, Self::B256) => true,
             (Self::Numeric, Self::Numeric) => true,
             (Self::Contract, Self::Contract) => true,
@@ -294,7 +289,6 @@ impl fmt::Display for TypeInfo {
                 format!("({})", field_strs.join(", "))
             }
             SelfType => "Self".into(),
-            Byte => "byte".into(),
             B256 => "b256".into(),
             Numeric => "numeric".into(),
             Contract => "contract".into(),
@@ -356,7 +350,6 @@ impl TypeInfo {
                 format!("({})", field_strs.join(", "))
             }
             SelfType => "Self".into(),
-            Byte => "byte".into(),
             B256 => "b256".into(),
             Numeric => "u64".into(), // u64 is the default
             Contract => "contract".into(),
@@ -413,7 +406,6 @@ impl TypeInfo {
 
                 format!("({})", field_names.join(","))
             }
-            Byte => "byte".into(),
             B256 => "b256".into(),
             Struct {
                 fields,
@@ -681,7 +673,6 @@ impl TypeInfo {
             | TypeInfo::Tuple(_)
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::SelfType
-            | TypeInfo::Byte
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::Contract
@@ -708,7 +699,6 @@ impl TypeInfo {
             | TypeInfo::Struct { .. }
             | TypeInfo::Boolean
             | TypeInfo::Tuple(_)
-            | TypeInfo::Byte
             | TypeInfo::B256
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Numeric => ok((), warnings, errors),
@@ -822,7 +812,6 @@ impl TypeInfo {
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
-            | TypeInfo::Byte
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::Contract
@@ -1023,7 +1012,7 @@ impl TypeInfo {
     /// iterate through the elements of `subfields` as `subfield`,
     /// and recursively apply `subfield` to `self`.
     ///
-    /// Returns a `TypedStructField` when all `subfields` could be
+    /// Returns a [TyStructField] when all `subfields` could be
     /// applied without error.
     ///
     /// Returns an error when subfields could not be applied:
@@ -1034,7 +1023,7 @@ impl TypeInfo {
         &self,
         subfields: &[Ident],
         span: &Span,
-    ) -> CompileResult<TypedStructField> {
+    ) -> CompileResult<TyStructField> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match (self, subfields.split_first()) {
@@ -1116,7 +1105,7 @@ impl TypeInfo {
         &self,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<(&Ident, &Vec<TypedEnumVariant>)> {
+    ) -> CompileResult<(&Ident, &Vec<TyEnumVariant>)> {
         let warnings = vec![];
         let errors = vec![];
         match self {
@@ -1144,7 +1133,7 @@ impl TypeInfo {
     pub(crate) fn expect_struct(
         &self,
         debug_span: &Span,
-    ) -> CompileResult<(&Ident, &Vec<TypedStructField>)> {
+    ) -> CompileResult<(&Ident, &Vec<TyStructField>)> {
         let warnings = vec![];
         let errors = vec![];
         match self {
