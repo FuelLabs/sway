@@ -10,7 +10,7 @@
 
 use crate::{
     block::Block, context::Context, error::IrError, function::Function, instruction::Instruction,
-    value::ValueDatum,
+    value::ValueDatum, BranchToWithArgs,
 };
 
 pub fn simplify_cfg(context: &mut Context, function: &Function) -> Result<bool, IrError> {
@@ -45,7 +45,14 @@ fn unlink_empty_blocks(context: &mut Context, function: &Function) -> Result<boo
             }
         })
         .collect();
-    for (block, (to_block, cur_params)) in candidates {
+    for (
+        block,
+        BranchToWithArgs {
+            block: to_block,
+            args: cur_params,
+        },
+    ) in candidates
+    {
         // If `to_block`'s predecessors and `block`'s predecessors intersect,
         // AND `to_block` has an arg, then we have that pred branching to to_block
         // with different args. While that's valid IR, it's harder to generate
@@ -97,7 +104,7 @@ fn remove_dead_blocks(context: &mut Context, function: &Function) -> Result<bool
     while !worklist.is_empty() {
         let block = worklist.pop().unwrap();
         let succs = block.successors(context);
-        for (succ, _) in succs {
+        for BranchToWithArgs { block: succ, .. } in succs {
             // If this isn't already marked reachable, we mark it and add to the worklist.
             if !reachable.contains(&succ) {
                 reachable.insert(succ);
@@ -112,7 +119,7 @@ fn remove_dead_blocks(context: &mut Context, function: &Function) -> Result<bool
         if !reachable.contains(&block) {
             modified = true;
 
-            for (succ, _) in block.successors(context) {
+            for BranchToWithArgs { block: succ, .. } in block.successors(context) {
                 succ.remove_pred(context, &block);
             }
 
@@ -129,9 +136,9 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
         from_block
             .get_terminator(context)
             .and_then(|term| match term {
-                Instruction::Branch((to_block, _)) if to_block.num_predecessors(context) == 1 => {
-                    Some((from_block, *to_block))
-                }
+                Instruction::Branch(BranchToWithArgs {
+                    block: to_block, ..
+                }) if to_block.num_predecessors(context) == 1 => Some((from_block, *to_block)),
                 _ => None,
             })
     };
@@ -201,7 +208,7 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
 
     // Adjust the successors to the final `to_block` to now be successors of the fully merged
     // `from_block`.
-    for (succ, _) in final_to_block_succs {
+    for BranchToWithArgs { block: succ, .. } in final_to_block_succs {
         succ.replace_pred(context, &final_to_block, &from_block)
     }
 

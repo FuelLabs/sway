@@ -11,7 +11,7 @@ use crate::{
     function::Function,
     instruction::Instruction,
     value::{Value, ValueContent, ValueDatum},
-    Predicate,
+    BranchToWithArgs, Predicate,
 };
 
 /// Find constant expressions which can be reduced to fewer opterations.
@@ -71,11 +71,22 @@ fn combine_cbr(context: &mut Context, function: &Function) -> Result<bool, IrErr
         )
         .transpose()?;
 
-    candidate.map_or(Ok(false), |(cbr, from_block, dest, (no_more_dest, _))| {
-        no_more_dest.remove_pred(context, &from_block);
-        cbr.replace(context, ValueDatum::Instruction(Instruction::Branch(dest)));
-        Ok(true)
-    })
+    candidate.map_or(
+        Ok(false),
+        |(
+            cbr,
+            from_block,
+            dest,
+            BranchToWithArgs {
+                block: no_more_dest,
+                ..
+            },
+        )| {
+            no_more_dest.remove_pred(context, &from_block);
+            cbr.replace(context, ValueDatum::Instruction(Instruction::Branch(dest)));
+            Ok(true)
+        },
+    )
 }
 
 fn combine_cmp(context: &mut Context, function: &Function) -> bool {

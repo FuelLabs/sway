@@ -459,10 +459,10 @@ impl<'ir> AsmBuilder<'ir> {
         self.reg_map.insert(*instr_val, res_reg);
     }
 
-    fn compile_branch(&mut self, to_block: &(Block, Vec<Value>)) {
+    fn compile_branch(&mut self, to_block: &BranchToWithArgs) {
         self.compile_branch_to_phi_value(to_block);
 
-        let label = self.block_to_label(&to_block.0);
+        let label = self.block_to_label(&to_block.block);
         self.cur_bytecode.push(Op::jump_to_label(label));
     }
 
@@ -491,10 +491,10 @@ impl<'ir> AsmBuilder<'ir> {
     fn compile_conditional_branch(
         &mut self,
         cond_value: &Value,
-        true_block: &(Block, Vec<Value>),
-        false_block: &(Block, Vec<Value>),
+        true_block: &BranchToWithArgs,
+        false_block: &BranchToWithArgs,
     ) -> CompileResult<()> {
-        if true_block == false_block && true_block.0.num_args(self.context) > 0 {
+        if true_block.block == false_block.block && true_block.block.num_args(self.context) > 0 {
             return err(
                 Vec::new(),
                 vec![CompileError::Internal(
@@ -510,20 +510,21 @@ impl<'ir> AsmBuilder<'ir> {
 
         let cond_reg = self.value_to_register(cond_value);
 
-        let true_label = self.block_to_label(&true_block.0);
+        let true_label = self.block_to_label(&true_block.block);
         self.cur_bytecode
             .push(Op::jump_if_not_zero(cond_reg, true_label));
 
-        let false_label = self.block_to_label(&false_block.0);
+        let false_label = self.block_to_label(&false_block.block);
         self.cur_bytecode.push(Op::jump_to_label(false_label));
         ok((), vec![], vec![])
     }
 
-    fn compile_branch_to_phi_value(&mut self, to_block: &(Block, Vec<Value>)) {
-        for (i, param) in to_block.1.iter().enumerate() {
+    fn compile_branch_to_phi_value(&mut self, to_block: &BranchToWithArgs) {
+        for (i, param) in to_block.args.iter().enumerate() {
             // We only need a MOVE here if param is actually assigned to a register
             if let Some(local_reg) = self.opt_value_to_register(param) {
-                let phi_reg = self.value_to_register(&to_block.0.get_arg(self.context, i).unwrap());
+                let phi_reg =
+                    self.value_to_register(&to_block.block.get_arg(self.context, i).unwrap());
                 self.cur_bytecode.push(Op::register_move(
                     phi_reg,
                     local_reg,

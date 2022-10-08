@@ -354,22 +354,23 @@ fn instruction_to_doc<'a>(
             // Handle possibly constant block parameters
             {
                 to_block
-                    .1
+                    .args
                     .iter()
                     .fold(Doc::Empty, |doc, param| {
                         doc.append(maybe_constant_to_doc(context, md_namer, namer, param))
                     })
                     .append(Doc::line(
-                        Doc::text(format!("br {}", context.blocks[to_block.0 .0].label,)).append(
-                            Doc::in_parens_comma_sep(
-                                to_block
-                                    .1
-                                    .iter()
-                                    .map(|arg_val| Doc::text(namer.name(context, arg_val)))
-                                    .collect(),
-                            )
-                            .append(md_namer.md_idx_to_doc(context, metadata)),
-                        ),
+                        Doc::text(format!("br {}", context.blocks[to_block.block.0].label,))
+                            .append(
+                                Doc::in_parens_comma_sep(
+                                    to_block
+                                        .args
+                                        .iter()
+                                        .map(|arg_val| Doc::text(namer.name(context, arg_val)))
+                                        .collect(),
+                                )
+                                .append(md_namer.md_idx_to_doc(context, metadata)),
+                            ),
                     ))
             }
             Instruction::Call(func, args) => args
@@ -411,14 +412,14 @@ fn instruction_to_doc<'a>(
                 true_block,
                 false_block,
             } => {
-                let true_label = &context.blocks[true_block.0 .0].label;
-                let false_label = &context.blocks[false_block.0 .0].label;
+                let true_label = &context.blocks[true_block.block.0].label;
+                let false_label = &context.blocks[false_block.block.0].label;
                 // Handle possibly constant block parameters
-                let doc = true_block.1.iter().fold(
+                let doc = true_block.args.iter().fold(
                     maybe_constant_to_doc(context, md_namer, namer, cond_value),
                     |doc, param| doc.append(maybe_constant_to_doc(context, md_namer, namer, param)),
                 );
-                let doc = false_block.1.iter().fold(doc, |doc, param| {
+                let doc = false_block.args.iter().fold(doc, |doc, param| {
                     doc.append(maybe_constant_to_doc(context, md_namer, namer, param))
                 });
                 doc.append(Doc::line(
@@ -426,7 +427,7 @@ fn instruction_to_doc<'a>(
                         Doc::text(format!(", {true_label}")).append(
                             Doc::in_parens_comma_sep(
                                 true_block
-                                    .1
+                                    .args
                                     .iter()
                                     .map(|arg_val| Doc::text(namer.name(context, arg_val)))
                                     .collect(),
@@ -435,7 +436,7 @@ fn instruction_to_doc<'a>(
                                 Doc::text(format!(", {false_label}")).append(
                                     Doc::in_parens_comma_sep(
                                         false_block
-                                            .1
+                                            .args
                                             .iter()
                                             .map(|arg_val| Doc::text(namer.name(context, arg_val)))
                                             .collect(),

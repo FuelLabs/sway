@@ -4,7 +4,7 @@
 //! consistent valid state, using the functions in this module.
 
 use crate::{
-    block::{Block, BlockContent},
+    block::BlockContent,
     context::Context,
     error::IrError,
     function::{Function, FunctionContent},
@@ -14,7 +14,7 @@ use crate::{
     module::ModuleContent,
     pointer::Pointer,
     value::{Value, ValueDatum},
-    BinaryOpKind, BlockArgument,
+    BinaryOpKind, BlockArgument, BranchToWithArgs,
 };
 
 impl Context {
@@ -296,10 +296,10 @@ impl<'a> InstructionVerifier<'a> {
         Ok(())
     }
 
-    fn verify_br(&self, dest_block: &(Block, Vec<Value>)) -> Result<(), IrError> {
-        if !self.cur_function.blocks.contains(&dest_block.0) {
+    fn verify_br(&self, dest_block: &BranchToWithArgs) -> Result<(), IrError> {
+        if !self.cur_function.blocks.contains(&dest_block.block) {
             Err(IrError::VerifyBranchToMissingBlock(
-                self.context.blocks[dest_block.0 .0].label.clone(),
+                self.context.blocks[dest_block.block.0].label.clone(),
             ))
         } else {
             self.verify_dest_args(dest_block)
@@ -351,15 +351,12 @@ impl<'a> InstructionVerifier<'a> {
         }
     }
 
-    fn verify_dest_args(
-        &self,
-        (dest_block, dest_params): &(Block, Vec<Value>),
-    ) -> Result<(), IrError> {
-        if dest_block.num_args(self.context) != dest_params.len() {
+    fn verify_dest_args(&self, dest: &BranchToWithArgs) -> Result<(), IrError> {
+        if dest.block.num_args(self.context) != dest.args.len() {
             return Err(IrError::VerifyBranchParamsMismatch);
         }
-        for (arg_idx, dest_param) in dest_block.arg_iter(self.context).enumerate() {
-            match dest_params.get(arg_idx) {
+        for (arg_idx, dest_param) in dest.block.arg_iter(self.context).enumerate() {
+            match dest.args.get(arg_idx) {
                 Some(actual)
                     if dest_param
                         .get_type(self.context)
@@ -378,18 +375,18 @@ impl<'a> InstructionVerifier<'a> {
     fn verify_cbr(
         &self,
         cond_val: &Value,
-        true_block: &(Block, Vec<Value>),
-        false_block: &(Block, Vec<Value>),
+        true_block: &BranchToWithArgs,
+        false_block: &BranchToWithArgs,
     ) -> Result<(), IrError> {
         if !matches!(cond_val.get_type(self.context), Some(Type::Bool)) {
             Err(IrError::VerifyConditionExprNotABool)
-        } else if !self.cur_function.blocks.contains(&true_block.0) {
+        } else if !self.cur_function.blocks.contains(&true_block.block) {
             Err(IrError::VerifyBranchToMissingBlock(
-                self.context.blocks[true_block.0 .0].label.clone(),
+                self.context.blocks[true_block.block.0].label.clone(),
             ))
-        } else if !self.cur_function.blocks.contains(&false_block.0) {
+        } else if !self.cur_function.blocks.contains(&false_block.block) {
             Err(IrError::VerifyBranchToMissingBlock(
-                self.context.blocks[false_block.0 .0].label.clone(),
+                self.context.blocks[false_block.block.0].label.clone(),
             ))
         } else {
             self.verify_dest_args(true_block)

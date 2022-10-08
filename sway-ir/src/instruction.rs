@@ -21,6 +21,12 @@ use crate::{
 };
 
 #[derive(Debug, Clone, DebugWithContext)]
+pub struct BranchToWithArgs {
+    pub block: Block,
+    pub args: Vec<Value>,
+}
+
+#[derive(Debug, Clone, DebugWithContext)]
 pub enum Instruction {
     /// Address of a non-copy (memory) value
     AddrOf(Value),
@@ -35,7 +41,7 @@ pub enum Instruction {
     /// Cast the type of a value without changing its actual content.
     BitCast(Value, Type),
     /// An unconditional jump.
-    Branch((Block, Vec<Value>)),
+    Branch(BranchToWithArgs),
     /// A function call with a list of arguments.
     Call(Function, Vec<Value>),
     /// Comparison between two values using various comparators and returning a boolean.
@@ -43,8 +49,8 @@ pub enum Instruction {
     /// A conditional jump with the boolean condition value and true or false destinations.
     ConditionalBranch {
         cond_value: Value,
-        true_block: (Block, Vec<Value>),
-        false_block: (Block, Vec<Value>),
+        true_block: BranchToWithArgs,
+        false_block: BranchToWithArgs,
     },
     /// A contract call with a list of arguments
     ContractCall {
@@ -293,7 +299,7 @@ impl Instruction {
                 replace(arg2);
             }
             Instruction::Branch(block) => {
-                block.1.iter_mut().for_each(replace);
+                block.args.iter_mut().for_each(replace);
             }
             Instruction::Call(_, args) => args.iter_mut().for_each(replace),
             Instruction::Cmp(_, lhs_val, rhs_val) => {
@@ -306,8 +312,8 @@ impl Instruction {
                 false_block,
             } => {
                 replace(cond_value);
-                true_block.1.iter_mut().for_each(replace);
-                false_block.1.iter_mut().for_each(replace);
+                true_block.args.iter_mut().for_each(replace);
+                false_block.args.iter_mut().for_each(replace);
             }
             Instruction::ContractCall {
                 params,
@@ -537,8 +543,13 @@ impl<'a> InstructionInserter<'a> {
     }
 
     pub fn branch(self, to_block: Block, dest_params: Vec<Value>) -> Value {
-        let br_val =
-            Value::new_instruction(self.context, Instruction::Branch((to_block, dest_params)));
+        let br_val = Value::new_instruction(
+            self.context,
+            Instruction::Branch(BranchToWithArgs {
+                block: to_block,
+                args: dest_params,
+            }),
+        );
         to_block.add_pred(self.context, &self.block);
         self.context.blocks[self.block.0].instructions.push(br_val);
         br_val
@@ -572,8 +583,14 @@ impl<'a> InstructionInserter<'a> {
             self.context,
             Instruction::ConditionalBranch {
                 cond_value,
-                true_block: (true_block, true_dest_params),
-                false_block: (false_block, false_dest_params),
+                true_block: BranchToWithArgs {
+                    block: true_block,
+                    args: true_dest_params,
+                },
+                false_block: BranchToWithArgs {
+                    block: false_block,
+                    args: false_dest_params,
+                },
             },
         );
         true_block.add_pred(self.context, &self.block);

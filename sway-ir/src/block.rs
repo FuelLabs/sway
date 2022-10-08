@@ -19,7 +19,7 @@ use crate::{
     instruction::{Instruction, InstructionInserter, InstructionIterator},
     pretty::DebugWithContext,
     value::{Value, ValueDatum},
-    Type,
+    BranchToWithArgs, Type,
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
@@ -54,9 +54,9 @@ impl BlockArgument {
     /// Get the actual parameter passed to this block argument from `from_block`
     pub fn get_val_coming_from(&self, context: &Context, from_block: &Block) -> Option<Value> {
         for pred in self.block.pred_iter(context) {
-            for (b, v) in pred.successors(context) {
-                if b == *from_block {
-                    return Some(v[self.idx]);
+            for BranchToWithArgs { block, args } in pred.successors(context) {
+                if block == *from_block {
+                    return Some(args[self.idx]);
                 }
             }
         }
@@ -202,7 +202,7 @@ impl Block {
     }
 
     /// Get the CFG successors (and the parameters passed to them) of this block.
-    pub(super) fn successors<'a>(&'a self, context: &'a Context) -> Vec<(Block, Vec<Value>)> {
+    pub(super) fn successors<'a>(&'a self, context: &'a Context) -> Vec<BranchToWithArgs> {
         match self.get_terminator(context) {
             Some(Instruction::ConditionalBranch {
                 true_block,
@@ -220,8 +220,8 @@ impl Block {
     pub fn get_succ_params(&self, context: &Context, succ: &Block) -> Vec<Value> {
         self.successors(context)
             .iter()
-            .find(|(block, _)| block == succ)
-            .map_or(vec![], |(_, params)| params.clone())
+            .find(|branch| &branch.block == succ)
+            .map_or(vec![], |branch| branch.args.clone())
     }
 
     /// Replace successor `old_succ` with `new_succ`.
@@ -237,8 +237,16 @@ impl Block {
         if let Some(term) = self.get_terminator_mut(context) {
             match term {
                 Instruction::ConditionalBranch {
-                    true_block: (true_block, true_opds),
-                    false_block: (false_block, false_opds),
+                    true_block:
+                        BranchToWithArgs {
+                            block: true_block,
+                            args: true_opds,
+                        },
+                    false_block:
+                        BranchToWithArgs {
+                            block: false_block,
+                            args: false_opds,
+                        },
                     cond_value: _,
                 } => {
                     if old_succ == *true_block {
@@ -253,9 +261,9 @@ impl Block {
                     }
                 }
 
-                Instruction::Branch((block, opds)) if *block == old_succ => {
+                Instruction::Branch(BranchToWithArgs { block, args }) if *block == old_succ => {
                     *block = new_succ;
-                    *opds = new_params;
+                    *args = new_params;
                     modified = true;
                 }
                 _ => (),
@@ -383,14 +391,14 @@ impl Block {
             // as immutable and then mutable in the loop body.
             for to_block in match new_block.get_terminator(context) {
                 Some(Instruction::Branch(to_block)) => {
-                    vec![to_block.0]
+                    vec![to_block.block]
                 }
                 Some(Instruction::ConditionalBranch {
                     true_block,
                     false_block,
                     ..
                 }) => {
-                    vec![true_block.0, false_block.0]
+                    vec![true_block.block, false_block.block]
                 }
 
                 _ => Vec::new(),

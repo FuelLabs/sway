@@ -311,9 +311,10 @@ fn inline_instruction(
             }
             // For `br` and `cbr` below we don't need to worry about the phi values, they're
             // adjusted later in `inline_function_call()`.
-            Instruction::Branch(b) => new_block
-                .ins(context)
-                .branch(map_block(b.0), b.1.iter().map(|v| map_value(*v)).collect()),
+            Instruction::Branch(b) => new_block.ins(context).branch(
+                map_block(b.block),
+                b.args.iter().map(|v| map_value(*v)).collect(),
+            ),
             Instruction::Call(f, args) => new_block.ins(context).call(
                 f,
                 args.iter()
@@ -332,10 +333,10 @@ fn inline_instruction(
                 false_block,
             } => new_block.ins(context).conditional_branch(
                 map_value(cond_value),
-                map_block(true_block.0),
-                map_block(false_block.0),
-                true_block.1.iter().map(|v| map_value(*v)).collect(),
-                false_block.1.iter().map(|v| map_value(*v)).collect(),
+                map_block(true_block.block),
+                map_block(false_block.block),
+                true_block.args.iter().map(|v| map_value(*v)).collect(),
+                false_block.args.iter().map(|v| map_value(*v)).collect(),
             ),
             Instruction::ContractCall {
                 return_type,
