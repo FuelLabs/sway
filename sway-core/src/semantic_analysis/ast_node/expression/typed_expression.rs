@@ -867,7 +867,6 @@ impl TyExpression {
             Literal::U32(_) => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
             Literal::U64(_) => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
             Literal::Boolean(_) => TypeInfo::Boolean,
-            Literal::Byte(_) => TypeInfo::Byte,
             Literal::B256(_) => TypeInfo::B256,
         };
         let id = crate::type_system::insert_type(return_type);

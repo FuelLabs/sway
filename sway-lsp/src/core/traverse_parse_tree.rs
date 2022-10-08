@@ -616,7 +616,7 @@ fn literal_to_symbol_kind(value: &Literal) -> SymbolKind {
         | Literal::U64(..)
         | Literal::Numeric(..) => SymbolKind::NumericLiteral,
         Literal::String(..) => SymbolKind::StringLiteral,
-        Literal::Byte(..) | Literal::B256(..) => SymbolKind::ByteLiteral,
+        Literal::B256(..) => SymbolKind::ByteLiteral,
         Literal::Boolean(..) => SymbolKind::BoolLiteral,
     }
 }
@@ -712,7 +712,7 @@ fn collect_type_info_token(
     }
 
     match type_info {
-        TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::Byte | TypeInfo::B256 => {
+        TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::B256 => {
             if let Some(type_span) = type_span {
                 tokens.insert(to_ident_key(&Ident::new(type_span)), token);
             }
