@@ -512,8 +512,8 @@ pub enum CompileError {
     )]
     InternalOwned(String, Span),
     #[error(
-        "Byte literal had length of {byte_length}. Byte literals must be either one byte long (8 \
-         binary digits or 2 hex digits) or 32 bytes long (256 binary digits or 64 hex digits)"
+        "Byte literal had length of {byte_length}. Byte literals must be 32 bytes long \
+         (256 binary digits or 64 hex digits)"
     )]
     InvalidByteLiteralLength { byte_length: usize, span: Span },
     #[error("Expected an expression to follow operator \"{op}\"")]

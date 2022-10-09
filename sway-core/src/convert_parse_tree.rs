@@ -1087,7 +1087,6 @@ fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "u64" => Some(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
         "bool" => Some(TypeInfo::Boolean),
         "unit" => Some(TypeInfo::Tuple(Vec::new())),
-        "byte" => Some(TypeInfo::Byte),
         "b256" => Some(TypeInfo::B256),
         "Self" | "self" => Some(TypeInfo::SelfType),
         "Contract" => Some(TypeInfo::Contract),
