@@ -43,6 +43,7 @@
   - [Struct Shorthand](./documentation/language/style-guide/structs.md)
   - [Enums](./documentation/language/style-guide/enums.md)
   - [Returning](./documentation/language/style-guide/returning.md)
+  - [Pattern Matching](./documentation/language/style-guide/pattern-matching.md)
   - [Getter Functions](./documentation/language/style-guide/getters.md)
 
 # Common Operations

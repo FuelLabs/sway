@@ -11,6 +11,8 @@ fn conditional() {
     } else {
         // call function 3
     }
+
+    // more code here
     // ANCHOR_END: conditional
 }
 
@@ -72,3 +74,32 @@ fn continue_example() -> u64 {
     sum // 1 + 3 + .. + 9 = 25
 }
 // ANCHOR_END: continue_example
+
+// ANCHOR: if_let_enum
+enum Foo {
+    One: (),
+    Two: (),
+}
+// ANCHOR_END: if_let_enum
+
+fn example1() {
+    // ANCHOR: if_let_example1
+    let one = Foo::One;
+    let mut result = 0;
+    
+    if let Foo::One = one {
+        result = 1;
+    }
+    // ANCHOR_END: if_let_example1
+}
+
+fn example2() {
+    // ANCHOR: if_let_example2
+    let one = Foo::One;
+    let result = if let Foo::One = one {
+        1
+    } else {
+        2
+    };
+    // ANCHOR_END: if_let_example2
+}
