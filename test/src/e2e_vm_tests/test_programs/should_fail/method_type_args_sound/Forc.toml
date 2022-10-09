@@ -3,5 +3,4 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
 name = "method_type_args_sound"
 entry = "main.sw"
-
-[dependencies]
+implicit-std = false
