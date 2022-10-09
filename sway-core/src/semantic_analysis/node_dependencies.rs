@@ -750,6 +750,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Enum { .. } => "enum",
         TypeInfo::Array(..) => "array",
         TypeInfo::Storage { .. } => "contract storage",
+        TypeInfo::RawUntypedPtr => "raw untyped ptr",
     }
     .to_string()
 }

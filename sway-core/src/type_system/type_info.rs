@@ -87,6 +87,8 @@ pub enum TypeInfo {
     Storage {
         fields: Vec<TyStructField>,
     },
+    /// Raw untyped pointers.
+    RawUntypedPtr,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -178,6 +180,9 @@ impl Hash for TypeInfo {
                 look_up_type_id(*elem_ty).hash(state);
                 count.hash(state);
             }
+            TypeInfo::RawUntypedPtr => {
+                state.write_u8(20);
+            }
         }
     }
 }
@@ -257,6 +262,7 @@ impl PartialEq for TypeInfo {
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
                 l_fields == r_fields
             }
+            (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
             _ => false,
         }
     }
@@ -326,6 +332,7 @@ impl fmt::Display for TypeInfo {
             }
             Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty, count),
             Storage { .. } => "contract storage".into(),
+            RawUntypedPtr => "raw untyped ptr".into(),
         };
         write!(f, "{}", s)
     }
@@ -370,6 +377,7 @@ impl TypeInfo {
             }
             Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty.json_abi_str(), count),
             Storage { .. } => "contract storage".into(),
+            RawUntypedPtr => "raw untyped ptr".into(),
         }
     }
     /// maps a type to a name that is used when constructing function selectors
@@ -529,7 +537,16 @@ impl TypeInfo {
                 };
                 format!("a[{};{}]", name, size)
             }
-            _ => {
+            RawUntypedPtr => "rawptr".to_string(),
+            Unknown
+            | UnknownGeneric { .. }
+            | ContractCaller { .. }
+            | Custom { .. }
+            | SelfType { .. }
+            | Numeric { .. }
+            | Contract
+            | ErrorRecovery
+            | Storage { .. } => {
                 return err(
                     vec![],
                     vec![CompileError::InvalidAbiType {
@@ -680,6 +697,7 @@ impl TypeInfo {
             | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Numeric
+            | TypeInfo::RawUntypedPtr
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
             | TypeInfo::Array(_, _, _)
@@ -708,6 +726,7 @@ impl TypeInfo {
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Numeric => ok((), warnings, errors),
             TypeInfo::Unknown
+            | TypeInfo::RawUntypedPtr
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
             | TypeInfo::SelfType
@@ -819,6 +838,7 @@ impl TypeInfo {
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::B256
             | TypeInfo::Numeric
+            | TypeInfo::RawUntypedPtr
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery => {}
             TypeInfo::Custom { .. } | TypeInfo::SelfType => {

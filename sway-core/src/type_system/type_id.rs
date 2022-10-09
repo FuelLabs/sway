@@ -99,6 +99,7 @@ impl ReplaceSelfType for TypeId {
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::B256
             | TypeInfo::Numeric
+            | TypeInfo::RawUntypedPtr
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery => {}
         }
