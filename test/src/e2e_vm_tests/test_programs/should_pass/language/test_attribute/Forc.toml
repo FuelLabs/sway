@@ -1,0 +1,8 @@
+[project]
+authors = ["mindtree"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "test_attribute"
+
+[dependencies]
+core = { path = "../../../../../../../sway-lib-core" }
