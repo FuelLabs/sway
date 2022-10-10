@@ -2,13 +2,14 @@ use super::*;
 use crate::{
     declaration_engine::declaration_engine::*,
     language::{parsed::TreeType, ty, CallPath, Visibility},
+    transform::AttributeKind,
     type_system::{to_typeinfo, TypeInfo},
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::BTreeSet;
 use sway_error::error::CompileError;
 use sway_error::warning::{CompileWarning, Warning};
-use sway_types::{span::Span, Ident, Spanned};
+use sway_types::{constants::DEFAULT_ENTRY_POINT_FN_NAME, span::Span, Ident, Spanned};
 
 impl ControlFlowGraph {
     pub(crate) fn find_dead_code(&self) -> Vec<CompileWarning> {
@@ -108,96 +109,101 @@ impl ControlFlowGraph {
 
             leaves = l_leaves;
         }
-
-        // calculate the entry points based on the tree type
-        graph.entry_points = match tree_type {
-            TreeType::Predicate | TreeType::Script => {
-                // a predicate or script have a main function as the only entry point
-                let mut ret = vec![];
-                for i in graph.graph.node_indices() {
-                    let count_it = match &graph.graph[i] {
-                        ControlFlowGraphNode::OrganizationalDominator(_) => false,
-                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                            span,
-                            content:
-                                ty::TyAstNodeContent::Declaration(
-                                    ty::TyDeclaration::FunctionDeclaration(decl_id),
-                                ),
-                            ..
-                        }) => {
-                            let decl = de_get_function(decl_id.clone(), span)?;
-                            decl.name.as_str() == "main"
-                        }
-                        _ => false,
-                    };
-                    if count_it {
-                        ret.push(i);
-                    }
-                }
-                ret
-            }
-            TreeType::Contract | TreeType::Library { .. } => {
-                let mut ret = vec![];
-                for i in graph.graph.node_indices() {
-                    let count_it = match &graph.graph[i] {
-                        ControlFlowGraphNode::OrganizationalDominator(_) => false,
-                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                            content:
-                                ty::TyAstNodeContent::Declaration(
-                                    ty::TyDeclaration::FunctionDeclaration(decl_id),
-                                ),
-                            ..
-                        }) => {
-                            let function_decl = de_get_function(decl_id.clone(), &decl_id.span())?;
-                            function_decl.visibility == Visibility::Public
-                        }
-                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                            content:
-                                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(
-                                    decl_id,
-                                )),
-                            ..
-                        }) => de_get_trait(decl_id.clone(), &decl_id.span())?
-                            .visibility
-                            .is_public(),
-                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                            content:
-                                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(
-                                    decl_id,
-                                )),
-                            ..
-                        }) => {
-                            let struct_decl = de_get_struct(decl_id.clone(), &decl_id.span())?;
-                            struct_decl.visibility == Visibility::Public
-                        }
-                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                            content:
-                                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait {
-                                    ..
-                                }),
-                            ..
-                        }) => true,
-                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                            content:
-                                ty::TyAstNodeContent::Declaration(
-                                    ty::TyDeclaration::ConstantDeclaration(decl_id),
-                                ),
-                            ..
-                        }) => {
-                            let decl = de_get_constant(decl_id.clone(), &decl_id.span())?;
-                            decl.visibility.is_public()
-                        }
-                        _ => false,
-                    };
-                    if count_it {
-                        ret.push(i);
-                    }
-                }
-                ret
-            }
-        };
+        graph.entry_points = entry_points(tree_type, &graph.graph)?;
         Ok(())
     }
+}
+
+/// Collect all entry points into the graph based on the tree type.
+fn entry_points(
+    tree_type: &TreeType,
+    graph: &flow_graph::Graph,
+) -> Result<Vec<flow_graph::EntryPoint>, CompileError> {
+    let mut entry_points = vec![];
+    match tree_type {
+        TreeType::Predicate | TreeType::Script => {
+            // Predicates and scripts have main and test functions as entry points.
+            for i in graph.node_indices() {
+                match &graph[i] {
+                    ControlFlowGraphNode::OrganizationalDominator(_) => continue,
+                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
+                        span,
+                        content:
+                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(
+                                decl_id,
+                            )),
+                        ..
+                    }) => {
+                        let decl = de_get_function(decl_id.clone(), span)?;
+                        let is_entry = decl.name.as_str() == DEFAULT_ENTRY_POINT_FN_NAME
+                            || decl.attributes.contains_key(&AttributeKind::Test);
+                        if !is_entry {
+                            continue;
+                        }
+                    }
+                    _ => continue,
+                };
+                entry_points.push(i);
+            }
+        }
+        TreeType::Contract | TreeType::Library { .. } => {
+            for i in graph.node_indices() {
+                let is_entry = match &graph[i] {
+                    ControlFlowGraphNode::OrganizationalDominator(_) => continue,
+                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
+                        content:
+                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(
+                                decl_id,
+                            )),
+                        ..
+                    }) => {
+                        let decl = de_get_function(decl_id.clone(), &decl_id.span())?;
+                        decl.visibility == Visibility::Public
+                            || decl.attributes.contains_key(&AttributeKind::Test)
+                    }
+                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
+                        content:
+                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(
+                                decl_id,
+                            )),
+                        ..
+                    }) => de_get_trait(decl_id.clone(), &decl_id.span())?
+                        .visibility
+                        .is_public(),
+                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
+                        content:
+                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(
+                                decl_id,
+                            )),
+                        ..
+                    }) => {
+                        let struct_decl = de_get_struct(decl_id.clone(), &decl_id.span())?;
+                        struct_decl.visibility == Visibility::Public
+                    }
+                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
+                        content:
+                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait { .. }),
+                        ..
+                    }) => true,
+                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
+                        content:
+                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ConstantDeclaration(
+                                decl_id,
+                            )),
+                        ..
+                    }) => {
+                        let decl = de_get_constant(decl_id.clone(), &decl_id.span())?;
+                        decl.visibility.is_public()
+                    }
+                    _ => continue,
+                };
+                if is_entry {
+                    entry_points.push(i);
+                }
+            }
+        }
+    }
+    Ok(entry_points)
 }
 
 fn connect_node(
