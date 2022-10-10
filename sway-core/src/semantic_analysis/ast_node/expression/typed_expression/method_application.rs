@@ -1,4 +1,3 @@
-use crate::constants;
 use crate::{
     error::*,
     language::{parsed::*, *},
@@ -6,6 +5,8 @@ use crate::{
     type_system::*,
 };
 use std::collections::{HashMap, VecDeque};
+use sway_error::error::CompileError;
+use sway_types::constants;
 use sway_types::Spanned;
 use sway_types::{state::StateIndex, Span};
 

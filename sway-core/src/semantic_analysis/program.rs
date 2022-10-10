@@ -17,6 +17,7 @@ use crate::{
     type_system::*,
 };
 use fuel_tx::StorageSlot;
+use sway_error::error::CompileError;
 use sway_ir::{Context, Module};
 use sway_types::{
     span::Span, Ident, JsonABIProgram, JsonLoggedType, JsonTypeApplication, JsonTypeDeclaration,

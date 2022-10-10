@@ -14,13 +14,14 @@ forc-util = { version = "0.25.2", path = "../forc-util" }
 fuel-crypto = "0.6"
 fuel-tx = { version = "0.18", features = ["serde"] }
 git2 = { version = "0.14", features = ["vendored-libgit2", "vendored-openssl"] }
-hex = "0.4.3" 
+hex = "0.4.3"
 petgraph = { version = "0.6", features = ["serde-1"] }
 semver = { version = "1.0", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_ignored = "0.1"
 serde_json = "1.0"
 sway-core = { version = "0.25.2", path = "../sway-core" }
+sway-error = { version = "0.25.2", path = "../sway-error" }
 sway-types = { version = "0.25.2", path = "../sway-types" }
 sway-utils = { version = "0.25.2", path = "../sway-utils" }
 toml = "0.5"

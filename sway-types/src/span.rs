@@ -173,6 +173,14 @@ impl Span {
             path: s1.path,
         }
     }
+
+    /// Returns the line and column start and end.
+    pub fn line_col(&self) -> (LineCol, LineCol) {
+        (
+            self.start_pos().line_col().into(),
+            self.end_pos().line_col().into(),
+        )
+    }
 }
 
 impl fmt::Debug for Span {
@@ -189,4 +197,19 @@ impl fmt::Debug for Span {
 
 pub trait Spanned {
     fn span(&self) -> Span;
+}
+
+#[derive(Clone, Copy)]
+pub struct LineCol {
+    pub line: usize,
+    pub col: usize,
+}
+
+impl From<(usize, usize)> for LineCol {
+    fn from(o: (usize, usize)) -> Self {
+        LineCol {
+            line: o.0,
+            col: o.1,
+        }
+    }
 }

@@ -4,7 +4,6 @@ use crate::{
     utils::token::{desugared_op, to_ident_key, type_info_to_symbol_kind},
 };
 use sway_core::{
-    constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX},
     language::{
         parsed::{
             AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock,
@@ -20,6 +19,7 @@ use sway_core::{
     type_system::{TypeArgument, TypeParameter},
     TypeInfo,
 };
+use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX};
 use sway_types::{Ident, Span, Spanned};
 
 pub fn traverse_node(node: &AstNode, tokens: &TokenMap) {

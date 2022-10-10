@@ -4,6 +4,7 @@ use crate::{
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
 use std::collections::{hash_map::RandomState, HashMap, VecDeque};
+use sway_error::error::CompileError;
 use sway_types::{state::StateIndex, Spanned};
 
 #[allow(clippy::too_many_arguments)]

@@ -1,7 +1,8 @@
-use crate::{Parse, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsumed};
+use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::keywords::DepToken;
 use sway_ast::{Module, ModuleKind};
+use sway_error::parser_error::ParseErrorKind;
 
 impl Parse for ModuleKind {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {

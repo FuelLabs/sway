@@ -1,10 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
+use sway_error::error::{CompileError, InterfaceName};
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     declaration_engine::declaration_engine::*,
-    error::{err, ok, InterfaceName},
+    error::{err, ok},
     language::{parsed::*, *},
     semantic_analysis::{
         Mode, TyAstNodeContent, TyConstantDeclaration, TyExpression, TyExpressionVariant,
@@ -14,7 +15,7 @@ use crate::{
         insert_type, look_up_type_id, set_type_as_storage_only, to_typeinfo, unify_with_self,
         CopyTypes, TypeId, TypeMapping, TypeParameter,
     },
-    CompileError, CompileResult, TyDeclaration, TyFunctionDeclaration, TypeInfo,
+    CompileResult, TyDeclaration, TyFunctionDeclaration, TypeInfo,
 };
 
 use super::TyTraitFn;

@@ -9,6 +9,7 @@ use crate::{
     TypeInfo,
 };
 
+use sway_error::error::CompileError;
 use sway_types::Spanned;
 use sway_types::{ident::Ident, span::Span};
 
