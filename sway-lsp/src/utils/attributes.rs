@@ -2,28 +2,32 @@
 use crate::core::token::{AstToken, Token};
 use sway_core::{language::parsed::Declaration, Attribute, AttributeKind, AttributesMap};
 
-pub(crate) fn attributes_map(token: &Token) -> Option<AttributesMap> {
+pub(crate) fn attributes_map(token: &Token) -> Option<&AttributesMap> {
     match &token.parsed {
         AstToken::Declaration(declaration) => match declaration {
-            Declaration::EnumDeclaration(decl) => Some(decl.attributes.clone()),
-            Declaration::FunctionDeclaration(decl) => Some(decl.attributes.clone()),
-            Declaration::StructDeclaration(decl) => Some(decl.attributes.clone()),
-            Declaration::ConstantDeclaration(decl) => Some(decl.attributes.clone()),
-            Declaration::StorageDeclaration(decl) => Some(decl.attributes.clone()),
+            Declaration::EnumDeclaration(decl) => Some(&decl.attributes),
+            Declaration::FunctionDeclaration(decl) => Some(&decl.attributes),
+            Declaration::StructDeclaration(decl) => Some(&decl.attributes),
+            Declaration::ConstantDeclaration(decl) => Some(&decl.attributes),
+            Declaration::StorageDeclaration(decl) => Some(&decl.attributes),
             _ => None,
         },
-        AstToken::StorageField(field) => Some(field.attributes.clone()),
-        AstToken::StructField(field) => Some(field.attributes.clone()),
-        AstToken::TraitFn(trait_fn) => Some(trait_fn.attributes.clone()),
-        AstToken::EnumVariant(variant) => Some(variant.attributes.clone()),
+        AstToken::StorageField(field) => Some(&field.attributes),
+        AstToken::StructField(field) => Some(&field.attributes),
+        AstToken::TraitFn(trait_fn) => Some(&trait_fn.attributes),
+        AstToken::EnumVariant(variant) => Some(&variant.attributes),
         _ => None,
     }
 }
 
-pub(crate) fn doc_attributes(token: &Token) -> Option<Vec<Attribute>> {
-    attributes_map(token).and_then(|mut attributes| attributes.remove(&AttributeKind::Doc))
+pub(crate) fn doc_attributes(token: &Token) -> Option<&[Attribute]> {
+    attributes_map(token)
+        .and_then(|attributes| attributes.get(&AttributeKind::Doc))
+        .map(Vec::as_slice)
 }
 
-pub(crate) fn storage_attributes(token: &Token) -> Option<Vec<Attribute>> {
-    attributes_map(token).and_then(|mut attributes| attributes.remove(&AttributeKind::Storage))
+pub(crate) fn storage_attributes(token: &Token) -> Option<&[Attribute]> {
+    attributes_map(token)
+        .and_then(|attributes| attributes.get(&AttributeKind::Storage))
+        .map(Vec::as_slice)
 }
