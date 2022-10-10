@@ -8,7 +8,7 @@ use crate::{
         TyExpression, TyStructField, TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor,
     },
     type_system::{look_up_type_id, TypeId, TypeInfo},
-    Ident,
+    AttributesMap, Ident,
 };
 use derivative::Derivative;
 use fuel_tx::StorageSlot;
@@ -23,6 +23,7 @@ pub struct TyStorageDeclaration {
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
     pub span: Span,
+    pub attributes: AttributesMap,
 }
 
 impl Spanned for TyStorageDeclaration {
@@ -32,8 +33,12 @@ impl Spanned for TyStorageDeclaration {
 }
 
 impl TyStorageDeclaration {
-    pub fn new(fields: Vec<TyStorageField>, span: Span) -> Self {
-        TyStorageDeclaration { fields, span }
+    pub fn new(fields: Vec<TyStorageField>, span: Span, attributes: AttributesMap) -> Self {
+        TyStorageDeclaration {
+            fields,
+            span,
+            attributes,
+        }
     }
     /// Given a field, find its type information in the declaration and return it. If the field has not
     /// been declared as a part of storage, return an error.
@@ -139,6 +144,7 @@ impl TyStorageDeclaration {
                      type_id: ref r#type,
                      ref span,
                      ref initializer,
+                     ref attributes,
                      ..
                  }| TyStructField {
                     name: name.clone(),
@@ -146,6 +152,7 @@ impl TyStorageDeclaration {
                     initial_type_id: *r#type,
                     span: span.clone(),
                     type_span: initializer.span.clone(),
+                    attributes: attributes.clone(),
                 },
             )
             .collect()
@@ -183,6 +190,7 @@ pub struct TyStorageField {
     pub type_span: Span,
     pub initializer: TyExpression,
     pub(crate) span: Span,
+    pub attributes: AttributesMap,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -197,22 +205,6 @@ impl PartialEq for TyStorageField {
 }
 
 impl TyStorageField {
-    pub fn new(
-        name: Ident,
-        r#type: TypeId,
-        type_span: Span,
-        initializer: TyExpression,
-        span: Span,
-    ) -> Self {
-        TyStorageField {
-            name,
-            type_id: r#type,
-            type_span,
-            initializer,
-            span,
-        }
-    }
-
     pub(crate) fn get_initialized_storage_slots(
         &self,
         context: &mut Context,
