@@ -1,4 +1,4 @@
-library test_attributes;
+library test_attribute;
 
 #[test]
 fn foo() {
