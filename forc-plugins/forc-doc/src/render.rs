@@ -59,10 +59,13 @@ pub(crate) fn header(module: String, desc_ty: String, desc_name: String) -> Box<
 pub(crate) fn body(module: String, desc_ty: String, desc_name: String) -> Box<dyn RenderBox> {
     box_html! {
         body(class=format!("forc-doc {desc_ty}")) {
-
+            // TODO: create nav sidebar
+            // create main
+            // create main content
         }
     }
 }
+
 // TODO: Create `fn index` and `fn all`
 
 pub trait Renderable {
