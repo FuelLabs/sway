@@ -236,7 +236,7 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
 
 /// An attribute has a name (i.e "doc", "storage") and
 /// a vector of possible arguments.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Attribute {
     pub name: Ident,
     pub args: Vec<Ident>,

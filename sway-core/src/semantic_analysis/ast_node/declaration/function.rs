@@ -8,6 +8,7 @@ use crate::{
     semantic_analysis::*,
     style::*,
     type_system::*,
+    AttributesMap,
 };
 use sha2::{Digest, Sha256};
 use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
@@ -18,6 +19,7 @@ pub struct TyFunctionDeclaration {
     pub body: TyCodeBlock,
     pub parameters: Vec<TyFunctionParameter>,
     pub span: Span,
+    pub attributes: AttributesMap,
     pub return_type: TypeId,
     pub initial_return_type: TypeId,
     pub type_parameters: Vec<TypeParameter>,
@@ -97,6 +99,7 @@ impl TyFunctionDeclaration {
             body,
             parameters,
             span,
+            attributes,
             return_type,
             type_parameters,
             return_type_span,
@@ -196,6 +199,7 @@ impl TyFunctionDeclaration {
             body,
             parameters: new_parameters,
             span,
+            attributes,
             return_type,
             initial_return_type,
             type_parameters: new_type_parameters,
