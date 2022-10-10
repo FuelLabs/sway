@@ -44,10 +44,6 @@ pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option
 pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
     find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
 }
-/// Continually go up in the file tree until a Cargo manifest file is found.
-pub fn find_cargo_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
-    find_parent_dir_with_file(starter_path, constants::TEST_MANIFEST_FILE_NAME)
-}
 
 pub fn is_sway_file(file: &Path) -> bool {
     let res = file.extension();
