@@ -12,6 +12,7 @@ use crate::{
 };
 use derivative::Derivative;
 use fuel_tx::StorageSlot;
+use sway_error::error::CompileError;
 use sway_ir::{Context, Module};
 use sway_types::{state::StateIndex, Span, Spanned};
 

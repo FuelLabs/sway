@@ -1,5 +1,4 @@
 use crate::{
-    error::CompileError,
     semantic_analysis::{
         ProjectionKind, TyEnumVariant, TyStorageReassignDescriptor,
         TypeCheckedStorageAccessDescriptor,
@@ -9,6 +8,7 @@ use crate::{
 
 use super::convert::convert_resolved_typeid_no_span;
 
+use sway_error::error::CompileError;
 use sway_ir::{Aggregate, Context, Type};
 use sway_types::span::Spanned;
 

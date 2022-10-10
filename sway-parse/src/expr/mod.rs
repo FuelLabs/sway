@@ -1,6 +1,4 @@
-use crate::{
-    Parse, ParseBracket, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsumed, Peek,
-};
+use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed, Peek};
 
 use core::ops::ControlFlow;
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
@@ -9,7 +7,7 @@ use sway_ast::keywords::{
     AbiToken, AddEqToken, AsmToken, CommaToken, ConstToken, DivEqToken, DoubleColonToken,
     EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken, OpenAngleBracketToken,
     PubToken, SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken, StorageToken, StructToken,
-    SubEqToken, TildeToken, TraitToken, TrueToken, UseToken,
+    SubEqToken, TildeToken, Token, TraitToken, TrueToken, UseToken,
 };
 use sway_ast::literal::{LitBool, LitBoolType};
 use sway_ast::punctuated::Punctuated;
@@ -19,6 +17,7 @@ use sway_ast::{
     ExprTupleDescriptor, GenericArgs, IfCondition, IfExpr, LitInt, Literal, MatchBranch,
     MatchBranchKind, PathExprSegment, Statement, StatementLet,
 };
+use sway_error::parser_error::ParseErrorKind;
 use sway_types::{Ident, Span, Spanned};
 
 mod asm;
@@ -96,16 +95,31 @@ impl Parse for Expr {
 
 impl Parse for StatementLet {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
+        let let_token = parser.parse()?;
+        let pattern = parser.parse()?;
+        let ty_opt = match parser.take() {
+            Some(colon_token) => Some((colon_token, parser.parse()?)),
+            None => None,
+        };
+        let eq_token: EqToken = parser.parse()?;
+
+        // Recover on missing expression.
+        // FIXME(Centril): We should point at right after `=`, not at it.
+        let on_err = |_| Expr::Error([eq_token.span()].into());
+        let expr = parser.parse().unwrap_or_else(on_err);
+
+        // Recover on missing semicolon.
+        let semicolon_token = parser
+            .parse()
+            .unwrap_or_else(|_| SemicolonToken::new(eq_token.span()));
+
         Ok(StatementLet {
-            let_token: parser.parse()?,
-            pattern: parser.parse()?,
-            ty_opt: match parser.take() {
-                Some(colon_token) => Some((colon_token, parser.parse()?)),
-                None => None,
-            },
-            eq_token: parser.parse()?,
-            expr: parser.parse()?,
-            semicolon_token: parser.parse()?,
+            let_token,
+            pattern,
+            ty_opt,
+            eq_token,
+            expr,
+            semicolon_token,
         })
     }
 }

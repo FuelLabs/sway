@@ -6,6 +6,8 @@ use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::{io, iter, slice};
 
+pub mod constants;
+
 pub mod ident;
 pub use ident::*;
 

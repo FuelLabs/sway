@@ -6,9 +6,10 @@ use crate::{
         TyVariableDeclaration, TypeCheckContext, VariableMutability,
     },
     type_system::*,
-    CompileError, CompileResult, Ident, Namespace, TyDeclaration,
+    CompileResult, Ident, Namespace, TyDeclaration,
 };
 
+use sway_error::error::CompileError;
 use sway_types::{span::Span, Spanned};
 
 #[derive(Debug, Clone, Eq)]

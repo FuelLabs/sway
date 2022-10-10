@@ -1,10 +1,11 @@
+use sway_error::error::CompileError;
 use sway_types::Span;
 
 use crate::{
     error::{err, ok},
     semantic_analysis::TyScrutinee,
     type_system::TypeId,
-    CompileError, CompileResult, Namespace,
+    CompileResult, Namespace,
 };
 
 use super::{

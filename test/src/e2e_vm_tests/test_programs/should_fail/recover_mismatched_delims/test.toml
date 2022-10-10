@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()mismatched delimiters
+# check: $()Mismatched types.

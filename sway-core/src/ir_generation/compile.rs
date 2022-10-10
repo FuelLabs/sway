@@ -1,6 +1,5 @@
 use crate::{
     declaration_engine::declaration_engine::de_get_constant,
-    error::CompileError,
     language::Visibility,
     metadata::MetadataManager,
     semantic_analysis::{ast_node::*, namespace},
@@ -13,6 +12,7 @@ use super::{
     function::FnCompiler,
 };
 
+use sway_error::error::CompileError;
 use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::{span::Span, Spanned};
 

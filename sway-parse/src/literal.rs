@@ -1,6 +1,7 @@
-use crate::{Parse, ParseErrorKind, ParseResult, Parser, Peek, Peeker};
+use crate::{Parse, ParseResult, Parser, Peek, Peeker};
 
 use sway_ast::Literal;
+use sway_error::parser_error::ParseErrorKind;
 
 impl Peek for Literal {
     fn peek(peeker: Peeker<'_>) -> Option<Literal> {
