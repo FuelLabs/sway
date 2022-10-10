@@ -25,7 +25,7 @@ use sway_error::error::CompileError;
 use sway_types::constants::{
     DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX,
     STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
-    TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
+    TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -247,6 +247,7 @@ pub struct Attribute {
 pub enum AttributeKind {
     Doc,
     Storage,
+    Test,
 }
 
 /// Stores the attributes associated with the type.
@@ -283,6 +284,7 @@ fn item_attrs_to_map(
         if let Some(attr_kind) = match name {
             DOC_ATTRIBUTE_NAME => Some(AttributeKind::Doc),
             STORAGE_PURITY_ATTRIBUTE_NAME => Some(AttributeKind::Storage),
+            TEST_ATTRIBUTE_NAME => Some(AttributeKind::Test),
             _ => None,
         } {
             match attrs_map.get_mut(&attr_kind) {
