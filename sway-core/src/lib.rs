@@ -275,6 +275,27 @@ pub fn parsed_to_ast(
     )
 }
 
+/// Strips all functions decorated with the `#[test]` attribute from the module and its submodules.
+fn remove_test_fns(module: &mut parsed::ParseModule) {
+    module.tree.root_nodes.retain(|node| {
+        if let parsed::AstNodeContent::Declaration(parsed::Declaration::FunctionDeclaration(
+            ref decl,
+        )) = node.content
+        {
+            if decl
+                .attributes
+                .contains_key(&convert_parse_tree::AttributeKind::Test)
+            {
+                return false;
+            }
+        }
+        true
+    });
+    for (_, submodule) in &mut module.submodules {
+        remove_test_fns(&mut submodule.module);
+    }
+}
+
 pub fn compile_to_ast(
     input: Arc<str>,
     initial_namespace: namespace::Module,
@@ -286,10 +307,15 @@ pub fn compile_to_ast(
         mut warnings,
         mut errors,
     } = parse(input, build_config);
-    let parse_program = match parse_program_opt {
+    let mut parse_program = match parse_program_opt {
         Some(parse_program) => parse_program,
         None => return deduped_err(warnings, errors),
     };
+
+    // Omit tests by default so that a test that fails to typecheck doesn't block the rest of the
+    // program (similar behaviour to rust). Later, we'll add a flag for including tests on
+    // invocations of `forc test` or `forc check --tests`. See #1832.
+    remove_test_fns(&mut parse_program.root);
 
     // Type check (+ other static analysis) the CST to a typed AST.
     let generate_logged_types = build_config.map_or(false, |bc| bc.generate_logged_types);
