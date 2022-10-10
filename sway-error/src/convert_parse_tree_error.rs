@@ -91,6 +91,8 @@ pub enum ConvertParseTreeError {
     DuplicateParameterIdentifier { name: Ident, span: Span },
     #[error("self parameter is not allowed for a free function")]
     SelfParameterNotAllowedForFreeFn { span: Span },
+    #[error("`impl Self` for contracts is not supported")]
+    SelfImplForContract { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -140,6 +142,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
             ConvertParseTreeError::SelfParameterNotAllowedForFreeFn { span, .. } => span.clone(),
+            ConvertParseTreeError::SelfImplForContract { span, .. } => span.clone(),
         }
     }
 }

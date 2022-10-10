@@ -630,16 +630,21 @@ fn item_impl_to_declaration(
             };
             Ok(Declaration::ImplTrait(impl_trait))
         }
-        None => {
-            let impl_self = ImplSelf {
-                type_implementing_for,
-                type_implementing_for_span,
-                type_parameters,
-                functions,
-                block_span,
-            };
-            Ok(Declaration::ImplSelf(impl_self))
-        }
+        None => match type_implementing_for {
+            TypeInfo::Contract => {
+                Err(ec.error(ConvertParseTreeError::SelfImplForContract { span: block_span }))
+            }
+            _ => {
+                let impl_self = ImplSelf {
+                    type_implementing_for,
+                    type_implementing_for_span,
+                    type_parameters,
+                    functions,
+                    block_span,
+                };
+                Ok(Declaration::ImplSelf(impl_self))
+            }
+        },
     }
 }
 
