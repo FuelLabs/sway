@@ -1,8 +1,6 @@
 use crate::{
-    semantic_analysis::{
-        ProjectionKind, TyEnumVariant, TyStorageReassignDescriptor,
-        TypeCheckedStorageAccessDescriptor,
-    },
+    language::ty,
+    semantic_analysis::{ProjectionKind, TyEnumVariant, TyStorageReassignDescriptor},
     type_system::{to_typeinfo, TypeId, TypeInfo},
 };
 
@@ -114,7 +112,8 @@ impl TypedNamedField for ProjectionKind {
     }
 }
 
-impl_typed_named_field_for!(TypeCheckedStorageAccessDescriptor);
+use ty::TyStorageAccessDescriptor;
+impl_typed_named_field_for!(TyStorageAccessDescriptor);
 impl_typed_named_field_for!(TyStorageReassignDescriptor);
 
 pub(super) fn get_indices_for_struct_access<F: TypedNamedField>(
