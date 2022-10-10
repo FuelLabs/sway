@@ -5,8 +5,11 @@ use super::{
 use crate::{
     declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait, de_get_storage},
     error::*,
+    language::{
+        parsed::{ParseProgram, TreeType},
+        *,
+    },
     metadata::MetadataManager,
-    parse_tree::{ParseProgram, Purity, TreeType},
     semantic_analysis::{
         namespace::{self, Namespace},
         TyModule, TypeCheckContext,
@@ -14,6 +17,7 @@ use crate::{
     type_system::*,
 };
 use fuel_tx::StorageSlot;
+use sway_error::error::CompileError;
 use sway_ir::{Context, Module};
 use sway_types::{
     span::Span, Ident, JsonABIProgram, JsonLoggedType, JsonTypeApplication, JsonTypeDeclaration,

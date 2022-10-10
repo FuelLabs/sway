@@ -14,9 +14,9 @@ use sway_ast::{
     keywords::{CommaToken, DotToken},
     punctuated::Punctuated,
     token::Delimiter,
-    Braces, CodeBlockContents, Expr, ExprStructField, MatchBranch, PathExpr,
+    Braces, CodeBlockContents, Expr, ExprStructField, MatchBranch, PathExpr, PathExprSegment,
 };
-use sway_types::{Ident, Spanned};
+use sway_types::Spanned;
 
 pub(crate) mod abi_cast;
 pub(crate) mod asm_block;
@@ -210,7 +210,7 @@ impl Format for Expr {
             Self::MethodCall {
                 target,
                 dot_token,
-                name,
+                path_seg,
                 contract_args_opt,
                 args,
             } => {
@@ -227,7 +227,7 @@ impl Format for Expr {
                         format_method_call(
                             target,
                             dot_token,
-                            name,
+                            path_seg,
                             contract_args_opt,
                             args,
                             &mut buf,
@@ -254,7 +254,7 @@ impl Format for Expr {
                         format_method_call(
                             target,
                             dot_token,
-                            name,
+                            path_seg,
                             contract_args_opt,
                             args,
                             formatted_code,
@@ -622,7 +622,7 @@ fn format_expr_struct(
 fn format_method_call(
     target: &Expr,
     dot_token: &DotToken,
-    name: &Ident,
+    path_seg: &PathExprSegment,
     contract_args_opt: &Option<Braces<Punctuated<ExprStructField, CommaToken>>>,
     args: &Parens<Punctuated<Expr, CommaToken>>,
     formatted_code: &mut FormattedCode,
@@ -638,7 +638,7 @@ fn format_method_call(
     }
     target.format(formatted_code, formatter)?;
     write!(formatted_code, "{}", dot_token.span().as_str())?;
-    name.format(formatted_code, formatter)?;
+    path_seg.format(formatted_code, formatter)?;
     if let Some(contract_args) = &contract_args_opt {
         ExprStructField::open_curly_brace(formatted_code, formatter)?;
         let contract_args = &contract_args.get();
@@ -787,14 +787,14 @@ fn expr_leaf_spans(expr: &Expr) -> Vec<ByteSpan> {
         Expr::MethodCall {
             target,
             dot_token,
-            name,
+            path_seg,
             contract_args_opt,
             args,
         } => {
             let mut collected_spans = Vec::new();
             collected_spans.append(&mut target.leaf_spans());
             collected_spans.push(ByteSpan::from(dot_token.span()));
-            collected_spans.push(ByteSpan::from(name.span()));
+            collected_spans.push(ByteSpan::from(path_seg.span()));
             if let Some(contract_args) = contract_args_opt {
                 collected_spans.append(&mut contract_args.leaf_spans());
             }

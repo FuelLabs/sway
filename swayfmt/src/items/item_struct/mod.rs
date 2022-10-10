@@ -69,7 +69,7 @@ impl Format for ItemStruct {
                             }
                         });
 
-                        let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
+                        let value_pairs_iter = value_pairs.iter().enumerate();
                         for (var_index, (type_field, comma_token)) in value_pairs_iter.clone() {
                             write!(
                                 formatted_code,
@@ -98,13 +98,12 @@ impl Format for ItemStruct {
                                 type_field.colon_token.span().as_str(),
                             )?;
                             type_field.ty.format(formatted_code, formatter)?;
-                            if value_pairs_iter.peek().is_some() {
-                                writeln!(formatted_code, "{}", comma_token.span().as_str())?;
-                            } else if let Some(final_value) = &fields.final_value_opt {
-                                // TODO: Handle annotation
-                                let final_value = &final_value.value;
-                                write!(formatted_code, "{}", final_value.span().as_str())?;
-                            }
+                            writeln!(formatted_code, "{}", comma_token.span().as_str())?;
+                        }
+                        if let Some(final_value) = &fields.final_value_opt {
+                            // TODO: Handle annotation
+                            let final_value = &final_value.value;
+                            write!(formatted_code, "{}", final_value.span().as_str())?;
                         }
                     }
                     FieldAlignment::Off => {

@@ -1,14 +1,15 @@
 use crate::{
     declaration_engine::{declaration_engine::de_get_storage, declaration_id::DeclarationId},
     error::*,
+    language::CallPath,
     namespace::*,
-    parse_tree::*,
     semantic_analysis::*,
     type_system::*,
 };
 
 use super::TraitMap;
 
+use sway_error::error::CompileError;
 use sway_types::{span::Span, Spanned};
 
 use std::sync::Arc;

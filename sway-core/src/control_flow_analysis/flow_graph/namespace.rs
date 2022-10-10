@@ -1,5 +1,5 @@
 use super::{EntryPoint, ExitPoint};
-use crate::parse_tree::CallPath;
+use crate::language::CallPath;
 use crate::semantic_analysis::declaration::TyStorageField;
 use crate::type_system::TypeInfo;
 use crate::Ident;

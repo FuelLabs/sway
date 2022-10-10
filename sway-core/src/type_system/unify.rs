@@ -1,7 +1,8 @@
+use sway_error::type_error::TypeError;
 use sway_types::{Ident, Span};
 
 use crate::{
-    error::{TypeError, Warning},
+    error::Warning,
     semantic_analysis::{TyEnumVariant, TyStructField},
     CompileWarning, IntegerBits, TypeArgument, TypeId, TypeParameter,
 };
@@ -19,8 +20,8 @@ pub(super) fn unify_strs(
     let mut errors = vec![];
     if r != e {
         errors.push(TypeError::MismatchedType {
-            expected,
-            received,
+            expected: expected.to_string(),
+            received: received.to_string(),
             help_text: help_text.to_string(),
             span: span.clone(),
         });
@@ -136,8 +137,8 @@ where
         });
     } else {
         errors.push(TypeError::MismatchedType {
-            expected,
-            received,
+            expected: expected.to_string(),
+            received: received.to_string(),
             help_text: help_text.to_string(),
             span: span.clone(),
         });
@@ -178,8 +179,8 @@ where
         });
     } else {
         errors.push(TypeError::MismatchedType {
-            expected,
-            received,
+            expected: expected.to_string(),
+            received: received.to_string(),
             help_text: help_text.to_string(),
             span: span.clone(),
         });
@@ -206,8 +207,8 @@ where
     let mut errors = vec![];
     if !new_errors.is_empty() {
         errors.push(TypeError::MismatchedType {
-            expected,
-            received,
+            expected: expected.to_string(),
+            received: received.to_string(),
             help_text: help_text.to_string(),
             span: span.clone(),
         });

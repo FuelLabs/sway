@@ -6,6 +6,8 @@ use crate::declaration_engine::{
 use crate::namespace::{Path, Root};
 use crate::TyDeclaration;
 use lazy_static::lazy_static;
+use sway_error::error::CompileError;
+use sway_error::type_error::TypeError;
 use sway_types::span::Span;
 use sway_types::{Ident, Spanned};
 
@@ -193,7 +195,6 @@ impl TypeEngine {
             // correctness or perform further unification.
             (Boolean, Boolean) => (vec![], vec![]),
             (SelfType, SelfType) => (vec![], vec![]),
-            (Byte, Byte) => (vec![], vec![]),
             (B256, B256) => (vec![], vec![]),
             (Numeric, Numeric) => (vec![], vec![]),
             (Contract, Contract) => (vec![], vec![]),
@@ -320,10 +321,10 @@ impl TypeEngine {
             // If no previous attempts to unify were successful, raise an error
             (TypeInfo::ErrorRecovery, _) => (vec![], vec![]),
             (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
-            (_, _) => {
+            (r, e) => {
                 let errors = vec![TypeError::MismatchedType {
-                    expected,
-                    received,
+                    expected: r.to_string(),
+                    received: e.to_string(),
                     help_text: help_text.to_string(),
                     span: span.clone(),
                 }];
@@ -352,7 +353,6 @@ impl TypeEngine {
             // correctness or perform further unification.
             (Boolean, Boolean) => (vec![], vec![]),
             (SelfType, SelfType) => (vec![], vec![]),
-            (Byte, Byte) => (vec![], vec![]),
             (B256, B256) => (vec![], vec![]),
             (Numeric, Numeric) => (vec![], vec![]),
             (Contract, Contract) => (vec![], vec![]),
@@ -469,10 +469,10 @@ impl TypeEngine {
             // If no previous attempts to unify were successful, raise an error
             (TypeInfo::ErrorRecovery, _) => (vec![], vec![]),
             (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
-            (_, _) => {
+            (r, e) => {
                 let errors = vec![TypeError::MismatchedType {
-                    expected: self.insert_type(self.look_up_type_id(expected)),
-                    received: self.insert_type(self.look_up_type_id(received)),
+                    expected: r.to_string(),
+                    received: e.to_string(),
                     help_text: help_text.to_string(),
                     span: span.clone(),
                 }];

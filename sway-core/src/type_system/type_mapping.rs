@@ -176,7 +176,6 @@ impl TypeMapping {
             (TypeInfo::Unknown, TypeInfo::Unknown)
             | (TypeInfo::Boolean, TypeInfo::Boolean)
             | (TypeInfo::SelfType, TypeInfo::SelfType)
-            | (TypeInfo::Byte, TypeInfo::Byte)
             | (TypeInfo::B256, TypeInfo::B256)
             | (TypeInfo::Numeric, TypeInfo::Numeric)
             | (TypeInfo::Contract, TypeInfo::Contract)
@@ -289,7 +288,6 @@ impl TypeMapping {
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::SelfType
-            | TypeInfo::Byte
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::Contract

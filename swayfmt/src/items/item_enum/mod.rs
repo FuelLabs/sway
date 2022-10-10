@@ -10,7 +10,10 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{token::Delimiter, ItemEnum};
+use sway_ast::{
+    token::{Delimiter, PunctKind},
+    ItemEnum,
+};
 use sway_types::Spanned;
 
 #[cfg(test)]
@@ -69,7 +72,7 @@ impl Format for ItemEnum {
                             }
                         });
 
-                        let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
+                        let value_pairs_iter = value_pairs.iter().enumerate();
                         for (var_index, (type_field, comma_token)) in value_pairs_iter.clone() {
                             write!(
                                 formatted_code,
@@ -98,13 +101,17 @@ impl Format for ItemEnum {
                                 type_field.colon_token.span().as_str(),
                             )?;
                             type_field.ty.format(formatted_code, formatter)?;
-                            if value_pairs_iter.peek().is_some() {
-                                writeln!(formatted_code, "{}", comma_token.span().as_str())?;
-                            } else if let Some(final_value) = &fields.final_value_opt {
-                                // TODO: Handle annotation
-                                let final_value = &final_value.value;
-                                write!(formatted_code, "{}", final_value.span().as_str())?;
-                            }
+                            writeln!(formatted_code, "{}", comma_token.span().as_str())?;
+                        }
+                        if let Some(final_value) = &fields.final_value_opt {
+                            // TODO: Handle annotation
+                            let final_value = &final_value.value;
+                            writeln!(
+                                formatted_code,
+                                "{}{}",
+                                final_value.span().as_str(),
+                                PunctKind::Comma.as_char(),
+                            )?;
                         }
                     }
                     FieldAlignment::Off => fields.format(formatted_code, formatter)?,
