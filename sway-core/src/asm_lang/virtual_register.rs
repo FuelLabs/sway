@@ -26,7 +26,7 @@ impl fmt::Display for VirtualRegister {
     }
 }
 
-#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
+#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
 /// These are the special registers defined in the spec
 pub enum ConstantRegister {
     // Below are VM-reserved registers
@@ -46,12 +46,26 @@ pub enum ConstantRegister {
     ReturnValue,
     ReturnLength,
     Flags,
+
     // Below are compiler-reserved registers
     DataSectionStart,
+    CallReturnAddress,
+    CallReturnValue,
+    Scratch,
+
+    // Registers for the first NUM_ARG_REGISTERS function arguments.
+    FuncArg0,
+    FuncArg1,
+    FuncArg2,
+    FuncArg3,
+    FuncArg4,
+    FuncArg5,
 }
 
+use crate::asm_generation::compiler_constants;
+
 impl ConstantRegister {
-    pub(crate) fn to_register_id(&self) -> fuel_asm::RegisterId {
+    pub(crate) fn to_register_id(self) -> fuel_asm::RegisterId {
         use fuel_vm::consts::*;
         use ConstantRegister::*;
         match self {
@@ -71,12 +85,31 @@ impl ConstantRegister {
             ReturnValue => REG_RET,
             ReturnLength => REG_RETL,
             Flags => REG_FLAG,
-            DataSectionStart => {
-                (crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER)
-                    as fuel_asm::RegisterId
+
+            DataSectionStart => (compiler_constants::DATA_SECTION_REGISTER) as fuel_asm::RegisterId,
+            CallReturnAddress => {
+                (compiler_constants::RETURN_ADDRESS_REGISTER) as fuel_asm::RegisterId
             }
+            CallReturnValue => (compiler_constants::RETURN_VALUE_REGISTER) as fuel_asm::RegisterId,
+            Scratch => (compiler_constants::SCRATCH_REGISTER) as fuel_asm::RegisterId,
+
+            FuncArg0 => compiler_constants::ARG_REG0 as fuel_asm::RegisterId,
+            FuncArg1 => compiler_constants::ARG_REG1 as fuel_asm::RegisterId,
+            FuncArg2 => compiler_constants::ARG_REG2 as fuel_asm::RegisterId,
+            FuncArg3 => compiler_constants::ARG_REG3 as fuel_asm::RegisterId,
+            FuncArg4 => compiler_constants::ARG_REG4 as fuel_asm::RegisterId,
+            FuncArg5 => compiler_constants::ARG_REG5 as fuel_asm::RegisterId,
         }
     }
+
+    pub(crate) const ARG_REGS: [ConstantRegister; compiler_constants::NUM_ARG_REGISTERS as usize] = [
+        ConstantRegister::FuncArg0,
+        ConstantRegister::FuncArg1,
+        ConstantRegister::FuncArg2,
+        ConstantRegister::FuncArg3,
+        ConstantRegister::FuncArg4,
+        ConstantRegister::FuncArg5,
+    ];
 }
 
 impl fmt::Display for ConstantRegister {
@@ -102,7 +135,16 @@ impl fmt::Display for ConstantRegister {
             // two `$` signs denotes this is a compiler-reserved register and not a
             // VM-reserved register
             DataSectionStart => "$$ds",
+            CallReturnAddress => "$$reta",
+            CallReturnValue => "$$retv",
+            Scratch => "$$tmp",
+            FuncArg0 => "$$arg0",
+            FuncArg1 => "$$arg1",
+            FuncArg2 => "$$arg2",
+            FuncArg3 => "$$arg3",
+            FuncArg4 => "$$arg4",
+            FuncArg5 => "$$arg5",
         };
-        write!(f, "{}", text)
+        write!(f, "{text}")
     }
 }

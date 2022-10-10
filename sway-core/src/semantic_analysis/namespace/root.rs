@@ -1,10 +1,11 @@
 use crate::{
-    error::*, semantic_analysis::*, type_system::*, CallPath, CompileResult, Ident, TypeInfo,
-    TypedDeclaration, TypedFunctionDeclaration,
+    error::*, language::CallPath, semantic_analysis::*, type_system::*, CompileResult, Ident,
+    TyDeclaration, TyFunctionDeclaration, TypeInfo,
 };
 
 use super::{module::Module, namespace::Namespace, Path};
 
+use sway_error::error::CompileError;
 use sway_types::Spanned;
 
 use std::collections::VecDeque;
@@ -31,7 +32,7 @@ impl Root {
         &self,
         mod_path: &Path,
         call_path: &CallPath,
-    ) -> CompileResult<&TypedDeclaration> {
+    ) -> CompileResult<&TyDeclaration> {
         let symbol_path: Vec<_> = mod_path
             .iter()
             .chain(&call_path.prefixes)
@@ -49,7 +50,7 @@ impl Root {
         &self,
         mod_path: &Path,
         symbol: &Ident,
-    ) -> CompileResult<&TypedDeclaration> {
+    ) -> CompileResult<&TyDeclaration> {
         self.check_submodule(mod_path).flat_map(|module| {
             let true_symbol = self[mod_path]
                 .use_aliases
@@ -79,8 +80,8 @@ impl Root {
         method_prefix: &Path,
         method_name: &Ident,
         self_type: TypeId,
-        args_buf: &VecDeque<TypedExpression>,
-    ) -> CompileResult<TypedFunctionDeclaration> {
+        args_buf: &VecDeque<TyExpression>,
+    ) -> CompileResult<TyFunctionDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -128,7 +129,7 @@ impl Root {
 
         match methods
             .into_iter()
-            .find(|TypedFunctionDeclaration { name, .. }| name == method_name)
+            .find(|TyFunctionDeclaration { name, .. }| name == method_name)
         {
             Some(o) => ok(o, warnings, errors),
             None => {

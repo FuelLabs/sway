@@ -4,7 +4,7 @@ use sway_types::{Ident, Span};
 
 use crate::{
     error::{err, ok},
-    semantic_analysis::TypedEnumVariant,
+    semantic_analysis::TyEnumVariant,
     type_system::{look_up_type_id, TypeId},
     CompileError, CompileResult, TypeInfo,
 };
@@ -269,37 +269,6 @@ impl ConstructorFactory {
                     Pattern::Boolean(true)
                 }
             }
-            Pattern::Byte(range) => {
-                let mut ranges = vec![range];
-                for pat in rest.into_iter() {
-                    match pat {
-                        Pattern::Byte(range) => ranges.push(range),
-                        _ => {
-                            errors.push(CompileError::Internal(
-                                "expected all patterns to be of the same type",
-                                span.clone(),
-                            ));
-                            return err(warnings, errors);
-                        }
-                    }
-                }
-                let unincluded: PatStack = check!(
-                    Range::find_exclusionary_ranges(ranges, Range::u8(), span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
-                .into_iter()
-                .map(Pattern::Byte)
-                .collect::<Vec<_>>()
-                .into();
-                check!(
-                    Pattern::from_pat_stack(unincluded, span),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
-            }
             Pattern::Struct(struct_pattern) => {
                 let fields = struct_pattern
                     .fields()
@@ -508,22 +477,6 @@ impl ConstructorFactory {
                 }
                 Range::do_ranges_equal_range(ranges, Range::u64(), span)
             }
-            Pattern::Byte(range) => {
-                let mut ranges = vec![range];
-                for pat in rest.into_iter() {
-                    match pat {
-                        Pattern::Byte(range) => ranges.push(range),
-                        _ => {
-                            errors.push(CompileError::Internal(
-                                "expected all patterns to be of the same type",
-                                span.clone(),
-                            ));
-                            return err(warnings, errors);
-                        }
-                    }
-                }
-                Range::do_ranges_equal_range(ranges, Range::u8(), span)
-            }
             Pattern::Numeric(range) => {
                 let mut ranges = vec![range];
                 for pat in rest.into_iter() {
@@ -633,7 +586,7 @@ impl ConstructorFactory {
         let mut errors = vec![];
         let mut type_info = None;
         for possible_type in self.possible_types.iter() {
-            let matches = pattern.matches_type_info(possible_type, span);
+            let matches = pattern.matches_type_info(possible_type);
             if matches {
                 type_info = Some(possible_type);
                 break;
@@ -653,7 +606,7 @@ impl ConstructorFactory {
 
     fn resolve_enum(
         enum_name: &Ident,
-        enum_variants: &[TypedEnumVariant],
+        enum_variants: &[TyEnumVariant],
         enum_pattern: &EnumPattern,
         rest: PatStack,
         span: &Span,

@@ -1,14 +1,14 @@
 use anyhow::{anyhow, bail, Result};
-use forc_pkg::{fuel_core_not_running, BuildOptions, ManifestFile};
+use forc_pkg::{fuel_core_not_running, BuildOptions, PackageManifestFile};
 use fuel_crypto::Signature;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{AssetId, Output, Transaction, Witness};
-use fuels_core::constants::{BASE_ASSET_ID, DEFAULT_SPENDABLE_COIN_AMOUNT};
+use fuels_core::constants::BASE_ASSET_ID;
 use fuels_signers::{provider::Provider, Wallet};
 use fuels_types::bech32::Bech32Address;
 use futures::TryFutureExt;
 use std::{io::Write, path::PathBuf, str::FromStr};
-use sway_core::TreeType;
+use sway_core::language::parsed::TreeType;
 use tracing::info;
 
 use crate::ops::{parameters::TxParameters, run::cmd::RunCommand};
@@ -21,7 +21,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     } else {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
-    let manifest = ManifestFile::from_dir(&path_dir)?;
+    let manifest = PackageManifestFile::from_dir(&path_dir)?;
     manifest.check_program_type(vec![TreeType::Script])?;
 
     let input_data = &command.data.unwrap_or_else(|| "".into());
@@ -73,11 +73,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         let coin_witness_index = inputs.len().try_into()?;
 
         let inputs_to_add = locked_wallet
-            .get_asset_inputs_for_amount(
-                AssetId::default(),
-                DEFAULT_SPENDABLE_COIN_AMOUNT,
-                coin_witness_index,
-            )
+            .get_asset_inputs_for_amount(AssetId::default(), 1_000_000, coin_witness_index)
             .await?;
 
         inputs.extend(inputs_to_add);

@@ -1,17 +1,19 @@
 use crate::{
     error::*,
+    language::*,
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
 use std::collections::{hash_map::RandomState, HashMap, VecDeque};
+use sway_error::error::CompileError;
 use sway_types::{state::StateIndex, Spanned};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
-    function_decl: TypedFunctionDeclaration,
+    function_decl: TyFunctionDeclaration,
     call_path: CallPath,
     arguments: Vec<Expression>,
-) -> CompileResult<TypedExpression> {
+) -> CompileResult<TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -47,7 +49,7 @@ pub(crate) fn instantiate_function_application(
                 )
                 .with_type_annotation(param.type_id);
             let exp = check!(
-                TypedExpression::type_check(ctx, arg.clone()),
+                TyExpression::type_check(ctx, arg.clone()),
                 error_recovery_expr(arg.span()),
                 warnings,
                 errors
@@ -81,14 +83,14 @@ pub(crate) fn instantiate_function_application(
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application_simple(
     call_path: CallPath,
-    contract_call_params: HashMap<String, TypedExpression, RandomState>,
-    arguments: VecDeque<TypedExpression>,
-    function_decl: TypedFunctionDeclaration,
+    contract_call_params: HashMap<String, TyExpression, RandomState>,
+    arguments: VecDeque<TyExpression>,
+    function_decl: TyFunctionDeclaration,
     selector: Option<ContractCallParams>,
     is_constant: IsConstant,
     self_state_idx: Option<StateIndex>,
     span: Span,
-) -> CompileResult<TypedExpression> {
+) -> CompileResult<TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -122,7 +124,7 @@ pub(crate) fn instantiate_function_application_simple(
 
 pub(crate) fn check_function_arguments_arity(
     arguments_len: usize,
-    function_decl: &TypedFunctionDeclaration,
+    function_decl: &TyFunctionDeclaration,
     call_path: &CallPath,
 ) -> CompileResult<()> {
     let warnings = vec![];
@@ -153,16 +155,16 @@ pub(crate) fn check_function_arguments_arity(
 #[allow(clippy::too_many_arguments)]
 fn instantiate_function_application_inner(
     call_path: CallPath,
-    contract_call_params: HashMap<String, TypedExpression, RandomState>,
-    arguments: Vec<(Ident, TypedExpression)>,
-    function_decl: TypedFunctionDeclaration,
+    contract_call_params: HashMap<String, TyExpression, RandomState>,
+    arguments: Vec<(Ident, TyExpression)>,
+    function_decl: TyFunctionDeclaration,
     selector: Option<ContractCallParams>,
     is_constant: IsConstant,
     self_state_idx: Option<StateIndex>,
     span: Span,
-) -> TypedExpression {
-    TypedExpression {
-        expression: TypedExpressionVariant::FunctionApplication {
+) -> TyExpression {
+    TyExpression {
+        expression: TyExpressionVariant::FunctionApplication {
             call_path,
             contract_call_params,
             arguments,

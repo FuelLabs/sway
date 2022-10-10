@@ -1,7 +1,7 @@
 use crate::cli::CleanCommand;
 use anyhow::{anyhow, bail, Result};
-use forc_util::{default_output_directory, find_cargo_manifest_dir, find_manifest_dir};
-use std::{path::PathBuf, process};
+use forc_util::{default_output_directory, find_manifest_dir};
+use std::path::PathBuf;
 use sway_utils::MANIFEST_FILE_NAME;
 
 pub fn clean(command: CleanCommand) -> Result<()> {
@@ -28,16 +28,6 @@ pub fn clean(command: CleanCommand) -> Result<()> {
     // Ignore I/O errors telling us `out_dir` isn't there.
     let out_dir = default_output_directory(&manifest_dir);
     let _ = std::fs::remove_dir_all(out_dir);
-
-    // Run `cargo clean`, forwarding stdout and stderr (`cargo clean` doesn't appear to output
-    // anything as of writing this).
-    if find_cargo_manifest_dir(&this_dir).is_some() {
-        process::Command::new("cargo")
-            .arg("clean")
-            .stderr(process::Stdio::inherit())
-            .stdout(process::Stdio::inherit())
-            .output()?;
-    }
 
     Ok(())
 }

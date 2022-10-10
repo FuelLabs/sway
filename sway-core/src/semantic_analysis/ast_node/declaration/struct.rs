@@ -1,11 +1,17 @@
-use crate::{error::*, parse_tree::*, semantic_analysis::*, type_system::*};
+use crate::{
+    error::*,
+    language::{parsed::*, Visibility},
+    semantic_analysis::*,
+    type_system::*,
+};
 use std::hash::{Hash, Hasher};
+use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
-pub struct TypedStructDeclaration {
+pub struct TyStructDeclaration {
     pub name: Ident,
-    pub fields: Vec<TypedStructField>,
+    pub fields: Vec<TyStructField>,
     pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
     pub(crate) span: Span,
@@ -14,7 +20,7 @@ pub struct TypedStructDeclaration {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedStructDeclaration {
+impl PartialEq for TyStructDeclaration {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
             && self.fields == other.fields
@@ -23,7 +29,7 @@ impl PartialEq for TypedStructDeclaration {
     }
 }
 
-impl CopyTypes for TypedStructDeclaration {
+impl CopyTypes for TyStructDeclaration {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.fields
             .iter_mut()
@@ -34,7 +40,7 @@ impl CopyTypes for TypedStructDeclaration {
     }
 }
 
-impl CreateTypeId for TypedStructDeclaration {
+impl CreateTypeId for TyStructDeclaration {
     fn create_type_id(&self) -> TypeId {
         insert_type(TypeInfo::Struct {
             name: self.name.clone(),
@@ -44,13 +50,13 @@ impl CreateTypeId for TypedStructDeclaration {
     }
 }
 
-impl Spanned for TypedStructDeclaration {
+impl Spanned for TyStructDeclaration {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl MonomorphizeHelper for TypedStructDeclaration {
+impl MonomorphizeHelper for TyStructDeclaration {
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
     }
@@ -60,7 +66,7 @@ impl MonomorphizeHelper for TypedStructDeclaration {
     }
 }
 
-impl TypedStructDeclaration {
+impl TyStructDeclaration {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         decl: StructDeclaration,
@@ -97,7 +103,7 @@ impl TypedStructDeclaration {
         let mut new_fields = vec![];
         for field in fields.into_iter() {
             new_fields.push(check!(
-                TypedStructField::type_check(ctx.by_ref(), field),
+                TyStructField::type_check(ctx.by_ref(), field),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -105,7 +111,7 @@ impl TypedStructDeclaration {
         }
 
         // create the struct decl
-        let decl = TypedStructDeclaration {
+        let decl = TyStructDeclaration {
             name,
             type_parameters: new_type_parameters,
             fields: new_fields,
@@ -116,13 +122,13 @@ impl TypedStructDeclaration {
         ok(decl, warnings, errors)
     }
 
-    pub(crate) fn expect_field(&self, field_to_access: &Ident) -> CompileResult<&TypedStructField> {
+    pub(crate) fn expect_field(&self, field_to_access: &Ident) -> CompileResult<&TyStructField> {
         let warnings = vec![];
         let mut errors = vec![];
         match self
             .fields
             .iter()
-            .find(|TypedStructField { name, .. }| name.as_str() == field_to_access.as_str())
+            .find(|TyStructField { name, .. }| name.as_str() == field_to_access.as_str())
         {
             Some(field) => ok(field, warnings, errors),
             None => {
@@ -130,7 +136,7 @@ impl TypedStructDeclaration {
                     available_fields: self
                         .fields
                         .iter()
-                        .map(|TypedStructField { name, .. }| name.to_string())
+                        .map(|TyStructField { name, .. }| name.to_string())
                         .collect::<Vec<_>>()
                         .join("\n"),
                     field_name: field_to_access.clone(),
@@ -143,7 +149,7 @@ impl TypedStructDeclaration {
 }
 
 #[derive(Debug, Clone, Eq)]
-pub struct TypedStructField {
+pub struct TyStructField {
     pub name: Ident,
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
@@ -154,7 +160,7 @@ pub struct TypedStructField {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl Hash for TypedStructField {
+impl Hash for TyStructField {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
         look_up_type_id(self.type_id).hash(state);
@@ -164,25 +170,25 @@ impl Hash for TypedStructField {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedStructField {
+impl PartialEq for TyStructField {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
     }
 }
 
-impl CopyTypes for TypedStructField {
+impl CopyTypes for TyStructField {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.update_type(type_mapping, &self.span);
+        self.type_id.copy_types(type_mapping);
     }
 }
 
-impl ReplaceSelfType for TypedStructField {
+impl ReplaceSelfType for TyStructField {
     fn replace_self_type(&mut self, self_type: TypeId) {
         self.type_id.replace_self_type(self_type);
     }
 }
 
-impl TypedStructField {
+impl TyStructField {
     pub(crate) fn type_check(mut ctx: TypeCheckContext, field: StructField) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -198,7 +204,7 @@ impl TypedStructField {
             warnings,
             errors,
         );
-        let field = TypedStructField {
+        let field = TyStructField {
             name: field.name,
             type_id: r#type,
             initial_type_id,

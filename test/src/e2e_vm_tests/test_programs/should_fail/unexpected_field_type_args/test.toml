@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()Field projections, e.g., `foo.bar` cannot have type arguments.
+# check: $()Mismatched types.

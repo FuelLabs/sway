@@ -4,8 +4,10 @@ use crate::declaration_engine::{
     de_add_monomorphized_enum_copy, de_add_monomorphized_struct_copy, de_get_enum, de_get_struct,
 };
 use crate::namespace::{Path, Root};
-use crate::TypedDeclaration;
+use crate::TyDeclaration;
 use lazy_static::lazy_static;
+use sway_error::error::CompileError;
+use sway_error::type_error::TypeError;
 use sway_types::span::Span;
 use sway_types::{Ident, Spanned};
 
@@ -26,38 +28,28 @@ impl TypeEngine {
         TypeId::new(self.slab.insert(ty))
     }
 
-    pub fn size(&self) -> usize {
+    /// Gets the size of the [TypeEngine].
+    fn size(&self) -> usize {
         self.slab.size()
     }
 
-    /// Gets the size of the [TypeEngine].
-    fn look_up_type_id_raw(&self, id: TypeId) -> TypeInfo {
+    /// Performs a lookup of `id` into the [TypeEngine].
+    pub(crate) fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
         self.slab.get(*id)
     }
 
-    /// Performs a lookup of `id` into the [TypeEngine], but only one level
-    /// deep. (i.e. lookup will stop after looking up `id` once, even if it
-    /// returns a [TypeInfo::Ref(..)])
-    pub(crate) fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
-        match self.slab.get(*id) {
-            TypeInfo::Ref(other, _sp) => self.look_up_type_id(other),
-            ty => ty,
-        }
-    }
-
-    /// Performs a recursive lookup of `id` into the [TypeEngine] until the
-    /// lookup yields a [TypeInfo] variant other than [TypeInfo::Ref(..)].
+    /// Denotes the given [TypeId] as being used with storage.
     fn set_type_as_storage_only(&self, id: TypeId) {
         self.storage_only_types.insert(self.look_up_type_id(id));
     }
 
-    /// Denotes the given [TypeId] as being used with storage.
+    /// Checks if the given [TypeId] is a storage only type.
     fn is_type_storage_only(&self, id: TypeId) -> bool {
         let ti = &self.look_up_type_id(id);
         self.is_type_info_storage_only(ti)
     }
 
-    /// Checks if the given [TypeId] is a storage only type.
+    /// Checks if the given [TypeInfo] is a storage only type.
     fn is_type_info_storage_only(&self, ti: &TypeInfo) -> bool {
         self.storage_only_types.exists(|x| ti.is_subset_of(x))
     }
@@ -197,7 +189,6 @@ impl TypeEngine {
             // If the types are exactly the same, we are done.
             (Boolean, Boolean) => (vec![], vec![]),
             (SelfType, SelfType) => (vec![], vec![]),
-            (Byte, Byte) => (vec![], vec![]),
             (B256, B256) => (vec![], vec![]),
             (Numeric, Numeric) => (vec![], vec![]),
             (Contract, Contract) => (vec![], vec![]),
@@ -206,39 +197,27 @@ impl TypeEngine {
                 let mut errors = vec![];
                 if l != r {
                     errors.push(TypeError::MismatchedType {
-                        expected,
-                        received,
+                        expected: expected.to_string(),
+                        received: received.to_string(),
                         help_text,
                         span: span.clone(),
                     });
                 }
                 (warnings, errors)
             }
-            //(received_info, expected_info) if received_info == expected_info => (vec![], vec![]),
-
-            // Follow any references
-            (Ref(received, _sp1), Ref(expected, _sp2)) if received == expected => (vec![], vec![]),
-            (Ref(received, _sp), _) => self.unify(received, expected, span, help_text),
-            (_, Ref(expected, _sp)) => self.unify(received, expected, span, help_text),
 
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
             // one we may know something about
             (Unknown, Unknown) => (vec![], vec![]),
-            (Unknown, _) => {
-                match self
-                    .slab
-                    .replace(received, &Unknown, TypeInfo::Ref(expected, span.clone()))
-                {
+            (Unknown, expected_info) => {
+                match self.slab.replace(received, &Unknown, expected_info) {
                     None => (vec![], vec![]),
                     Some(_) => self.unify(received, expected, span, help_text),
                 }
             }
-            (_, Unknown) => {
-                match self
-                    .slab
-                    .replace(expected, &Unknown, TypeInfo::Ref(received, span.clone()))
-                {
+            (received_info, Unknown) => {
+                match self.slab.replace(expected, &Unknown, received_info) {
                     None => (vec![], vec![]),
                     Some(_) => self.unify(received, expected, span, help_text),
                 }
@@ -292,21 +271,13 @@ impl TypeEngine {
             {
                 (vec![], vec![])
             }
-            (ref received_info @ UnknownGeneric { .. }, _) => {
-                self.slab.replace(
-                    received,
-                    received_info,
-                    TypeInfo::Ref(expected, span.clone()),
-                );
+            (ref received_info @ UnknownGeneric { .. }, expected_info) => {
+                self.slab.replace(received, received_info, expected_info);
                 (vec![], vec![])
             }
 
-            (_, ref expected_info @ UnknownGeneric { .. }) => {
-                self.slab.replace(
-                    expected,
-                    expected_info,
-                    TypeInfo::Ref(received, span.clone()),
-                );
+            (received_info, ref expected_info @ UnknownGeneric { .. }) => {
+                self.slab.replace(expected, expected_info, received_info);
                 (vec![], vec![])
             }
 
@@ -355,8 +326,8 @@ impl TypeEngine {
                         });
                 } else {
                     errors.push(TypeError::MismatchedType {
-                        expected,
-                        received,
+                        expected: expected.to_string(),
+                        received: received.to_string(),
                         help_text,
                         span: span.clone(),
                     });
@@ -405,8 +376,8 @@ impl TypeEngine {
                         });
                 } else {
                     errors.push(TypeError::MismatchedType {
-                        expected,
-                        received,
+                        expected: expected.to_string(),
+                        received: received.to_string(),
                         help_text,
                         span: span.clone(),
                     });
@@ -435,8 +406,8 @@ impl TypeEngine {
                 let mut errors = vec![];
                 if !new_errors.is_empty() {
                     errors.push(TypeError::MismatchedType {
-                        expected,
-                        received,
+                        expected: expected.to_string(),
+                        received: received.to_string(),
                         help_text,
                         span: span.clone(),
                     });
@@ -492,8 +463,8 @@ impl TypeEngine {
             (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
             (_, _) => {
                 let errors = vec![TypeError::MismatchedType {
-                    expected,
-                    received,
+                    expected: expected.to_string(),
+                    received: received.to_string(),
                     help_text,
                     span: span.clone(),
                 }];
@@ -558,7 +529,7 @@ impl TypeEngine {
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(TypedDeclaration::StructDeclaration(original_id)) => {
+                    Some(TyDeclaration::StructDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
                             CompileResult::from(de_get_struct(original_id.clone(), &name.span())),
@@ -591,7 +562,7 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(TypedDeclaration::EnumDeclaration(original_id)) => {
+                    Some(TyDeclaration::EnumDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
                             CompileResult::from(de_get_enum(original_id.clone(), &name.span())),
@@ -624,9 +595,7 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(TypedDeclaration::GenericTypeForFunctionScope { name, type_id }) => {
-                        self.insert_type(TypeInfo::Ref(type_id, name.span()))
-                    }
+                    Some(TyDeclaration::GenericTypeForFunctionScope { type_id, .. }) => type_id,
                     _ => {
                         errors.push(CompileError::UnknownTypeName {
                             name: name.to_string(),
@@ -636,7 +605,6 @@ impl TypeEngine {
                     }
                 }
             }
-            TypeInfo::Ref(id, _) => id,
             TypeInfo::Array(type_id, n, initial_type_id) => {
                 let new_type_id = check!(
                     self.resolve_type(
@@ -713,10 +681,6 @@ pub fn look_up_type_id(id: TypeId) -> TypeInfo {
     TYPE_ENGINE.look_up_type_id(id)
 }
 
-pub(crate) fn look_up_type_id_raw(id: TypeId) -> TypeInfo {
-    TYPE_ENGINE.look_up_type_id_raw(id)
-}
-
 pub fn set_type_as_storage_only(id: TypeId) {
     TYPE_ENGINE.set_type_as_storage_only(id);
 }
@@ -777,7 +741,7 @@ pub(crate) fn unify(
     )
 }
 
-pub fn to_typeinfo(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
+pub(crate) fn to_typeinfo(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
     TYPE_ENGINE.to_typeinfo(id, error_span)
 }
 

@@ -1,104 +1,43 @@
-use crate::ops::forc_build;
 use anyhow::{bail, Result};
 use clap::Parser;
-use std::io::{BufRead, BufReader};
-use std::process;
-use std::thread;
-use tracing::{error, info};
 
-/// Run Rust-based tests on current project.
-/// As of now, `forc test` is a simple wrapper on
-/// `cargo test`; `forc new` also creates a rust
-/// package under your project, named `tests`.
-/// You can opt to either run these Rust tests by
-/// using `forc test` or going inside the package
-/// and using `cargo test`.
+/// Run the Sway unit tests for the current project.
+///
+/// NOTE: This feature is not yet implemented. Track progress at the following link:
+/// https://github.com/FuelLabs/sway/issues/1832
+///
+/// NOTE: Previously this command was used to support Rust integration testing, however the
+/// provided behaviour served no benefit over running `cargo test` directly. The proposal to change
+/// the behaviour to support unit testing can be found at the following link:
+/// https://github.com/FuelLabs/sway/issues/1833
+///
+/// Sway unit tests are functions decorated with the `#[test_script]` attribute. Each test is
+/// compiled as an independent `script` program and has access to the namespace of the module in
+/// which it is declared. Unit tests declared within `contract` projects may also call directly
+/// into their associated contract's ABI.
+///
+/// Upon successful compilation, test scripts are executed to their completion. A test is
+/// considered a failure in the case that a revert (`rvrt`) instruction is encountered during
+/// execution. Otherwise, it is considered a success.
 #[derive(Debug, Parser)]
 pub(crate) struct Command {
-    /// If specified, only run tests containing this string in their names
-    pub test_name: Option<String>,
-    /// Options passed through to the `cargo test` invocation.
-    ///
-    /// E.g. Given the following:
-    ///
-    /// `forc test --cargo-test-opts="--color always"`
-    ///
-    /// The `--color always` option is forwarded to `cargo test` like so:
-    ///
-    /// `cargo test --color always`
-    #[clap(long)]
-    pub cargo_test_opts: Option<String>,
-    /// All trailing arguments following `--` are collected within this argument.
-    ///
-    /// E.g. Given the following:
-    ///
-    /// `forc test -- foo bar baz`
-    ///
-    /// The arguments `foo`, `bar` and `baz` are forwarded on to `cargo test` like so:
-    ///
-    /// `cargo test -- foo bar baz`
-    #[clap(raw = true)]
-    pub cargo_test_args: Vec<String>,
+    /// When specified, only tests containing the given string will be executed.
+    pub filter: Option<String>,
 }
 
-pub(crate) fn exec(command: Command) -> Result<()> {
-    // Ensure the project builds before running tests.
-    forc_build::build(Default::default())?;
+pub(crate) fn exec(_command: Command) -> Result<()> {
+    bail!(
+        r#"
+Sway unit testing is not yet implemented. Track progress at the following link:
 
-    let mut cmd = process::Command::new("cargo");
-    cmd.arg("test");
+https://github.com/FuelLabs/sway/issues/1832
 
-    // Pass through cargo test options.
-    let mut user_specified_color_opt = false;
-    if let Some(opts) = command.cargo_test_opts {
-        user_specified_color_opt = opts.contains("--color");
-        for opt in opts.split_whitespace() {
-            cmd.arg(&opt);
-        }
-    }
+NOTE: Previously this command was used to support Rust integration testing,
+however the provided behaviour served no benefit over running `cargo test`
+directly. The proposal to change the behaviour to support unit testing can be
+found at the following link:
 
-    // If the coloring option wasn't specified by the user, enable it ourselves. This is useful as
-    // `cargo test`'s coloring is disabled by default when run as a child process.
-    if !user_specified_color_opt {
-        cmd.args(&["--color", "always"]);
-    }
-
-    // Pass through test name.
-    if let Some(ref name) = command.test_name {
-        cmd.arg(name);
-    }
-
-    // Pass through cargo test args.
-    if !command.cargo_test_args.is_empty() {
-        cmd.arg("--");
-        cmd.args(&command.cargo_test_args);
-    }
-
-    let mut child = cmd
-        .stdout(process::Stdio::piped())
-        .stderr(process::Stdio::piped())
-        .spawn()
-        .unwrap();
-
-    let out = BufReader::new(child.stdout.take().unwrap());
-    let err = BufReader::new(child.stderr.take().unwrap());
-
-    // Reading stderr on a separate thread so we keep things non-blocking
-    let thread = thread::spawn(move || {
-        err.lines().for_each(|line| error!("{}", line.unwrap()));
-    });
-
-    out.lines().for_each(|line| info!("{}", line.unwrap()));
-    thread.join().unwrap();
-
-    let child_success = match child.try_wait() {
-        Ok(Some(returned_status)) => returned_status.success(),
-        Ok(None) => child.wait().unwrap().success(),
-        Err(_) => false,
-    };
-
-    match child_success {
-        true => Ok(()),
-        false => bail!("child test process failed"),
-    }
+https://github.com/FuelLabs/sway/issues/1833
+    "#
+    );
 }

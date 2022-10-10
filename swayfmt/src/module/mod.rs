@@ -22,12 +22,10 @@ impl Format for Module {
             dependency.format(formatted_code, formatter)?;
         }
 
-        let mut iter = self.items.iter().peekable();
-        while let Some(item) = iter.next() {
+        let iter = self.items.iter();
+        for item in iter.clone() {
             item.format(formatted_code, formatter)?;
-            if iter.peek().is_some() {
-                writeln!(formatted_code)?;
-            }
+            writeln!(formatted_code)?;
         }
 
         Ok(())

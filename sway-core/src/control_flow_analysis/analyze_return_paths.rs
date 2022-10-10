@@ -4,17 +4,17 @@
 use crate::{
     control_flow_analysis::*,
     declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait},
-    error::*,
-    parse_tree::*,
+    language::CallPath,
     semantic_analysis::*,
     type_system::*,
 };
 use petgraph::prelude::NodeIndex;
+use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 impl ControlFlowGraph {
     pub(crate) fn construct_return_path_graph(
-        module_nodes: &[TypedAstNode],
+        module_nodes: &[TyAstNode],
     ) -> Result<Self, CompileError> {
         let mut graph = ControlFlowGraph::default();
         // do a depth first traversal and cover individual inner ast nodes
@@ -120,25 +120,25 @@ enum NodeConnection {
 }
 
 fn connect_node(
-    node: &TypedAstNode,
+    node: &TyAstNode,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
 ) -> Result<(NodeConnection, ReturnStatementNodes), CompileError> {
     let span = node.span.clone();
     match &node.content {
-        TypedAstNodeContent::Expression(TypedExpression {
-            expression: TypedExpressionVariant::Return(..),
+        TyAstNodeContent::Expression(TyExpression {
+            expression: TyExpressionVariant::Return(..),
             ..
         })
-        | TypedAstNodeContent::ImplicitReturnExpression(_) => {
+        | TyAstNodeContent::ImplicitReturnExpression(_) => {
             let this_index = graph.add_node(node.into());
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());
             }
             Ok((NodeConnection::Return(this_index), vec![]))
         }
-        TypedAstNodeContent::Expression(TypedExpression {
-            expression: TypedExpressionVariant::WhileLoop { body, .. },
+        TyAstNodeContent::Expression(TyExpression {
+            expression: TyExpressionVariant::WhileLoop { body, .. },
             ..
         }) => {
             // This is very similar to the dead code analysis for a while loop.
@@ -175,7 +175,7 @@ fn connect_node(
                 inner_returns,
             ))
         }
-        TypedAstNodeContent::Expression(TypedExpression { .. }) => {
+        TyAstNodeContent::Expression(TyExpression { .. }) => {
             let entry = graph.add_node(node.into());
             // insert organizational dominator node
             // connected to all current leaves
@@ -184,8 +184,8 @@ fn connect_node(
             }
             Ok((NodeConnection::NextStep(vec![entry]), vec![]))
         }
-        TypedAstNodeContent::SideEffect => Ok((NodeConnection::NextStep(leaves.to_vec()), vec![])),
-        TypedAstNodeContent::Declaration(decl) => Ok((
+        TyAstNodeContent::SideEffect => Ok((NodeConnection::NextStep(leaves.to_vec()), vec![])),
+        TyAstNodeContent::Declaration(decl) => Ok((
             NodeConnection::NextStep(connect_declaration(node, decl, graph, span, leaves)?),
             vec![],
         )),
@@ -193,13 +193,13 @@ fn connect_node(
 }
 
 fn connect_declaration(
-    node: &TypedAstNode,
-    decl: &TypedDeclaration,
+    node: &TyAstNode,
+    decl: &TyDeclaration,
     graph: &mut ControlFlowGraph,
     span: Span,
     leaves: &[NodeIndex],
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    use TypedDeclaration::*;
+    use TyDeclaration::*;
     match decl {
         TraitDeclaration(_)
         | AbiDeclaration(_)
@@ -224,7 +224,7 @@ fn connect_declaration(
             Ok(leaves.to_vec())
         }
         ImplTrait(decl_id) => {
-            let TypedImplTrait {
+            let TyImplTrait {
                 trait_name,
                 methods,
                 ..
@@ -248,7 +248,7 @@ fn connect_declaration(
 fn connect_impl_trait(
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph,
-    methods: &[TypedFunctionDeclaration],
+    methods: &[TyFunctionDeclaration],
     entry_node: NodeIndex,
 ) -> Result<(), CompileError> {
     let mut methods_and_indexes = vec![];
@@ -285,7 +285,7 @@ fn connect_impl_trait(
 /// has no entry points, since it is just a declaration.
 /// When something eventually calls it, it gets connected to the declaration.
 fn connect_typed_fn_decl(
-    fn_decl: &TypedFunctionDeclaration,
+    fn_decl: &TyFunctionDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
     _span: Span,
@@ -311,7 +311,7 @@ fn connect_typed_fn_decl(
 type ReturnStatementNodes = Vec<NodeIndex>;
 
 fn depth_first_insertion_code_block(
-    node_content: &TypedCodeBlock,
+    node_content: &TyCodeBlock,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
 ) -> Result<(ReturnStatementNodes, Vec<NodeIndex>), CompileError> {

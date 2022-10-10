@@ -5,14 +5,15 @@ use forc_util::{println_green, println_red};
 use paste::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
 use sway_ast::Expr;
-use sway_parse::{handler::Handler, *};
+use sway_error::handler::Handler;
+use sway_parse::*;
 
 fn format_code(input: &str) -> String {
     let mut formatter: Formatter = Default::default();
     let input_arc = std::sync::Arc::from(input);
-    let token_stream = lex(&input_arc, 0, input.len(), None).unwrap();
     let handler = Handler::default();
-    let mut parser = Parser::new(&token_stream, &handler);
+    let token_stream = lex(&handler, &input_arc, 0, input.len(), None).unwrap();
+    let mut parser = Parser::new(&handler, &token_stream);
     let expression: Expr = parser.parse().unwrap();
 
     let mut buf = Default::default();
@@ -165,9 +166,9 @@ fmt_test!(  long_conditional_stmt
     bar();
 }",
             intermediate_whitespace
-"   if really_long_var_name  >    
-other_really_long_var  
-||  really_long_var_name  <=    
+"   if really_long_var_name  >
+other_really_long_var
+||  really_long_var_name  <=
 0  &&   other_really_long_var    !=    0 {  foo();  }else{bar();}"
 );
 
@@ -197,12 +198,12 @@ fmt_test!(  match_nested_conditional
           if      really_long_var   >     other_really_long_var {
     foo();
     }     else if really_really_long_var_name        > really_really_really_really_long_var_name111111111111
-        {   
+        {
                 bar();
-     }    else      {    
-            baz()   ;  
+     }    else      {
+            baz()   ;
             }
-    } 
+    }
 }"
 );
 
@@ -219,12 +220,12 @@ fmt_test!(  match_branch_kind
 }",
             intermediate_whitespace
 "match     foo
-            
-\n{\n\n    Foo::foo    
-     => {\n        foo() 
+
+\n{\n\n    Foo::foo
+     => {\n        foo()
         ;     \n        bar(
-         ); \n    } \n    Foo::\nbar => 
-         {\n        baz();\n        
+         ); \n    } \n    Foo::\nbar =>
+         {\n        baz();\n
 quux();\n    }\n\n\n}"
 );
 

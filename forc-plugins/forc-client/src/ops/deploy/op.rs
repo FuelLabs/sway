@@ -1,14 +1,14 @@
 use anyhow::{bail, Result};
-use forc_pkg::{BuildOptions, Compiled, ManifestFile};
+use forc_pkg::{BuildOptions, Compiled, PackageManifestFile};
 use fuel_crypto::Signature;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, StorageSlot, Transaction};
 use fuel_vm::prelude::*;
-use fuels_core::constants::{BASE_ASSET_ID, DEFAULT_SPENDABLE_COIN_AMOUNT};
+use fuels_core::constants::BASE_ASSET_ID;
 use fuels_signers::{provider::Provider, wallet::Wallet};
 use fuels_types::bech32::Bech32Address;
 use std::{io::Write, path::PathBuf, str::FromStr};
-use sway_core::TreeType;
+use sway_core::language::parsed::TreeType;
 use sway_utils::constants::DEFAULT_NODE_URL;
 use tracing::info;
 
@@ -20,7 +20,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     } else {
         std::env::current_dir()?
     };
-    let manifest = ManifestFile::from_dir(&curr_dir)?;
+    let manifest = PackageManifestFile::from_dir(&curr_dir)?;
     manifest.check_program_type(vec![TreeType::Contract])?;
 
     let DeployCommand {
@@ -158,11 +158,7 @@ async fn create_signed_contract_tx(
     let coin_witness_index = 1;
 
     let inputs = signer_wallet
-        .get_asset_inputs_for_amount(
-            AssetId::default(),
-            DEFAULT_SPENDABLE_COIN_AMOUNT,
-            coin_witness_index,
-        )
+        .get_asset_inputs_for_amount(AssetId::default(), 1_000_000, coin_witness_index)
         .await?;
     let tx = Transaction::create(
         tx_parameters.gas_price,
