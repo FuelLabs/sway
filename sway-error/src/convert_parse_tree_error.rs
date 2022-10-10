@@ -91,6 +91,8 @@ pub enum ConvertParseTreeError {
     DuplicateParameterIdentifier { name: Ident, span: Span },
     #[error("self parameter is not allowed for a free function")]
     SelfParameterNotAllowedForFreeFn { span: Span },
+    #[error("test functions are only allowed at module level")]
+    TestFnOnlyAllowedAtModuleLevel { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -140,6 +142,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
             ConvertParseTreeError::SelfParameterNotAllowedForFreeFn { span, .. } => span.clone(),
+            ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span } => span.clone(),
         }
     }
 }
