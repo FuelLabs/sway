@@ -11,12 +11,9 @@ Here is the project that Forc has initialized:
 ```console
 $ cd my-fuel-project
 $ tree .
-├── Cargo.toml
 ├── Forc.toml
-├── src
-│   └── main.sw
-└── tests
-    └── harness.rs
+└── src
+    └── main.sw
 ```
 
 `Forc.toml` is the _manifest file_ (similar to `Cargo.toml` for Cargo or `package.json` for Node), and defines project metadata such as the project name and dependencies.
@@ -76,15 +73,3 @@ data_0 .word 559005003
   Compiled contract "my-fuel-project".
   Bytecode size is 60 bytes.
 ```
-
-To test this contract, use `forc test`:
-
-```console
-$ forc test
-running 1 test
-test can_get_contract_id ... ok
-
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
-```
-
-The `forc test` command tests the contract using the Rust SDK test harness that lives under `tests/`. The default test harness `harness.rs` contains boilerplate code to get you started but doesn't actually call any contract methods. For additional information on testing contracts using the Rust SDK, refer to the [Testing with Rust](../testing/testing-with-rust.md) section.
