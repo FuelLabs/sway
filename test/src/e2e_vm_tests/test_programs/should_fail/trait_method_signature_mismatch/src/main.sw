@@ -6,6 +6,7 @@ library test;
 trait Foo {
     fn foo(x: u64) -> str[7];
     fn bar(variable: u64) -> bool;
+    fn baz() -> u32;
 }
 
 struct S {
@@ -19,5 +20,9 @@ impl Foo for S {
 
     fn bar(ref mut variable: u64) -> bool {
         true
+    }
+
+    fn baz() -> u64 {
+        0
     }
 }

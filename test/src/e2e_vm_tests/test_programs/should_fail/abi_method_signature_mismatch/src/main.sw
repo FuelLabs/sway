@@ -5,10 +5,15 @@ contract;
 
 abi MyContract {
     fn foo(x: u64) -> str[7];
+    fn bar() -> u32;
 }
 
 impl MyContract for Contract {
     fn foo(s: str[7]) -> str[7] {
         s
+    }
+
+    fn bar() -> u64 {
+        0
     }
 }

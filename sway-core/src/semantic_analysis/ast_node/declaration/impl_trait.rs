@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-use sway_error::error::{CompileError, InterfaceName};
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
@@ -15,7 +14,7 @@ use crate::{
         insert_type, look_up_type_id, set_type_as_storage_only, to_typeinfo, unify_with_self,
         CopyTypes, TypeId, TypeMapping, TypeParameter,
     },
-    CompileResult, TyDeclaration, TyFunctionDeclaration, TypeInfo,
+    CompileError, CompileResult, TyDeclaration, TyFunctionDeclaration, TypeInfo,
 };
 
 use super::TyTraitFn;
@@ -493,6 +492,7 @@ fn type_check_trait_implementation(
     block_span: &Span,
     is_contract: bool,
 ) -> CompileResult<Vec<TyFunctionDeclaration>> {
+    use sway_error::error::InterfaceName;
     let interface_name = || -> InterfaceName {
         if is_contract {
             InterfaceName::Abi(trait_name.suffix.clone())
@@ -596,7 +596,8 @@ fn type_check_trait_implementation(
             );
             warnings.append(&mut new_warnings);
             if !new_errors.is_empty() {
-                errors.push(CompileError::MismatchedTypeInTrait {
+                errors.push(CompileError::MismatchedTypeInInterfaceSurface {
+                    interface_name: interface_name(),
                     span: fn_decl_param.type_span.clone(),
                     given: fn_decl_param_type.to_string(),
                     expected: fn_signature_param_type.to_string(),
@@ -625,18 +626,17 @@ fn type_check_trait_implementation(
             });
         }
 
-        // unify the return type of the function declaration
-        // with the return type of the function signature
-        let (mut new_warnings, new_errors) = unify_with_self(
-            fn_decl.return_type,
-            fn_signature.return_type,
-            ctx.self_type(),
-            &fn_decl.return_type_span,
-            ctx.help_text(),
-        );
-        warnings.append(&mut new_warnings);
-        if !new_errors.is_empty() {
-            errors.push(CompileError::MismatchedTypeInTrait {
+        // the return type of the function declaration must be the same
+        // as the return type of the function signature
+        let self_type = ctx.self_type();
+        use super::ReplaceSelfType;
+        let mut fn_decl_ret_type = fn_decl.return_type;
+        fn_decl_ret_type.replace_self_type(self_type);
+        let mut fn_sign_ret_type = fn_signature.return_type;
+        fn_sign_ret_type.replace_self_type(self_type);
+        if look_up_type_id(fn_decl_ret_type) != look_up_type_id(fn_sign_ret_type) {
+            errors.push(CompileError::MismatchedTypeInInterfaceSurface {
+                interface_name: interface_name(),
                 span: fn_decl.return_type_span.clone(),
                 expected: fn_signature.return_type.to_string(),
                 given: fn_decl.return_type.to_string(),
