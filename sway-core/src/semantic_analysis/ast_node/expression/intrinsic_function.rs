@@ -2,6 +2,7 @@ use std::fmt;
 
 use itertools::Itertools;
 use sway_ast::intrinsics::Intrinsic;
+use sway_error::error::{CompileError, Hint};
 use sway_types::Span;
 
 use crate::{
@@ -10,7 +11,7 @@ use crate::{
     semantic_analysis::TypeCheckContext,
     type_system::*,
     types::DeterministicallyAborts,
-    CompileError, CompileResult, Hint,
+    CompileResult,
 };
 
 use super::TyExpression;

@@ -9,13 +9,14 @@ repository = "https://github.com/FuelLabs/sway"
 description = "LSP server for Sway."
 
 [dependencies]
-dashmap = "5.3.4"
+dashmap = "5.4"
 forc-pkg = { version = "0.25.2", path = "../forc-pkg" }
 forc-util = { version = "0.25.2", path = "../forc-util" }
 ropey = "1.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.60"
 sway-core = { version = "0.25.2", path = "../sway-core" }
+sway-error = { version = "0.25.2", path = "../sway-error" }
 sway-types = { version = "0.25.2", path = "../sway-types" }
 sway-utils = { version = "0.25.2", path = "../sway-utils" }
 swayfmt = { version = "0.25.2", path = "../swayfmt" }
@@ -26,4 +27,5 @@ tracing = "0.1"
 [dev-dependencies]
 async-trait = "0.1"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
+serial_test = "0.9.0"
 tower = { version = "0.4.12", default-features = false, features = ["util"] }

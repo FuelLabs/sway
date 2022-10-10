@@ -1,5 +1,6 @@
 use crate::{error::*, language::parsed::*, semantic_analysis::*, type_system::*};
 
+use sway_error::error::CompileError;
 use sway_types::{Ident, Spanned};
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid

@@ -1,3 +1,4 @@
+use sway_error::error::CompileError;
 use sway_types::Span;
 
 use crate::{error::*, semantic_analysis::*, type_system::*, types::DeterministicallyAborts};

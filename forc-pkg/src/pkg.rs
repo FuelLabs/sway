@@ -29,8 +29,9 @@ use sway_core::{
     language::parsed::{ParseProgram, TreeType},
     semantic_analysis::namespace,
     source_map::SourceMap,
-    BytecodeOrLib, CompileError, CompileResult, TyProgram,
+    BytecodeOrLib, CompileResult, TyProgram,
 };
+use sway_error::error::CompileError;
 use sway_types::{Ident, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
 use sway_utils::constants;
 use tracing::{info, warn};

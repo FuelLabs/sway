@@ -16,6 +16,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_ignored = "0.1"
 sway-ast = { version = "0.25.2", path = "../sway-ast" }
 sway-core = { version = "0.25.2", path = "../sway-core" }
+sway-error = { version = "0.25.2", path = "../sway-error" }
 sway-parse = { version = "0.25.2", path = "../sway-parse" }
 sway-types = { version = "0.25.2", path = "../sway-types" }
 thiserror = "1.0.30"

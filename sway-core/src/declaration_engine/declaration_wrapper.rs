@@ -1,5 +1,6 @@
 use std::fmt;
 
+use sway_error::error::CompileError;
 use sway_types::Span;
 
 use crate::{
@@ -8,7 +9,7 @@ use crate::{
         TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
     },
     type_system::{CopyTypes, TypeMapping},
-    CompileError, TyFunctionDeclaration,
+    TyFunctionDeclaration,
 };
 
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]

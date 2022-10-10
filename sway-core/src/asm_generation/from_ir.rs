@@ -7,8 +7,9 @@ use super::{
     DataId, DataSection,
 };
 
-use crate::{error::*, BuildConfig};
+use crate::{err, ok, BuildConfig, CompileResult, CompileWarning};
 
+use sway_error::error::CompileError;
 use sway_ir::*;
 
 pub fn compile_ir_to_asm(

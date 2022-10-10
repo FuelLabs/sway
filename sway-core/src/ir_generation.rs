@@ -7,11 +7,9 @@ mod purity;
 pub mod storage;
 mod types;
 
-use crate::{
-    error::CompileError,
-    semantic_analysis::{TyProgram, TyProgramKind},
-};
+use crate::semantic_analysis::{TyProgram, TyProgramKind};
 
+use sway_error::error::CompileError;
 use sway_ir::Context;
 use sway_types::span::Span;
 

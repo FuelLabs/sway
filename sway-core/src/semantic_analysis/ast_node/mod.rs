@@ -23,6 +23,7 @@ use crate::{
     Ident,
 };
 
+use sway_error::error::CompileError;
 use sway_types::{span::Span, state::StateIndex, Spanned};
 
 use derivative::Derivative;
@@ -143,7 +144,7 @@ impl TyAstNode {
                     warnings,
                     errors
                 );
-                let is_main = name.as_str() == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME
+                let is_main = name.as_str() == sway_types::constants::DEFAULT_ENTRY_POINT_FN_NAME
                     && matches!(tree_type, TreeType::Script | TreeType::Predicate);
                 ok(is_main, warnings, errors)
             }
@@ -393,6 +394,7 @@ impl TyAstNode {
                         Declaration::StorageDeclaration(StorageDeclaration {
                             span,
                             fields,
+                            attributes,
                             ..
                         }) => {
                             let mut fields_buf = Vec::with_capacity(fields.len());
@@ -401,6 +403,7 @@ impl TyAstNode {
                                 type_info,
                                 initializer,
                                 type_info_span,
+                                attributes,
                                 ..
                             } in fields
                             {
@@ -423,15 +426,16 @@ impl TyAstNode {
                                     errors,
                                 );
 
-                                fields_buf.push(TyStorageField::new(
+                                fields_buf.push(TyStorageField {
                                     name,
                                     type_id,
-                                    type_info_span,
+                                    type_span: type_info_span,
                                     initializer,
-                                    span.clone(),
-                                ));
+                                    span: span.clone(),
+                                    attributes,
+                                });
                             }
-                            let decl = TyStorageDeclaration::new(fields_buf, span);
+                            let decl = TyStorageDeclaration::new(fields_buf, span, attributes);
                             let decl_id = de_insert_storage(decl);
                             // insert the storage declaration into the symbols
                             // if there already was one, return an error that duplicate storage
@@ -542,6 +546,7 @@ fn type_check_interface_surface(
             return_type_span,
             parameters: typed_parameters,
             return_type,
+            attributes: trait_fn.attributes,
         });
     }
     ok(typed_surface, warnings, errors)
@@ -655,6 +660,7 @@ fn type_check_trait_methods(
             body,
             parameters: typed_parameters,
             span,
+            attributes: method.attributes,
             return_type,
             initial_return_type,
             type_parameters,
@@ -688,6 +694,7 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TyFunctionD
             contents: Default::default(),
         },
         span,
+        attributes: Default::default(),
         is_contract_call: false,
         return_type_span,
         parameters: Default::default(),

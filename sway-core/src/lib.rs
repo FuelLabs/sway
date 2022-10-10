@@ -5,7 +5,6 @@ mod asm_generation;
 mod asm_lang;
 mod build_config;
 mod concurrent_slab;
-pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
 pub mod declaration_engine;
@@ -37,7 +36,8 @@ pub use semantic_analysis::{
 };
 pub mod types;
 
-pub use error::{CompileError, CompileResult, CompileWarning};
+pub use error::{CompileResult, CompileWarning};
+use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
@@ -65,18 +65,9 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<par
 
 /// Parse a file with contents `src` at `path`.
 fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> CompileResult<sway_ast::Module> {
-    let handler = sway_parse::handler::Handler::default();
-    match sway_parse::parse_file(&handler, src, path) {
-        Ok(module) => ok(
-            module,
-            vec![],
-            parse_file_error_to_compile_errors(handler, None),
-        ),
-        Err(error) => err(
-            vec![],
-            parse_file_error_to_compile_errors(handler, Some(error)),
-        ),
-    }
+    let handler = sway_error::handler::Handler::default();
+    let res = sway_parse::parse_file(&handler, src, path);
+    CompileResult::new(res.ok(), vec![], handler.into_errors())
 }
 
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
@@ -85,8 +76,7 @@ fn parse_in_memory(src: Arc<str>) -> CompileResult<parsed::ParseProgram> {
         convert_parse_tree::convert_parse_tree(module).flat_map(|(kind, tree)| {
             let submodules = Default::default();
             let root = parsed::ParseModule { tree, submodules };
-            let program = parsed::ParseProgram { kind, root };
-            ok(program, vec![], vec![])
+            ok(parsed::ParseProgram { kind, root }, vec![], vec![])
         })
     })
 }
@@ -181,21 +171,7 @@ fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf 
         .iter()
         .chain(dep.path.span().as_str().split('/').map(AsRef::as_ref))
         .collect::<PathBuf>()
-        .with_extension(crate::constants::DEFAULT_FILE_EXTENSION)
-}
-
-fn parse_file_error_to_compile_errors(
-    handler: sway_parse::handler::Handler,
-    error: Option<sway_parse::ParseFileError>,
-) -> Vec<CompileError> {
-    match error {
-        Some(sway_parse::ParseFileError::Lex(error)) => vec![CompileError::Lex { error }],
-        Some(sway_parse::ParseFileError::Parse(_)) | None => handler
-            .into_errors()
-            .into_iter()
-            .map(|error| CompileError::Parse { error })
-            .collect(),
-    }
+        .with_extension(sway_types::constants::DEFAULT_FILE_EXTENSION)
 }
 
 /// Either finalized ASM or a library.
@@ -417,7 +393,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
             );
             let is_contract = tree_type == parsed::TreeType::Contract;
             let has_entry_name =
-                func.get_name(&ir) == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME;
+                func.get_name(&ir) == sway_types::constants::DEFAULT_ENTRY_POINT_FN_NAME;
 
             (is_script_or_predicate && has_entry_name) || (is_contract && func.has_selector(&ir))
         })

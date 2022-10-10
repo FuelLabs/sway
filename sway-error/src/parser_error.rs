@@ -76,6 +76,8 @@ pub enum ParseErrorKind {
     ExpectedDocComment,
     #[error("Use the `struct` keyword to define records, instead of `class`.")]
     UnexpectedClass,
+    #[error("Field projections, e.g., `foo.bar` cannot have type arguments.")]
+    FieldProjectionWithGenericArgs,
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Eq, Hash)]

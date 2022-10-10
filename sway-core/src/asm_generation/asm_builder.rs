@@ -12,14 +12,14 @@ use crate::{
     size_bytes_in_words, size_bytes_round_up_to_word_alignment,
 };
 
+use sway_error::error::CompileError;
 use sway_ir::*;
 use sway_types::{span::Span, Spanned};
 
 use fuel_crypto::Hasher;
 
-use std::{collections::HashMap, sync::Arc};
-
 use either::Either;
+use std::{collections::HashMap, sync::Arc};
 
 pub(super) struct AsmBuilder<'ir> {
     // Data section is used by the rest of code gen to layout const memory.

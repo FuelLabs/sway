@@ -6,15 +6,17 @@ use crate::{
         insert_type, look_up_type_id, CopyTypes, CreateTypeId, EnforceTypeArguments,
         MonomorphizeHelper, ReplaceSelfType, TypeId, TypeMapping, TypeParameter,
     },
-    TypeInfo,
+    AttributesMap, TypeInfo,
 };
 use std::hash::{Hash, Hasher};
+use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyEnumDeclaration {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
+    pub attributes: AttributesMap,
     pub variants: Vec<TyEnumVariant>,
     pub(crate) span: Span,
     pub visibility: Visibility,
@@ -79,6 +81,7 @@ impl TyEnumDeclaration {
             type_parameters,
             variants,
             span,
+            attributes,
             visibility,
             ..
         } = decl;
@@ -116,6 +119,7 @@ impl TyEnumDeclaration {
             type_parameters: new_type_parameters,
             variants: variants_buf,
             span,
+            attributes,
             visibility,
         };
         ok(decl, warnings, errors)
