@@ -79,7 +79,7 @@ pub(crate) fn body(module: String, desc_ty: String, desc_name: String) -> Box<dy
             // expand or hide description of main code block
             details(class="forcdoc-toggle top-doc", open) {
                 summary(class="hideme") {
-                    span("Expand description")
+                    span { :"Expand description" }
                 }
                 // this is the description
                 div(class="docblock") {
@@ -88,7 +88,6 @@ pub(crate) fn body(module: String, desc_ty: String, desc_name: String) -> Box<dy
                     }
                 }
             }
-
         }
     }
 }
