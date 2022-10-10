@@ -35,7 +35,10 @@ use std::{
     iter,
     mem::MaybeUninit,
     ops::ControlFlow,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
 };
 
 #[derive(Debug, Default)]
@@ -250,13 +253,13 @@ pub enum AttributeKind {
 }
 
 /// Stores the attributes associated with the type.
-pub type AttributesMap = HashMap<AttributeKind, Vec<Attribute>>;
+pub type AttributesMap = Arc<HashMap<AttributeKind, Vec<Attribute>>>;
 
 fn item_attrs_to_map(
     ec: &mut ErrorContext,
     attribute_list: &[AttributeDecl],
 ) -> Result<AttributesMap, ErrorEmitted> {
-    let mut attrs_map = AttributesMap::new();
+    let mut attrs_map: HashMap<_, Vec<Attribute>> = HashMap::new();
     for attr_decl in attribute_list {
         let attr = attr_decl.attribute.get();
         let name = attr.name.as_str();
@@ -295,7 +298,7 @@ fn item_attrs_to_map(
             }
         }
     }
-    Ok(attrs_map)
+    Ok(Arc::new(attrs_map))
 }
 
 fn item_use_to_use_statements(
