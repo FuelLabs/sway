@@ -164,20 +164,17 @@ creates a basic contract program</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output<!-- markdownlint-disable MD041 --></p>
 <h2 id="example"><a class="header" href="#example">EXAMPLE</a></h2>
-<pre><code class="language-console">$ forc init my-fuel-project
+<pre><code class="language-console">$ mkdir my-fuel-project
 $ cd my-fuel-project
+$ forc init
 $ tree
 .
-├── Cargo.toml
 ├── Forc.toml
-├── src
-│   └── main.sw
-└── tests
-    └── harness.rs
+└── src
+    └── main.sw
 </code></pre>
-<p><code>Forc.toml</code> is the Forc manifest file, containing information about the project and dependencies. <code>Cargo.toml</code> is the Rust project manifest file, used by the Rust-based tests package.</p>
+<p><code>Forc.toml</code> is the Forc manifest file, containing information about the project and dependencies.</p>
 <p>A <code>src/</code> directory is created, with a single <code>main.sw</code> Sway file in it.</p>
-<p>A <code>tests/</code> directory is also created. The <code>Cargo.toml</code> in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our Rust SDK (<code>fuels-rs</code>). More on this in the <code>Test</code> section down below.</p>
 
                     </main>
 

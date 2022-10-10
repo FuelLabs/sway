@@ -411,12 +411,9 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 <p>Here is the project that Forc has initialized:</p>
 <pre><code class="language-console">$ cd my-fuel-project
 $ tree .
-├── Cargo.toml
 ├── Forc.toml
-├── src
-│   └── main.sw
-└── tests
-    └── harness.rs
+└── src
+    └── main.sw
 </code></pre>
 <p><code>Forc.toml</code> is the <em>manifest file</em> (similar to <code>Cargo.toml</code> for Cargo or <code>package.json</code> for Node), and defines project metadata such as the project name and dependencies.</p>
 <p>For additional information on dependency management, see: <a href="introduction/../forc/dependencies.html">here</a>.</p>
@@ -465,14 +462,6 @@ data_0 .word 559005003
   Compiled contract &quot;my-fuel-project&quot;.
   Bytecode size is 60 bytes.
 </code></pre>
-<p>To test this contract, use <code>forc test</code>:</p>
-<pre><code class="language-console">$ forc test
-running 1 test
-test can_get_contract_id ... ok
-
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
-</code></pre>
-<p>The <code>forc test</code> command tests the contract using the Rust SDK test harness that lives under <code>tests/</code>. The default test harness <code>harness.rs</code> contains boilerplate code to get you started but doesn't actually call any contract methods. For additional information on testing contracts using the Rust SDK, refer to the <a href="introduction/../testing/testing-with-rust.html">Testing with Rust</a> section.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="standard-library"><a class="header" href="#standard-library">Standard Library</a></h1>
 <p>Similar to Rust, Sway comes with its own standard library.</p>
 <p>The Sway Standard Library is the foundation of portable Sway software, a set of minimal shared abstractions for the broader Sway ecosystem. It offers core types, like <code>Result&lt;T, E&gt;</code> and <code>Option&lt;T&gt;</code>, library-defined operations on language primitives, native asset management, blockchain contextual operations, access control, storage management, and support for types from other VMs, among many other things.</p>
@@ -2740,15 +2729,63 @@ storage {
 storage.w.map1.insert(..);
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="testing"><a class="header" href="#testing">Testing</a></h1>
-<p>Testing your Sway contracts can be done with the Rust SDK.</p>
+<p>Sway aims to provide facilities for both unit testing and integration testing.</p>
+<p><strong>Unit testing</strong> refers to &quot;in-language&quot; testing which can be triggered via the
+<code>forc test</code> command. Sway unit testing is currently a high-priority
+work-in-progress, you can follow along at <a href="https://github.com/FuelLabs/sway/issues/1832">this
+issue</a>.</p>
+<p><strong>Integration testing</strong> refers to the testing of your Sway project's integration
+within some wider application. You can add integration testing to your Sway+Rust
+projects today using the cargo generate template and Rust SDK.</p>
 <ul>
 <li><a href="testing/./testing-with-rust.html">Testing with Rust</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="testing-with-rust"><a class="header" href="#testing-with-rust">Testing with Rust</a></h1>
-<p>If you look again at the project structure when you create a <a href="testing/../introduction/forc_project.html">new Forc project</a> with <code>forc new</code>, you can see a directory called <code>tests/</code>:</p>
-<pre><code class="language-plaintext">$ forc new my-fuel-project
-$ cd my-fuel-project
+<p>A common use of Sway is for writing contracts or scripts that exist as part of a
+wider Rust application. In order to test the interaction between our Sway code
+and our Rust code we can add integration testing.</p>
+<h2 id="adding-rust-integration-testing"><a class="header" href="#adding-rust-integration-testing">Adding Rust Integration Testing</a></h2>
+<p>To add Rust integration testing to a Forc project we can use <a href="https://github.com/FuelLabs/sway/tree/master/templates/sway-test-rs">the <code>sway-test-rs</code>
+cargo generate
+template</a>.
+This template makes it easy for Sway devs to add the boilerplate required when
+setting up their Rust integration testing.</p>
+<p>Let's add a Rust integration test to <a href="testing/../introduction/forc_project.html">the fresh project we created in the
+introduction</a>.</p>
+<h3 id="1-enter-the-project"><a class="header" href="#1-enter-the-project">1. Enter the project</a></h3>
+<p>To recap, here's what our empty project looks like:</p>
+<pre><code class="language-console">$ cd my-fuel-project
 $ tree .
+├── Forc.toml
+└── src
+    └── main.sw
+</code></pre>
+<h3 id="2-install-cargo-generate"><a class="header" href="#2-install-cargo-generate">2. Install <code>cargo generate</code></a></h3>
+<p>We're going to add a Rust integration test harness using a cargo generate
+template. Let's make sure we have the <code>cargo generate</code> command installed!</p>
+<pre><code class="language-console">cargo install cargo-generate
+</code></pre>
+<blockquote>
+<p><em><strong>Note</strong>: You can learn more about cargo generate by visiting <a href="https://github.com/cargo-generate/cargo-generate">its
+repository</a>.</em></p>
+</blockquote>
+<h3 id="3-generate-the-test-harness"><a class="header" href="#3-generate-the-test-harness">3. Generate the test harness</a></h3>
+<p>Let's generate the default test harness with the following:</p>
+<pre><code class="language-console">cargo generate --init fuellabs/sway templates/sway-test-rs --name my-fuel-project
+</code></pre>
+<p>If all goes well, the output should look as follows:</p>
+<pre><code class="language-console">⚠️   Favorite `fuellabs/sway` not found in config, using it as a git repository: https://github.com/fuellabs/sway
+🤷   Project Name : my-fuel-project
+🔧   Destination: /home/user/path/to/my-fuel-project ...
+🔧   Generating template ...
+[1/3]   Done: Cargo.toml
+[2/3]   Done: tests/harness.rs
+[3/3]   Done: tests
+🔧   Moving generated files into: `/home/user/path/to/my-fuel-project`...
+✨   Done! New project created /home/user/path/to/my-fuel-project
+</code></pre>
+<p>Let's have a look at the result:</p>
+<pre><code class="language-console">$ tree .
 ├── Cargo.toml
 ├── Forc.toml
 ├── src
@@ -2756,9 +2793,75 @@ $ tree .
 └── tests
     └── harness.rs
 </code></pre>
-<p>Note that this is also a Rust package, hence the existence of a <code>Cargo.toml</code> (Rust manifest file) in the project root directory. The <code>Cargo.toml</code> in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our <a href="https://fuellabs.github.io/fuels-rs/latest">Rust SDK</a>, (<code>fuels-rs</code>).</p>
-<p>These tests can be run using <code>forc test</code> which will look for Rust tests under the <code>tests/</code> directory (created automatically with <code>forc new</code> and prepopulated with boilerplate code).</p>
-<p>For example, let's write tests against the following contract, written in Sway. This can be done in the pregenerated <code>src/main.sw</code> or in a new file in <code>src</code>. In the case of the latter, update the <code>entry</code> field in <code>Forc.toml</code> to point at the new contract.</p>
+<p>We have two new files!</p>
+<ul>
+<li>The <code>Cargo.toml</code> is the manifest for our new test harness and specifies the
+required dependencies including <code>fuels</code> the Fuel Rust SDK.</li>
+<li>The <code>tests/harness.rs</code> contains some boilerplate test code to get us started,
+though doesn't call any contract methods just yet.</li>
+</ul>
+<h3 id="4-build-the-forc-project"><a class="header" href="#4-build-the-forc-project">4. Build the forc project</a></h3>
+<p>Before running the tests, we need to build our contract so that the necessary
+ABI, storage and bytecode artifacts are available. We can do so with <code>forc build</code>:</p>
+<pre><code class="language-console">$ forc build
+  Creating a new `Forc.lock` file. (Cause: lock file did not exist)
+    Adding core
+    Adding std git+https://github.com/fuellabs/sway?tag=v0.24.5#e695606d8884a18664f6231681333a784e623bc9
+   Created new lock file at /home/user/path/to/my-fuel-project/Forc.lock
+  Compiled library &quot;core&quot;.
+  Compiled library &quot;std&quot;.
+  Compiled contract &quot;my-fuel-project&quot;.
+  Bytecode size is 60 bytes.
+</code></pre>
+<p>At this point, our project should look like the following:</p>
+<pre><code class="language-console">$ tree
+├── Cargo.toml
+├── Forc.lock
+├── Forc.toml
+├── out
+│   └── debug
+│       ├── my-fuel-project-abi.json
+│       ├── my-fuel-project.bin
+│       └── my-fuel-project-storage_slots.json
+├── src
+│   └── main.sw
+└── tests
+    └── harness.rs
+</code></pre>
+<p>We now have an <code>out</code> directory with our required JSON files!</p>
+<blockquote>
+<p><em><strong>Note</strong>: This step may no longer be required in the future as we plan to
+enable the integration testing to automatically build the artifacts as
+necessary so that files like the ABI JSON are always up to date.</em></p>
+</blockquote>
+<h3 id="5-build-and-run-the-tests"><a class="header" href="#5-build-and-run-the-tests">5. Build and run the tests</a></h3>
+<p>Now we're ready to build and run the default integration test.</p>
+<pre><code class="language-console">$ cargo test
+    Updating crates.io index
+   Compiling version_check v0.9.4
+   Compiling proc-macro2 v1.0.46
+   Compiling quote v1.0.21
+   ...
+   Compiling fuels v0.24.0
+   Compiling my-fuel-project v0.1.0 (/home/user/path/to/my-fuel-project)
+    Finished test [unoptimized + debuginfo] target(s) in 1m 03s
+     Running tests/harness.rs (target/debug/deps/integration_tests-373971ac377845f7)
+
+running 1 test
+test can_get_contract_id ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+</code></pre>
+<blockquote>
+<p><em><strong>Note</strong>: The first time we run <code>cargo test</code>, cargo will spend some time
+fetching and building the dependencies for Fuel's Rust SDK. This might take a
+while, but only the first time!</em></p>
+</blockquote>
+<p>If all went well, we should see some output that looks like the above!</p>
+<h2 id="writing-tests"><a class="header" href="#writing-tests">Writing Tests</a></h2>
+<p>Now that we've learned how to setup Rust integration testing in our project,
+let's try to write some of our own tests!</p>
+<p>First, let's update our contract code with a simple counter example:</p>
 <pre><code class="language-sway">contract;
 
 abi TestContract {
@@ -2788,7 +2891,9 @@ impl TestContract for Contract {
     }
 }
 </code></pre>
-<p>Our <code>tests/harness.rs</code> file could look like:</p>
+<p>To test our <code>initialize_counter</code> and <code>increment_counter</code> contract methods from
+the Rust test harness, we could update our <code>tests/harness.rs</code> file with the
+following:</p>
 <!--TODO add test here once examples are tested-->
 <pre><code class="language-rust ignore">use fuels::{prelude::*, tx::ContractId};
 
@@ -2819,13 +2924,13 @@ async fn get_contract_instance() -&gt; (TestContract, ContractId) {
     .await
     .unwrap();
 
-    let instance = TestContractBuilder::new(id.to_string(), wallet).build();
+    let instance = TestContract::new(id.to_string(), wallet);
 
     (instance, id.into())
 }
 
 #[tokio::test]
-async fn can_get_contract_id() {
+async fn initialize_and_increment() {
     let (contract_instance, _id) = get_contract_instance().await;
     // Now you have an instance of your contract you can use to test each function
 
@@ -2847,14 +2952,24 @@ async fn can_get_contract_id() {
     assert_eq!(52, result.value);
 }
 </code></pre>
-<p>Then, in the root of our project, running <code>forc test</code> will run the test above, compiling and deploying the contract to a local Fuel network, and calling the ABI methods against the contract deployed in there:</p>
-<pre><code class="language-console">$ forc test
-...
-running 1 test
-test can_get_contract_id ... ok
-
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+<p>Let's build our project once more and run the test:</p>
+<pre><code class="language-console">forc build
 </code></pre>
+<pre><code class="language-console">$ cargo test
+   Compiling my-fuel-project v0.1.0 (/home/mindtree/programming/sway/my-fuel-project)
+    Finished test [unoptimized + debuginfo] target(s) in 11.61s
+     Running tests/harness.rs (target/debug/deps/integration_tests-373971ac377845f7)
+
+running 1 test
+test initialize_and_increment ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.25s
+</code></pre>
+<p>When cargo runs our test, our test uses the SDK to spin up a local in-memory
+Fuel network, deploy our contract to it, and call the contract methods via the
+ABI.</p>
+<p>You can add as many functions decorated with <code>#[tokio::test]</code> as you like, and
+<code>cargo test</code> will automatically test each of them!</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="application-frontend-development"><a class="header" href="#application-frontend-development">Application Frontend Development</a></h1>
 <ul>
 <li><a href="frontend/./typescript_sdk.html">TypeScript SDK</a></li>
@@ -3334,8 +3449,7 @@ it will only try to use previously downloaded dependencies</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-clean"><a class="header" href="#forc-clean">forc-clean</a></h1>
-<p>Removes the default forc compiler output artifact directory, i.e. <code>&lt;project-name&gt;/out</code>. Also calls
-<code>cargo clean</code> which removes the <code>target</code> directory generated by <code>cargo</code> when running tests</p>
+<p>Removes the default forc compiler output artifact directory, i.e. <code>&lt;project-name&gt;/out</code></p>
 <h2 id="usage-3"><a class="header" href="#usage-3">USAGE:</a></h2>
 <p>forc clean [OPTIONS]</p>
 <h2 id="options-3"><a class="header" href="#options-3">OPTIONS:</a></h2>
@@ -3475,20 +3589,17 @@ creates a basic contract program</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output<!-- markdownlint-disable MD041 --></p>
 <h2 id="example-3"><a class="header" href="#example-3">EXAMPLE</a></h2>
-<pre><code class="language-console">$ forc init my-fuel-project
+<pre><code class="language-console">$ mkdir my-fuel-project
 $ cd my-fuel-project
+$ forc init
 $ tree
 .
-├── Cargo.toml
 ├── Forc.toml
-├── src
-│   └── main.sw
-└── tests
-    └── harness.rs
+└── src
+    └── main.sw
 </code></pre>
-<p><code>Forc.toml</code> is the Forc manifest file, containing information about the project and dependencies. <code>Cargo.toml</code> is the Rust project manifest file, used by the Rust-based tests package.</p>
+<p><code>Forc.toml</code> is the Forc manifest file, containing information about the project and dependencies.</p>
 <p>A <code>src/</code> directory is created, with a single <code>main.sw</code> Sway file in it.</p>
-<p>A <code>tests/</code> directory is also created. The <code>Cargo.toml</code> in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our Rust SDK (<code>fuels-rs</code>). More on this in the <code>Test</code> section down below.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-new"><a class="header" href="#forc-new">forc-new</a></h1>
 <p>Create a new Forc project at <code>&lt;path&gt;</code></p>
 <h2 id="usage-6"><a class="header" href="#usage-6">USAGE:</a></h2>
@@ -3521,16 +3632,12 @@ creates a basic contract program</p>
 $ cd my-fuel-project
 $ tree
 .
-├── Cargo.toml
 ├── Forc.toml
-├── src
-│   └── main.sw
-└── tests
-    └── harness.rs
+└── src
+    └── main.sw
 </code></pre>
-<p><code>Forc.toml</code> is the Forc manifest file, containing information about the project and dependencies. <code>Cargo.toml</code> is the Rust project manifest file, used by the Rust-based tests package.</p>
+<p><code>Forc.toml</code> is the Forc manifest file, containing information about the project and dependencies.</p>
 <p>A <code>src/</code> directory is created, with a single <code>main.sw</code> Sway file in it.</p>
-<p>A <code>tests/</code> directory is also created. The <code>Cargo.toml</code> in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our Rust SDK (<code>fuels-rs</code>). More on this in the <code>Test</code> section down below.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-parse-bytecode"><a class="header" href="#forc-parse-bytecode">forc-parse-bytecode</a></h1>
 <p>Parse bytecode file into a debug format</p>
 <h2 id="usage-7"><a class="header" href="#usage-7">USAGE:</a></h2>
@@ -3588,28 +3695,26 @@ forc build -o obj
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-test"><a class="header" href="#forc-test">forc-test</a></h1>
-<p>Run Rust-based tests on current project. As of now, <code>forc test</code> is a simple wrapper on <code>cargo test</code>;
-<code>forc new</code> also creates a rust package under your project, named <code>tests</code>. You can opt to either run
-these Rust tests by using <code>forc test</code> or going inside the package and using <code>cargo test</code></p>
+<p>Run the Sway unit tests for the current project.</p>
+<p>NOTE: This feature is not yet implemented. Track progress at the following link:
+https://github.com/FuelLabs/sway/issues/1832</p>
+<p>NOTE: Previously this command was used to support Rust integration testing, however the provided
+behaviour served no benefit over running <code>cargo test</code> directly. The proposal to change the behaviour
+to support unit testing can be found at the following link:
+https://github.com/FuelLabs/sway/issues/1833</p>
+<p>Sway unit tests are functions decorated with the <code>#[test_script]</code> attribute. Each test is compiled
+as an independent <code>script</code> program and has access to the namespace of the module in which it is
+declared. Unit tests declared within <code>contract</code> projects may also call directly into their
+associated contract's ABI.</p>
+<p>Upon successful compilation, test scripts are executed to their completion. A test is considered a
+failure in the case that a revert (<code>rvrt</code>) instruction is encountered during execution. Otherwise,
+it is considered a success.</p>
 <h2 id="usage-9"><a class="header" href="#usage-9">USAGE:</a></h2>
-<p>forc test [OPTIONS] [TEST_NAME] [-- &lt;CARGO_TEST_ARGS&gt;...]</p>
+<p>forc test [OPTIONS] [FILTER]</p>
 <h2 id="args-2"><a class="header" href="#args-2">ARGS:</a></h2>
-<p>&lt;<em>TEST_NAME</em>&gt;
-If specified, only run tests containing this string in their names</p>
-<p>&lt;<em>CARGO_TEST_ARGS</em>&gt;</p>
-<p>..
-All trailing arguments following <code>--</code> are collected within this argument.</p>
-<p>E.g. Given the following:</p>
-<p><code>forc test -- foo bar baz</code></p>
-<p>The arguments <code>foo</code>, <code>bar</code> and <code>baz</code> are forwarded on to <code>cargo test</code> like so:</p>
-<p><code>cargo test -- foo bar baz</code></p>
+<p>&lt;<em>FILTER</em>&gt;
+When specified, only tests containing the given string will be executed</p>
 <h2 id="options-9"><a class="header" href="#options-9">OPTIONS:</a></h2>
-<p><code>--cargo-test-opts</code> &lt;<em>CARGO_TEST_OPTS</em>&gt;</p>
-<p>Options passed through to the <code>cargo test</code> invocation.</p>
-<p>E.g. Given the following:</p>
-<p><code>forc test --cargo-test-opts=&quot;--color always&quot;</code></p>
-<p>The <code>--color always</code> option is forwarded to <code>cargo test</code> like so:</p>
-<p><code>cargo test --color always</code></p>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
 <p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
@@ -3617,10 +3722,7 @@ All trailing arguments following <code>--</code> are collected within this argum
 <p><code>-s</code>, <code>--silent</code> </p>
 <p>Silence all output</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
-<p>Use verbose output<!-- markdownlint-disable MD041 --></p>
-<h2 id="example-6"><a class="header" href="#example-6">EXAMPLE</a></h2>
-<p>You can write tests in Rust using our <a href="https://github.com/FuelLabs/fuels-rs">Rust SDK</a>. These tests can be run using <code>forc test</code>, which will look for Rust tests under the <code>tests/</code> directory (which is created automatically with <code>forc new</code>).</p>
-<p>You can find an example under the <a href="forc/commands/../../testing/testing-with-rust.html">Testing with Rust</a> section.</p>
+<p>Use verbose output</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-update"><a class="header" href="#forc-update">forc-update</a></h1>
 <p>Update dependencies in the Forc dependencies directory</p>
 <h2 id="usage-10"><a class="header" href="#usage-10">USAGE:</a></h2>
@@ -3664,7 +3766,7 @@ will be used</p>
 <p>The template url, should be a git repo [default: https://github.com/fuellabs/sway]</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output<!-- markdownlint-disable MD041 --></p>
-<h2 id="example-7"><a class="header" href="#example-7">EXAMPLE</a></h2>
+<h2 id="example-6"><a class="header" href="#example-6">EXAMPLE</a></h2>
 <pre><code class="language-sh">forc template --url https://github.com/owner/template/ --project_name my_example_project
 </code></pre>
 <p>The command above fetches the <code>HEAD</code> of the <code>template</code> repo and searches for <code>Forc.toml</code> at the root of the fetched repo. It will fetch the repo and prepare a new <code>Forc.toml</code> with the new project name. Outputs everything to <code>current_dir/project_name</code>.</p>
@@ -3798,7 +3900,7 @@ overrides network url in manifest file (if there is one)</p>
 <p>Do not sign the transaction</p>
 <p><code>-V</code>, <code>--version</code> </p>
 <p>Print version information<!-- markdownlint-disable MD041 --></p>
-<h2 id="example-8"><a class="header" href="#example-8">EXAMPLE</a></h2>
+<h2 id="example-7"><a class="header" href="#example-7">EXAMPLE</a></h2>
 <p>You can use <code>forc deploy</code>, which triggers a contract deployment transaction and sends it to a running node.</p>
 <p>Alternatively, you can deploy your Sway contract programmatically using <a href="https://github.com/FuelLabs/fuels-rs">fuels-rs</a>, our Rust SDK.</p>
 <p>You can find an example within our <a href="https://fuellabs.github.io/fuels-rs/latest/getting-started/basics.html#deploying-a-sway-contract">fuels-rs book</a>.</p>

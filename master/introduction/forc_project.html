@@ -144,12 +144,9 @@
 <p>Here is the project that Forc has initialized:</p>
 <pre><code class="language-console">$ cd my-fuel-project
 $ tree .
-├── Cargo.toml
 ├── Forc.toml
-├── src
-│   └── main.sw
-└── tests
-    └── harness.rs
+└── src
+    └── main.sw
 </code></pre>
 <p><code>Forc.toml</code> is the <em>manifest file</em> (similar to <code>Cargo.toml</code> for Cargo or <code>package.json</code> for Node), and defines project metadata such as the project name and dependencies.</p>
 <p>For additional information on dependency management, see: <a href="../forc/dependencies.html">here</a>.</p>
@@ -198,14 +195,6 @@ data_0 .word 559005003
   Compiled contract &quot;my-fuel-project&quot;.
   Bytecode size is 60 bytes.
 </code></pre>
-<p>To test this contract, use <code>forc test</code>:</p>
-<pre><code class="language-console">$ forc test
-running 1 test
-test can_get_contract_id ... ok
-
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
-</code></pre>
-<p>The <code>forc test</code> command tests the contract using the Rust SDK test harness that lives under <code>tests/</code>. The default test harness <code>harness.rs</code> contains boilerplate code to get you started but doesn't actually call any contract methods. For additional information on testing contracts using the Rust SDK, refer to the <a href="../testing/testing-with-rust.html">Testing with Rust</a> section.</p>
 
                     </main>
 

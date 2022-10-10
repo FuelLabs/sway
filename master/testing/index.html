@@ -138,7 +138,14 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="testing"><a class="header" href="#testing">Testing</a></h1>
-<p>Testing your Sway contracts can be done with the Rust SDK.</p>
+<p>Sway aims to provide facilities for both unit testing and integration testing.</p>
+<p><strong>Unit testing</strong> refers to &quot;in-language&quot; testing which can be triggered via the
+<code>forc test</code> command. Sway unit testing is currently a high-priority
+work-in-progress, you can follow along at <a href="https://github.com/FuelLabs/sway/issues/1832">this
+issue</a>.</p>
+<p><strong>Integration testing</strong> refers to the testing of your Sway project's integration
+within some wider application. You can add integration testing to your Sway+Rust
+projects today using the cargo generate template and Rust SDK.</p>
 <ul>
 <li><a href="./testing-with-rust.html">Testing with Rust</a></li>
 </ul>
