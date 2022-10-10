@@ -86,7 +86,10 @@ impl ErrorContext {
     }
 }
 
-pub fn convert_parse_tree(module: Module) -> CompileResult<(TreeType, ParseTree)> {
+pub fn convert_parse_tree(
+    module: Module,
+    include_test_fns: bool,
+) -> CompileResult<(TreeType, ParseTree)> {
     let mut ec = ErrorContext {
         warnings: Vec::new(),
         errors: Vec::new(),
@@ -97,7 +100,7 @@ pub fn convert_parse_tree(module: Module) -> CompileResult<(TreeType, ParseTree)
         ModuleKind::Predicate { .. } => TreeType::Predicate,
         ModuleKind::Library { ref name, .. } => TreeType::Library { name: name.clone() },
     };
-    let res = module_to_sway_parse_tree(&mut ec, module);
+    let res = module_to_sway_parse_tree(&mut ec, module, include_test_fns);
     let ErrorContext { warnings, errors } = ec;
     match res {
         Ok(parse_tree) => ok((tree_type, parse_tree), warnings, errors),
@@ -108,6 +111,7 @@ pub fn convert_parse_tree(module: Module) -> CompileResult<(TreeType, ParseTree)
 pub fn module_to_sway_parse_tree(
     ec: &mut ErrorContext,
     module: Module,
+    include_test_fns: bool,
 ) -> Result<ParseTree, ErrorEmitted> {
     let span = module.span();
     let root_nodes = {
@@ -124,12 +128,24 @@ pub fn module_to_sway_parse_tree(
                 .collect()
         };
         for item in module.items {
-            let ast_nodes = item_to_ast_nodes(ec, item)?;
+            let mut ast_nodes = item_to_ast_nodes(ec, item)?;
+            if !include_test_fns {
+                ast_nodes.retain(|node| !ast_node_is_test_fn(node));
+            }
             root_nodes.extend(ast_nodes);
         }
         root_nodes
     };
     Ok(ParseTree { span, root_nodes })
+}
+
+fn ast_node_is_test_fn(node: &AstNode) -> bool {
+    if let AstNodeContent::Declaration(Declaration::FunctionDeclaration(ref decl)) = node.content {
+        if decl.attributes.contains_key(&AttributeKind::Test) {
+            return true;
+        }
+    }
+    false
 }
 
 fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, ErrorEmitted> {
@@ -1927,7 +1943,21 @@ fn statement_to_ast_nodes(
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
     let ast_nodes = match statement {
         Statement::Let(statement_let) => statement_let_to_ast_nodes(ec, statement_let)?,
-        Statement::Item(item) => item_to_ast_nodes(ec, item)?,
+        Statement::Item(item) => {
+            let nodes = item_to_ast_nodes(ec, item)?;
+            let mut err = None;
+            for node in &nodes {
+                if ast_node_is_test_fn(node) {
+                    let span = node.span.clone();
+                    let error = ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span };
+                    err = Some(ec.error(error));
+                }
+            }
+            if let Some(err) = err {
+                return Err(err);
+            }
+            nodes
+        }
         Statement::Expr { expr, .. } => vec![expr_to_ast_node(ec, expr, true)?],
     };
     Ok(ast_nodes)
