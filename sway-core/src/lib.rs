@@ -55,17 +55,12 @@ use transform::to_parsed_lang;
 /// # Panics
 /// Panics if the parser panics.
 pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<parsed::ParseProgram> {
-    // Omit tests by default so that a test that fails to typecheck doesn't block the rest of the
-    // program (similar behaviour to rust). Later, we'll add a flag for including tests on
-    // invocations of `forc test` or `forc check --tests`. See #1832.
-    let include_test_fns = false;
-
     CompileResult::with_handler(|h| match config {
-        None => parse_in_memory(h, input, include_test_fns),
+        None => parse_in_memory(h, input),
         // When a `BuildConfig` is given,
         // the module source may declare `dep`s that must be parsed from other files.
         Some(config) => {
-            parse_module_tree(h, input, config.canonical_root_module(), include_test_fns)
+            parse_module_tree(h, input, config.canonical_root_module(), config.include_tests)
                 .map(|(kind, root)| parsed::ParseProgram { kind, root })
         }
     })
@@ -75,8 +70,11 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<par
 fn parse_in_memory(
     handler: &Handler,
     src: Arc<str>,
-    include_test_fns: bool,
 ) -> Result<parsed::ParseProgram, ErrorEmitted> {
+    // Omit tests by default so that a test that fails to typecheck doesn't block the rest of the
+    // program (similar behaviour to rust). To include test functions, specify the `include_tests`
+    // flag in the `BuildConfig` passed to `parse`.
+    let include_test_fns = false;
     let module = sway_parse::parse_file(handler, src, None)?;
     let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, module, include_test_fns)?;
     let submodules = Default::default();
