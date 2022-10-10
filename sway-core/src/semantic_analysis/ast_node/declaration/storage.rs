@@ -3,9 +3,10 @@ use crate::{
     ir_generation::{
         const_eval::compile_constant_expression_to_constant, storage::serialize_to_storage_slots,
     },
+    language::ty,
     metadata::MetadataManager,
     semantic_analysis::{
-        TyExpression, TyStructField, TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor,
+        TyStructField, TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor,
     },
     type_system::{look_up_type_id, TypeId, TypeInfo},
     AttributesMap, Ident,
@@ -188,7 +189,7 @@ pub struct TyStorageField {
     pub name: Ident,
     pub type_id: TypeId,
     pub type_span: Span,
-    pub initializer: TyExpression,
+    pub initializer: ty::TyExpression,
     pub(crate) span: Span,
     pub attributes: AttributesMap,
 }

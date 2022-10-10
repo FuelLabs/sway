@@ -1,10 +1,15 @@
-use crate::{error::*, language::parsed::*, semantic_analysis::*, type_system::*};
+use crate::{
+    error::*,
+    language::{parsed::*, ty},
+    semantic_analysis::*,
+    type_system::*,
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Spanned};
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
-/// [TyExpression].
+/// [ty::TyExpression].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
     ctx: TypeCheckContext,
@@ -12,7 +17,7 @@ pub(crate) fn instantiate_enum(
     enum_name: Ident,
     enum_variant_name: Ident,
     args: Vec<Expression>,
-) -> CompileResult<TyExpression> {
+) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -30,9 +35,9 @@ pub(crate) fn instantiate_enum(
 
     match (&args[..], look_up_type_id(enum_variant.type_id)) {
         ([], ty) if ty.is_unit() => ok(
-            TyExpression {
+            ty::TyExpression {
                 return_type: enum_decl.create_type_id(),
-                expression: TyExpressionVariant::EnumInstantiation {
+                expression: ty::TyExpressionVariant::EnumInstantiation {
                     tag: enum_variant.tag,
                     contents: None,
                     enum_decl,
@@ -51,7 +56,7 @@ pub(crate) fn instantiate_enum(
                 .with_help_text("Enum instantiator must match its declared variant type.")
                 .with_type_annotation(enum_variant.type_id);
             let typed_expr = check!(
-                TyExpression::type_check(ctx, single_expr.clone()),
+                ty::TyExpression::type_check(ctx, single_expr.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -61,9 +66,9 @@ pub(crate) fn instantiate_enum(
             // check
 
             ok(
-                TyExpression {
+                ty::TyExpression {
                     return_type: enum_decl.create_type_id(),
-                    expression: TyExpressionVariant::EnumInstantiation {
+                    expression: ty::TyExpressionVariant::EnumInstantiation {
                         tag: enum_variant.tag,
                         contents: Some(Box::new(typed_expr)),
                         enum_decl,

@@ -7,19 +7,17 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
-    language::parsed::Expression,
+    language::{parsed::Expression, ty},
     semantic_analysis::TypeCheckContext,
     type_system::*,
     types::DeterministicallyAborts,
     CompileResult,
 };
 
-use super::TyExpression;
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct TyIntrinsicFunctionKind {
     pub kind: Intrinsic,
-    pub arguments: Vec<TyExpression>,
+    pub arguments: Vec<ty::TyExpression>,
     pub type_arguments: Vec<TypeArgument>,
     pub span: Span,
 }
@@ -113,7 +111,7 @@ impl TyIntrinsicFunctionKind {
                     .with_help_text("")
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let exp = check!(
-                    TyExpression::type_check(ctx, arguments[0].clone()),
+                    ty::TyExpression::type_check(ctx, arguments[0].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -244,7 +242,7 @@ impl TyIntrinsicFunctionKind {
 
                 let lhs = arguments[0].clone();
                 let lhs = check!(
-                    TyExpression::type_check(ctx.by_ref(), lhs),
+                    ty::TyExpression::type_check(ctx.by_ref(), lhs),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -276,7 +274,7 @@ impl TyIntrinsicFunctionKind {
                     .with_help_text("Incorrect argument type")
                     .with_type_annotation(lhs.return_type);
                 let rhs = check!(
-                    TyExpression::type_check(ctx, rhs),
+                    ty::TyExpression::type_check(ctx, rhs),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -315,7 +313,7 @@ impl TyIntrinsicFunctionKind {
                     .by_ref()
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let index = check!(
-                    TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
+                    ty::TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -326,7 +324,7 @@ impl TyIntrinsicFunctionKind {
                     .by_ref()
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let tx_field_id = check!(
-                    TyExpression::type_check(ctx.by_ref(), arguments[1].clone()),
+                    ty::TyExpression::type_check(ctx.by_ref(), arguments[1].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -422,7 +420,7 @@ impl TyIntrinsicFunctionKind {
                     .with_help_text("")
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let exp = check!(
-                    TyExpression::type_check(ctx, arguments[0].clone()),
+                    ty::TyExpression::type_check(ctx, arguments[0].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -468,7 +466,7 @@ impl TyIntrinsicFunctionKind {
                     .with_help_text("")
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let exp = check!(
-                    TyExpression::type_check(ctx, arguments[0].clone()),
+                    ty::TyExpression::type_check(ctx, arguments[0].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -521,7 +519,7 @@ impl TyIntrinsicFunctionKind {
                     .with_help_text("")
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let key_exp = check!(
-                    TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
+                    ty::TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -548,7 +546,7 @@ impl TyIntrinsicFunctionKind {
                     .with_help_text("")
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let val_exp = check!(
-                    TyExpression::type_check(ctx.by_ref(), arguments[1].clone()),
+                    ty::TyExpression::type_check(ctx.by_ref(), arguments[1].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -606,7 +604,7 @@ impl TyIntrinsicFunctionKind {
                     .with_help_text("")
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let exp = check!(
-                    TyExpression::type_check(ctx, arguments[0].clone()),
+                    ty::TyExpression::type_check(ctx, arguments[0].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -644,7 +642,7 @@ impl TyIntrinsicFunctionKind {
 
                 let lhs = arguments[0].clone();
                 let lhs = check!(
-                    TyExpression::type_check(ctx.by_ref(), lhs),
+                    ty::TyExpression::type_check(ctx.by_ref(), lhs),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -675,7 +673,7 @@ impl TyIntrinsicFunctionKind {
                     .with_help_text("Incorrect argument type")
                     .with_type_annotation(lhs.return_type);
                 let rhs = check!(
-                    TyExpression::type_check(ctx, rhs),
+                    ty::TyExpression::type_check(ctx, rhs),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -714,7 +712,7 @@ impl TyIntrinsicFunctionKind {
                     .by_ref()
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 let revert_code = check!(
-                    TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
+                    ty::TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
