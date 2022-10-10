@@ -1,4 +1,4 @@
-use crate::priv_prelude::*;
+use crate::{priv_prelude::*, PathExprSegment};
 
 pub mod asm;
 pub mod op_code;
@@ -50,7 +50,7 @@ pub enum Expr {
     MethodCall {
         target: Box<Expr>,
         dot_token: DotToken,
-        name: Ident,
+        path_seg: PathExprSegment,
         contract_args_opt: Option<Braces<Punctuated<ExprStructField, CommaToken>>>,
         args: Parens<Punctuated<Expr, CommaToken>>,
     },

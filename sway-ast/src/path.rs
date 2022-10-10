@@ -24,7 +24,7 @@ impl Spanned for PathExpr {
             None => self.prefix.span(),
         };
         let end = match self.suffix.last() {
-            Some((_double_colon_token, path_expr_segment)) => path_expr_segment.span(),
+            Some((_, path_expr_segment)) => path_expr_segment.span(),
             None => self.prefix.span(),
         };
         Span::join(start, end)
@@ -51,7 +51,7 @@ impl Spanned for PathExprSegment {
             None => self.name.span(),
         };
         let end = match &self.generics_opt {
-            Some((_double_colon_token, generic_args)) => generic_args.span(),
+            Some((_, generic_args)) => generic_args.span(),
             None => self.name.span(),
         };
         Span::join(start, end)
@@ -75,7 +75,7 @@ impl Spanned for PathType {
             None => self.prefix.span(),
         };
         let end = match self.suffix.last() {
-            Some((_double_colon_token, path_type_segment)) => path_type_segment.span(),
+            Some((_, path_type_segment)) => path_type_segment.span(),
             None => self.prefix.span(),
         };
         Span::join(start, end)
@@ -96,7 +96,7 @@ impl Spanned for PathTypeSegment {
             None => self.name.span(),
         };
         let end = match &self.generics_opt {
-            Some((_double_colon_token, generic_args)) => generic_args.span(),
+            Some((_, generic_args)) => generic_args.span(),
             None => self.name.span(),
         };
         Span::join(start, end)

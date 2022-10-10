@@ -16,10 +16,10 @@ use sway_ast::punctuated::Punctuated;
 use sway_ast::token::Delimiter;
 use sway_ast::{
     AbiCastArgs, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField,
-    ExprTupleDescriptor, IfCondition, IfExpr, LitInt, Literal, MatchBranch, MatchBranchKind,
-    Statement, StatementLet,
+    ExprTupleDescriptor, GenericArgs, IfCondition, IfExpr, LitInt, Literal, MatchBranch,
+    MatchBranchKind, PathExprSegment, Statement, StatementLet,
 };
-use sway_types::{Ident, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 mod asm;
 pub mod op_code;
@@ -495,36 +495,36 @@ fn parse_projection(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr>
             let target = Box::new(expr);
 
             // Try parsing a field access or a method call.
-            if let Some(name) = parser.take() {
+            if let Some(path_seg) = parser.guarded_parse::<Ident, PathExprSegment>()? {
                 if !ctx.parsing_conditional {
                     if let Some(contract_args) = Braces::try_parse(parser)? {
-                        let contract_args_opt = Some(contract_args);
-                        let args = Parens::parse(parser)?;
                         expr = Expr::MethodCall {
                             target,
                             dot_token,
-                            name,
-                            contract_args_opt,
-                            args,
+                            path_seg,
+                            contract_args_opt: Some(contract_args),
+                            args: Parens::parse(parser)?,
                         };
                         continue;
                     }
                 }
                 if let Some(args) = Parens::try_parse(parser)? {
-                    let contract_args_opt = None;
                     expr = Expr::MethodCall {
                         target,
                         dot_token,
-                        name,
-                        contract_args_opt,
+                        path_seg,
+                        contract_args_opt: None,
                         args,
                     };
                     continue;
                 }
+
+                // No arguments, so this is a field projection.
+                ensure_field_projection_no_generics(parser, &path_seg.generics_opt);
                 expr = Expr::FieldProjection {
                     target,
                     dot_token,
-                    name,
+                    name: path_seg.name,
                 };
                 continue;
             }
@@ -566,6 +566,17 @@ fn parse_projection(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr>
             return Ok(Expr::Error([target.span(), dot_token.span()].into()));
         }
         return Ok(expr);
+    }
+}
+
+/// Ensure we don't have `foo.bar::<...>` where `bar` isn't a method call.
+fn ensure_field_projection_no_generics(
+    parser: &mut Parser,
+    generic_args: &Option<(DoubleColonToken, GenericArgs)>,
+) {
+    if let Some((dct, generic_args)) = generic_args {
+        let span = Span::join(dct.span(), generic_args.span());
+        parser.emit_error_with_span(ParseErrorKind::FieldProjectionWithGenericArgs, span);
     }
 }
 
