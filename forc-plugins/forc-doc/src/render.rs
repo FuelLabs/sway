@@ -58,10 +58,37 @@ pub(crate) fn header(module: String, desc_ty: String, desc_name: String) -> Box<
 /// HTML body component
 pub(crate) fn body(module: String, desc_ty: String, desc_name: String) -> Box<dyn RenderBox> {
     box_html! {
+        // TODO: match on ty and make this dynamic
+        // e.g. an enum will have variants but a trait will not
+        //
+        // if matching doesn't work we will have to make a separate
+        // body fn for each ty
         body(class=format!("forc-doc {desc_ty}")) {
             // TODO: create nav sidebar
             // create main
             // create main content
+
+            // this is the main code block
+            div(class="docblock item-decl") {
+                pre(class=format!("sway {desc_ty}")) {
+                    code {
+                        // code goes here
+                    }
+                }
+            }
+            // expand or hide description of main code block
+            details(class="forcdoc-toggle top-doc", open) {
+                summary(class="hideme") {
+                    span("Expand description")
+                }
+                // this is the description
+                div(class="docblock") {
+                    p {
+                        // description goes here
+                    }
+                }
+            }
+
         }
     }
 }
