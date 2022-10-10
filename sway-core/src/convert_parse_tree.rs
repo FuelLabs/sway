@@ -1945,17 +1945,15 @@ fn statement_to_ast_nodes(
         Statement::Let(statement_let) => statement_let_to_ast_nodes(ec, statement_let)?,
         Statement::Item(item) => {
             let nodes = item_to_ast_nodes(ec, item)?;
-            let mut err = None;
-            for node in &nodes {
+            nodes.iter().fold(Ok(()), |res, node| {
                 if ast_node_is_test_fn(node) {
                     let span = node.span.clone();
                     let error = ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span };
-                    err = Some(ec.error(error));
+                    Err(ec.error(error))
+                } else {
+                    res
                 }
-            }
-            if let Some(err) = err {
-                return Err(err);
-            }
+            })?;
             nodes
         }
         Statement::Expr { expr, .. } => vec![expr_to_ast_node(ec, expr, true)?],
