@@ -1,3 +1,4 @@
 category = "compile"
 
 # not: $()Unknown attribute: "test".
+# not: $()This function is never called.
