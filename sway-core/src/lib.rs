@@ -204,7 +204,6 @@ pub enum BytecodeOrLib {
 pub fn parsed_to_ast(
     parse_program: &parsed::ParseProgram,
     initial_namespace: namespace::Module,
-    generate_logged_types: bool,
 ) -> CompileResult<TyProgram> {
     // Type check the program.
     let CompileResult {
@@ -230,15 +229,12 @@ pub fn parsed_to_ast(
         None => return deduped_err(warnings, errors),
     };
 
-    // Collect all the types of logged values. These are required when generating the JSON ABI.
-    if generate_logged_types {
-        typed_program
-            .logged_types
-            .extend(types_metadata.iter().filter_map(|m| match m {
-                TypeMetadata::LoggedType(type_id) => Some(*type_id),
-                _ => None,
-            }));
-    }
+    typed_program
+        .logged_types
+        .extend(types_metadata.iter().filter_map(|m| match m {
+            TypeMetadata::LoggedType(type_id) => Some(*type_id),
+            _ => None,
+        }));
 
     // Perform control flow analysis and extend with any errors.
     let cfa_res = perform_control_flow_analysis(&typed_program);
@@ -305,8 +301,7 @@ pub fn compile_to_ast(
     };
 
     // Type check (+ other static analysis) the CST to a typed AST.
-    let generate_logged_types = build_config.map_or(false, |bc| bc.generate_logged_types);
-    let typed_res = parsed_to_ast(&parse_program, initial_namespace, generate_logged_types);
+    let typed_res = parsed_to_ast(&parse_program, initial_namespace);
     errors.extend(typed_res.errors);
     warnings.extend(typed_res.warnings);
     let typed_program = match typed_res.value {
