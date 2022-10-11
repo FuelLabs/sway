@@ -1,6 +1,5 @@
 use super::{
-    storage_only_types, TyAstNode, TyAstNodeContent, TyFunctionDeclaration, TyImplTrait,
-    TyStorageDeclaration,
+    storage_only_types, TyAstNode, TyAstNodeContent, TyFunctionDeclaration, TyStorageDeclaration,
 };
 use crate::{
     declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait, de_get_storage},
@@ -111,7 +110,7 @@ impl TyProgram {
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself.
                 TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)) => {
-                    let TyImplTrait {
+                    let ty::TyImplTrait {
                         methods,
                         implementing_for_type_id,
                         ..

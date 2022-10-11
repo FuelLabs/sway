@@ -8,8 +8,8 @@ use crate::{
             TyFunctionDeclaration, TyStructDeclaration, TyStructExpressionField,
             TyTraitDeclaration, TyVariableDeclaration, VariableMutability,
         },
-        TyAsmRegisterDeclaration, TyAstNode, TyAstNodeContent, TyImplTrait,
-        TyIntrinsicFunctionKind, TyStorageDeclaration,
+        TyAsmRegisterDeclaration, TyAstNode, TyAstNodeContent, TyIntrinsicFunctionKind,
+        TyStorageDeclaration,
     },
     type_system::{to_typeinfo, TypeInfo},
 };
@@ -355,7 +355,7 @@ fn connect_declaration(
             Ok(leaves.to_vec())
         }
         ImplTrait(decl_id) => {
-            let TyImplTrait {
+            let ty::TyImplTrait {
                 trait_name,
                 methods,
                 ..
@@ -1282,7 +1282,7 @@ fn construct_dead_code_warning_from_node(node: &TyAstNode) -> Option<CompileWarn
             content: TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)),
             span,
         } => match de_get_impl_trait(decl_id.clone(), span) {
-            Ok(TyImplTrait { methods, .. }) if methods.is_empty() => return None,
+            Ok(ty::TyImplTrait { methods, .. }) if methods.is_empty() => return None,
             _ => CompileWarning {
                 span: span.clone(),
                 warning_content: Warning::DeadDeclaration,

@@ -355,7 +355,7 @@ impl TyAstNode {
                         }
                         Declaration::ImplTrait(impl_trait) => {
                             let (impl_trait, implementing_for_type_id) = check!(
-                                TyImplTrait::type_check_impl_trait(ctx.by_ref(), impl_trait),
+                                ty::TyImplTrait::type_check_impl_trait(ctx.by_ref(), impl_trait),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -369,7 +369,7 @@ impl TyAstNode {
                         }
                         Declaration::ImplSelf(impl_self) => {
                             let impl_trait = check!(
-                                TyImplTrait::type_check_impl_self(ctx.by_ref(), impl_self),
+                                ty::TyImplTrait::type_check_impl_self(ctx.by_ref(), impl_self),
                                 return err(warnings, errors),
                                 warnings,
                                 errors

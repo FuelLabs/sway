@@ -10,7 +10,7 @@ use sway_core::{
     semantic_analysis::ast_node::{
         code_block::TyCodeBlock,
         expression::TyIntrinsicFunctionKind,
-        ProjectionKind, TyFunctionDeclaration, TyFunctionParameter, TyImplTrait, TyTraitFn,
+        ProjectionKind, TyFunctionDeclaration, TyFunctionParameter, TyTraitFn,
         {TyAstNode, TyAstNodeContent},
     },
 };
@@ -134,7 +134,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
             }
         }
         ty::TyDeclaration::ImplTrait(decl_id) => {
-            if let Ok(TyImplTrait {
+            if let Ok(ty::TyImplTrait {
                 trait_name,
                 methods,
                 implementing_for_type_id,
