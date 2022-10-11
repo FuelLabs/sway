@@ -4,14 +4,14 @@ use sway_types::{Ident, Spanned};
 use crate::{
     declaration_engine::declaration_engine::de_get_trait,
     error::{err, ok},
+    language::{parsed::*, CallPath, Visibility},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
         Mode, TyCodeBlock, TypeCheckContext,
     },
     style::is_upper_camel_case,
     type_system::{insert_type, CopyTypes, TypeMapping},
-    CallPath, CompileError, CompileResult, FunctionDeclaration, Namespace, Supertrait,
-    TraitDeclaration, TyDeclaration, TyFunctionDeclaration, TypeInfo, Visibility,
+    CompileError, CompileResult, Namespace, TyDeclaration, TyFunctionDeclaration, TypeInfo,
 };
 
 use super::{EnforceTypeArguments, TyFunctionParameter, TyTraitFn};
@@ -167,7 +167,8 @@ fn handle_supertraits(
                 span: supertrait.name.span().clone(),
             }),
             _ => errors.push(CompileError::TraitNotFound {
-                name: supertrait.name.clone(),
+                name: supertrait.name.to_string(),
+                span: supertrait.name.span(),
             }),
         }
     }
@@ -224,6 +225,7 @@ fn convert_trait_methods_to_dummy_funcs(
             name: name.clone(),
             body: TyCodeBlock { contents: vec![] },
             parameters: typed_parameters,
+            attributes: method.attributes.clone(),
             span: name.span(),
             return_type,
             initial_return_type,

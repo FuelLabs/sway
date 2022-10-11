@@ -1,6 +1,7 @@
 use crate::{
+    language::CallPath,
     type_system::{look_up_type_id, CopyTypes, TypeId},
-    CallPath, TyFunctionDeclaration, TypeInfo, TypeMapping,
+    TyFunctionDeclaration, TypeInfo, TypeMapping,
 };
 
 type TraitName = CallPath;

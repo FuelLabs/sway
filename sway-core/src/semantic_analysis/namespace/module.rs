@@ -1,12 +1,12 @@
 use crate::{
     error::*,
-    parse_tree::{Declaration, ExpressionKind, Visibility},
+    language::{parsed::*, Visibility},
     semantic_analysis::{
         ast_node::{TyAstNode, TyAstNodeContent, TyVariableDeclaration},
         declaration::VariableMutability,
         TypeCheckContext,
     },
-    AstNode, AstNodeContent, CompileResult, Ident, Namespace, TyDeclaration,
+    CompileResult, Ident, Namespace, TyDeclaration,
 };
 
 use super::{
@@ -17,7 +17,9 @@ use super::{
 
 use std::collections::BTreeMap;
 use sway_ast::ItemConst;
-use sway_parse::{handler::Handler, lex, Parser};
+use sway_error::error::CompileError;
+use sway_error::handler::Handler;
+use sway_parse::{lex, Parser};
 use sway_types::{span::Span, ConfigTimeConstant, Spanned};
 
 /// A single `Module` within a Sway project.
@@ -74,12 +76,13 @@ impl Module {
         let mut errors = vec![];
         // this for loop performs a miniature compilation of each const item in the config
         for (name, ConfigTimeConstant { r#type, value }) in constants.into_iter() {
+            // FIXME(Centril): Stop parsing. Construct AST directly instead!
             // parser config
             let const_item = format!("const {name}: {type} = {value};");
             let const_item_len = const_item.len();
             let input_arc = std::sync::Arc::from(const_item);
             let handler = Handler::default();
-            let token_stream = lex(&input_arc, 0, const_item_len, None).unwrap();
+            let token_stream = lex(&handler, &input_arc, 0, const_item_len, None).unwrap();
             let mut parser = Parser::new(&handler, &token_stream);
             // perform the parse
             let const_item: ItemConst = match parser.parse() {
@@ -96,7 +99,7 @@ impl Module {
 
             // perform the conversions from parser code to parse tree types
             let name = const_item.name.clone();
-            let attributes = std::collections::HashMap::new();
+            let attributes = Default::default();
             // convert to const decl
             let const_decl = match crate::convert_parse_tree::item_const_to_constant_declaration(
                 ec, const_item, attributes,

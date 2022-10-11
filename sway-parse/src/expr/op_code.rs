@@ -1,6 +1,7 @@
-use crate::{ParseErrorKind, ParseResult, Parser};
+use crate::{ParseResult, Parser};
 
 use sway_ast::expr::op_code::*;
+use sway_error::parser_error::ParseErrorKind;
 use sway_types::{Ident, Spanned};
 
 macro_rules! define_op_codes (

@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()invalid character
+# check: $()Mismatched types.

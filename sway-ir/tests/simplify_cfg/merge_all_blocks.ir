@@ -2,36 +2,31 @@
 
 script {
     fn main() -> bool {
-        entry:
+        entry():
 // check: const u64 11
         v0 = const u64 11
         v1 = const u64 0
         v2 = cmp eq v0 v1
 // not: br
-        br block0
+        br block0(v2)
 
-        block0:
-// not: phi(entry: v2)
-        v3 = phi(entry: v2)
+        block0(v3: bool):
 // check: const u64 22
         v4 = const u64 22
         v5 = cmp eq v4 v1
 // not: br
-        br block1
+        br block1(v5)
 
 // not: block1:
-        block1:
-// not: phi(block0: v5)
-        v6 = phi(block0: v5)
+        block1(v6: bool):
 // check: const u64 33
         v7 = const u64 33
         v8 = cmp eq v7 v1
 // not: br
-        br block2
+        br block2(v8)
 
-        block2:
+        block2(v9: bool):
 // not: phi(block1: v8)
-        v9 = phi(block1: v8)
         ret bool v9
     }
 }

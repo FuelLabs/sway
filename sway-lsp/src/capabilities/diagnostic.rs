@@ -1,20 +1,22 @@
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
-use sway_core::{error::LineCol, CompileError, CompileWarning};
+use sway_core::CompileWarning;
+use sway_error::error::CompileError;
+use sway_types::{LineCol, Spanned};
 
 pub fn get_diagnostics(
     warnings: Vec<CompileWarning>,
     errors: Vec<FailedToCompile>,
 ) -> Vec<Diagnostic> {
     let errors = errors.iter().map(|error| Diagnostic {
-        range: get_range(error.line_col()),
+        range: get_range(error.span().line_col()),
         severity: Some(DiagnosticSeverity::ERROR),
         message: format!("{}", error),
         ..Default::default()
     });
 
     let warnings = warnings.iter().map(|warning| Diagnostic {
-        range: get_range(warning.line_col()),
+        range: get_range(warning.span().line_col()),
         severity: Some(DiagnosticSeverity::WARNING),
         message: warning.to_friendly_warning_string(),
         ..Default::default()

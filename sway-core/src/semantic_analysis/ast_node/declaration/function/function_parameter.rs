@@ -1,13 +1,15 @@
 use crate::{
     error::{err, ok},
+    language::parsed::FunctionParameter,
     semantic_analysis::{
         convert_to_variable_immutability, IsConstant, TyExpression, TyExpressionVariant,
         TyVariableDeclaration, TypeCheckContext, VariableMutability,
     },
     type_system::*,
-    CompileError, CompileResult, FunctionParameter, Ident, Namespace, TyDeclaration,
+    CompileResult, Ident, Namespace, TyDeclaration,
 };
 
+use sway_error::error::CompileError;
 use sway_types::{span::Span, Spanned};
 
 #[derive(Debug, Clone, Eq)]

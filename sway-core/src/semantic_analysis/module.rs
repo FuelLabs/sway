@@ -1,8 +1,9 @@
 use crate::{
-    declaration_engine::declaration_engine::*, error::*, parse_tree::*, semantic_analysis::*,
+    declaration_engine::declaration_engine::*, error::*, language::parsed::*, semantic_analysis::*,
     type_system::*,
 };
 
+use sway_error::error::CompileError;
 use sway_types::{Ident, Spanned};
 
 #[derive(Clone, Debug)]
@@ -186,12 +187,12 @@ fn check_supertraits(typed_tree_nodes: &[TyAstNode], namespace: &Namespace) -> V
                         // but we don't have a way today to point to two separate locations in the
                         // user code with a single error.
                         errors.push(CompileError::SupertraitImplMissing {
-                            supertrait_name: supertrait.name.clone(),
+                            supertrait_name: supertrait.name.to_string(),
                             type_name: implementing_for_type_id.to_string(),
                             span: span.clone(),
                         });
                         errors.push(CompileError::SupertraitImplRequired {
-                            supertrait_name: supertrait.name.clone(),
+                            supertrait_name: supertrait.name.to_string(),
                             trait_name: tr.name.clone(),
                             span: tr.name.span().clone(),
                         });

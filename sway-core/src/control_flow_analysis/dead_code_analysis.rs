@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     declaration_engine::declaration_engine::*,
-    parse_tree::{CallPath, Visibility},
+    language::{parsed::TreeType, CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
             TyAbiDeclaration, TyCodeBlock, TyConstantDeclaration, TyDeclaration, TyEnumDeclaration,
@@ -12,11 +12,12 @@ use crate::{
         TyIntrinsicFunctionKind, TyStorageDeclaration,
     },
     type_system::{to_typeinfo, TypeInfo},
-    CompileError, CompileWarning, Ident, TreeType, Warning,
+    CompileWarning, Warning,
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::BTreeSet;
-use sway_types::{span::Span, Spanned};
+use sway_error::error::CompileError;
+use sway_types::{span::Span, Ident, Spanned};
 
 impl ControlFlowGraph {
     pub(crate) fn find_dead_code(&self) -> Vec<CompileWarning> {

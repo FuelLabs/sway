@@ -1,4 +1,4 @@
-use sway_core::TreeType;
+use sway_core::language::parsed::TreeType;
 use tower_lsp::lsp_types::Range;
 
 #[derive(Debug, Eq, PartialEq, Hash)]

@@ -18,7 +18,7 @@ use std::{
     path::PathBuf,
     sync::{Arc, LockResult, RwLock},
 };
-use sway_core::{CompileResult, ParseProgram, TyProgram, TyProgramKind};
+use sway_core::{language::parsed::ParseProgram, CompileResult, TyProgram, TyProgramKind};
 use sway_types::{Ident, Spanned};
 use swayfmt::Formatter;
 use tower_lsp::lsp_types::{
@@ -147,7 +147,7 @@ impl Session {
         let locked = false;
         let offline = false;
 
-        let manifest = pkg::ManifestFile::from_dir(&manifest_dir).map_err(|_| {
+        let manifest = pkg::PackageManifestFile::from_dir(&manifest_dir).map_err(|_| {
             DocumentError::ManifestFileNotFound {
                 dir: uri.path().into(),
             }
@@ -169,6 +169,7 @@ impl Session {
             None => (None, None),
             Some((pp, tp)) => (Some(pp), tp),
         };
+
         // First, populate our token_map with un-typed ast nodes.
         let parsed_res = CompileResult::new(parsed, warnings.clone(), errors.clone());
         let _ = self.parse_ast_to_tokens(parsed_res);

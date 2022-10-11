@@ -1419,7 +1419,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1448,7 +1448,7 @@ dependencies = [
 
 [[package]]
 name = "forc-client"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "anyhow",
  "clap 3.2.22",
@@ -1474,7 +1474,7 @@ dependencies = [
 
 [[package]]
 name = "forc-explore"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "anyhow",
  "clap 3.2.22",
@@ -1489,7 +1489,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "anyhow",
  "clap 3.2.22",
@@ -1504,7 +1504,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "anyhow",
  "clap 3.2.22",
@@ -1514,19 +1514,21 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "anyhow",
  "forc-util",
  "fuel-crypto",
  "fuel-tx 0.18.0",
  "git2",
+ "hex",
  "petgraph",
  "semver 1.0.14",
  "serde",
  "serde_ignored",
  "serde_json",
  "sway-core",
+ "sway-error",
  "sway-types",
  "sway-utils",
  "toml",
@@ -1538,13 +1540,14 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
  "anyhow",
  "dirs 3.0.2",
  "sway-core",
+ "sway-error",
  "sway-types",
  "sway-utils",
  "tracing",
@@ -3829,6 +3832,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "serial_test"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92761393ee4dc3ff8f4af487bd58f4307c9329bbedea02cac0089ad9c411e153"
+dependencies = [
+ "dashmap",
+ "futures",
+ "lazy_static",
+ "log",
+ "parking_lot 0.12.1",
+ "serial_test_derive",
+]
+
+[[package]]
+name = "serial_test_derive"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b6f5d1c3087fb119617cff2966fe3808a80e5eb59a8c1601d5994d66f4346a5"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "sha-1"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4177,7 +4206,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ast"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -4187,7 +4216,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "clap 3.2.22",
  "derivative",
@@ -4208,6 +4237,7 @@ dependencies = [
  "sha2 0.9.9",
  "smallvec",
  "sway-ast",
+ "sway-error",
  "sway-ir",
  "sway-parse",
  "sway-types",
@@ -4219,20 +4249,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "sway-error"
+version = "0.25.2"
+dependencies = [
+ "extension-trait",
+ "num-bigint",
+ "num-traits",
+ "sway-ast",
+ "sway-types",
+ "thiserror",
+]
+
+[[package]]
 name = "sway-ir"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "anyhow",
  "filecheck",
  "generational-arena",
  "peg",
+ "rustc-hash",
  "sway-ir-macros",
  "sway-types",
 ]
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "itertools",
  "proc-macro2",
@@ -4242,7 +4285,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4253,7 +4296,9 @@ dependencies = [
  "ropey",
  "serde",
  "serde_json",
+ "serial_test",
  "sway-core",
+ "sway-error",
  "sway-types",
  "sway-utils",
  "swayfmt",
@@ -4266,7 +4311,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -4274,6 +4319,7 @@ dependencies = [
  "num-traits",
  "phf",
  "sway-ast",
+ "sway-error",
  "sway-types",
  "thiserror",
  "unicode-xid",
@@ -4281,7 +4327,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "fuel-asm 0.8.0",
  "fuel-crypto",
@@ -4292,11 +4338,11 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.25.1"
+version = "0.25.2"
 
 [[package]]
 name = "swayfmt"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "anyhow",
  "forc-util",
@@ -4307,6 +4353,7 @@ dependencies = [
  "serde_ignored",
  "sway-ast",
  "sway-core",
+ "sway-error",
  "sway-parse",
  "sway-types",
  "thiserror",

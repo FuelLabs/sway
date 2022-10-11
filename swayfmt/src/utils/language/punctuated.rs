@@ -35,14 +35,12 @@ where
                 }
                 LineStyle::Inline => {
                     write!(formatted_code, " ")?;
-                    let mut value_pairs_iter = self.value_separator_pairs.iter().peekable();
+                    let value_pairs_iter = self.value_separator_pairs.iter();
                     for (type_field, punctuation) in value_pairs_iter.clone() {
                         type_field.format(formatted_code, formatter)?;
                         punctuation.format(formatted_code, formatter)?;
 
-                        if value_pairs_iter.peek().is_some() {
-                            write!(formatted_code, " ")?;
-                        }
+                        write!(formatted_code, " ")?;
                     }
                     if let Some(final_value) = &self.final_value_opt {
                         final_value.format(formatted_code, formatter)?;
@@ -54,7 +52,7 @@ where
                 }
                 LineStyle::Multiline => {
                     writeln!(formatted_code)?;
-                    let mut value_pairs_iter = self.value_separator_pairs.iter().peekable();
+                    let value_pairs_iter = self.value_separator_pairs.iter();
                     for (type_field, comma_token) in value_pairs_iter.clone() {
                         write!(
                             formatted_code,
@@ -63,10 +61,8 @@ where
                         )?;
                         type_field.format(formatted_code, formatter)?;
 
-                        if value_pairs_iter.peek().is_some() {
-                            comma_token.format(formatted_code, formatter)?;
-                            writeln!(formatted_code)?;
-                        }
+                        comma_token.format(formatted_code, formatter)?;
+                        writeln!(formatted_code)?;
                     }
                     if let Some(final_value) = &self.final_value_opt {
                         write!(

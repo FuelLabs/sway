@@ -1,13 +1,16 @@
 use dashmap::DashMap;
 use sway_core::{
+    language::parsed::{
+        Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
+        ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
+        TraitFn,
+    },
     semantic_analysis::ast_node::{
         expression::typed_expression::TyExpression, TyDeclaration, TyEnumVariant,
         TyFunctionDeclaration, TyFunctionParameter, TyReassignment, TyStorageField,
         TyStorageReassignDescriptor, TyStructField, TyTraitFn,
     },
     type_system::TypeId,
-    Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
-    ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField, TraitFn,
 };
 use sway_types::{Ident, Span};
 

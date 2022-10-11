@@ -1,6 +1,6 @@
 script {
     fn main() -> u64 {
-        entry:
+        entry():
         v0 = asm(r1) -> u64 r1 {
             bhei   r1
         }

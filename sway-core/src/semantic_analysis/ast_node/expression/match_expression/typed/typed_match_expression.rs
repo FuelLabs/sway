@@ -2,6 +2,7 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
+    language::{parsed::*, *},
     semantic_analysis::{
         ast_node::expression::typed_expression::{
             instantiate_if_expression, instantiate_lazy_operator,
@@ -9,7 +10,7 @@ use crate::{
         IsConstant, TyExpression, TyExpressionVariant, TypeCheckContext,
     },
     type_system::{insert_type, TypeId},
-    CompileError, CompileResult, LazyOp, Literal, MatchBranch, TypeInfo,
+    CompileError, CompileResult, TypeInfo,
 };
 
 use super::{typed_match_branch::TyMatchBranch, typed_scrutinee::TyScrutinee};
