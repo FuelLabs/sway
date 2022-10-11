@@ -33,13 +33,12 @@ use std::fmt::Debug;
 
 #[test]
 fn generic_enum_resolution() {
-    use crate::semantic_analysis::ast_node::TyEnumVariant;
-    use crate::{span::Span, Ident};
+    use crate::{span::Span, Ident, language::ty};
     let engine = TypeEngine::default();
 
     let sp = Span::dummy();
 
-    let variant_types = vec![TyEnumVariant {
+    let variant_types = vec![ty::TyEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
         tag: 0,
         type_id: engine.insert_type(TypeInfo::UnknownGeneric {
@@ -58,7 +57,7 @@ fn generic_enum_resolution() {
         type_parameters: vec![],
     });
 
-    let variant_types = vec![TyEnumVariant {
+    let variant_types = vec![ty::TyEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
         tag: 0,
         type_id: engine.insert_type(TypeInfo::Boolean),

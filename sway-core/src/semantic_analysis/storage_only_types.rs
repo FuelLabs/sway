@@ -6,7 +6,7 @@ use crate::{
     error::*,
     language::ty,
     semantic_analysis::{
-        TyAstNodeContent, TyCodeBlock, TyConstantDeclaration, TyEnumDeclaration,
+        TyAstNodeContent, TyCodeBlock, TyConstantDeclaration,
         TyFunctionDeclaration, TyImplTrait, TyIntrinsicFunctionKind, TyReassignment,
         TyStorageDeclaration, TyStructDeclaration,
     },
@@ -259,7 +259,7 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
             }
         }
         ty::TyDeclaration::EnumDeclaration(decl_id) => {
-            let TyEnumDeclaration { variants, .. } = check!(
+            let ty::TyEnumDeclaration { variants, .. } = check!(
                 CompileResult::from(de_get_enum(decl_id.clone(), &decl.span())),
                 return err(warnings, errors),
                 warnings,

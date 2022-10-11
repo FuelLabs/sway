@@ -5,11 +5,12 @@ use sway_types::Span;
 
 use crate::{
     semantic_analysis::{
-        TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyImplTrait,
+        TyAbiDeclaration, TyConstantDeclaration, TyImplTrait,
         TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
     },
     type_system::{CopyTypes, TypeMapping},
     TyFunctionDeclaration,
+    language::ty,
 };
 
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]
@@ -26,7 +27,7 @@ pub(crate) enum DeclarationWrapper {
     Storage(TyStorageDeclaration),
     Abi(TyAbiDeclaration),
     Constant(Box<TyConstantDeclaration>),
-    Enum(TyEnumDeclaration),
+    Enum(ty::TyEnumDeclaration),
 }
 
 impl Default for DeclarationWrapper {
@@ -214,7 +215,7 @@ impl DeclarationWrapper {
         }
     }
 
-    pub(super) fn expect_enum(self, span: &Span) -> Result<TyEnumDeclaration, CompileError> {
+    pub(super) fn expect_enum(self, span: &Span) -> Result<ty::TyEnumDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Enum(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(

@@ -1,9 +1,10 @@
 use crate::{
     semantic_analysis::{
-        ProjectionKind, TyEnumVariant, TyStorageReassignDescriptor,
+        ProjectionKind, TyStorageReassignDescriptor,
         TypeCheckedStorageAccessDescriptor,
     },
     type_system::{to_typeinfo, TypeId, TypeInfo},
+    language::ty,
 };
 
 use super::convert::convert_resolved_typeid_no_span;
@@ -14,7 +15,7 @@ use sway_types::span::Spanned;
 
 pub(super) fn create_enum_aggregate(
     context: &mut Context,
-    variants: Vec<TyEnumVariant>,
+    variants: Vec<ty::TyEnumVariant>,
 ) -> Result<Aggregate, CompileError> {
     // Create the enum aggregate first.  NOTE: single variant enums don't need an aggregate but are
     // getting one here anyway.  They don't need to be a tagged union either.

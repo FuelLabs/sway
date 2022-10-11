@@ -3,7 +3,7 @@ use sway_types::Span;
 use crate::{
     language::{ty, Literal},
     semantic_analysis::{
-        ast_node::expression::match_expression::MatchReqMap, IsConstant, TyEnumVariant,
+        ast_node::expression::match_expression::MatchReqMap, IsConstant,
     },
     type_system::{insert_type, IntegerBits},
     TypeInfo,
@@ -11,7 +11,7 @@ use crate::{
 // currently the unsafe downcast expr is only used for enums, so this method is specialized for enums
 pub(crate) fn instantiate_unsafe_downcast(
     exp: &ty::TyExpression,
-    variant: TyEnumVariant,
+    variant: ty::TyEnumVariant,
     span: Span,
 ) -> (MatchReqMap, ty::TyExpression) {
     let match_req_map = vec![(

@@ -1134,7 +1134,7 @@ impl FnCompiler {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         exp: Box<ty::TyExpression>,
-        variant: TyEnumVariant,
+        variant: ty::TyEnumVariant,
     ) -> Result<Value, CompileError> {
         // retrieve the aggregate info for the enum
         let enum_aggregate = match convert_resolved_typeid(context, &exp.return_type, &exp.span)? {
@@ -1751,7 +1751,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        enum_decl: TyEnumDeclaration,
+        enum_decl: ty::TyEnumDeclaration,
         tag: usize,
         contents: Option<Box<ty::TyExpression>>,
     ) -> Result<Value, CompileError> {

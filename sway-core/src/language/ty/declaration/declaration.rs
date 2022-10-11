@@ -6,11 +6,12 @@ use crate::{
     declaration_engine::*,
     error::*,
     semantic_analysis::{
-        TyConstantDeclaration, TyEnumDeclaration, TyStructDeclaration, TyTraitDeclaration,
+        TyConstantDeclaration, TyStructDeclaration, TyTraitDeclaration,
         TyVariableDeclaration, VariableMutability,
     },
     type_system::*,
     TyFunctionDeclaration,
+    language::ty::*,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]

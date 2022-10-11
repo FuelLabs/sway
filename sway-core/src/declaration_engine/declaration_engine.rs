@@ -6,10 +6,11 @@ use sway_types::{Span, Spanned};
 use crate::{
     concurrent_slab::ConcurrentSlab,
     semantic_analysis::{
-        TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyImplTrait,
+        TyAbiDeclaration, TyConstantDeclaration, TyImplTrait,
         TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
     },
     TyFunctionDeclaration,
+    language::ty,
 };
 
 use super::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper};
@@ -220,7 +221,7 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_constant(span)
     }
 
-    fn insert_enum(&self, enum_decl: TyEnumDeclaration) -> DeclarationId {
+    fn insert_enum(&self, enum_decl: ty::TyEnumDeclaration) -> DeclarationId {
         let span = enum_decl.span();
         DeclarationId::new(self.slab.insert(DeclarationWrapper::Enum(enum_decl)), span)
     }
@@ -229,11 +230,11 @@ impl DeclarationEngine {
         &self,
         index: DeclarationId,
         span: &Span,
-    ) -> Result<TyEnumDeclaration, CompileError> {
+    ) -> Result<ty::TyEnumDeclaration, CompileError> {
         self.slab.get(*index).expect_enum(span)
     }
 
-    fn add_monomorphized_enum_copy(&self, original_id: DeclarationId, new_copy: TyEnumDeclaration) {
+    fn add_monomorphized_enum_copy(&self, original_id: DeclarationId, new_copy: ty::TyEnumDeclaration) {
         let span = new_copy.span();
         let new_id = DeclarationId::new(self.slab.insert(DeclarationWrapper::Enum(new_copy)), span);
         self.add_monomorphized_copy(original_id, new_id)
@@ -363,17 +364,17 @@ pub fn de_get_constant(
     DECLARATION_ENGINE.get_constant(index, span)
 }
 
-pub(crate) fn de_insert_enum(enum_decl: TyEnumDeclaration) -> DeclarationId {
+pub(crate) fn de_insert_enum(enum_decl: ty::TyEnumDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.insert_enum(enum_decl)
 }
 
-pub fn de_get_enum(index: DeclarationId, span: &Span) -> Result<TyEnumDeclaration, CompileError> {
+pub fn de_get_enum(index: DeclarationId, span: &Span) -> Result<ty::TyEnumDeclaration, CompileError> {
     DECLARATION_ENGINE.get_enum(index, span)
 }
 
 pub(crate) fn de_add_monomorphized_enum_copy(
     original_id: DeclarationId,
-    new_copy: TyEnumDeclaration,
+    new_copy: ty::TyEnumDeclaration,
 ) {
     DECLARATION_ENGINE.add_monomorphized_enum_copy(original_id, new_copy);
 }

@@ -4,7 +4,7 @@ use crate::{
     declaration_engine::de_get_constant,
     error::{err, ok},
     language::{parsed::*, ty, CallPath, Literal},
-    semantic_analysis::{TyEnumVariant, TypeCheckContext},
+    semantic_analysis::{TypeCheckContext},
     type_system::{insert_type, CreateTypeId, EnforceTypeArguments, TypeArgument, TypeId},
     CompileError, CompileResult, TypeInfo,
 };
@@ -26,7 +26,7 @@ pub(crate) enum TyScrutineeVariant {
     #[allow(dead_code)]
     EnumScrutinee {
         call_path: CallPath,
-        variant: TyEnumVariant,
+        variant: ty::TyEnumVariant,
         value: Box<TyScrutinee>,
     },
     Tuple(Vec<TyScrutinee>),
