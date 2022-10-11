@@ -620,6 +620,19 @@ fn instruction_to_doc<'a>(
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )),
+            Instruction::MemCopy {
+                dst_val,
+                src_val,
+                byte_len,
+            } => Doc::line(
+                Doc::text(format!(
+                    "mem_copy {}, {}, {}",
+                    namer.name(context, dst_val),
+                    namer.name(context, src_val),
+                    byte_len,
+                ))
+                .append(md_namer.md_idx_to_doc(context, metadata)),
+            ),
             Instruction::Nop => Doc::line(
                 Doc::text(format!("{} = nop", namer.name(context, ins_value)))
                     .append(md_namer.md_idx_to_doc(context, metadata)),

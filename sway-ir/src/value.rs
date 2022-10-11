@@ -12,6 +12,7 @@ use crate::{
     instruction::Instruction,
     irtype::Type,
     metadata::{combine, MetadataIndex},
+    pointer::Pointer,
     pretty::DebugWithContext,
     BlockArgument,
 };

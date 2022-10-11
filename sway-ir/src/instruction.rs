@@ -109,6 +109,12 @@ pub enum Instruction {
         log_ty: Type,
         log_id: Value,
     },
+    /// Copy a specified number of bytes between pointers.
+    MemCopy {
+        dst_val: Value,
+        src_val: Value,
+        byte_len: u64,
+    },
     /// No-op, handy as a placeholder instruction.
     Nop,
     /// Reads a special register in the VM.
@@ -234,6 +240,7 @@ impl Instruction {
             Instruction::Ret(..) => None,
             Instruction::Revert(..) => None,
 
+            Instruction::MemCopy { .. } => Some(Type::Unit),
             Instruction::StateLoadQuadWord { .. } => Some(Type::Unit),
             Instruction::StateStoreQuadWord { .. } => Some(Type::Unit),
             Instruction::StateStoreWord { .. } => Some(Type::Unit),
@@ -361,6 +368,7 @@ impl Instruction {
                 replace(log_val);
                 replace(log_id);
             }
+            Instruction::MemCopy { .. } => (),
             Instruction::Nop => (),
             Instruction::ReadRegister { .. } => (),
             Instruction::Ret(ret_val, _) => replace(ret_val),
@@ -392,6 +400,7 @@ impl Instruction {
                 | Instruction::Call(..)
                 | Instruction::ContractCall { .. }
                 | Instruction::Log { .. }
+                | Instruction::MemCopy { .. }
                 | Instruction::StateLoadQuadWord { .. }
                 | Instruction::StateStoreQuadWord { .. }
                 | Instruction::StateStoreWord { .. }
@@ -691,6 +700,17 @@ impl<'a> InstructionInserter<'a> {
                 log_val,
                 log_ty,
                 log_id
+            }
+        )
+    }
+
+    pub fn mem_copy(self, dst_val: Value, src_val: Value, byte_len: u64) -> Value {
+        make_instruction!(
+            self,
+            Instruction::MemCopy {
+                dst_val,
+                src_val,
+                byte_len
             }
         )
     }
