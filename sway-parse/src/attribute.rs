@@ -1,11 +1,12 @@
 use crate::priv_prelude::{Peek, Peeker};
-use crate::{Parse, ParseBracket, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsumed};
+use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::attribute::{Annotated, Attribute, AttributeDecl};
 use sway_ast::brackets::{Parens, SquareBrackets};
 use sway_ast::keywords::{HashToken, StorageToken, Token};
 use sway_ast::punctuated::Punctuated;
 use sway_ast::token::{DocComment, DocStyle};
+use sway_error::parser_error::ParseErrorKind;
 use sway_types::Ident;
 
 impl Peek for DocComment {

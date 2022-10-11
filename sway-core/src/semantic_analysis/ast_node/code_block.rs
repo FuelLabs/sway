@@ -1,12 +1,12 @@
 use super::*;
-use crate::CodeBlock;
+use crate::language::{parsed::CodeBlock, ty};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct TypedCodeBlock {
-    pub contents: Vec<TypedAstNode>,
+pub struct TyCodeBlock {
+    pub contents: Vec<TyAstNode>,
 }
 
-impl CopyTypes for TypedCodeBlock {
+impl CopyTypes for TyCodeBlock {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.contents
             .iter_mut()
@@ -14,13 +14,13 @@ impl CopyTypes for TypedCodeBlock {
     }
 }
 
-impl DeterministicallyAborts for TypedCodeBlock {
+impl DeterministicallyAborts for TyCodeBlock {
     fn deterministically_aborts(&self) -> bool {
         self.contents.iter().any(|x| x.deterministically_aborts())
     }
 }
 
-impl TypedCodeBlock {
+impl TyCodeBlock {
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
         code_block: CodeBlock,
@@ -35,9 +35,9 @@ impl TypedCodeBlock {
             .iter()
             .filter_map(|node| {
                 let ctx = ctx.by_ref().scoped(&mut code_block_namespace);
-                TypedAstNode::type_check(ctx, node.clone()).ok(&mut warnings, &mut errors)
+                TyAstNode::type_check(ctx, node.clone()).ok(&mut warnings, &mut errors)
             })
-            .collect::<Vec<TypedAstNode>>();
+            .collect::<Vec<TyAstNode>>();
 
         let implicit_return_span = code_block
             .contents
@@ -59,9 +59,9 @@ impl TypedCodeBlock {
                     Some(insert_type(TypeInfo::Unknown))
                 } else {
                     match node {
-                        TypedAstNode {
+                        TyAstNode {
                             content:
-                                TypedAstNodeContent::ImplicitReturnExpression(TypedExpression {
+                                TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
                                     ref return_type,
                                     ..
                                 }),
@@ -75,7 +75,7 @@ impl TypedCodeBlock {
 
         append!(ctx.unify_with_self(block_type, &span), warnings, errors);
 
-        let typed_code_block = TypedCodeBlock {
+        let typed_code_block = TyCodeBlock {
             contents: evaluated_contents,
         };
         ok((typed_code_block, block_type), warnings, errors)

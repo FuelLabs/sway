@@ -4,12 +4,12 @@ use std::iter::FromIterator;
 use crate::type_system::{TypeArgument, TypeParameter};
 use crate::{
     error::*,
-    parse_tree::*,
+    language::{parsed::*, CallPath},
     type_system::{look_up_type_id, AbiName, IntegerBits},
-    AstNode, AstNodeContent, CodeBlock, Declaration, Expression, IntrinsicFunctionExpression,
-    TypeInfo, WhileLoopExpression,
+    TypeInfo,
 };
 
+use sway_error::error::CompileError;
 use sway_types::Spanned;
 use sway_types::{ident::Ident, span::Span};
 
@@ -737,7 +737,6 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Tuple(fields) if fields.is_empty() => "unit",
         TypeInfo::Tuple(..) => "tuple",
         TypeInfo::SelfType => "self",
-        TypeInfo::Byte => "byte",
         TypeInfo::B256 => "b256",
         TypeInfo::Numeric => "numeric",
         TypeInfo::Contract => "contract",

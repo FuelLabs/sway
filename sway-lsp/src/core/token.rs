@@ -1,13 +1,18 @@
 use dashmap::DashMap;
 use sway_core::{
+    language::{
+        parsed::{
+            Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
+            ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
+            TraitFn,
+        },
+        ty,
+    },
     semantic_analysis::ast_node::{
-        expression::typed_expression::TypedExpression, TypeCheckedStorageReassignDescriptor,
-        TypedDeclaration, TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter,
-        TypedReassignment, TypedStorageField, TypedStructField, TypedTraitFn,
+        TyDeclaration, TyEnumVariant, TyFunctionDeclaration, TyFunctionParameter, TyReassignment,
+        TyStorageField, TyStorageReassignDescriptor, TyStructField, TyTraitFn,
     },
     type_system::TypeId,
-    Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
-    ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField, TraitFn,
 };
 use sway_types::{Ident, Span};
 
@@ -55,16 +60,16 @@ pub enum AstToken {
 
 #[derive(Debug, Clone)]
 pub enum TypedAstToken {
-    TypedDeclaration(TypedDeclaration),
-    TypedExpression(TypedExpression),
-    TypedFunctionDeclaration(TypedFunctionDeclaration),
-    TypedFunctionParameter(TypedFunctionParameter),
-    TypedStructField(TypedStructField),
-    TypedEnumVariant(TypedEnumVariant),
-    TypedTraitFn(TypedTraitFn),
-    TypedStorageField(TypedStorageField),
-    TypeCheckedStorageReassignDescriptor(TypeCheckedStorageReassignDescriptor),
-    TypedReassignment(TypedReassignment),
+    TypedDeclaration(TyDeclaration),
+    TypedExpression(ty::TyExpression),
+    TypedFunctionDeclaration(TyFunctionDeclaration),
+    TypedFunctionParameter(TyFunctionParameter),
+    TypedStructField(TyStructField),
+    TypedEnumVariant(TyEnumVariant),
+    TypedTraitFn(TyTraitFn),
+    TypedStorageField(TyStorageField),
+    TypeCheckedStorageReassignDescriptor(TyStorageReassignDescriptor),
+    TypedReassignment(TyReassignment),
 }
 
 #[derive(Debug, Clone)]

@@ -1,5 +1,6 @@
 use crate::{error::*, semantic_analysis::*, type_system::*};
 
+use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span::Span, JsonTypeDeclaration, Spanned};
 
 use std::{
@@ -78,7 +79,7 @@ impl TypeParameter {
         let type_id = insert_type(TypeInfo::UnknownGeneric {
             name: type_parameter.name_ident.clone(),
         });
-        let type_parameter_decl = TypedDeclaration::GenericTypeForFunctionScope {
+        let type_parameter_decl = TyDeclaration::GenericTypeForFunctionScope {
             name: type_parameter.name_ident.clone(),
             type_id,
         };

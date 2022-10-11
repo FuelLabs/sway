@@ -1,9 +1,10 @@
 use crate::{
     error::*,
+    language::{promote_purity, Purity},
     metadata::{MetadataManager, StorageOperation},
-    parse_tree::{promote_purity, Purity},
 };
 
+use sway_error::error::CompileError;
 use sway_ir::{Context, Function, Instruction};
 use sway_types::span::Span;
 

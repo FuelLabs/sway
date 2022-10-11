@@ -1,8 +1,9 @@
 use crate::keywords::RESERVED_KEYWORDS;
-use crate::{ParseErrorKind, ParseResult, Parser, ParserConsumed, Peeker};
+use crate::{ParseResult, Parser, ParserConsumed, Peeker};
 
 use sway_ast::token::Delimiter;
 use sway_ast::Intrinsic;
+use sway_error::parser_error::ParseErrorKind;
 use sway_types::{Ident, Spanned};
 
 pub trait Parse {

@@ -3,7 +3,7 @@ script {
         local ptr u64 n
         local ptr { u64, ( bool | u64 ) } thing
 
-        entry:
+        entry():
         v0 = const { u64, ( bool | u64 ) } { u64 undef, ( bool | u64 ) undef }
         v1 = const u64 0
         v2 = insert_value v0, { u64, ( bool | u64 ) }, v1, 0
@@ -15,22 +15,21 @@ script {
         v7 = extract_value v6, { u64, ( bool | u64 ) }, 0
         v8 = const u64 1
         v9 = cmp eq v7 v8
-        cbr v9, block0, block1
+        cbr v9, block0(), block1()
 
-        block0:
+        block0():
         v10 = extract_value v6, { u64, ( bool | u64 ) }, 1, 1
         v11 = get_ptr ptr u64 n, ptr u64, 0
         store v10, ptr v11
         v12 = get_ptr ptr u64 n, ptr u64, 0
         v13 = load ptr v12
-        br block2
+        br block2(v13)
 
-        block1:
+        block1():
         v14 = const u64 0
-        br block2
+        br block2(v14)
 
-        block2:
-        v15 = phi(block0: v13, block1: v14)
+        block2(v15: u64):
         ret u64 v15
     }
 }

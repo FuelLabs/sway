@@ -1,8 +1,7 @@
 use crate::{
     declaration_engine::declaration_engine::de_get_constant,
-    error::CompileError,
+    language::Visibility,
     metadata::MetadataManager,
-    parse_tree::Visibility,
     semantic_analysis::{ast_node::*, namespace},
     type_system::look_up_type_id,
 };
@@ -13,14 +12,15 @@ use super::{
     function::FnCompiler,
 };
 
+use sway_error::error::CompileError;
 use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::{span::Span, Spanned};
 
 pub(super) fn compile_script(
     context: &mut Context,
-    main_function: TypedFunctionDeclaration,
+    main_function: TyFunctionDeclaration,
     namespace: &namespace::Module,
-    declarations: Vec<TypedDeclaration>,
+    declarations: Vec<TyDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
@@ -34,9 +34,9 @@ pub(super) fn compile_script(
 
 pub(super) fn compile_contract(
     context: &mut Context,
-    abi_entries: Vec<TypedFunctionDeclaration>,
+    abi_entries: Vec<TyFunctionDeclaration>,
     namespace: &namespace::Module,
-    declarations: Vec<TypedDeclaration>,
+    declarations: Vec<TyDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
@@ -90,11 +90,11 @@ fn compile_declarations(
     md_mgr: &mut MetadataManager,
     module: Module,
     namespace: &namespace::Module,
-    declarations: Vec<TypedDeclaration>,
+    declarations: Vec<TyDeclaration>,
 ) -> Result<(), CompileError> {
     for declaration in declarations {
         match declaration {
-            TypedDeclaration::ConstantDeclaration(ref decl_id) => {
+            TyDeclaration::ConstantDeclaration(ref decl_id) => {
                 let decl = de_get_constant(decl_id.clone(), &declaration.span())?;
                 compile_const_decl(
                     &mut LookupEnv {
@@ -108,14 +108,14 @@ fn compile_declarations(
                 )?;
             }
 
-            TypedDeclaration::FunctionDeclaration(_decl) => {
+            TyDeclaration::FunctionDeclaration(_decl) => {
                 // We no longer compile functions other than `main()` until we can improve the name
                 // resolution.  Currently there isn't enough information in the AST to fully
                 // distinguish similarly named functions and especially trait methods.
                 //
                 //compile_function(context, module, decl).map(|_| ())?
             }
-            TypedDeclaration::ImplTrait(_) => {
+            TyDeclaration::ImplTrait(_) => {
                 // And for the same reason we don't need to compile impls at all.
                 //
                 // compile_impl(
@@ -126,14 +126,14 @@ fn compile_declarations(
                 //)?,
             }
 
-            TypedDeclaration::StructDeclaration(_)
-            | TypedDeclaration::EnumDeclaration(_)
-            | TypedDeclaration::TraitDeclaration(_)
-            | TypedDeclaration::VariableDeclaration(_)
-            | TypedDeclaration::AbiDeclaration(_)
-            | TypedDeclaration::GenericTypeForFunctionScope { .. }
-            | TypedDeclaration::StorageDeclaration(_)
-            | TypedDeclaration::ErrorRecovery => (),
+            TyDeclaration::StructDeclaration(_)
+            | TyDeclaration::EnumDeclaration(_)
+            | TyDeclaration::TraitDeclaration(_)
+            | TyDeclaration::VariableDeclaration(_)
+            | TyDeclaration::AbiDeclaration(_)
+            | TyDeclaration::GenericTypeForFunctionScope { .. }
+            | TyDeclaration::StorageDeclaration(_)
+            | TyDeclaration::ErrorRecovery => (),
         }
     }
     Ok(())
@@ -143,7 +143,7 @@ pub(super) fn compile_function(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: TypedFunctionDeclaration,
+    ast_fn_decl: TyFunctionDeclaration,
 ) -> Result<Option<Function>, CompileError> {
     // Currently monomorphisation of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
@@ -162,7 +162,7 @@ pub(super) fn compile_function(
 
 fn convert_fn_param(
     context: &mut Context,
-    param: &TypedFunctionParameter,
+    param: &TyFunctionParameter,
 ) -> Result<(String, Type, Span), CompileError> {
     convert_resolved_typeid(context, &param.type_id, &param.type_span).map(|ty| {
         (
@@ -181,11 +181,11 @@ fn compile_fn_with_args(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: TypedFunctionDeclaration,
+    ast_fn_decl: TyFunctionDeclaration,
     args: Vec<(String, Type, Span)>,
     selector: Option<[u8; 4]>,
 ) -> Result<Function, CompileError> {
-    let TypedFunctionDeclaration {
+    let TyFunctionDeclaration {
         name,
         body,
         return_type,
@@ -288,7 +288,7 @@ fn compile_abi_method(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: TypedFunctionDeclaration,
+    ast_fn_decl: TyFunctionDeclaration,
 ) -> Result<Function, CompileError> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let get_selector_result = ast_fn_decl.to_fn_selector_value();

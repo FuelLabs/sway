@@ -4,16 +4,22 @@ use crate::{
     utils::token::{desugared_op, to_ident_key, type_info_to_symbol_kind},
 };
 use sway_core::{
-    constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX},
-    parse_tree::{Literal, MethodName},
+    language::{
+        parsed::{
+            AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock,
+            Declaration, DelineatedPathExpression, Expression, ExpressionKind,
+            FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
+            IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
+            MethodApplicationExpression, MethodName, ReassignmentTarget, Scrutinee,
+            StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
+            TraitFn, TupleIndexExpression, WhileLoopExpression,
+        },
+        Literal,
+    },
     type_system::{TypeArgument, TypeParameter},
-    AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock, Declaration,
-    DelineatedPathExpression, Expression, ExpressionKind, FunctionApplicationExpression,
-    FunctionDeclaration, FunctionParameter, IfExpression, IntrinsicFunctionExpression,
-    LazyOperatorExpression, MatchExpression, MethodApplicationExpression, ReassignmentTarget,
-    Scrutinee, StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
-    TraitFn, TupleIndexExpression, TypeInfo, WhileLoopExpression,
+    TypeInfo,
 };
+use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX};
 use sway_types::{Ident, Span, Spanned};
 
 pub fn traverse_node(node: &AstNode, tokens: &TokenMap) {
@@ -610,7 +616,7 @@ fn literal_to_symbol_kind(value: &Literal) -> SymbolKind {
         | Literal::U64(..)
         | Literal::Numeric(..) => SymbolKind::NumericLiteral,
         Literal::String(..) => SymbolKind::StringLiteral,
-        Literal::Byte(..) | Literal::B256(..) => SymbolKind::ByteLiteral,
+        Literal::B256(..) => SymbolKind::ByteLiteral,
         Literal::Boolean(..) => SymbolKind::BoolLiteral,
     }
 }
@@ -706,7 +712,7 @@ fn collect_type_info_token(
     }
 
     match type_info {
-        TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::Byte | TypeInfo::B256 => {
+        TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::B256 => {
             if let Some(type_span) = type_span {
                 tokens.insert(to_ident_key(&Ident::new(type_span)), token);
             }

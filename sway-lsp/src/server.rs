@@ -34,16 +34,11 @@ impl Backend {
     }
 
     async fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
-        let curr_dir = std::env::current_dir().unwrap();
-
-        if let Some(path) = find_manifest_dir(&curr_dir) {
-            let files = get_sway_files(path);
-            for file_path in files {
-                if let Some(path) = file_path.to_str() {
-                    // store the document
-                    let text_document = TextDocument::build_from_path(path)?;
-                    self.session.store_document(text_document)?;
-                }
+        if let Some(path) = find_manifest_dir(&std::env::current_dir().unwrap()) {
+            // Store the documents.
+            for path in get_sway_files(path).iter().filter_map(|fp| fp.to_str()) {
+                self.session
+                    .store_document(TextDocument::build_from_path(path)?)?;
             }
         }
 
@@ -155,21 +150,20 @@ impl LanguageServer for Backend {
 
     // Document Handlers
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let uri = params.text_document.uri.clone();
-        self.session.handle_open_file(&uri);
-        self.parse_project(&uri).await;
+        let uri = &params.text_document.uri;
+        self.session.handle_open_file(uri);
+        self.parse_project(uri).await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let uri = params.text_document.uri.clone();
+        let uri = &params.text_document.uri;
         self.session
-            .update_text_document(&uri, params.content_changes);
-        self.parse_project(&uri).await;
+            .update_text_document(uri, params.content_changes);
+        self.parse_project(uri).await;
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        let uri = params.text_document.uri.clone();
-        self.parse_project(&uri).await;
+        self.parse_project(&params.text_document.uri).await;
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
@@ -371,35 +365,43 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use std::{env, fs, io::Read, path::PathBuf};
+    use std::{borrow::Cow, env, fs, io::Read, path::PathBuf};
     use tower::{Service, ServiceExt};
 
     use super::*;
-    use futures::stream::StreamExt;
-    use tower_lsp::jsonrpc::{self, Request, Response};
-    use tower_lsp::LspService;
+    use serial_test::serial;
+    use tower_lsp::{
+        jsonrpc::{self, Id, Request, Response},
+        ExitedError, LspService,
+    };
+
+    fn sway_workspace_dir() -> PathBuf {
+        env::current_dir().unwrap().parent().unwrap().to_path_buf()
+    }
+
+    fn e2e_language_dir() -> PathBuf {
+        PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass/language")
+    }
 
     #[allow(dead_code)]
     fn e2e_test_dir() -> PathBuf {
-        env::current_dir()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
+        sway_workspace_dir()
+            .join(e2e_language_dir())
             .join("struct_field_access")
     }
 
     #[allow(dead_code)]
     fn sway_example_dir() -> PathBuf {
-        env::current_dir()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("examples/storage_variables")
+        sway_workspace_dir().join("examples/storage_variables")
     }
 
-    fn load_sway_example() -> (Url, String) {
-        let manifest_dir = e2e_test_dir();
+    fn doc_comments_dir() -> PathBuf {
+        sway_workspace_dir()
+            .join(e2e_language_dir())
+            .join("doc_comments")
+    }
+
+    fn load_sway_example(manifest_dir: PathBuf) -> (Url, String) {
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();
@@ -410,17 +412,25 @@ mod tests {
         (uri, sway_program)
     }
 
+    fn build_request_with_id(
+        method: impl Into<Cow<'static, str>>,
+        params: serde_json::Value,
+        id: impl Into<Id>,
+    ) -> Request {
+        Request::build(method).params(params).id(id).finish()
+    }
+
+    async fn call_request(
+        service: &mut LspService<Backend>,
+        req: Request,
+    ) -> Result<Option<Response>, ExitedError> {
+        service.ready().await?.call(req).await
+    }
+
     async fn initialize_request(service: &mut LspService<Backend>) -> Request {
-        let initialize = Request::build("initialize")
-            .params(json!({ "capabilities": capabilities() }))
-            .id(1)
-            .finish();
-        let response = service
-            .ready()
-            .await
-            .unwrap()
-            .call(initialize.clone())
-            .await;
+        let params = json!({ "capabilities": capabilities() });
+        let initialize = build_request_with_id("initialize", params, 1);
+        let response = call_request(service, initialize.clone()).await;
         let ok = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
         assert_eq!(response, Ok(Some(ok)));
         initialize
@@ -428,13 +438,13 @@ mod tests {
 
     async fn initialized_notification(service: &mut LspService<Backend>) {
         let initialized = Request::build("initialized").finish();
-        let response = service.ready().await.unwrap().call(initialized).await;
+        let response = call_request(service, initialized).await;
         assert_eq!(response, Ok(None));
     }
 
     async fn shutdown_request(service: &mut LspService<Backend>) -> Request {
         let shutdown = Request::build("shutdown").id(1).finish();
-        let response = service.ready().await.unwrap().call(shutdown.clone()).await;
+        let response = call_request(service, shutdown.clone()).await;
         let ok = Response::from_ok(1.into(), json!(null));
         assert_eq!(response, Ok(Some(ok)));
         shutdown
@@ -442,30 +452,42 @@ mod tests {
 
     async fn exit_notification(service: &mut LspService<Backend>) {
         let exit = Request::build("exit").finish();
-        let response = service.ready().await.unwrap().call(exit.clone()).await;
+        let response = call_request(service, exit.clone()).await;
         assert_eq!(response, Ok(None));
     }
 
     async fn did_open_notification(service: &mut LspService<Backend>, uri: &Url, text: &str) {
-        let language_id = "sway";
         let params = json!({
             "textDocument": {
                 "uri": uri,
-                "languageId": language_id,
+                "languageId": "sway",
                 "version": 1,
                 "text": text,
             },
         });
+
         let did_open = Request::build("textDocument/didOpen")
             .params(params)
             .finish();
-        let response = service.ready().await.unwrap().call(did_open).await;
+        let response = call_request(service, did_open).await;
         assert_eq!(response, Ok(None));
+    }
+
+    async fn did_change_request(
+        service: &mut LspService<Backend>,
+        params: serde_json::value::Value,
+    ) -> Request {
+        let did_change = Request::build("textDocument/didChange")
+            .params(params)
+            .finish();
+        let response = call_request(service, did_change.clone()).await;
+        assert_eq!(response, Ok(None));
+        did_change
     }
 
     async fn did_close_notification(service: &mut LspService<Backend>) {
         let exit = Request::build("textDocument/didClose").finish();
-        let response = service.ready().await.unwrap().call(exit.clone()).await;
+        let response = call_request(service, exit.clone()).await;
         assert_eq!(response, Ok(None));
     }
 
@@ -476,180 +498,238 @@ mod tests {
             },
             "astKind": "typed",
         });
-        let show_ast = Request::build("sway/show_ast")
-            .params(params)
-            .id(1)
-            .finish();
-        let response = service.ready().await.unwrap().call(show_ast.clone()).await;
+        let show_ast = build_request_with_id("sway/show_ast", params, 1);
+        let response = call_request(service, show_ast.clone()).await;
         let ok = Response::from_ok(1.into(), json!({"uri": "file:///tmp/typed_ast.rs"}));
         assert_eq!(response, Ok(Some(ok)));
         show_ast
+    }
+
+    async fn semantic_tokens_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+        });
+        let semantic_tokens = build_request_with_id("textDocument/semanticTokens/full", params, 1);
+        let _response = call_request(service, semantic_tokens.clone()).await;
+        semantic_tokens
+    }
+
+    async fn document_symbol_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+        });
+        let document_symbol = build_request_with_id("textDocument/documentSymbol", params, 1);
+        let _response = call_request(service, document_symbol.clone()).await;
+        document_symbol
+    }
+
+    async fn go_to_definition_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+            "position": {
+                "line": 44,
+                "character": 24
+            }
+        });
+        let definition = build_request_with_id("textDocument/definition", params, 1);
+        let response = call_request(service, definition.clone()).await;
+        let ok = Response::from_ok(
+            1.into(),
+            json!({
+                "range": {
+                    "end": {
+                        "character": 11,
+                        "line": 19
+                    },
+                    "start": {
+                        "character": 7,
+                        "line": 19
+                    }
+                },
+                "uri": uri,
+            }),
+        );
+        assert_eq!(response, Ok(Some(ok)));
+        definition
+    }
+
+    async fn hover_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+            "position": {
+                "line": 44,
+                "character": 24
+            }
+        });
+        let hover = build_request_with_id("textDocument/hover", params, 1);
+        let response = call_request(service, hover.clone()).await;
+        let ok = Response::from_ok(
+            1.into(),
+            json!({
+                "contents": {
+                    "kind": "markdown",
+                    "value": "```sway\nstruct Data\n```"
+                },
+                "range": {
+                    "end": {
+                        "character": 11,
+                        "line": 19
+                    },
+                    "start": {
+                        "character": 7,
+                        "line": 19
+                    }
+                }
+            }),
+        );
+        assert_eq!(response, Ok(Some(ok)));
+        hover
+    }
+
+    async fn format_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+            "options": {
+                "tabSize": 4,
+                "insertSpaces": true
+            },
+        });
+        let formatting = build_request_with_id("textDocument/formatting", params, 1);
+        let _response = call_request(service, formatting.clone()).await;
+        formatting
+    }
+
+    async fn highlight_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+            "position": {
+                "line": 44,
+                "character": 27
+            }
+        });
+        let highlight = build_request_with_id("textDocument/documentHighlight", params, 1);
+        let response = call_request(service, highlight.clone()).await;
+        let ok = Response::from_ok(
+            1.into(),
+            json!([{
+                "range": {
+                    "end": {
+                        "character": 27,
+                        "line": 44
+                    },
+                    "start": {
+                        "character": 23,
+                        "line": 44
+                    }
+                }
+            }]),
+        );
+        assert_eq!(response, Ok(Some(ok)));
+        highlight
     }
 
     fn config() -> DebugFlags {
         Default::default()
     }
 
+    async fn init_and_open(service: &mut LspService<Backend>, manifest_dir: PathBuf) -> Url {
+        let _ = initialize_request(service).await;
+        initialized_notification(service).await;
+        let (uri, sway_program) = load_sway_example(manifest_dir);
+        did_open_notification(service, &uri, &sway_program).await;
+        uri
+    }
+
+    async fn shutdown_and_exit(service: &mut LspService<Backend>) {
+        let _ = shutdown_request(service).await;
+        exit_notification(service).await;
+    }
+
     #[tokio::test]
+    #[serial]
     async fn initialize() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
         let _ = initialize_request(&mut service).await;
     }
 
     #[tokio::test]
+    #[serial]
     async fn initialized() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
         let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
         initialized_notification(&mut service).await;
     }
 
     #[tokio::test]
+    #[serial]
     async fn initializes_only_once() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
         let initialize = initialize_request(&mut service).await;
-
-        // send "initialized" notification
         initialized_notification(&mut service).await;
-
-        // send "initialize" request (again); should error
-        let response = service.ready().await.unwrap().call(initialize).await;
+        let response = call_request(&mut service, initialize).await;
         let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
         assert_eq!(response, Ok(Some(err)));
     }
 
     #[tokio::test]
+    #[serial]
     async fn shutdown() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
         let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
         initialized_notification(&mut service).await;
-
-        // send "shutdown" request
         let shutdown = shutdown_request(&mut service).await;
-
-        // send "shutdown" request (again); should error
-        let response = service.ready().await.unwrap().call(shutdown).await;
+        let response = call_request(&mut service, shutdown).await;
         let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
         assert_eq!(response, Ok(Some(err)));
-
-        // send "exit" request
         exit_notification(&mut service).await;
     }
 
     #[tokio::test]
+    #[serial]
     async fn refuses_requests_after_shutdown() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
         let _ = initialize_request(&mut service).await;
-
-        // send "shutdown" request
         let shutdown = shutdown_request(&mut service).await;
-
-        let response = service.ready().await.unwrap().call(shutdown).await;
+        let response = call_request(&mut service, shutdown).await;
         let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
         assert_eq!(response, Ok(Some(err)));
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test]
+    #[serial]
     async fn did_open() {
-        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        messages.next().await.unwrap();
-
-        let (uri, sway_program) = load_sway_example();
-
-        // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, &sway_program).await;
-
-        // ignore the "textDocument/publishDiagnostics" notification
-        messages.next().await.unwrap();
-
-        // send "shutdown" request
-        let _ = shutdown_request(&mut service).await;
-
-        // send "exit" request
-        exit_notification(&mut service).await;
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let _ = init_and_open(&mut service, e2e_test_dir()).await;
+        shutdown_and_exit(&mut service).await;
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test]
+    #[serial]
     async fn did_close() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        let (uri, sway_program) = load_sway_example();
-
-        // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, &sway_program).await;
-
-        // send "textDocument/didClose" notification for `uri`
+        let _ = init_and_open(&mut service, e2e_test_dir()).await;
         did_close_notification(&mut service).await;
-
-        // send "shutdown" request
-        let _ = shutdown_request(&mut service).await;
-
-        // send "exit" request
-        exit_notification(&mut service).await;
+        shutdown_and_exit(&mut service).await;
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test]
+    #[serial]
     async fn did_change() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let uri = init_and_open(&mut service, e2e_test_dir()).await;
 
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        let uri = Url::parse("inmemory:///test").unwrap();
-        let text = r#"script;
-
-        fn main() {
-        
-        }
-        "#;
-
-        // This just an example of the changes made
-        // In reality, the only text that needs to be sent to the language server
-        // is "let x = 0.0;"
-        let _new_text = r#"script;
-
-        fn main() {
-            let x = 0.0;
-        }
-        "#;
-
-        // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, text).await;
-
-        // send "textDocument/didChange" notification for `uri`
         let params = json!({
             "textDocument": {
                 "uri": uri,
@@ -672,51 +752,52 @@ mod tests {
                 }
             ]
         });
-        let did_change = Request::build("textDocument/didChange")
-            .params(params)
-            .finish();
-        let response = service.ready().await.unwrap().call(did_change).await;
-        assert_eq!(response, Ok(None));
 
-        // send "shutdown" request
-        let _ = shutdown_request(&mut service).await;
-
-        // send "exit" request
-        exit_notification(&mut service).await;
+        let _ = did_change_request(&mut service, params).await;
+        shutdown_and_exit(&mut service).await;
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test]
+    #[serial]
     async fn show_ast() {
-        let (mut service, mut messages) =
-            LspService::build(|client| Backend::new(client, config()))
-                .custom_method("sway/show_ast", Backend::show_ast)
-                .finish();
+        let (mut service, _) = LspService::build(|client| Backend::new(client, config()))
+            .custom_method("sway/show_ast", Backend::show_ast)
+            .finish();
 
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        messages.next().await.unwrap();
-
-        let (uri, sway_program) = load_sway_example();
-
-        // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, &sway_program).await;
-
-        // ignore the "textDocument/publishDiagnostics" notification
-        messages.next().await.unwrap();
-
-        // send "sway/show_typed_ast" request
+        let uri = init_and_open(&mut service, e2e_test_dir()).await;
         let _ = show_ast_request(&mut service, &uri).await;
-
-        // send "shutdown" request
-        let _ = shutdown_request(&mut service).await;
-
-        // send "exit" request
-        exit_notification(&mut service).await;
+        shutdown_and_exit(&mut service).await;
     }
+
+    // This macro allows us to spin up a server / client for testing
+    // It initializes and performs the necessary handshake and then loads
+    // the sway example that was passed into `example_dir`.
+    // It then runs the specific capability to test before gracefully shutting down.
+    // The capability argument is an async function.
+    macro_rules! test_lsp_capability {
+        ($example_dir:expr, $capability:expr) => {{
+            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+            let uri = init_and_open(&mut service, $example_dir).await;
+            // Call the specific LSP capability function that was passed in.
+            let _ = $capability(&mut service, &uri).await;
+            shutdown_and_exit(&mut service).await;
+        }};
+    }
+
+    macro_rules! lsp_capability_test {
+        ($test:ident, $capability:expr) => {
+            #[tokio::test]
+            #[serial]
+            async fn $test() {
+                test_lsp_capability!(doc_comments_dir(), $capability);
+            }
+        };
+    }
+
+    lsp_capability_test!(semantic_tokens, semantic_tokens_request);
+    lsp_capability_test!(document_symbol, document_symbol_request);
+    lsp_capability_test!(go_to_definition, go_to_definition_request);
+    lsp_capability_test!(format, format_request);
+    lsp_capability_test!(hover, hover_request);
+    lsp_capability_test!(highlight, highlight_request);
 }
