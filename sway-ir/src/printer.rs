@@ -624,7 +624,7 @@ fn instruction_to_doc<'a>(
                 dst_val,
                 src_val,
                 byte_len,
-            } => Doc::line(
+            } => maybe_constant_to_doc(context, md_namer, namer, src_val).append(Doc::line(
                 Doc::text(format!(
                     "mem_copy {}, {}, {}",
                     namer.name(context, dst_val),
@@ -632,7 +632,7 @@ fn instruction_to_doc<'a>(
                     byte_len,
                 ))
                 .append(md_namer.md_idx_to_doc(context, metadata)),
-            ),
+            )),
             Instruction::Nop => Doc::line(
                 Doc::text(format!("{} = nop", namer.name(context, ins_value)))
                     .append(md_namer.md_idx_to_doc(context, metadata)),

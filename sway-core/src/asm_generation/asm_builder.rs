@@ -223,7 +223,7 @@ impl<'ir> AsmBuilder<'ir> {
                     if func_is_entry {
                         self.compile_ret_from_entry(instr_val, ret_val, ty)
                     } else {
-                        self.compile_ret_from_call(instr_val, ret_val, ty)
+                        self.compile_ret_from_call(instr_val, ret_val)
                     }
                 }
                 Instruction::Revert(revert_val) => self.compile_revert(instr_val, revert_val),

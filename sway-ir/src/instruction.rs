@@ -368,7 +368,12 @@ impl Instruction {
                 replace(log_val);
                 replace(log_id);
             }
-            Instruction::MemCopy { .. } => (),
+            Instruction::MemCopy {
+                dst_val, src_val, ..
+            } => {
+                replace(dst_val);
+                replace(src_val);
+            }
             Instruction::Nop => (),
             Instruction::ReadRegister { .. } => (),
             Instruction::Ret(ret_val, _) => replace(ret_val),
