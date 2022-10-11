@@ -225,6 +225,7 @@ fn convert_trait_methods_to_dummy_funcs(
             name: name.clone(),
             body: TyCodeBlock { contents: vec![] },
             parameters: typed_parameters,
+            attributes: method.attributes.clone(),
             span: name.span(),
             return_type,
             initial_return_type,

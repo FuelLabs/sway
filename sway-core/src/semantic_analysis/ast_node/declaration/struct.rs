@@ -3,6 +3,7 @@ use crate::{
     language::{parsed::*, Visibility},
     semantic_analysis::*,
     type_system::*,
+    AttributesMap,
 };
 use std::hash::{Hash, Hasher};
 use sway_error::error::CompileError;
@@ -15,6 +16,7 @@ pub struct TyStructDeclaration {
     pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
     pub(crate) span: Span,
+    pub attributes: AttributesMap,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -80,6 +82,7 @@ impl TyStructDeclaration {
             type_parameters,
             visibility,
             span,
+            attributes,
             ..
         } = decl;
 
@@ -117,6 +120,7 @@ impl TyStructDeclaration {
             fields: new_fields,
             visibility,
             span,
+            attributes,
         };
 
         ok(decl, warnings, errors)
@@ -155,6 +159,7 @@ pub struct TyStructField {
     pub initial_type_id: TypeId,
     pub(crate) span: Span,
     pub type_span: Span,
+    pub attributes: AttributesMap,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -210,6 +215,7 @@ impl TyStructField {
             initial_type_id,
             span: field.span,
             type_span: field.type_span,
+            attributes: field.attributes,
         };
         ok(field, warnings, errors)
     }

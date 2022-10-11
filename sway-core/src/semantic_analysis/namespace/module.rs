@@ -99,7 +99,7 @@ impl Module {
 
             // perform the conversions from parser code to parse tree types
             let name = const_item.name.clone();
-            let attributes = std::collections::HashMap::new();
+            let attributes = Default::default();
             // convert to const decl
             let const_decl = match crate::convert_parse_tree::item_const_to_constant_declaration(
                 ec, const_item, attributes,

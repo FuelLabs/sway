@@ -22,6 +22,7 @@ use crate::{
     language::*,
     semantic_analysis::*,
     type_system::*,
+    AttributesMap,
 };
 use derivative::Derivative;
 use std::{borrow::Cow, fmt};
@@ -504,6 +505,7 @@ pub struct TyTraitFn {
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
     pub return_type_span: Span,
+    pub attributes: AttributesMap,
 }
 
 impl CopyTypes for TyTraitFn {
@@ -523,6 +525,7 @@ impl TyTraitFn {
             body: TyCodeBlock { contents: vec![] },
             parameters: self.parameters.clone(),
             span: self.name.span(),
+            attributes: self.attributes.clone(),
             return_type: self.return_type,
             initial_return_type: self.return_type,
             return_type_span: self.return_type_span.clone(),
