@@ -2,7 +2,7 @@ contract {
     fn foo1<2994c98e>() -> b256, !1 {
         local ptr {  } __anon_0
 
-        entry:
+        entry():
         v0 = get_storage_key, !5
         ret b256 v0
     }
@@ -10,7 +10,7 @@ contract {
     fn foo2<f57bdec8>() -> b256, !6 {
         local ptr {  } __anon_0
 
-        entry:
+        entry():
         v0 = get_storage_key, !9
         ret b256 v0
     }

@@ -6,7 +6,7 @@ fn main() {
 // ::check-ir::
 
 // check: fn main() -> ()
-// check: entry:
+// check: entry():
 
 // ::check-asm::
 // The data section setup:
