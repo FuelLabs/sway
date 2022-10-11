@@ -4,9 +4,8 @@ use crate::{
     error::{err, ok},
     language::{parsed::MatchBranch, ty},
     semantic_analysis::{
-        ast_node::expression::match_expression::typed::typed_scrutinee::TyScrutinee, IsConstant,
-        TyAstNode, TyAstNodeContent, TyCodeBlock, TyVariableDeclaration, TypeCheckContext,
-        VariableMutability,
+        IsConstant, TyAstNode, TyAstNodeContent, TyCodeBlock, TyVariableDeclaration,
+        TypeCheckContext, VariableMutability,
     },
     type_system::insert_type,
     types::DeterministicallyAborts,
@@ -28,7 +27,7 @@ impl TyMatchBranch {
         mut ctx: TypeCheckContext,
         typed_value: &ty::TyExpression,
         branch: MatchBranch,
-    ) -> CompileResult<(TyMatchBranch, TyScrutinee)> {
+    ) -> CompileResult<(TyMatchBranch, ty::TyScrutinee)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -40,7 +39,7 @@ impl TyMatchBranch {
 
         // type check the scrutinee
         let typed_scrutinee = check!(
-            TyScrutinee::type_check(ctx.by_ref(), scrutinee),
+            ty::TyScrutinee::type_check(ctx.by_ref(), scrutinee),
             return err(warnings, errors),
             warnings,
             errors

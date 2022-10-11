@@ -1,14 +1,10 @@
 use std::{cmp::Ordering, fmt};
 
 use std::fmt::Write;
+use sway_error::error::CompileError;
 use sway_types::Span;
 
-use crate::{
-    error::{err, ok},
-    language::Literal,
-    semantic_analysis::{TyScrutinee, TyScrutineeVariant},
-    CompileError, CompileResult, Namespace, TypeInfo,
-};
+use crate::{error::*, language::ty, language::Literal, Namespace, TypeInfo};
 
 use super::{patstack::PatStack, range::Range};
 
@@ -118,16 +114,16 @@ impl Pattern {
     /// Converts a `Scrutinee` to a `Pattern`.
     pub(crate) fn from_scrutinee(
         namespace: &Namespace,
-        scrutinee: TyScrutinee,
+        scrutinee: ty::TyScrutinee,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let pat = match scrutinee.variant {
-            TyScrutineeVariant::CatchAll => Pattern::Wildcard,
-            TyScrutineeVariant::Variable(_) => Pattern::Wildcard,
-            TyScrutineeVariant::Literal(value) => Pattern::from_literal(value),
-            TyScrutineeVariant::Constant(_, value, _) => Pattern::from_literal(value),
-            TyScrutineeVariant::StructScrutinee(struct_name, fields) => {
+            ty::TyScrutineeVariant::CatchAll => Pattern::Wildcard,
+            ty::TyScrutineeVariant::Variable(_) => Pattern::Wildcard,
+            ty::TyScrutineeVariant::Literal(value) => Pattern::from_literal(value),
+            ty::TyScrutineeVariant::Constant(_, value, _) => Pattern::from_literal(value),
+            ty::TyScrutineeVariant::StructScrutinee(struct_name, fields) => {
                 let mut new_fields = vec![];
                 for field in fields.into_iter() {
                     let f = match field.scrutinee {
@@ -146,7 +142,7 @@ impl Pattern {
                     fields: new_fields,
                 })
             }
-            TyScrutineeVariant::Tuple(elems) => {
+            ty::TyScrutineeVariant::Tuple(elems) => {
                 let mut new_elems = PatStack::empty();
                 for elem in elems.into_iter() {
                     new_elems.push(check!(
@@ -158,7 +154,7 @@ impl Pattern {
                 }
                 Pattern::Tuple(new_elems)
             }
-            TyScrutineeVariant::EnumScrutinee {
+            ty::TyScrutineeVariant::EnumScrutinee {
                 call_path, value, ..
             } => {
                 let enum_name = call_path.prefixes.last().unwrap().to_string();

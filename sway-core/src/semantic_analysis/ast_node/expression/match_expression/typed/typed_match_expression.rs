@@ -13,7 +13,7 @@ use crate::{
     CompileError, CompileResult, TypeInfo,
 };
 
-use super::{typed_match_branch::TyMatchBranch, typed_scrutinee::TyScrutinee};
+use super::typed_match_branch::TyMatchBranch;
 
 #[derive(Debug)]
 pub(crate) struct TyMatchExpression {
@@ -29,7 +29,7 @@ impl TyMatchExpression {
         typed_value: ty::TyExpression,
         branches: Vec<MatchBranch>,
         span: Span,
-    ) -> CompileResult<(TyMatchExpression, Vec<TyScrutinee>)> {
+    ) -> CompileResult<(TyMatchExpression, Vec<ty::TyScrutinee>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 

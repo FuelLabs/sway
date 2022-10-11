@@ -15,8 +15,6 @@ use crate::{
 
 use sway_types::span::Span;
 
-use super::typed_scrutinee::{TyScrutinee, TyScrutineeVariant, TyStructScrutineeField};
-
 /// List of requirements that a desugared if expression must include in the conditional.
 pub(crate) type MatchReqMap = Vec<(ty::TyExpression, ty::TyExpression)>;
 /// List of variable declarations that must be placed inside of the body of the if expression.
@@ -66,12 +64,12 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 /// ```
 pub(crate) fn matcher(
     exp: &ty::TyExpression,
-    scrutinee: TyScrutinee,
+    scrutinee: ty::TyScrutinee,
     namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let TyScrutinee {
+    let ty::TyScrutinee {
         variant,
         type_id,
         span,
@@ -85,15 +83,17 @@ pub(crate) fn matcher(
     }
 
     match variant {
-        TyScrutineeVariant::CatchAll => ok((vec![], vec![]), warnings, errors),
-        TyScrutineeVariant::Literal(value) => match_literal(exp, value, span),
-        TyScrutineeVariant::Variable(name) => match_variable(exp, name),
-        TyScrutineeVariant::Constant(name, _, type_id) => match_constant(exp, name, type_id, span),
-        TyScrutineeVariant::StructScrutinee(_, fields) => match_struct(exp, fields, namespace),
-        TyScrutineeVariant::EnumScrutinee { value, variant, .. } => {
+        ty::TyScrutineeVariant::CatchAll => ok((vec![], vec![]), warnings, errors),
+        ty::TyScrutineeVariant::Literal(value) => match_literal(exp, value, span),
+        ty::TyScrutineeVariant::Variable(name) => match_variable(exp, name),
+        ty::TyScrutineeVariant::Constant(name, _, type_id) => {
+            match_constant(exp, name, type_id, span)
+        }
+        ty::TyScrutineeVariant::StructScrutinee(_, fields) => match_struct(exp, fields, namespace),
+        ty::TyScrutineeVariant::EnumScrutinee { value, variant, .. } => {
             match_enum(exp, variant, *value, span, namespace)
         }
-        TyScrutineeVariant::Tuple(elems) => match_tuple(exp, elems, span, namespace),
+        ty::TyScrutineeVariant::Tuple(elems) => match_tuple(exp, elems, span, namespace),
     }
 }
 
@@ -148,14 +148,14 @@ fn match_constant(
 
 fn match_struct(
     exp: &ty::TyExpression,
-    fields: Vec<TyStructScrutineeField>,
+    fields: Vec<ty::TyStructScrutineeField>,
     namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut match_req_map = vec![];
     let mut match_decl_map = vec![];
-    for TyStructScrutineeField {
+    for ty::TyStructScrutineeField {
         field,
         scrutinee,
         span: field_span,
@@ -192,7 +192,7 @@ fn match_struct(
 fn match_enum(
     exp: &ty::TyExpression,
     variant: TyEnumVariant,
-    scrutinee: TyScrutinee,
+    scrutinee: ty::TyScrutinee,
     span: Span,
     namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
@@ -211,7 +211,7 @@ fn match_enum(
 
 fn match_tuple(
     exp: &ty::TyExpression,
-    elems: Vec<TyScrutinee>,
+    elems: Vec<ty::TyScrutinee>,
     span: Span,
     namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
