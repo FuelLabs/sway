@@ -9,6 +9,8 @@ use crate::{
 use lazy_static::lazy_static;
 use sway_error::error::CompileError;
 use sway_error::type_error::TypeError;
+use sway_error::warning::{CompileWarning, Warning};
+use sway_types::integer_bits::IntegerBits;
 use sway_types::span::Span;
 use sway_types::{Ident, Spanned};
 
