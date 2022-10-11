@@ -21,8 +21,11 @@ use crate::{
 };
 
 use sway_ast::intrinsics::Intrinsic;
-use sway_error::error::CompileError;
-use sway_types::{Ident, Span, Spanned};
+use sway_error::{
+    error::CompileError,
+    warning::{CompileWarning, Warning},
+};
+use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
 
 use std::collections::{HashMap, VecDeque};
 
