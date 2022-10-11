@@ -1,4 +1,4 @@
-use crate::CallPath;
+use crate::language::CallPath;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) struct TraitConstraint {

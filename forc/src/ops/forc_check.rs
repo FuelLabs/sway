@@ -1,10 +1,10 @@
 use crate::cli::CheckCommand;
 use anyhow::Result;
-use forc_pkg::{self as pkg, ManifestFile};
+use forc_pkg::{self as pkg, PackageManifestFile};
 use std::path::PathBuf;
 use sway_core::CompileResult;
 
-pub fn check(command: CheckCommand) -> Result<CompileResult<sway_core::TypedProgram>> {
+pub fn check(command: CheckCommand) -> Result<CompileResult<sway_core::TyProgram>> {
     let CheckCommand {
         path,
         offline_mode: offline,
@@ -17,7 +17,7 @@ pub fn check(command: CheckCommand) -> Result<CompileResult<sway_core::TypedProg
     } else {
         std::env::current_dir()?
     };
-    let manifest = ManifestFile::from_dir(&this_dir)?;
+    let manifest = PackageManifestFile::from_dir(&this_dir)?;
     let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
 
     Ok(pkg::check(&plan, terse_mode)?.flat_map(|(_, tp)| CompileResult::new(tp, vec![], vec![])))

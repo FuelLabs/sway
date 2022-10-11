@@ -10,7 +10,7 @@ script {
         local ptr u64 x
         local ptr b256 y
 
-        entry:
+        entry():
         v0 = get_ptr mut ptr b256 key_for_x, ptr b256, 0
         v1 = const b256 0x7fbd1192666bfac3767b890bd4d048c940879d316071e20c7c8c81bce2ca41c5
         store v1, ptr v0

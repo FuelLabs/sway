@@ -1,7 +1,10 @@
 #![allow(dead_code)]
 use crate::core::token::{AstToken, Token, TokenMap, TypedAstToken};
 use crate::utils::{common::get_range_from_span, token};
-use sway_core::{Expression, ExpressionKind, Literal};
+use sway_core::language::{
+    parsed::{Expression, ExpressionKind},
+    Literal,
+};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
@@ -115,7 +118,6 @@ fn literal_to_string(literal: &Literal) -> String {
         Literal::Numeric(_) => "u64".into(),
         Literal::String(len) => format!("str[{}]", len.as_str().len()),
         Literal::Boolean(_) => "bool".into(),
-        Literal::Byte(_) => "u8".into(),
         Literal::B256(_) => "b256".into(),
     }
 }

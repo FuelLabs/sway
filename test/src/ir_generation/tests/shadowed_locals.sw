@@ -19,7 +19,7 @@ fn main() -> u64 {
 // check: $(true=$VAL) = const bool true
 // check: store $true, ptr $a_ptr
 
-// check: $(int_val=$VAL) = phi(block0: v4, block1: v5)
+// check: $ID($(int_val=$VAL):
 // check: $(a__ptr=$VAL) = get_ptr ptr u64 a_, ptr u64, 0
 // check: store $int_val, ptr $a__ptr
 

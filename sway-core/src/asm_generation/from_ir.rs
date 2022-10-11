@@ -7,8 +7,9 @@ use super::{
     DataId, DataSection,
 };
 
-use crate::{error::*, BuildConfig};
+use crate::{err, ok, BuildConfig, CompileResult, CompileWarning};
 
+use sway_error::error::CompileError;
 use sway_ir::*;
 
 pub fn compile_ir_to_asm(
@@ -289,7 +290,11 @@ mod tests {
 
         let asm_script = format!("{}", asm);
         if asm_script != expected {
-            print!("{}", prettydiff::diff_lines(&expected, &asm_script));
+            print!(
+                "{}\n{}",
+                path.display(),
+                prettydiff::diff_lines(&expected, &asm_script)
+            );
             panic!();
         }
     }

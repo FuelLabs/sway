@@ -3,13 +3,14 @@ use forc_util::{println_green, println_red};
 use paste::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
 use sway_ast::ItemStruct;
-use sway_parse::{handler::Handler, *};
+use sway_error::handler::Handler;
+use sway_parse::*;
 
 fn format_code(input: &str) -> String {
     let mut formatter: Formatter = Default::default();
     let input_arc = std::sync::Arc::from(input);
-    let token_stream = lex(&input_arc, 0, input.len(), None).unwrap();
     let handler = Handler::default();
+    let token_stream = lex(&handler, &input_arc, 0, input.len(), None).unwrap();
     let mut parser = Parser::new(&handler, &token_stream);
     let expression: ItemStruct = parser.parse().unwrap();
 
