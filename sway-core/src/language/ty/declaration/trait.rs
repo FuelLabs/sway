@@ -9,7 +9,7 @@ use crate::{
 
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
-pub(crate) struct TyTraitDeclaration {
+pub struct TyTraitDeclaration {
     pub name: Ident,
     pub interface_surface: Vec<TyTraitFn>,
     // NOTE: deriving partialeq and hash on this element may be important in the
