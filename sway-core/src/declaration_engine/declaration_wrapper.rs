@@ -4,12 +4,12 @@ use sway_error::error::CompileError;
 use sway_types::Span;
 
 use crate::{
+    language::ty,
     semantic_analysis::{
         TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyImplTrait,
         TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
     },
     type_system::{CopyTypes, TypeMapping},
-    TyFunctionDeclaration,
 };
 
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]
@@ -18,7 +18,7 @@ use crate::{
 pub(crate) enum DeclarationWrapper {
     // no-op variant to fulfill the default trait
     Unknown,
-    Function(TyFunctionDeclaration),
+    Function(ty::TyFunctionDeclaration),
     Trait(TyTraitDeclaration),
     TraitFn(TyTraitFn),
     ImplTrait(TyImplTrait),
@@ -99,7 +99,7 @@ impl DeclarationWrapper {
     pub(super) fn expect_function(
         self,
         span: &Span,
-    ) -> Result<TyFunctionDeclaration, CompileError> {
+    ) -> Result<ty::TyFunctionDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Function(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(

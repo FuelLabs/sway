@@ -15,7 +15,6 @@ use crate::{
         TypeCheckedStorageAccess, VariableMutability,
     },
     type_system::*,
-    TyFunctionDeclaration,
 };
 
 #[derive(Clone, Debug, Derivative)]

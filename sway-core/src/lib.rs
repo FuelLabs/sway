@@ -30,7 +30,7 @@ use sway_ir::{Context, Function, Instruction, Kind, Module, Value};
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
-    TyFunctionDeclaration, TyModule, TyProgram, TyProgramKind,
+    TyModule, TyProgram, TyProgramKind,
 };
 pub mod types;
 

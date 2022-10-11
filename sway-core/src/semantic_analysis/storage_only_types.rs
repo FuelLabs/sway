@@ -7,9 +7,8 @@ use crate::{
     error::*,
     language::ty,
     semantic_analysis::{
-        TyAstNodeContent, TyCodeBlock, TyConstantDeclaration, TyEnumDeclaration,
-        TyFunctionDeclaration, TyImplTrait, TyIntrinsicFunctionKind, TyReassignment,
-        TyStorageDeclaration, TyStructDeclaration,
+        TyAstNodeContent, TyCodeBlock, TyConstantDeclaration, TyEnumDeclaration, TyImplTrait,
+        TyIntrinsicFunctionKind, TyReassignment, TyStorageDeclaration, TyStructDeclaration,
     },
     type_system::*,
 };
@@ -201,7 +200,7 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
             check!(expr_validate(&expr), (), warnings, errors)
         }
         ty::TyDeclaration::FunctionDeclaration(decl_id) => {
-            let TyFunctionDeclaration {
+            let ty::TyFunctionDeclaration {
                 body, parameters, ..
             } = check!(
                 CompileResult::from(de_get_function(decl_id.clone(), &decl.span())),

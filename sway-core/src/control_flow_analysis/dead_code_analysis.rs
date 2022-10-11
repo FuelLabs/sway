@@ -5,8 +5,8 @@ use crate::{
     semantic_analysis::{
         ast_node::{
             TyAbiDeclaration, TyCodeBlock, TyConstantDeclaration, TyEnumDeclaration,
-            TyFunctionDeclaration, TyStructDeclaration, TyStructExpressionField,
-            TyTraitDeclaration, TyVariableDeclaration, VariableMutability,
+            TyStructDeclaration, TyStructExpressionField, TyTraitDeclaration,
+            TyVariableDeclaration, VariableMutability,
         },
         TyAsmRegisterDeclaration, TyAstNode, TyAstNodeContent, TyImplTrait,
         TyIntrinsicFunctionKind, TyStorageDeclaration,
@@ -418,7 +418,7 @@ fn connect_struct_declaration(
 fn connect_impl_trait(
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph,
-    methods: &[TyFunctionDeclaration],
+    methods: &[ty::TyFunctionDeclaration],
     entry_node: NodeIndex,
     tree_type: &TreeType,
 ) -> Result<(), CompileError> {
@@ -540,7 +540,7 @@ fn connect_enum_declaration(
 /// has no entry points, since it is just a declaration.
 /// When something eventually calls it, it gets connected to the declaration.
 fn connect_typed_fn_decl(
-    fn_decl: &TyFunctionDeclaration,
+    fn_decl: &ty::TyFunctionDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
     span: Span,
@@ -583,7 +583,7 @@ fn connect_typed_fn_decl(
 // corresponding struct/enum declaration to the function entry node, thus
 // making sure they are considered used by the DCA pass.
 fn connect_fn_params_struct_enums(
-    fn_decl: &TyFunctionDeclaration,
+    fn_decl: &ty::TyFunctionDeclaration,
     graph: &mut ControlFlowGraph,
     fn_decl_entry_node: NodeIndex,
 ) -> Result<(), CompileError> {

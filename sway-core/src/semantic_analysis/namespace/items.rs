@@ -138,7 +138,7 @@ impl Items {
         &mut self,
         trait_name: CallPath,
         implementing_for_type_id: TypeId,
-        functions_buf: Vec<TyFunctionDeclaration>,
+        functions_buf: Vec<ty::TyFunctionDeclaration>,
     ) {
         let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
@@ -161,7 +161,7 @@ impl Items {
     pub(crate) fn get_methods_for_type(
         &self,
         implementing_for_type_id: TypeId,
-    ) -> Vec<TyFunctionDeclaration> {
+    ) -> Vec<ty::TyFunctionDeclaration> {
         self.implemented_traits
             .get_methods_for_type(implementing_for_type_id)
     }

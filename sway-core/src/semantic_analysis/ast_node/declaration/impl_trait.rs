@@ -14,7 +14,7 @@ use crate::{
         insert_type, look_up_type_id, set_type_as_storage_only, to_typeinfo, unify_with_self,
         CopyTypes, TypeId, TypeMapping, TypeParameter,
     },
-    CompileResult, TyFunctionDeclaration, TypeInfo,
+    CompileResult, TypeInfo,
 };
 
 use super::TyTraitFn;
@@ -23,7 +23,7 @@ use super::TyTraitFn;
 pub struct TyImplTrait {
     pub trait_name: CallPath,
     pub(crate) span: Span,
-    pub methods: Vec<TyFunctionDeclaration>,
+    pub methods: Vec<ty::TyFunctionDeclaration>,
     pub implementing_for_type_id: TypeId,
     pub type_implementing_for_span: Span,
 }
@@ -205,7 +205,7 @@ impl TyImplTrait {
     // This is noted down in the type engine.
     fn gather_storage_only_types(
         impl_typ: TypeId,
-        methods: &[TyFunctionDeclaration],
+        methods: &[ty::TyFunctionDeclaration],
         access_span: &Span,
     ) -> Result<(), CompileError> {
         use crate::semantic_analysis;
@@ -453,7 +453,7 @@ impl TyImplTrait {
         let mut methods = vec![];
         for fn_decl in functions.into_iter() {
             methods.push(check!(
-                TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl),
+                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl),
                 continue,
                 warnings,
                 errors
@@ -492,7 +492,7 @@ fn type_check_trait_implementation(
     self_type_span: &Span,
     block_span: &Span,
     is_contract: bool,
-) -> CompileResult<Vec<TyFunctionDeclaration>> {
+) -> CompileResult<Vec<ty::TyFunctionDeclaration>> {
     let interface_name = || -> InterfaceName {
         if is_contract {
             InterfaceName::Abi(trait_name.suffix.clone())
@@ -504,7 +504,7 @@ fn type_check_trait_implementation(
     let mut errors = vec![];
     let mut warnings = vec![];
 
-    let mut functions_buf: Vec<TyFunctionDeclaration> = vec![];
+    let mut functions_buf: Vec<ty::TyFunctionDeclaration> = vec![];
     let mut processed_fns = std::collections::HashSet::<Ident>::new();
 
     // this map keeps track of the remaining functions in the
@@ -522,7 +522,7 @@ fn type_check_trait_implementation(
 
         // type check the function declaration
         let fn_decl = check!(
-            TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl.clone()),
+            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl.clone()),
             continue,
             warnings,
             errors
@@ -690,7 +690,7 @@ fn type_check_trait_implementation(
     // into it as a trait implementation for this
     for method in trait_methods {
         let method = check!(
-            TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone()),
+            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone()),
             continue,
             warnings,
             errors

@@ -1,13 +1,10 @@
-use super::{
-    storage_only_types, TyAstNode, TyAstNodeContent, TyFunctionDeclaration, TyImplTrait,
-    TyStorageDeclaration,
-};
+use super::{storage_only_types, TyAstNode, TyAstNodeContent, TyImplTrait, TyStorageDeclaration};
 use crate::{
     declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait, de_get_storage},
     error::*,
     language::{
         parsed::{ParseProgram, TreeType},
-        *,
+        ty, *,
     },
     metadata::MetadataManager,
     semantic_analysis::{
@@ -462,18 +459,18 @@ impl TyProgram {
 #[derive(Clone, Debug)]
 pub enum TyProgramKind {
     Contract {
-        abi_entries: Vec<TyFunctionDeclaration>,
+        abi_entries: Vec<ty::TyFunctionDeclaration>,
         declarations: Vec<ty::TyDeclaration>,
     },
     Library {
         name: Ident,
     },
     Predicate {
-        main_function: TyFunctionDeclaration,
+        main_function: ty::TyFunctionDeclaration,
         declarations: Vec<ty::TyDeclaration>,
     },
     Script {
-        main_function: TyFunctionDeclaration,
+        main_function: ty::TyFunctionDeclaration,
         declarations: Vec<ty::TyDeclaration>,
     },
 }
@@ -492,7 +489,7 @@ impl TyProgramKind {
 
 fn disallow_impure_functions(
     declarations: &[ty::TyDeclaration],
-    mains: &[TyFunctionDeclaration],
+    mains: &[ty::TyFunctionDeclaration],
 ) -> Vec<CompileError> {
     let mut errs: Vec<CompileError> = vec![];
     let fn_decls = declarations
@@ -511,7 +508,7 @@ fn disallow_impure_functions(
         })
         .chain(mains.to_owned());
     let mut err_purity = fn_decls
-        .filter_map(|TyFunctionDeclaration { purity, name, .. }| {
+        .filter_map(|ty::TyFunctionDeclaration { purity, name, .. }| {
             if purity != Purity::Pure {
                 Some(CompileError::ImpureInNonContract { span: name.span() })
             } else {

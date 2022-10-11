@@ -76,11 +76,11 @@ impl ty::TyDeclaration {
 
     /// Retrieves the declaration as a function declaration.
     ///
-    /// Returns an error if `self` is not a [TyFunctionDeclaration].
+    /// Returns an error if `self` is not a [ty::TyFunctionDeclaration].
     pub(crate) fn expect_function(
         &self,
         access_span: &Span,
-    ) -> CompileResult<TyFunctionDeclaration> {
+    ) -> CompileResult<ty::TyFunctionDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match self {
@@ -253,7 +253,7 @@ impl ty::TyDeclaration {
                 visibility
             }
             FunctionDeclaration(decl_id) => {
-                let TyFunctionDeclaration { visibility, .. } = check!(
+                let ty::TyFunctionDeclaration { visibility, .. } = check!(
                     CompileResult::from(de_get_function(decl_id.clone(), &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
@@ -302,8 +302,8 @@ impl TyTraitFn {
     /// This function is used in trait declarations to insert "placeholder" functions
     /// in the methods. This allows the methods to use functions declared in the
     /// interface surface.
-    pub(crate) fn to_dummy_func(&self, mode: Mode) -> TyFunctionDeclaration {
-        TyFunctionDeclaration {
+    pub(crate) fn to_dummy_func(&self, mode: Mode) -> ty::TyFunctionDeclaration {
+        ty::TyFunctionDeclaration {
             purity: self.purity,
             name: self.name.clone(),
             body: TyCodeBlock { contents: vec![] },

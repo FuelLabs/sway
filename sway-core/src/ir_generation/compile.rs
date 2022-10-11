@@ -18,7 +18,7 @@ use sway_types::{span::Span, Spanned};
 
 pub(super) fn compile_script(
     context: &mut Context,
-    main_function: TyFunctionDeclaration,
+    main_function: ty::TyFunctionDeclaration,
     namespace: &namespace::Module,
     declarations: Vec<ty::TyDeclaration>,
 ) -> Result<Module, CompileError> {
@@ -34,7 +34,7 @@ pub(super) fn compile_script(
 
 pub(super) fn compile_contract(
     context: &mut Context,
-    abi_entries: Vec<TyFunctionDeclaration>,
+    abi_entries: Vec<ty::TyFunctionDeclaration>,
     namespace: &namespace::Module,
     declarations: Vec<ty::TyDeclaration>,
 ) -> Result<Module, CompileError> {
@@ -143,7 +143,7 @@ pub(super) fn compile_function(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: TyFunctionDeclaration,
+    ast_fn_decl: ty::TyFunctionDeclaration,
 ) -> Result<Option<Function>, CompileError> {
     // Currently monomorphisation of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
@@ -181,11 +181,11 @@ fn compile_fn_with_args(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: TyFunctionDeclaration,
+    ast_fn_decl: ty::TyFunctionDeclaration,
     args: Vec<(String, Type, Span)>,
     selector: Option<[u8; 4]>,
 ) -> Result<Function, CompileError> {
-    let TyFunctionDeclaration {
+    let ty::TyFunctionDeclaration {
         name,
         body,
         return_type,
@@ -288,7 +288,7 @@ fn compile_abi_method(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: TyFunctionDeclaration,
+    ast_fn_decl: ty::TyFunctionDeclaration,
 ) -> Result<Function, CompileError> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let get_selector_result = ast_fn_decl.to_fn_selector_value();

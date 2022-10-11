@@ -1305,7 +1305,7 @@ impl ty::TyExpression {
                 .with_type_annotation(insert_type(TypeInfo::Unknown))
                 .with_mode(Mode::ImplAbiFn);
             type_checked_fn_buf.push(check!(
-                TyFunctionDeclaration::type_check(ctx, method.clone()),
+                ty::TyFunctionDeclaration::type_check(ctx, method.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors

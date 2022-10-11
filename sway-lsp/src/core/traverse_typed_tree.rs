@@ -10,8 +10,7 @@ use sway_core::{
     semantic_analysis::ast_node::{
         code_block::TyCodeBlock,
         expression::TyIntrinsicFunctionKind,
-        ProjectionKind, TyFunctionDeclaration, TyFunctionParameter, TyImplTrait, TyTraitFn,
-        {TyAstNode, TyAstNodeContent},
+        ProjectionKind, TyFunctionParameter, TyImplTrait, TyTraitFn, {TyAstNode, TyAstNodeContent},
     },
 };
 use sway_types::{ident::Ident, Spanned};
@@ -486,7 +485,7 @@ fn collect_typed_fn_param_token(param: &TyFunctionParameter, tokens: &TokenMap) 
     }
 }
 
-fn collect_typed_fn_decl(func_decl: &TyFunctionDeclaration, tokens: &TokenMap) {
+fn collect_typed_fn_decl(func_decl: &ty::TyFunctionDeclaration, tokens: &TokenMap) {
     if let Some(mut token) = tokens.get_mut(&to_ident_key(&func_decl.name)) {
         token.typed = Some(TypedAstToken::TypedFunctionDeclaration(func_decl.clone()));
     }

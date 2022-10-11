@@ -14,7 +14,7 @@ use crate::{
         Mode, TyCodeBlock, TypeCheckContext,
     },
     type_system::*,
-    Namespace, TyFunctionDeclaration,
+    Namespace,
 };
 
 use super::{EnforceTypeArguments, TyFunctionParameter, TyTraitFn};
@@ -187,12 +187,12 @@ fn handle_supertraits(
     ok((), warnings, errors)
 }
 
-/// Convert a vector of FunctionDeclarations into a vector of [TyFunctionDeclaration]'s where only
+/// Convert a vector of FunctionDeclarations into a vector of [ty::TyFunctionDeclaration]'s where only
 /// the parameters and the return types are type checked.
 fn convert_trait_methods_to_dummy_funcs(
     methods: &[FunctionDeclaration],
     trait_namespace: &mut Namespace,
-) -> CompileResult<Vec<TyFunctionDeclaration>> {
+) -> CompileResult<Vec<ty::TyFunctionDeclaration>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut dummy_funcs = vec![];
@@ -231,7 +231,7 @@ fn convert_trait_methods_to_dummy_funcs(
             errors,
         );
 
-        dummy_funcs.push(TyFunctionDeclaration {
+        dummy_funcs.push(ty::TyFunctionDeclaration {
             purity: Default::default(),
             name: name.clone(),
             body: TyCodeBlock { contents: vec![] },

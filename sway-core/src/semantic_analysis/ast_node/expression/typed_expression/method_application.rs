@@ -8,7 +8,6 @@ use crate::{
         ContractCallParams, IsConstant, TyFunctionParameter, TyStorageField, TypeCheckContext,
     },
     type_system::*,
-    TyFunctionDeclaration,
 };
 use std::collections::{HashMap, VecDeque};
 use sway_error::error::CompileError;
@@ -319,7 +318,7 @@ pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
     method_name: &TypeBinding<MethodName>,
     arguments: VecDeque<ty::TyExpression>,
-) -> CompileResult<TyFunctionDeclaration> {
+) -> CompileResult<ty::TyFunctionDeclaration> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
