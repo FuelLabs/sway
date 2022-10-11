@@ -727,7 +727,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        call_params: &ContractCallParams,
+        call_params: &ty::ContractCallParams,
         contract_call_parameters: &HashMap<String, ty::TyExpression>,
         ast_name: &str,
         ast_args: Vec<(Ident, ty::TyExpression)>,

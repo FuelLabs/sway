@@ -5,7 +5,7 @@ use crate::{
         typed_expression::{
             check_function_arguments_arity, instantiate_function_application_simple,
         },
-        ContractCallParams, IsConstant, TyFunctionParameter, TyStorageField, TypeCheckContext,
+        IsConstant, TyFunctionParameter, TyStorageField, TypeCheckContext,
     },
     type_system::*,
     TyDeclaration, TyFunctionDeclaration,
@@ -263,7 +263,7 @@ pub(crate) fn type_check_method_application(
             return err(warnings, errors);
         };
         let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
-        Some(ContractCallParams {
+        Some(ty::ContractCallParams {
             func_selector,
             contract_address,
         })

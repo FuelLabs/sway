@@ -2,12 +2,6 @@ use crate::{language::ty, type_system::*};
 
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
-#[derive(Clone, Debug)]
-pub struct ContractCallParams {
-    pub(crate) func_selector: [u8; 4],
-    pub(crate) contract_address: Box<ty::TyExpression>,
-}
-
 /// Describes the full storage access including all the subfields
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeCheckedStorageAccess {
