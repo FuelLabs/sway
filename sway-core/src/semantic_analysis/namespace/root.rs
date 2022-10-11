@@ -1,6 +1,8 @@
 use crate::{
-    error::*, language::CallPath, semantic_analysis::*, type_system::*, CompileResult, Ident,
-    TyDeclaration, TyFunctionDeclaration, TypeInfo,
+    error::*,
+    language::{ty, CallPath},
+    type_system::*,
+    CompileResult, Ident, TyDeclaration, TyFunctionDeclaration, TypeInfo,
 };
 
 use super::{module::Module, namespace::Namespace, Path};
@@ -80,7 +82,7 @@ impl Root {
         method_prefix: &Path,
         method_name: &Ident,
         self_type: TypeId,
-        args_buf: &VecDeque<TyExpression>,
+        args_buf: &VecDeque<ty::TyExpression>,
     ) -> CompileResult<TyFunctionDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];

@@ -1,6 +1,7 @@
 use crate::{
-    language::CallPath, semantic_analysis::ast_node::TyExpression, type_system::*, CompileResult,
-    Ident, TyDeclaration, TyFunctionDeclaration,
+    language::{ty, CallPath},
+    type_system::*,
+    CompileResult, Ident, TyDeclaration, TyFunctionDeclaration,
 };
 
 use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
@@ -138,7 +139,7 @@ impl Namespace {
         method_prefix: &Path,
         method_name: &Ident,
         self_type: TypeId,
-        args_buf: &VecDeque<TyExpression>,
+        args_buf: &VecDeque<ty::TyExpression>,
     ) -> CompileResult<TyFunctionDeclaration> {
         self.root.find_method_for_type(
             &self.mod_path,

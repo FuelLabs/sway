@@ -1,4 +1,8 @@
-use crate::{language::Visibility, semantic_analysis::*, type_system::*, Ident};
+use crate::{
+    language::{ty, Visibility},
+    type_system::*,
+    Ident,
+};
 use sway_types::Span;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -53,7 +57,7 @@ pub fn convert_to_variable_immutability(
 #[derive(Clone, Debug, Eq)]
 pub struct TyVariableDeclaration {
     pub name: Ident,
-    pub body: TyExpression,
+    pub body: ty::TyExpression,
     pub mutability: VariableMutability,
     pub type_ascription: TypeId,
     pub type_ascription_span: Option<Span>,
