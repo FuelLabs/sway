@@ -286,7 +286,7 @@ impl TyAstNode {
                                 warnings,
                                 errors
                             );
-                            let decl = TyConstantDeclaration {
+                            let decl = ty::TyConstantDeclaration {
                                 name: name.clone(),
                                 value,
                                 visibility,

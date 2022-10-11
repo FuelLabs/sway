@@ -3,7 +3,7 @@ use crate::{
     language::ty,
     metadata::MetadataManager,
     semantic_analysis::{
-        declaration::ProjectionKind, namespace, TyAstNode, TyAstNodeContent, TyConstantDeclaration,
+        declaration::ProjectionKind, namespace, TyAstNode, TyAstNodeContent,
         TyStructExpressionField,
     },
 };
@@ -44,7 +44,7 @@ pub(crate) fn compile_const_decl(
             let decl = module_ns.check_symbol(name)?;
             let decl_name_value = match decl {
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                    let TyConstantDeclaration { name, value, .. } =
+                    let ty::TyConstantDeclaration { name, value, .. } =
                         de_get_constant(decl_id.clone(), &name.span())?;
                     Some((name, value))
                 }

@@ -6,9 +6,8 @@ use crate::{
     error::*,
     language::ty,
     semantic_analysis::{
-        TyAstNodeContent, TyCodeBlock, TyConstantDeclaration, TyEnumDeclaration,
-        TyFunctionDeclaration, TyImplTrait, TyIntrinsicFunctionKind, TyReassignment,
-        TyStorageDeclaration, TyStructDeclaration,
+        TyAstNodeContent, TyCodeBlock, TyEnumDeclaration, TyFunctionDeclaration, TyImplTrait,
+        TyIntrinsicFunctionKind, TyReassignment, TyStorageDeclaration, TyStructDeclaration,
     },
     type_system::*,
 };
@@ -183,7 +182,7 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
             check!(expr_validate(&decl.body), (), warnings, errors)
         }
         ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-            let TyConstantDeclaration {
+            let ty::TyConstantDeclaration {
                 value: expr, name, ..
             } = check!(
                 CompileResult::from(de_get_constant(decl_id.clone(), &decl_id.span())),

@@ -4,9 +4,9 @@ use crate::{
     language::{parsed::TreeType, ty, CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
-            TyAbiDeclaration, TyCodeBlock, TyConstantDeclaration, TyEnumDeclaration,
-            TyFunctionDeclaration, TyStructDeclaration, TyStructExpressionField,
-            TyTraitDeclaration, TyVariableDeclaration, VariableMutability,
+            TyAbiDeclaration, TyCodeBlock, TyEnumDeclaration, TyFunctionDeclaration,
+            TyStructDeclaration, TyStructExpressionField, TyTraitDeclaration,
+            TyVariableDeclaration, VariableMutability,
         },
         TyAsmRegisterDeclaration, TyAstNode, TyAstNodeContent, TyImplTrait,
         TyIntrinsicFunctionKind, TyStorageDeclaration,
@@ -316,7 +316,7 @@ fn connect_declaration(
             }
         }
         ConstantDeclaration(decl_id) => {
-            let TyConstantDeclaration { name, value, .. } =
+            let ty::TyConstantDeclaration { name, value, .. } =
                 de_get_constant(decl_id.clone(), &span)?;
             graph.namespace.insert_constant(name, entry_node);
             connect_expression(

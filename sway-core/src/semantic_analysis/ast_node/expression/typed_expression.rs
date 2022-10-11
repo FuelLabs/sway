@@ -472,7 +472,7 @@ impl ty::TyExpression {
                 }
             }
             Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
-                let TyConstantDeclaration {
+                let ty::TyConstantDeclaration {
                     name: decl_name,
                     value,
                     ..
