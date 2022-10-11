@@ -14,7 +14,7 @@ pub enum LanguageServerError {
     FailedToParse { diagnostics: Vec<Diagnostic> },
 }
 
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum DocumentError {
     #[error("No document found at {:?}", path)]
     DocumentNotFound { path: String },

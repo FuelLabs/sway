@@ -354,8 +354,8 @@ mod tests {
         let session = Session::new();
         let path = get_absolute_path("sway-lsp/test/fixtures/cats.txt");
         let document = TextDocument::build_from_path(&path).unwrap();
-        let result = Session::store_document(&session, document).unwrap();
-        assert_eq!(result, ());
+        let result = Session::store_document(&session, document);
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -367,10 +367,7 @@ mod tests {
         let document = TextDocument::build_from_path(&path).unwrap();
         let result = Session::store_document(&session, document)
             .expect_err("expected DocumentAlreadyStored");
-        assert_eq!(
-            result,
-            DocumentError::DocumentAlreadyStored { path: path.into() }
-        );
+        assert_eq!(result, DocumentError::DocumentAlreadyStored { path });
     }
 
     #[test]

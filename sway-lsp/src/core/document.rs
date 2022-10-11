@@ -132,9 +132,6 @@ mod tests {
     fn build_from_path_returns_document_not_found_error() {
         let path = get_absolute_path("not/a/real/file/path");
         let result = TextDocument::build_from_path(&path).expect_err("expected DocumentNotFound");
-        assert_eq!(
-            result,
-            DocumentError::DocumentNotFound { path: path.into() }
-        );
+        assert_eq!(result, DocumentError::DocumentNotFound { path });
     }
 }
