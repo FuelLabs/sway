@@ -10,8 +10,7 @@ fn explicit() {
 
 fn implicit() {
     // ANCHOR: implicit
+    // The variable `fuel` has a length of 4
     let fuel = "fuel";
-    let blockchain = "blockchain";
-    let crypto = "crypto";
     // ANCHOR_END: implicit
 }

@@ -3,7 +3,7 @@ library tuples;
 // ANCHOR: syntax
 fn syntax() {
     // Define a tuple containing 2 u64 types
-    let mut balances: (u64, u64) = (42, 1337);
+    let mut balances = (42, 1337);
 
     // Index into the tuple to get the first and second values
     let first = balances.0;

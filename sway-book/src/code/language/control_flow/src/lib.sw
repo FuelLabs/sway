@@ -103,3 +103,58 @@ fn example2() {
     };
     // ANCHOR_END: if_let_example2
 }
+
+
+fn simple_match() {
+    // ANCHOR: simple_match
+    let number = 5;
+
+    let result = match number {
+        0 => 10,
+        1 => 20,
+        5 => 50,
+        catch_all => 0,
+    };
+    // ANCHOR_END: simple_match
+}
+
+fn multi_line_match() {
+    // ANCHOR: multi_line_match
+    let number = 5;
+
+    let result = match number {
+        0 => {
+            // Multiple lines of code here then return 10
+            10
+        },
+        1 => 20,
+        5 => 50,
+        catch_all => 0,
+    };
+    // ANCHOR_END: multi_line_match
+}
+
+// ANCHOR: complex_enum_match
+enum TopLevel {
+    One: (),
+    Two: SecondLevel,
+}
+
+enum SecondLevel {
+    Value1: u64,
+    Value2: (),
+}
+
+fn nested_match(input: TopLevel) -> u64 {
+    match input {
+        TopLevel::One => 1,
+        TopLevel::Two(second) => {
+            match second {
+                SecondLevel::Value1(2) => 2,
+                SecondLevel::Value1(_) => 3,
+                SecondLevel::Value2 => 42,
+            }
+        },
+    }
+}
+// ANCHOR_END: complex_enum_match
