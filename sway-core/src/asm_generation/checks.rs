@@ -7,7 +7,6 @@ use crate::asm_lang::*;
 use crate::error::*;
 
 use sway_error::error::CompileError;
-use sway_ir::*;
 
 /// Checks for disallowed opcodes in non-contract code.
 /// i.e., if this is a script or predicate, we can't use certain contract opcodes.
@@ -73,44 +72,5 @@ fn check_for_contract_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
         ok((), vec![], errors)
     } else {
         err(vec![], errors)
-    }
-}
-
-pub fn check_invalid_return(ir: &Context, module: &Module) -> CompileResult<()> {
-    let default_span = sway_types::span::Span::new("no span found".into(), 0, 1, None).unwrap();
-    match module.get_kind(ir) {
-        Kind::Contract | Kind::Library => ok((), vec![], vec![]),
-        Kind::Predicate | Kind::Script => {
-            let entry_point_function = module
-                .function_iter(ir)
-                .find(|func| {
-                    func.get_name(ir) == sway_types::constants::DEFAULT_ENTRY_POINT_FN_NAME
-                })
-                .unwrap();
-
-            let ret_ty = entry_point_function.get_return_type(ir);
-
-            if type_has_ptr(ir, &ret_ty) {
-                err(
-                    vec![],
-                    vec![CompileError::PointerReturnNotAllowedInMain { span: default_span }],
-                )
-            } else {
-                ok((), vec![], vec![])
-            }
-        }
-    }
-}
-
-fn type_has_ptr(ir: &Context, ty: &Type) -> bool {
-    match ty {
-        Type::Pointer(_) => true,
-        Type::Array(aggregate) | Type::Union(aggregate) | Type::Struct(aggregate) => {
-            match aggregate.get_content(ir) {
-                AggregateContent::ArrayType(ty, _) => type_has_ptr(ir, ty),
-                AggregateContent::FieldTypes(tys) => tys.iter().any(|ty| type_has_ptr(ir, ty)),
-            }
-        }
-        _ => false,
     }
 }

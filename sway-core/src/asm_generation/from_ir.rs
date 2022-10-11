@@ -1,6 +1,6 @@
 use super::{
     asm_builder::AsmBuilder,
-    checks::{check_invalid_opcodes, check_invalid_return},
+    checks::check_invalid_opcodes,
     finalized_asm::FinalizedAsm,
     programs::{AbstractProgram, ProgramKind},
     register_sequencer::RegisterSequencer,
@@ -26,14 +26,6 @@ pub fn compile_ir_to_asm(
     let mut errors: Vec<CompileError> = Vec::new();
 
     let module = ir.module_iter().next().unwrap();
-
-    check!(
-        check_invalid_return(ir, &module),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
     let abstract_program = check!(
         compile_module_to_asm(RegisterSequencer::new(), ir, module),
         return err(warnings, errors),
