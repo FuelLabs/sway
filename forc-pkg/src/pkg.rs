@@ -10,7 +10,7 @@ use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
     print_on_failure, print_on_success, print_on_success_library,
 };
-use fuel_tx::{Contract, StorageSlot};
+use fuel_tx::{Contract, ContractId, StorageSlot};
 use petgraph::{
     self,
     visit::{Bfs, Dfs, EdgeRef, Walker},
@@ -507,13 +507,14 @@ fn validate_dep(
 /// Part of dependency validation, any checks related to the depenency's manifest content.
 fn validate_dep_manifest(dep: &Pinned, dep_manifest: &PackageManifestFile) -> Result<()> {
     // Ensure that the dependency is a library.
+    /*
     if !matches!(dep_manifest.program_type()?, TreeType::Library { .. }) {
         bail!(
             "\"{}\" is not a library! Depending on a non-library package is not supported.",
             dep.name
         );
     }
-
+    */
     // Ensure the name matches the manifest project name.
     if dep.name != dep_manifest.project.name {
         bail!(
@@ -1099,66 +1100,116 @@ fn fetch_deps(
     fetched: &mut HashMap<Pkg, NodeIx>,
     visited: &mut HashSet<NodeIx>,
 ) -> Result<HashSet<NodeIx>> {
+    fn fetch_deps_helper(
+        fetch_id: u64,
+        offline: bool,
+        node: NodeIx,
+        path_root: PinnedId,
+        graph: &mut Graph,
+        manifest_map: &mut ManifestMap,
+        fetched: &mut HashMap<Pkg, NodeIx>,
+        visited: &mut HashSet<NodeIx>,
+        added: &mut HashSet<NodeIx>,
+        parent_id: PinnedId,
+        deps: Vec<(String, Dependency)>,
+    ) -> Result<()> {
+        for (dep_name, dep) in deps {
+            let name = dep.package().unwrap_or(&dep_name).to_string();
+            let source = dep_to_source_patched(&manifest_map[&parent_id], &name, &dep)
+                .context("Failed to source dependency")?;
+
+            // If we haven't yet fetched this dependency, fetch it, pin it and add it to the graph.
+            let dep_pkg = Pkg { name, source };
+            let dep_node = match fetched.entry(dep_pkg) {
+                hash_map::Entry::Occupied(entry) => *entry.get(),
+                hash_map::Entry::Vacant(entry) => {
+                    let dep_pinned =
+                        pin_pkg(fetch_id, path_root, entry.key(), manifest_map, offline)?;
+                    let dep_node = graph.add_node(dep_pinned);
+                    added.insert(dep_node);
+                    *entry.insert(dep_node)
+                }
+            };
+
+            // Ensure we have an edge to the dependency.
+            graph.update_edge(node, dep_node, dep_name.to_string());
+
+            // If we've visited this node during this traversal already, no need to traverse it again.
+            if !visited.insert(dep_node) {
+                continue;
+            }
+
+            let dep_pinned = &graph[dep_node];
+            let dep_pkg_id = dep_pinned.id();
+            validate_dep_manifest(dep_pinned, &manifest_map[&dep_pkg_id]).map_err(|e| {
+                let parent = &graph[node];
+                anyhow!(
+                    "dependency of {:?} named {:?} is invalid: {}",
+                    parent.name,
+                    dep_name,
+                    e
+                )
+            })?;
+
+            let path_root = match dep_pinned.source {
+                SourcePinned::Root | SourcePinned::Git(_) | SourcePinned::Registry(_) => dep_pkg_id,
+                SourcePinned::Path(_) => path_root,
+            };
+
+            // Fetch the children.
+            added.extend(fetch_deps(
+                fetch_id,
+                offline,
+                dep_node,
+                path_root,
+                graph,
+                manifest_map,
+                fetched,
+                visited,
+            )?);
+        }
+        Ok(())
+    }
     let mut added = HashSet::default();
     let parent_id = graph[node].id();
-    let deps: Vec<_> = manifest_map[&parent_id]
-        .deps()
-        .map(|(n, d)| (n.clone(), d.clone()))
-        .collect();
-    for (dep_name, dep) in deps {
-        let name = dep.package().unwrap_or(&dep_name).to_string();
-        let source = dep_to_source_patched(&manifest_map[&parent_id], &name, &dep)
-            .context("Failed to source dependency")?;
-
-        // If we haven't yet fetched this dependency, fetch it, pin it and add it to the graph.
-        let dep_pkg = Pkg { name, source };
-        let dep_node = match fetched.entry(dep_pkg) {
-            hash_map::Entry::Occupied(entry) => *entry.get(),
-            hash_map::Entry::Vacant(entry) => {
-                let dep_pinned = pin_pkg(fetch_id, path_root, entry.key(), manifest_map, offline)?;
-                let dep_node = graph.add_node(dep_pinned);
-                added.insert(dep_node);
-                *entry.insert(dep_node)
-            }
-        };
-
-        // Ensure we have an edge to the dependency.
-        graph.update_edge(node, dep_node, dep_name.to_string());
-
-        // If we've visited this node during this traversal already, no need to traverse it again.
-        if !visited.insert(dep_node) {
-            continue;
-        }
-
-        let dep_pinned = &graph[dep_node];
-        let dep_pkg_id = dep_pinned.id();
-        validate_dep_manifest(dep_pinned, &manifest_map[&dep_pkg_id]).map_err(|e| {
-            let parent = &graph[node];
-            anyhow!(
-                "dependency of {:?} named {:?} is invalid: {}",
-                parent.name,
-                dep_name,
-                e
-            )
-        })?;
-
-        let path_root = match dep_pinned.source {
-            SourcePinned::Root | SourcePinned::Git(_) | SourcePinned::Registry(_) => dep_pkg_id,
-            SourcePinned::Path(_) => path_root,
-        };
-
-        // Fetch the children.
-        added.extend(fetch_deps(
+    let package_manifest = manifest_map[&parent_id].to_owned();
+    // If the current package is a contract, we need to first get the deployment dependencies
+    if package_manifest.program_type()? == TreeType::Contract {
+        let contract_deps: Vec<_> = package_manifest
+            .contract_deps()
+            .map(|(n, d)| (n.to_owned(), d.to_owned()))
+            .collect();
+        fetch_deps_helper(
             fetch_id,
             offline,
-            dep_node,
+            node,
             path_root,
             graph,
             manifest_map,
             fetched,
             visited,
-        )?);
+            &mut added,
+            parent_id,
+            contract_deps,
+        )?;
     }
+    let deps: Vec<_> = package_manifest
+        .deps()
+        .map(|(n, d)| (n.clone(), d.clone()))
+        .collect();
+    fetch_deps_helper(
+        fetch_id,
+        offline,
+        node,
+        path_root,
+        graph,
+        manifest_map,
+        fetched,
+        visited,
+        &mut added,
+        parent_id,
+        deps,
+    )?;
     Ok(added)
 }
 
@@ -1728,9 +1779,12 @@ pub fn dependency_namespace(
     let mut core_added = false;
     for edge in graph.edges_directed(node, Direction::Outgoing) {
         let dep_node = edge.target();
-        let dep_namespace = &namespace_map[&dep_node];
         let dep_name = kebab_to_snake_case(edge.weight());
-        namespace.insert_submodule(dep_name, dep_namespace.clone());
+        let dep_namespace = namespace_map
+            .get(&dep_node)
+            .map(|namespace| namespace.to_owned())
+            .unwrap_or_else(namespace::Module::default);
+        namespace.insert_submodule(dep_name, dep_namespace);
         let dep = &graph[dep_node];
         if dep.name == CORE {
             core_added = true;
@@ -2170,6 +2224,12 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
     Ok(compiled)
 }
 
+/// Returns the ContractId of a compiled contract with specified `salt`.
+fn get_contract_id() -> ContractId {
+    // TODO: actually find the contract id
+    ContractId::default()
+}
+
 /// Build an entire forc package and return the compiled output.
 ///
 /// This compiles all packages (including dependencies) in the order specified by the `BuildPlan`.
@@ -2189,10 +2249,36 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
     let mut storage_slots = vec![];
     let mut bytecode = vec![];
     let mut tree_type = None;
+    let root_node = plan
+        .compilation_order()
+        .last()
+        .expect("Compilation order is empty!");
+    let root_node_pinned = &plan.graph()[*root_node];
+    let root_manifest = &plan.manifest_map()[&root_node_pinned.id()];
+    let mut contract_dependency_ids = HashMap::new();
     for &node in &plan.compilation_order {
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
-        let constants = manifest.config_time_constants();
+        // If the current node is a contract dependency, collect
+        if root_manifest
+            .contract_deps()
+            .any(|dep| *dep.0 == manifest.project.name)
+        {
+            let contract_id = get_contract_id();
+            contract_dependency_ids.insert(pkg.name.clone(), contract_id);
+        }
+        let mut constants = manifest.config_time_constants();
+        if node == *root_node {
+            // Add collected contract dependency ids to this packages constants
+            for (contract_dep_name, contract_dep_id) in &contract_dependency_ids {
+                let contract_dep_constant_name = format!("{contract_dep_name}_CONTRACT_ID");
+                let config_time_constants = ConfigTimeConstant {
+                    r#type: "b256".to_string(),
+                    value: contract_dep_id.to_string(),
+                };
+                constants.insert(contract_dep_constant_name, config_time_constants);
+            }
+        }
         let dep_namespace = match dependency_namespace(&namespace_map, &plan.graph, node, constants)
         {
             Ok(o) => o,
@@ -2201,7 +2287,6 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
                 bail!("Failed to compile {}", pkg.name);
             }
         };
-
         let res = compile(pkg, manifest, profile, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
         if let Some(namespace) = maybe_namespace {

@@ -297,6 +297,14 @@ impl PackageManifest {
             .flat_map(|deps| deps.iter())
     }
 
+    /// Produce an iterator yielding all listed contract dependencies
+    pub fn contract_deps(&self) -> impl Iterator<Item = (&String, &Dependency)> {
+        self.contract_dependencies
+            .as_ref()
+            .into_iter()
+            .flat_map(|deps| deps.iter())
+    }
+
     /// Produce an iterator yielding all `Detailed` dependencies.
     pub fn deps_detailed(&self) -> impl Iterator<Item = (&String, &DependencyDetails)> {
         self.deps().filter_map(|(name, dep)| match dep {
