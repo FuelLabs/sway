@@ -1,8 +1,10 @@
-use super::{CopyTypes, TyExpression, TypeMapping};
+use super::{CopyTypes, TypeMapping};
+
+use crate::language::ty;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TyReturnStatement {
-    pub expr: TyExpression,
+    pub expr: ty::TyExpression,
 }
 
 impl CopyTypes for TyReturnStatement {

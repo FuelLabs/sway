@@ -1,9 +1,10 @@
 use crate::{
     declaration_engine::declaration_engine::de_get_constant,
+    language::ty,
     metadata::MetadataManager,
     semantic_analysis::{
         declaration::ProjectionKind, namespace, TyAstNode, TyAstNodeContent, TyConstantDeclaration,
-        TyDeclaration, TyExpression, TyExpressionVariant, TyStructExpressionField,
+        TyDeclaration, TyStructExpressionField,
     },
 };
 
@@ -73,7 +74,7 @@ pub(super) fn compile_constant_expression(
     md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: Option<&namespace::Module>,
-    const_expr: &TyExpression,
+    const_expr: &ty::TyExpression,
 ) -> Result<Value, CompileError> {
     let span_id_idx = md_mgr.span_to_md(context, &const_expr.span);
 
@@ -87,7 +88,7 @@ pub(crate) fn compile_constant_expression_to_constant(
     md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: Option<&namespace::Module>,
-    const_expr: &TyExpression,
+    const_expr: &ty::TyExpression,
 ) -> Result<Constant, CompileError> {
     let lookup = &mut LookupEnv {
         context,
@@ -100,7 +101,7 @@ pub(crate) fn compile_constant_expression_to_constant(
     let err = match &const_expr.expression {
         // Special case functions because the span in `const_expr` is to the inlined function
         // definition, rather than the actual call site.
-        TyExpressionVariant::FunctionApplication { call_path, .. } => {
+        ty::TyExpressionVariant::FunctionApplication { call_path, .. } => {
             Err(CompileError::NonConstantDeclValue {
                 span: call_path.span(),
             })
@@ -161,11 +162,11 @@ impl<K: std::cmp::Eq + std::hash::Hash, V> Default for MappedStack<K, V> {
 fn const_eval_typed_expr(
     lookup: &mut LookupEnv,
     known_consts: &mut MappedStack<Ident, Constant>,
-    expr: &TyExpression,
+    expr: &ty::TyExpression,
 ) -> Option<Constant> {
     match &expr.expression {
-        TyExpressionVariant::Literal(l) => Some(convert_literal_to_constant(l)),
-        TyExpressionVariant::FunctionApplication {
+        ty::TyExpressionVariant::Literal(l) => Some(convert_literal_to_constant(l)),
+        ty::TyExpressionVariant::FunctionApplication {
             arguments,
             function_decl,
             ..
@@ -199,7 +200,7 @@ fn const_eval_typed_expr(
             }
             res
         }
-        TyExpressionVariant::VariableExpression { name, .. } => match known_consts.get(name) {
+        ty::TyExpressionVariant::VariableExpression { name, .. } => match known_consts.get(name) {
             // 1. Check if name is in known_consts.
             Some(cvs) => Some(cvs.clone()),
             None => {
@@ -210,7 +211,7 @@ fn const_eval_typed_expr(
                     .and_then(|v| v.get_constant(lookup.context).cloned())
             }
         },
-        TyExpressionVariant::StructExpression { fields, .. } => {
+        ty::TyExpressionVariant::StructExpression { fields, .. } => {
             let (field_typs, field_vals): (Vec<_>, Vec<_>) = fields
                 .iter()
                 .filter_map(|TyStructExpressionField { name: _, value, .. }| {
@@ -225,7 +226,7 @@ fn const_eval_typed_expr(
             let aggregate = get_aggregate_for_types(lookup.context, &field_typs).unwrap();
             Some(Constant::new_struct(&aggregate, field_vals))
         }
-        TyExpressionVariant::Tuple { fields } => {
+        ty::TyExpressionVariant::Tuple { fields } => {
             let (field_typs, field_vals): (Vec<_>, Vec<_>) = fields
                 .iter()
                 .filter_map(|value| {
@@ -240,7 +241,7 @@ fn const_eval_typed_expr(
             let aggregate = create_tuple_aggregate(lookup.context, field_typs).unwrap();
             Some(Constant::new_struct(&aggregate, field_vals))
         }
-        TyExpressionVariant::Array { contents } => {
+        ty::TyExpressionVariant::Array { contents } => {
             let (element_typs, element_vals): (Vec<_>, Vec<_>) = contents
                 .iter()
                 .filter_map(|value| {
@@ -269,7 +270,7 @@ fn const_eval_typed_expr(
             .unwrap();
             Some(Constant::new_array(&aggregate, element_vals))
         }
-        TyExpressionVariant::EnumInstantiation {
+        ty::TyExpressionVariant::EnumInstantiation {
             enum_decl,
             tag,
             contents,
@@ -289,7 +290,7 @@ fn const_eval_typed_expr(
             }
             Some(Constant::new_struct(&aggregate, fields))
         }
-        TyExpressionVariant::StructFieldAccess {
+        ty::TyExpressionVariant::StructFieldAccess {
             prefix,
             field_to_access,
             resolved_type_of_parent,
@@ -310,7 +311,7 @@ fn const_eval_typed_expr(
             }
             _ => None,
         },
-        TyExpressionVariant::TupleElemAccess {
+        ty::TyExpressionVariant::TupleElemAccess {
             prefix,
             elem_to_access_num,
             ..
@@ -321,26 +322,26 @@ fn const_eval_typed_expr(
             }) => fields.get(*elem_to_access_num).cloned(),
             _ => None,
         },
-        TyExpressionVariant::Return(stmt) => {
+        ty::TyExpressionVariant::Return(stmt) => {
             const_eval_typed_expr(lookup, known_consts, &stmt.expr)
         }
-        TyExpressionVariant::ArrayIndex { .. }
-        | TyExpressionVariant::IntrinsicFunction(_)
-        | TyExpressionVariant::CodeBlock(_)
-        | TyExpressionVariant::Reassignment(_)
-        | TyExpressionVariant::StorageReassignment(_)
-        | TyExpressionVariant::FunctionParameter
-        | TyExpressionVariant::IfExp { .. }
-        | TyExpressionVariant::AsmExpression { .. }
-        | TyExpressionVariant::LazyOperator { .. }
-        | TyExpressionVariant::AbiCast { .. }
-        | TyExpressionVariant::StorageAccess(_)
-        | TyExpressionVariant::AbiName(_)
-        | TyExpressionVariant::EnumTag { .. }
-        | TyExpressionVariant::UnsafeDowncast { .. }
-        | TyExpressionVariant::Break
-        | TyExpressionVariant::Continue
-        | TyExpressionVariant::WhileLoop { .. } => None,
+        ty::TyExpressionVariant::ArrayIndex { .. }
+        | ty::TyExpressionVariant::IntrinsicFunction(_)
+        | ty::TyExpressionVariant::CodeBlock(_)
+        | ty::TyExpressionVariant::Reassignment(_)
+        | ty::TyExpressionVariant::StorageReassignment(_)
+        | ty::TyExpressionVariant::FunctionParameter
+        | ty::TyExpressionVariant::IfExp { .. }
+        | ty::TyExpressionVariant::AsmExpression { .. }
+        | ty::TyExpressionVariant::LazyOperator { .. }
+        | ty::TyExpressionVariant::AbiCast { .. }
+        | ty::TyExpressionVariant::StorageAccess(_)
+        | ty::TyExpressionVariant::AbiName(_)
+        | ty::TyExpressionVariant::EnumTag { .. }
+        | ty::TyExpressionVariant::UnsafeDowncast { .. }
+        | ty::TyExpressionVariant::Break
+        | ty::TyExpressionVariant::Continue
+        | ty::TyExpressionVariant::WhileLoop { .. } => None,
     }
 }
 

@@ -15,16 +15,18 @@ pub(crate) use return_statement::*;
 use crate::{
     declaration_engine::declaration_engine::*,
     error::*,
-    language::{parsed::*, Visibility},
+    language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
-    style::*,
     type_system::*,
     types::DeterministicallyAborts,
     Ident,
 };
 
-use sway_error::error::CompileError;
-use sway_types::{span::Span, state::StateIndex, Spanned};
+use sway_error::{
+    error::CompileError,
+    warning::{CompileWarning, Warning},
+};
+use sway_types::{span::Span, state::StateIndex, style::is_screaming_snake_case, Spanned};
 
 use derivative::Derivative;
 
@@ -39,8 +41,8 @@ pub(crate) enum IsConstant {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TyAstNodeContent {
     Declaration(TyDeclaration),
-    Expression(TyExpression),
-    ImplicitReturnExpression(TyExpression),
+    Expression(ty::TyExpression),
+    ImplicitReturnExpression(ty::TyExpression),
     // a no-op node used for something that just issues a side effect, like an import statement.
     SideEffect,
 }
@@ -173,10 +175,10 @@ impl TyAstNode {
         use TyAstNodeContent::*;
         match &self.content {
             Declaration(_) => TypeInfo::Tuple(Vec::new()),
-            Expression(TyExpression { return_type, .. }) => {
+            Expression(ty::TyExpression { return_type, .. }) => {
                 crate::type_system::look_up_type_id(*return_type)
             }
-            ImplicitReturnExpression(TyExpression { return_type, .. }) => {
+            ImplicitReturnExpression(ty::TyExpression { return_type, .. }) => {
                 crate::type_system::look_up_type_id(*return_type)
             }
             SideEffect => TypeInfo::Tuple(Vec::new()),
@@ -205,7 +207,7 @@ impl TyAstNode {
                     "This declaration's type annotation does not match up with the assigned \
                         expression's type.",
                 );
-                TyExpression::type_check(ctx, expr)
+                ty::TyExpression::type_check(ctx, expr)
             };
 
         let node = TyAstNode {
@@ -250,9 +252,13 @@ impl TyAstNode {
                                 "Variable declaration's type annotation does not match up \
                                     with the assigned expression's type.",
                             );
-                            let result = TyExpression::type_check(ctx.by_ref(), body);
-                            let body =
-                                check!(result, error_recovery_expr(name.span()), warnings, errors);
+                            let result = ty::TyExpression::type_check(ctx.by_ref(), body);
+                            let body = check!(
+                                result,
+                                ty::error_recovery_expr(name.span()),
+                                warnings,
+                                errors
+                            );
                             let typed_var_decl = TyDeclaration::VariableDeclaration(Box::new(
                                 TyVariableDeclaration {
                                     name: name.clone(),
@@ -274,9 +280,22 @@ impl TyAstNode {
                         }) => {
                             let result =
                                 type_check_ascribed_expr(ctx.by_ref(), type_ascription, value);
-                            is_screaming_snake_case(&name).ok(&mut warnings, &mut errors);
-                            let value =
-                                check!(result, error_recovery_expr(name.span()), warnings, errors);
+
+                            if !is_screaming_snake_case(name.as_str()) {
+                                warnings.push(CompileWarning {
+                                    span: name.span(),
+                                    warning_content: Warning::NonScreamingSnakeCaseConstName {
+                                        name: name.clone(),
+                                    },
+                                })
+                            }
+
+                            let value = check!(
+                                result,
+                                ty::error_recovery_expr(name.span()),
+                                warnings,
+                                errors
+                            );
                             let decl = TyConstantDeclaration {
                                 name: name.clone(),
                                 value,
@@ -420,7 +439,7 @@ impl TyAstNode {
 
                                 let mut ctx = ctx.by_ref().with_type_annotation(type_id);
                                 let initializer = check!(
-                                    TyExpression::type_check(ctx.by_ref(), initializer),
+                                    ty::TyExpression::type_check(ctx.by_ref(), initializer),
                                     return err(warnings, errors),
                                     warnings,
                                     errors,
@@ -456,8 +475,8 @@ impl TyAstNode {
                         .with_type_annotation(insert_type(TypeInfo::Unknown))
                         .with_help_text("");
                     let inner = check!(
-                        TyExpression::type_check(ctx, expr.clone()),
-                        error_recovery_expr(expr.span()),
+                        ty::TyExpression::type_check(ctx, expr.clone()),
+                        ty::error_recovery_expr(expr.span()),
                         warnings,
                         errors
                     );
@@ -467,8 +486,8 @@ impl TyAstNode {
                     let ctx =
                         ctx.with_help_text("Implicit return must match up with block's type.");
                     let typed_expr = check!(
-                        TyExpression::type_check(ctx, expr.clone()),
-                        error_recovery_expr(expr.span()),
+                        ty::TyExpression::type_check(ctx, expr.clone()),
+                        ty::error_recovery_expr(expr.span()),
                         warnings,
                         errors
                     );
@@ -479,12 +498,12 @@ impl TyAstNode {
         };
 
         if let TyAstNode {
-            content: TyAstNodeContent::Expression(TyExpression { .. }),
+            content: TyAstNodeContent::Expression(ty::TyExpression { .. }),
             ..
         } = node
         {
             let warning = Warning::UnusedReturnValue {
-                r#type: Box::new(node.type_info()),
+                r#type: node.type_info().to_string(),
             };
             assert_or_warn!(
                 node.type_info().can_safely_ignore(),
@@ -710,7 +729,7 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TyFunctionD
 pub struct TyStorageReassignment {
     pub fields: Vec<TyStorageReassignDescriptor>,
     pub(crate) ix: StateIndex,
-    pub rhs: TyExpression,
+    pub rhs: ty::TyExpression,
 }
 
 impl Spanned for TyStorageReassignment {
@@ -843,8 +862,8 @@ pub(crate) fn reassign_storage_subfield(
     }
     let ctx = ctx.with_type_annotation(curr_type).with_help_text("");
     let rhs = check!(
-        TyExpression::type_check(ctx, rhs),
-        error_recovery_expr(span),
+        ty::TyExpression::type_check(ctx, rhs),
+        ty::error_recovery_expr(span),
         warnings,
         errors
     );

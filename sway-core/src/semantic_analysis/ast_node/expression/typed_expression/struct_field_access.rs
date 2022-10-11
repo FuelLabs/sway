@@ -2,16 +2,17 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     error::{err, ok},
-    semantic_analysis::{IsConstant, TyExpression, TyExpressionVariant},
+    language::ty,
+    semantic_analysis::IsConstant,
     type_system::look_up_type_id,
     CompileResult,
 };
 
 pub(crate) fn instantiate_struct_field_access(
-    parent: TyExpression,
+    parent: ty::TyExpression,
     field_to_access: Ident,
     span: Span,
-) -> CompileResult<TyExpression> {
+) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let field_instantiation_span = field_to_access.span();
@@ -21,8 +22,8 @@ pub(crate) fn instantiate_struct_field_access(
         warnings,
         errors
     );
-    let exp = TyExpression {
-        expression: TyExpressionVariant::StructFieldAccess {
+    let exp = ty::TyExpression {
+        expression: ty::TyExpressionVariant::StructFieldAccess {
             resolved_type_of_parent: parent.return_type,
             prefix: Box::new(parent),
             field_to_access: field.clone(),

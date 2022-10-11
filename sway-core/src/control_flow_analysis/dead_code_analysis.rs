@@ -1,22 +1,22 @@
 use super::*;
 use crate::{
     declaration_engine::declaration_engine::*,
-    language::{parsed::TreeType, CallPath, Visibility},
+    language::{parsed::TreeType, ty, CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
             TyAbiDeclaration, TyCodeBlock, TyConstantDeclaration, TyDeclaration, TyEnumDeclaration,
-            TyExpression, TyExpressionVariant, TyFunctionDeclaration, TyStructDeclaration,
-            TyStructExpressionField, TyTraitDeclaration, TyVariableDeclaration, VariableMutability,
+            TyFunctionDeclaration, TyStructDeclaration, TyStructExpressionField,
+            TyTraitDeclaration, TyVariableDeclaration, VariableMutability,
         },
         TyAsmRegisterDeclaration, TyAstNode, TyAstNodeContent, TyImplTrait,
         TyIntrinsicFunctionKind, TyStorageDeclaration,
     },
     type_system::{to_typeinfo, TypeInfo},
-    CompileWarning, Warning,
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::BTreeSet;
 use sway_error::error::CompileError;
+use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{span::Span, Ident, Spanned};
 
 impl ControlFlowGraph {
@@ -237,7 +237,7 @@ fn connect_node(
             }
             (return_contents, None)
         }
-        TyAstNodeContent::Expression(TyExpression {
+        TyAstNodeContent::Expression(ty::TyExpression {
             expression: expr_variant,
             span,
             ..
@@ -625,7 +625,7 @@ fn depth_first_insertion_code_block(
 /// connects any inner parts of an expression to the graph
 /// note the main expression node has already been inserted
 fn connect_expression(
-    expr_variant: &TyExpressionVariant,
+    expr_variant: &ty::TyExpressionVariant,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
@@ -633,7 +633,7 @@ fn connect_expression(
     tree_type: &TreeType,
     _expression_span: Span,
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    use TyExpressionVariant::*;
+    use ty::TyExpressionVariant::*;
     match expr_variant {
         FunctionApplication {
             call_path: name,
@@ -1182,7 +1182,7 @@ fn connect_code_block(
 
 fn connect_enum_instantiation(
     enum_decl: &TyEnumDeclaration,
-    contents: &Option<Box<TyExpression>>,
+    contents: &Option<Box<ty::TyExpression>>,
     variant_name: &Ident,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],

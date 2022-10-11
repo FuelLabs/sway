@@ -1,7 +1,10 @@
-use crate::semantic_analysis::TyExpression;
-use crate::type_system::*;
-use crate::{language::CallPath, semantic_analysis::ast_node::TyStructField, Ident};
+use crate::{
+    language::{ty, CallPath},
+    semantic_analysis::ast_node::TyStructField,
+};
 use derivative::Derivative;
+use sway_types::integer_bits::IntegerBits;
+use sway_types::Ident;
 
 #[derive(Derivative)]
 #[derivative(Debug, Clone, Eq, PartialEq, Hash)]
@@ -32,7 +35,7 @@ pub enum ResolvedType {
     ContractCaller {
         abi_name: CallPath,
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
-        address: Box<TyExpression>,
+        address: Box<ty::TyExpression>,
     },
     #[allow(dead_code)]
     Function {
