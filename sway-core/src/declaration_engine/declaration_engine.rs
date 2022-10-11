@@ -5,9 +5,10 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     concurrent_slab::ConcurrentSlab,
+    language::ty,
     semantic_analysis::{
         TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyImplTrait,
-        TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
+        TyStorageDeclaration, TyStructDeclaration, TyTraitFn,
     },
     TyFunctionDeclaration,
 };
@@ -105,7 +106,7 @@ impl DeclarationEngine {
             .collect::<Result<_, _>>()
     }
 
-    fn insert_trait(&self, r#trait: TyTraitDeclaration) -> DeclarationId {
+    fn insert_trait(&self, r#trait: ty::TyTraitDeclaration) -> DeclarationId {
         let span = r#trait.name.span();
         DeclarationId::new(self.slab.insert(DeclarationWrapper::Trait(r#trait)), span)
     }
@@ -114,7 +115,7 @@ impl DeclarationEngine {
         &self,
         index: DeclarationId,
         span: &Span,
-    ) -> Result<TyTraitDeclaration, CompileError> {
+    ) -> Result<ty::TyTraitDeclaration, CompileError> {
         self.slab.get(*index).expect_trait(span)
     }
 
@@ -281,11 +282,14 @@ pub(crate) fn de_get_monomorphized_function_copies(
     DECLARATION_ENGINE.get_monomorphized_function_copies(original_id, span)
 }
 
-pub(crate) fn de_insert_trait(r#trait: TyTraitDeclaration) -> DeclarationId {
+pub(crate) fn de_insert_trait(r#trait: ty::TyTraitDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.insert_trait(r#trait)
 }
 
-pub fn de_get_trait(index: DeclarationId, span: &Span) -> Result<TyTraitDeclaration, CompileError> {
+pub fn de_get_trait(
+    index: DeclarationId,
+    span: &Span,
+) -> Result<ty::TyTraitDeclaration, CompileError> {
     DECLARATION_ENGINE.get_trait(index, span)
 }
 

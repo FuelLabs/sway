@@ -5,9 +5,10 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     declaration_engine::*,
     error::*,
+    language::ty::*,
     semantic_analysis::{
-        TyConstantDeclaration, TyEnumDeclaration, TyStructDeclaration, TyTraitDeclaration,
-        TyVariableDeclaration, VariableMutability,
+        TyConstantDeclaration, TyEnumDeclaration, TyStructDeclaration, TyVariableDeclaration,
+        VariableMutability,
     },
     type_system::*,
     TyFunctionDeclaration,

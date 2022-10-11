@@ -217,7 +217,7 @@ impl ty::TyDeclaration {
         let mut errors = vec![];
         let visibility = match self {
             TraitDeclaration(decl_id) => {
-                let TyTraitDeclaration { visibility, .. } = check!(
+                let ty::TyTraitDeclaration { visibility, .. } = check!(
                     CompileResult::from(de_get_trait(decl_id.clone(), &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
