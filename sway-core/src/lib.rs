@@ -67,7 +67,7 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<par
 fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> CompileResult<sway_ast::Module> {
     let handler = sway_error::handler::Handler::default();
     let res = sway_parse::parse_file(&handler, src, path);
-    CompileResult::new(res.ok(), vec![], handler.into_errors())
+    CompileResult::from_handler(res.ok(), handler)
 }
 
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
