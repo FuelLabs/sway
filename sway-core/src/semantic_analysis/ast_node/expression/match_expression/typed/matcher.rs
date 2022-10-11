@@ -7,7 +7,7 @@ use crate::{
             instantiate_unsafe_downcast,
         },
         namespace::Namespace,
-        IsConstant, TyEnumVariant, VariableMutability,
+        IsConstant, TyEnumVariant,
     },
     type_system::unify,
     CompileResult, Ident, TypeId,
@@ -134,7 +134,7 @@ fn match_constant(
             expression: ty::TyExpressionVariant::VariableExpression {
                 name: scrutinee_name,
                 span: span.clone(),
-                mutability: VariableMutability::Immutable,
+                mutability: ty::VariableMutability::Immutable,
             },
             return_type: scrutinee_type_id,
             is_constant: IsConstant::Yes,

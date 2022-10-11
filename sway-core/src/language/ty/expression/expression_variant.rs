@@ -12,7 +12,7 @@ use crate::{
         ContractCallParams, ProjectionKind, TyAsmRegisterDeclaration, TyCodeBlock,
         TyEnumDeclaration, TyEnumVariant, TyIntrinsicFunctionKind, TyReassignment,
         TyReturnStatement, TyStorageReassignment, TyStructExpressionField, TyStructField,
-        TypeCheckedStorageAccess, VariableMutability,
+        TypeCheckedStorageAccess,
     },
     type_system::*,
     TyFunctionDeclaration,

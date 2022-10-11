@@ -6,7 +6,6 @@ use crate::{
     semantic_analysis::{
         ast_node::expression::match_expression::typed::typed_scrutinee::TyScrutinee, IsConstant,
         TyAstNode, TyAstNodeContent, TyCodeBlock, TyVariableDeclaration, TypeCheckContext,
-        VariableMutability,
     },
     type_system::insert_type,
     types::DeterministicallyAborts,
@@ -67,7 +66,7 @@ impl TyMatchBranch {
             let var_decl = TyDeclaration::VariableDeclaration(Box::new(TyVariableDeclaration {
                 name: left_decl.clone(),
                 body: right_decl,
-                mutability: VariableMutability::Immutable,
+                mutability: ty::VariableMutability::Immutable,
                 type_ascription,
                 type_ascription_span: None,
             }));

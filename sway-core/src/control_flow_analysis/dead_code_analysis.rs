@@ -6,7 +6,7 @@ use crate::{
         ast_node::{
             TyAbiDeclaration, TyCodeBlock, TyConstantDeclaration, TyDeclaration, TyEnumDeclaration,
             TyFunctionDeclaration, TyStructDeclaration, TyStructExpressionField,
-            TyTraitDeclaration, TyVariableDeclaration, VariableMutability,
+            TyTraitDeclaration, TyVariableDeclaration,
         },
         TyAsmRegisterDeclaration, TyAstNode, TyAstNodeContent, TyImplTrait,
         TyIntrinsicFunctionKind, TyStorageDeclaration,
@@ -295,7 +295,7 @@ fn connect_declaration(
                 mutability: is_mutable,
                 ..
             } = &**var_decl;
-            if matches!(is_mutable, VariableMutability::ExportedConst) {
+            if matches!(is_mutable, ty::VariableMutability::ExportedConst) {
                 graph.namespace.insert_constant(name.clone(), entry_node);
                 Ok(leaves.to_vec())
             } else {

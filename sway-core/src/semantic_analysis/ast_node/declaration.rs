@@ -105,10 +105,10 @@ impl fmt::Display for TyDeclaration {
                     } = &**decl;
                     let mut builder = String::new();
                     match mutability {
-                        VariableMutability::Mutable => builder.push_str("mut"),
-                        VariableMutability::RefMutable => builder.push_str("ref mut"),
-                        VariableMutability::Immutable => {}
-                        VariableMutability::ExportedConst => builder.push_str("pub const"),
+                        ty::VariableMutability::Mutable => builder.push_str("mut"),
+                        ty::VariableMutability::RefMutable => builder.push_str("ref mut"),
+                        ty::VariableMutability::Immutable => {}
+                        ty::VariableMutability::ExportedConst => builder.push_str("pub const"),
                     }
                     builder.push_str(name.as_str());
                     builder.push_str(": ");

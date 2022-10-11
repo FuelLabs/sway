@@ -263,7 +263,9 @@ impl TyAstNode {
                                 TyVariableDeclaration {
                                     name: name.clone(),
                                     body,
-                                    mutability: convert_to_variable_immutability(false, is_mutable),
+                                    mutability: ty::convert_to_variable_immutability(
+                                        false, is_mutable,
+                                    ),
                                     type_ascription,
                                     type_ascription_span,
                                 },
