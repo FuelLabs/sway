@@ -17,8 +17,6 @@ use crate::{
     CompileResult, TyFunctionDeclaration, TypeInfo,
 };
 
-use super::TyTraitFn;
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TyImplTrait {
     pub trait_name: CallPath,
@@ -485,7 +483,7 @@ impl TyImplTrait {
 #[allow(clippy::too_many_arguments)]
 fn type_check_trait_implementation(
     mut ctx: TypeCheckContext,
-    trait_interface_surface: &[TyTraitFn],
+    trait_interface_surface: &[ty::TyTraitFn],
     trait_methods: &[FunctionDeclaration],
     functions: &[FunctionDeclaration],
     trait_name: &CallPath,

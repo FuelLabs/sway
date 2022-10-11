@@ -22,9 +22,8 @@ use crate::{
     language::{ty, *},
     semantic_analysis::*,
     type_system::*,
-    AttributesMap,
 };
-use derivative::Derivative;
+
 use std::borrow::Cow;
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -279,26 +278,7 @@ pub struct TyConstantDeclaration {
     pub(crate) visibility: Visibility,
 }
 
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
-pub struct TyTraitFn {
-    pub name: Ident,
-    pub(crate) purity: Purity,
-    pub parameters: Vec<TyFunctionParameter>,
-    pub return_type: TypeId,
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub return_type_span: Span,
-    pub attributes: AttributesMap,
-}
-
-impl CopyTypes for TyTraitFn {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.return_type.copy_types(type_mapping);
-    }
-}
-
-impl TyTraitFn {
+impl ty::TyTraitFn {
     /// This function is used in trait declarations to insert "placeholder" functions
     /// in the methods. This allows the methods to use functions declared in the
     /// interface surface.

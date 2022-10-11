@@ -10,7 +10,7 @@ use sway_core::{
     semantic_analysis::ast_node::{
         code_block::TyCodeBlock,
         expression::TyIntrinsicFunctionKind,
-        ProjectionKind, TyFunctionDeclaration, TyFunctionParameter, TyImplTrait, TyTraitFn,
+        ProjectionKind, TyFunctionDeclaration, TyFunctionParameter, TyImplTrait,
         {TyAstNode, TyAstNodeContent},
     },
 };
@@ -457,7 +457,7 @@ fn handle_while_loop(body: &TyCodeBlock, condition: &ty::TyExpression, tokens: &
     }
 }
 
-fn collect_typed_trait_fn_token(trait_fn: &TyTraitFn, tokens: &TokenMap) {
+fn collect_typed_trait_fn_token(trait_fn: &ty::TyTraitFn, tokens: &TokenMap) {
     if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_fn.name)) {
         token.typed = Some(TypedAstToken::TypedTraitFn(trait_fn.clone()));
     }

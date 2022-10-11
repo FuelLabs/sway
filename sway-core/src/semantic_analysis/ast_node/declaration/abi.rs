@@ -4,16 +4,14 @@ use sway_types::{Ident, Span};
 
 use crate::{
     error::{err, ok},
-    language::parsed::*,
+    language::{parsed::*, ty},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
         TypeCheckContext,
     },
-    type_system::{insert_type, AbiName, TypeId},
-    CompileResult, TypeInfo,
+    type_system::*,
+    CompileResult,
 };
-
-use super::{CreateTypeId, TyTraitFn};
 
 /// A [TyAbiDeclaration] contains the type-checked version of the parse tree's `AbiDeclaration`.
 #[derive(Clone, Debug, Derivative)]
@@ -22,7 +20,7 @@ pub struct TyAbiDeclaration {
     /// The name of the abi trait (also known as a "contract trait")
     pub name: Ident,
     /// The methods a contract is required to implement in order opt in to this interface
-    pub interface_surface: Vec<TyTraitFn>,
+    pub interface_surface: Vec<ty::TyTraitFn>,
     /// The methods provided to a contract "for free" upon opting in to this interface
     // NOTE: It may be important in the future to include this component
     #[derivative(PartialEq = "ignore")]
