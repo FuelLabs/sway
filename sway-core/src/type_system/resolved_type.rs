@@ -1,10 +1,10 @@
 use crate::{
     language::{ty, CallPath},
     semantic_analysis::ast_node::TyStructField,
-    type_system::*,
-    Ident,
 };
 use derivative::Derivative;
+use sway_types::integer_bits::IntegerBits;
+use sway_types::Ident;
 
 #[derive(Derivative)]
 #[derivative(Debug, Clone, Eq, PartialEq, Hash)]

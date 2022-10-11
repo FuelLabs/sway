@@ -1,17 +1,20 @@
 mod function_parameter;
 pub use function_parameter::*;
+use sway_error::warning::{CompileWarning, Warning};
 
 use crate::{
     declaration_engine::declaration_engine::de_insert_function,
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
-    style::*,
     type_system::*,
     AttributesMap,
 };
 use sha2::{Digest, Sha256};
-use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
+use sway_types::{
+    style::is_snake_case, Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span,
+    Spanned,
+};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyFunctionDeclaration {
@@ -107,7 +110,14 @@ impl TyFunctionDeclaration {
             purity,
             ..
         } = fn_decl;
-        is_snake_case(&name).ok(&mut warnings, &mut errors);
+
+        // Warn against non-snake case function names.
+        if !is_snake_case(name.as_str()) {
+            warnings.push(CompileWarning {
+                span: name.span(),
+                warning_content: Warning::NonSnakeCaseFunctionName { name: name.clone() },
+            })
+        }
 
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
@@ -340,7 +350,7 @@ impl TyFunctionDeclaration {
 
 #[test]
 fn test_function_selector_behavior() {
-    use crate::type_system::IntegerBits;
+    use sway_types::integer_bits::IntegerBits;
     let decl = TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_no_span("foo"),

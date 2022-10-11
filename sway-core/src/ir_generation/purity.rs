@@ -5,6 +5,7 @@ use crate::{
 };
 
 use sway_error::error::CompileError;
+use sway_error::warning::{CompileWarning, Warning};
 use sway_ir::{Context, Function, Instruction};
 use sway_types::span::Span;
 
