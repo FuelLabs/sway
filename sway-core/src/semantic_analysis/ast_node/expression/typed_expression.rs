@@ -1616,7 +1616,7 @@ impl ty::TyExpression {
                 ok(
                     ty::TyExpression {
                         expression: ty::TyExpressionVariant::Reassignment(Box::new(
-                            TyReassignment {
+                            ty::TyReassignment {
                                 lhs_base_name: base_name,
                                 lhs_type: final_return_type,
                                 lhs_indices: names_vec,

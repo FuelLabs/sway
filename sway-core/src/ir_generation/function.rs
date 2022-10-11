@@ -1406,7 +1406,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_reassignment: TyReassignment,
+        ast_reassignment: ty::TyReassignment,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let name = self

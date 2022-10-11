@@ -7,8 +7,8 @@ use crate::{
     language::ty,
     semantic_analysis::{
         TyAstNodeContent, TyCodeBlock, TyConstantDeclaration, TyEnumDeclaration,
-        TyFunctionDeclaration, TyImplTrait, TyIntrinsicFunctionKind, TyReassignment,
-        TyStorageDeclaration, TyStructDeclaration,
+        TyFunctionDeclaration, TyImplTrait, TyIntrinsicFunctionKind, TyStorageDeclaration,
+        TyStructDeclaration,
     },
     type_system::*,
 };
@@ -110,7 +110,7 @@ fn expr_validate(expr: &ty::TyExpression) -> CompileResult<()> {
         ty::TyExpressionVariant::Break => (),
         ty::TyExpressionVariant::Continue => (),
         ty::TyExpressionVariant::Reassignment(reassignment) => {
-            let TyReassignment {
+            let ty::TyReassignment {
                 lhs_base_name, rhs, ..
             } = &**reassignment;
             check!(
