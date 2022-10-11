@@ -383,7 +383,7 @@ impl TyAstNode {
                         }
                         Declaration::StructDeclaration(decl) => {
                             let decl = check!(
-                                TyStructDeclaration::type_check(ctx.by_ref(), decl),
+                                ty::TyStructDeclaration::type_check(ctx.by_ref(), decl),
                                 return err(warnings, errors),
                                 warnings,
                                 errors

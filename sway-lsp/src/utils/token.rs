@@ -2,7 +2,6 @@ use crate::core::token::{AstToken, SymbolKind, Token, TokenMap, TypedAstToken};
 use sway_core::{
     declaration_engine,
     language::ty,
-    semantic_analysis::ast_node::declaration::TyStructDeclaration,
     type_system::{TypeId, TypeInfo},
 };
 use sway_types::{ident::Ident, span::Span, Spanned};
@@ -61,7 +60,7 @@ pub(crate) fn declaration_of_type_id(
 pub(crate) fn struct_declaration_of_type_id(
     type_id: &TypeId,
     tokens: &TokenMap,
-) -> Option<TyStructDeclaration> {
+) -> Option<ty::TyStructDeclaration> {
     declaration_of_type_id(type_id, tokens).and_then(|decl| match decl {
         ty::TyDeclaration::StructDeclaration(ref decl_id) => {
             declaration_engine::de_get_struct(decl_id.clone(), &decl_id.span()).ok()
