@@ -1,7 +1,6 @@
 mod collect_types_metadata;
 mod copy_types;
 mod create_type_id;
-mod integer_bits;
 mod replace_self_type;
 mod resolved_type;
 mod trait_constraint;
@@ -16,7 +15,6 @@ mod type_parameter;
 pub(crate) use collect_types_metadata::*;
 pub(crate) use copy_types::*;
 pub(crate) use create_type_id::*;
-pub use integer_bits::*;
 pub(crate) use replace_self_type::*;
 pub(crate) use resolved_type::*;
 pub(crate) use trait_constraint::*;
@@ -30,6 +28,9 @@ pub use type_parameter::*;
 
 use crate::error::*;
 use std::fmt::Debug;
+
+#[cfg(test)]
+use sway_types::{integer_bits::IntegerBits, Span};
 
 #[test]
 fn generic_enum_resolution() {
@@ -94,7 +95,6 @@ fn generic_enum_resolution() {
 
 #[test]
 fn basic_numeric_unknown() {
-    use sway_types::Span;
     let engine = TypeEngine::default();
 
     let sp = Span::dummy();
@@ -114,7 +114,6 @@ fn basic_numeric_unknown() {
 
 #[test]
 fn unify_numerics() {
-    use sway_types::Span;
     let engine = TypeEngine::default();
     let sp = Span::dummy();
 
@@ -134,7 +133,6 @@ fn unify_numerics() {
 
 #[test]
 fn unify_numerics_2() {
-    use sway_types::Span;
     let engine = TypeEngine::default();
     let sp = Span::dummy();
 

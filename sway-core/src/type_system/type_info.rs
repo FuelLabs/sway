@@ -5,7 +5,7 @@ use crate::{
     Ident,
 };
 use sway_error::error::CompileError;
-use sway_types::span::Span;
+use sway_types::{integer_bits::IntegerBits, span::Span};
 
 use derivative::Derivative;
 use std::{
