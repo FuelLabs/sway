@@ -307,9 +307,10 @@ impl Session {
                 let range = utils::common::get_range_from_span(&decl_ident.span());
                 match decl_ident.span().path() {
                     Some(path) => match Url::from_file_path(path.as_ref()) {
-                        Ok(url) => self.sync.to_workspace_url(url).and_then(|url| {
-                            Some(GotoDefinitionResponse::Scalar(Location::new(url, range)))
-                        }),
+                        Ok(url) => self
+                            .sync
+                            .to_workspace_url(url)
+                            .map(|url| GotoDefinitionResponse::Scalar(Location::new(url, range))),
                         Err(_) => None,
                     },
                     None => None,
@@ -325,11 +326,9 @@ impl Session {
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
         let tokens = self.tokens_for_file(url);
-        self.sync.to_workspace_url(url.clone()).and_then(|url| {
-            Some(capabilities::document_symbol::to_symbol_information(
-                &tokens, url,
-            ))
-        })
+        self.sync
+            .to_workspace_url(url.clone())
+            .map(|url| capabilities::document_symbol::to_symbol_information(&tokens, url))
     }
 
     pub fn format_text(&self, url: &Url) -> Option<Vec<TextEdit>> {

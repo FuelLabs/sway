@@ -50,8 +50,8 @@ impl SyncWorkspace {
         fs::remove_dir_all(temp_dir.parent().unwrap()).unwrap();
     }
 
-    pub(crate) fn create_temp_dir_from_workspace(&self, manifest_dir: &PathBuf) {
-        if let Ok(manifest) = PackageManifestFile::from_dir(&manifest_dir) {
+    pub(crate) fn create_temp_dir_from_workspace(&self, manifest_dir: &Path) {
+        if let Ok(manifest) = PackageManifestFile::from_dir(manifest_dir) {
             // strip Forc.toml from the path
             let manifest_dir = manifest.path().parent().unwrap();
             // extract the project name from the path
@@ -161,17 +161,13 @@ impl SyncWorkspace {
             let handle = tokio::spawn(async move {
                 let (tx, mut rx) = tokio::sync::mpsc::channel(10);
                 // Setup debouncer. No specific tickrate, max debounce time 2 seconds
-                let mut debouncer = new_debouncer(
-                    std::time::Duration::from_secs(1),
-                    None,
-                    move |event| match event {
-                        Ok(e) => {
+                let mut debouncer =
+                    new_debouncer(std::time::Duration::from_secs(1), None, move |event| {
+                        if let Ok(e) = event {
                             let _ = tx.blocking_send(e);
                         }
-                        Err(_) => (),
-                    },
-                )
-                .unwrap();
+                    })
+                    .unwrap();
 
                 debouncer
                     .watcher()
@@ -201,7 +197,7 @@ fn edit_manifest_dependency_paths(manifest: &PackageManifestFile, temp_manifest_
     if let Some(deps) = &manifest.dependencies {
         for (name, dep) in deps.iter() {
             if let Dependency::Detailed(details) = dep {
-                if let Some(_) = &details.path {
+                if details.path.is_some() {
                     if let Some(abs_path) = manifest.dep_path(name) {
                         dependency_map.insert(name.clone(), abs_path);
                     }
