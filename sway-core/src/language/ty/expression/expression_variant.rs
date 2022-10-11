@@ -12,7 +12,7 @@ use crate::{
         ContractCallParams, ProjectionKind, TyAsmRegisterDeclaration, TyCodeBlock,
         TyEnumDeclaration, TyEnumVariant, TyIntrinsicFunctionKind, TyReassignment,
         TyReturnStatement, TyStorageReassignment, TyStructExpressionField, TyStructField,
-        TypeCheckedStorageAccess, VariableMutability,
+        VariableMutability,
     },
     type_system::*,
     TyFunctionDeclaration,
@@ -108,7 +108,7 @@ pub enum TyExpressionVariant {
         // this span may be used for errors in the future, although it is not right now.
         span: Span,
     },
-    StorageAccess(TypeCheckedStorageAccess),
+    StorageAccess(TyStorageAccess),
     IntrinsicFunction(TyIntrinsicFunctionKind),
     /// a zero-sized type-system-only compile-time thing that is used for constructing ABI casts.
     AbiName(AbiName),
