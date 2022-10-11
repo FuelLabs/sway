@@ -7,9 +7,7 @@ use crate::{
     declaration_engine::declaration_engine::*,
     error::{err, ok},
     language::{parsed::*, ty, *},
-    semantic_analysis::{
-        Mode, TyAstNodeContent, TyConstantDeclaration, TyIntrinsicFunctionKind, TypeCheckContext,
-    },
+    semantic_analysis::{Mode, TyAstNodeContent, TyConstantDeclaration, TypeCheckContext},
     type_system::{
         insert_type, look_up_type_id, set_type_as_storage_only, to_typeinfo, unify_with_self,
         CopyTypes, TypeId, TypeMapping, TypeParameter,
@@ -306,7 +304,7 @@ impl TyImplTrait {
                     })?
                 }
 
-                ty::TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
+                ty::TyExpressionVariant::IntrinsicFunction(ty::TyIntrinsicFunctionKind {
                     kind,
                     ..
                 }) => matches!(kind, sway_ast::intrinsics::Intrinsic::GetStorageKey),

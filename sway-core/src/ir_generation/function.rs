@@ -373,12 +373,12 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        TyIntrinsicFunctionKind {
+        ty::TyIntrinsicFunctionKind {
             kind,
             arguments,
             type_arguments,
             span: _,
-        }: TyIntrinsicFunctionKind,
+        }: ty::TyIntrinsicFunctionKind,
         span: Span,
     ) -> Result<Value, CompileError> {
         fn store_key_in_local_mem(

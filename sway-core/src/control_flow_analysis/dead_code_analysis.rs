@@ -8,8 +8,7 @@ use crate::{
             TyFunctionDeclaration, TyStructDeclaration, TyStructExpressionField,
             TyTraitDeclaration, TyVariableDeclaration, VariableMutability,
         },
-        TyAsmRegisterDeclaration, TyAstNode, TyAstNodeContent, TyImplTrait,
-        TyIntrinsicFunctionKind, TyStorageDeclaration,
+        TyAsmRegisterDeclaration, TyAstNode, TyAstNodeContent, TyImplTrait, TyStorageDeclaration,
     },
     type_system::{to_typeinfo, TypeInfo},
     CompileWarning, Warning,
@@ -1127,9 +1126,9 @@ fn connect_expression(
 }
 
 fn connect_intrinsic_function(
-    TyIntrinsicFunctionKind {
+    ty::TyIntrinsicFunctionKind {
         kind, arguments, ..
-    }: &TyIntrinsicFunctionKind,
+    }: &ty::TyIntrinsicFunctionKind,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,

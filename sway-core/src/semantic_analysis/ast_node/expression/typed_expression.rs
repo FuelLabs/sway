@@ -1474,7 +1474,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (intrinsic_function, return_type) = check!(
-            TyIntrinsicFunctionKind::type_check(ctx, kind_binding, arguments, span.clone()),
+            ty::TyIntrinsicFunctionKind::type_check(ctx, kind_binding, arguments, span.clone()),
             return err(warnings, errors),
             warnings,
             errors
