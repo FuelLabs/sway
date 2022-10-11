@@ -10,3 +10,7 @@ category = "fail"
 # check: fn baz() -> u64 {
 # nextln: $()Expected: u32
 # nextln: $()found:    u64. The definition of this function must match the one in the trait "Foo" declaration.
+
+# check: fn quux() {
+# nextln: $()Expected: u64
+# nextln: $()found:    (). The definition of this function must match the one in the trait "Foo" declaration.

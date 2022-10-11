@@ -7,6 +7,7 @@ trait Foo {
     fn foo(x: u64) -> str[7];
     fn bar(variable: u64) -> bool;
     fn baz() -> u32;
+    fn quux() -> u64;
 }
 
 struct S {
@@ -24,5 +25,8 @@ impl Foo for S {
 
     fn baz() -> u64 {
         0
+    }
+
+    fn quux() { // no return type
     }
 }
