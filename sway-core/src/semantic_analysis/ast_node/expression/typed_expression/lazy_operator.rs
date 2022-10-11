@@ -1,22 +1,20 @@
 use sway_types::Span;
 
 use crate::{
-    language::LazyOp,
-    semantic_analysis::{IsConstant, TyExpressionVariant},
+    language::{ty, LazyOp},
+    semantic_analysis::IsConstant,
     type_system::TypeId,
 };
 
-use super::TyExpression;
-
 pub(crate) fn instantiate_lazy_operator(
     op: LazyOp,
-    lhs: TyExpression,
-    rhs: TyExpression,
+    lhs: ty::TyExpression,
+    rhs: ty::TyExpression,
     return_type: TypeId,
     span: Span,
-) -> TyExpression {
-    TyExpression {
-        expression: TyExpressionVariant::LazyOperator {
+) -> ty::TyExpression {
+    ty::TyExpression {
+        expression: ty::TyExpressionVariant::LazyOperator {
             op,
             lhs: Box::new(lhs),
             rhs: Box::new(rhs),

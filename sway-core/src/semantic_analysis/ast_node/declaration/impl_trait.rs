@@ -6,10 +6,9 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     declaration_engine::declaration_engine::*,
     error::{err, ok},
-    language::{parsed::*, *},
+    language::{parsed::*, ty, *},
     semantic_analysis::{
-        Mode, TyAstNodeContent, TyConstantDeclaration, TyExpression, TyExpressionVariant,
-        TyIntrinsicFunctionKind, TypeCheckContext,
+        Mode, TyAstNodeContent, TyConstantDeclaration, TyIntrinsicFunctionKind, TypeCheckContext,
     },
     type_system::{
         insert_type, look_up_type_id, set_type_as_storage_only, to_typeinfo, unify_with_self,
@@ -227,19 +226,19 @@ impl TyImplTrait {
         }
 
         fn expr_contains_get_storage_index(
-            expr: &TyExpression,
+            expr: &ty::TyExpression,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             let res = match &expr.expression {
-                TyExpressionVariant::Literal(_)
-                | TyExpressionVariant::VariableExpression { .. }
-                | TyExpressionVariant::FunctionParameter
-                | TyExpressionVariant::AsmExpression { .. }
-                | TyExpressionVariant::Break
-                | TyExpressionVariant::Continue
-                | TyExpressionVariant::StorageAccess(_)
-                | TyExpressionVariant::AbiName(_) => false,
-                TyExpressionVariant::FunctionApplication { arguments, .. } => {
+                ty::TyExpressionVariant::Literal(_)
+                | ty::TyExpressionVariant::VariableExpression { .. }
+                | ty::TyExpressionVariant::FunctionParameter
+                | ty::TyExpressionVariant::AsmExpression { .. }
+                | ty::TyExpressionVariant::Break
+                | ty::TyExpressionVariant::Continue
+                | ty::TyExpressionVariant::StorageAccess(_)
+                | ty::TyExpressionVariant::AbiName(_) => false,
+                ty::TyExpressionVariant::FunctionApplication { arguments, .. } => {
                     for f in arguments.iter() {
                         let b = expr_contains_get_storage_index(&f.1, access_span)?;
                         if b {
@@ -248,20 +247,20 @@ impl TyImplTrait {
                     }
                     false
                 }
-                TyExpressionVariant::LazyOperator {
+                ty::TyExpressionVariant::LazyOperator {
                     lhs: expr1,
                     rhs: expr2,
                     ..
                 }
-                | TyExpressionVariant::ArrayIndex {
+                | ty::TyExpressionVariant::ArrayIndex {
                     prefix: expr1,
                     index: expr2,
                 } => {
                     expr_contains_get_storage_index(expr1, access_span)?
                         || expr_contains_get_storage_index(expr2, access_span)?
                 }
-                TyExpressionVariant::Tuple { fields: exprvec }
-                | TyExpressionVariant::Array { contents: exprvec } => {
+                ty::TyExpressionVariant::Tuple { fields: exprvec }
+                | ty::TyExpressionVariant::Array { contents: exprvec } => {
                     for f in exprvec.iter() {
                         let b = expr_contains_get_storage_index(f, access_span)?;
                         if b {
@@ -271,7 +270,7 @@ impl TyImplTrait {
                     false
                 }
 
-                TyExpressionVariant::StructExpression { fields, .. } => {
+                ty::TyExpressionVariant::StructExpression { fields, .. } => {
                     for f in fields.iter() {
                         let b = expr_contains_get_storage_index(&f.value, access_span)?;
                         if b {
@@ -280,10 +279,10 @@ impl TyImplTrait {
                     }
                     false
                 }
-                TyExpressionVariant::CodeBlock(cb) => {
+                ty::TyExpressionVariant::CodeBlock(cb) => {
                     codeblock_contains_get_storage_index(cb, access_span)?
                 }
-                TyExpressionVariant::IfExp {
+                ty::TyExpressionVariant::IfExp {
                     condition,
                     then,
                     r#else,
@@ -294,33 +293,34 @@ impl TyImplTrait {
                             expr_contains_get_storage_index(r#else, access_span)
                         })?
                 }
-                TyExpressionVariant::StructFieldAccess { prefix: exp, .. }
-                | TyExpressionVariant::TupleElemAccess { prefix: exp, .. }
-                | TyExpressionVariant::AbiCast { address: exp, .. }
-                | TyExpressionVariant::EnumTag { exp }
-                | TyExpressionVariant::UnsafeDowncast { exp, .. } => {
+                ty::TyExpressionVariant::StructFieldAccess { prefix: exp, .. }
+                | ty::TyExpressionVariant::TupleElemAccess { prefix: exp, .. }
+                | ty::TyExpressionVariant::AbiCast { address: exp, .. }
+                | ty::TyExpressionVariant::EnumTag { exp }
+                | ty::TyExpressionVariant::UnsafeDowncast { exp, .. } => {
                     expr_contains_get_storage_index(exp, access_span)?
                 }
-                TyExpressionVariant::EnumInstantiation { contents, .. } => {
+                ty::TyExpressionVariant::EnumInstantiation { contents, .. } => {
                     contents.as_ref().map_or(Ok(false), |f| {
                         expr_contains_get_storage_index(f, access_span)
                     })?
                 }
 
-                TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
-                    kind, ..
+                ty::TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
+                    kind,
+                    ..
                 }) => matches!(kind, sway_ast::intrinsics::Intrinsic::GetStorageKey),
-                TyExpressionVariant::WhileLoop { condition, body } => {
+                ty::TyExpressionVariant::WhileLoop { condition, body } => {
                     expr_contains_get_storage_index(condition, access_span)?
                         || codeblock_contains_get_storage_index(body, access_span)?
                 }
-                TyExpressionVariant::Reassignment(reassignment) => {
+                ty::TyExpressionVariant::Reassignment(reassignment) => {
                     expr_contains_get_storage_index(&reassignment.rhs, access_span)?
                 }
-                TyExpressionVariant::StorageReassignment(storage_reassignment) => {
+                ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {
                     expr_contains_get_storage_index(&storage_reassignment.rhs, access_span)?
                 }
-                TyExpressionVariant::Return(stmt) => {
+                ty::TyExpressionVariant::Return(stmt) => {
                     expr_contains_get_storage_index(&stmt.expr, access_span)?
                 }
             };

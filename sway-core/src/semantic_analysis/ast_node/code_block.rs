@@ -1,5 +1,5 @@
 use super::*;
-use crate::language::parsed::CodeBlock;
+use crate::language::{parsed::CodeBlock, ty};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TyCodeBlock {
@@ -61,7 +61,7 @@ impl TyCodeBlock {
                     match node {
                         TyAstNode {
                             content:
-                                TyAstNodeContent::ImplicitReturnExpression(TyExpression {
+                                TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
                                     ref return_type,
                                     ..
                                 }),

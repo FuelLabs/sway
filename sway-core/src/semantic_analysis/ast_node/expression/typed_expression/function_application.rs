@@ -1,6 +1,6 @@
 use crate::{
     error::*,
-    language::*,
+    language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
 use std::collections::{hash_map::RandomState, HashMap, VecDeque};
@@ -13,7 +13,7 @@ pub(crate) fn instantiate_function_application(
     function_decl: TyFunctionDeclaration,
     call_path: CallPath,
     arguments: Vec<Expression>,
-) -> CompileResult<TyExpression> {
+) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -49,8 +49,8 @@ pub(crate) fn instantiate_function_application(
                 )
                 .with_type_annotation(param.type_id);
             let exp = check!(
-                TyExpression::type_check(ctx, arg.clone()),
-                error_recovery_expr(arg.span()),
+                ty::TyExpression::type_check(ctx, arg.clone()),
+                ty::error_recovery_expr(arg.span()),
                 warnings,
                 errors
             );
@@ -83,14 +83,14 @@ pub(crate) fn instantiate_function_application(
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application_simple(
     call_path: CallPath,
-    contract_call_params: HashMap<String, TyExpression, RandomState>,
-    arguments: VecDeque<TyExpression>,
+    contract_call_params: HashMap<String, ty::TyExpression, RandomState>,
+    arguments: VecDeque<ty::TyExpression>,
     function_decl: TyFunctionDeclaration,
     selector: Option<ContractCallParams>,
     is_constant: IsConstant,
     self_state_idx: Option<StateIndex>,
     span: Span,
-) -> CompileResult<TyExpression> {
+) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -155,16 +155,16 @@ pub(crate) fn check_function_arguments_arity(
 #[allow(clippy::too_many_arguments)]
 fn instantiate_function_application_inner(
     call_path: CallPath,
-    contract_call_params: HashMap<String, TyExpression, RandomState>,
-    arguments: Vec<(Ident, TyExpression)>,
+    contract_call_params: HashMap<String, ty::TyExpression, RandomState>,
+    arguments: Vec<(Ident, ty::TyExpression)>,
     function_decl: TyFunctionDeclaration,
     selector: Option<ContractCallParams>,
     is_constant: IsConstant,
     self_state_idx: Option<StateIndex>,
     span: Span,
-) -> TyExpression {
-    TyExpression {
-        expression: TyExpressionVariant::FunctionApplication {
+) -> ty::TyExpression {
+    ty::TyExpression {
+        expression: ty::TyExpressionVariant::FunctionApplication {
             call_path,
             contract_call_params,
             arguments,

@@ -1,0 +1,4 @@
+[[package]]
+name = 'test_attribute'
+source = 'root'
+dependencies = []
