@@ -17,7 +17,7 @@ addi $r0 $r2 i0               ; get offset reg for get_ptr
 lw   $r0 $r2 i0               ; load value
 jnzi $r0 i18
 ji   i19
-move $r0 $zero                ; branch to phi value
+move $r0 $zero                ; parameter from branch to block argument
 addi $r1 $r2 i0               ; get offset reg for get_ptr
 sw   $r2 $r0 i0               ; store value
 ji   i10

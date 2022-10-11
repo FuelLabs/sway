@@ -7,7 +7,7 @@ contract {
         local mut ptr [b256; 2] val_for_0_1
         local mut ptr [b256; 2] val_for_1_1
 
-        entry:
+        entry(s: { u64, u64, u64, u64, u64 }, u: u64):
         v0 = const { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } { u64 0, ( { u64, u64, u64, u64, u64 } | u64 ) undef }
         v1 = insert_value v0, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, s, 1
         v2 = extract_value v1, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, 0

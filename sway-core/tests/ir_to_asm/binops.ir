@@ -7,7 +7,7 @@ script {
         local ptr u64 res3
         local ptr u64 res4
 
-        entry:
+        entry():
         v0 = get_ptr ptr u64 a, ptr u64, 0, !2
         v1 = const u64 22, !3
         store v1, ptr v0, !2

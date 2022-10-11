@@ -26,23 +26,22 @@ script {
     fn a(b: bool) -> u64 {
         local ptr u64 x
 
-        entry:
+        entry(b: bool):
         v0 = get_ptr ptr u64 x, ptr u64, 0
         v1 = const u64 10
         store v1, ptr v0
-        cbr b, block0, block1
+        cbr b, block0(), block1()
 
-        block0:
+        block0():
         v2 = get_ptr ptr u64 x, ptr u64, 0
         v3 = load ptr v2
-        br block2
+        br block2(v3)
 
-        block1:
+        block1():
         v4 = const u64 1
-        br block2
+        br block2(v4)
 
-        block2:
-        v5 = phi(block0: v3, block1: v4)
+        block2(v5: u64):
         ret u64 v5
     }
 
@@ -54,7 +53,7 @@ script {
     fn main() -> u64 {
         local mut ptr u64 x
 
-        entry:
+        entry():
         v0 = get_ptr mut ptr u64 x, ptr u64, 0
         v1 = const u64 0
         store v1, ptr v0
@@ -65,9 +64,9 @@ script {
 // not: call
         v3 = call a(v2)
 
-// check: cbr $arg, $(t=$ID), $(f=$ID)
-// check: $t:
-// check: $f:
+// check: cbr $arg, $(t=$ID)(), $(f=$ID)()
+// check: $t():
+// check: $f():
 
 // check: get_ptr mut ptr u64 x, ptr u64, 0
         v4 = get_ptr mut ptr u64 x, ptr u64, 0
