@@ -46,8 +46,7 @@ impl SyncWorkspace {
     /// Clean up the temp directory that was created once the
     /// server closes down.
     pub(crate) fn remove_temp_dir(&self) {
-        let (_, temp_dir) = self.directories();
-        fs::remove_dir_all(temp_dir.parent().unwrap()).unwrap();
+        fs::remove_dir_all(self.temp_dir().parent().unwrap()).unwrap();
     }
 
     pub(crate) fn create_temp_dir_from_workspace(&self, manifest_dir: &Path) {
@@ -75,32 +74,7 @@ impl SyncWorkspace {
     }
 
     pub(crate) fn clone_manifest_dir_to_temp(&self) {
-        let manifest_dir = self
-            .directories
-            .get(&Directory::Manifest)
-            .map(|item| item.value().clone())
-            .unwrap();
-        let temp_dir = self
-            .directories
-            .get(&Directory::Temp)
-            .map(|item| item.value().clone())
-            .unwrap();
-        let _ = copy_dir_contents(manifest_dir, temp_dir);
-    }
-
-    pub(crate) fn directories(&self) -> (PathBuf, PathBuf) {
-        let manifest_dir = self
-            .directories
-            .get(&Directory::Manifest)
-            .map(|item| item.value().clone())
-            .unwrap();
-        let temp_dir = self
-            .directories
-            .get(&Directory::Temp)
-            .map(|item| item.value().clone())
-            .unwrap();
-
-        (manifest_dir, temp_dir)
+        let _ = copy_dir_contents(self.manifest_dir(), self.temp_dir());
     }
 
     /// Check if the current path is part of the users workspace.
@@ -112,17 +86,15 @@ impl SyncWorkspace {
     /// Convert the Url path from the client to point to the same file in our temp folder
     pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, ()> {
         let path = PathBuf::from(uri.path());
-        let (manifest_dir, temp_dir) = self.directories();
-        let p = path.strip_prefix(manifest_dir).unwrap();
-        Url::from_file_path(temp_dir.join(p))
+        let p = path.strip_prefix(self.manifest_dir()).unwrap();
+        Url::from_file_path(self.temp_dir().join(p))
     }
 
     /// Convert the Url path from the temp folder to point to the same file in the users workspace
     pub(crate) fn temp_to_workspace_url(&self, uri: &Url) -> Result<Url, ()> {
         let path = PathBuf::from(uri.path());
-        let (manifest_dir, temp_dir) = self.directories();
-        let p = path.strip_prefix(temp_dir).unwrap();
-        Url::from_file_path(manifest_dir.join(p))
+        let p = path.strip_prefix(self.temp_dir()).unwrap();
+        Url::from_file_path(self.manifest_dir().join(p))
     }
 
     /// If path is part of the users workspace, then convert URL from temp to workspace dir.
@@ -172,19 +144,27 @@ impl SyncWorkspace {
         }
     }
 
-    pub(crate) fn temp_manifest_path(&self) -> PathBuf {
-        self.directories
-            .get(&Directory::Temp)
-            .map(|item| item.value().clone())
-            .unwrap()
-            .join(sway_utils::constants::MANIFEST_FILE_NAME)
-    }
-
-    pub(crate) fn manifest_path(&self) -> PathBuf {
+    fn manifest_dir(&self) -> PathBuf {
         self.directories
             .get(&Directory::Manifest)
             .map(|item| item.value().clone())
             .unwrap()
+    }
+
+    fn temp_dir(&self) -> PathBuf {
+        self.directories
+            .get(&Directory::Temp)
+            .map(|item| item.value().clone())
+            .unwrap()
+    }
+
+    pub(crate) fn temp_manifest_path(&self) -> PathBuf {
+        self.temp_dir()
+            .join(sway_utils::constants::MANIFEST_FILE_NAME)
+    }
+
+    pub(crate) fn manifest_path(&self) -> PathBuf {
+        self.manifest_dir()
             .join(sway_utils::constants::MANIFEST_FILE_NAME)
     }
 }
