@@ -6,41 +6,13 @@ use crate::{
         VariableMutability,
     },
     type_system::*,
-    CompileResult, Ident, Namespace,
+    CompileResult, Namespace,
 };
 
 use sway_error::error::CompileError;
-use sway_types::{span::Span, Spanned};
+use sway_types::Spanned;
 
-#[derive(Debug, Clone, Eq)]
-pub struct TyFunctionParameter {
-    pub name: Ident,
-    pub is_reference: bool,
-    pub is_mutable: bool,
-    pub mutability_span: Span,
-    pub type_id: TypeId,
-    pub initial_type_id: TypeId,
-    pub type_span: Span,
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyFunctionParameter {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
-            && self.is_mutable == other.is_mutable
-    }
-}
-
-impl CopyTypes for TyFunctionParameter {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.copy_types(type_mapping);
-    }
-}
-
-impl TyFunctionParameter {
+impl ty::TyFunctionParameter {
     pub fn is_self(&self) -> bool {
         self.name.as_str() == "self"
     }
@@ -81,7 +53,7 @@ impl TyFunctionParameter {
             return err(warnings, errors);
         }
 
-        let typed_parameter = TyFunctionParameter {
+        let typed_parameter = ty::TyFunctionParameter {
             name,
             is_reference,
             is_mutable,
@@ -126,7 +98,7 @@ impl TyFunctionParameter {
             errors,
         );
 
-        let typed_parameter = TyFunctionParameter {
+        let typed_parameter = ty::TyFunctionParameter {
             name,
             is_reference,
             is_mutable,
@@ -172,7 +144,7 @@ impl TyFunctionParameter {
             errors,
         );
 
-        let typed_parameter = TyFunctionParameter {
+        let typed_parameter = ty::TyFunctionParameter {
             name,
             is_reference,
             is_mutable,
@@ -186,7 +158,7 @@ impl TyFunctionParameter {
     }
 }
 
-fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &TyFunctionParameter) {
+fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &ty::TyFunctionParameter) {
     ctx.namespace.insert_symbol(
         typed_parameter.name.clone(),
         ty::TyDeclaration::VariableDeclaration(Box::new(TyVariableDeclaration {

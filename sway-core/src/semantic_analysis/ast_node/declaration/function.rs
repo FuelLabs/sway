@@ -62,7 +62,7 @@ impl ty::TyFunctionDeclaration {
         let mut new_parameters = vec![];
         for parameter in parameters.into_iter() {
             new_parameters.push(check!(
-                TyFunctionParameter::type_check(ctx.by_ref(), parameter),
+                ty::TyFunctionParameter::type_check(ctx.by_ref(), parameter),
                 continue,
                 warnings,
                 errors
@@ -149,7 +149,7 @@ impl ty::TyFunctionDeclaration {
         if !self.parameters.is_empty() {
             self.parameters.iter().fold(
                 self.parameters[0].name.span(),
-                |acc, TyFunctionParameter { type_span, .. }| Span::join(acc, type_span.clone()),
+                |acc, ty::TyFunctionParameter { type_span, .. }| Span::join(acc, type_span.clone()),
             )
         } else {
             self.name.span()
@@ -196,7 +196,7 @@ impl ty::TyFunctionDeclaration {
             .parameters
             .iter()
             .map(
-                |TyFunctionParameter {
+                |ty::TyFunctionParameter {
                      type_id, type_span, ..
                  }| {
                     to_typeinfo(*type_id, type_span)
@@ -300,7 +300,7 @@ fn test_function_selector_behavior() {
         name: Ident::new_with_override("bar", Span::dummy()),
         body: TyCodeBlock { contents: vec![] },
         parameters: vec![
-            TyFunctionParameter {
+            ty::TyFunctionParameter {
                 name: Ident::new_no_span("foo"),
                 is_reference: false,
                 is_mutable: false,
@@ -309,7 +309,7 @@ fn test_function_selector_behavior() {
                 initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
-            TyFunctionParameter {
+            ty::TyFunctionParameter {
                 name: Ident::new_no_span("baz"),
                 is_reference: false,
                 is_mutable: false,

@@ -35,7 +35,7 @@ pub(super) struct FnCompiler {
     pub(super) current_block: Block,
     pub(super) block_to_break_to: Option<Block>,
     pub(super) block_to_continue_to: Option<Block>,
-    pub(super) current_fn_param: Option<TyFunctionParameter>,
+    pub(super) current_fn_param: Option<ty::TyFunctionParameter>,
     lexical_map: LexicalMap,
     recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
 }

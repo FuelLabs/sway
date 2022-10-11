@@ -3,7 +3,7 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     declaration_engine::*,
     language::{ty::*, Purity, Visibility},
-    semantic_analysis::{TyAstNode, TyAstNodeContent, TyCodeBlock, TyFunctionParameter},
+    semantic_analysis::{TyAstNode, TyAstNodeContent, TyCodeBlock},
     type_system::*,
     AttributesMap,
 };
@@ -81,5 +81,33 @@ impl MonomorphizeHelper for TyFunctionDeclaration {
 
     fn name(&self) -> &Ident {
         &self.name
+    }
+}
+
+#[derive(Debug, Clone, Eq)]
+pub struct TyFunctionParameter {
+    pub name: Ident,
+    pub is_reference: bool,
+    pub is_mutable: bool,
+    pub mutability_span: Span,
+    pub type_id: TypeId,
+    pub initial_type_id: TypeId,
+    pub type_span: Span,
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for TyFunctionParameter {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+            && self.is_mutable == other.is_mutable
+    }
+}
+
+impl CopyTypes for TyFunctionParameter {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.type_id.copy_types(type_mapping);
     }
 }

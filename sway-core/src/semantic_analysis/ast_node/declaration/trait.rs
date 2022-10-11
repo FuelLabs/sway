@@ -17,7 +17,7 @@ use crate::{
     Namespace,
 };
 
-use super::{EnforceTypeArguments, TyFunctionParameter, TyTraitFn};
+use super::{EnforceTypeArguments, TyTraitFn};
 
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
@@ -209,7 +209,10 @@ fn convert_trait_methods_to_dummy_funcs(
         let mut typed_parameters = vec![];
         for param in parameters.iter() {
             typed_parameters.push(check!(
-                TyFunctionParameter::type_check_interface_parameter(trait_namespace, param.clone()),
+                ty::TyFunctionParameter::type_check_interface_parameter(
+                    trait_namespace,
+                    param.clone()
+                ),
                 continue,
                 warnings,
                 errors

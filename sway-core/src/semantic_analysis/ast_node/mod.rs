@@ -543,7 +543,7 @@ fn type_check_interface_surface(
         let mut typed_parameters = vec![];
         for param in parameters.into_iter() {
             typed_parameters.push(check!(
-                TyFunctionParameter::type_check_interface_parameter(namespace, param),
+                ty::TyFunctionParameter::type_check_interface_parameter(namespace, param),
                 continue,
                 warnings,
                 errors
@@ -604,7 +604,7 @@ fn type_check_trait_methods(
         let mut typed_parameters = vec![];
         for parameter in parameters.into_iter() {
             typed_parameters.push(check!(
-                TyFunctionParameter::type_check_method_parameter(sig_ctx.by_ref(), parameter),
+                ty::TyFunctionParameter::type_check_method_parameter(sig_ctx.by_ref(), parameter),
                 continue,
                 warnings,
                 errors
@@ -625,7 +625,7 @@ fn type_check_trait_methods(
             if let TypeInfo::Custom { name, .. } = look_up_type_id(param.type_id) {
                 let args_span = typed_parameters.iter().fold(
                     typed_parameters[0].name.span().clone(),
-                    |acc, TyFunctionParameter { name, .. }| Span::join(acc, name.span()),
+                    |acc, ty::TyFunctionParameter { name, .. }| Span::join(acc, name.span()),
                 );
                 if type_parameters.iter().any(|TypeParameter { type_id, .. }| {
                     if let TypeInfo::Custom {

@@ -5,7 +5,7 @@ use crate::{
         typed_expression::{
             check_function_arguments_arity, instantiate_function_application_simple,
         },
-        ContractCallParams, IsConstant, TyFunctionParameter, TyStorageField, TypeCheckContext,
+        ContractCallParams, IsConstant, TyStorageField, TypeCheckContext,
     },
     type_system::*,
 };
@@ -181,7 +181,7 @@ pub(crate) fn type_check_method_application(
             expression: ty::TyExpressionVariant::VariableExpression { name, .. },
             ..
         }),
-        Some(TyFunctionParameter { is_mutable, .. }),
+        Some(ty::TyFunctionParameter { is_mutable, .. }),
     ) = (args_buf.get(0), method.parameters.get(0))
     {
         let unknown_decl = check!(

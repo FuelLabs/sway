@@ -284,7 +284,7 @@ pub struct TyConstantDeclaration {
 pub struct TyTraitFn {
     pub name: Ident,
     pub(crate) purity: Purity,
-    pub parameters: Vec<TyFunctionParameter>,
+    pub parameters: Vec<ty::TyFunctionParameter>,
     pub return_type: TypeId,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]

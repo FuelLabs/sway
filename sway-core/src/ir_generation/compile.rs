@@ -2,7 +2,7 @@ use crate::{
     declaration_engine::declaration_engine::de_get_constant,
     language::{ty, Visibility},
     metadata::MetadataManager,
-    semantic_analysis::{ast_node::*, namespace},
+    semantic_analysis::namespace,
     type_system::look_up_type_id,
 };
 
@@ -162,7 +162,7 @@ pub(super) fn compile_function(
 
 fn convert_fn_param(
     context: &mut Context,
-    param: &TyFunctionParameter,
+    param: &ty::TyFunctionParameter,
 ) -> Result<(String, Type, Span), CompileError> {
     convert_resolved_typeid(context, &param.type_id, &param.type_span).map(|ty| {
         (
