@@ -1,5 +1,5 @@
 use dashmap::DashMap;
-use forc_pkg::{manifest::Dependency, ManifestFile};
+use forc_pkg::{manifest::Dependency, PackageManifestFile};
 use notify::RecursiveMode;
 use notify_debouncer_mini::new_debouncer;
 
@@ -42,7 +42,7 @@ impl SyncWorkspace {
     }
 
     pub(crate) fn create_temp_dir_from_workspace(&self, manifest_dir: &PathBuf) {
-        if let Ok(manifest) = ManifestFile::from_dir(&manifest_dir) {
+        if let Ok(manifest) = PackageManifestFile::from_dir(&manifest_dir) {
             // strip Forc.toml from the path
             let manifest_dir = manifest.path().parent().unwrap();
             // extract the project name from the path
@@ -126,7 +126,7 @@ impl SyncWorkspace {
             .unwrap()
             .join(sway_utils::constants::MANIFEST_FILE_NAME);
 
-        if let Ok(manifest) = ManifestFile::from_dir(&manifest_dir) {
+        if let Ok(manifest) = PackageManifestFile::from_dir(&manifest_dir) {
             let manifest_dir = Arc::new(manifest.clone());
 
             edit_manifest_dependency_paths(&manifest, &temp_manifest_path);
@@ -166,7 +166,7 @@ impl SyncWorkspace {
     }
 }
 
-fn edit_manifest_dependency_paths(manifest: &ManifestFile, temp_manifest_path: &Path) {
+fn edit_manifest_dependency_paths(manifest: &PackageManifestFile, temp_manifest_path: &Path) {
     // Key = name of the dependancy that has been specified will a relative path
     // Value = the absolute path that should be used to overwrite the relateive path
     let mut dependency_map: HashMap<String, PathBuf> = HashMap::new();

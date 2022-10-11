@@ -106,25 +106,25 @@ fn capabilities() -> ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Kind(
             TextDocumentSyncKind::INCREMENTAL,
         )),
-        // semantic_tokens_provider: Some(
-        //     SemanticTokensOptions {
-        //         legend: SemanticTokensLegend {
-        //             token_types: capabilities::semantic_tokens::SUPPORTED_TYPES.to_vec(),
-        //             token_modifiers: capabilities::semantic_tokens::SUPPORTED_MODIFIERS.to_vec(),
-        //         },
-        //         full: Some(SemanticTokensFullOptions::Bool(true)),
-        //         range: None,
-        //         ..Default::default()
-        //     }
-        //     .into(),
-        // ),
-        //document_symbol_provider: Some(OneOf::Left(true)),
-        // completion_provider: Some(CompletionOptions {
-        //     resolve_provider: Some(false),
-        //     trigger_characters: None,
-        //     ..Default::default()
-        // }),
-        //document_formatting_provider: Some(OneOf::Left(true)),
+        semantic_tokens_provider: Some(
+            SemanticTokensOptions {
+                legend: SemanticTokensLegend {
+                    token_types: capabilities::semantic_tokens::SUPPORTED_TYPES.to_vec(),
+                    token_modifiers: capabilities::semantic_tokens::SUPPORTED_MODIFIERS.to_vec(),
+                },
+                full: Some(SemanticTokensFullOptions::Bool(true)),
+                range: None,
+                ..Default::default()
+            }
+            .into(),
+        ),
+        document_symbol_provider: Some(OneOf::Left(true)),
+        completion_provider: Some(CompletionOptions {
+            resolve_provider: Some(false),
+            trigger_characters: None,
+            ..Default::default()
+        }),
+        document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
         ..ServerCapabilities::default()
     }
@@ -341,7 +341,7 @@ impl LanguageServer for Backend {
             .map(|uri| {
                 eprintln!("server goto_definition!");
                 eprintln!("uri {:#?}", uri);
-                eprintln!("workspace_uri {:#?}", workspace_uri);
+                //eprintln!("workspace_uri {:#?}", workspace_uri);
                 let position = params.text_document_position_params.position;
                 self.session.token_definition_response(uri, position)
             })
