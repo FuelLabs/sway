@@ -126,8 +126,9 @@ impl Session {
         let uri = text_document.get_uri().to_string();
         self.documents
             .insert(uri.clone(), text_document)
-            .ok_or(DocumentError::DocumentAlreadyStored { path: uri })
-            .map(|_| ())
+            .map_or(Ok(()), |_| {
+                Err(DocumentError::DocumentAlreadyStored { path: uri })
+            })
     }
 
     pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
@@ -327,5 +328,64 @@ impl Session {
         } else {
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::env;
+
+    use super::*;
+
+    fn sway_workspace_dir() -> PathBuf {
+        env::current_dir().unwrap().parent().unwrap().to_path_buf()
+    }
+
+    fn get_absolute_path(path: &str) -> String {
+        sway_workspace_dir().join(path).to_str().unwrap().into()
+    }
+
+    fn get_url(absolute_path: &str) -> Url {
+        Url::parse(&format!("file://{}", &absolute_path)).expect("expected URL")
+    }
+
+    #[test]
+    fn store_document_returns_empty_tuple() {
+        let session = Session::new();
+        let path = get_absolute_path("sway-lsp/test/fixtures/cats.txt");
+        let document = TextDocument::build_from_path(&path).unwrap();
+        let result = Session::store_document(&session, document).unwrap();
+        assert_eq!(result, ());
+    }
+
+    #[test]
+    fn store_document_returns_document_already_stored_error() {
+        let session = Session::new();
+        let path = get_absolute_path("sway-lsp/test/fixtures/cats.txt");
+        let document = TextDocument::build_from_path(&path).unwrap();
+        Session::store_document(&session, document).expect("expected successfully stored");
+        let document = TextDocument::build_from_path(&path).unwrap();
+        let result = Session::store_document(&session, document)
+            .expect_err("expected DocumentAlreadyStored");
+        assert_eq!(
+            result,
+            DocumentError::DocumentAlreadyStored { path: path.into() }
+        );
+    }
+
+    #[test]
+    fn parse_project_returns_manifest_file_not_found() {
+        let session = Session::new();
+        let dir = get_absolute_path("sway-lsp/test/fixtures");
+        let uri = get_url(&dir);
+        let result =
+            Session::parse_project(&session, &uri).expect_err("expected ManifestFileNotFound");
+        assert!(matches!(
+            result,
+            LanguageServerError::DocumentError(
+                DocumentError::ManifestFileNotFound { dir: test_dir }
+            )
+            if test_dir == dir
+        ));
     }
 }

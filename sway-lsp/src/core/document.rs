@@ -106,3 +106,35 @@ struct EditText<'text> {
     end_index: usize,
     change_text: &'text str,
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{env, path::PathBuf};
+
+    use super::*;
+
+    fn sway_workspace_dir() -> PathBuf {
+        env::current_dir().unwrap().parent().unwrap().to_path_buf()
+    }
+
+    fn get_absolute_path(path: &str) -> String {
+        sway_workspace_dir().join(path).to_str().unwrap().into()
+    }
+
+    #[test]
+    fn build_from_path_returns_text_document() {
+        let path = get_absolute_path("sway-lsp/test/fixtures/cats.txt");
+        let result = TextDocument::build_from_path(&path);
+        assert!(result.is_ok(), "result = {:?}", result);
+    }
+
+    #[test]
+    fn build_from_path_returns_document_not_found_error() {
+        let path = get_absolute_path("not/a/real/file/path");
+        let result = TextDocument::build_from_path(&path).expect_err("expected DocumentNotFound");
+        assert_eq!(
+            result,
+            DocumentError::DocumentNotFound { path: path.into() }
+        );
+    }
+}
