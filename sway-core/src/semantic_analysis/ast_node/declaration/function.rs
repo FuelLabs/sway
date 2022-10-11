@@ -4,7 +4,7 @@ pub use function_parameter::*;
 use crate::{
     declaration_engine::declaration_engine::de_insert_function,
     error::*,
-    language::{parsed::*, *},
+    language::{parsed::*, ty, *},
     semantic_analysis::*,
     style::*,
     type_system::*,
@@ -173,7 +173,7 @@ impl TyFunctionDeclaration {
         };
 
         // gather the return statements
-        let return_statements: Vec<&TyExpression> = body
+        let return_statements: Vec<&ty::TyExpression> = body
             .contents
             .iter()
             .flat_map(|node| -> Vec<&TyReturnStatement> { node.gather_return_statements() })

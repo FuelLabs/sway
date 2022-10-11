@@ -19,7 +19,7 @@ pub use variable::*;
 use crate::{
     declaration_engine::{declaration_engine::*, declaration_id::DeclarationId},
     error::*,
-    language::*,
+    language::{ty, *},
     semantic_analysis::*,
     type_system::*,
     AttributesMap,
@@ -491,7 +491,7 @@ impl TyDeclaration {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TyConstantDeclaration {
     pub name: Ident,
-    pub value: TyExpression,
+    pub value: ty::TyExpression,
     pub(crate) visibility: Visibility,
 }
 
@@ -585,7 +585,7 @@ pub struct TyReassignment {
     pub lhs_base_name: Ident,
     pub lhs_type: TypeId,
     pub lhs_indices: Vec<ProjectionKind>,
-    pub rhs: TyExpression,
+    pub rhs: ty::TyExpression,
 }
 
 impl CopyTypes for TyReassignment {

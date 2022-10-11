@@ -231,7 +231,7 @@ impl<'ir> AsmBuilder<'ir> {
             self.insert_block_label(block);
             for instr_val in block.instruction_iter(self.context) {
                 check!(
-                    self.compile_instruction(&block, &instr_val, func_is_entry),
+                    self.compile_instruction(&instr_val, func_is_entry),
                     return err(warnings, errors),
                     warnings,
                     errors

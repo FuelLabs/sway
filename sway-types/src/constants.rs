@@ -35,5 +35,12 @@ pub const STORAGE_PURITY_WRITE_NAME: &str = "write";
 /// The valid attribute strings related to documentation.
 pub const DOC_ATTRIBUTE_NAME: &str = "doc";
 
+/// The attribute used for Sway in-language unit tests.
+pub const TEST_ATTRIBUTE_NAME: &str = "test";
+
 /// The list of valid attributes.
-pub const VALID_ATTRIBUTE_NAMES: [&str; 2] = [STORAGE_PURITY_ATTRIBUTE_NAME, DOC_ATTRIBUTE_NAME];
+pub const VALID_ATTRIBUTE_NAMES: &[&str] = &[
+    STORAGE_PURITY_ATTRIBUTE_NAME,
+    DOC_ATTRIBUTE_NAME,
+    TEST_ATTRIBUTE_NAME,
+];

@@ -12,7 +12,7 @@ script {
 // * The struct that we build for the args to a contract call should be const, except for the
 //   bitcast.
 
-        entry:
+        entry():
         v0 = const u64 1111
 // check: $(bc=$VAR) = bitcast $VAR to u64
         v1 = bitcast v0 to u64

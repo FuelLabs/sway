@@ -93,6 +93,8 @@ pub enum ConvertParseTreeError {
     SelfParameterNotAllowedForFreeFn { span: Span },
     #[error("`impl Self` for contracts is not supported")]
     SelfImplForContract { span: Span },
+    #[error("test functions are only allowed at module level")]
+    TestFnOnlyAllowedAtModuleLevel { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -143,6 +145,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
             ConvertParseTreeError::SelfParameterNotAllowedForFreeFn { span, .. } => span.clone(),
             ConvertParseTreeError::SelfImplForContract { span, .. } => span.clone(),
+            ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span } => span.clone(),
         }
     }
 }

@@ -18,6 +18,7 @@ use crate::{
     module::Module,
     pointer::{Pointer, PointerContent},
     value::Value,
+    BlockArgument,
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
@@ -59,18 +60,11 @@ impl Function {
         is_public: bool,
         metadata: Option<MetadataIndex>,
     ) -> Function {
-        let arguments = args
-            .into_iter()
-            .map(|(name, ty, arg_metadata)| {
-                (
-                    name,
-                    Value::new_argument(context, ty).add_metadatum(context, arg_metadata),
-                )
-            })
-            .collect();
         let content = FunctionContent {
             name,
-            arguments,
+            // Arguments to a function are the arguments to its entry block.
+            // We set it up after creating the entry block below.
+            arguments: Vec::new(),
             return_type,
             blocks: Vec::new(),
             is_public,
@@ -90,6 +84,29 @@ impl Function {
             .unwrap()
             .blocks
             .push(entry_block);
+
+        // Setup the arguments.
+        let arguments: Vec<_> = args
+            .into_iter()
+            .enumerate()
+            .map(|(idx, (name, ty, arg_metadata))| {
+                (
+                    name,
+                    Value::new_argument(
+                        context,
+                        BlockArgument {
+                            block: entry_block,
+                            idx,
+                            ty,
+                        },
+                    )
+                    .add_metadatum(context, arg_metadata),
+                )
+            })
+            .collect();
+        context.functions.get_mut(func.0).unwrap().arguments = arguments.clone();
+        let (_, arg_vals): (Vec<_>, Vec<_>) = arguments.iter().cloned().unzip();
+        context.blocks.get_mut(entry_block.0).unwrap().args = arg_vals;
 
         func
     }
@@ -215,21 +232,6 @@ impl Function {
         self.block_iter(context)
             .map(|block| block.num_instructions(context))
             .sum()
-    }
-
-    /// Go through all blocks in the function and compute predecessor count for each.
-    pub fn count_predecessors(&self, context: &Context) -> HashMap<Block, usize> {
-        let mut pred_counts = HashMap::<Block, usize>::new();
-
-        for block in self.block_iter(context) {
-            for succ in block.successors(context) {
-                pred_counts
-                    .entry(succ)
-                    .and_modify(|counter| *counter += 1)
-                    .or_insert(1);
-            }
-        }
-        pred_counts
     }
 
     /// Return the function name.
