@@ -3,7 +3,7 @@ contract {
         local mut ptr b256 key_for_x
         local mut ptr u64 value_for_x
 
-        entry:
+        entry():
         v0 = get_ptr mut ptr u64 value_for_x, ptr u64, 0
         v1 = const u64 0
         store v1, ptr v0
@@ -19,7 +19,7 @@ contract {
         local mut ptr b256 key_for_y
         local mut ptr b256 value_for_y
 
-        entry:
+        entry():
         v0 = get_ptr mut ptr b256 value_for_y, ptr b256, 0
         v1 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
         store v1, ptr v0

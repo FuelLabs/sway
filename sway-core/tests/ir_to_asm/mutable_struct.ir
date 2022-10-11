@@ -2,7 +2,7 @@ script {
     fn main() -> u64 {
         local mut ptr { u64, u64 } record
 
-        entry:
+        entry():
         v0 = const { u64, u64 } { u64 undef, u64 undef }
         v1 = const u64 40
         v2 = insert_value v0, { u64, u64 }, v1, 0
