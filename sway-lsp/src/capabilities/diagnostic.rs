@@ -6,7 +6,7 @@ use sway_types::{LineCol, Spanned};
 
 pub fn get_diagnostics(
     warnings: Vec<CompileWarning>,
-    errors: Vec<FailedToCompile>,
+    errors: Vec<CompileError>,
 ) -> Vec<Diagnostic> {
     let errors = errors.iter().map(|error| Diagnostic {
         range: get_range(error.span().line_col()),
