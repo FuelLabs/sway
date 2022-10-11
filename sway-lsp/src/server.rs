@@ -11,7 +11,6 @@ use crate::{
         sync,
     },
 };
-use forc_util::find_manifest_dir;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
@@ -207,18 +206,12 @@ impl LanguageServer for Backend {
         // We then set InitializedState to Initialized so the function is never called again.
         // Ideally we would call this in the `initialize` LSP function but we don't have access
         // to the correct path of the project until this function.
-        dbg!();
         if let std::sync::LockResult::Ok(mut init_state) = self.session.sync.init_state.write() {
-            dbg!();
             if let sync::InitializedState::Uninitialized = *init_state {
-                dbg!();
                 *init_state = sync::InitializedState::Initialized;
-                dbg!();
                 self.init(&params.text_document.uri);
-                dbg!();
             }
         }
-        dbg!();
 
         // convert the client Url to the temp uri
         if let Ok(uri) = self
@@ -345,9 +338,6 @@ impl LanguageServer for Backend {
             .sync
             .workspace_to_temp_url(&params.text_document_position_params.text_document.uri)
             .map(|uri| {
-                eprintln!("server goto_definition!");
-                eprintln!("uri {:#?}", uri);
-                //eprintln!("workspace_uri {:#?}", workspace_uri);
                 let position = params.text_document_position_params.position;
                 self.session.token_definition_response(uri, position)
             })

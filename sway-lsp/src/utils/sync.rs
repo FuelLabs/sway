@@ -63,7 +63,6 @@ impl SyncWorkspace {
                 .tempdir()
                 .unwrap();
             let temp_dir = p.into_path().canonicalize().unwrap().join(project_name);
-            eprintln!("path: {:#?}", temp_dir);
 
             self.directories
                 .insert(Directory::Manifest, manifest_dir.to_path_buf());

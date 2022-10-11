@@ -12,7 +12,6 @@ description = "LSP server for Sway."
 anyhow = "1.0.41"
 dashmap = "5.4"
 forc-pkg = { version = "0.26.0", path = "../forc-pkg" }
-forc-util = { version = "0.26.0", path = "../forc-util" }
 notify = "5.0.0"
 notify-debouncer-mini = { version = "0.2.0" }
 ropey = "1.2"
