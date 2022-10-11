@@ -1880,7 +1880,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        fields: &[TypeCheckedStorageAccessDescriptor],
+        fields: &[ty::TyStorageAccessDescriptor],
         ix: &StateIndex,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {

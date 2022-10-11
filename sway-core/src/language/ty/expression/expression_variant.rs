@@ -11,8 +11,7 @@ use crate::{
     semantic_analysis::{
         ContractCallParams, ProjectionKind, TyAsmRegisterDeclaration, TyCodeBlock,
         TyEnumDeclaration, TyEnumVariant, TyIntrinsicFunctionKind, TyReassignment,
-        TyStorageReassignment, TyStructExpressionField, TyStructField, TypeCheckedStorageAccess,
-        VariableMutability,
+        TyStorageReassignment, TyStructExpressionField, TyStructField, VariableMutability,
     },
     type_system::*,
     TyFunctionDeclaration,
@@ -108,7 +107,7 @@ pub enum TyExpressionVariant {
         // this span may be used for errors in the future, although it is not right now.
         span: Span,
     },
-    StorageAccess(TypeCheckedStorageAccess),
+    StorageAccess(TyStorageAccess),
     IntrinsicFunction(TyIntrinsicFunctionKind),
     /// a zero-sized type-system-only compile-time thing that is used for constructing ABI casts.
     AbiName(AbiName),

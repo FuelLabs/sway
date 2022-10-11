@@ -1,7 +1,7 @@
 use crate::{
     declaration_engine::{declaration_engine::de_get_storage, declaration_id::DeclarationId},
     error::*,
-    language::CallPath,
+    language::{ty, CallPath},
     namespace::*,
     semantic_analysis::*,
     type_system::*,
@@ -59,7 +59,7 @@ impl Items {
         fields: Vec<Ident>,
         storage_fields: &[TyStorageField],
         access_span: &Span,
-    ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
+    ) -> CompileResult<(ty::TyStorageAccess, TypeId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match self.declared_storage {
