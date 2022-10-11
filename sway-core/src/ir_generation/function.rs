@@ -1303,10 +1303,10 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_var_decl: TyVariableDeclaration,
+        ast_var_decl: ty::TyVariableDeclaration,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Option<Value>, CompileError> {
-        let TyVariableDeclaration {
+        let ty::TyVariableDeclaration {
             name,
             body,
             mutability,

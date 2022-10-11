@@ -457,7 +457,7 @@ impl ty::TyExpression {
         let mut errors = vec![];
         let exp = match namespace.resolve_symbol(&name).value {
             Some(ty::TyDeclaration::VariableDeclaration(decl)) => {
-                let TyVariableDeclaration {
+                let ty::TyVariableDeclaration {
                     name: decl_name,
                     body,
                     mutability,
@@ -1231,7 +1231,7 @@ impl ty::TyExpression {
                 )
             }
             ty::TyDeclaration::VariableDeclaration(ref decl) => {
-                let TyVariableDeclaration { body: expr, .. } = &**decl;
+                let ty::TyVariableDeclaration { body: expr, .. } = &**decl;
                 let ret_ty = look_up_type_id(expr.return_type);
                 let abi_name = match ret_ty {
                     TypeInfo::ContractCaller { abi_name, .. } => abi_name,

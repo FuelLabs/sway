@@ -6,7 +6,7 @@ use crate::{
         ast_node::{
             TyAbiDeclaration, TyCodeBlock, TyConstantDeclaration, TyEnumDeclaration,
             TyFunctionDeclaration, TyStructDeclaration, TyStructExpressionField,
-            TyTraitDeclaration, TyVariableDeclaration, VariableMutability,
+            TyTraitDeclaration, VariableMutability,
         },
         TyAsmRegisterDeclaration, TyAstNode, TyAstNodeContent, TyImplTrait,
         TyIntrinsicFunctionKind, TyStorageDeclaration,
@@ -294,7 +294,7 @@ fn connect_declaration(
     use ty::TyDeclaration::*;
     match decl {
         VariableDeclaration(var_decl) => {
-            let TyVariableDeclaration {
+            let ty::TyVariableDeclaration {
                 name,
                 body,
                 mutability: is_mutable,

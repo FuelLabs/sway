@@ -2,8 +2,7 @@ use crate::{
     error::{err, ok},
     language::{parsed::FunctionParameter, ty},
     semantic_analysis::{
-        convert_to_variable_immutability, IsConstant, TyVariableDeclaration, TypeCheckContext,
-        VariableMutability,
+        convert_to_variable_immutability, IsConstant, TypeCheckContext, VariableMutability,
     },
     type_system::*,
     CompileResult, Ident, Namespace,
@@ -189,7 +188,7 @@ impl TyFunctionParameter {
 fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &TyFunctionParameter) {
     ctx.namespace.insert_symbol(
         typed_parameter.name.clone(),
-        ty::TyDeclaration::VariableDeclaration(Box::new(TyVariableDeclaration {
+        ty::TyDeclaration::VariableDeclaration(Box::new(ty::TyVariableDeclaration {
             name: typed_parameter.name.clone(),
             body: ty::TyExpression {
                 expression: ty::TyExpressionVariant::FunctionParameter,

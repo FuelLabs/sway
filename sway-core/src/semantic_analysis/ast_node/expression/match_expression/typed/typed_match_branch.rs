@@ -5,8 +5,7 @@ use crate::{
     language::{parsed::MatchBranch, ty},
     semantic_analysis::{
         ast_node::expression::match_expression::typed::typed_scrutinee::TyScrutinee, IsConstant,
-        TyAstNode, TyAstNodeContent, TyCodeBlock, TyVariableDeclaration, TypeCheckContext,
-        VariableMutability,
+        TyAstNode, TyAstNodeContent, TyCodeBlock, TypeCheckContext, VariableMutability,
     },
     type_system::insert_type,
     types::DeterministicallyAborts,
@@ -65,7 +64,7 @@ impl TyMatchBranch {
             let type_ascription = right_decl.return_type;
             let span = left_decl.span().clone();
             let var_decl =
-                ty::TyDeclaration::VariableDeclaration(Box::new(TyVariableDeclaration {
+                ty::TyDeclaration::VariableDeclaration(Box::new(ty::TyVariableDeclaration {
                     name: left_decl.clone(),
                     body: right_decl,
                     mutability: VariableMutability::Immutable,

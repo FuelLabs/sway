@@ -261,7 +261,7 @@ impl TyAstNode {
                                 errors
                             );
                             let typed_var_decl = ty::TyDeclaration::VariableDeclaration(Box::new(
-                                TyVariableDeclaration {
+                                ty::TyVariableDeclaration {
                                     name: name.clone(),
                                     body,
                                     mutability: convert_to_variable_immutability(false, is_mutable),

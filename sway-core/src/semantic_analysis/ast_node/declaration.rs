@@ -105,8 +105,8 @@ impl ty::TyDeclaration {
 
     /// Retrieves the declaration as a variable declaration.
     ///
-    /// Returns an error if `self` is not a [TyVariableDeclaration].
-    pub(crate) fn expect_variable(&self) -> CompileResult<&TyVariableDeclaration> {
+    /// Returns an error if `self` is not a [ty::TyVariableDeclaration].
+    pub(crate) fn expect_variable(&self) -> CompileResult<&ty::TyVariableDeclaration> {
         let warnings = vec![];
         let mut errors = vec![];
         match self {
