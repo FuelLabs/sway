@@ -337,7 +337,12 @@ impl TyAstNode {
                             let name = trait_decl.name.clone();
                             let decl_id = de_insert_trait(trait_decl);
                             let decl = TyDeclaration::TraitDeclaration(decl_id);
-                            ctx.namespace.insert_symbol(name, decl.clone());
+                            check!(
+                                ctx.namespace.insert_symbol(name, decl.clone()),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
                             decl
                         }
                         Declaration::ImplTrait(impl_trait) => {
@@ -396,7 +401,12 @@ impl TyAstNode {
                             );
                             let name = abi_decl.name.clone();
                             let decl = TyDeclaration::AbiDeclaration(de_insert_abi(abi_decl));
-                            ctx.namespace.insert_symbol(name, decl.clone());
+                            check!(
+                                ctx.namespace.insert_symbol(name, decl.clone()),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
                             decl
                         }
                         Declaration::StorageDeclaration(StorageDeclaration {
