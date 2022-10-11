@@ -9,7 +9,7 @@ use crate::{
     semantic_analysis::{
         TyAstNodeContent, TyCodeBlock, TyConstantDeclaration, TyEnumDeclaration,
         TyFunctionDeclaration, TyImplTrait, TyIntrinsicFunctionKind, TyReassignment,
-        TyStorageDeclaration, TyStructDeclaration,
+        TyStructDeclaration,
     },
     type_system::*,
 };
@@ -276,7 +276,7 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
             }
         }
         ty::TyDeclaration::StorageDeclaration(decl_id) => {
-            let TyStorageDeclaration { fields, .. } = check!(
+            let ty::TyStorageDeclaration { fields, .. } = check!(
                 CompileResult::from(de_get_storage(decl_id.clone(), &decl.span())),
                 return err(warnings, errors),
                 warnings,

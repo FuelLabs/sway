@@ -11,31 +11,14 @@ use crate::{
     type_system::{look_up_type_id, TypeId, TypeInfo},
     AttributesMap, Ident,
 };
-use derivative::Derivative;
 use fuel_tx::StorageSlot;
 use sway_error::error::CompileError;
 use sway_ir::{Context, Module};
 use sway_types::{state::StateIndex, Span, Spanned};
 
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
-pub struct TyStorageDeclaration {
-    pub fields: Vec<TyStorageField>,
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub span: Span,
-    pub attributes: AttributesMap,
-}
-
-impl Spanned for TyStorageDeclaration {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-impl TyStorageDeclaration {
+impl ty::TyStorageDeclaration {
     pub fn new(fields: Vec<TyStorageField>, span: Span, attributes: AttributesMap) -> Self {
-        TyStorageDeclaration {
+        ty::TyStorageDeclaration {
             fields,
             span,
             attributes,

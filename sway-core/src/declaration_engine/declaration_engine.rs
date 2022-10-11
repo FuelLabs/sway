@@ -5,9 +5,10 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     concurrent_slab::ConcurrentSlab,
+    language::ty,
     semantic_analysis::{
         TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyImplTrait,
-        TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
+        TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
     },
     TyFunctionDeclaration,
 };
@@ -181,7 +182,7 @@ impl DeclarationEngine {
             .collect::<Result<_, _>>()
     }
 
-    fn insert_storage(&self, storage: TyStorageDeclaration) -> DeclarationId {
+    fn insert_storage(&self, storage: ty::TyStorageDeclaration) -> DeclarationId {
         let span = storage.span();
         DeclarationId::new(self.slab.insert(DeclarationWrapper::Storage(storage)), span)
     }
@@ -190,7 +191,7 @@ impl DeclarationEngine {
         &self,
         index: DeclarationId,
         span: &Span,
-    ) -> Result<TyStorageDeclaration, CompileError> {
+    ) -> Result<ty::TyStorageDeclaration, CompileError> {
         self.slab.get(*index).expect_storage(span)
     }
 
@@ -333,14 +334,14 @@ pub(crate) fn de_get_monomorphized_struct_copies(
     DECLARATION_ENGINE.get_monomorphized_struct_copies(original_id, span)
 }
 
-pub(crate) fn de_insert_storage(storage: TyStorageDeclaration) -> DeclarationId {
+pub(crate) fn de_insert_storage(storage: ty::TyStorageDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.insert_storage(storage)
 }
 
 pub fn de_get_storage(
     index: DeclarationId,
     span: &Span,
-) -> Result<TyStorageDeclaration, CompileError> {
+) -> Result<ty::TyStorageDeclaration, CompileError> {
     DECLARATION_ENGINE.get_storage(index, span)
 }
 

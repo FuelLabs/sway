@@ -456,7 +456,7 @@ impl TyAstNode {
                                     attributes,
                                 });
                             }
-                            let decl = TyStorageDeclaration::new(fields_buf, span, attributes);
+                            let decl = ty::TyStorageDeclaration::new(fields_buf, span, attributes);
                             let decl_id = de_insert_storage(decl);
                             // insert the storage declaration into the symbols
                             // if there already was one, return an error that duplicate storage

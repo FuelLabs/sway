@@ -9,7 +9,7 @@ use crate::{
             TyTraitDeclaration, TyVariableDeclaration, VariableMutability,
         },
         TyAsmRegisterDeclaration, TyAstNode, TyAstNodeContent, TyImplTrait,
-        TyIntrinsicFunctionKind, TyStorageDeclaration,
+        TyIntrinsicFunctionKind,
     },
     type_system::{to_typeinfo, TypeInfo},
 };
@@ -1320,12 +1320,12 @@ fn construct_dead_code_warning_from_node(node: &TyAstNode) -> Option<CompileWarn
 }
 
 fn connect_storage_declaration(
-    decl: &TyStorageDeclaration,
+    decl: &ty::TyStorageDeclaration,
     graph: &mut ControlFlowGraph,
     _entry_node: NodeIndex,
     _tree_type: &TreeType,
 ) {
-    let TyStorageDeclaration { fields, .. } = decl;
+    let ty::TyStorageDeclaration { fields, .. } = decl;
 
     let field_nodes = fields
         .iter()
