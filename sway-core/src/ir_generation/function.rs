@@ -1720,7 +1720,7 @@ impl FnCompiler {
             ))
         }?;
 
-        let field_kind = ProjectionKind::StructField {
+        let field_kind = ty::ProjectionKind::StructField {
             name: ast_field.name.clone(),
         };
         let field_idx = match get_struct_name_field_index_and_type(struct_type_id, field_kind) {

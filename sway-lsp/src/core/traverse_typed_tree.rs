@@ -10,7 +10,7 @@ use sway_core::{
     semantic_analysis::ast_node::{
         code_block::TyCodeBlock,
         expression::TyIntrinsicFunctionKind,
-        ProjectionKind, TyFunctionDeclaration, TyFunctionParameter, TyImplTrait, TyTraitFn,
+        TyFunctionDeclaration, TyFunctionParameter, TyImplTrait, TyTraitFn,
         {TyAstNode, TyAstNodeContent},
     },
 };
@@ -409,7 +409,7 @@ fn handle_expression(expression: &ty::TyExpression, tokens: &TokenMap) {
             }
 
             for proj_kind in &reassignment.lhs_indices {
-                if let ProjectionKind::StructField { name } = proj_kind {
+                if let ty::ProjectionKind::StructField { name } = proj_kind {
                     if let Some(mut token) = tokens.get_mut(&to_ident_key(name)) {
                         token.typed =
                             Some(TypedAstToken::TypedReassignment((**reassignment).clone()));

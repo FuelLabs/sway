@@ -1576,7 +1576,7 @@ impl ty::TyExpression {
                             field_to_access,
                             ..
                         }) => {
-                            names_vec.push(ProjectionKind::StructField {
+                            names_vec.push(ty::ProjectionKind::StructField {
                                 name: field_to_access,
                             });
                             expr = prefix;
@@ -1587,7 +1587,7 @@ impl ty::TyExpression {
                             index_span,
                             ..
                         }) => {
-                            names_vec.push(ProjectionKind::TupleField { index, index_span });
+                            names_vec.push(ty::ProjectionKind::TupleField { index, index_span });
                             expr = prefix;
                         }
                         _ => {

@@ -3,8 +3,7 @@ use crate::{
     language::ty,
     metadata::MetadataManager,
     semantic_analysis::{
-        declaration::ProjectionKind, namespace, TyAstNode, TyAstNodeContent, TyConstantDeclaration,
-        TyStructExpressionField,
+        namespace, TyAstNode, TyAstNodeContent, TyConstantDeclaration, TyStructExpressionField,
     },
 };
 
@@ -300,7 +299,7 @@ fn const_eval_typed_expr(
                 value: ConstantValue::Struct(fields),
                 ..
             }) => {
-                let field_kind = ProjectionKind::StructField {
+                let field_kind = ty::ProjectionKind::StructField {
                     name: field_to_access.name.clone(),
                 };
                 get_struct_name_field_index_and_type(*resolved_type_of_parent, field_kind)

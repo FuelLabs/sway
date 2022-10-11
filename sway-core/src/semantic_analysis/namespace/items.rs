@@ -204,7 +204,7 @@ impl Items {
     pub(crate) fn find_subfield_type(
         &self,
         base_name: &Ident,
-        projections: &[ProjectionKind],
+        projections: &[ty::ProjectionKind],
     ) -> CompileResult<(TypeId, TypeId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -242,7 +242,7 @@ impl Items {
                         fields,
                         ..
                     },
-                    ProjectionKind::StructField { name: field_name },
+                    ty::ProjectionKind::StructField { name: field_name },
                 ) => {
                     let field_type_opt = {
                         fields.iter().find_map(
@@ -283,7 +283,7 @@ impl Items {
                     full_span_for_error =
                         Span::join(full_span_for_error, field_name.span().clone());
                 }
-                (TypeInfo::Tuple(fields), ProjectionKind::TupleField { index, index_span }) => {
+                (TypeInfo::Tuple(fields), ty::ProjectionKind::TupleField { index, index_span }) => {
                     let field_type_opt = {
                         fields
                             .get(*index)
@@ -306,14 +306,14 @@ impl Items {
                     full_name_for_error.push_str(&index.to_string());
                     full_span_for_error = Span::join(full_span_for_error, index_span.clone());
                 }
-                (actually, ProjectionKind::StructField { .. }) => {
+                (actually, ty::ProjectionKind::StructField { .. }) => {
                     errors.push(CompileError::FieldAccessOnNonStruct {
                         span: full_span_for_error,
                         actually: actually.to_string(),
                     });
                     return err(warnings, errors);
                 }
-                (actually, ProjectionKind::TupleField { .. }) => {
+                (actually, ty::ProjectionKind::TupleField { .. }) => {
                     errors.push(CompileError::NotATuple {
                         name: full_name_for_error,
                         span: full_span_for_error,

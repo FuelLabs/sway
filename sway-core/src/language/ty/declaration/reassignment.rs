@@ -1,6 +1,8 @@
-use sway_types::Ident;
+use std::borrow::Cow;
 
-use crate::{language::ty::*, semantic_analysis::ProjectionKind, type_system::*};
+use sway_types::{Ident, Span, Spanned};
+
+use crate::{language::ty::*, type_system::*};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TyReassignment {
@@ -16,5 +18,29 @@ impl CopyTypes for TyReassignment {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.rhs.copy_types(type_mapping);
         self.lhs_type.copy_types(type_mapping);
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ProjectionKind {
+    StructField { name: Ident },
+    TupleField { index: usize, index_span: Span },
+}
+
+impl Spanned for ProjectionKind {
+    fn span(&self) -> Span {
+        match self {
+            ProjectionKind::StructField { name } => name.span(),
+            ProjectionKind::TupleField { index_span, .. } => index_span.clone(),
+        }
+    }
+}
+
+impl ProjectionKind {
+    pub(crate) fn pretty_print(&self) -> Cow<str> {
+        match self {
+            ProjectionKind::StructField { name } => Cow::Borrowed(name.as_str()),
+            ProjectionKind::TupleField { index, .. } => Cow::Owned(index.to_string()),
+        }
     }
 }

@@ -25,7 +25,6 @@ use crate::{
     AttributesMap,
 };
 use derivative::Derivative;
-use std::borrow::Cow;
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
@@ -325,7 +324,7 @@ impl TyTraitFn {
 /// in asm generation.
 #[derive(Clone, Debug, Eq)]
 pub struct ReassignmentLhs {
-    pub kind: ProjectionKind,
+    pub kind: ty::ProjectionKind,
     pub type_id: TypeId,
 }
 
@@ -335,29 +334,5 @@ pub struct ReassignmentLhs {
 impl PartialEq for ReassignmentLhs {
     fn eq(&self, other: &Self) -> bool {
         self.kind == other.kind && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ProjectionKind {
-    StructField { name: Ident },
-    TupleField { index: usize, index_span: Span },
-}
-
-impl Spanned for ProjectionKind {
-    fn span(&self) -> Span {
-        match self {
-            ProjectionKind::StructField { name } => name.span(),
-            ProjectionKind::TupleField { index_span, .. } => index_span.clone(),
-        }
-    }
-}
-
-impl ProjectionKind {
-    pub(crate) fn pretty_print(&self) -> Cow<str> {
-        match self {
-            ProjectionKind::StructField { name } => Cow::Borrowed(name.as_str()),
-            ProjectionKind::TupleField { index, .. } => Cow::Owned(index.to_string()),
-        }
     }
 }
