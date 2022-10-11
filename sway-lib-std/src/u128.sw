@@ -336,3 +336,49 @@ impl Exponentiate for U128 {
         acc
     }
 }
+
+impl Root for U128 {
+    fn sqrt(self) -> Self {
+        let zero = ~U128::from(0, 0);
+        let two = ~U128::from(0, 2);
+        let mut x0 = self / two;
+        let mut s = self;
+
+        if x0 != zero {
+            let mut x1 = (x0 + s / x0) / two;
+
+            while x1 < x0 {
+                x0 = x1;
+                x1 = (x0 + self / x0) / two;
+            }
+
+            return x0;
+        } else {
+            return s;
+        }
+    }
+}
+
+impl BinaryLogarithm for U128 {
+    fn log2(self) -> Self {
+        let zero = ~U128::from(0, 0);
+        let one = ~U128::from(0, 1);
+        let mut res = zero;
+        let mut s = self;
+        // If trying to get a log2(0), panic, due to infinity not existing.
+        assert(!(self == zero));
+        while s > zero {
+            res += one;
+            s >>= 1;
+        }
+        res
+    }
+}
+
+impl Logarithm for U128 {
+    fn log(self, base: Self) -> Self {
+        let self_log2 = self.log2();
+        let base_log2 = base.log2();
+        self_log2 / base_log2
+    }
+}
