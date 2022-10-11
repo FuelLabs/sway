@@ -453,7 +453,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let exp = match namespace.resolve_symbol(&name).value {
-            Some(TyDeclaration::VariableDeclaration(decl)) => {
+            Some(ty::TyDeclaration::VariableDeclaration(decl)) => {
                 let TyVariableDeclaration {
                     name: decl_name,
                     body,
@@ -471,7 +471,7 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(TyDeclaration::ConstantDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
                 let TyConstantDeclaration {
                     name: decl_name,
                     value,
@@ -495,7 +495,7 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(TyDeclaration::AbiDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::AbiDeclaration(decl_id)) => {
                 let decl = check!(
                     CompileResult::from(de_get_abi(decl_id.clone(), &span)),
                     return err(warnings, errors),
@@ -1219,7 +1219,7 @@ impl ty::TyExpression {
             errors
         );
         let abi = match abi {
-            TyDeclaration::AbiDeclaration(decl_id) => {
+            ty::TyDeclaration::AbiDeclaration(decl_id) => {
                 check!(
                     CompileResult::from(de_get_abi(decl_id, &span)),
                     return err(warnings, errors),
@@ -1227,7 +1227,7 @@ impl ty::TyExpression {
                     errors
                 )
             }
-            TyDeclaration::VariableDeclaration(ref decl) => {
+            ty::TyDeclaration::VariableDeclaration(ref decl) => {
                 let TyVariableDeclaration { body: expr, .. } = &**decl;
                 let ret_ty = look_up_type_id(expr.return_type);
                 let abi_name = match ret_ty {

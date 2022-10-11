@@ -4,7 +4,7 @@ use crate::{
     metadata::MetadataManager,
     semantic_analysis::{
         declaration::ProjectionKind, namespace, TyAstNode, TyAstNodeContent, TyConstantDeclaration,
-        TyDeclaration, TyStructExpressionField,
+        TyStructExpressionField,
     },
 };
 
@@ -43,7 +43,7 @@ pub(crate) fn compile_const_decl(
             // See if we it's a global const and whether we can compile it *now*.
             let decl = module_ns.check_symbol(name)?;
             let decl_name_value = match decl {
-                TyDeclaration::ConstantDeclaration(decl_id) => {
+                ty::TyDeclaration::ConstantDeclaration(decl_id) => {
                     let TyConstantDeclaration { name, value, .. } =
                         de_get_constant(decl_id.clone(), &name.span())?;
                     Some((name, value))

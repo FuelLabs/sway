@@ -1,17 +1,18 @@
 use derivative::Derivative;
+use sway_error::error::CompileError;
 use sway_types::{Ident, Spanned};
 
 use crate::{
-    declaration_engine::declaration_engine::de_get_trait,
-    error::{err, ok},
-    language::{parsed::*, CallPath, Visibility},
+    declaration_engine::*,
+    error::*,
+    language::{parsed::*, ty, CallPath, Visibility},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
         Mode, TyCodeBlock, TypeCheckContext,
     },
     style::is_upper_camel_case,
-    type_system::{insert_type, CopyTypes, TypeMapping},
-    CompileError, CompileResult, Namespace, TyDeclaration, TyFunctionDeclaration, TypeInfo,
+    type_system::*,
+    Namespace, TyFunctionDeclaration,
 };
 
 use super::{EnforceTypeArguments, TyFunctionParameter, TyTraitFn};
@@ -118,7 +119,7 @@ fn handle_supertraits(
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(TyDeclaration::TraitDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let TyTraitDeclaration {
                     ref interface_surface,
                     ref methods,
@@ -163,9 +164,11 @@ fn handle_supertraits(
                     errors
                 );
             }
-            Some(TyDeclaration::AbiDeclaration(_)) => errors.push(CompileError::AbiAsSupertrait {
-                span: supertrait.name.span().clone(),
-            }),
+            Some(ty::TyDeclaration::AbiDeclaration(_)) => {
+                errors.push(CompileError::AbiAsSupertrait {
+                    span: supertrait.name.span().clone(),
+                })
+            }
             _ => errors.push(CompileError::TraitNotFound {
                 name: supertrait.name.to_string(),
                 span: supertrait.name.span(),

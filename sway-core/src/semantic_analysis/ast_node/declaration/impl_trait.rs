@@ -14,7 +14,7 @@ use crate::{
         insert_type, look_up_type_id, set_type_as_storage_only, to_typeinfo, unify_with_self,
         CopyTypes, TypeId, TypeMapping, TypeParameter,
     },
-    CompileResult, TyDeclaration, TyFunctionDeclaration, TypeInfo,
+    CompileResult, TyFunctionDeclaration, TypeInfo,
 };
 
 use super::TyTraitFn;
@@ -103,7 +103,7 @@ impl TyImplTrait {
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(TyDeclaration::TraitDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let tr = check!(
                     CompileResult::from(de_get_trait(decl_id, &trait_name.span())),
                     return err(warnings, errors),
@@ -143,7 +143,7 @@ impl TyImplTrait {
                 );
                 (impl_trait, implementing_for_type_id)
             }
-            Some(TyDeclaration::AbiDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::AbiDeclaration(decl_id)) => {
                 // if you are comparing this with the `impl_trait` branch above, note that
                 // there are no type arguments here because we don't support generic types
                 // in contract ABIs yet (or ever?) due to the complexity of communicating
@@ -328,29 +328,29 @@ impl TyImplTrait {
         }
 
         fn decl_contains_get_storage_index(
-            decl: &TyDeclaration,
+            decl: &ty::TyDeclaration,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             match decl {
-                TyDeclaration::VariableDeclaration(decl) => {
+                ty::TyDeclaration::VariableDeclaration(decl) => {
                     expr_contains_get_storage_index(&decl.body, access_span)
                 }
-                TyDeclaration::ConstantDeclaration(decl_id) => {
+                ty::TyDeclaration::ConstantDeclaration(decl_id) => {
                     let TyConstantDeclaration { value: expr, .. } =
                         de_get_constant(decl_id.clone(), access_span)?;
                     expr_contains_get_storage_index(&expr, access_span)
                 }
                 // We're already inside a type's impl. So we can't have these
                 // nested functions etc. We just ignore them.
-                TyDeclaration::FunctionDeclaration(_)
-                | TyDeclaration::TraitDeclaration(_)
-                | TyDeclaration::StructDeclaration(_)
-                | TyDeclaration::EnumDeclaration(_)
-                | TyDeclaration::ImplTrait(_)
-                | TyDeclaration::AbiDeclaration(_)
-                | TyDeclaration::GenericTypeForFunctionScope { .. }
-                | TyDeclaration::ErrorRecovery
-                | TyDeclaration::StorageDeclaration(_) => Ok(false),
+                ty::TyDeclaration::FunctionDeclaration(_)
+                | ty::TyDeclaration::TraitDeclaration(_)
+                | ty::TyDeclaration::StructDeclaration(_)
+                | ty::TyDeclaration::EnumDeclaration(_)
+                | ty::TyDeclaration::ImplTrait(_)
+                | ty::TyDeclaration::AbiDeclaration(_)
+                | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
+                | ty::TyDeclaration::ErrorRecovery
+                | ty::TyDeclaration::StorageDeclaration(_) => Ok(false),
             }
         }
 
