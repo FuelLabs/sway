@@ -4,9 +4,9 @@ use crate::{
     language::{parsed::TreeType, ty, CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
-            TyAbiDeclaration, TyCodeBlock, TyConstantDeclaration, TyEnumDeclaration,
-            TyFunctionDeclaration, TyStructDeclaration, TyStructExpressionField,
-            TyTraitDeclaration, TyVariableDeclaration, VariableMutability,
+            TyCodeBlock, TyConstantDeclaration, TyEnumDeclaration, TyFunctionDeclaration,
+            TyStructDeclaration, TyStructExpressionField, TyTraitDeclaration,
+            TyVariableDeclaration, VariableMutability,
         },
         TyAsmRegisterDeclaration, TyAstNode, TyAstNodeContent, TyImplTrait,
         TyIntrinsicFunctionKind, TyStorageDeclaration,
@@ -494,7 +494,7 @@ fn connect_trait_declaration(
 
 /// See [connect_trait_declaration] for implementation details.
 fn connect_abi_declaration(
-    decl: &TyAbiDeclaration,
+    decl: &ty::TyAbiDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
 ) {

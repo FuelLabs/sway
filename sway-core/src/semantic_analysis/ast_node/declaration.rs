@@ -123,8 +123,8 @@ impl ty::TyDeclaration {
 
     /// Retrieves the declaration as an Abi declaration.
     ///
-    /// Returns an error if `self` is not a [TyAbiDeclaration].
-    pub(crate) fn expect_abi(&self, access_span: &Span) -> CompileResult<TyAbiDeclaration> {
+    /// Returns an error if `self` is not a [ty::TyAbiDeclaration].
+    pub(crate) fn expect_abi(&self, access_span: &Span) -> CompileResult<ty::TyAbiDeclaration> {
         match self {
             ty::TyDeclaration::AbiDeclaration(decl_id) => {
                 CompileResult::from(de_get_abi(decl_id.clone(), access_span))
