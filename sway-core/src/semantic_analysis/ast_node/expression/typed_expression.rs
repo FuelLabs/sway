@@ -867,7 +867,7 @@ impl ty::TyExpression {
                             struct_name: struct_name.clone(),
                             span: span.clone(),
                         });
-                        typed_fields_buf.push(TyStructExpressionField {
+                        typed_fields_buf.push(ty::TyStructExpressionField {
                             name: def_field.name.clone(),
                             value: ty::TyExpression {
                                 expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
@@ -894,7 +894,7 @@ impl ty::TyExpression {
             );
 
             def_field.span = typed_field.span.clone();
-            typed_fields_buf.push(TyStructExpressionField {
+            typed_fields_buf.push(ty::TyStructExpressionField {
                 value: typed_field,
                 name: expr_field.name.clone(),
             });

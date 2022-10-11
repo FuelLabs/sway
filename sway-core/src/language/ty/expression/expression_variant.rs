@@ -11,8 +11,8 @@ use crate::{
     semantic_analysis::{
         ContractCallParams, ProjectionKind, TyAsmRegisterDeclaration, TyCodeBlock,
         TyEnumDeclaration, TyEnumVariant, TyIntrinsicFunctionKind, TyReassignment,
-        TyReturnStatement, TyStorageReassignment, TyStructExpressionField, TyStructField,
-        TypeCheckedStorageAccess, VariableMutability,
+        TyReturnStatement, TyStorageReassignment, TyStructField, TypeCheckedStorageAccess,
+        VariableMutability,
     },
     type_system::*,
     TyFunctionDeclaration,

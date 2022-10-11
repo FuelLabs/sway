@@ -1630,7 +1630,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        fields: Vec<TyStructExpressionField>,
+        fields: Vec<ty::TyStructExpressionField>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // NOTE: This is a struct instantiation with initialisers for each field of a named struct.
