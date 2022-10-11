@@ -43,6 +43,13 @@ impl SyncWorkspace {
         }
     }
 
+    /// Clean up the temp directory that was created once the
+    /// server closes down.
+    pub(crate) fn remove_temp_dir(&self) {
+        let (_, temp_dir) = self.directories();
+        fs::remove_dir_all(temp_dir.parent().unwrap()).unwrap();
+    }
+
     pub(crate) fn create_temp_dir_from_workspace(&self, manifest_dir: &PathBuf) {
         if let Ok(manifest) = PackageManifestFile::from_dir(&manifest_dir) {
             // strip Forc.toml from the path

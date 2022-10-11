@@ -194,6 +194,9 @@ impl LanguageServer for Backend {
             }
         }
 
+        // Delete the temporary directory.
+        self.session.sync.remove_temp_dir();
+
         Ok(())
     }
 

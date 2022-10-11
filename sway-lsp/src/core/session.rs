@@ -334,8 +334,7 @@ impl Session {
         let tokens = self.tokens_for_file(url);
         self.sync.to_workspace_url(url.clone()).and_then(|url| {
             Some(capabilities::document_symbol::to_symbol_information(
-                &tokens,
-                url,
+                &tokens, url,
             ))
         })
     }
