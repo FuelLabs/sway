@@ -15,7 +15,7 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
         let input = String::from_utf8_lossy(&input_bytes);
 
         let mut ir = sway_ir::parser::parse(&input).unwrap_or_else(|parse_err| {
-            println!("{parse_err}");
+            println!("{}: {parse_err}", path.display());
             panic!()
         });
 

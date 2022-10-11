@@ -41,13 +41,11 @@ fn main() -> bool {
 
 // check: fn $pred_or(self $MD: { bool }, other $MD: { bool }) -> bool
 // check: $(self_pred=$VAL) = call $ID(self)
-// check: cbr $self_pred, $(block1=$ID), $(block0=$ID)
+// check: cbr $self_pred, $(block1=$ID)($self_pred), $(block0=$ID)()
 
-// check: $block0:
-// check: $VAL = phi(entry: $self_pred)
+// check: $block0():
 // check: $(other_pred=$VAL) = call $ID(other)
 // check: br $block1
 
-// check: $block1:
-// check: $(res=$VAL) = phi(entry: $self_pred, $block0: $other_pred)
+// check: $block1($(res=$VAL): bool):
 // check: ret bool $res
