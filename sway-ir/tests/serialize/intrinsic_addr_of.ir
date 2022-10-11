@@ -5,7 +5,7 @@ script {
   fn main() -> u64 {
         local ptr { u64, ( { b256 } | { b256 } ) } sender
 
-        entry:
+        entry():
         // check: = get_ptr
         v0 = get_ptr ptr { u64, ( { b256 } | { b256 } ) } sender, ptr { u64, ( { b256 } | { b256 } ) }, 0
         v1 = const { u64, ( { b256 } | { b256 } ) } { u64 0, { b256 } { b256 0x0100000000000000000000000000000000000000000000000000000000000010 } }

@@ -1,11 +1,11 @@
 contract {
     fn small_string<80da70e2>(s: string<7>) -> string<7> {
-        entry:
+        entry(s: string<7>):
         ret string<7> s
     }
 
     fn large_string<28c0f699>(s: string<9>) -> string<9> {
-        entry:
+        entry(s: string<9>):
         ret string<9> s
     }
 }

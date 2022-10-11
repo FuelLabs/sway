@@ -28,7 +28,7 @@ fn main() -> u64 {
 // check:     ret u64
 
 // check: fn $ID(x $MD: u64) -> u64
-// check:     entry:
+// check:     entry(x: u64):
 // check:     ret u64 x
 // check: }
 
