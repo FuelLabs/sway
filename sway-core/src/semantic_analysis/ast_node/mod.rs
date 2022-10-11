@@ -17,14 +17,16 @@ use crate::{
     error::*,
     language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
-    style::*,
     type_system::*,
     types::DeterministicallyAborts,
     Ident,
 };
 
-use sway_error::error::CompileError;
-use sway_types::{span::Span, state::StateIndex, Spanned};
+use sway_error::{
+    error::CompileError,
+    warning::{CompileWarning, Warning},
+};
+use sway_types::{span::Span, state::StateIndex, style::is_screaming_snake_case, Spanned};
 
 use derivative::Derivative;
 
@@ -278,7 +280,16 @@ impl TyAstNode {
                         }) => {
                             let result =
                                 type_check_ascribed_expr(ctx.by_ref(), type_ascription, value);
-                            is_screaming_snake_case(&name).ok(&mut warnings, &mut errors);
+
+                            if !is_screaming_snake_case(name.as_str()) {
+                                warnings.push(CompileWarning {
+                                    span: name.span(),
+                                    warning_content: Warning::NonScreamingSnakeCaseConstName {
+                                        name: name.clone(),
+                                    },
+                                })
+                            }
+
                             let value = check!(
                                 result,
                                 ty::error_recovery_expr(name.span()),
@@ -492,7 +503,7 @@ impl TyAstNode {
         } = node
         {
             let warning = Warning::UnusedReturnValue {
-                r#type: Box::new(node.type_info()),
+                r#type: node.type_info().to_string(),
             };
             assert_or_warn!(
                 node.type_info().can_safely_ignore(),

@@ -11,8 +11,8 @@ use crate::{
     metadata::MetadataManager,
     size_bytes_in_words, size_bytes_round_up_to_word_alignment,
 };
-
-use sway_error::error::CompileError;
+use sway_error::warning::CompileWarning;
+use sway_error::{error::CompileError, warning::Warning};
 use sway_ir::*;
 use sway_types::{span::Span, Spanned};
 
