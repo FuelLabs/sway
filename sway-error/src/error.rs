@@ -653,6 +653,8 @@ pub enum CompileError {
     ConfigTimeConstantNotALiteral { span: Span },
     #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident },
+    #[error("returning raw_ptrs are not allowed for main()")]
+    PointerReturnNotAllowedInMain { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -828,6 +830,7 @@ impl Spanned for CompileError {
             ConfigTimeConstantNotAConstDecl { span } => span.clone(),
             ConfigTimeConstantNotALiteral { span } => span.clone(),
             RefMutableNotAllowedInMain { param_name } => param_name.span(),
+            PointerReturnNotAllowedInMain { span } => span.clone(),
         }
     }
 }

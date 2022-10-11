@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: fn main() -> raw_ptr {
+# nextln: $()returning raw_ptrs are not allowed for main()
