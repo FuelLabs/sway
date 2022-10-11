@@ -13,7 +13,6 @@ pub mod language;
 mod metadata;
 pub mod semantic_analysis;
 pub mod source_map;
-mod style;
 pub mod type_system;
 
 use crate::{error::*, source_map::SourceMap};
@@ -35,8 +34,9 @@ pub use semantic_analysis::{
 };
 pub mod types;
 
-pub use error::{CompileResult, CompileWarning};
+pub use error::CompileResult;
 use sway_error::error::CompileError;
+use sway_error::warning::CompileWarning;
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
