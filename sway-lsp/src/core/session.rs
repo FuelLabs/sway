@@ -59,9 +59,13 @@ impl Session {
 
     /// Check if the code editor's cursor is currently over one of our collected tokens.
     pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
+        dbg!("token_at_position uri = {:#?}", uri);
+        //dbg!(self.token_map());
         let tokens = self.tokens_for_file(uri);
+        dbg!("tokens len = {}", tokens.len());
         match utils::common::ident_and_span_at_position(position, &tokens) {
             Some((ident, _)) => {
+                dbg!();
                 self.token_map
                     .get(&utils::token::to_ident_key(&ident))
                     .map(|item| {
@@ -69,7 +73,10 @@ impl Session {
                         (ident.clone(), token.clone())
                     })
             }
-            None => None,
+            None => {
+                dbg!();
+                None
+            }
         }
     }
 
@@ -306,18 +313,12 @@ impl Session {
             .and_then(|decl_ident| {
                 let range = utils::common::get_range_from_span(&decl_ident.span());
                 match decl_ident.span().path() {
-                    Some(path) => {
-                        // If path is part of the users workspace, then convert URL from temp to workspace dir.
-                        // Otherwise, pass through if it points to a dependency path
-                        const LSP_TEMP_PREFIX: &str = "SWAY_LSP_TEMP_DIR";
-                        if uri.as_ref().contains("LSP_TEMP_PREFIX") {}
-                        match Url::from_file_path(path.as_ref()) {
-                            Ok(url) => {
-                                Some(GotoDefinitionResponse::Scalar(Location::new(url, range)))
-                            }
-                            Err(_) => None,
-                        }
-                    }
+                    Some(path) => match Url::from_file_path(path.as_ref()) {
+                        Ok(url) => self.sync.to_workspace_url(url).and_then(|url| {
+                            Some(GotoDefinitionResponse::Scalar(Location::new(url, range)))
+                        }),
+                        Err(_) => None,
+                    },
                     None => None,
                 }
             })

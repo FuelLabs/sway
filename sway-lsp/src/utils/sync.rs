@@ -33,6 +33,8 @@ pub struct SyncWorkspace {
 }
 
 impl SyncWorkspace {
+    pub const LSP_TEMP_PREFIX: &'static str = "SWAY_LSP_TEMP_DIR";
+
     pub(crate) fn new() -> Self {
         Self {
             directories: DashMap::new(),
@@ -49,8 +51,11 @@ impl SyncWorkspace {
             let project_name = manifest_dir.file_name().unwrap().to_str().unwrap();
 
             // Create a new temporary directory that we can clone the current workspace into.
-            let p = Builder::new().tempdir().unwrap();
-            let temp_dir = p.path().join(project_name);
+            let p = Builder::new()
+                .prefix(SyncWorkspace::LSP_TEMP_PREFIX)
+                .tempdir()
+                .unwrap();
+            let temp_dir = p.into_path().canonicalize().unwrap().join(project_name);
             eprintln!("path: {:#?}", temp_dir);
 
             self.directories
@@ -88,6 +93,12 @@ impl SyncWorkspace {
         (manifest_dir, temp_dir)
     }
 
+    /// Check if the current path is part of the users workspace.
+    /// Returns false if the path is from a dependancy
+    pub(crate) fn is_path_in_workspace(&self, uri: &Url) -> bool {
+        uri.as_ref().contains(SyncWorkspace::LSP_TEMP_PREFIX)
+    }
+
     /// Convert the Url path from the client to point to the same file in our temp folder
     pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, ()> {
         let path = PathBuf::from(uri.path());
@@ -102,6 +113,16 @@ impl SyncWorkspace {
         let (manifest_dir, temp_dir) = self.directories();
         let p = path.strip_prefix(temp_dir).unwrap();
         Url::from_file_path(manifest_dir.join(p))
+    }
+
+    /// If path is part of the users workspace, then convert URL from temp to workspace dir.
+    /// Otherwise, pass through if it points to a dependency path
+    pub(crate) fn to_workspace_url(&self, url: Url) -> Option<Url> {
+        if self.is_path_in_workspace(&url) {
+            Some(self.temp_to_workspace_url(&url).ok()?)
+        } else {
+            Some(url)
+        }
     }
 
     /// 1. watch the manifest directory and check for any save events on Forc.toml
