@@ -2,10 +2,10 @@
 //! execution.
 
 use crate::{
-    semantic_analysis::{ast_node::TyStructField, TyAstNode},
-    Ident,
     language::ty,
     semantic_analysis::declaration::TyStorageField,
+    semantic_analysis::{ast_node::TyStructField, TyAstNode},
+    Ident,
 };
 
 use sway_types::span::Span;

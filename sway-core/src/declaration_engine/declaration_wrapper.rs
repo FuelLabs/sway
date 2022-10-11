@@ -4,13 +4,13 @@ use sway_error::error::CompileError;
 use sway_types::Span;
 
 use crate::{
+    language::ty,
     semantic_analysis::{
-        TyAbiDeclaration, TyConstantDeclaration, TyImplTrait,
-        TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
+        TyAbiDeclaration, TyConstantDeclaration, TyImplTrait, TyStorageDeclaration,
+        TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
     },
     type_system::{CopyTypes, TypeMapping},
     TyFunctionDeclaration,
-    language::ty,
 };
 
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]

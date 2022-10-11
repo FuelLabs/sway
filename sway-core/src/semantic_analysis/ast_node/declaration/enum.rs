@@ -5,7 +5,7 @@ use crate::{
     type_system::*,
 };
 use sway_error::error::CompileError;
-use sway_types::{Ident};
+use sway_types::Ident;
 
 impl ty::TyEnumDeclaration {
     pub fn type_check(ctx: TypeCheckContext, decl: EnumDeclaration) -> CompileResult<Self> {

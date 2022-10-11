@@ -4,9 +4,9 @@ use crate::{
     language::{parsed::TreeType, ty, CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
-            TyAbiDeclaration, TyCodeBlock, TyConstantDeclaration,
-            TyFunctionDeclaration, TyStructDeclaration, TyStructExpressionField,
-            TyTraitDeclaration, TyVariableDeclaration, VariableMutability,
+            TyAbiDeclaration, TyCodeBlock, TyConstantDeclaration, TyFunctionDeclaration,
+            TyStructDeclaration, TyStructExpressionField, TyTraitDeclaration,
+            TyVariableDeclaration, VariableMutability,
         },
         TyAsmRegisterDeclaration, TyAstNode, TyAstNodeContent, TyImplTrait,
         TyIntrinsicFunctionKind, TyStorageDeclaration,

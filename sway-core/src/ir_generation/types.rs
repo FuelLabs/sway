@@ -1,10 +1,9 @@
 use crate::{
+    language::ty,
     semantic_analysis::{
-        ProjectionKind, TyStorageReassignDescriptor,
-        TypeCheckedStorageAccessDescriptor,
+        ProjectionKind, TyStorageReassignDescriptor, TypeCheckedStorageAccessDescriptor,
     },
     type_system::{to_typeinfo, TypeId, TypeInfo},
-    language::ty,
 };
 
 use super::convert::convert_resolved_typeid_no_span;

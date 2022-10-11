@@ -33,7 +33,7 @@ use std::fmt::Debug;
 
 #[test]
 fn generic_enum_resolution() {
-    use crate::{span::Span, Ident, language::ty};
+    use crate::{language::ty, span::Span, Ident};
     let engine = TypeEngine::default();
 
     let sp = Span::dummy();

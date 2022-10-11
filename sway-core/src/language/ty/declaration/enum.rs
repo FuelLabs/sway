@@ -1,11 +1,8 @@
-
-use std::hash::{Hasher, Hash};
+use std::hash::{Hash, Hasher};
 
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{
-    type_system::*, AttributesMap, language::Visibility,
-};
+use crate::{language::Visibility, type_system::*, AttributesMap};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyEnumDeclaration {

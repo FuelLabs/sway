@@ -5,13 +5,13 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     declaration_engine::*,
     error::*,
+    language::ty::*,
     semantic_analysis::{
-        TyConstantDeclaration, TyStructDeclaration, TyTraitDeclaration,
-        TyVariableDeclaration, VariableMutability,
+        TyConstantDeclaration, TyStructDeclaration, TyTraitDeclaration, TyVariableDeclaration,
+        VariableMutability,
     },
     type_system::*,
     TyFunctionDeclaration,
-    language::ty::*,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]

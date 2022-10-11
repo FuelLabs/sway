@@ -2,9 +2,7 @@ use sway_types::Span;
 
 use crate::{
     language::{ty, Literal},
-    semantic_analysis::{
-        ast_node::expression::match_expression::MatchReqMap, IsConstant,
-    },
+    semantic_analysis::{ast_node::expression::match_expression::MatchReqMap, IsConstant},
     type_system::{insert_type, IntegerBits},
     TypeInfo,
 };

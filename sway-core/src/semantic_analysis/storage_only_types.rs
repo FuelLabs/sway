@@ -6,9 +6,8 @@ use crate::{
     error::*,
     language::ty,
     semantic_analysis::{
-        TyAstNodeContent, TyCodeBlock, TyConstantDeclaration,
-        TyFunctionDeclaration, TyImplTrait, TyIntrinsicFunctionKind, TyReassignment,
-        TyStorageDeclaration, TyStructDeclaration,
+        TyAstNodeContent, TyCodeBlock, TyConstantDeclaration, TyFunctionDeclaration, TyImplTrait,
+        TyIntrinsicFunctionKind, TyReassignment, TyStorageDeclaration, TyStructDeclaration,
     },
     type_system::*,
 };
