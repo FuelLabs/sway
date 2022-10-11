@@ -522,7 +522,7 @@ impl TyTraitFn {
         TyFunctionDeclaration {
             purity: self.purity,
             name: self.name.clone(),
-            body: TyCodeBlock { contents: vec![] },
+            body: ty::TyCodeBlock { contents: vec![] },
             parameters: self.parameters.clone(),
             span: self.name.span(),
             attributes: self.attributes.clone(),

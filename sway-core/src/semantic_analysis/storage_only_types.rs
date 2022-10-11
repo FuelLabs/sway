@@ -7,7 +7,7 @@ use crate::{
     error::*,
     language::ty,
     semantic_analysis::{
-        TyAstNodeContent, TyCodeBlock, TyConstantDeclaration, TyDeclaration, TyEnumDeclaration,
+        TyAstNodeContent, TyConstantDeclaration, TyDeclaration, TyEnumDeclaration,
         TyFunctionDeclaration, TyImplTrait, TyIntrinsicFunctionKind, TyReassignment,
         TyStorageDeclaration, TyStructDeclaration,
     },
@@ -300,7 +300,9 @@ pub fn validate_decls_for_storage_only_types_in_ast(ast_n: &TyAstNodeContent) ->
     ast_node_validate(ast_n)
 }
 
-pub fn validate_decls_for_storage_only_types_in_codeblock(cb: &TyCodeBlock) -> CompileResult<()> {
+pub fn validate_decls_for_storage_only_types_in_codeblock(
+    cb: &ty::TyCodeBlock,
+) -> CompileResult<()> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut errors: Vec<CompileError> = vec![];
     for x in &cb.contents {

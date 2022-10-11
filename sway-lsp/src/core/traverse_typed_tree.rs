@@ -8,7 +8,6 @@ use sway_core::{
     declaration_engine,
     language::ty,
     semantic_analysis::ast_node::{
-        code_block::TyCodeBlock,
         expression::TyIntrinsicFunctionKind,
         ProjectionKind, TyFunctionDeclaration, TyFunctionParameter, TyImplTrait, TyTraitFn,
         {TyAstNode, TyAstNodeContent, TyDeclaration},
@@ -450,7 +449,7 @@ fn handle_intrinsic_function(
     }
 }
 
-fn handle_while_loop(body: &TyCodeBlock, condition: &ty::TyExpression, tokens: &TokenMap) {
+fn handle_while_loop(body: &ty::TyCodeBlock, condition: &ty::TyExpression, tokens: &TokenMap) {
     handle_expression(condition, tokens);
     for node in &body.contents {
         traverse_node(node, tokens);

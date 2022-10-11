@@ -73,7 +73,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_block: TyCodeBlock,
+        ast_block: ty::TyCodeBlock,
     ) -> Result<Value, CompileError> {
         self.compile_with_new_scope(|fn_compiler| {
             fn_compiler.compile_code_block_inner(context, md_mgr, ast_block)
@@ -84,7 +84,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_block: TyCodeBlock,
+        ast_block: ty::TyCodeBlock,
     ) -> Result<Value, CompileError> {
         self.lexical_map.enter_scope();
 
@@ -1172,7 +1172,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        body: TyCodeBlock,
+        body: ty::TyCodeBlock,
         condition: ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {

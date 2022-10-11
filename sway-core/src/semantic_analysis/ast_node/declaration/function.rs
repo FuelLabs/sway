@@ -19,7 +19,7 @@ use sway_types::{
 #[derive(Clone, Debug, Eq)]
 pub struct TyFunctionDeclaration {
     pub name: Ident,
-    pub body: TyCodeBlock,
+    pub body: ty::TyCodeBlock,
     pub parameters: Vec<TyFunctionParameter>,
     pub span: Span,
     pub attributes: AttributesMap,
@@ -172,9 +172,9 @@ impl TyFunctionDeclaration {
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
                 .with_type_annotation(return_type);
             check!(
-                TyCodeBlock::type_check(ctx, body),
+                ty::TyCodeBlock::type_check(ctx, body),
                 (
-                    TyCodeBlock { contents: vec![] },
+                    ty::TyCodeBlock { contents: vec![] },
                     insert_type(TypeInfo::ErrorRecovery)
                 ),
                 warnings,
@@ -354,7 +354,7 @@ fn test_function_selector_behavior() {
     let decl = TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_no_span("foo"),
-        body: TyCodeBlock { contents: vec![] },
+        body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![],
         span: Span::dummy(),
         attributes: Default::default(),
@@ -376,7 +376,7 @@ fn test_function_selector_behavior() {
     let decl = TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_with_override("bar", Span::dummy()),
-        body: TyCodeBlock { contents: vec![] },
+        body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![
             TyFunctionParameter {
                 name: Ident::new_no_span("foo"),

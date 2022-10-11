@@ -208,7 +208,6 @@ impl TyImplTrait {
         methods: &[TyFunctionDeclaration],
         access_span: &Span,
     ) -> Result<(), CompileError> {
-        use crate::semantic_analysis;
         fn ast_node_contains_get_storage_index(
             x: &TyAstNodeContent,
             access_span: &Span,
@@ -355,7 +354,7 @@ impl TyImplTrait {
         }
 
         fn codeblock_contains_get_storage_index(
-            cb: &semantic_analysis::TyCodeBlock,
+            cb: &ty::TyCodeBlock,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             for content in cb.contents.iter() {
