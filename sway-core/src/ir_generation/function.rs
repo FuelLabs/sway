@@ -1874,7 +1874,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        registers: Vec<TyAsmRegisterDeclaration>,
+        registers: Vec<ty::TyAsmRegisterDeclaration>,
         body: Vec<AsmOp>,
         return_type: TypeId,
         returns: Option<(AsmRegister, Span)>,
@@ -1883,7 +1883,7 @@ impl FnCompiler {
         let registers = registers
             .into_iter()
             .map(
-                |TyAsmRegisterDeclaration {
+                |ty::TyAsmRegisterDeclaration {
                      initializer, name, ..
                  }| {
                     // Take the optional initialiser, map it to an Option<Result<Value>>,
