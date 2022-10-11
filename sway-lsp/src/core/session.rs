@@ -332,10 +332,12 @@ impl Session {
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
         let tokens = self.tokens_for_file(url);
-        Some(capabilities::document_symbol::to_symbol_information(
-            &tokens,
-            url.clone(),
-        ))
+        self.sync.to_workspace_url(url.clone()).and_then(|url| {
+            Some(capabilities::document_symbol::to_symbol_information(
+                &tokens,
+                url,
+            ))
+        })
     }
 
     pub fn format_text(&self, url: &Url) -> Option<Vec<TextEdit>> {

@@ -21,9 +21,10 @@ pub fn rename(
         }
 
         let mut map_of_changes = HashMap::new();
-        map_of_changes.insert(url.clone(), edits);
-
-        Some(WorkspaceEdit::new(map_of_changes))
+        session.sync.to_workspace_url(url).and_then(|url| {
+            map_of_changes.insert(url, edits);
+            Some(WorkspaceEdit::new(map_of_changes))
+        })
     } else {
         None
     }
