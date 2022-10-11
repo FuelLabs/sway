@@ -58,15 +58,19 @@ impl SyncWorkspace {
             let project_name = manifest_dir.file_name().unwrap().to_str().unwrap();
 
             // Create a new temporary directory that we can clone the current workspace into.
-            let p = Builder::new()
+            let temp_dir = Builder::new()
                 .prefix(SyncWorkspace::LSP_TEMP_PREFIX)
                 .tempdir()
                 .unwrap();
-            let temp_dir = p.into_path().canonicalize().unwrap().join(project_name);
+            let temp_path = temp_dir
+                .into_path()
+                .canonicalize()
+                .unwrap()
+                .join(project_name);
 
             self.directories
                 .insert(Directory::Manifest, manifest_dir.to_path_buf());
-            self.directories.insert(Directory::Temp, temp_dir);
+            self.directories.insert(Directory::Temp, temp_path);
         }
     }
 
@@ -131,31 +135,11 @@ impl SyncWorkspace {
         }
     }
 
-    /// 1. watch the manifest directory and check for any save events on Forc.toml
-    /// 2. deserialize the manifest file and loop through the dependancies
-    /// 3. check if the dependancy is specifying a 'path'
-    /// 4. if so, check if the path is relative
-    /// 5. convert the relative path to an absolute path
-    /// 6. edit the toml entry using toml_edit with the absolute path
-    /// 7. save the manifest to temp_dir/Forc.toml
+    /// Watch the manifest directory and check for any save events on Forc.toml
     pub(crate) fn watch_and_sync_manifest(&self) {
-        let temp_manifest_path = self
-            .directories
-            .get(&Directory::Temp)
-            .map(|item| item.value().clone())
-            .unwrap()
-            .join(sway_utils::constants::MANIFEST_FILE_NAME);
-
-        let manifest_dir = self
-            .directories
-            .get(&Directory::Manifest)
-            .map(|item| item.value().clone())
-            .unwrap()
-            .join(sway_utils::constants::MANIFEST_FILE_NAME);
-
-        if let Ok(manifest) = PackageManifestFile::from_dir(&manifest_dir) {
+        if let Ok(manifest) = PackageManifestFile::from_dir(&self.manifest_path()) {
             let manifest_dir = Arc::new(manifest.clone());
-
+            let temp_manifest_path = self.temp_manifest_path();
             edit_manifest_dependency_paths(&manifest, &temp_manifest_path);
 
             let handle = tokio::spawn(async move {
@@ -187,9 +171,33 @@ impl SyncWorkspace {
             }
         }
     }
+
+    pub(crate) fn temp_manifest_path(&self) -> PathBuf {
+        self.directories
+            .get(&Directory::Temp)
+            .map(|item| item.value().clone())
+            .unwrap()
+            .join(sway_utils::constants::MANIFEST_FILE_NAME)
+    }
+
+    pub(crate) fn manifest_path(&self) -> PathBuf {
+        self.directories
+            .get(&Directory::Manifest)
+            .map(|item| item.value().clone())
+            .unwrap()
+            .join(sway_utils::constants::MANIFEST_FILE_NAME)
+    }
 }
 
-fn edit_manifest_dependency_paths(manifest: &PackageManifestFile, temp_manifest_path: &Path) {
+/// Deserialize the manifest file and loop through the dependancies.
+/// Check if the dependancy is specifying a 'path'.
+/// If so, check if the path is relative and convert the relative path to an absolute path.
+/// Edit the toml entry using toml_edit with the absolute path.
+/// Save the manifest to temp_dir/Forc.toml.
+pub(crate) fn edit_manifest_dependency_paths(
+    manifest: &PackageManifestFile,
+    temp_manifest_path: &Path,
+) {
     // Key = name of the dependancy that has been specified will a relative path
     // Value = the absolute path that should be used to overwrite the relateive path
     let mut dependency_map: HashMap<String, PathBuf> = HashMap::new();

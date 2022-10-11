@@ -11,6 +11,7 @@ use crate::{
         sync,
     },
 };
+use forc_pkg::manifest::PackageManifestFile;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
@@ -125,9 +126,6 @@ fn capabilities() -> ServerCapabilities {
         }),
         document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
-
-        document_highlight_provider: Some(OneOf::Left(true)),
-        hover_provider: Some(HoverProviderCapability::Simple(true)),
         ..ServerCapabilities::default()
     }
 }
@@ -247,6 +245,12 @@ impl LanguageServer for Backend {
         // overwrite the contents of the tmp/folder with everything in
         // the current workspace. (resync)
         self.session.sync.clone_manifest_dir_to_temp();
+        if let Ok(manifest) = PackageManifestFile::from_dir(&self.session.sync.manifest_path()) {
+            sync::edit_manifest_dependency_paths(
+                &manifest,
+                &self.session.sync.temp_manifest_path(),
+            );
+        }
 
         if let Ok(uri) = self
             .session
