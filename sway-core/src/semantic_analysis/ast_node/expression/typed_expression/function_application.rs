@@ -57,7 +57,7 @@ pub(crate) fn instantiate_function_application(
 
             // check for matching mutability
             let param_mutability =
-                ty::convert_to_variable_immutability(param.is_reference, param.is_mutable);
+                ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
             if exp.gather_mutability().is_immutable() && param_mutability.is_mutable() {
                 errors.push(CompileError::ImmutableArgumentToMutableParameter { span: arg.span() });
             }

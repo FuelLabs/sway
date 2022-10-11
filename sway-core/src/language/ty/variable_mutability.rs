@@ -18,7 +18,18 @@ impl Default for VariableMutability {
         VariableMutability::Immutable
     }
 }
+
 impl VariableMutability {
+    pub fn new_from_ref_mut(is_reference: bool, is_mutable: bool) -> VariableMutability {
+        if is_reference {
+            VariableMutability::RefMutable
+        } else if is_mutable {
+            VariableMutability::Mutable
+        } else {
+            VariableMutability::Immutable
+        }
+    }
+
     pub fn is_mutable(&self) -> bool {
         matches!(
             self,
@@ -35,18 +46,5 @@ impl VariableMutability {
 
     pub fn is_immutable(&self) -> bool {
         !self.is_mutable()
-    }
-}
-
-pub fn convert_to_variable_immutability(
-    is_reference: bool,
-    is_mutable: bool,
-) -> VariableMutability {
-    if is_reference {
-        VariableMutability::RefMutable
-    } else if is_mutable {
-        VariableMutability::Mutable
-    } else {
-        VariableMutability::Immutable
     }
 }
