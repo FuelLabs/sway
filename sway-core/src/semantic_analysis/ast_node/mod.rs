@@ -447,7 +447,7 @@ impl TyAstNode {
                                     errors,
                                 );
 
-                                fields_buf.push(TyStorageField {
+                                fields_buf.push(ty::TyStorageField {
                                     name,
                                     type_id,
                                     type_span: type_info_span,
@@ -798,11 +798,11 @@ pub(crate) fn reassign_storage_subfield(
     let (ix, initial_field_type) = match storage_fields
         .iter()
         .enumerate()
-        .find(|(_, TyStorageField { name, .. })| name == &first_field)
+        .find(|(_, ty::TyStorageField { name, .. })| name == &first_field)
     {
         Some((
             ix,
-            TyStorageField {
+            ty::TyStorageField {
                 type_id: r#type, ..
             },
         )) => (StateIndex::new(ix), r#type),

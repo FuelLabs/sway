@@ -5,7 +5,7 @@ use crate::{
         typed_expression::{
             check_function_arguments_arity, instantiate_function_application_simple,
         },
-        ContractCallParams, IsConstant, TyFunctionParameter, TyStorageField, TypeCheckContext,
+        ContractCallParams, IsConstant, TyFunctionParameter, TypeCheckContext,
     },
     type_system::*,
     TyFunctionDeclaration,
@@ -140,7 +140,7 @@ pub(crate) fn type_check_method_application(
                 let self_state_idx = match storage_fields
                     .iter()
                     .enumerate()
-                    .find(|(_, TyStorageField { name, .. })| name == &first_field)
+                    .find(|(_, ty::TyStorageField { name, .. })| name == &first_field)
                 {
                     Some((ix, _)) => StateIndex::new(ix),
                     None => {

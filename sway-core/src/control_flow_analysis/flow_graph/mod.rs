@@ -2,6 +2,7 @@
 //! execution.
 
 use crate::{
+    language::ty,
     semantic_analysis::{ast_node::TyEnumVariant, ast_node::TyStructField, TyAstNode},
     Ident,
 };
@@ -11,7 +12,6 @@ use sway_types::span::Span;
 use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 
 mod namespace;
-use crate::semantic_analysis::declaration::TyStorageField;
 use namespace::ControlFlowNamespace;
 pub(crate) use namespace::FunctionNamespaceEntry;
 
@@ -91,8 +91,8 @@ impl std::fmt::Debug for ControlFlowGraphNode {
         f.write_str(&text)
     }
 }
-impl std::convert::From<&TyStorageField> for ControlFlowGraphNode {
-    fn from(other: &TyStorageField) -> Self {
+impl std::convert::From<&ty::TyStorageField> for ControlFlowGraphNode {
+    fn from(other: &ty::TyStorageField) -> Self {
         ControlFlowGraphNode::StorageField {
             field_name: other.name.clone(),
         }
