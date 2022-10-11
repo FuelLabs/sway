@@ -11,11 +11,11 @@ use crate::{
         TyAsmRegisterDeclaration, TyAstNode, TyAstNodeContent, TyImplTrait, TyStorageDeclaration,
     },
     type_system::{to_typeinfo, TypeInfo},
-    CompileWarning, Warning,
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::BTreeSet;
 use sway_error::error::CompileError;
+use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{span::Span, Ident, Spanned};
 
 impl ControlFlowGraph {

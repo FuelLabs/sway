@@ -1,5 +1,6 @@
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::{CompileError, Hint};
+use sway_types::integer_bits::IntegerBits;
 use sway_types::Span;
 
 use crate::{
