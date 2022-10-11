@@ -373,25 +373,31 @@ impl BitwiseNot for u64 {
 
 impl BitwiseNot for u32 {
     fn binary_not(self) -> Self {
-        asm(r1: self, r2) {
+        let u32_max = 4294967295;
+        asm(r1: self, r2, r3: u32_max, r4) {
             not r2 r1;
-            r2: u32
+            and r4 r2 r3;
+            r4: u32
         }
     }
 }
 impl BitwiseNot for u16 {
     fn binary_not(self) -> Self {
-        asm(r1: self, r2) {
+        let u16_max = 65535;
+        asm(r1: self, r2, r3: u16_max, r4) {
             not r2 r1;
-            r2: u16
+            and r4 r2 r3;
+            r4: u16
         }
     }
 }
 impl BitwiseNot for u8 {
     fn binary_not(self) -> Self {
-        asm(r1: self, r2) {
+        let u8_max = 255;
+        asm(r1: self, r2, r3: u8_max, r4) {
             not r2 r1;
-            r2: u8
+            and r4 r2 r3;
+            r4: u8
         }
     }
 }
