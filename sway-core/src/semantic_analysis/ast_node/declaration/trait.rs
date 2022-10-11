@@ -1,5 +1,6 @@
 use derivative::Derivative;
-use sway_types::{Ident, Spanned};
+use sway_error::warning::{CompileWarning, Warning};
+use sway_types::{style::is_upper_camel_case, Ident, Spanned};
 
 use crate::{
     declaration_engine::declaration_engine::de_get_trait,
@@ -9,7 +10,6 @@ use crate::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
         Mode, TyCodeBlock, TypeCheckContext,
     },
-    style::is_upper_camel_case,
     type_system::{insert_type, CopyTypes, TypeMapping},
     CompileError, CompileResult, Namespace, TyDeclaration, TyFunctionDeclaration, TypeInfo,
 };
@@ -48,7 +48,13 @@ impl TyTraitDeclaration {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
-        is_upper_camel_case(&trait_decl.name).ok(&mut warnings, &mut errors);
+        let name = trait_decl.name.clone();
+        if !is_upper_camel_case(name.as_str()) {
+            warnings.push(CompileWarning {
+                span: name.span(),
+                warning_content: Warning::NonClassCaseTraitName { name },
+            })
+        }
 
         // type check the interface surface
         let interface_surface = check!(
@@ -93,7 +99,7 @@ impl TyTraitDeclaration {
             errors
         );
         let typed_trait_decl = TyTraitDeclaration {
-            name: trait_decl.name.clone(),
+            name: trait_decl.name,
             interface_surface,
             methods: trait_decl.methods.to_vec(),
             supertraits: trait_decl.supertraits.to_vec(),

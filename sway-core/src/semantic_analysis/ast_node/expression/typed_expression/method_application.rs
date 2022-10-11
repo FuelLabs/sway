@@ -12,8 +12,8 @@ use crate::{
 };
 use std::collections::{HashMap, VecDeque};
 use sway_error::error::CompileError;
-use sway_types::constants;
 use sway_types::Spanned;
+use sway_types::{constants, integer_bits::IntegerBits};
 use sway_types::{state::StateIndex, Span};
 
 #[allow(clippy::too_many_arguments)]
