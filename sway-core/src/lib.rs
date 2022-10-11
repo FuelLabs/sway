@@ -56,9 +56,13 @@ use language::parsed;
 /// # Panics
 /// Panics if the parser panics.
 pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<parsed::ParseProgram> {
+    // Omit tests by default so that a test that fails to typecheck doesn't block the rest of the
+    // program (similar behaviour to rust). Later, we'll add a flag for including tests on
+    // invocations of `forc test` or `forc check --tests`. See #1832.
+    let include_test_fns = false;
     match config {
-        None => parse_in_memory(input),
-        Some(config) => parse_files(input, config),
+        None => parse_in_memory(input, include_test_fns),
+        Some(config) => parse_files(input, config, include_test_fns),
     }
 }
 
@@ -70,9 +74,9 @@ fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> CompileResult<sway_a
 }
 
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
-fn parse_in_memory(src: Arc<str>) -> CompileResult<parsed::ParseProgram> {
+fn parse_in_memory(src: Arc<str>, include_test_fns: bool) -> CompileResult<parsed::ParseProgram> {
     parse_file(src, None).flat_map(|module| {
-        convert_parse_tree::convert_parse_tree(module).flat_map(|(kind, tree)| {
+        convert_parse_tree::convert_parse_tree(module, include_test_fns).flat_map(|(kind, tree)| {
             let submodules = Default::default();
             let root = parsed::ParseModule { tree, submodules };
             ok(parsed::ParseProgram { kind, root }, vec![], vec![])
@@ -82,9 +86,13 @@ fn parse_in_memory(src: Arc<str>) -> CompileResult<parsed::ParseProgram> {
 
 /// When a `BuildConfig` is given, the module source may declare `dep`s that must be parsed from
 /// other files.
-fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<parsed::ParseProgram> {
+fn parse_files(
+    src: Arc<str>,
+    config: &BuildConfig,
+    include_test_fns: bool,
+) -> CompileResult<parsed::ParseProgram> {
     let root_mod_path = config.canonical_root_module();
-    parse_module_tree(src, root_mod_path).flat_map(|(kind, root)| {
+    parse_module_tree(src, root_mod_path, include_test_fns).flat_map(|(kind, root)| {
         let program = parsed::ParseProgram { kind, root };
         ok(program, vec![], vec![])
     })
@@ -94,6 +102,7 @@ fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<parsed::Par
 fn parse_submodules(
     deps: &[Dependency],
     module_dir: &Path,
+    include_test_fns: bool,
 ) -> CompileResult<Vec<(Ident, parsed::ParseSubmodule)>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -116,7 +125,7 @@ fn parse_submodules(
             }
         };
 
-        let mt_res = parse_module_tree(dep_str.clone(), dep_path.clone());
+        let mt_res = parse_module_tree(dep_str.clone(), dep_path.clone(), include_test_fns);
         warnings.extend(mt_res.warnings);
         errors.extend(mt_res.errors);
 
@@ -150,18 +159,22 @@ fn parse_submodules(
 fn parse_module_tree(
     src: Arc<str>,
     path: Arc<PathBuf>,
+    include_test_fns: bool,
 ) -> CompileResult<(parsed::TreeType, parsed::ParseModule)> {
     // Parse this module first.
     parse_file(src, Some(path.clone())).flat_map(|module| {
         let module_dir = path.parent().expect("module file has no parent directory");
 
         // Parse all submodules before converting to the `ParseTree`.
-        let submodules_res = parse_submodules(&module.dependencies, module_dir);
+        let submodules_res = parse_submodules(&module.dependencies, module_dir, include_test_fns);
 
         // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-        convert_parse_tree::convert_parse_tree(module).flat_map(|(prog_kind, tree)| {
-            submodules_res.map(|submodules| (prog_kind, parsed::ParseModule { tree, submodules }))
-        })
+        convert_parse_tree::convert_parse_tree(module, include_test_fns).flat_map(
+            |(prog_kind, tree)| {
+                submodules_res
+                    .map(|submodules| (prog_kind, parsed::ParseModule { tree, submodules }))
+            },
+        )
     })
 }
 
