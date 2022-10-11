@@ -1695,7 +1695,7 @@ impl FnCompiler {
         md_mgr: &mut MetadataManager,
         ast_struct_expr: ty::TyExpression,
         struct_type_id: TypeId,
-        ast_field: TyStructField,
+        ast_field: ty::TyStructField,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let ast_struct_expr_span = ast_struct_expr.span.clone();

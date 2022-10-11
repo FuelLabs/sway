@@ -10,7 +10,7 @@ use sway_core::{
     },
     semantic_analysis::ast_node::{
         TyEnumVariant, TyFunctionDeclaration, TyFunctionParameter, TyReassignment, TyStorageField,
-        TyStorageReassignDescriptor, TyStructField, TyTraitFn,
+        TyStorageReassignDescriptor, TyTraitFn,
     },
     type_system::TypeId,
 };
@@ -64,7 +64,7 @@ pub enum TypedAstToken {
     TypedExpression(ty::TyExpression),
     TypedFunctionDeclaration(TyFunctionDeclaration),
     TypedFunctionParameter(TyFunctionParameter),
-    TypedStructField(TyStructField),
+    TypedStructField(ty::TyStructField),
     TypedEnumVariant(TyEnumVariant),
     TypedTraitFn(TyTraitFn),
     TypedStorageField(TyStorageField),

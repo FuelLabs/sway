@@ -5,9 +5,7 @@ use crate::{
     },
     language::ty,
     metadata::MetadataManager,
-    semantic_analysis::{
-        TyStructField, TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor,
-    },
+    semantic_analysis::{TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor},
     type_system::{look_up_type_id, TypeId, TypeInfo},
     AttributesMap, Ident,
 };
@@ -80,7 +78,7 @@ impl TyStorageDeclaration {
             span: first_field.span(),
         });
 
-        fn update_available_struct_fields(id: TypeId) -> Vec<TyStructField> {
+        fn update_available_struct_fields(id: TypeId) -> Vec<ty::TyStructField> {
             match crate::type_system::look_up_type_id(id) {
                 TypeInfo::Struct { fields, .. } => fields,
                 _ => vec![],
@@ -136,7 +134,7 @@ impl TyStorageDeclaration {
         )
     }
 
-    pub(crate) fn fields_as_typed_struct_fields(&self) -> Vec<TyStructField> {
+    pub(crate) fn fields_as_typed_struct_fields(&self) -> Vec<ty::TyStructField> {
         self.fields
             .iter()
             .map(
@@ -147,7 +145,7 @@ impl TyStorageDeclaration {
                      ref initializer,
                      ref attributes,
                      ..
-                 }| TyStructField {
+                 }| ty::TyStructField {
                     name: name.clone(),
                     type_id: *r#type,
                     initial_type_id: *r#type,

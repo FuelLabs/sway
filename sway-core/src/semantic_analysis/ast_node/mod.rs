@@ -820,7 +820,7 @@ pub(crate) fn reassign_storage_subfield(
         span: first_field.span(),
     });
 
-    fn update_available_struct_fields(id: TypeId) -> Vec<TyStructField> {
+    fn update_available_struct_fields(id: TypeId) -> Vec<ty::TyStructField> {
         match look_up_type_id(id) {
             TypeInfo::Struct { fields, .. } => fields,
             _ => vec![],

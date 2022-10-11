@@ -1,8 +1,8 @@
+use std::hash::{Hash, Hasher};
+
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{
-    language::Visibility, semantic_analysis::TyStructField, type_system::*, AttributesMap,
-};
+use crate::{language::Visibility, type_system::*, AttributesMap};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyStructDeclaration {
@@ -60,5 +60,46 @@ impl MonomorphizeHelper for TyStructDeclaration {
 
     fn name(&self) -> &Ident {
         &self.name
+    }
+}
+
+#[derive(Debug, Clone, Eq)]
+pub struct TyStructField {
+    pub name: Ident,
+    pub type_id: TypeId,
+    pub initial_type_id: TypeId,
+    pub(crate) span: Span,
+    pub type_span: Span,
+    pub attributes: AttributesMap,
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl Hash for TyStructField {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        look_up_type_id(self.type_id).hash(state);
+    }
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEq for TyStructField {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+    }
+}
+
+impl CopyTypes for TyStructField {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.type_id.copy_types(type_mapping);
+    }
+}
+
+impl ReplaceSelfType for TyStructField {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.type_id.replace_self_type(self_type);
     }
 }

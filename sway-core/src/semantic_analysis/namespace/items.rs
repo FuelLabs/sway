@@ -249,7 +249,7 @@ impl Items {
                 ) => {
                     let field_type_opt = {
                         fields.iter().find_map(
-                            |TyStructField {
+                            |ty::TyStructField {
                                  type_id: r#type,
                                  name,
                                  ..

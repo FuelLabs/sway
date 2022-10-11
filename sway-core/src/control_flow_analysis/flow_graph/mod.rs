@@ -2,7 +2,8 @@
 //! execution.
 
 use crate::{
-    semantic_analysis::{ast_node::TyEnumVariant, ast_node::TyStructField, TyAstNode},
+    language::ty,
+    semantic_analysis::{ast_node::TyEnumVariant, TyAstNode},
     Ident,
 };
 
@@ -105,8 +106,8 @@ impl std::convert::From<&TyAstNode> for ControlFlowGraphNode {
     }
 }
 
-impl std::convert::From<&TyStructField> for ControlFlowGraphNode {
-    fn from(other: &TyStructField) -> Self {
+impl std::convert::From<&ty::TyStructField> for ControlFlowGraphNode {
+    fn from(other: &ty::TyStructField) -> Self {
         ControlFlowGraphNode::StructField {
             struct_field_name: other.name.clone(),
             span: other.span.clone(),

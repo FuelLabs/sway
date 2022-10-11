@@ -50,7 +50,7 @@ pub enum TypeInfo {
     Struct {
         name: Ident,
         type_parameters: Vec<TypeParameter>,
-        fields: Vec<TyStructField>,
+        fields: Vec<ty::TyStructField>,
     },
     Boolean,
     Tuple(Vec<TypeArgument>),
@@ -85,7 +85,7 @@ pub enum TypeInfo {
     /// Stored without initializers here, as typed struct fields,
     /// so type checking is able to treat it as a struct with fields.
     Storage {
-        fields: Vec<TyStructField>,
+        fields: Vec<ty::TyStructField>,
     },
 }
 
@@ -1017,7 +1017,7 @@ impl TypeInfo {
     /// iterate through the elements of `subfields` as `subfield`,
     /// and recursively apply `subfield` to `self`.
     ///
-    /// Returns a [TyStructField] when all `subfields` could be
+    /// Returns a [ty::TyStructField] when all `subfields` could be
     /// applied without error.
     ///
     /// Returns an error when subfields could not be applied:
@@ -1028,7 +1028,7 @@ impl TypeInfo {
         &self,
         subfields: &[Ident],
         span: &Span,
-    ) -> CompileResult<TyStructField> {
+    ) -> CompileResult<ty::TyStructField> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match (self, subfields.split_first()) {
@@ -1138,7 +1138,7 @@ impl TypeInfo {
     pub(crate) fn expect_struct(
         &self,
         debug_span: &Span,
-    ) -> CompileResult<(&Ident, &Vec<TyStructField>)> {
+    ) -> CompileResult<(&Ident, &Vec<ty::TyStructField>)> {
         let warnings = vec![];
         let errors = vec![];
         match self {
