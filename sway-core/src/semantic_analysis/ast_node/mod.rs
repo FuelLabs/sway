@@ -142,7 +142,7 @@ impl TyAstNode {
                     TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(decl_id)),
                 ..
             } => {
-                let TyFunctionDeclaration { name, .. } = check!(
+                let ty::TyFunctionDeclaration { name, .. } = check!(
                     CompileResult::from(de_get_function(decl_id.clone(), span)),
                     return err(warnings, errors),
                     warnings,
@@ -331,7 +331,10 @@ impl TyAstNode {
                         Declaration::FunctionDeclaration(fn_decl) => {
                             let mut ctx = ctx.with_type_annotation(insert_type(TypeInfo::Unknown));
                             let fn_decl = check!(
-                                TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl.clone()),
+                                ty::TyFunctionDeclaration::type_check(
+                                    ctx.by_ref(),
+                                    fn_decl.clone()
+                                ),
                                 error_recovery_function_declaration(fn_decl),
                                 warnings,
                                 errors
@@ -543,7 +546,7 @@ fn type_check_interface_surface(
         let mut typed_parameters = vec![];
         for param in parameters.into_iter() {
             typed_parameters.push(check!(
-                TyFunctionParameter::type_check_interface_parameter(namespace, param),
+                ty::TyFunctionParameter::type_check_interface_parameter(namespace, param),
                 continue,
                 warnings,
                 errors
@@ -579,7 +582,7 @@ fn type_check_interface_surface(
 fn type_check_trait_methods(
     mut ctx: TypeCheckContext,
     methods: Vec<FunctionDeclaration>,
-) -> CompileResult<Vec<TyFunctionDeclaration>> {
+) -> CompileResult<Vec<ty::TyFunctionDeclaration>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut methods_buf = Vec::new();
@@ -604,7 +607,7 @@ fn type_check_trait_methods(
         let mut typed_parameters = vec![];
         for parameter in parameters.into_iter() {
             typed_parameters.push(check!(
-                TyFunctionParameter::type_check_method_parameter(sig_ctx.by_ref(), parameter),
+                ty::TyFunctionParameter::type_check_method_parameter(sig_ctx.by_ref(), parameter),
                 continue,
                 warnings,
                 errors
@@ -625,7 +628,7 @@ fn type_check_trait_methods(
             if let TypeInfo::Custom { name, .. } = look_up_type_id(param.type_id) {
                 let args_span = typed_parameters.iter().fold(
                     typed_parameters[0].name.span().clone(),
-                    |acc, TyFunctionParameter { name, .. }| Span::join(acc, name.span()),
+                    |acc, ty::TyFunctionParameter { name, .. }| Span::join(acc, name.span()),
                 );
                 if type_parameters.iter().any(|TypeParameter { type_id, .. }| {
                     if let TypeInfo::Custom {
@@ -679,7 +682,7 @@ fn type_check_trait_methods(
             errors
         );
 
-        methods_buf.push(TyFunctionDeclaration {
+        methods_buf.push(ty::TyFunctionDeclaration {
             name: fn_name,
             body,
             parameters: typed_parameters,
@@ -701,7 +704,7 @@ fn type_check_trait_methods(
 
 /// Used to create a stubbed out function when the function fails to compile, preventing cascading
 /// namespace errors
-fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TyFunctionDeclaration {
+fn error_recovery_function_declaration(decl: FunctionDeclaration) -> ty::TyFunctionDeclaration {
     let FunctionDeclaration {
         name,
         return_type,
@@ -711,7 +714,7 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TyFunctionD
         ..
     } = decl;
     let initial_return_type = insert_type(return_type);
-    TyFunctionDeclaration {
+    ty::TyFunctionDeclaration {
         purity: Default::default(),
         name,
         body: ty::TyCodeBlock {

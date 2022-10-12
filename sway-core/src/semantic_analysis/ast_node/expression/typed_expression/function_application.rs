@@ -10,7 +10,7 @@ use sway_types::{state::StateIndex, Spanned};
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
-    function_decl: TyFunctionDeclaration,
+    function_decl: ty::TyFunctionDeclaration,
     call_path: CallPath,
     arguments: Vec<Expression>,
 ) -> CompileResult<ty::TyExpression> {
@@ -85,7 +85,7 @@ pub(crate) fn instantiate_function_application_simple(
     call_path: CallPath,
     contract_call_params: HashMap<String, ty::TyExpression, RandomState>,
     arguments: VecDeque<ty::TyExpression>,
-    function_decl: TyFunctionDeclaration,
+    function_decl: ty::TyFunctionDeclaration,
     selector: Option<ty::ContractCallParams>,
     is_constant: IsConstant,
     self_state_idx: Option<StateIndex>,
@@ -124,7 +124,7 @@ pub(crate) fn instantiate_function_application_simple(
 
 pub(crate) fn check_function_arguments_arity(
     arguments_len: usize,
-    function_decl: &TyFunctionDeclaration,
+    function_decl: &ty::TyFunctionDeclaration,
     call_path: &CallPath,
 ) -> CompileResult<()> {
     let warnings = vec![];
@@ -157,7 +157,7 @@ fn instantiate_function_application_inner(
     call_path: CallPath,
     contract_call_params: HashMap<String, ty::TyExpression, RandomState>,
     arguments: Vec<(Ident, ty::TyExpression)>,
-    function_decl: TyFunctionDeclaration,
+    function_decl: ty::TyFunctionDeclaration,
     selector: Option<ty::ContractCallParams>,
     is_constant: IsConstant,
     self_state_idx: Option<StateIndex>,

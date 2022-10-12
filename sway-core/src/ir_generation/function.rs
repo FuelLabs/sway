@@ -35,7 +35,7 @@ pub(super) struct FnCompiler {
     pub(super) current_block: Block,
     pub(super) block_to_break_to: Option<Block>,
     pub(super) block_to_continue_to: Option<Block>,
-    pub(super) current_fn_param: Option<TyFunctionParameter>,
+    pub(super) current_fn_param: Option<ty::TyFunctionParameter>,
     lexical_map: LexicalMap,
     recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
 }
@@ -979,7 +979,7 @@ impl FnCompiler {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_args: Vec<(Ident, ty::TyExpression)>,
-        callee: TyFunctionDeclaration,
+        callee: ty::TyFunctionDeclaration,
         self_state_idx: Option<StateIndex>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -1008,7 +1008,7 @@ impl FnCompiler {
         let new_callee = match self.recreated_fns.get(&fn_key).copied() {
             Some(func) => func,
             None => {
-                let callee_fn_decl = TyFunctionDeclaration {
+                let callee_fn_decl = ty::TyFunctionDeclaration {
                     type_parameters: Vec::new(),
                     name: Ident::new(Span::from_string(format!(
                         "{}_{}",

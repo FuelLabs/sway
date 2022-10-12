@@ -3,9 +3,7 @@ use std::{collections::HashMap, sync::RwLock};
 use sway_error::error::CompileError;
 use sway_types::{Span, Spanned};
 
-use crate::{
-    concurrent_slab::ConcurrentSlab, language::ty, semantic_analysis::*, TyFunctionDeclaration,
-};
+use crate::{concurrent_slab::ConcurrentSlab, language::ty, semantic_analysis::*};
 
 use super::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper};
 
@@ -60,7 +58,7 @@ impl DeclarationEngine {
         }
     }
 
-    fn insert_function(&self, function: TyFunctionDeclaration) -> DeclarationId {
+    fn insert_function(&self, function: ty::TyFunctionDeclaration) -> DeclarationId {
         let span = function.span();
         DeclarationId::new(
             self.slab.insert(DeclarationWrapper::Function(function)),
@@ -72,14 +70,14 @@ impl DeclarationEngine {
         &self,
         index: DeclarationId,
         span: &Span,
-    ) -> Result<TyFunctionDeclaration, CompileError> {
+    ) -> Result<ty::TyFunctionDeclaration, CompileError> {
         self.slab.get(*index).expect_function(span)
     }
 
     fn add_monomorphized_function_copy(
         &self,
         original_id: DeclarationId,
-        new_copy: TyFunctionDeclaration,
+        new_copy: ty::TyFunctionDeclaration,
     ) {
         let span = new_copy.span();
         let new_id = DeclarationId::new(
@@ -93,7 +91,7 @@ impl DeclarationEngine {
         &self,
         original_id: DeclarationId,
         span: &Span,
-    ) -> Result<Vec<TyFunctionDeclaration>, CompileError> {
+    ) -> Result<Vec<ty::TyFunctionDeclaration>, CompileError> {
         self.get_monomorphized_copies(original_id)
             .into_iter()
             .map(|x| x.expect_function(span))
@@ -263,20 +261,20 @@ pub(crate) fn de_add_monomorphized_copy(original_id: DeclarationId, new_id: Decl
     DECLARATION_ENGINE.add_monomorphized_copy(original_id, new_id);
 }
 
-pub(crate) fn de_insert_function(function: TyFunctionDeclaration) -> DeclarationId {
+pub(crate) fn de_insert_function(function: ty::TyFunctionDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.insert_function(function)
 }
 
 pub fn de_get_function(
     index: DeclarationId,
     span: &Span,
-) -> Result<TyFunctionDeclaration, CompileError> {
+) -> Result<ty::TyFunctionDeclaration, CompileError> {
     DECLARATION_ENGINE.get_function(index, span)
 }
 
 pub(crate) fn de_add_monomorphized_function_copy(
     original_id: DeclarationId,
-    new_copy: TyFunctionDeclaration,
+    new_copy: ty::TyFunctionDeclaration,
 ) {
     DECLARATION_ENGINE.add_monomorphized_function_copy(original_id, new_copy);
 }
@@ -284,7 +282,7 @@ pub(crate) fn de_add_monomorphized_function_copy(
 pub(crate) fn de_get_monomorphized_function_copies(
     original_id: DeclarationId,
     span: &Span,
-) -> Result<Vec<TyFunctionDeclaration>, CompileError> {
+) -> Result<Vec<ty::TyFunctionDeclaration>, CompileError> {
     DECLARATION_ENGINE.get_monomorphized_function_copies(original_id, span)
 }
 

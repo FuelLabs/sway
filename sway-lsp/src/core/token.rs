@@ -59,8 +59,8 @@ pub enum AstToken {
 pub enum TypedAstToken {
     TypedDeclaration(ty::TyDeclaration),
     TypedExpression(ty::TyExpression),
-    TypedFunctionDeclaration(TyFunctionDeclaration),
-    TypedFunctionParameter(TyFunctionParameter),
+    TypedFunctionDeclaration(ty::TyFunctionDeclaration),
+    TypedFunctionParameter(ty::TyFunctionParameter),
     TypedStructField(TyStructField),
     TypedEnumVariant(ty::TyEnumVariant),
     TypedTraitFn(ty::TyTraitFn),

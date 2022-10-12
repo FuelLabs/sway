@@ -4,7 +4,6 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     declaration_engine::*, error::*, language::ty::*, semantic_analysis::*, type_system::*,
-    TyFunctionDeclaration,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]

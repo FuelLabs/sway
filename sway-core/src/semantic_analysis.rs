@@ -7,7 +7,6 @@ mod program;
 mod storage_only_types;
 mod type_check_context;
 
-pub use ast_node::TyFunctionDeclaration;
 pub(crate) use ast_node::*;
 pub use module::{TyModule, TySubmodule};
 pub use namespace::Namespace;

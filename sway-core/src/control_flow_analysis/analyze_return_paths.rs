@@ -248,7 +248,7 @@ fn connect_declaration(
 fn connect_impl_trait(
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph,
-    methods: &[TyFunctionDeclaration],
+    methods: &[ty::TyFunctionDeclaration],
     entry_node: NodeIndex,
 ) -> Result<(), CompileError> {
     let mut methods_and_indexes = vec![];
@@ -285,7 +285,7 @@ fn connect_impl_trait(
 /// has no entry points, since it is just a declaration.
 /// When something eventually calls it, it gets connected to the declaration.
 fn connect_typed_fn_decl(
-    fn_decl: &TyFunctionDeclaration,
+    fn_decl: &ty::TyFunctionDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
     _span: Span,

@@ -7,7 +7,6 @@ use crate::{
     language::ty,
     semantic_analysis::*,
     type_system::{CopyTypes, TypeMapping},
-    TyFunctionDeclaration,
 };
 
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]
@@ -16,7 +15,7 @@ use crate::{
 pub(crate) enum DeclarationWrapper {
     // no-op variant to fulfill the default trait
     Unknown,
-    Function(TyFunctionDeclaration),
+    Function(ty::TyFunctionDeclaration),
     Trait(TyTraitDeclaration),
     TraitFn(ty::TyTraitFn),
     ImplTrait(TyImplTrait),
@@ -97,7 +96,7 @@ impl DeclarationWrapper {
     pub(super) fn expect_function(
         self,
         span: &Span,
-    ) -> Result<TyFunctionDeclaration, CompileError> {
+    ) -> Result<ty::TyFunctionDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Function(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(

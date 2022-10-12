@@ -464,7 +464,7 @@ fn collect_typed_trait_fn_token(trait_fn: &ty::TyTraitFn, tokens: &TokenMap) {
     }
 }
 
-fn collect_typed_fn_param_token(param: &TyFunctionParameter, tokens: &TokenMap) {
+fn collect_typed_fn_param_token(param: &ty::TyFunctionParameter, tokens: &TokenMap) {
     let typed_token = TypedAstToken::TypedFunctionParameter(param.clone());
     if let Some(mut token) = tokens.get_mut(&to_ident_key(&param.name)) {
         token.typed = Some(typed_token.clone());
@@ -477,7 +477,7 @@ fn collect_typed_fn_param_token(param: &TyFunctionParameter, tokens: &TokenMap) 
     }
 }
 
-fn collect_typed_fn_decl(func_decl: &TyFunctionDeclaration, tokens: &TokenMap) {
+fn collect_typed_fn_decl(func_decl: &ty::TyFunctionDeclaration, tokens: &TokenMap) {
     if let Some(mut token) = tokens.get_mut(&to_ident_key(&func_decl.name)) {
         token.typed = Some(TypedAstToken::TypedFunctionDeclaration(func_decl.clone()));
     }

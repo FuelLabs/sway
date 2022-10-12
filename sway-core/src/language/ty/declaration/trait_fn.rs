@@ -2,7 +2,9 @@ use derivative::Derivative;
 use sway_types::{Ident, Span};
 
 use crate::{
-    language::Purity, semantic_analysis::TyFunctionParameter, type_system::*, AttributesMap,
+    language::{ty::*, Purity},
+    type_system::*,
+    AttributesMap,
 };
 
 #[derive(Clone, Debug, Derivative)]

@@ -194,7 +194,7 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
             check!(expr_validate(&expr), (), warnings, errors)
         }
         ty::TyDeclaration::FunctionDeclaration(decl_id) => {
-            let TyFunctionDeclaration {
+            let ty::TyFunctionDeclaration {
                 body, parameters, ..
             } = check!(
                 CompileResult::from(de_get_function(decl_id.clone(), &decl.span())),

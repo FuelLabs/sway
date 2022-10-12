@@ -1,14 +1,11 @@
 use crate::{
     error::*,
     language::{parsed::*, ty, *},
-    semantic_analysis::{
-        typed_expression::{
-            check_function_arguments_arity, instantiate_function_application_simple,
-        },
-        IsConstant, TyFunctionParameter, TyStorageField, TypeCheckContext,
-    },
+    semantic_analysis::*,
     type_system::*,
-    TyFunctionDeclaration,
+};
+use ast_node::typed_expression::{
+    check_function_arguments_arity, instantiate_function_application_simple,
 };
 use std::collections::{HashMap, VecDeque};
 use sway_error::error::CompileError;
@@ -182,7 +179,7 @@ pub(crate) fn type_check_method_application(
             expression: ty::TyExpressionVariant::VariableExpression { name, .. },
             ..
         }),
-        Some(TyFunctionParameter { is_mutable, .. }),
+        Some(ty::TyFunctionParameter { is_mutable, .. }),
     ) = (args_buf.get(0), method.parameters.get(0))
     {
         let unknown_decl = check!(
@@ -319,7 +316,7 @@ pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
     method_name: &TypeBinding<MethodName>,
     arguments: VecDeque<ty::TyExpression>,
-) -> CompileResult<TyFunctionDeclaration> {
+) -> CompileResult<ty::TyFunctionDeclaration> {
     let mut warnings = vec![];
     let mut errors = vec![];
 

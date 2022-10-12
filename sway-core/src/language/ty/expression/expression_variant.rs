@@ -10,7 +10,6 @@ use crate::{
     language::{ty::*, *},
     semantic_analysis::*,
     type_system::*,
-    TyFunctionDeclaration,
 };
 
 #[derive(Clone, Debug, Derivative)]
