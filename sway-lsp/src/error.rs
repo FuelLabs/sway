@@ -10,7 +10,7 @@ pub enum LanguageServerError {
     BuildPlanFailed(anyhow::Error),
     #[error("Failed to compile. {0}")]
     FailedToCompile(anyhow::Error),
-    #[error("Failed to parse document. {:?}", diagnostics)]
+    #[error("Failed to parse document")]
     FailedToParse { diagnostics: Vec<Diagnostic> },
 }
 

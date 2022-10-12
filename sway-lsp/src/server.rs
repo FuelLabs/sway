@@ -372,16 +372,14 @@ mod tests {
     use std::{borrow::Cow, env, fs, io::Read, path::PathBuf};
     use tower::{Service, ServiceExt};
 
+    use crate::test_utils::sway_workspace_dir;
+
     use super::*;
     use serial_test::serial;
     use tower_lsp::{
         jsonrpc::{self, Id, Request, Response},
         ExitedError, LspService,
     };
-
-    fn sway_workspace_dir() -> PathBuf {
-        env::current_dir().unwrap().parent().unwrap().to_path_buf()
-    }
 
     fn e2e_language_dir() -> PathBuf {
         PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass/language")

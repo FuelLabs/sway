@@ -4,6 +4,8 @@ mod capabilities;
 mod core;
 pub mod error;
 mod server;
+#[cfg(test)]
+pub mod test_utils;
 pub mod utils;
 use server::Backend;
 use utils::debug::DebugFlags;

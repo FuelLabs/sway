@@ -109,17 +109,9 @@ struct EditText<'text> {
 
 #[cfg(test)]
 mod tests {
-    use std::{env, path::PathBuf};
+    use crate::test_utils::get_absolute_path;
 
     use super::*;
-
-    fn sway_workspace_dir() -> PathBuf {
-        env::current_dir().unwrap().parent().unwrap().to_path_buf()
-    }
-
-    fn get_absolute_path(path: &str) -> String {
-        sway_workspace_dir().join(path).to_str().unwrap().into()
-    }
 
     #[test]
     fn build_from_path_returns_text_document() {

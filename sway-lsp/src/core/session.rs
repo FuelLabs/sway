@@ -333,21 +333,10 @@ impl Session {
 
 #[cfg(test)]
 mod tests {
-    use std::env;
+
+    use crate::test_utils::{get_absolute_path, get_url};
 
     use super::*;
-
-    fn sway_workspace_dir() -> PathBuf {
-        env::current_dir().unwrap().parent().unwrap().to_path_buf()
-    }
-
-    fn get_absolute_path(path: &str) -> String {
-        sway_workspace_dir().join(path).to_str().unwrap().into()
-    }
-
-    fn get_url(absolute_path: &str) -> Url {
-        Url::parse(&format!("file://{}", &absolute_path)).expect("expected URL")
-    }
 
     #[test]
     fn store_document_returns_empty_tuple() {
