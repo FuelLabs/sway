@@ -2483,10 +2483,39 @@ pub fn check(
     sway_core::clear_lazy_statics();
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
+    let root_node = plan
+        .compilation_order()
+        .last()
+        .expect("Compilation order is empty!");
+    let root_node_pinned = &plan.graph()[*root_node];
+    let root_manifest = &plan.manifest_map()[&root_node_pinned.id()];
+    let mut contract_dependency_ids: HashMap<String, ContractId> = HashMap::new();
     for (i, &node) in plan.compilation_order.iter().enumerate() {
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
-        let constants = manifest.config_time_constants();
+        let mut constants = manifest.config_time_constants();
+        if node == *root_node {
+            // Add collected contract dependency ids to this packages constants
+            for (contract_dep_name, contract_dep_id) in &contract_dependency_ids {
+                let contract_dep_constant_name = format!("{contract_dep_name}_CONTRACT_ID");
+                let contract_id_value = format!("\"{contract_dep_id}\"");
+                let config_time_constants = ConfigTimeConstant {
+                    r#type: "b256".to_string(),
+                    value: contract_id_value,
+                };
+                constants.insert(contract_dep_constant_name, config_time_constants);
+            }
+        }
+        // If the current node is a contract dependency, collect the contract_id
+        if root_manifest
+            .contract_deps()
+            .any(|dep| *dep.0 == manifest.project.name)
+        {
+            // Since we are not compiling we cannot get the actual `ContractID`, having the default
+            // `ContractID` is enough for `check`.
+            let contract_id = ContractId::default();
+            contract_dependency_ids.insert(pkg.name.clone(), contract_id);
+        }
         let dep_namespace =
             dependency_namespace(&namespace_map, &plan.graph, node, constants).expect("TODO");
         let CompileResult {
