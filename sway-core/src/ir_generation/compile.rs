@@ -1,6 +1,6 @@
 use crate::{
     declaration_engine::declaration_engine::de_get_constant,
-    language::Visibility,
+    language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::{ast_node::*, namespace},
     type_system::look_up_type_id,
@@ -20,7 +20,7 @@ pub(super) fn compile_script(
     context: &mut Context,
     main_function: TyFunctionDeclaration,
     namespace: &namespace::Module,
-    declarations: Vec<TyDeclaration>,
+    declarations: Vec<ty::TyDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
@@ -36,7 +36,7 @@ pub(super) fn compile_contract(
     context: &mut Context,
     abi_entries: Vec<TyFunctionDeclaration>,
     namespace: &namespace::Module,
-    declarations: Vec<TyDeclaration>,
+    declarations: Vec<ty::TyDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
@@ -90,11 +90,11 @@ fn compile_declarations(
     md_mgr: &mut MetadataManager,
     module: Module,
     namespace: &namespace::Module,
-    declarations: Vec<TyDeclaration>,
+    declarations: Vec<ty::TyDeclaration>,
 ) -> Result<(), CompileError> {
     for declaration in declarations {
         match declaration {
-            TyDeclaration::ConstantDeclaration(ref decl_id) => {
+            ty::TyDeclaration::ConstantDeclaration(ref decl_id) => {
                 let decl = de_get_constant(decl_id.clone(), &declaration.span())?;
                 compile_const_decl(
                     &mut LookupEnv {
@@ -108,14 +108,14 @@ fn compile_declarations(
                 )?;
             }
 
-            TyDeclaration::FunctionDeclaration(_decl) => {
+            ty::TyDeclaration::FunctionDeclaration(_decl) => {
                 // We no longer compile functions other than `main()` until we can improve the name
                 // resolution.  Currently there isn't enough information in the AST to fully
                 // distinguish similarly named functions and especially trait methods.
                 //
                 //compile_function(context, module, decl).map(|_| ())?
             }
-            TyDeclaration::ImplTrait(_) => {
+            ty::TyDeclaration::ImplTrait(_) => {
                 // And for the same reason we don't need to compile impls at all.
                 //
                 // compile_impl(
@@ -126,14 +126,14 @@ fn compile_declarations(
                 //)?,
             }
 
-            TyDeclaration::StructDeclaration(_)
-            | TyDeclaration::EnumDeclaration(_)
-            | TyDeclaration::TraitDeclaration(_)
-            | TyDeclaration::VariableDeclaration(_)
-            | TyDeclaration::AbiDeclaration(_)
-            | TyDeclaration::GenericTypeForFunctionScope { .. }
-            | TyDeclaration::StorageDeclaration(_)
-            | TyDeclaration::ErrorRecovery => (),
+            ty::TyDeclaration::StructDeclaration(_)
+            | ty::TyDeclaration::EnumDeclaration(_)
+            | ty::TyDeclaration::TraitDeclaration(_)
+            | ty::TyDeclaration::VariableDeclaration(_)
+            | ty::TyDeclaration::AbiDeclaration(_)
+            | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
+            | ty::TyDeclaration::StorageDeclaration(_)
+            | ty::TyDeclaration::ErrorRecovery => (),
         }
     }
     Ok(())

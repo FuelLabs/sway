@@ -8,7 +8,7 @@ use crate::{
         ContractCallParams, IsConstant, TyFunctionParameter, TyStorageField, TypeCheckContext,
     },
     type_system::*,
-    TyDeclaration, TyFunctionDeclaration,
+    TyFunctionDeclaration,
 };
 use std::collections::{HashMap, VecDeque};
 use sway_error::error::CompileError;
@@ -193,7 +193,7 @@ pub(crate) fn type_check_method_application(
         );
 
         let is_decl_mutable = match unknown_decl {
-            TyDeclaration::ConstantDeclaration(_) => false,
+            ty::TyDeclaration::ConstantDeclaration(_) => false,
             _ => {
                 let variable_decl = check!(
                     unknown_decl.expect_variable().cloned(),

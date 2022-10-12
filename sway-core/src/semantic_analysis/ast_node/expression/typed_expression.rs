@@ -15,7 +15,11 @@ pub(crate) use self::{
 use crate::{
     declaration_engine::declaration_engine::*,
     error::*,
-    language::{parsed::*, ty, *},
+    language::{
+        parsed::*,
+        ty::{self, TyExpression},
+        *,
+    },
     semantic_analysis::*,
     type_system::*,
 };
@@ -80,7 +84,7 @@ impl ty::TyExpression {
     /// do indeed return the correct type
     /// This does _not_ extract implicit return statements as those are not control flow! This is
     /// _only_ for explicit returns.
-    pub(crate) fn gather_return_statements(&self) -> Vec<&TyReturnStatement> {
+    pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
         match &self.expression {
             ty::TyExpressionVariant::IfExp {
                 condition,
@@ -170,8 +174,8 @@ impl ty::TyExpression {
             ty::TyExpressionVariant::EnumTag { exp } => exp.gather_return_statements(),
             ty::TyExpressionVariant::UnsafeDowncast { exp, .. } => exp.gather_return_statements(),
 
-            ty::TyExpressionVariant::Return(stmt) => {
-                vec![stmt]
+            ty::TyExpressionVariant::Return(exp) => {
+                vec![exp]
             }
             // if it is impossible for an expression to contain a return _statement_ (not an
             // implicit return!), put it in the pattern below.
@@ -364,9 +368,8 @@ impl ty::TyExpression {
                     warnings,
                     errors,
                 );
-                let stmt = TyReturnStatement { expr };
                 let typed_expr = ty::TyExpression {
-                    expression: ty::TyExpressionVariant::Return(Box::new(stmt)),
+                    expression: ty::TyExpressionVariant::Return(Box::new(expr)),
                     return_type: insert_type(TypeInfo::Unknown),
                     // FIXME: This should be Yes?
                     is_constant: IsConstant::No,
@@ -456,7 +459,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let exp = match namespace.resolve_symbol(&name).value {
-            Some(TyDeclaration::VariableDeclaration(decl)) => {
+            Some(ty::TyDeclaration::VariableDeclaration(decl)) => {
                 let TyVariableDeclaration {
                     name: decl_name,
                     body,
@@ -474,7 +477,7 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(TyDeclaration::ConstantDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
                 let TyConstantDeclaration {
                     name: decl_name,
                     value,
@@ -498,7 +501,7 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(TyDeclaration::AbiDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::AbiDeclaration(decl_id)) => {
                 let decl = check!(
                     CompileResult::from(de_get_abi(decl_id.clone(), &span)),
                     return err(warnings, errors),
@@ -1222,7 +1225,7 @@ impl ty::TyExpression {
             errors
         );
         let abi = match abi {
-            TyDeclaration::AbiDeclaration(decl_id) => {
+            ty::TyDeclaration::AbiDeclaration(decl_id) => {
                 check!(
                     CompileResult::from(de_get_abi(decl_id, &span)),
                     return err(warnings, errors),
@@ -1230,7 +1233,7 @@ impl ty::TyExpression {
                     errors
                 )
             }
-            TyDeclaration::VariableDeclaration(ref decl) => {
+            ty::TyDeclaration::VariableDeclaration(ref decl) => {
                 let TyVariableDeclaration { body: expr, .. } = &**decl;
                 let ret_ty = look_up_type_id(expr.return_type);
                 let abi_name = match ret_ty {
