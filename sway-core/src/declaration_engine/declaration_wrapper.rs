@@ -5,7 +5,6 @@ use sway_types::Span;
 
 use crate::{
     language::ty,
-    semantic_analysis::*,
     type_system::{CopyTypes, TypeMapping},
 };
 
@@ -16,7 +15,7 @@ pub(crate) enum DeclarationWrapper {
     // no-op variant to fulfill the default trait
     Unknown,
     Function(ty::TyFunctionDeclaration),
-    Trait(TyTraitDeclaration),
+    Trait(ty::TyTraitDeclaration),
     TraitFn(ty::TyTraitFn),
     ImplTrait(ty::TyImplTrait),
     Struct(ty::TyStructDeclaration),
@@ -110,7 +109,7 @@ impl DeclarationWrapper {
         }
     }
 
-    pub(super) fn expect_trait(self, span: &Span) -> Result<TyTraitDeclaration, CompileError> {
+    pub(super) fn expect_trait(self, span: &Span) -> Result<ty::TyTraitDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Trait(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(

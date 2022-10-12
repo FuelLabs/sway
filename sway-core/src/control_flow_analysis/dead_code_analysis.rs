@@ -470,7 +470,7 @@ fn connect_impl_trait(
 /// The trait node itself has already been added (as `entry_node`), so we just need to insert that
 /// node index into the namespace for the trait.
 fn connect_trait_declaration(
-    decl: &TyTraitDeclaration,
+    decl: &ty::TyTraitDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
 ) {
@@ -1262,7 +1262,7 @@ fn construct_dead_code_warning_from_node(node: &TyAstNode) -> Option<CompileWarn
             ..
         } => {
             let span = match de_get_trait(decl_id.clone(), &decl_id.span()) {
-                Ok(TyTraitDeclaration { name, .. }) => name.span(),
+                Ok(ty::TyTraitDeclaration { name, .. }) => name.span(),
                 Err(_) => node.span.clone(),
             };
             CompileWarning {

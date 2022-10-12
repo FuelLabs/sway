@@ -348,7 +348,7 @@ impl TyAstNode {
                         }
                         Declaration::TraitDeclaration(trait_decl) => {
                             let trait_decl = check!(
-                                TyTraitDeclaration::type_check(ctx.by_ref(), trait_decl),
+                                ty::TyTraitDeclaration::type_check(ctx.by_ref(), trait_decl),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
