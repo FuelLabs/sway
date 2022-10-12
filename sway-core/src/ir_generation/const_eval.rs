@@ -1,8 +1,6 @@
 use crate::{
-    declaration_engine::declaration_engine::de_get_constant,
-    language::ty,
-    metadata::MetadataManager,
-    semantic_analysis::{declaration::ProjectionKind, namespace, TyAstNode, TyAstNodeContent},
+    declaration_engine::declaration_engine::de_get_constant, language::ty,
+    metadata::MetadataManager, semantic_analysis::*,
 };
 
 use super::{convert::convert_literal_to_constant, types::*};
@@ -301,7 +299,7 @@ fn const_eval_typed_expr(
                 value: ConstantValue::Struct(fields),
                 ..
             }) => {
-                let field_kind = ProjectionKind::StructField {
+                let field_kind = ty::ProjectionKind::StructField {
                     name: field_to_access.name.clone(),
                 };
                 get_struct_name_field_index_and_type(*resolved_type_of_parent, field_kind)

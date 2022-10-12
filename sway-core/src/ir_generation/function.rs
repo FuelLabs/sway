@@ -1407,7 +1407,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_reassignment: TyReassignment,
+        ast_reassignment: ty::TyReassignment,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let name = self
@@ -1721,7 +1721,7 @@ impl FnCompiler {
             ))
         }?;
 
-        let field_kind = ProjectionKind::StructField {
+        let field_kind = ty::ProjectionKind::StructField {
             name: ast_field.name.clone(),
         };
         let field_idx = match get_struct_name_field_index_and_type(struct_type_id, field_kind) {

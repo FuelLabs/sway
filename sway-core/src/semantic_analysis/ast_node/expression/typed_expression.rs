@@ -1582,7 +1582,7 @@ impl ty::TyExpression {
                             field_to_access,
                             ..
                         }) => {
-                            names_vec.push(ProjectionKind::StructField {
+                            names_vec.push(ty::ProjectionKind::StructField {
                                 name: field_to_access,
                             });
                             expr = prefix;
@@ -1593,7 +1593,7 @@ impl ty::TyExpression {
                             index_span,
                             ..
                         }) => {
-                            names_vec.push(ProjectionKind::TupleField { index, index_span });
+                            names_vec.push(ty::ProjectionKind::TupleField { index, index_span });
                             expr = prefix;
                         }
                         _ => {
@@ -1622,7 +1622,7 @@ impl ty::TyExpression {
                 ok(
                     ty::TyExpression {
                         expression: ty::TyExpressionVariant::Reassignment(Box::new(
-                            TyReassignment {
+                            ty::TyReassignment {
                                 lhs_base_name: base_name,
                                 lhs_type: final_return_type,
                                 lhs_indices: names_vec,

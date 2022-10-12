@@ -4,14 +4,7 @@ use crate::{
     core::token::{TokenMap, TypeDefinition, TypedAstToken},
     utils::token::{struct_declaration_of_type_id, to_ident_key},
 };
-use sway_core::{
-    declaration_engine,
-    language::ty,
-    semantic_analysis::ast_node::{
-        ProjectionKind, TyFunctionDeclaration, TyFunctionParameter, TyImplTrait,
-        {TyAstNode, TyAstNodeContent},
-    },
-};
+use sway_core::{declaration_engine, language::ty, semantic_analysis::ast_node::*};
 use sway_types::{ident::Ident, Spanned};
 
 pub fn traverse_node(node: &TyAstNode, tokens: &TokenMap) {
@@ -407,7 +400,7 @@ fn handle_expression(expression: &ty::TyExpression, tokens: &TokenMap) {
             }
 
             for proj_kind in &reassignment.lhs_indices {
-                if let ProjectionKind::StructField { name } = proj_kind {
+                if let ty::ProjectionKind::StructField { name } = proj_kind {
                     if let Some(mut token) = tokens.get_mut(&to_ident_key(name)) {
                         token.typed =
                             Some(TypedAstToken::TypedReassignment((**reassignment).clone()));
