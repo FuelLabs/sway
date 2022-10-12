@@ -189,6 +189,10 @@
 }
 </code></pre>
 <p>Note that <code>data</code> in the receipt above will include the value being logged as a hexadecimal. Similarly to the <code>Log</code> receipt, additional registers are written: <code>ra</code> will always be zero when using <code>log</code>, while <code>rb</code> will contain a unique ID for the <code>log</code> instance.</p>
+<blockquote>
+<p><strong>Note</strong>
+The Rust SDK exposes <a href="https://fuellabs.github.io/fuels-rs/master/calling-contracts/logs.html#logs">APIs</a> that allow you to retrieve the logged values and display them nicely based on their types as indicated in the JSON ABI file.</p>
+</blockquote>
 
                     </main>
 

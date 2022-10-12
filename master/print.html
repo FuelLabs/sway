@@ -538,10 +538,10 @@ use std::{chain::auth::{AuthError, msg_sender}, hash::sha256, logging::log, stor
 ////////////////////////////////////////
 // Event declarations
 ////////////////////////////////////////
+// 
 // Events allow clients to react to changes in the contract.
 // Unlike Solidity, events are simply structs.
-// Note: Logging of arbitrary stack types is supported, however they cannot yet be decoded on the 
-// SDK side.
+//
 /// Emitted when a token is sent.
 struct Sent {
     from: Address,
@@ -1609,6 +1609,10 @@ impl Coordinates {
 }
 </code></pre>
 <p>Note that <code>data</code> in the receipt above will include the value being logged as a hexadecimal. Similarly to the <code>Log</code> receipt, additional registers are written: <code>ra</code> will always be zero when using <code>log</code>, while <code>rb</code> will contain a unique ID for the <code>log</code> instance.</p>
+<blockquote>
+<p><strong>Note</strong>
+The Rust SDK exposes <a href="https://fuellabs.github.io/fuels-rs/master/calling-contracts/logs.html#logs">APIs</a> that allow you to retrieve the logged values and display them nicely based on their types as indicated in the JSON ABI file.</p>
+</blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="control-flow"><a class="header" href="#control-flow">Control Flow</a></h1>
 <h2 id="if-expressions"><a class="header" href="#if-expressions"><code>if</code> expressions</a></h2>
 <p>Sway supports <em>if</em>, <em>else</em>, and <em>else if</em> expressions that allow you to branch your code depending on conditions.</p>

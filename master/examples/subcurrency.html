@@ -147,10 +147,10 @@ use std::{chain::auth::{AuthError, msg_sender}, hash::sha256, logging::log, stor
 ////////////////////////////////////////
 // Event declarations
 ////////////////////////////////////////
+// 
 // Events allow clients to react to changes in the contract.
 // Unlike Solidity, events are simply structs.
-// Note: Logging of arbitrary stack types is supported, however they cannot yet be decoded on the 
-// SDK side.
+//
 /// Emitted when a token is sent.
 struct Sent {
     from: Address,
