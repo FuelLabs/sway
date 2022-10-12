@@ -127,7 +127,7 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_trait_fn(span)
     }
 
-    fn insert_impl_trait(&self, impl_trait: TyImplTrait) -> DeclarationId {
+    fn insert_impl_trait(&self, impl_trait: ty::TyImplTrait) -> DeclarationId {
         let span = impl_trait.span.clone();
         DeclarationId::new(
             self.slab.insert(DeclarationWrapper::ImplTrait(impl_trait)),
@@ -139,7 +139,7 @@ impl DeclarationEngine {
         &self,
         index: DeclarationId,
         span: &Span,
-    ) -> Result<TyImplTrait, CompileError> {
+    ) -> Result<ty::TyImplTrait, CompileError> {
         self.slab.get(*index).expect_impl_trait(span)
     }
 
@@ -305,11 +305,14 @@ pub(crate) fn de_get_trait_fn(
     DECLARATION_ENGINE.get_trait_fn(index, span)
 }
 
-pub(crate) fn de_insert_impl_trait(impl_trait: TyImplTrait) -> DeclarationId {
+pub(crate) fn de_insert_impl_trait(impl_trait: ty::TyImplTrait) -> DeclarationId {
     DECLARATION_ENGINE.insert_impl_trait(impl_trait)
 }
 
-pub fn de_get_impl_trait(index: DeclarationId, span: &Span) -> Result<TyImplTrait, CompileError> {
+pub fn de_get_impl_trait(
+    index: DeclarationId,
+    span: &Span,
+) -> Result<ty::TyImplTrait, CompileError> {
     DECLARATION_ENGINE.get_impl_trait(index, span)
 }
 

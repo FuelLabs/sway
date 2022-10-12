@@ -125,7 +125,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
             }
         }
         ty::TyDeclaration::ImplTrait(decl_id) => {
-            if let Ok(TyImplTrait {
+            if let Ok(ty::TyImplTrait {
                 trait_name,
                 methods,
                 implementing_for_type_id,

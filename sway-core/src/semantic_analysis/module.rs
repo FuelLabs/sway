@@ -109,7 +109,7 @@ fn check_supertraits(typed_tree_nodes: &[TyAstNode], namespace: &Namespace) -> V
     for node in typed_tree_nodes {
         if let TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)) = &node.content
         {
-            let TyImplTrait {
+            let ty::TyImplTrait {
                 trait_name,
                 span,
                 implementing_for_type_id,
@@ -139,7 +139,7 @@ fn check_supertraits(typed_tree_nodes: &[TyAstNode], namespace: &Namespace) -> V
                             decl_id,
                         )) = &search_node.content
                         {
-                            let TyImplTrait {
+                            let ty::TyImplTrait {
                                 trait_name: search_node_trait_name,
                                 implementing_for_type_id: search_node_type_implementing_for,
                                 ..

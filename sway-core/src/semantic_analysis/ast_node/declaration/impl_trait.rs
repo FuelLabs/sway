@@ -10,29 +10,12 @@ use crate::{
     semantic_analysis::{Mode, TyAstNodeContent, TypeCheckContext},
     type_system::{
         insert_type, look_up_type_id, set_type_as_storage_only, to_typeinfo, unify_with_self,
-        CopyTypes, TypeId, TypeMapping, TypeParameter,
+        TypeId, TypeParameter,
     },
     CompileResult, TypeInfo,
 };
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TyImplTrait {
-    pub trait_name: CallPath,
-    pub(crate) span: Span,
-    pub methods: Vec<ty::TyFunctionDeclaration>,
-    pub implementing_for_type_id: TypeId,
-    pub type_implementing_for_span: Span,
-}
-
-impl CopyTypes for TyImplTrait {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.methods
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-    }
-}
-
-impl TyImplTrait {
+impl ty::TyImplTrait {
     pub(crate) fn type_check_impl_trait(
         ctx: TypeCheckContext,
         impl_trait: ImplTrait,
@@ -121,7 +104,7 @@ impl TyImplTrait {
                     warnings,
                     errors
                 );
-                let impl_trait = TyImplTrait {
+                let impl_trait = ty::TyImplTrait {
                     trait_name,
                     span: block_span,
                     methods: functions_buf,
@@ -176,7 +159,7 @@ impl TyImplTrait {
                     warnings,
                     errors
                 );
-                let impl_trait = TyImplTrait {
+                let impl_trait = ty::TyImplTrait {
                     trait_name,
                     span: block_span,
                     methods: functions_buf,
@@ -466,7 +449,7 @@ impl TyImplTrait {
             errors
         );
 
-        let impl_trait = TyImplTrait {
+        let impl_trait = ty::TyImplTrait {
             trait_name,
             span: block_span,
             methods,

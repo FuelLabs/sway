@@ -18,7 +18,7 @@ pub(crate) enum DeclarationWrapper {
     Function(ty::TyFunctionDeclaration),
     Trait(TyTraitDeclaration),
     TraitFn(ty::TyTraitFn),
-    ImplTrait(TyImplTrait),
+    ImplTrait(ty::TyImplTrait),
     Struct(TyStructDeclaration),
     Storage(TyStorageDeclaration),
     Abi(ty::TyAbiDeclaration),
@@ -138,7 +138,7 @@ impl DeclarationWrapper {
         }
     }
 
-    pub(super) fn expect_impl_trait(self, span: &Span) -> Result<TyImplTrait, CompileError> {
+    pub(super) fn expect_impl_trait(self, span: &Span) -> Result<ty::TyImplTrait, CompileError> {
         match self {
             DeclarationWrapper::ImplTrait(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(

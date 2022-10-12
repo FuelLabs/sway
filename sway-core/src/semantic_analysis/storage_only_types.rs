@@ -221,7 +221,7 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
             // These methods are not typed. They are however handled from ImplTrait.
         }
         ty::TyDeclaration::ImplTrait(decl_id) => {
-            let TyImplTrait { methods, .. } = check!(
+            let ty::TyImplTrait { methods, .. } = check!(
                 CompileResult::from(de_get_impl_trait(decl_id.clone(), &decl_id.span())),
                 return err(warnings, errors),
                 warnings,

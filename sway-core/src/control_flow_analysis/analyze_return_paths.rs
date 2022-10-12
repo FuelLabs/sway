@@ -224,7 +224,7 @@ fn connect_declaration(
             Ok(leaves.to_vec())
         }
         ImplTrait(decl_id) => {
-            let TyImplTrait {
+            let ty::TyImplTrait {
                 trait_name,
                 methods,
                 ..
