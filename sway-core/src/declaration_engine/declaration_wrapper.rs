@@ -4,9 +4,10 @@ use sway_error::error::CompileError;
 use sway_types::Span;
 
 use crate::{
+    language::ty,
     semantic_analysis::{
-        TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyImplTrait,
-        TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
+        TyAbiDeclaration, TyEnumDeclaration, TyImplTrait, TyStorageDeclaration,
+        TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
     },
     type_system::{CopyTypes, TypeMapping},
     TyFunctionDeclaration,
@@ -25,7 +26,7 @@ pub(crate) enum DeclarationWrapper {
     Struct(TyStructDeclaration),
     Storage(TyStorageDeclaration),
     Abi(TyAbiDeclaration),
-    Constant(Box<TyConstantDeclaration>),
+    Constant(Box<ty::TyConstantDeclaration>),
     Enum(TyEnumDeclaration),
 }
 
@@ -200,7 +201,7 @@ impl DeclarationWrapper {
     pub(super) fn expect_constant(
         self,
         span: &Span,
-    ) -> Result<TyConstantDeclaration, CompileError> {
+    ) -> Result<ty::TyConstantDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Constant(decl) => Ok(*decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(

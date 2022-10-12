@@ -226,7 +226,7 @@ impl ty::TyDeclaration {
                 visibility
             }
             ConstantDeclaration(decl_id) => {
-                let TyConstantDeclaration { visibility, .. } = check!(
+                let ty::TyConstantDeclaration { visibility, .. } = check!(
                     CompileResult::from(de_get_constant(decl_id.clone(), &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
@@ -270,13 +270,6 @@ impl ty::TyDeclaration {
         };
         ok(visibility, warnings, errors)
     }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TyConstantDeclaration {
-    pub name: Ident,
-    pub value: ty::TyExpression,
-    pub(crate) visibility: Visibility,
 }
 
 #[derive(Clone, Debug, Derivative)]

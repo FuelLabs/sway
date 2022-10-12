@@ -5,9 +5,10 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     concurrent_slab::ConcurrentSlab,
+    language::ty,
     semantic_analysis::{
-        TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyImplTrait,
-        TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
+        TyAbiDeclaration, TyEnumDeclaration, TyImplTrait, TyStorageDeclaration,
+        TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
     },
     TyFunctionDeclaration,
 };
@@ -203,7 +204,7 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_abi(span)
     }
 
-    fn insert_constant(&self, constant: TyConstantDeclaration) -> DeclarationId {
+    fn insert_constant(&self, constant: ty::TyConstantDeclaration) -> DeclarationId {
         let span = constant.name.span();
         DeclarationId::new(
             self.slab
@@ -216,7 +217,7 @@ impl DeclarationEngine {
         &self,
         index: DeclarationId,
         span: &Span,
-    ) -> Result<TyConstantDeclaration, CompileError> {
+    ) -> Result<ty::TyConstantDeclaration, CompileError> {
         self.slab.get(*index).expect_constant(span)
     }
 
@@ -352,14 +353,14 @@ pub fn de_get_abi(index: DeclarationId, span: &Span) -> Result<TyAbiDeclaration,
     DECLARATION_ENGINE.get_abi(index, span)
 }
 
-pub(crate) fn de_insert_constant(constant: TyConstantDeclaration) -> DeclarationId {
+pub(crate) fn de_insert_constant(constant: ty::TyConstantDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.insert_constant(constant)
 }
 
 pub fn de_get_constant(
     index: DeclarationId,
     span: &Span,
-) -> Result<TyConstantDeclaration, CompileError> {
+) -> Result<ty::TyConstantDeclaration, CompileError> {
     DECLARATION_ENGINE.get_constant(index, span)
 }
 

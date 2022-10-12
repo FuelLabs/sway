@@ -55,7 +55,7 @@ fn type_check_variable(
     let mut errors = vec![];
 
     let typed_scrutinee = match ctx.namespace.resolve_symbol(&name).value {
-        // If this variable is a constant, then we turn it into a [ty::TyScrutinee::Constant].
+        // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
         Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
             let constant_decl = check!(
                 CompileResult::from(de_get_constant(decl_id.clone(), &span)),

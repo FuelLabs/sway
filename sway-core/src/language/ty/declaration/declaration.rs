@@ -7,8 +7,7 @@ use crate::{
     error::*,
     language::ty::*,
     semantic_analysis::{
-        TyConstantDeclaration, TyEnumDeclaration, TyStructDeclaration, TyTraitDeclaration,
-        TyVariableDeclaration,
+        TyEnumDeclaration, TyStructDeclaration, TyTraitDeclaration, TyVariableDeclaration,
     },
     type_system::*,
     TyFunctionDeclaration,

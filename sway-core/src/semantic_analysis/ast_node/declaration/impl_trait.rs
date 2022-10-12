@@ -7,7 +7,7 @@ use crate::{
     declaration_engine::declaration_engine::*,
     error::{err, ok},
     language::{parsed::*, ty, *},
-    semantic_analysis::{Mode, TyAstNodeContent, TyConstantDeclaration, TypeCheckContext},
+    semantic_analysis::{Mode, TyAstNodeContent, TypeCheckContext},
     type_system::{
         insert_type, look_up_type_id, set_type_as_storage_only, to_typeinfo, unify_with_self,
         CopyTypes, TypeId, TypeMapping, TypeParameter,
@@ -333,7 +333,7 @@ impl TyImplTrait {
                     expr_contains_get_storage_index(&decl.body, access_span)
                 }
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                    let TyConstantDeclaration { value: expr, .. } =
+                    let ty::TyConstantDeclaration { value: expr, .. } =
                         de_get_constant(decl_id.clone(), access_span)?;
                     expr_contains_get_storage_index(&expr, access_span)
                 }

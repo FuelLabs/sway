@@ -1365,12 +1365,12 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_const_decl: TyConstantDeclaration,
+        ast_const_decl: ty::TyConstantDeclaration,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<(), CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
-        let TyConstantDeclaration { name, value, .. } = ast_const_decl;
+        let ty::TyConstantDeclaration { name, value, .. } = ast_const_decl;
         let const_expr_val =
             compile_constant_expression(context, md_mgr, self.module, None, &value)?;
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
