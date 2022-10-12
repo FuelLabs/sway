@@ -20,6 +20,8 @@ The `Forc.toml` (the _manifest_ file) is a compulsory file for each package and 
 
 * [`[patch]`](#the-patch-section) - Defines the patches.
 
+* [`[contract-dependencies]`](#the-contract-dependencies-section) - Defines the deployment dependencies for the contract.
+
 ## The `[project]` section
 
 An example `Forc.toml` is shown below. Under `[project]` the following fields are optional:
@@ -147,3 +149,22 @@ foo = { git = "https://github.com/foo/foo", branch = "test" }
 ```
 
 Note that each key after the `[patch]` is a URL of the source that is being patched.
+
+
+## The `[contract-dependencies]` section
+
+The [contract-dependenices] section of `Forc.toml` can be used to declare deployment dependencies for the contracts. If a contract is added under [contract-dependencies] it is going to built just like regular [dependencies] but in addition to that their contract id is automatically inserted into the namespace of the current project. This means that you can use `contract_dependency_name_CONTRACT_ID` in your project to use the contract id of the declared contract-dependency.
+
+Note that each key after `[contract-dependencies]` are essentially `dependencies` and they can be declared the same way. Since we are declaring the list of contracts that needs to be deployed before the current project depends on, each dependency declared under `[contract-dependencies]` must be a contract.
+
+```toml
+[project]
+authors = ["user"]
+entry = "main.sw"
+organization = "Fuel_Labs"
+license = "Apache-2.0"
+name = "wallet_contract"
+
+[contract-dependencies]
+foo = { path = "../foo" }
+```
