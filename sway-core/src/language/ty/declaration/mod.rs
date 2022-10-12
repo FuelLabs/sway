@@ -6,6 +6,7 @@ mod r#enum;
 mod function;
 mod impl_trait;
 mod reassignment;
+mod storage;
 mod trait_fn;
 
 pub use abi::*;
@@ -15,4 +16,5 @@ pub use function::*;
 pub use impl_trait::*;
 pub use r#enum::*;
 pub use reassignment::*;
+pub use storage::*;
 pub use trait_fn::*;

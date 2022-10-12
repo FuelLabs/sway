@@ -64,7 +64,7 @@ pub enum TypedAstToken {
     TypedStructField(TyStructField),
     TypedEnumVariant(ty::TyEnumVariant),
     TypedTraitFn(ty::TyTraitFn),
-    TypedStorageField(TyStorageField),
+    TypedStorageField(ty::TyStorageField),
     TypeCheckedStorageReassignDescriptor(TyStorageReassignDescriptor),
     TypedReassignment(ty::TyReassignment),
 }

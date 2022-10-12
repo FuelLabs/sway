@@ -137,7 +137,7 @@ pub(crate) fn type_check_method_application(
                 let self_state_idx = match storage_fields
                     .iter()
                     .enumerate()
-                    .find(|(_, TyStorageField { name, .. })| name == &first_field)
+                    .find(|(_, ty::TyStorageField { name, .. })| name == &first_field)
                 {
                     Some((ix, _)) => StateIndex::new(ix),
                     None => {

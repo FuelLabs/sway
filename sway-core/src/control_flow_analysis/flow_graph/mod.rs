@@ -3,7 +3,6 @@
 
 use crate::{
     language::ty,
-    semantic_analysis::declaration::TyStorageField,
     semantic_analysis::{ast_node::TyStructField, TyAstNode},
     Ident,
 };
@@ -92,8 +91,8 @@ impl std::fmt::Debug for ControlFlowGraphNode {
         f.write_str(&text)
     }
 }
-impl std::convert::From<&TyStorageField> for ControlFlowGraphNode {
-    fn from(other: &TyStorageField) -> Self {
+impl std::convert::From<&ty::TyStorageField> for ControlFlowGraphNode {
+    fn from(other: &ty::TyStorageField) -> Self {
         ControlFlowGraphNode::StorageField {
             field_name: other.name.clone(),
         }

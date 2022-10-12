@@ -57,7 +57,7 @@ impl Items {
     pub fn apply_storage_load(
         &self,
         fields: Vec<Ident>,
-        storage_fields: &[TyStorageField],
+        storage_fields: &[ty::TyStorageField],
         access_span: &Span,
     ) -> CompileResult<(ty::TyStorageAccess, TypeId)> {
         let mut warnings = vec![];
@@ -180,7 +180,7 @@ impl Items {
     pub(crate) fn get_storage_field_descriptors(
         &self,
         access_span: &Span,
-    ) -> CompileResult<Vec<TyStorageField>> {
+    ) -> CompileResult<Vec<ty::TyStorageField>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match self.declared_storage {

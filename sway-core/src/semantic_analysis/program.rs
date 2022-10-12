@@ -1,4 +1,4 @@
-use super::{storage_only_types, TyAstNode, TyAstNodeContent, TyStorageDeclaration};
+use super::storage_only_types;
 use crate::{
     declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait, de_get_storage},
     error::*,
@@ -9,7 +9,7 @@ use crate::{
     metadata::MetadataManager,
     semantic_analysis::{
         namespace::{self, Namespace},
-        TyModule, TypeCheckContext,
+        TyAstNode, TyAstNodeContent, TyModule, TypeCheckContext,
     },
     type_system::*,
 };
@@ -155,7 +155,7 @@ impl TyProgram {
                 .find(|decl| matches!(decl, ty::TyDeclaration::StorageDeclaration(_)));
 
             if let Some(ty::TyDeclaration::StorageDeclaration(decl_id)) = storage_decl {
-                let TyStorageDeclaration { span, .. } = check!(
+                let ty::TyStorageDeclaration { span, .. } = check!(
                     CompileResult::from(de_get_storage(decl_id.clone(), &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
