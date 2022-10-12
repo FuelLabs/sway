@@ -8,7 +8,6 @@ use sway_core::{
         },
         ty,
     },
-    semantic_analysis::ast_node::*,
     type_system::TypeId,
 };
 use sway_types::{Ident, Span};
@@ -65,7 +64,7 @@ pub enum TypedAstToken {
     TypedEnumVariant(ty::TyEnumVariant),
     TypedTraitFn(ty::TyTraitFn),
     TypedStorageField(ty::TyStorageField),
-    TypeCheckedStorageReassignDescriptor(TyStorageReassignDescriptor),
+    TypeCheckedStorageReassignDescriptor(ty::TyStorageReassignDescriptor),
     TypedReassignment(ty::TyReassignment),
 }
 

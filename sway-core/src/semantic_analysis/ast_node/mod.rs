@@ -660,57 +660,12 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> ty::TyFunct
     }
 }
 
-/// Describes each field being drilled down into in storage and its type.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TyStorageReassignment {
-    pub fields: Vec<TyStorageReassignDescriptor>,
-    pub(crate) ix: StateIndex,
-    pub rhs: ty::TyExpression,
-}
-
-impl Spanned for TyStorageReassignment {
-    fn span(&self) -> Span {
-        self.fields
-            .iter()
-            .fold(self.fields[0].span.clone(), |acc, field| {
-                Span::join(acc, field.span.clone())
-            })
-    }
-}
-
-impl TyStorageReassignment {
-    pub fn names(&self) -> Vec<Ident> {
-        self.fields
-            .iter()
-            .map(|f| f.name.clone())
-            .collect::<Vec<_>>()
-    }
-}
-
-/// Describes a single subfield access in the sequence when reassigning to a subfield within
-/// storage.
-#[derive(Clone, Debug, Eq)]
-pub struct TyStorageReassignDescriptor {
-    pub name: Ident,
-    pub type_id: TypeId,
-    pub(crate) span: Span,
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyStorageReassignDescriptor {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
-    }
-}
-
 pub(crate) fn reassign_storage_subfield(
     ctx: TypeCheckContext,
     fields: Vec<Ident>,
     rhs: Expression,
     span: Span,
-) -> CompileResult<TyStorageReassignment> {
+) -> CompileResult<ty::TyStorageReassignment> {
     let mut errors = vec![];
     let mut warnings = vec![];
     if !ctx.namespace.has_storage_declared() {
@@ -748,7 +703,7 @@ pub(crate) fn reassign_storage_subfield(
         }
     };
 
-    type_checked_buf.push(TyStorageReassignDescriptor {
+    type_checked_buf.push(ty::TyStorageReassignDescriptor {
         name: first_field.clone(),
         type_id: *initial_field_type,
         span: first_field.span(),
@@ -775,7 +730,7 @@ pub(crate) fn reassign_storage_subfield(
         {
             Some(struct_field) => {
                 curr_type = struct_field.type_id;
-                type_checked_buf.push(TyStorageReassignDescriptor {
+                type_checked_buf.push(ty::TyStorageReassignDescriptor {
                     name: field.clone(),
                     type_id: struct_field.type_id,
                     span: field.span().clone(),
@@ -805,7 +760,7 @@ pub(crate) fn reassign_storage_subfield(
     );
 
     ok(
-        TyStorageReassignment {
+        ty::TyStorageReassignment {
             fields: type_checked_buf,
             ix,
             rhs,

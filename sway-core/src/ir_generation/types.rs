@@ -1,6 +1,5 @@
 use crate::{
     language::ty,
-    semantic_analysis::*,
     type_system::{to_typeinfo, TypeId, TypeInfo},
 };
 
@@ -113,6 +112,7 @@ impl TypedNamedField for ty::ProjectionKind {
 }
 
 use ty::TyStorageAccessDescriptor;
+use ty::TyStorageReassignDescriptor;
 impl_typed_named_field_for!(TyStorageAccessDescriptor);
 impl_typed_named_field_for!(TyStorageReassignDescriptor);
 

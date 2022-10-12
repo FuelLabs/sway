@@ -13,7 +13,6 @@ use crate::{
     },
     language::{ty, *},
     metadata::MetadataManager,
-    semantic_analysis::*,
     type_system::{look_up_type_id, to_typeinfo, TypeId, TypeInfo},
 };
 use sway_ast::intrinsics::Intrinsic;
@@ -1488,7 +1487,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        fields: &[TyStorageReassignDescriptor],
+        fields: &[ty::TyStorageReassignDescriptor],
         ix: &StateIndex,
         rhs: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
