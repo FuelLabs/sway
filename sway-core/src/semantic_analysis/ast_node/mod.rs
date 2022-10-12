@@ -2,7 +2,6 @@ pub mod code_block;
 pub mod declaration;
 pub mod expression;
 pub mod mode;
-mod return_statement;
 
 use std::fmt;
 
@@ -10,12 +9,15 @@ pub(crate) use code_block::*;
 pub use declaration::*;
 pub(crate) use expression::*;
 pub(crate) use mode::*;
-pub(crate) use return_statement::*;
 
 use crate::{
     declaration_engine::declaration_engine::*,
     error::*,
-    language::{parsed::*, ty, Visibility},
+    language::{
+        parsed::*,
+        ty::{self, TyExpression},
+        Visibility,
+    },
     semantic_analysis::*,
     type_system::*,
     types::DeterministicallyAborts,
@@ -158,7 +160,7 @@ impl TyAstNode {
     /// do indeed return the correct type
     /// This does _not_ extract implicit return statements as those are not control flow! This is
     /// _only_ for explicit returns.
-    pub(crate) fn gather_return_statements(&self) -> Vec<&TyReturnStatement> {
+    pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
         match &self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref exp) => exp.gather_return_statements(),
             // assignments and  reassignments can happen during control flow and can abort

@@ -320,8 +320,8 @@ impl TyImplTrait {
                 ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {
                     expr_contains_get_storage_index(&storage_reassignment.rhs, access_span)?
                 }
-                ty::TyExpressionVariant::Return(stmt) => {
-                    expr_contains_get_storage_index(&stmt.expr, access_span)?
+                ty::TyExpressionVariant::Return(exp) => {
+                    expr_contains_get_storage_index(exp, access_span)?
                 }
             };
             Ok(res)
