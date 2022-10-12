@@ -15,7 +15,11 @@ pub(crate) use self::{
 use crate::{
     declaration_engine::declaration_engine::*,
     error::*,
-    language::{parsed::*, ty, *},
+    language::{
+        parsed::*,
+        ty::{self, TyExpression},
+        *,
+    },
     semantic_analysis::*,
     type_system::*,
 };
@@ -80,7 +84,7 @@ impl ty::TyExpression {
     /// do indeed return the correct type
     /// This does _not_ extract implicit return statements as those are not control flow! This is
     /// _only_ for explicit returns.
-    pub(crate) fn gather_return_statements(&self) -> Vec<&TyReturnStatement> {
+    pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
         match &self.expression {
             ty::TyExpressionVariant::IfExp {
                 condition,
@@ -170,8 +174,8 @@ impl ty::TyExpression {
             ty::TyExpressionVariant::EnumTag { exp } => exp.gather_return_statements(),
             ty::TyExpressionVariant::UnsafeDowncast { exp, .. } => exp.gather_return_statements(),
 
-            ty::TyExpressionVariant::Return(stmt) => {
-                vec![stmt]
+            ty::TyExpressionVariant::Return(exp) => {
+                vec![exp]
             }
             // if it is impossible for an expression to contain a return _statement_ (not an
             // implicit return!), put it in the pattern below.
@@ -364,9 +368,8 @@ impl ty::TyExpression {
                     warnings,
                     errors,
                 );
-                let stmt = TyReturnStatement { expr };
                 let typed_expr = ty::TyExpression {
-                    expression: ty::TyExpressionVariant::Return(Box::new(stmt)),
+                    expression: ty::TyExpressionVariant::Return(Box::new(expr)),
                     return_type: insert_type(TypeInfo::Unknown),
                     // FIXME: This should be Yes?
                     is_constant: IsConstant::No,

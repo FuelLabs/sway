@@ -326,9 +326,7 @@ fn const_eval_typed_expr(
             }) => fields.get(*elem_to_access_num).cloned(),
             _ => None,
         },
-        ty::TyExpressionVariant::Return(stmt) => {
-            const_eval_typed_expr(lookup, known_consts, &stmt.expr)
-        }
+        ty::TyExpressionVariant::Return(exp) => const_eval_typed_expr(lookup, known_consts, exp),
         ty::TyExpressionVariant::ArrayIndex { .. }
         | ty::TyExpressionVariant::IntrinsicFunction(_)
         | ty::TyExpressionVariant::CodeBlock(_)

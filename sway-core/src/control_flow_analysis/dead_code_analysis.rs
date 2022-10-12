@@ -1104,19 +1104,19 @@ fn connect_expression(
             tree_type,
             typed_storage_reassignment.rhs.clone().span,
         ),
-        Return(stmt) => {
+        Return(exp) => {
             let this_index = graph.add_node("return entry".into());
             for leaf in leaves {
                 graph.add_edge(*leaf, this_index, "".into());
             }
             let return_contents = connect_expression(
-                &stmt.expr.expression,
+                &exp.expression,
                 graph,
                 &[this_index],
                 exit_node,
                 "",
                 tree_type,
-                stmt.expr.span.clone(),
+                exp.span.clone(),
             )?;
             // TODO: is this right? Shouldn't we connect the return_contents leaves to the exit
             // node?

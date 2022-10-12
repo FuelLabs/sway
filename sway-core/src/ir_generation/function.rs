@@ -374,8 +374,8 @@ impl FnCompiler {
                     &storage_reassignment.rhs,
                     span_md_idx,
                 ),
-            ty::TyExpressionVariant::Return(stmt) => {
-                self.compile_return_statement(context, md_mgr, stmt.expr)
+            ty::TyExpressionVariant::Return(exp) => {
+                self.compile_return_statement(context, md_mgr, *exp)
             }
         }
     }

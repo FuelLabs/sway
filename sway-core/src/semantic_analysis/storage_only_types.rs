@@ -133,8 +133,8 @@ fn expr_validate(expr: &ty::TyExpression) -> CompileResult<()> {
             );
             check!(expr_validate(rhs), (), warnings, errors)
         }
-        ty::TyExpressionVariant::Return(stmt) => {
-            check!(expr_validate(&stmt.expr), (), warnings, errors)
+        ty::TyExpressionVariant::Return(exp) => {
+            check!(expr_validate(exp), (), warnings, errors)
         }
     }
     ok((), warnings, errors)
