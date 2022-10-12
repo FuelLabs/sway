@@ -13,23 +13,13 @@ use crate::{
     },
     type_system::*,
 };
-use fuel_tx::StorageSlot;
 use sway_error::error::CompileError;
 use sway_ir::{Context, Module};
 use sway_types::{
-    span::Span, Ident, JsonABIProgram, JsonLoggedType, JsonTypeApplication, JsonTypeDeclaration,
-    Spanned,
+    span::Span, JsonABIProgram, JsonLoggedType, JsonTypeApplication, JsonTypeDeclaration, Spanned,
 };
 
-#[derive(Debug)]
-pub struct TyProgram {
-    pub kind: TyProgramKind,
-    pub root: TyModule,
-    pub storage_slots: Vec<StorageSlot>,
-    pub logged_types: Vec<TypeId>,
-}
-
-impl TyProgram {
+impl ty::TyProgram {
     /// Type-check the given parsed program to produce a typed program.
     ///
     /// The given `initial_namespace` acts as an initial state for each module within this program.
@@ -59,7 +49,7 @@ impl TyProgram {
         root: &TyModule,
         kind: TreeType,
         module_span: Span,
-    ) -> CompileResult<TyProgramKind> {
+    ) -> CompileResult<ty::TyProgramKind> {
         // Extract program-kind-specific properties from the root nodes.
         let mut errors = vec![];
         let mut warnings = vec![];
@@ -170,11 +160,11 @@ impl TyProgram {
 
         // Perform other validation based on the tree type.
         let typed_program_kind = match kind {
-            TreeType::Contract => TyProgramKind::Contract {
+            TreeType::Contract => ty::TyProgramKind::Contract {
                 abi_entries,
                 declarations,
             },
-            TreeType::Library { name } => TyProgramKind::Library { name },
+            TreeType::Library { name } => ty::TyProgramKind::Library { name },
             TreeType::Predicate => {
                 // A predicate must have a main function and that function must return a boolean.
                 if mains.is_empty() {
@@ -193,7 +183,7 @@ impl TyProgram {
                         main_func.span.clone(),
                     )),
                 }
-                TyProgramKind::Predicate {
+                ty::TyProgramKind::Predicate {
                     main_function: main_func,
                     declarations,
                 }
@@ -209,7 +199,7 @@ impl TyProgram {
                         name: mains.last().unwrap().name.clone(),
                     });
                 }
-                TyProgramKind::Script {
+                ty::TyProgramKind::Script {
                     main_function: mains.remove(0),
                     declarations,
                 }
@@ -217,8 +207,8 @@ impl TyProgram {
         };
         // check if no ref mut arguments passed to a `main()` in a `script` or `predicate`.
         match &typed_program_kind {
-            TyProgramKind::Script { main_function, .. }
-            | TyProgramKind::Predicate { main_function, .. } => {
+            ty::TyProgramKind::Script { main_function, .. }
+            | ty::TyProgramKind::Predicate { main_function, .. } => {
                 for param in &main_function.parameters {
                     if param.is_reference && param.is_mutable {
                         errors.push(CompileError::RefMutableNotAllowedInMain {
@@ -239,7 +229,7 @@ impl TyProgram {
         // Get all of the entry points for this tree type. For libraries, that's everything
         // public. For contracts, ABI entries. For scripts and predicates, any function named `main`.
         let metadata = match &self.kind {
-            TyProgramKind::Library { .. } => {
+            ty::TyProgramKind::Library { .. } => {
                 let mut ret = vec![];
                 for node in self.root.all_nodes.iter() {
                     let public = check!(
@@ -259,7 +249,7 @@ impl TyProgram {
                 }
                 ret
             }
-            TyProgramKind::Script { .. } => {
+            ty::TyProgramKind::Script { .. } => {
                 let mut data = vec![];
                 for node in self.root.all_nodes.iter() {
                     let is_main = check!(
@@ -279,7 +269,7 @@ impl TyProgram {
                 }
                 data
             }
-            TyProgramKind::Predicate { .. } => {
+            ty::TyProgramKind::Predicate { .. } => {
                 let mut data = vec![];
                 for node in self.root.all_nodes.iter() {
                     let is_main = check!(
@@ -299,7 +289,7 @@ impl TyProgram {
                 }
                 data
             }
-            TyProgramKind::Contract { abi_entries, .. } => {
+            ty::TyProgramKind::Contract { abi_entries, .. } => {
                 let mut data = vec![];
                 for entry in abi_entries.iter() {
                     data.append(&mut check!(
@@ -328,7 +318,7 @@ impl TyProgram {
         let mut warnings = vec![];
         let mut errors = vec![];
         match &self.kind {
-            TyProgramKind::Contract { declarations, .. } => {
+            ty::TyProgramKind::Contract { declarations, .. } => {
                 let storage_decl = declarations
                     .iter()
                     .find(|decl| matches!(decl, ty::TyDeclaration::StorageDeclaration(_)));
@@ -392,7 +382,7 @@ impl TyProgram {
         types: &mut Vec<JsonTypeDeclaration>,
     ) -> JsonABIProgram {
         match &self.kind {
-            TyProgramKind::Contract { abi_entries, .. } => {
+            ty::TyProgramKind::Contract { abi_entries, .. } => {
                 let functions = abi_entries
                     .iter()
                     .map(|x| x.generate_json_abi_function(types))
@@ -404,8 +394,8 @@ impl TyProgram {
                     logged_types,
                 }
             }
-            TyProgramKind::Script { main_function, .. }
-            | TyProgramKind::Predicate { main_function, .. } => {
+            ty::TyProgramKind::Script { main_function, .. }
+            | ty::TyProgramKind::Predicate { main_function, .. } => {
                 let functions = vec![main_function.generate_json_abi_function(types)];
                 let logged_types = self.generate_json_logged_types(types);
                 JsonABIProgram {
@@ -453,37 +443,6 @@ impl TyProgram {
                 },
             })
             .collect()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum TyProgramKind {
-    Contract {
-        abi_entries: Vec<ty::TyFunctionDeclaration>,
-        declarations: Vec<ty::TyDeclaration>,
-    },
-    Library {
-        name: Ident,
-    },
-    Predicate {
-        main_function: ty::TyFunctionDeclaration,
-        declarations: Vec<ty::TyDeclaration>,
-    },
-    Script {
-        main_function: ty::TyFunctionDeclaration,
-        declarations: Vec<ty::TyDeclaration>,
-    },
-}
-
-impl TyProgramKind {
-    /// The parse tree type associated with this program kind.
-    pub fn tree_type(&self) -> TreeType {
-        match self {
-            TyProgramKind::Contract { .. } => TreeType::Contract,
-            TyProgramKind::Library { name } => TreeType::Library { name: name.clone() },
-            TyProgramKind::Predicate { .. } => TreeType::Predicate,
-            TyProgramKind::Script { .. } => TreeType::Script,
-        }
     }
 }
 

@@ -30,7 +30,7 @@ use sway_ir::{Context, Function, Instruction, Kind, Module, Value};
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
-    TyModule, TyProgram, TyProgramKind,
+    TyModule,
 };
 pub mod types;
 
@@ -40,7 +40,7 @@ use sway_error::warning::CompileWarning;
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
-use language::parsed;
+use language::{parsed, ty};
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
@@ -204,13 +204,13 @@ pub enum BytecodeOrLib {
 pub fn parsed_to_ast(
     parse_program: &parsed::ParseProgram,
     initial_namespace: namespace::Module,
-) -> CompileResult<TyProgram> {
+) -> CompileResult<ty::TyProgram> {
     // Type check the program.
     let CompileResult {
         value: typed_program_opt,
         mut warnings,
         mut errors,
-    } = TyProgram::type_check(parse_program, initial_namespace);
+    } = ty::TyProgram::type_check(parse_program, initial_namespace);
     let mut typed_program = match typed_program_opt {
         Some(typed_program) => typed_program,
         None => return err(warnings, errors),
@@ -288,7 +288,7 @@ pub fn compile_to_ast(
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
-) -> CompileResult<TyProgram> {
+) -> CompileResult<ty::TyProgram> {
     // Parse the program to a concrete syntax tree (CST).
     let CompileResult {
         value: parse_program_opt,
@@ -332,7 +332,7 @@ pub fn compile_to_asm(
 /// try compiling to a `AsmOrLib`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn ast_to_asm(
-    ast_res: CompileResult<TyProgram>,
+    ast_res: CompileResult<ty::TyProgram>,
     build_config: &BuildConfig,
 ) -> CompileResult<AsmOrLib> {
     match ast_res.value {
@@ -365,7 +365,7 @@ pub fn ast_to_asm(
 }
 
 pub(crate) fn compile_ast_to_ir_to_asm(
-    program: TyProgram,
+    program: ty::TyProgram,
     build_config: &BuildConfig,
 ) -> CompileResult<FinalizedAsm> {
     let mut warnings = Vec::new();
@@ -646,9 +646,9 @@ pub fn clear_lazy_statics() {
     declaration_engine::declaration_engine::de_clear();
 }
 
-/// Given a [TyProgram], which is type-checked Sway source, construct a graph to analyze
+/// Given a [ty::TyProgram], which is type-checked Sway source, construct a graph to analyze
 /// control flow and determine if it is valid.
-fn perform_control_flow_analysis(program: &TyProgram) -> CompileResult<()> {
+fn perform_control_flow_analysis(program: &ty::TyProgram) -> CompileResult<()> {
     let dca_res = dead_code_analysis(program);
     let rpa_errors = return_path_analysis(program);
     let rpa_res = if rpa_errors.is_empty() {
@@ -663,7 +663,7 @@ fn perform_control_flow_analysis(program: &TyProgram) -> CompileResult<()> {
 /// code.
 ///
 /// Returns the graph that was used for analysis.
-fn dead_code_analysis(program: &TyProgram) -> CompileResult<ControlFlowGraph> {
+fn dead_code_analysis(program: &ty::TyProgram) -> CompileResult<ControlFlowGraph> {
     let mut dead_code_graph = Default::default();
     let tree_type = program.kind.tree_type();
     module_dead_code_analysis(&program.root, &tree_type, &mut dead_code_graph).flat_map(|_| {
@@ -694,7 +694,7 @@ fn module_dead_code_analysis(
     })
 }
 
-fn return_path_analysis(program: &TyProgram) -> Vec<CompileError> {
+fn return_path_analysis(program: &ty::TyProgram) -> Vec<CompileError> {
     let mut errors = vec![];
     module_return_path_analysis(&program.root, &mut errors);
     errors
