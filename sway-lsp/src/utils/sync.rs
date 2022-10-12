@@ -2,7 +2,6 @@ use dashmap::DashMap;
 use forc_pkg::{manifest::Dependency, PackageManifestFile};
 use notify::RecursiveMode;
 use notify_debouncer_mini::new_debouncer;
-
 use std::{
     collections::HashMap,
     fs::{self, File},
@@ -13,6 +12,9 @@ use std::{
 use tempfile::Builder;
 use tower_lsp::lsp_types::Url;
 
+/// Used to track if the language server has been initialised yet.
+/// We initialize the server with the temp directories during the first
+/// lsp protocol call to did_open.
 #[derive(Debug)]
 pub enum InitializedState {
     Uninitialized,
@@ -52,6 +54,7 @@ impl SyncWorkspace {
     }
 
     pub(crate) fn create_temp_dir_from_workspace(&self, manifest_dir: &Path) {
+        // TODO remove unwraps
         if let Ok(manifest) = PackageManifestFile::from_dir(manifest_dir) {
             // strip Forc.toml from the path
             let manifest_dir = manifest.path().parent().unwrap();
@@ -93,6 +96,7 @@ impl SyncWorkspace {
     /// Convert the Url path from the client to point to the same file in our temp folder
     pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, ()> {
         let path = PathBuf::from(uri.path());
+        // TODO remove unwraps
         let p = path.strip_prefix(self.manifest_dir().unwrap()).unwrap();
         Url::from_file_path(self.temp_dir().unwrap().join(p))
     }
@@ -100,6 +104,7 @@ impl SyncWorkspace {
     /// Convert the Url path from the temp folder to point to the same file in the users workspace
     pub(crate) fn temp_to_workspace_url(&self, uri: &Url) -> Result<Url, ()> {
         let path = PathBuf::from(uri.path());
+        // TODO remove unwraps
         let p = path.strip_prefix(self.temp_dir().unwrap()).unwrap();
         Url::from_file_path(self.manifest_dir().unwrap().join(p))
     }
