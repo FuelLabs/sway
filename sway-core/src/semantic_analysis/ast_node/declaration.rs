@@ -5,7 +5,6 @@ mod impl_trait;
 mod storage;
 mod r#struct;
 mod r#trait;
-mod variable;
 
 pub use abi::*;
 pub use function::*;
@@ -14,7 +13,6 @@ pub use r#enum::*;
 pub use r#struct::*;
 pub use r#trait::*;
 pub use storage::*;
-pub use variable::*;
 
 use crate::{
     declaration_engine::declaration_engine::*,
@@ -106,8 +104,8 @@ impl ty::TyDeclaration {
 
     /// Retrieves the declaration as a variable declaration.
     ///
-    /// Returns an error if `self` is not a [TyVariableDeclaration].
-    pub(crate) fn expect_variable(&self) -> CompileResult<&TyVariableDeclaration> {
+    /// Returns an error if `self` is not a [ty::TyVariableDeclaration].
+    pub(crate) fn expect_variable(&self) -> CompileResult<&ty::TyVariableDeclaration> {
         let warnings = vec![];
         let mut errors = vec![];
         match self {

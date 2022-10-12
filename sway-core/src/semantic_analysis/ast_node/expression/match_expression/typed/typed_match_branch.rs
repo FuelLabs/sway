@@ -3,9 +3,7 @@ use sway_types::Spanned;
 use crate::{
     error::{err, ok},
     language::{parsed::MatchBranch, ty},
-    semantic_analysis::{
-        IsConstant, TyAstNode, TyAstNodeContent, TyVariableDeclaration, TypeCheckContext,
-    },
+    semantic_analysis::*,
     type_system::insert_type,
     types::DeterministicallyAborts,
     CompileResult, TypeInfo,
@@ -55,7 +53,7 @@ impl ty::TyMatchBranch {
             let type_ascription = right_decl.return_type;
             let span = left_decl.span().clone();
             let var_decl =
-                ty::TyDeclaration::VariableDeclaration(Box::new(TyVariableDeclaration {
+                ty::TyDeclaration::VariableDeclaration(Box::new(ty::TyVariableDeclaration {
                     name: left_decl.clone(),
                     body: right_decl,
                     mutability: ty::VariableMutability::Immutable,

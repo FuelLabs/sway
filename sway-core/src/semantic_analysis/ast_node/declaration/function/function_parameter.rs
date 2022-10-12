@@ -1,7 +1,7 @@
 use crate::{
     error::{err, ok},
     language::{parsed::FunctionParameter, ty},
-    semantic_analysis::{IsConstant, TyVariableDeclaration, TypeCheckContext},
+    semantic_analysis::{IsConstant, TypeCheckContext},
     type_system::*,
     CompileResult, Namespace,
 };
@@ -158,7 +158,7 @@ impl ty::TyFunctionParameter {
 fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &ty::TyFunctionParameter) {
     ctx.namespace.insert_symbol(
         typed_parameter.name.clone(),
-        ty::TyDeclaration::VariableDeclaration(Box::new(TyVariableDeclaration {
+        ty::TyDeclaration::VariableDeclaration(Box::new(ty::TyVariableDeclaration {
             name: typed_parameter.name.clone(),
             body: ty::TyExpression {
                 expression: ty::TyExpressionVariant::FunctionParameter,

@@ -1,11 +1,12 @@
-use crate::{language::ty, type_system::*, Ident};
-use sway_types::Span;
+use sway_types::{Ident, Span};
+
+use crate::{language::ty::*, type_system::*};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyVariableDeclaration {
     pub name: Ident,
-    pub body: ty::TyExpression,
-    pub mutability: ty::VariableMutability,
+    pub body: TyExpression,
+    pub mutability: VariableMutability,
     pub type_ascription: TypeId,
     pub type_ascription_span: Option<Span>,
 }

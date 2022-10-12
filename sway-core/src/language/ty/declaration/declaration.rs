@@ -2,9 +2,7 @@ use std::fmt;
 
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{
-    declaration_engine::*, error::*, language::ty::*, semantic_analysis::*, type_system::*,
-};
+use crate::{declaration_engine::*, error::*, language::ty::*, type_system::*};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TyDeclaration {

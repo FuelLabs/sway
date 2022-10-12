@@ -1,10 +1,7 @@
 use crate::{
     error::*,
     language::{parsed::*, ty, Visibility},
-    semantic_analysis::{
-        ast_node::{TyAstNode, TyAstNodeContent, TyVariableDeclaration},
-        TypeCheckContext,
-    },
+    semantic_analysis::*,
     Ident, Namespace,
 };
 
@@ -342,7 +339,7 @@ impl Module {
                 }
                 // if this is a const, insert it into the local namespace directly
                 if let ty::TyDeclaration::VariableDeclaration(ref var_decl) = decl {
-                    let TyVariableDeclaration {
+                    let ty::TyVariableDeclaration {
                         mutability, name, ..
                     } = &**var_decl;
                     if mutability == &ty::VariableMutability::ExportedConst {

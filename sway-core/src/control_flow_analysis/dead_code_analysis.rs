@@ -286,7 +286,7 @@ fn connect_declaration(
     use ty::TyDeclaration::*;
     match decl {
         VariableDeclaration(var_decl) => {
-            let TyVariableDeclaration {
+            let ty::TyVariableDeclaration {
                 name,
                 body,
                 mutability: is_mutable,
