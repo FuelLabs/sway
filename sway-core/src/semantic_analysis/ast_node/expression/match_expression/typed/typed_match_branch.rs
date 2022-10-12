@@ -10,7 +10,7 @@ use crate::{
     },
     type_system::insert_type,
     types::DeterministicallyAborts,
-    CompileResult, TyDeclaration, TypeInfo,
+    CompileResult, TypeInfo,
 };
 
 use super::matcher::{matcher, MatchReqMap};
@@ -64,13 +64,14 @@ impl TyMatchBranch {
         for (left_decl, right_decl) in match_decl_map.into_iter() {
             let type_ascription = right_decl.return_type;
             let span = left_decl.span().clone();
-            let var_decl = TyDeclaration::VariableDeclaration(Box::new(TyVariableDeclaration {
-                name: left_decl.clone(),
-                body: right_decl,
-                mutability: VariableMutability::Immutable,
-                type_ascription,
-                type_ascription_span: None,
-            }));
+            let var_decl =
+                ty::TyDeclaration::VariableDeclaration(Box::new(TyVariableDeclaration {
+                    name: left_decl.clone(),
+                    body: right_decl,
+                    mutability: VariableMutability::Immutable,
+                    type_ascription,
+                    type_ascription_span: None,
+                }));
             ctx.namespace.insert_symbol(left_decl, var_decl.clone());
             code_block_contents.push(TyAstNode {
                 content: TyAstNodeContent::Declaration(var_decl),

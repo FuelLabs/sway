@@ -1,5 +1,4 @@
+#[allow(clippy::module_inception)]
 mod declaration;
-mod expression;
 
 pub use declaration::*;
-pub use expression::*;
