@@ -18,3 +18,4 @@ pub(crate) mod declaration_id;
 pub(crate) mod declaration_wrapper;
 
 pub use declaration_engine::*;
+pub(crate) use declaration_id::*;
