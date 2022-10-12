@@ -1,10 +1,7 @@
 use crate::{
     error::{err, ok},
     language::{parsed::FunctionParameter, ty},
-    semantic_analysis::{
-        convert_to_variable_immutability, IsConstant, TyVariableDeclaration, TypeCheckContext,
-        VariableMutability,
-    },
+    semantic_analysis::{IsConstant, TyVariableDeclaration, TypeCheckContext},
     type_system::*,
     CompileResult, Ident, Namespace,
 };
@@ -75,8 +72,8 @@ impl TyFunctionParameter {
             errors,
         );
 
-        let mutability = convert_to_variable_immutability(is_reference, is_mutable);
-        if mutability == VariableMutability::Mutable {
+        let mutability = ty::VariableMutability::new_from_ref_mut(is_reference, is_mutable);
+        if mutability == ty::VariableMutability::Mutable {
             errors.push(CompileError::MutableParameterNotSupported { param_name: name });
             return err(warnings, errors);
         }
@@ -197,7 +194,7 @@ fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &TyFunctionPara
                 is_constant: IsConstant::No,
                 span: typed_parameter.name.span(),
             },
-            mutability: convert_to_variable_immutability(
+            mutability: ty::VariableMutability::new_from_ref_mut(
                 typed_parameter.is_reference,
                 typed_parameter.is_mutable,
             ),

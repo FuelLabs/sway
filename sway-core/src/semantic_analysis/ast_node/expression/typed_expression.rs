@@ -191,10 +191,10 @@ impl ty::TyExpression {
     }
 
     /// gathers the mutability of the expressions within
-    pub(crate) fn gather_mutability(&self) -> VariableMutability {
+    pub(crate) fn gather_mutability(&self) -> ty::VariableMutability {
         match &self.expression {
             ty::TyExpressionVariant::VariableExpression { mutability, .. } => *mutability,
-            _ => VariableMutability::Immutable,
+            _ => ty::VariableMutability::Immutable,
         }
     }
 
@@ -496,7 +496,7 @@ impl ty::TyExpression {
                     expression: ty::TyExpressionVariant::VariableExpression {
                         name: decl_name,
                         span: name.span(),
-                        mutability: VariableMutability::Immutable,
+                        mutability: ty::VariableMutability::Immutable,
                     },
                     span,
                 }

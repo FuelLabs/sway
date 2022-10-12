@@ -10,7 +10,7 @@ use crate::{
     language::{ty::*, *},
     semantic_analysis::{
         ProjectionKind, TyCodeBlock, TyEnumDeclaration, TyEnumVariant, TyReassignment,
-        TyStorageReassignment, TyStructField, VariableMutability,
+        TyStorageReassignment, TyStructField,
     },
     type_system::*,
     TyFunctionDeclaration,

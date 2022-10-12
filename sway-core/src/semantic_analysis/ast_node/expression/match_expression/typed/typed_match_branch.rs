@@ -5,7 +5,7 @@ use crate::{
     language::{parsed::MatchBranch, ty},
     semantic_analysis::{
         IsConstant, TyAstNode, TyAstNodeContent, TyCodeBlock, TyVariableDeclaration,
-        TypeCheckContext, VariableMutability,
+        TypeCheckContext,
     },
     type_system::insert_type,
     types::DeterministicallyAborts,
@@ -59,7 +59,7 @@ impl ty::TyMatchBranch {
                 ty::TyDeclaration::VariableDeclaration(Box::new(TyVariableDeclaration {
                     name: left_decl.clone(),
                     body: right_decl,
-                    mutability: VariableMutability::Immutable,
+                    mutability: ty::VariableMutability::Immutable,
                     type_ascription,
                     type_ascription_span: None,
                 }));

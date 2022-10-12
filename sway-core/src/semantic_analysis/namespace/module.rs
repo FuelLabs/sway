@@ -3,7 +3,6 @@ use crate::{
     language::{parsed::*, ty, Visibility},
     semantic_analysis::{
         ast_node::{TyAstNode, TyAstNodeContent, TyVariableDeclaration},
-        declaration::VariableMutability,
         TypeCheckContext,
     },
     Ident, Namespace,
@@ -346,7 +345,7 @@ impl Module {
                     let TyVariableDeclaration {
                         mutability, name, ..
                     } = &**var_decl;
-                    if mutability == &VariableMutability::ExportedConst {
+                    if mutability == &ty::VariableMutability::ExportedConst {
                         self[dst]
                             .insert_symbol(alias.unwrap_or_else(|| name.clone()), decl.clone());
                         return ok((), warnings, errors);
