@@ -134,7 +134,7 @@ fn multi_line_match() {
     // ANCHOR_END: multi_line_match
 }
 
-// ANCHOR: complex_enum_match
+// ANCHOR: nested_enum_match
 enum TopLevel {
     One: (),
     Two: SecondLevel,
@@ -157,4 +157,75 @@ fn nested_match(input: TopLevel) -> u64 {
         },
     }
 }
+// ANCHOR_END: nested_enum_match
+
+// ANCHOR: complex_multi_arg_enum_match
+use core::ops::Eq;
+
+enum Binary {
+    True: (),
+    False: (),
+}
+
+impl Eq for Binary {
+    fn eq(self, other: Self) -> bool {
+        match (self, other) {
+            (Binary::True, Binary::True) => true,
+            (Binary::False, Binary::False) => true,
+            _ => false,
+        }
+    }
+}
+// ANCHOR_END: complex_multi_arg_enum_match
+
+// ANCHOR: complex_struct_unpacking_match
+struct Point {
+    x: u64,
+    y: u64
+}
+
+fn struct_matching() {
+    let point = Point {
+        x: 1u64,
+        y: 2u64,
+    };
+
+    let result = match point {
+        Point { x: 5, y } => y + 1,
+        Point { x, .. } => x,
+        Point { y, .. } => y,
+        _ => 42,
+    };
+}
+// ANCHOR_END: complex_struct_unpacking_match
+
+// ANCHOR: complex_enum_match
+enum Color {
+    Red: (),
+    Green: (),
+    Blue: (),
+}
+
+fn enum_match(input: Color) {
+    let result = match input {
+        Color::Red => 0,
+        Color::Green => 1,
+        Color::Blue => 2,
+    };
+}
 // ANCHOR_END: complex_enum_match
+
+// ANCHOR: complex_constant_match
+const NUMBER_1: u64 = 7;
+const NUMBER_2: u64 = 14;
+
+fn constant_match() {
+    let number = 5;
+
+    let result = match number {
+        NUMBER_1 => 1,
+        NUMBER_2 => 42,
+        other => other,
+    };
+}
+// ANCHOR_END: complex_constant_match
