@@ -798,7 +798,7 @@ impl ty::TyExpression {
             .registers
             .into_iter()
             .map(
-                |AsmRegisterDeclaration { name, initializer }| TyAsmRegisterDeclaration {
+                |AsmRegisterDeclaration { name, initializer }| ty::TyAsmRegisterDeclaration {
                     name,
                     initializer: initializer.map(|initializer| {
                         let ctx = ctx

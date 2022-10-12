@@ -8,8 +8,7 @@ use crate::{
             TyFunctionDeclaration, TyStructDeclaration, TyStructExpressionField,
             TyTraitDeclaration, TyVariableDeclaration, VariableMutability,
         },
-        TyAsmRegisterDeclaration, TyAstNode, TyAstNodeContent, TyImplTrait,
-        TyIntrinsicFunctionKind, TyStorageDeclaration,
+        TyAstNode, TyAstNodeContent, TyImplTrait, TyIntrinsicFunctionKind, TyStorageDeclaration,
     },
     type_system::{to_typeinfo, TypeInfo},
 };
@@ -884,7 +883,7 @@ fn connect_expression(
             }
 
             let mut current_leaf = vec![asm_node_entry];
-            for TyAsmRegisterDeclaration { initializer, .. } in registers {
+            for ty::TyAsmRegisterDeclaration { initializer, .. } in registers {
                 current_leaf = match initializer {
                     Some(initializer) => connect_expression(
                         &initializer.expression,
