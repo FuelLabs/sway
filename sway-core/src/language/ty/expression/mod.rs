@@ -1,4 +1,5 @@
 mod asm;
+mod contract;
 #[allow(clippy::module_inception)]
 mod expression;
 mod expression_variant;
@@ -9,6 +10,7 @@ mod storage;
 mod struct_exp_field;
 
 pub use asm::*;
+pub use contract::*;
 pub use expression::*;
 pub use expression_variant::*;
 pub use intrinsic_function::*;
