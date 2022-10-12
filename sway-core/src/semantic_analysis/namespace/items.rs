@@ -3,7 +3,6 @@ use crate::{
     error::*,
     language::{ty, CallPath},
     namespace::*,
-    semantic_analysis::*,
     type_system::*,
 };
 
@@ -249,7 +248,7 @@ impl Items {
                 ) => {
                     let field_type_opt = {
                         fields.iter().find_map(
-                            |TyStructField {
+                            |ty::TyStructField {
                                  type_id: r#type,
                                  name,
                                  ..

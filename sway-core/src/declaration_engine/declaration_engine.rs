@@ -143,7 +143,7 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_impl_trait(span)
     }
 
-    fn insert_struct(&self, r#struct: TyStructDeclaration) -> DeclarationId {
+    fn insert_struct(&self, r#struct: ty::TyStructDeclaration) -> DeclarationId {
         let span = r#struct.span();
         DeclarationId::new(self.slab.insert(DeclarationWrapper::Struct(r#struct)), span)
     }
@@ -152,14 +152,14 @@ impl DeclarationEngine {
         &self,
         index: DeclarationId,
         span: &Span,
-    ) -> Result<TyStructDeclaration, CompileError> {
+    ) -> Result<ty::TyStructDeclaration, CompileError> {
         self.slab.get(*index).expect_struct(span)
     }
 
     fn add_monomorphized_struct_copy(
         &self,
         original_id: DeclarationId,
-        new_copy: TyStructDeclaration,
+        new_copy: ty::TyStructDeclaration,
     ) {
         let span = new_copy.span();
         let new_id =
@@ -171,7 +171,7 @@ impl DeclarationEngine {
         &self,
         original_id: DeclarationId,
         span: &Span,
-    ) -> Result<Vec<TyStructDeclaration>, CompileError> {
+    ) -> Result<Vec<ty::TyStructDeclaration>, CompileError> {
         self.get_monomorphized_copies(original_id)
             .into_iter()
             .map(|x| x.expect_struct(span))
@@ -316,20 +316,20 @@ pub fn de_get_impl_trait(
     DECLARATION_ENGINE.get_impl_trait(index, span)
 }
 
-pub(crate) fn de_insert_struct(r#struct: TyStructDeclaration) -> DeclarationId {
+pub(crate) fn de_insert_struct(r#struct: ty::TyStructDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.insert_struct(r#struct)
 }
 
 pub fn de_get_struct(
     index: DeclarationId,
     span: &Span,
-) -> Result<TyStructDeclaration, CompileError> {
+) -> Result<ty::TyStructDeclaration, CompileError> {
     DECLARATION_ENGINE.get_struct(index, span)
 }
 
 pub(crate) fn de_add_monomorphized_struct_copy(
     original_id: DeclarationId,
-    new_copy: TyStructDeclaration,
+    new_copy: ty::TyStructDeclaration,
 ) {
     DECLARATION_ENGINE.add_monomorphized_struct_copy(original_id, new_copy);
 }
@@ -337,7 +337,7 @@ pub(crate) fn de_add_monomorphized_struct_copy(
 pub(crate) fn de_get_monomorphized_struct_copies(
     original_id: DeclarationId,
     span: &Span,
-) -> Result<Vec<TyStructDeclaration>, CompileError> {
+) -> Result<Vec<ty::TyStructDeclaration>, CompileError> {
     DECLARATION_ENGINE.get_monomorphized_struct_copies(original_id, span)
 }
 

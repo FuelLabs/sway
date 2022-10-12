@@ -48,8 +48,11 @@ impl ty::TyDeclaration {
 
     /// Retrieves the declaration as a struct declaration.
     ///
-    /// Returns an error if `self` is not a [TyStructDeclaration].
-    pub(crate) fn expect_struct(&self, access_span: &Span) -> CompileResult<TyStructDeclaration> {
+    /// Returns an error if `self` is not a [ty::TyStructDeclaration].
+    pub(crate) fn expect_struct(
+        &self,
+        access_span: &Span,
+    ) -> CompileResult<ty::TyStructDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match self {
@@ -233,7 +236,7 @@ impl ty::TyDeclaration {
                 visibility
             }
             StructDeclaration(decl_id) => {
-                let TyStructDeclaration { visibility, .. } = check!(
+                let ty::TyStructDeclaration { visibility, .. } = check!(
                     CompileResult::from(de_get_struct(decl_id.clone(), &decl_id.span())),
                     return err(warnings, errors),
                     warnings,

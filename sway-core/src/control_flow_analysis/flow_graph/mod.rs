@@ -1,11 +1,7 @@
 //! This is the flow graph, a graph which contains edges that represent possible steps of program
 //! execution.
 
-use crate::{
-    language::ty,
-    semantic_analysis::{ast_node::TyStructField, TyAstNode},
-    Ident,
-};
+use crate::{language::ty, semantic_analysis::TyAstNode, Ident};
 
 use sway_types::span::Span;
 
@@ -105,8 +101,8 @@ impl std::convert::From<&TyAstNode> for ControlFlowGraphNode {
     }
 }
 
-impl std::convert::From<&TyStructField> for ControlFlowGraphNode {
-    fn from(other: &TyStructField) -> Self {
+impl std::convert::From<&ty::TyStructField> for ControlFlowGraphNode {
+    fn from(other: &ty::TyStructField) -> Self {
         ControlFlowGraphNode::StructField {
             struct_field_name: other.name.clone(),
             span: other.span.clone(),

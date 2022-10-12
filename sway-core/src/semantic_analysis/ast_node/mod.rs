@@ -389,7 +389,7 @@ impl TyAstNode {
                         }
                         Declaration::StructDeclaration(decl) => {
                             let decl = check!(
-                                TyStructDeclaration::type_check(ctx.by_ref(), decl),
+                                ty::TyStructDeclaration::type_check(ctx.by_ref(), decl),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -826,7 +826,7 @@ pub(crate) fn reassign_storage_subfield(
         span: first_field.span(),
     });
 
-    fn update_available_struct_fields(id: TypeId) -> Vec<TyStructField> {
+    fn update_available_struct_fields(id: TypeId) -> Vec<ty::TyStructField> {
         match look_up_type_id(id) {
             TypeInfo::Struct { fields, .. } => fields,
             _ => vec![],

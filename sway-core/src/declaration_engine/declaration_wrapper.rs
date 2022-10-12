@@ -19,7 +19,7 @@ pub(crate) enum DeclarationWrapper {
     Trait(TyTraitDeclaration),
     TraitFn(ty::TyTraitFn),
     ImplTrait(ty::TyImplTrait),
-    Struct(TyStructDeclaration),
+    Struct(ty::TyStructDeclaration),
     Storage(ty::TyStorageDeclaration),
     Abi(ty::TyAbiDeclaration),
     Constant(Box<ty::TyConstantDeclaration>),
@@ -152,7 +152,10 @@ impl DeclarationWrapper {
         }
     }
 
-    pub(super) fn expect_struct(self, span: &Span) -> Result<TyStructDeclaration, CompileError> {
+    pub(super) fn expect_struct(
+        self,
+        span: &Span,
+    ) -> Result<ty::TyStructDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Struct(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(

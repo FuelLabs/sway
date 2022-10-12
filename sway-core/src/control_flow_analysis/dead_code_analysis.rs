@@ -367,12 +367,12 @@ fn connect_declaration(
 /// Connect each individual struct field, and when that field is accessed in a subfield expression,
 /// connect that field.
 fn connect_struct_declaration(
-    struct_decl: &TyStructDeclaration,
+    struct_decl: &ty::TyStructDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
     tree_type: &TreeType,
 ) {
-    let TyStructDeclaration {
+    let ty::TyStructDeclaration {
         name,
         fields,
         visibility,

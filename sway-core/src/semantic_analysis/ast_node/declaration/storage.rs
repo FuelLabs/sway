@@ -5,7 +5,6 @@ use crate::{
     },
     language::ty,
     metadata::MetadataManager,
-    semantic_analysis::TyStructField,
     type_system::{TypeId, TypeInfo},
     AttributesMap, Ident,
 };
@@ -61,7 +60,7 @@ impl ty::TyStorageDeclaration {
             span: first_field.span(),
         });
 
-        fn update_available_struct_fields(id: TypeId) -> Vec<TyStructField> {
+        fn update_available_struct_fields(id: TypeId) -> Vec<ty::TyStructField> {
             match crate::type_system::look_up_type_id(id) {
                 TypeInfo::Struct { fields, .. } => fields,
                 _ => vec![],
@@ -117,7 +116,7 @@ impl ty::TyStorageDeclaration {
         )
     }
 
-    pub(crate) fn fields_as_typed_struct_fields(&self) -> Vec<TyStructField> {
+    pub(crate) fn fields_as_typed_struct_fields(&self) -> Vec<ty::TyStructField> {
         self.fields
             .iter()
             .map(
@@ -128,7 +127,7 @@ impl ty::TyStorageDeclaration {
                      ref initializer,
                      ref attributes,
                      ..
-                 }| TyStructField {
+                 }| ty::TyStructField {
                     name: name.clone(),
                     type_id: *r#type,
                     initial_type_id: *r#type,

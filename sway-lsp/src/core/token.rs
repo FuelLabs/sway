@@ -61,7 +61,7 @@ pub enum TypedAstToken {
     TypedExpression(ty::TyExpression),
     TypedFunctionDeclaration(ty::TyFunctionDeclaration),
     TypedFunctionParameter(ty::TyFunctionParameter),
-    TypedStructField(TyStructField),
+    TypedStructField(ty::TyStructField),
     TypedEnumVariant(ty::TyEnumVariant),
     TypedTraitFn(ty::TyTraitFn),
     TypedStorageField(ty::TyStorageField),
