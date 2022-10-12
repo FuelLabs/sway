@@ -4,7 +4,6 @@ use crate::{
     metadata::MetadataManager,
     semantic_analysis::{
         declaration::ProjectionKind, namespace, TyAstNode, TyAstNodeContent, TyConstantDeclaration,
-        TyStructExpressionField,
     },
 };
 
@@ -214,7 +213,7 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::StructExpression { fields, .. } => {
             let (field_typs, field_vals): (Vec<_>, Vec<_>) = fields
                 .iter()
-                .filter_map(|TyStructExpressionField { name: _, value, .. }| {
+                .filter_map(|ty::TyStructExpressionField { name: _, value, .. }| {
                     const_eval_typed_expr(lookup, known_consts, value)
                         .map(|cv| (value.return_type, cv))
                 })

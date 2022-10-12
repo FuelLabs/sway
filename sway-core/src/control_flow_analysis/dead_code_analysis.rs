@@ -5,8 +5,8 @@ use crate::{
     semantic_analysis::{
         ast_node::{
             TyAbiDeclaration, TyCodeBlock, TyConstantDeclaration, TyEnumDeclaration,
-            TyFunctionDeclaration, TyStructDeclaration, TyStructExpressionField,
-            TyTraitDeclaration, TyVariableDeclaration, VariableMutability,
+            TyFunctionDeclaration, TyStructDeclaration, TyTraitDeclaration, TyVariableDeclaration,
+            VariableMutability,
         },
         TyAstNode, TyAstNodeContent, TyImplTrait, TyIntrinsicFunctionKind, TyStorageDeclaration,
     },
@@ -820,7 +820,7 @@ fn connect_expression(
 
             let mut current_leaf = vec![entry];
             // for every field, connect its expression
-            for TyStructExpressionField { value, .. } in fields {
+            for ty::TyStructExpressionField { value, .. } in fields {
                 current_leaf = connect_expression(
                     &value.expression,
                     graph,
