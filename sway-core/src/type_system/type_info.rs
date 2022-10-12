@@ -186,7 +186,7 @@ impl Hash for TypeInfo {
                 count.hash(state);
             }
             TypeInfo::RawUntypedPtr => {
-                state.write_u8(20);
+                state.write_u8(18);
             }
         }
     }
