@@ -4,17 +4,17 @@ use crate::{
     core::token::{TokenMap, TypeDefinition, TypedAstToken},
     utils::token::{struct_declaration_of_type_id, to_ident_key},
 };
-use sway_core::{declaration_engine, language::ty, semantic_analysis::ast_node::*};
+use sway_core::{declaration_engine, language::ty};
 use sway_types::{ident::Ident, Spanned};
 
-pub fn traverse_node(node: &TyAstNode, tokens: &TokenMap) {
+pub fn traverse_node(node: &ty::TyAstNode, tokens: &TokenMap) {
     match &node.content {
-        TyAstNodeContent::Declaration(declaration) => handle_declaration(declaration, tokens),
-        TyAstNodeContent::Expression(expression) => handle_expression(expression, tokens),
-        TyAstNodeContent::ImplicitReturnExpression(expression) => {
+        ty::TyAstNodeContent::Declaration(declaration) => handle_declaration(declaration, tokens),
+        ty::TyAstNodeContent::Expression(expression) => handle_expression(expression, tokens),
+        ty::TyAstNodeContent::ImplicitReturnExpression(expression) => {
             handle_expression(expression, tokens)
         }
-        TyAstNodeContent::SideEffect => (),
+        ty::TyAstNodeContent::SideEffect => (),
     };
 }
 

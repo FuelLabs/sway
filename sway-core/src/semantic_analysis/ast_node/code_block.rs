@@ -16,9 +16,9 @@ impl ty::TyCodeBlock {
             .iter()
             .filter_map(|node| {
                 let ctx = ctx.by_ref().scoped(&mut code_block_namespace);
-                TyAstNode::type_check(ctx, node.clone()).ok(&mut warnings, &mut errors)
+                ty::TyAstNode::type_check(ctx, node.clone()).ok(&mut warnings, &mut errors)
             })
-            .collect::<Vec<TyAstNode>>();
+            .collect::<Vec<ty::TyAstNode>>();
 
         let implicit_return_span = code_block
             .contents
@@ -40,9 +40,9 @@ impl ty::TyCodeBlock {
                     Some(insert_type(TypeInfo::Unknown))
                 } else {
                     match node {
-                        TyAstNode {
+                        ty::TyAstNode {
                             content:
-                                TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
+                                ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
                                     ref return_type,
                                     ..
                                 }),

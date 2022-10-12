@@ -2,20 +2,16 @@ use sway_error::error::CompileError;
 use sway_error::warning::CompileWarning;
 use sway_types::{Span, Spanned};
 
-use crate::{
-    declaration_engine::declaration_engine::*, error::*, language::ty, semantic_analysis::*,
-    type_system::*,
-};
+use crate::{declaration_engine::declaration_engine::*, error::*, language::ty, type_system::*};
 
-fn ast_node_validate(x: &TyAstNodeContent) -> CompileResult<()> {
+fn ast_node_validate(x: &ty::TyAstNodeContent) -> CompileResult<()> {
     let errors: Vec<CompileError> = vec![];
     let warnings: Vec<CompileWarning> = vec![];
     match x {
-        TyAstNodeContent::Expression(expr) | TyAstNodeContent::ImplicitReturnExpression(expr) => {
-            expr_validate(expr)
-        }
-        TyAstNodeContent::Declaration(decl) => decl_validate(decl),
-        TyAstNodeContent::SideEffect => ok((), warnings, errors),
+        ty::TyAstNodeContent::Expression(expr)
+        | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => expr_validate(expr),
+        ty::TyAstNodeContent::Declaration(decl) => decl_validate(decl),
+        ty::TyAstNodeContent::SideEffect => ok((), warnings, errors),
     }
 }
 
@@ -290,7 +286,9 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
     ok((), warnings, errors)
 }
 
-pub fn validate_decls_for_storage_only_types_in_ast(ast_n: &TyAstNodeContent) -> CompileResult<()> {
+pub fn validate_decls_for_storage_only_types_in_ast(
+    ast_n: &ty::TyAstNodeContent,
+) -> CompileResult<()> {
     ast_node_validate(ast_n)
 }
 

@@ -5,7 +5,6 @@ use crate::{
     control_flow_analysis::*,
     declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait},
     language::{ty, CallPath},
-    semantic_analysis::*,
     type_system::*,
 };
 use petgraph::prelude::NodeIndex;
@@ -14,7 +13,7 @@ use sway_types::{ident::Ident, span::Span, Spanned};
 
 impl ControlFlowGraph {
     pub(crate) fn construct_return_path_graph(
-        module_nodes: &[TyAstNode],
+        module_nodes: &[ty::TyAstNode],
     ) -> Result<Self, CompileError> {
         let mut graph = ControlFlowGraph::default();
         // do a depth first traversal and cover individual inner ast nodes
@@ -120,24 +119,24 @@ enum NodeConnection {
 }
 
 fn connect_node(
-    node: &TyAstNode,
+    node: &ty::TyAstNode,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
 ) -> Result<(NodeConnection, ReturnStatementNodes), CompileError> {
     let span = node.span.clone();
     match &node.content {
-        TyAstNodeContent::Expression(ty::TyExpression {
+        ty::TyAstNodeContent::Expression(ty::TyExpression {
             expression: ty::TyExpressionVariant::Return(..),
             ..
         })
-        | TyAstNodeContent::ImplicitReturnExpression(_) => {
+        | ty::TyAstNodeContent::ImplicitReturnExpression(_) => {
             let this_index = graph.add_node(node.into());
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());
             }
             Ok((NodeConnection::Return(this_index), vec![]))
         }
-        TyAstNodeContent::Expression(ty::TyExpression {
+        ty::TyAstNodeContent::Expression(ty::TyExpression {
             expression: ty::TyExpressionVariant::WhileLoop { body, .. },
             ..
         }) => {
@@ -175,7 +174,7 @@ fn connect_node(
                 inner_returns,
             ))
         }
-        TyAstNodeContent::Expression(ty::TyExpression { .. }) => {
+        ty::TyAstNodeContent::Expression(ty::TyExpression { .. }) => {
             let entry = graph.add_node(node.into());
             // insert organizational dominator node
             // connected to all current leaves
@@ -184,8 +183,8 @@ fn connect_node(
             }
             Ok((NodeConnection::NextStep(vec![entry]), vec![]))
         }
-        TyAstNodeContent::SideEffect => Ok((NodeConnection::NextStep(leaves.to_vec()), vec![])),
-        TyAstNodeContent::Declaration(decl) => Ok((
+        ty::TyAstNodeContent::SideEffect => Ok((NodeConnection::NextStep(leaves.to_vec()), vec![])),
+        ty::TyAstNodeContent::Declaration(decl) => Ok((
             NodeConnection::NextStep(connect_declaration(node, decl, graph, span, leaves)?),
             vec![],
         )),
@@ -193,7 +192,7 @@ fn connect_node(
 }
 
 fn connect_declaration(
-    node: &TyAstNode,
+    node: &ty::TyAstNode,
     decl: &ty::TyDeclaration,
     graph: &mut ControlFlowGraph,
     span: Span,

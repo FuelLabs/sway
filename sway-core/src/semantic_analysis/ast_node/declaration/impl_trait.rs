@@ -7,7 +7,7 @@ use crate::{
     declaration_engine::declaration_engine::*,
     error::{err, ok},
     language::{parsed::*, ty, *},
-    semantic_analysis::{Mode, TyAstNodeContent, TypeCheckContext},
+    semantic_analysis::{Mode, TypeCheckContext},
     type_system::{
         insert_type, look_up_type_id, set_type_as_storage_only, to_typeinfo, unify_with_self,
         TypeId, TypeParameter,
@@ -188,18 +188,18 @@ impl ty::TyImplTrait {
         access_span: &Span,
     ) -> Result<(), CompileError> {
         fn ast_node_contains_get_storage_index(
-            x: &TyAstNodeContent,
+            x: &ty::TyAstNodeContent,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             match x {
-                TyAstNodeContent::Expression(expr)
-                | TyAstNodeContent::ImplicitReturnExpression(expr) => {
+                ty::TyAstNodeContent::Expression(expr)
+                | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
                     expr_contains_get_storage_index(expr, access_span)
                 }
-                TyAstNodeContent::Declaration(decl) => {
+                ty::TyAstNodeContent::Declaration(decl) => {
                     decl_contains_get_storage_index(decl, access_span)
                 }
-                TyAstNodeContent::SideEffect => Ok(false),
+                ty::TyAstNodeContent::SideEffect => Ok(false),
             }
         }
 

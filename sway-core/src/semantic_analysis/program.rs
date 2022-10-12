@@ -9,7 +9,7 @@ use crate::{
     metadata::MetadataManager,
     semantic_analysis::{
         namespace::{self, Namespace},
-        TyAstNode, TyAstNodeContent, TypeCheckContext,
+        TypeCheckContext,
     },
     type_system::*,
 };
@@ -76,7 +76,9 @@ impl ty::TyProgram {
         let mut fn_declarations = std::collections::HashSet::new();
         for node in &root.all_nodes {
             match &node.content {
-                TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(decl_id)) => {
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(
+                    decl_id,
+                )) => {
                     let func = check!(
                         CompileResult::from(de_get_function(decl_id.clone(), &node.span)),
                         return err(warnings, errors),
@@ -97,7 +99,7 @@ impl ty::TyProgram {
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself.
-                TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)) => {
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)) => {
                     let ty::TyImplTrait {
                         methods,
                         implementing_for_type_id,
@@ -116,7 +118,7 @@ impl ty::TyProgram {
                     }
                 }
                 // XXX we're excluding the above ABI methods, is that OK?
-                TyAstNodeContent::Declaration(decl) => {
+                ty::TyAstNodeContent::Declaration(decl) => {
                     declarations.push(decl.clone());
                 }
                 _ => {}
@@ -293,7 +295,7 @@ impl ty::TyProgram {
                 let mut data = vec![];
                 for entry in abi_entries.iter() {
                     data.append(&mut check!(
-                        TyAstNode::from(entry).collect_types_metadata(),
+                        ty::TyAstNode::from(entry).collect_types_metadata(),
                         return err(warnings, errors),
                         warnings,
                         errors

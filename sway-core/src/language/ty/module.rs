@@ -1,6 +1,6 @@
 use sway_types::Ident;
 
-use crate::{language::DepName, semantic_analysis::namespace, semantic_analysis::TyAstNode};
+use crate::{language::ty::*, language::DepName, semantic_analysis::namespace};
 
 #[derive(Clone, Debug)]
 pub struct TyModule {

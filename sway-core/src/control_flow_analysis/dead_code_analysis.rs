@@ -2,7 +2,6 @@ use super::*;
 use crate::{
     declaration_engine::declaration_engine::*,
     language::{parsed::TreeType, ty, CallPath, Visibility},
-    semantic_analysis::*,
     type_system::{to_typeinfo, TypeInfo},
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
@@ -95,7 +94,7 @@ impl ControlFlowGraph {
     }
 
     pub(crate) fn append_module_to_dead_code_graph(
-        module_nodes: &[TyAstNode],
+        module_nodes: &[ty::TyAstNode],
         tree_type: &TreeType,
         graph: &mut ControlFlowGraph,
         // the `Result` return is just to handle `Unimplemented` errors
@@ -118,12 +117,12 @@ impl ControlFlowGraph {
                 for i in graph.graph.node_indices() {
                     let count_it = match &graph.graph[i] {
                         ControlFlowGraphNode::OrganizationalDominator(_) => false,
-                        ControlFlowGraphNode::ProgramNode(TyAstNode {
+                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
                             span,
                             content:
-                                TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(
-                                    decl_id,
-                                )),
+                                ty::TyAstNodeContent::Declaration(
+                                    ty::TyDeclaration::FunctionDeclaration(decl_id),
+                                ),
                             ..
                         }) => {
                             let decl = de_get_function(decl_id.clone(), span)?;
@@ -142,28 +141,28 @@ impl ControlFlowGraph {
                 for i in graph.graph.node_indices() {
                     let count_it = match &graph.graph[i] {
                         ControlFlowGraphNode::OrganizationalDominator(_) => false,
-                        ControlFlowGraphNode::ProgramNode(TyAstNode {
+                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
                             content:
-                                TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(
-                                    decl_id,
-                                )),
+                                ty::TyAstNodeContent::Declaration(
+                                    ty::TyDeclaration::FunctionDeclaration(decl_id),
+                                ),
                             ..
                         }) => {
                             let function_decl = de_get_function(decl_id.clone(), &decl_id.span())?;
                             function_decl.visibility == Visibility::Public
                         }
-                        ControlFlowGraphNode::ProgramNode(TyAstNode {
+                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
                             content:
-                                TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(
+                                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(
                                     decl_id,
                                 )),
                             ..
                         }) => de_get_trait(decl_id.clone(), &decl_id.span())?
                             .visibility
                             .is_public(),
-                        ControlFlowGraphNode::ProgramNode(TyAstNode {
+                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
                             content:
-                                TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(
+                                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(
                                     decl_id,
                                 )),
                             ..
@@ -171,16 +170,18 @@ impl ControlFlowGraph {
                             let struct_decl = de_get_struct(decl_id.clone(), &decl_id.span())?;
                             struct_decl.visibility == Visibility::Public
                         }
-                        ControlFlowGraphNode::ProgramNode(TyAstNode {
+                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
                             content:
-                                TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait { .. }),
+                                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait {
+                                    ..
+                                }),
                             ..
                         }) => true,
-                        ControlFlowGraphNode::ProgramNode(TyAstNode {
+                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
                             content:
-                                TyAstNodeContent::Declaration(ty::TyDeclaration::ConstantDeclaration(
-                                    decl_id,
-                                )),
+                                ty::TyAstNodeContent::Declaration(
+                                    ty::TyDeclaration::ConstantDeclaration(decl_id),
+                                ),
                             ..
                         }) => {
                             let decl = de_get_constant(decl_id.clone(), &decl_id.span())?;
@@ -200,7 +201,7 @@ impl ControlFlowGraph {
 }
 
 fn connect_node(
-    node: &TyAstNode,
+    node: &ty::TyAstNode,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
@@ -209,7 +210,7 @@ fn connect_node(
     //    let mut graph = graph.clone();
     let span = node.span.clone();
     Ok(match &node.content {
-        TyAstNodeContent::ImplicitReturnExpression(expr) => {
+        ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
             let this_index = graph.add_node(node.into());
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());
@@ -234,7 +235,7 @@ fn connect_node(
             }
             (return_contents, None)
         }
-        TyAstNodeContent::Expression(ty::TyExpression {
+        ty::TyAstNodeContent::Expression(ty::TyExpression {
             expression: expr_variant,
             span,
             ..
@@ -259,8 +260,8 @@ fn connect_node(
                 exit_node,
             )
         }
-        TyAstNodeContent::SideEffect => (leaves.to_vec(), exit_node),
-        TyAstNodeContent::Declaration(decl) => {
+        ty::TyAstNodeContent::SideEffect => (leaves.to_vec(), exit_node),
+        ty::TyAstNodeContent::Declaration(decl) => {
             // all leaves connect to this node, then this node is the singular leaf
             let decl_node = graph.add_node(node.into());
             for leaf in leaves {
@@ -1234,31 +1235,31 @@ fn connect_enum_instantiation(
     Ok(vec![enum_instantiation_exit_idx])
 }
 
-/// Given a [TyAstNode] that we know is not reached in the graph, construct a warning
+/// Given a [ty::TyAstNode] that we know is not reached in the graph, construct a warning
 /// representing its unreached status. For example, we want to say "this function is never called"
 /// if the node is a function declaration, but "this trait is never used" if it is a trait
 /// declaration.
-fn construct_dead_code_warning_from_node(node: &TyAstNode) -> Option<CompileWarning> {
+fn construct_dead_code_warning_from_node(node: &ty::TyAstNode) -> Option<CompileWarning> {
     Some(match node {
         // if this is a function, struct, or trait declaration that is never called, then it is dead
         // code.
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(_)),
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(_)),
             span,
             ..
         } => CompileWarning {
             span: span.clone(),
             warning_content: Warning::DeadFunctionDeclaration,
         },
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration { .. }),
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration { .. }),
             span,
         } => CompileWarning {
             span: span.clone(),
             warning_content: Warning::DeadStructDeclaration,
         },
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(decl_id)),
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(decl_id)),
             ..
         } => {
             let span = match de_get_trait(decl_id.clone(), &decl_id.span()) {
@@ -1270,8 +1271,8 @@ fn construct_dead_code_warning_from_node(node: &TyAstNode) -> Option<CompileWarn
                 warning_content: Warning::DeadTrait,
             }
         }
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)),
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)),
             span,
         } => match de_get_impl_trait(decl_id.clone(), span) {
             Ok(ty::TyImplTrait { methods, .. }) if methods.is_empty() => return None,
@@ -1280,30 +1281,30 @@ fn construct_dead_code_warning_from_node(node: &TyAstNode) -> Option<CompileWarn
                 warning_content: Warning::DeadDeclaration,
             },
         },
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(ty::TyDeclaration::AbiDeclaration { .. }),
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::AbiDeclaration { .. }),
             ..
         } => return None,
         // We handle storage fields individually. There is no need to emit any warnings for the
         // storage declaration itself.
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(ty::TyDeclaration::StorageDeclaration { .. }),
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StorageDeclaration { .. }),
             ..
         } => return None,
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(..),
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(..),
             span,
         } => CompileWarning {
             span: span.clone(),
             warning_content: Warning::DeadDeclaration,
         },
         // Otherwise, this is unreachable.
-        TyAstNode {
+        ty::TyAstNode {
             span,
             content:
-                TyAstNodeContent::ImplicitReturnExpression(_)
-                | TyAstNodeContent::Expression(_)
-                | TyAstNodeContent::SideEffect,
+                ty::TyAstNodeContent::ImplicitReturnExpression(_)
+                | ty::TyAstNodeContent::Expression(_)
+                | ty::TyAstNodeContent::SideEffect,
         } => CompileWarning {
             span: span.clone(),
             warning_content: Warning::UnreachableCode,

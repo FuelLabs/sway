@@ -1,4 +1,4 @@
-use crate::{semantic_analysis::TyAstNode, type_system::*, types::DeterministicallyAborts};
+use crate::{language::ty::*, type_system::*, types::DeterministicallyAborts};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TyCodeBlock {

@@ -3,7 +3,6 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     declaration_engine::*,
     language::{ty::*, Purity, Visibility},
-    semantic_analysis::*,
     type_system::*,
     AttributesMap,
 };

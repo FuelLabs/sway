@@ -48,7 +48,7 @@ impl ty::TyMatchBranch {
 
         // for every item in the declarations map, create a variable declaration,
         // insert it into the branch namespace, and add it to a block of code statements
-        let mut code_block_contents: Vec<TyAstNode> = vec![];
+        let mut code_block_contents: Vec<ty::TyAstNode> = vec![];
         for (left_decl, right_decl) in match_decl_map.into_iter() {
             let type_ascription = right_decl.return_type;
             let span = left_decl.span().clone();
@@ -61,8 +61,8 @@ impl ty::TyMatchBranch {
                     type_ascription_span: None,
                 }));
             ctx.namespace.insert_symbol(left_decl, var_decl.clone());
-            code_block_contents.push(TyAstNode {
-                content: TyAstNodeContent::Declaration(var_decl),
+            code_block_contents.push(ty::TyAstNode {
+                content: ty::TyAstNodeContent::Declaration(var_decl),
                 span,
             });
         }
@@ -104,8 +104,8 @@ impl ty::TyMatchBranch {
                 code_block_contents.append(&mut contents);
             }
             typed_result_expression_variant => {
-                code_block_contents.push(TyAstNode {
-                    content: TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
+                code_block_contents.push(ty::TyAstNode {
+                    content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
                         expression: typed_result_expression_variant,
                         return_type: typed_result_return_type,
                         is_constant: typed_result_is_constant,

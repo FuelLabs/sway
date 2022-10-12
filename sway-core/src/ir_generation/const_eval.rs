@@ -345,16 +345,16 @@ fn const_eval_typed_expr(
 fn const_eval_typed_ast_node(
     lookup: &mut LookupEnv,
     known_consts: &mut MappedStack<Ident, Constant>,
-    expr: &TyAstNode,
+    expr: &ty::TyAstNode,
 ) -> Option<Constant> {
     match &expr.content {
-        TyAstNodeContent::Declaration(_) => {
+        ty::TyAstNodeContent::Declaration(_) => {
             // TODO: add the binding to known_consts (if it's a const) and proceed.
             None
         }
-        TyAstNodeContent::Expression(e) | TyAstNodeContent::ImplicitReturnExpression(e) => {
+        ty::TyAstNodeContent::Expression(e) | ty::TyAstNodeContent::ImplicitReturnExpression(e) => {
             const_eval_typed_expr(lookup, known_consts, e)
         }
-        TyAstNodeContent::SideEffect => None,
+        ty::TyAstNodeContent::SideEffect => None,
     }
 }

@@ -124,14 +124,14 @@ impl Module {
             };
             let mut ns = Namespace::init_root(Default::default());
             let type_check_ctx = TypeCheckContext::from_root(&mut ns);
-            let typed_node =
-                TyAstNode::type_check(type_check_ctx, ast_node).unwrap(&mut vec![], &mut vec![]);
+            let typed_node = ty::TyAstNode::type_check(type_check_ctx, ast_node)
+                .unwrap(&mut vec![], &mut vec![]);
             // get the decl out of the typed node:
             // we know as an invariant this must be a const decl, as we hardcoded a const decl in
             // the above `format!`.  if it isn't we report an
             // error that only constant items are alowed, defensive programming etc...
             let typed_decl = match typed_node.content {
-                TyAstNodeContent::Declaration(decl) => decl,
+                ty::TyAstNodeContent::Declaration(decl) => decl,
                 _ => {
                     errors.push(CompileError::ConfigTimeConstantNotAConstDecl {
                         span: const_item_span,

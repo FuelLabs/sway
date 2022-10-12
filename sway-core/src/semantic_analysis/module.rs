@@ -52,12 +52,12 @@ impl ty::TyModule {
     fn type_check_nodes(
         mut ctx: TypeCheckContext,
         nodes: Vec<AstNode>,
-    ) -> CompileResult<Vec<TyAstNode>> {
+    ) -> CompileResult<Vec<ty::TyAstNode>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let typed_nodes = nodes
             .into_iter()
-            .map(|node| TyAstNode::type_check(ctx.by_ref(), node))
+            .map(|node| ty::TyAstNode::type_check(ctx.by_ref(), node))
             .filter_map(|res| res.ok(&mut warnings, &mut errors))
             .collect();
         ok(typed_nodes, warnings, errors)
@@ -91,10 +91,14 @@ impl ty::TySubmodule {
 ///
 /// This nicely works for transitive supertraits as well.
 ///
-fn check_supertraits(typed_tree_nodes: &[TyAstNode], namespace: &Namespace) -> Vec<CompileError> {
+fn check_supertraits(
+    typed_tree_nodes: &[ty::TyAstNode],
+    namespace: &Namespace,
+) -> Vec<CompileError> {
     let mut errors = vec![];
     for node in typed_tree_nodes {
-        if let TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)) = &node.content
+        if let ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)) =
+            &node.content
         {
             let ty::TyImplTrait {
                 trait_name,
@@ -122,7 +126,7 @@ fn check_supertraits(typed_tree_nodes: &[TyAstNode], namespace: &Namespace) -> V
                 };
                 for supertrait in &tr.supertraits {
                     if !typed_tree_nodes.iter().any(|search_node| {
-                        if let TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(
+                        if let ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(
                             decl_id,
                         )) = &search_node.content
                         {

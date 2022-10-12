@@ -3,8 +3,6 @@ pub mod declaration;
 pub mod expression;
 pub mod mode;
 
-use std::fmt;
-
 pub use declaration::*;
 pub(crate) use expression::*;
 pub(crate) use mode::*;
@@ -29,8 +27,6 @@ use sway_error::{
 };
 use sway_types::{span::Span, state::StateIndex, style::is_screaming_snake_case, Spanned};
 
-use derivative::Derivative;
-
 /// whether or not something is constantly evaluatable (if the result is known at compile
 /// time)
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -39,80 +35,10 @@ pub(crate) enum IsConstant {
     No,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum TyAstNodeContent {
-    Declaration(ty::TyDeclaration),
-    Expression(ty::TyExpression),
-    ImplicitReturnExpression(ty::TyExpression),
-    // a no-op node used for something that just issues a side effect, like an import statement.
-    SideEffect,
-}
-
-impl CollectTypesMetadata for TyAstNodeContent {
-    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
-        use TyAstNodeContent::*;
-        match self {
-            Declaration(decl) => decl.collect_types_metadata(),
-            Expression(expr) => expr.collect_types_metadata(),
-            ImplicitReturnExpression(expr) => expr.collect_types_metadata(),
-            SideEffect => ok(vec![], vec![], vec![]),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, Derivative)]
-#[derivative(PartialEq)]
-pub struct TyAstNode {
-    pub content: TyAstNodeContent,
-    #[derivative(PartialEq = "ignore")]
-    pub(crate) span: Span,
-}
-
-impl fmt::Display for TyAstNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use TyAstNodeContent::*;
-        let text = match &self.content {
-            Declaration(ref typed_decl) => typed_decl.to_string(),
-            Expression(exp) => exp.to_string(),
-            ImplicitReturnExpression(exp) => format!("return {}", exp),
-            SideEffect => "".into(),
-        };
-        f.write_str(&text)
-    }
-}
-
-impl CopyTypes for TyAstNode {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        match self.content {
-            TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => exp.copy_types(type_mapping),
-            TyAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
-            TyAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
-            TyAstNodeContent::SideEffect => (),
-        }
-    }
-}
-
-impl CollectTypesMetadata for TyAstNode {
-    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
-        self.content.collect_types_metadata()
-    }
-}
-
-impl DeterministicallyAborts for TyAstNode {
-    fn deterministically_aborts(&self) -> bool {
-        use TyAstNodeContent::*;
-        match &self.content {
-            Declaration(_) => false,
-            Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
-            SideEffect => false,
-        }
-    }
-}
-
-impl TyAstNode {
+impl ty::TyAstNode {
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
     pub(crate) fn is_public(&self) -> CompileResult<bool> {
-        use TyAstNodeContent::*;
+        use ty::TyAstNodeContent::*;
         let mut warnings = vec![];
         let mut errors = vec![];
         let public = match &self.content {
@@ -136,10 +62,10 @@ impl TyAstNode {
         let mut warnings = vec![];
         let mut errors = vec![];
         match &self {
-            TyAstNode {
+            ty::TyAstNode {
                 span,
                 content:
-                    TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(decl_id)),
+                    ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(decl_id)),
                 ..
             } => {
                 let ty::TyFunctionDeclaration { name, .. } = check!(
@@ -162,19 +88,21 @@ impl TyAstNode {
     /// _only_ for explicit returns.
     pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
         match &self.content {
-            TyAstNodeContent::ImplicitReturnExpression(ref exp) => exp.gather_return_statements(),
+            ty::TyAstNodeContent::ImplicitReturnExpression(ref exp) => {
+                exp.gather_return_statements()
+            }
             // assignments and  reassignments can happen during control flow and can abort
-            TyAstNodeContent::Declaration(ty::TyDeclaration::VariableDeclaration(decl)) => {
+            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::VariableDeclaration(decl)) => {
                 decl.body.gather_return_statements()
             }
-            TyAstNodeContent::Expression(exp) => exp.gather_return_statements(),
-            TyAstNodeContent::SideEffect | TyAstNodeContent::Declaration(_) => vec![],
+            ty::TyAstNodeContent::Expression(exp) => exp.gather_return_statements(),
+            ty::TyAstNodeContent::SideEffect | ty::TyAstNodeContent::Declaration(_) => vec![],
         }
     }
 
     fn type_info(&self) -> TypeInfo {
         // return statement should be ()
-        use TyAstNodeContent::*;
+        use ty::TyAstNodeContent::*;
         match &self.content {
             Declaration(_) => TypeInfo::Tuple(Vec::new()),
             Expression(ty::TyExpression { return_type, .. }) => {
@@ -212,7 +140,7 @@ impl TyAstNode {
                 ty::TyExpression::type_check(ctx, expr)
             };
 
-        let node = TyAstNode {
+        let node = ty::TyAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
                     let path = if a.is_absolute {
@@ -227,11 +155,11 @@ impl TyAstNode {
                     };
                     warnings.append(&mut res.warnings);
                     errors.append(&mut res.errors);
-                    TyAstNodeContent::SideEffect
+                    ty::TyAstNodeContent::SideEffect
                 }
-                AstNodeContent::IncludeStatement(_) => TyAstNodeContent::SideEffect,
+                AstNodeContent::IncludeStatement(_) => ty::TyAstNodeContent::SideEffect,
                 AstNodeContent::Declaration(a) => {
-                    TyAstNodeContent::Declaration(match a {
+                    ty::TyAstNodeContent::Declaration(match a {
                         Declaration::VariableDeclaration(VariableDeclaration {
                             name,
                             type_ascription,
@@ -488,7 +416,7 @@ impl TyAstNode {
                         warnings,
                         errors
                     );
-                    TyAstNodeContent::Expression(inner)
+                    ty::TyAstNodeContent::Expression(inner)
                 }
                 AstNodeContent::ImplicitReturnExpression(expr) => {
                     let ctx =
@@ -499,14 +427,14 @@ impl TyAstNode {
                         warnings,
                         errors
                     );
-                    TyAstNodeContent::ImplicitReturnExpression(typed_expr)
+                    ty::TyAstNodeContent::ImplicitReturnExpression(typed_expr)
                 }
             },
             span: node.span.clone(),
         };
 
-        if let TyAstNode {
-            content: TyAstNodeContent::Expression(ty::TyExpression { .. }),
+        if let ty::TyAstNode {
+            content: ty::TyAstNodeContent::Expression(ty::TyExpression { .. }),
             ..
         } = node
         {

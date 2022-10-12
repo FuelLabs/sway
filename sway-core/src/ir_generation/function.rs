@@ -109,11 +109,11 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_node: TyAstNode,
+        ast_node: ty::TyAstNode,
     ) -> Result<Option<Value>, CompileError> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_node.span);
         match ast_node.content {
-            TyAstNodeContent::Declaration(td) => match td {
+            ty::TyAstNodeContent::Declaration(td) => match td {
                 ty::TyDeclaration::VariableDeclaration(tvd) => {
                     self.compile_var_decl(context, md_mgr, *tvd, span_md_idx)
                 }
@@ -176,7 +176,7 @@ impl FnCompiler {
                     })
                 }
             },
-            TyAstNodeContent::Expression(te) => {
+            ty::TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.
                 let value = self.compile_expression(context, md_mgr, te)?;
                 if value.is_diverging(context) {
@@ -185,13 +185,13 @@ impl FnCompiler {
                     Ok(None)
                 }
             }
-            TyAstNodeContent::ImplicitReturnExpression(te) => {
+            ty::TyAstNodeContent::ImplicitReturnExpression(te) => {
                 let value = self.compile_expression(context, md_mgr, te)?;
                 Ok(Some(value))
             }
             // a side effect can be () because it just impacts the type system/namespacing.
             // There should be no new IR generated.
-            TyAstNodeContent::SideEffect => Ok(None),
+            ty::TyAstNodeContent::SideEffect => Ok(None),
         }
     }
 

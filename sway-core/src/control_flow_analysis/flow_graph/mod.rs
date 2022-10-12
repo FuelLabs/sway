@@ -1,7 +1,7 @@
 //! This is the flow graph, a graph which contains edges that represent possible steps of program
 //! execution.
 
-use crate::{language::ty, semantic_analysis::TyAstNode, Ident};
+use crate::{language::ty, Ident};
 
 use sway_types::span::Span;
 
@@ -46,7 +46,7 @@ impl std::convert::From<&str> for ControlFlowGraphEdge {
 pub enum ControlFlowGraphNode {
     OrganizationalDominator(String),
     #[allow(clippy::large_enum_variant)]
-    ProgramNode(TyAstNode),
+    ProgramNode(ty::TyAstNode),
     EnumVariant {
         variant_name: Ident,
         is_public: bool,
@@ -95,8 +95,8 @@ impl std::convert::From<&ty::TyStorageField> for ControlFlowGraphNode {
     }
 }
 
-impl std::convert::From<&TyAstNode> for ControlFlowGraphNode {
-    fn from(other: &TyAstNode) -> Self {
+impl std::convert::From<&ty::TyAstNode> for ControlFlowGraphNode {
+    fn from(other: &ty::TyAstNode) -> Self {
         ControlFlowGraphNode::ProgramNode(other.clone())
     }
 }
