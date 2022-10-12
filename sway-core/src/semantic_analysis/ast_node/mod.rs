@@ -525,7 +525,7 @@ impl TyAstNode {
 fn type_check_interface_surface(
     interface_surface: Vec<TraitFn>,
     namespace: &mut Namespace,
-) -> CompileResult<Vec<TyTraitFn>> {
+) -> CompileResult<Vec<ty::TyTraitFn>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut typed_surface = vec![];
@@ -564,7 +564,7 @@ fn type_check_interface_surface(
             errors,
         );
 
-        typed_surface.push(TyTraitFn {
+        typed_surface.push(ty::TyTraitFn {
             name,
             purity,
             return_type_span,

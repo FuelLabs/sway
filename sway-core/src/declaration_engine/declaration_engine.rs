@@ -4,13 +4,7 @@ use sway_error::error::CompileError;
 use sway_types::{Span, Spanned};
 
 use crate::{
-    concurrent_slab::ConcurrentSlab,
-    language::ty,
-    semantic_analysis::{
-        TyAbiDeclaration, TyEnumDeclaration, TyImplTrait, TyStorageDeclaration,
-        TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
-    },
-    TyFunctionDeclaration,
+    concurrent_slab::ConcurrentSlab, language::ty, semantic_analysis::*, TyFunctionDeclaration,
 };
 
 use super::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper};
@@ -119,7 +113,7 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_trait(span)
     }
 
-    fn insert_trait_fn(&self, trait_fn: TyTraitFn) -> DeclarationId {
+    fn insert_trait_fn(&self, trait_fn: ty::TyTraitFn) -> DeclarationId {
         let span = trait_fn.name.span();
         DeclarationId::new(
             self.slab.insert(DeclarationWrapper::TraitFn(trait_fn)),
@@ -127,7 +121,11 @@ impl DeclarationEngine {
         )
     }
 
-    fn get_trait_fn(&self, index: DeclarationId, span: &Span) -> Result<TyTraitFn, CompileError> {
+    fn get_trait_fn(
+        &self,
+        index: DeclarationId,
+        span: &Span,
+    ) -> Result<ty::TyTraitFn, CompileError> {
         self.slab.get(*index).expect_trait_fn(span)
     }
 
@@ -290,14 +288,14 @@ pub fn de_get_trait(index: DeclarationId, span: &Span) -> Result<TyTraitDeclarat
     DECLARATION_ENGINE.get_trait(index, span)
 }
 
-pub(crate) fn de_insert_trait_fn(trait_fn: TyTraitFn) -> DeclarationId {
+pub(crate) fn de_insert_trait_fn(trait_fn: ty::TyTraitFn) -> DeclarationId {
     DECLARATION_ENGINE.insert_trait_fn(trait_fn)
 }
 
 pub(crate) fn de_get_trait_fn(
     index: DeclarationId,
     span: &Span,
-) -> Result<TyTraitFn, CompileError> {
+) -> Result<ty::TyTraitFn, CompileError> {
     DECLARATION_ENGINE.get_trait_fn(index, span)
 }
 
