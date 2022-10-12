@@ -15,459 +15,31 @@ pub(crate) use self::{
 use crate::{
     declaration_engine::declaration_engine::*,
     error::*,
-    language::{parsed::*, *},
+    language::{
+        parsed::*,
+        ty::{self, TyExpression},
+        *,
+    },
     semantic_analysis::*,
     type_system::*,
-    types::DeterministicallyAborts,
 };
 
 use sway_ast::intrinsics::Intrinsic;
-use sway_error::error::CompileError;
-use sway_types::{Ident, Span, Spanned};
-
-use std::{
-    collections::{HashMap, VecDeque},
-    fmt,
+use sway_error::{
+    error::CompileError,
+    warning::{CompileWarning, Warning},
 };
+use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
 
-#[derive(Clone, Debug, Eq)]
-pub struct TyExpression {
-    pub expression: TyExpressionVariant,
-    pub return_type: TypeId,
-    /// whether or not this expression is constantly evaluable (if the result is known at compile
-    /// time)
-    pub(crate) is_constant: IsConstant,
-    pub span: Span,
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyExpression {
-    fn eq(&self, other: &Self) -> bool {
-        self.expression == other.expression
-            && look_up_type_id(self.return_type) == look_up_type_id(other.return_type)
-            && self.is_constant == other.is_constant
-    }
-}
-
-impl CopyTypes for TyExpression {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.return_type.copy_types(type_mapping);
-        self.expression.copy_types(type_mapping);
-    }
-}
-
-impl fmt::Display for TyExpression {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{} ({})",
-            self.expression,
-            look_up_type_id(self.return_type)
-        )
-    }
-}
-
-impl CollectTypesMetadata for TyExpression {
-    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
-        use TyExpressionVariant::*;
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let mut res = check!(
-            self.return_type.collect_types_metadata(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        match &self.expression {
-            FunctionApplication {
-                arguments,
-                function_decl,
-                ..
-            } => {
-                for arg in arguments.iter() {
-                    res.append(&mut check!(
-                        arg.1.collect_types_metadata(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-                for content in function_decl.body.contents.iter() {
-                    res.append(&mut check!(
-                        content.collect_types_metadata(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-            }
-            Tuple { fields } => {
-                for field in fields.iter() {
-                    res.append(&mut check!(
-                        field.collect_types_metadata(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-            }
-            AsmExpression { registers, .. } => {
-                for register in registers.iter() {
-                    if let Some(init) = register.initializer.as_ref() {
-                        res.append(&mut check!(
-                            init.collect_types_metadata(),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ));
-                    }
-                }
-            }
-            StructExpression { fields, .. } => {
-                for field in fields.iter() {
-                    res.append(&mut check!(
-                        field.value.collect_types_metadata(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-            }
-            LazyOperator { lhs, rhs, .. } => {
-                res.append(&mut check!(
-                    lhs.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-                res.append(&mut check!(
-                    rhs.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-            }
-            Array { contents } => {
-                for content in contents.iter() {
-                    res.append(&mut check!(
-                        content.collect_types_metadata(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-            }
-            ArrayIndex { prefix, index } => {
-                res.append(&mut check!(
-                    (**prefix).collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-                res.append(&mut check!(
-                    (**index).collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-            }
-            CodeBlock(block) => {
-                for content in block.contents.iter() {
-                    res.append(&mut check!(
-                        content.collect_types_metadata(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-            }
-            IfExp {
-                condition,
-                then,
-                r#else,
-            } => {
-                res.append(&mut check!(
-                    condition.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-                res.append(&mut check!(
-                    then.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-                if let Some(r#else) = r#else {
-                    res.append(&mut check!(
-                        r#else.collect_types_metadata(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-            }
-            StructFieldAccess {
-                prefix,
-                resolved_type_of_parent,
-                ..
-            } => {
-                res.append(&mut check!(
-                    prefix.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-                res.append(&mut check!(
-                    resolved_type_of_parent.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-            }
-            TupleElemAccess {
-                prefix,
-                resolved_type_of_parent,
-                ..
-            } => {
-                res.append(&mut check!(
-                    prefix.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-                res.append(&mut check!(
-                    resolved_type_of_parent.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-            }
-            EnumInstantiation {
-                enum_decl,
-                contents,
-                ..
-            } => {
-                if let Some(contents) = contents {
-                    res.append(&mut check!(
-                        contents.collect_types_metadata(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-                for variant in enum_decl.variants.iter() {
-                    res.append(&mut check!(
-                        variant.type_id.collect_types_metadata(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-                for type_param in enum_decl.type_parameters.iter() {
-                    res.append(&mut check!(
-                        type_param.type_id.collect_types_metadata(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-            }
-            AbiCast { address, .. } => {
-                res.append(&mut check!(
-                    address.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-            }
-            IntrinsicFunction(kind) => {
-                res.append(&mut check!(
-                    kind.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-            }
-            EnumTag { exp } => {
-                res.append(&mut check!(
-                    exp.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-            }
-            UnsafeDowncast { exp, variant } => {
-                res.append(&mut check!(
-                    exp.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-                res.append(&mut check!(
-                    variant.type_id.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-            }
-            WhileLoop { condition, body } => {
-                res.append(&mut check!(
-                    condition.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-                for content in body.contents.iter() {
-                    res.append(&mut check!(
-                        content.collect_types_metadata(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-            }
-            Return(stmt) => res.append(&mut check!(
-                stmt.expr.collect_types_metadata(),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )),
-            // storage access can never be generic
-            // variable expressions don't ever have return types themselves, they're stored in
-            // `TyExpression::return_type`. Variable expressions are just names of variables.
-            VariableExpression { .. }
-            | StorageAccess { .. }
-            | Literal(_)
-            | AbiName(_)
-            | Break
-            | Continue
-            | FunctionParameter => {}
-            Reassignment(reassignment) => {
-                res.append(&mut check!(
-                    reassignment.rhs.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-            }
-            StorageReassignment(storage_reassignment) => {
-                for field in storage_reassignment.fields.iter() {
-                    res.append(&mut check!(
-                        field.type_id.collect_types_metadata(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-                res.append(&mut check!(
-                    storage_reassignment.rhs.collect_types_metadata(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-            }
-        }
-        ok(res, warnings, errors)
-    }
-}
-
-impl DeterministicallyAborts for TyExpression {
-    fn deterministically_aborts(&self) -> bool {
-        use TyExpressionVariant::*;
-        match &self.expression {
-            FunctionApplication {
-                function_decl,
-                arguments,
-                ..
-            } => {
-                function_decl.body.deterministically_aborts()
-                    || arguments.iter().any(|(_, x)| x.deterministically_aborts())
-            }
-            Tuple { fields, .. } => fields.iter().any(|x| x.deterministically_aborts()),
-            Array { contents, .. } => contents.iter().any(|x| x.deterministically_aborts()),
-            CodeBlock(contents) => contents.deterministically_aborts(),
-            LazyOperator { lhs, .. } => lhs.deterministically_aborts(),
-            StructExpression { fields, .. } => {
-                fields.iter().any(|x| x.value.deterministically_aborts())
-            }
-            EnumInstantiation { contents, .. } => contents
-                .as_ref()
-                .map(|x| x.deterministically_aborts())
-                .unwrap_or(false),
-            AbiCast { address, .. } => address.deterministically_aborts(),
-            StructFieldAccess { .. }
-            | Literal(_)
-            | StorageAccess { .. }
-            | VariableExpression { .. }
-            | FunctionParameter
-            | TupleElemAccess { .. } => false,
-            IntrinsicFunction(kind) => kind.deterministically_aborts(),
-            ArrayIndex { prefix, index } => {
-                prefix.deterministically_aborts() || index.deterministically_aborts()
-            }
-            AsmExpression { registers, .. } => registers.iter().any(|x| {
-                x.initializer
-                    .as_ref()
-                    .map(|x| x.deterministically_aborts())
-                    .unwrap_or(false)
-            }),
-            IfExp {
-                condition,
-                then,
-                r#else,
-                ..
-            } => {
-                condition.deterministically_aborts()
-                    || (then.deterministically_aborts()
-                        && r#else
-                            .as_ref()
-                            .map(|x| x.deterministically_aborts())
-                            .unwrap_or(false))
-            }
-            AbiName(_) => false,
-            EnumTag { exp } => exp.deterministically_aborts(),
-            UnsafeDowncast { exp, .. } => exp.deterministically_aborts(),
-            WhileLoop { condition, body } => {
-                condition.deterministically_aborts() || body.deterministically_aborts()
-            }
-            Break => false,
-            Continue => false,
-            Reassignment(reassignment) => reassignment.rhs.deterministically_aborts(),
-            StorageReassignment(storage_reassignment) => {
-                storage_reassignment.rhs.deterministically_aborts()
-            }
-            // TODO: Is this correct?
-            // I'm not sure what this function is supposed to do exactly. It's called
-            // "deterministically_aborts" which I thought meant it checks for an abort/panic, but
-            // it's actually checking for returns.
-            //
-            // Also, is it necessary to check the expression to see if avoids the return? eg.
-            // someone could write `return break;` in a loop, which would mean the return never
-            // gets executed.
-            Return(..) => true,
-        }
-    }
-}
-
-pub(crate) fn error_recovery_expr(span: Span) -> TyExpression {
-    TyExpression {
-        expression: TyExpressionVariant::Tuple { fields: vec![] },
-        return_type: crate::type_system::insert_type(TypeInfo::ErrorRecovery),
-        is_constant: IsConstant::No,
-        span,
-    }
-}
+use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
-impl TyExpression {
+impl ty::TyExpression {
     pub(crate) fn core_ops_eq(
         ctx: TypeCheckContext,
-        arguments: Vec<TyExpression>,
+        arguments: Vec<ty::TyExpression>,
         span: Span,
-    ) -> CompileResult<TyExpression> {
+    ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let call_path = CallPath {
@@ -512,9 +84,9 @@ impl TyExpression {
     /// do indeed return the correct type
     /// This does _not_ extract implicit return statements as those are not control flow! This is
     /// _only_ for explicit returns.
-    pub(crate) fn gather_return_statements(&self) -> Vec<&TyReturnStatement> {
+    pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
         match &self.expression {
-            TyExpressionVariant::IfExp {
+            ty::TyExpressionVariant::IfExp {
                 condition,
                 then,
                 r#else,
@@ -526,65 +98,65 @@ impl TyExpression {
                 }
                 buf
             }
-            TyExpressionVariant::CodeBlock(TyCodeBlock { contents, .. }) => {
+            ty::TyExpressionVariant::CodeBlock(TyCodeBlock { contents, .. }) => {
                 let mut buf = vec![];
                 for node in contents {
                     buf.append(&mut node.gather_return_statements())
                 }
                 buf
             }
-            TyExpressionVariant::WhileLoop { condition, body } => {
+            ty::TyExpressionVariant::WhileLoop { condition, body } => {
                 let mut buf = condition.gather_return_statements();
                 for node in &body.contents {
                     buf.append(&mut node.gather_return_statements())
                 }
                 buf
             }
-            TyExpressionVariant::Reassignment(reassignment) => {
+            ty::TyExpressionVariant::Reassignment(reassignment) => {
                 reassignment.rhs.gather_return_statements()
             }
-            TyExpressionVariant::StorageReassignment(storage_reassignment) => {
+            ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {
                 storage_reassignment.rhs.gather_return_statements()
             }
-            TyExpressionVariant::LazyOperator { lhs, rhs, .. } => [lhs, rhs]
+            ty::TyExpressionVariant::LazyOperator { lhs, rhs, .. } => [lhs, rhs]
                 .into_iter()
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
-            TyExpressionVariant::Tuple { fields } => fields
+            ty::TyExpressionVariant::Tuple { fields } => fields
                 .iter()
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
-            TyExpressionVariant::Array { contents } => contents
+            ty::TyExpressionVariant::Array { contents } => contents
                 .iter()
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
-            TyExpressionVariant::ArrayIndex { prefix, index } => [prefix, index]
+            ty::TyExpressionVariant::ArrayIndex { prefix, index } => [prefix, index]
                 .into_iter()
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
-            TyExpressionVariant::StructFieldAccess { prefix, .. } => {
+            ty::TyExpressionVariant::StructFieldAccess { prefix, .. } => {
                 prefix.gather_return_statements()
             }
-            TyExpressionVariant::TupleElemAccess { prefix, .. } => {
+            ty::TyExpressionVariant::TupleElemAccess { prefix, .. } => {
                 prefix.gather_return_statements()
             }
-            TyExpressionVariant::EnumInstantiation { contents, .. } => contents
+            ty::TyExpressionVariant::EnumInstantiation { contents, .. } => contents
                 .iter()
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
-            TyExpressionVariant::AbiCast { address, .. } => address.gather_return_statements(),
-            TyExpressionVariant::IntrinsicFunction(intrinsic_function_kind) => {
+            ty::TyExpressionVariant::AbiCast { address, .. } => address.gather_return_statements(),
+            ty::TyExpressionVariant::IntrinsicFunction(intrinsic_function_kind) => {
                 intrinsic_function_kind
                     .arguments
                     .iter()
                     .flat_map(|expr| expr.gather_return_statements())
                     .collect()
             }
-            TyExpressionVariant::StructExpression { fields, .. } => fields
+            ty::TyExpressionVariant::StructExpression { fields, .. } => fields
                 .iter()
                 .flat_map(|field| field.value.gather_return_statements())
                 .collect(),
-            TyExpressionVariant::FunctionApplication {
+            ty::TyExpressionVariant::FunctionApplication {
                 contract_call_params,
                 arguments,
                 selector,
@@ -599,29 +171,29 @@ impl TyExpression {
                 )
                 .flat_map(|expr| expr.gather_return_statements())
                 .collect(),
-            TyExpressionVariant::EnumTag { exp } => exp.gather_return_statements(),
-            TyExpressionVariant::UnsafeDowncast { exp, .. } => exp.gather_return_statements(),
+            ty::TyExpressionVariant::EnumTag { exp } => exp.gather_return_statements(),
+            ty::TyExpressionVariant::UnsafeDowncast { exp, .. } => exp.gather_return_statements(),
 
-            TyExpressionVariant::Return(stmt) => {
-                vec![stmt]
+            ty::TyExpressionVariant::Return(exp) => {
+                vec![exp]
             }
             // if it is impossible for an expression to contain a return _statement_ (not an
             // implicit return!), put it in the pattern below.
-            TyExpressionVariant::Literal(_)
-            | TyExpressionVariant::FunctionParameter { .. }
-            | TyExpressionVariant::AsmExpression { .. }
-            | TyExpressionVariant::VariableExpression { .. }
-            | TyExpressionVariant::AbiName(_)
-            | TyExpressionVariant::StorageAccess { .. }
-            | TyExpressionVariant::Break
-            | TyExpressionVariant::Continue => vec![],
+            ty::TyExpressionVariant::Literal(_)
+            | ty::TyExpressionVariant::FunctionParameter { .. }
+            | ty::TyExpressionVariant::AsmExpression { .. }
+            | ty::TyExpressionVariant::VariableExpression { .. }
+            | ty::TyExpressionVariant::AbiName(_)
+            | ty::TyExpressionVariant::StorageAccess { .. }
+            | ty::TyExpressionVariant::Break
+            | ty::TyExpressionVariant::Continue => vec![],
         }
     }
 
     /// gathers the mutability of the expressions within
     pub(crate) fn gather_mutability(&self) -> VariableMutability {
         match &self.expression {
-            TyExpressionVariant::VariableExpression { mutability, .. } => *mutability,
+            ty::TyExpressionVariant::VariableExpression { mutability, .. } => *mutability,
             _ => VariableMutability::Immutable,
         }
     }
@@ -636,7 +208,7 @@ impl TyExpression {
         let span = expr_span.clone();
         let res = match expr.kind {
             // We've already emitted an error for the `::Error` case.
-            ExpressionKind::Error(_) => ok(error_recovery_expr(span), vec![], vec![]),
+            ExpressionKind::Error(_) => ok(ty::error_recovery_expr(span), vec![], vec![]),
             ExpressionKind::Literal(lit) => Self::type_check_literal(lit, span),
             ExpressionKind::Variable(name) => {
                 Self::type_check_variable_expression(ctx.namespace, name, span)
@@ -751,8 +323,8 @@ impl TyExpression {
                 Self::type_check_while_loop(ctx.by_ref(), *condition, body, span)
             }
             ExpressionKind::Break => {
-                let expr = TyExpression {
-                    expression: TyExpressionVariant::Break,
+                let expr = ty::TyExpression {
+                    expression: ty::TyExpressionVariant::Break,
                     return_type: insert_type(TypeInfo::Unknown),
                     is_constant: IsConstant::No,
                     span,
@@ -760,8 +332,8 @@ impl TyExpression {
                 ok(expr, vec![], vec![])
             }
             ExpressionKind::Continue => {
-                let expr = TyExpression {
-                    expression: TyExpressionVariant::Continue,
+                let expr = ty::TyExpression {
+                    expression: ty::TyExpressionVariant::Continue,
                     return_type: insert_type(TypeInfo::Unknown),
                     is_constant: IsConstant::No,
                     span,
@@ -791,14 +363,13 @@ impl TyExpression {
                 let mut errors = vec![];
                 let expr_span = expr.span();
                 let expr = check!(
-                    TyExpression::type_check(ctx, *expr),
-                    error_recovery_expr(expr_span),
+                    ty::TyExpression::type_check(ctx, *expr),
+                    ty::error_recovery_expr(expr_span),
                     warnings,
                     errors,
                 );
-                let stmt = TyReturnStatement { expr };
-                let typed_expr = TyExpression {
-                    expression: TyExpressionVariant::Return(Box::new(stmt)),
+                let typed_expr = ty::TyExpression {
+                    expression: ty::TyExpressionVariant::Return(Box::new(expr)),
                     return_type: insert_type(TypeInfo::Unknown),
                     // FIXME: This should be Yes?
                     is_constant: IsConstant::No,
@@ -836,7 +407,7 @@ impl TyExpression {
 
         // Literals of type Numeric can now be resolved if typed_expression.return_type is
         // an UnsignedInteger or a Numeric
-        if let TyExpressionVariant::Literal(lit) = typed_expression.clone().expression {
+        if let ty::TyExpressionVariant::Literal(lit) = typed_expression.clone().expression {
             if let Literal::Numeric(_) = lit {
                 match look_up_type_id(typed_expression.return_type) {
                     TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => {
@@ -859,7 +430,7 @@ impl TyExpression {
         ok(typed_expression, warnings, errors)
     }
 
-    fn type_check_literal(lit: Literal, span: Span) -> CompileResult<TyExpression> {
+    fn type_check_literal(lit: Literal, span: Span) -> CompileResult<ty::TyExpression> {
         let return_type = match &lit {
             Literal::String(s) => TypeInfo::Str(s.as_str().len() as u64),
             Literal::Numeric(_) => TypeInfo::Numeric,
@@ -871,8 +442,8 @@ impl TyExpression {
             Literal::B256(_) => TypeInfo::B256,
         };
         let id = crate::type_system::insert_type(return_type);
-        let exp = TyExpression {
-            expression: TyExpressionVariant::Literal(lit),
+        let exp = ty::TyExpression {
+            expression: ty::TyExpressionVariant::Literal(lit),
             return_type: id,
             is_constant: IsConstant::Yes,
             span,
@@ -884,21 +455,21 @@ impl TyExpression {
         namespace: &Namespace,
         name: Ident,
         span: Span,
-    ) -> CompileResult<TyExpression> {
+    ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let exp = match namespace.resolve_symbol(&name).value {
-            Some(TyDeclaration::VariableDeclaration(decl)) => {
+            Some(ty::TyDeclaration::VariableDeclaration(decl)) => {
                 let TyVariableDeclaration {
                     name: decl_name,
                     body,
                     mutability,
                     ..
                 } = &**decl;
-                TyExpression {
+                ty::TyExpression {
                     return_type: body.return_type,
                     is_constant: body.is_constant,
-                    expression: TyExpressionVariant::VariableExpression {
+                    expression: ty::TyExpressionVariant::VariableExpression {
                         name: decl_name.clone(),
                         span: name.span(),
                         mutability: *mutability,
@@ -906,7 +477,7 @@ impl TyExpression {
                     span,
                 }
             }
-            Some(TyDeclaration::ConstantDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
                 let TyConstantDeclaration {
                     name: decl_name,
                     value,
@@ -917,12 +488,12 @@ impl TyExpression {
                     warnings,
                     errors
                 );
-                TyExpression {
+                ty::TyExpression {
                     return_type: value.return_type,
                     is_constant: IsConstant::Yes,
                     // Although this isn't strictly a 'variable' expression we can treat it as one for
                     // this context.
-                    expression: TyExpressionVariant::VariableExpression {
+                    expression: ty::TyExpressionVariant::VariableExpression {
                         name: decl_name,
                         span: name.span(),
                         mutability: VariableMutability::Immutable,
@@ -930,17 +501,17 @@ impl TyExpression {
                     span,
                 }
             }
-            Some(TyDeclaration::AbiDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::AbiDeclaration(decl_id)) => {
                 let decl = check!(
                     CompileResult::from(de_get_abi(decl_id.clone(), &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                TyExpression {
+                ty::TyExpression {
                     return_type: decl.create_type_id(),
                     is_constant: IsConstant::Yes,
-                    expression: TyExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
+                    expression: ty::TyExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
                     span,
                 }
             }
@@ -949,13 +520,13 @@ impl TyExpression {
                     name: name.clone(),
                     what_it_is: a.friendly_name(),
                 });
-                error_recovery_expr(name.span())
+                ty::error_recovery_expr(name.span())
             }
             None => {
                 errors.push(CompileError::UnknownVariable {
                     var_name: name.clone(),
                 });
-                error_recovery_expr(name.span())
+                ty::error_recovery_expr(name.span())
             }
         };
         ok(exp, warnings, errors)
@@ -966,7 +537,7 @@ impl TyExpression {
         mut call_path_binding: TypeBinding<CallPath>,
         arguments: Vec<Expression>,
         span: Span,
-    ) -> CompileResult<TyExpression> {
+    ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -995,20 +566,20 @@ impl TyExpression {
         lhs: Expression,
         rhs: Expression,
         span: Span,
-    ) -> CompileResult<TyExpression> {
+    ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut ctx = ctx.with_help_text("");
         let typed_lhs = check!(
-            TyExpression::type_check(ctx.by_ref(), lhs.clone()),
-            error_recovery_expr(lhs.span()),
+            ty::TyExpression::type_check(ctx.by_ref(), lhs.clone()),
+            ty::error_recovery_expr(lhs.span()),
             warnings,
             errors
         );
 
         let typed_rhs = check!(
-            TyExpression::type_check(ctx.by_ref(), rhs.clone()),
-            error_recovery_expr(rhs.span()),
+            ty::TyExpression::type_check(ctx.by_ref(), rhs.clone()),
+            ty::error_recovery_expr(rhs.span()),
             warnings,
             errors
         );
@@ -1022,7 +593,7 @@ impl TyExpression {
         mut ctx: TypeCheckContext,
         contents: CodeBlock,
         span: Span,
-    ) -> CompileResult<TyExpression> {
+    ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (typed_block, block_return_type) = check!(
@@ -1041,8 +612,8 @@ impl TyExpression {
             errors
         );
 
-        let exp = TyExpression {
-            expression: TyExpressionVariant::CodeBlock(TyCodeBlock {
+        let exp = ty::TyExpression {
+            expression: ty::TyExpressionVariant::CodeBlock(TyCodeBlock {
                 contents: typed_block.contents,
             }),
             return_type: block_return_type,
@@ -1060,7 +631,7 @@ impl TyExpression {
         then: Expression,
         r#else: Option<Expression>,
         span: Span,
-    ) -> CompileResult<TyExpression> {
+    ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let condition = {
@@ -1069,8 +640,8 @@ impl TyExpression {
                 .with_help_text("The condition of an if expression must be a boolean expression.")
                 .with_type_annotation(insert_type(TypeInfo::Boolean));
             check!(
-                TyExpression::type_check(ctx, condition.clone()),
-                error_recovery_expr(condition.span()),
+                ty::TyExpression::type_check(ctx, condition.clone()),
+                ty::error_recovery_expr(condition.span()),
                 warnings,
                 errors
             )
@@ -1081,8 +652,8 @@ impl TyExpression {
                 .with_help_text("")
                 .with_type_annotation(insert_type(TypeInfo::Unknown));
             check!(
-                TyExpression::type_check(ctx, then.clone()),
-                error_recovery_expr(then.span()),
+                ty::TyExpression::type_check(ctx, then.clone()),
+                ty::error_recovery_expr(then.span()),
                 warnings,
                 errors
             )
@@ -1093,8 +664,8 @@ impl TyExpression {
                 .with_help_text("")
                 .with_type_annotation(insert_type(TypeInfo::Unknown));
             check!(
-                TyExpression::type_check(ctx, expr.clone()),
-                error_recovery_expr(expr.span()),
+                ty::TyExpression::type_check(ctx, expr.clone()),
+                ty::error_recovery_expr(expr.span()),
                 warnings,
                 errors
             )
@@ -1120,7 +691,7 @@ impl TyExpression {
         value: Expression,
         branches: Vec<MatchBranch>,
         span: Span,
-    ) -> CompileResult<TyExpression> {
+    ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -1131,8 +702,8 @@ impl TyExpression {
                 .with_help_text("")
                 .with_type_annotation(insert_type(TypeInfo::Unknown));
             check!(
-                TyExpression::type_check(ctx, value.clone()),
-                error_recovery_expr(value.span()),
+                ty::TyExpression::type_check(ctx, value.clone()),
+                ty::error_recovery_expr(value.span()),
                 warnings,
                 errors
             )
@@ -1202,7 +773,7 @@ impl TyExpression {
         mut ctx: TypeCheckContext,
         asm: AsmExpression,
         span: Span,
-    ) -> CompileResult<TyExpression> {
+    ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let asm_span = asm
@@ -1235,8 +806,8 @@ impl TyExpression {
                             .with_help_text("")
                             .with_type_annotation(insert_type(TypeInfo::Unknown));
                         check!(
-                            TyExpression::type_check(ctx, initializer.clone()),
-                            error_recovery_expr(initializer.span()),
+                            ty::TyExpression::type_check(ctx, initializer.clone()),
+                            ty::error_recovery_expr(initializer.span()),
                             warnings,
                             errors
                         )
@@ -1248,8 +819,8 @@ impl TyExpression {
         for op in &asm.body {
             check!(disallow_opcode(&op.op_name), continue, warnings, errors)
         }
-        let exp = TyExpression {
-            expression: TyExpressionVariant::AsmExpression {
+        let exp = ty::TyExpression {
+            expression: ty::TyExpressionVariant::AsmExpression {
                 whole_block_span: asm.whole_block_span,
                 body: asm.body,
                 registers: typed_registers,
@@ -1268,7 +839,7 @@ impl TyExpression {
         call_path_binding: TypeBinding<CallPath<(TypeInfo, Span)>>,
         fields: Vec<StructExpressionField>,
         span: Span,
-    ) -> CompileResult<TyExpression> {
+    ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -1304,8 +875,8 @@ impl TyExpression {
                         });
                         typed_fields_buf.push(TyStructExpressionField {
                             name: def_field.name.clone(),
-                            value: TyExpression {
-                                expression: TyExpressionVariant::Tuple { fields: vec![] },
+                            value: ty::TyExpression {
+                                expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
                                 return_type: insert_type(TypeInfo::ErrorRecovery),
                                 is_constant: IsConstant::No,
                                 span: span.clone(),
@@ -1322,7 +893,7 @@ impl TyExpression {
                 )
                 .with_type_annotation(def_field.type_id);
             let typed_field = check!(
-                TyExpression::type_check(ctx, expr_field.value),
+                ty::TyExpression::type_check(ctx, expr_field.value),
                 continue,
                 warnings,
                 errors
@@ -1345,8 +916,8 @@ impl TyExpression {
                 });
             }
         }
-        let exp = TyExpression {
-            expression: TyExpressionVariant::StructExpression {
+        let exp = ty::TyExpression {
+            expression: ty::TyExpressionVariant::StructExpression {
                 struct_name: struct_name.clone(),
                 fields: typed_fields_buf,
                 span: call_path_binding.inner.suffix.1.clone(),
@@ -1364,14 +935,14 @@ impl TyExpression {
         prefix: Expression,
         span: Span,
         field_to_access: Ident,
-    ) -> CompileResult<TyExpression> {
+    ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let ctx = ctx
             .with_help_text("")
             .with_type_annotation(insert_type(TypeInfo::Unknown));
         let parent = check!(
-            TyExpression::type_check(ctx, prefix),
+            ty::TyExpression::type_check(ctx, prefix),
             return err(warnings, errors),
             warnings,
             errors
@@ -1412,8 +983,8 @@ impl TyExpression {
                 .with_help_text("tuple field type does not match the expected type")
                 .with_type_annotation(field_type.type_id);
             let typed_field = check!(
-                TyExpression::type_check(ctx, field),
-                error_recovery_expr(field_span),
+                ty::TyExpression::type_check(ctx, field),
+                ty::error_recovery_expr(field_span),
                 warnings,
                 errors
             );
@@ -1427,8 +998,8 @@ impl TyExpression {
             });
             typed_fields.push(typed_field);
         }
-        let exp = TyExpression {
-            expression: TyExpressionVariant::Tuple {
+        let exp = ty::TyExpression {
+            expression: ty::TyExpressionVariant::Tuple {
                 fields: typed_fields,
             },
             return_type: crate::type_system::insert_type(TypeInfo::Tuple(typed_field_types)),
@@ -1469,8 +1040,8 @@ impl TyExpression {
             errors
         );
         ok(
-            TyExpression {
-                expression: TyExpressionVariant::StorageAccess(storage_access),
+            ty::TyExpression {
+                expression: ty::TyExpressionVariant::StorageAccess(storage_access),
                 return_type,
                 is_constant: IsConstant::No,
                 span: span.clone(),
@@ -1486,14 +1057,14 @@ impl TyExpression {
         index: usize,
         index_span: Span,
         span: Span,
-    ) -> CompileResult<TyExpression> {
+    ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let ctx = ctx
             .with_help_text("")
             .with_type_annotation(insert_type(TypeInfo::Unknown));
         let parent = check!(
-            TyExpression::type_check(ctx, prefix),
+            ty::TyExpression::type_check(ctx, prefix),
             return err(warnings, errors),
             warnings,
             errors
@@ -1512,7 +1083,7 @@ impl TyExpression {
         call_path_binding: TypeBinding<CallPath>,
         span: Span,
         args: Vec<Expression>,
-    ) -> CompileResult<TyExpression> {
+    ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -1640,8 +1211,8 @@ impl TyExpression {
                 .with_help_text("An address that is being ABI cast must be of type b256")
                 .with_type_annotation(insert_type(TypeInfo::B256));
             check!(
-                TyExpression::type_check(ctx, address),
-                error_recovery_expr(err_span),
+                ty::TyExpression::type_check(ctx, address),
+                ty::error_recovery_expr(err_span),
                 warnings,
                 errors
             )
@@ -1654,7 +1225,7 @@ impl TyExpression {
             errors
         );
         let abi = match abi {
-            TyDeclaration::AbiDeclaration(decl_id) => {
+            ty::TyDeclaration::AbiDeclaration(decl_id) => {
                 check!(
                     CompileResult::from(de_get_abi(decl_id, &span)),
                     return err(warnings, errors),
@@ -1662,7 +1233,7 @@ impl TyExpression {
                     errors
                 )
             }
-            TyDeclaration::VariableDeclaration(ref decl) => {
+            ty::TyDeclaration::VariableDeclaration(ref decl) => {
                 let TyVariableDeclaration { body: expr, .. } = &**decl;
                 let ret_ty = look_up_type_id(expr.return_type);
                 let abi_name = match ret_ty {
@@ -1693,12 +1264,12 @@ impl TyExpression {
                     }
                     AbiName::Deferred => {
                         return ok(
-                            TyExpression {
+                            ty::TyExpression {
                                 return_type: insert_type(TypeInfo::ContractCaller {
                                     abi_name: AbiName::Deferred,
                                     address: None,
                                 }),
-                                expression: TyExpressionVariant::Tuple { fields: vec![] },
+                                expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
                                 is_constant: IsConstant::Yes,
                                 span,
                             },
@@ -1747,8 +1318,8 @@ impl TyExpression {
         functions_buf.append(&mut type_checked_fn_buf);
         ctx.namespace
             .insert_trait_implementation(abi_name.clone(), return_type, functions_buf);
-        let exp = TyExpression {
-            expression: TyExpressionVariant::AbiCast {
+        let exp = ty::TyExpression {
+            expression: ty::TyExpressionVariant::AbiCast {
                 abi_name,
                 address: Box::new(address_expr),
                 span: span.clone(),
@@ -1768,8 +1339,8 @@ impl TyExpression {
         if contents.is_empty() {
             let unknown_type = insert_type(TypeInfo::Unknown);
             return ok(
-                TyExpression {
-                    expression: TyExpressionVariant::Array {
+                ty::TyExpression {
+                    expression: ty::TyExpressionVariant::Array {
                         contents: Vec::new(),
                     },
                     return_type: insert_type(TypeInfo::Array(unknown_type, 0, unknown_type)),
@@ -1783,7 +1354,7 @@ impl TyExpression {
 
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let typed_contents: Vec<TyExpression> = contents
+        let typed_contents: Vec<ty::TyExpression> = contents
             .into_iter()
             .map(|expr| {
                 let span = expr.span();
@@ -1793,7 +1364,7 @@ impl TyExpression {
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 check!(
                     Self::type_check(ctx, expr),
-                    error_recovery_expr(span),
+                    ty::error_recovery_expr(span),
                     warnings,
                     errors
                 )
@@ -1819,8 +1390,8 @@ impl TyExpression {
 
         let array_count = typed_contents.len();
         ok(
-            TyExpression {
-                expression: TyExpressionVariant::Array {
+            ty::TyExpression {
+                expression: ty::TyExpressionVariant::Array {
                     contents: typed_contents,
                 },
                 return_type: insert_type(TypeInfo::Array(elem_type, array_count, elem_type)),
@@ -1847,29 +1418,29 @@ impl TyExpression {
                 .with_help_text("")
                 .with_type_annotation(insert_type(TypeInfo::Unknown));
             check!(
-                TyExpression::type_check(ctx, prefix.clone()),
+                ty::TyExpression::type_check(ctx, prefix.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
             )
         };
 
-        // If the return type is a static array then create a `TyExpressionVariant::ArrayIndex`.
+        // If the return type is a static array then create a `ty::TyExpressionVariant::ArrayIndex`.
         if let TypeInfo::Array(elem_type_id, _, _) = look_up_type_id(prefix_te.return_type) {
             let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
             let ctx = ctx
                 .with_help_text("")
                 .with_type_annotation(insert_type(type_info_u64));
             let index_te = check!(
-                TyExpression::type_check(ctx, index),
+                ty::TyExpression::type_check(ctx, index),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
 
             ok(
-                TyExpression {
-                    expression: TyExpressionVariant::ArrayIndex {
+                ty::TyExpression {
+                    expression: ty::TyExpressionVariant::ArrayIndex {
                         prefix: Box::new(prefix_te),
                         index: Box::new(index_te),
                     },
@@ -1914,8 +1485,8 @@ impl TyExpression {
             warnings,
             errors
         );
-        let exp = TyExpression {
-            expression: TyExpressionVariant::IntrinsicFunction(intrinsic_function),
+        let exp = ty::TyExpression {
+            expression: ty::TyExpressionVariant::IntrinsicFunction(intrinsic_function),
             return_type,
             is_constant: IsConstant::No,
             span,
@@ -1937,7 +1508,7 @@ impl TyExpression {
                 .with_type_annotation(insert_type(TypeInfo::Boolean))
                 .with_help_text("A while loop's loop condition must be a boolean expression.");
             check!(
-                TyExpression::type_check(ctx, condition),
+                ty::TyExpression::type_check(ctx, condition),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1956,8 +1527,8 @@ impl TyExpression {
             warnings,
             errors
         );
-        let exp = TyExpression {
-            expression: TyExpressionVariant::WhileLoop {
+        let exp = ty::TyExpression {
+            expression: ty::TyExpressionVariant::WhileLoop {
                 condition: Box::new(typed_condition),
                 body: typed_body,
             },
@@ -2042,20 +1613,22 @@ impl TyExpression {
                 let ctx = ctx.with_type_annotation(ty_of_field).with_help_text("");
                 let rhs_span = rhs.span();
                 let rhs = check!(
-                    TyExpression::type_check(ctx, rhs),
-                    error_recovery_expr(rhs_span),
+                    ty::TyExpression::type_check(ctx, rhs),
+                    ty::error_recovery_expr(rhs_span),
                     warnings,
                     errors
                 );
 
                 ok(
-                    TyExpression {
-                        expression: TyExpressionVariant::Reassignment(Box::new(TyReassignment {
-                            lhs_base_name: base_name,
-                            lhs_type: final_return_type,
-                            lhs_indices: names_vec,
-                            rhs,
-                        })),
+                    ty::TyExpression {
+                        expression: ty::TyExpressionVariant::Reassignment(Box::new(
+                            TyReassignment {
+                                lhs_base_name: base_name,
+                                lhs_type: final_return_type,
+                                lhs_indices: names_vec,
+                                rhs,
+                            },
+                        )),
                         return_type: crate::type_system::insert_type(TypeInfo::Tuple(Vec::new())),
                         // TODO: if the rhs is constant then this should be constant, no?
                         is_constant: IsConstant::No,
@@ -2076,8 +1649,8 @@ impl TyExpression {
                     errors,
                 );
                 ok(
-                    TyExpression {
-                        expression: TyExpressionVariant::StorageReassignment(Box::new(
+                    ty::TyExpression {
+                        expression: ty::TyExpressionVariant::StorageReassignment(Box::new(
                             reassignment,
                         )),
                         return_type: crate::type_system::insert_type(TypeInfo::Tuple(Vec::new())),
@@ -2095,7 +1668,7 @@ impl TyExpression {
         lit: Literal,
         span: Span,
         new_type: TypeId,
-    ) -> CompileResult<TyExpression> {
+    ) -> CompileResult<ty::TyExpression> {
         let mut errors = vec![];
 
         // Parse and resolve a Numeric(span) based on new_type.
@@ -2160,8 +1733,8 @@ impl TyExpression {
 
         match val {
             Ok(v) => {
-                let exp = TyExpression {
-                    expression: TyExpressionVariant::Literal(v),
+                let exp = ty::TyExpression {
+                    expression: ty::TyExpressionVariant::Literal(v),
                     return_type: new_integer_type,
                     is_constant: IsConstant::Yes,
                     span,
@@ -2170,7 +1743,7 @@ impl TyExpression {
             }
             Err(e) => {
                 errors.push(e);
-                let exp = error_recovery_expr(span);
+                let exp = ty::error_recovery_expr(span);
                 ok(exp, vec![], errors)
             }
         }
@@ -2182,13 +1755,13 @@ mod tests {
     use super::*;
     use sway_error::type_error::TypeError;
 
-    fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TyExpression> {
+    fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<ty::TyExpression> {
         let mut namespace = Namespace::init_root(namespace::Module::default());
         let ctx = TypeCheckContext::from_root(&mut namespace).with_type_annotation(type_annotation);
-        TyExpression::type_check(ctx, expr)
+        ty::TyExpression::type_check(ctx, expr)
     }
 
-    fn do_type_check_for_boolx2(expr: Expression) -> CompileResult<TyExpression> {
+    fn do_type_check_for_boolx2(expr: Expression) -> CompileResult<ty::TyExpression> {
         do_type_check(
             expr,
             insert_type(TypeInfo::Array(

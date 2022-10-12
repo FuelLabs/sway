@@ -1,10 +1,10 @@
 use crate::Ident;
-use crate::{semantic_analysis::*, type_system::*};
+use crate::{language::ty, type_system::*};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TyStructExpressionField {
     pub name: Ident,
-    pub value: TyExpression,
+    pub value: ty::TyExpression,
 }
 
 impl CopyTypes for TyStructExpressionField {

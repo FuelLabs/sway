@@ -1,7 +1,11 @@
 use super::*;
-use crate::{language::CallPath, semantic_analysis::*, Ident};
+use crate::{
+    language::{ty, CallPath},
+    semantic_analysis::*,
+    Ident,
+};
 use sway_error::error::CompileError;
-use sway_types::span::Span;
+use sway_types::{integer_bits::IntegerBits, span::Span};
 
 use derivative::Derivative;
 use std::{
@@ -55,7 +59,7 @@ pub enum TypeInfo {
     ContractCaller {
         abi_name: AbiName,
         // boxed for size
-        address: Option<Box<TyExpression>>,
+        address: Option<Box<ty::TyExpression>>,
     },
     /// A custom type could be a struct or similar if the name is in scope,
     /// or just a generic parameter if it is not.

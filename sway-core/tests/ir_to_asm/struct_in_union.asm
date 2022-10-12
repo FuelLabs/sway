@@ -22,7 +22,7 @@ mcpi $r0 $r1 i8               ; store value
 addi $r0 $r3 i0               ; get offset reg for get_ptr
 lw   $r0 $r0 i0               ; extract_value @ 0
 ji   i26
-move $r0 $zero                ; branch to phi value
+move $r0 $zero                ; parameter from branch to block argument
 ret  $r0
 .data:
 data_0 .collection { .word 42 }

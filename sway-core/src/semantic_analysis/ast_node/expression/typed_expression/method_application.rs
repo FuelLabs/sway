@@ -1,13 +1,19 @@
 use crate::{
     error::*,
-    language::{parsed::*, *},
-    semantic_analysis::{TyExpressionVariant::VariableExpression, *},
+    language::{parsed::*, ty, *},
+    semantic_analysis::{
+        typed_expression::{
+            check_function_arguments_arity, instantiate_function_application_simple,
+        },
+        ContractCallParams, IsConstant, TyFunctionParameter, TyStorageField, TypeCheckContext,
+    },
     type_system::*,
+    TyFunctionDeclaration,
 };
 use std::collections::{HashMap, VecDeque};
 use sway_error::error::CompileError;
-use sway_types::constants;
 use sway_types::Spanned;
+use sway_types::{constants, integer_bits::IntegerBits};
 use sway_types::{state::StateIndex, Span};
 
 #[allow(clippy::too_many_arguments)]
@@ -17,7 +23,7 @@ pub(crate) fn type_check_method_application(
     contract_call_params: Vec<StructExpressionField>,
     arguments: Vec<Expression>,
     span: Span,
-) -> CompileResult<TyExpression> {
+) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -29,8 +35,8 @@ pub(crate) fn type_check_method_application(
             .with_help_text("")
             .with_type_annotation(insert_type(TypeInfo::Unknown));
         args_buf.push_back(check!(
-            TyExpression::type_check(ctx, arg.clone()),
-            error_recovery_expr(span.clone()),
+            ty::TyExpression::type_check(ctx, arg.clone()),
+            ty::error_recovery_expr(span.clone()),
             warnings,
             errors
         ));
@@ -100,8 +106,8 @@ pub(crate) fn type_check_method_application(
                     contract_call_params_map.insert(
                         param.name.to_string(),
                         check!(
-                            TyExpression::type_check(ctx, param.value),
-                            error_recovery_expr(span.clone()),
+                            ty::TyExpression::type_check(ctx, param.value),
+                            ty::error_recovery_expr(span.clone()),
                             warnings,
                             errors
                         ),
@@ -172,8 +178,8 @@ pub(crate) fn type_check_method_application(
     // Validate mutability of self. Check that the variable that the method is called on is mutable
     // _if_ the method requires mutable self.
     if let (
-        Some(TyExpression {
-            expression: VariableExpression { name, .. },
+        Some(ty::TyExpression {
+            expression: ty::TyExpressionVariant::VariableExpression { name, .. },
             ..
         }),
         Some(TyFunctionParameter { is_mutable, .. }),
@@ -187,7 +193,7 @@ pub(crate) fn type_check_method_application(
         );
 
         let is_decl_mutable = match unknown_decl {
-            TyDeclaration::ConstantDeclaration(_) => false,
+            ty::TyDeclaration::ConstantDeclaration(_) => false,
             _ => {
                 let variable_decl = check!(
                     unknown_decl.expect_variable().cloned(),
@@ -312,7 +318,7 @@ pub(crate) fn type_check_method_application(
 pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
     method_name: &TypeBinding<MethodName>,
-    arguments: VecDeque<TyExpression>,
+    arguments: VecDeque<ty::TyExpression>,
 ) -> CompileResult<TyFunctionDeclaration> {
     let mut warnings = vec![];
     let mut errors = vec![];

@@ -13,7 +13,6 @@ pub mod language;
 mod metadata;
 pub mod semantic_analysis;
 pub mod source_map;
-mod style;
 pub mod type_system;
 
 use crate::{error::*, source_map::SourceMap};
@@ -31,12 +30,13 @@ use sway_ir::{Context, Function, Instruction, Kind, Module, Value};
 
 pub use semantic_analysis::{
     namespace::{self, Namespace},
-    TyDeclaration, TyFunctionDeclaration, TyModule, TyProgram, TyProgramKind,
+    TyFunctionDeclaration, TyModule, TyProgram, TyProgramKind,
 };
 pub mod types;
 
-pub use error::{CompileResult, CompileWarning};
+pub use error::CompileResult;
 use sway_error::error::CompileError;
+use sway_error::warning::CompileWarning;
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
@@ -56,9 +56,13 @@ use language::parsed;
 /// # Panics
 /// Panics if the parser panics.
 pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<parsed::ParseProgram> {
+    // Omit tests by default so that a test that fails to typecheck doesn't block the rest of the
+    // program (similar behaviour to rust). Later, we'll add a flag for including tests on
+    // invocations of `forc test` or `forc check --tests`. See #1832.
+    let include_test_fns = false;
     match config {
-        None => parse_in_memory(input),
-        Some(config) => parse_files(input, config),
+        None => parse_in_memory(input, include_test_fns),
+        Some(config) => parse_files(input, config, include_test_fns),
     }
 }
 
@@ -70,9 +74,9 @@ fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> CompileResult<sway_a
 }
 
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
-fn parse_in_memory(src: Arc<str>) -> CompileResult<parsed::ParseProgram> {
+fn parse_in_memory(src: Arc<str>, include_test_fns: bool) -> CompileResult<parsed::ParseProgram> {
     parse_file(src, None).flat_map(|module| {
-        convert_parse_tree::convert_parse_tree(module).flat_map(|(kind, tree)| {
+        convert_parse_tree::convert_parse_tree(module, include_test_fns).flat_map(|(kind, tree)| {
             let submodules = Default::default();
             let root = parsed::ParseModule { tree, submodules };
             ok(parsed::ParseProgram { kind, root }, vec![], vec![])
@@ -82,9 +86,13 @@ fn parse_in_memory(src: Arc<str>) -> CompileResult<parsed::ParseProgram> {
 
 /// When a `BuildConfig` is given, the module source may declare `dep`s that must be parsed from
 /// other files.
-fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<parsed::ParseProgram> {
+fn parse_files(
+    src: Arc<str>,
+    config: &BuildConfig,
+    include_test_fns: bool,
+) -> CompileResult<parsed::ParseProgram> {
     let root_mod_path = config.canonical_root_module();
-    parse_module_tree(src, root_mod_path).flat_map(|(kind, root)| {
+    parse_module_tree(src, root_mod_path, include_test_fns).flat_map(|(kind, root)| {
         let program = parsed::ParseProgram { kind, root };
         ok(program, vec![], vec![])
     })
@@ -94,6 +102,7 @@ fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<parsed::Par
 fn parse_submodules(
     deps: &[Dependency],
     module_dir: &Path,
+    include_test_fns: bool,
 ) -> CompileResult<Vec<(Ident, parsed::ParseSubmodule)>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -116,7 +125,7 @@ fn parse_submodules(
             }
         };
 
-        let mt_res = parse_module_tree(dep_str.clone(), dep_path.clone());
+        let mt_res = parse_module_tree(dep_str.clone(), dep_path.clone(), include_test_fns);
         warnings.extend(mt_res.warnings);
         errors.extend(mt_res.errors);
 
@@ -150,18 +159,22 @@ fn parse_submodules(
 fn parse_module_tree(
     src: Arc<str>,
     path: Arc<PathBuf>,
+    include_test_fns: bool,
 ) -> CompileResult<(parsed::TreeType, parsed::ParseModule)> {
     // Parse this module first.
     parse_file(src, Some(path.clone())).flat_map(|module| {
         let module_dir = path.parent().expect("module file has no parent directory");
 
         // Parse all submodules before converting to the `ParseTree`.
-        let submodules_res = parse_submodules(&module.dependencies, module_dir);
+        let submodules_res = parse_submodules(&module.dependencies, module_dir, include_test_fns);
 
         // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-        convert_parse_tree::convert_parse_tree(module).flat_map(|(prog_kind, tree)| {
-            submodules_res.map(|submodules| (prog_kind, parsed::ParseModule { tree, submodules }))
-        })
+        convert_parse_tree::convert_parse_tree(module, include_test_fns).flat_map(
+            |(prog_kind, tree)| {
+                submodules_res
+                    .map(|submodules| (prog_kind, parsed::ParseModule { tree, submodules }))
+            },
+        )
     })
 }
 
@@ -191,7 +204,6 @@ pub enum BytecodeOrLib {
 pub fn parsed_to_ast(
     parse_program: &parsed::ParseProgram,
     initial_namespace: namespace::Module,
-    generate_logged_types: bool,
 ) -> CompileResult<TyProgram> {
     // Type check the program.
     let CompileResult {
@@ -217,15 +229,12 @@ pub fn parsed_to_ast(
         None => return deduped_err(warnings, errors),
     };
 
-    // Collect all the types of logged values. These are required when generating the JSON ABI.
-    if generate_logged_types {
-        typed_program
-            .logged_types
-            .extend(types_metadata.iter().filter_map(|m| match m {
-                TypeMetadata::LoggedType(type_id) => Some(*type_id),
-                _ => None,
-            }));
-    }
+    typed_program
+        .logged_types
+        .extend(types_metadata.iter().filter_map(|m| match m {
+            TypeMetadata::LoggedType(type_id) => Some(*type_id),
+            _ => None,
+        }));
 
     // Perform control flow analysis and extend with any errors.
     let cfa_res = perform_control_flow_analysis(&typed_program);
@@ -292,8 +301,7 @@ pub fn compile_to_ast(
     };
 
     // Type check (+ other static analysis) the CST to a typed AST.
-    let generate_logged_types = build_config.map_or(false, |bc| bc.generate_logged_types);
-    let typed_res = parsed_to_ast(&parse_program, initial_namespace, generate_logged_types);
+    let typed_res = parsed_to_ast(&parse_program, initial_namespace);
     errors.extend(typed_res.errors);
     warnings.extend(typed_res.warnings);
     let typed_program = match typed_res.value {

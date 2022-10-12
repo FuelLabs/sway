@@ -10,7 +10,7 @@ fn main() {
 
 // check: script {
 // check: fn main() -> ()
-// check: entry:
+// check: entry():
 // check: call f_0()
 // check: $(ret_v=$VAL) = const unit ()
 // check: ret () $ret_v

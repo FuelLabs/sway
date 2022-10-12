@@ -1,12 +1,12 @@
 use crate::{
     error::{err, ok},
-    language::parsed::FunctionParameter,
+    language::{parsed::FunctionParameter, ty},
     semantic_analysis::{
-        convert_to_variable_immutability, IsConstant, TyExpression, TyExpressionVariant,
-        TyVariableDeclaration, TypeCheckContext, VariableMutability,
+        convert_to_variable_immutability, IsConstant, TyVariableDeclaration, TypeCheckContext,
+        VariableMutability,
     },
     type_system::*,
-    CompileResult, Ident, Namespace, TyDeclaration,
+    CompileResult, Ident, Namespace,
 };
 
 use sway_error::error::CompileError;
@@ -189,10 +189,10 @@ impl TyFunctionParameter {
 fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &TyFunctionParameter) {
     ctx.namespace.insert_symbol(
         typed_parameter.name.clone(),
-        TyDeclaration::VariableDeclaration(Box::new(TyVariableDeclaration {
+        ty::TyDeclaration::VariableDeclaration(Box::new(TyVariableDeclaration {
             name: typed_parameter.name.clone(),
-            body: TyExpression {
-                expression: TyExpressionVariant::FunctionParameter,
+            body: ty::TyExpression {
+                expression: ty::TyExpressionVariant::FunctionParameter,
                 return_type: typed_parameter.type_id,
                 is_constant: IsConstant::No,
                 span: typed_parameter.name.span(),

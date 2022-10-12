@@ -1,9 +1,8 @@
 use crate::{
-    error::{err, ok, CompileResult, CompileWarning, Warning},
+    error::{err, ok, CompileResult},
     language::{parsed::*, *},
     type_system::{
-        insert_type, AbiName, IntegerBits, TraitConstraint, TypeArgument, TypeBinding,
-        TypeParameter,
+        insert_type, AbiName, TraitConstraint, TypeArgument, TypeBinding, TypeParameter,
     },
     TypeInfo,
 };
@@ -22,10 +21,14 @@ use sway_ast::{
 };
 use sway_error::convert_parse_tree_error::ConvertParseTreeError;
 use sway_error::error::CompileError;
-use sway_types::constants::{
-    DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX,
-    STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
-    TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
+use sway_error::warning::{CompileWarning, Warning};
+use sway_types::{
+    constants::{
+        DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX,
+        STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
+        TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
+    },
+    integer_bits::IntegerBits,
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -89,7 +92,10 @@ impl ErrorContext {
     }
 }
 
-pub fn convert_parse_tree(module: Module) -> CompileResult<(TreeType, ParseTree)> {
+pub fn convert_parse_tree(
+    module: Module,
+    include_test_fns: bool,
+) -> CompileResult<(TreeType, ParseTree)> {
     let mut ec = ErrorContext {
         warnings: Vec::new(),
         errors: Vec::new(),
@@ -100,7 +106,7 @@ pub fn convert_parse_tree(module: Module) -> CompileResult<(TreeType, ParseTree)
         ModuleKind::Predicate { .. } => TreeType::Predicate,
         ModuleKind::Library { ref name, .. } => TreeType::Library { name: name.clone() },
     };
-    let res = module_to_sway_parse_tree(&mut ec, module);
+    let res = module_to_sway_parse_tree(&mut ec, module, include_test_fns);
     let ErrorContext { warnings, errors } = ec;
     match res {
         Ok(parse_tree) => ok((tree_type, parse_tree), warnings, errors),
@@ -111,6 +117,7 @@ pub fn convert_parse_tree(module: Module) -> CompileResult<(TreeType, ParseTree)
 pub fn module_to_sway_parse_tree(
     ec: &mut ErrorContext,
     module: Module,
+    include_test_fns: bool,
 ) -> Result<ParseTree, ErrorEmitted> {
     let span = module.span();
     let root_nodes = {
@@ -127,12 +134,24 @@ pub fn module_to_sway_parse_tree(
                 .collect()
         };
         for item in module.items {
-            let ast_nodes = item_to_ast_nodes(ec, item)?;
+            let mut ast_nodes = item_to_ast_nodes(ec, item)?;
+            if !include_test_fns {
+                ast_nodes.retain(|node| !ast_node_is_test_fn(node));
+            }
             root_nodes.extend(ast_nodes);
         }
         root_nodes
     };
     Ok(ParseTree { span, root_nodes })
+}
+
+fn ast_node_is_test_fn(node: &AstNode) -> bool {
+    if let AstNodeContent::Declaration(Declaration::FunctionDeclaration(ref decl)) = node.content {
+        if decl.attributes.contains_key(&AttributeKind::Test) {
+            return true;
+        }
+    }
+    false
 }
 
 fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, ErrorEmitted> {
@@ -250,6 +269,7 @@ pub struct Attribute {
 pub enum AttributeKind {
     Doc,
     Storage,
+    Test,
 }
 
 /// Stores the attributes associated with the type.
@@ -286,6 +306,7 @@ fn item_attrs_to_map(
         if let Some(attr_kind) = match name {
             DOC_ATTRIBUTE_NAME => Some(AttributeKind::Doc),
             STORAGE_PURITY_ATTRIBUTE_NAME => Some(AttributeKind::Storage),
+            TEST_ATTRIBUTE_NAME => Some(AttributeKind::Test),
             _ => None,
         } {
             match attrs_map.get_mut(&attr_kind) {
@@ -1928,7 +1949,19 @@ fn statement_to_ast_nodes(
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
     let ast_nodes = match statement {
         Statement::Let(statement_let) => statement_let_to_ast_nodes(ec, statement_let)?,
-        Statement::Item(item) => item_to_ast_nodes(ec, item)?,
+        Statement::Item(item) => {
+            let nodes = item_to_ast_nodes(ec, item)?;
+            nodes.iter().fold(Ok(()), |res, node| {
+                if ast_node_is_test_fn(node) {
+                    let span = node.span.clone();
+                    let error = ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span };
+                    Err(ec.error(error))
+                } else {
+                    res
+                }
+            })?;
+            nodes
+        }
         Statement::Expr { expr, .. } => vec![expr_to_ast_node(ec, expr, true)?],
     };
     Ok(ast_nodes)

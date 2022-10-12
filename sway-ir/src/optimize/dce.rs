@@ -5,7 +5,9 @@
 //!   2. At the time of inspecting a definition, if it has no uses, it is removed.
 //! This pass does not do CFG transformations. That is handled by simplify_cfg.
 
-use crate::{Block, Context, Function, Instruction, IrError, Module, Value, ValueDatum};
+use crate::{
+    Block, BranchToWithArgs, Context, Function, Instruction, IrError, Module, Value, ValueDatum,
+};
 
 use std::collections::{HashMap, HashSet};
 
@@ -25,14 +27,19 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
             Instruction::AsmBlock(_, args) => args.iter().filter_map(|aa| aa.initializer).collect(),
             Instruction::BitCast(v, _) => vec![*v],
             Instruction::BinaryOp { op: _, arg1, arg2 } => vec![*arg1, *arg2],
-            Instruction::Branch(_) => vec![],
+            Instruction::Branch(BranchToWithArgs { args, .. }) => args.clone(),
             Instruction::Call(_, vs) => vs.clone(),
             Instruction::Cmp(_, lhs, rhs) => vec![*lhs, *rhs],
             Instruction::ConditionalBranch {
                 cond_value,
-                true_block: _,
-                false_block: _,
-            } => vec![*cond_value],
+                true_block,
+                false_block,
+            } => {
+                let mut v = vec![*cond_value];
+                v.extend_from_slice(&true_block.args);
+                v.extend_from_slice(&false_block.args);
+                v
+            }
             Instruction::ContractCall {
                 return_type: _,
                 name: _,
@@ -83,7 +90,6 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
                 log_val, log_id, ..
             } => vec![*log_val, *log_id],
             Instruction::Nop => vec![],
-            Instruction::Phi(ins) => ins.iter().map(|v| v.1).collect(),
             Instruction::ReadRegister(_) => vec![],
             Instruction::Ret(v, _) => vec![*v],
             Instruction::Revert(v) => vec![*v],
@@ -142,15 +148,8 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
                 ValueDatum::Constant(_) | ValueDatum::Argument(_) => (),
             }
         }
-        // Don't remove PHIs, just make them empty.
-        if matches!(
-            &context.values[dead.0].value,
-            ValueDatum::Instruction(Instruction::Phi(_))
-        ) {
-            dead.replace(context, ValueDatum::Instruction(Instruction::Phi(vec![])));
-        } else {
-            in_block.remove_instruction(context, dead);
-        }
+
+        in_block.remove_instruction(context, dead);
         modified = true;
     }
 

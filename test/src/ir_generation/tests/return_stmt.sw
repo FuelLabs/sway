@@ -15,15 +15,14 @@ fn main() -> u64 {
     go(true)
 }
 
-// check: cbr $ID, $(block0=$ID), $(block1=$ID)
+// check: cbr $ID, $(block0=$ID)(), $(block1=$ID)()
 
-// check: $block0:
+// check: $block0():
 // check: $(zero_val=$VAL) = const u64 0
 // check: ret u64 $zero_val
 
-// check: $block1:
+// check: $block1():
 // check: $(unit_val=$VAL) = const unit ()
-// check: br $(block2=$ID)
+// check: br $(block2=$ID)($unit_val)
 
-// check: $block2:
-// check: $VAL = phi($block1: $unit_val)
+// check: $block2($VAL: ()):

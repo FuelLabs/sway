@@ -6,14 +6,12 @@ use crate::{
 };
 use sway_core::{
     declaration_engine,
+    language::ty,
     semantic_analysis::ast_node::{
         code_block::TyCodeBlock,
-        expression::{
-            typed_expression::TyExpression, typed_expression_variant::TyExpressionVariant,
-            TyIntrinsicFunctionKind,
-        },
+        expression::TyIntrinsicFunctionKind,
         ProjectionKind, TyFunctionDeclaration, TyFunctionParameter, TyImplTrait, TyTraitFn,
-        {TyAstNode, TyAstNodeContent, TyDeclaration},
+        {TyAstNode, TyAstNodeContent},
     },
 };
 use sway_types::{ident::Ident, Spanned};
@@ -29,9 +27,9 @@ pub fn traverse_node(node: &TyAstNode, tokens: &TokenMap) {
     };
 }
 
-fn handle_declaration(declaration: &TyDeclaration, tokens: &TokenMap) {
+fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
     match declaration {
-        TyDeclaration::VariableDeclaration(variable) => {
+        ty::TyDeclaration::VariableDeclaration(variable) => {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&variable.name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }
@@ -46,7 +44,7 @@ fn handle_declaration(declaration: &TyDeclaration, tokens: &TokenMap) {
 
             handle_expression(&variable.body, tokens);
         }
-        TyDeclaration::ConstantDeclaration(decl_id) => {
+        ty::TyDeclaration::ConstantDeclaration(decl_id) => {
             if let Ok(const_decl) =
                 declaration_engine::de_get_constant(decl_id.clone(), &decl_id.span())
             {
@@ -56,14 +54,14 @@ fn handle_declaration(declaration: &TyDeclaration, tokens: &TokenMap) {
                 handle_expression(&const_decl.value, tokens);
             }
         }
-        TyDeclaration::FunctionDeclaration(decl_id) => {
+        ty::TyDeclaration::FunctionDeclaration(decl_id) => {
             if let Ok(func_decl) =
                 declaration_engine::de_get_function(decl_id.clone(), &decl_id.span())
             {
                 collect_typed_fn_decl(&func_decl, tokens);
             }
         }
-        TyDeclaration::TraitDeclaration(decl_id) => {
+        ty::TyDeclaration::TraitDeclaration(decl_id) => {
             if let Ok(trait_decl) =
                 declaration_engine::de_get_trait(decl_id.clone(), &decl_id.span())
             {
@@ -76,7 +74,7 @@ fn handle_declaration(declaration: &TyDeclaration, tokens: &TokenMap) {
                 }
             }
         }
-        TyDeclaration::StructDeclaration(decl_id) => {
+        ty::TyDeclaration::StructDeclaration(decl_id) => {
             if let Ok(struct_decl) =
                 declaration_engine::de_get_struct(decl_id.clone(), &declaration.span())
             {
@@ -106,7 +104,7 @@ fn handle_declaration(declaration: &TyDeclaration, tokens: &TokenMap) {
                 }
             }
         }
-        TyDeclaration::EnumDeclaration(decl_id) => {
+        ty::TyDeclaration::EnumDeclaration(decl_id) => {
             if let Ok(enum_decl) = declaration_engine::de_get_enum(decl_id.clone(), &decl_id.span())
             {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&enum_decl.name)) {
@@ -135,7 +133,7 @@ fn handle_declaration(declaration: &TyDeclaration, tokens: &TokenMap) {
                 }
             }
         }
-        TyDeclaration::ImplTrait(decl_id) => {
+        ty::TyDeclaration::ImplTrait(decl_id) => {
             if let Ok(TyImplTrait {
                 trait_name,
                 methods,
@@ -167,7 +165,7 @@ fn handle_declaration(declaration: &TyDeclaration, tokens: &TokenMap) {
                 }
             }
         }
-        TyDeclaration::AbiDeclaration(decl_id) => {
+        ty::TyDeclaration::AbiDeclaration(decl_id) => {
             if let Ok(abi_decl) = declaration_engine::de_get_abi(decl_id.clone(), &decl_id.span()) {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&abi_decl.name)) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
@@ -178,13 +176,13 @@ fn handle_declaration(declaration: &TyDeclaration, tokens: &TokenMap) {
                 }
             }
         }
-        TyDeclaration::GenericTypeForFunctionScope { name, .. } => {
+        ty::TyDeclaration::GenericTypeForFunctionScope { name, .. } => {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }
         }
-        TyDeclaration::ErrorRecovery => {}
-        TyDeclaration::StorageDeclaration(decl_id) => {
+        ty::TyDeclaration::ErrorRecovery => {}
+        ty::TyDeclaration::StorageDeclaration(decl_id) => {
             if let Ok(storage_decl) =
                 declaration_engine::de_get_storage(decl_id.clone(), &decl_id.span())
             {
@@ -208,16 +206,16 @@ fn handle_declaration(declaration: &TyDeclaration, tokens: &TokenMap) {
     }
 }
 
-fn handle_expression(expression: &TyExpression, tokens: &TokenMap) {
+fn handle_expression(expression: &ty::TyExpression, tokens: &TokenMap) {
     match &expression.expression {
-        TyExpressionVariant::Literal { .. } => {
+        ty::TyExpressionVariant::Literal { .. } => {
             if let Some(mut token) =
                 tokens.get_mut(&to_ident_key(&Ident::new(expression.span.clone())))
             {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
             }
         }
-        TyExpressionVariant::FunctionApplication {
+        ty::TyExpressionVariant::FunctionApplication {
             call_path,
             contract_call_params,
             arguments,
@@ -251,11 +249,11 @@ fn handle_expression(expression: &TyExpression, tokens: &TokenMap) {
                 traverse_node(node, tokens);
             }
         }
-        TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
+        ty::TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
             handle_expression(lhs, tokens);
             handle_expression(rhs, tokens);
         }
-        TyExpressionVariant::VariableExpression {
+        ty::TyExpressionVariant::VariableExpression {
             ref name, ref span, ..
         } => {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(span.clone()))) {
@@ -263,21 +261,21 @@ fn handle_expression(expression: &TyExpression, tokens: &TokenMap) {
                 token.type_def = Some(TypeDefinition::Ident(name.clone()));
             }
         }
-        TyExpressionVariant::Tuple { fields } => {
+        ty::TyExpressionVariant::Tuple { fields } => {
             for exp in fields {
                 handle_expression(exp, tokens);
             }
         }
-        TyExpressionVariant::Array { contents } => {
+        ty::TyExpressionVariant::Array { contents } => {
             for exp in contents {
                 handle_expression(exp, tokens);
             }
         }
-        TyExpressionVariant::ArrayIndex { prefix, index } => {
+        ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
             handle_expression(prefix, tokens);
             handle_expression(index, tokens);
         }
-        TyExpressionVariant::StructExpression { fields, span, .. } => {
+        ty::TyExpressionVariant::StructExpression { fields, span, .. } => {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(span.clone()))) {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
                 token.type_def = Some(TypeDefinition::TypeId(expression.return_type));
@@ -301,13 +299,13 @@ fn handle_expression(expression: &TyExpression, tokens: &TokenMap) {
                 handle_expression(&field.value, tokens);
             }
         }
-        TyExpressionVariant::CodeBlock(code_block) => {
+        ty::TyExpressionVariant::CodeBlock(code_block) => {
             for node in &code_block.contents {
                 traverse_node(node, tokens);
             }
         }
-        TyExpressionVariant::FunctionParameter { .. } => {}
-        TyExpressionVariant::IfExp {
+        ty::TyExpressionVariant::FunctionParameter { .. } => {}
+        ty::TyExpressionVariant::IfExp {
             condition,
             then,
             r#else,
@@ -318,8 +316,8 @@ fn handle_expression(expression: &TyExpression, tokens: &TokenMap) {
                 handle_expression(r#else, tokens);
             }
         }
-        TyExpressionVariant::AsmExpression { .. } => {}
-        TyExpressionVariant::StructFieldAccess {
+        ty::TyExpressionVariant::AsmExpression { .. } => {}
+        ty::TyExpressionVariant::StructFieldAccess {
             prefix,
             field_to_access,
             field_instantiation_span,
@@ -334,10 +332,10 @@ fn handle_expression(expression: &TyExpression, tokens: &TokenMap) {
                 token.type_def = Some(TypeDefinition::Ident(field_to_access.name.clone()));
             }
         }
-        TyExpressionVariant::TupleElemAccess { prefix, .. } => {
+        ty::TyExpressionVariant::TupleElemAccess { prefix, .. } => {
             handle_expression(prefix, tokens);
         }
-        TyExpressionVariant::EnumInstantiation {
+        ty::TyExpressionVariant::EnumInstantiation {
             variant_name,
             variant_instantiation_span,
             enum_decl,
@@ -363,7 +361,7 @@ fn handle_expression(expression: &TyExpression, tokens: &TokenMap) {
                 handle_expression(contents, tokens);
             }
         }
-        TyExpressionVariant::AbiCast {
+        ty::TyExpressionVariant::AbiCast {
             abi_name, address, ..
         } => {
             for ident in &abi_name.prefixes {
@@ -378,32 +376,32 @@ fn handle_expression(expression: &TyExpression, tokens: &TokenMap) {
 
             handle_expression(address, tokens);
         }
-        TyExpressionVariant::StorageAccess(storage_access) => {
+        ty::TyExpressionVariant::StorageAccess(storage_access) => {
             for field in &storage_access.fields {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
                 }
             }
         }
-        TyExpressionVariant::IntrinsicFunction(kind) => {
+        ty::TyExpressionVariant::IntrinsicFunction(kind) => {
             handle_intrinsic_function(kind, tokens);
         }
-        TyExpressionVariant::AbiName { .. } => {}
-        TyExpressionVariant::EnumTag { exp } => {
+        ty::TyExpressionVariant::AbiName { .. } => {}
+        ty::TyExpressionVariant::EnumTag { exp } => {
             handle_expression(exp, tokens);
         }
-        TyExpressionVariant::UnsafeDowncast { exp, variant } => {
+        ty::TyExpressionVariant::UnsafeDowncast { exp, variant } => {
             handle_expression(exp, tokens);
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&variant.name)) {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
             }
         }
-        TyExpressionVariant::WhileLoop {
+        ty::TyExpressionVariant::WhileLoop {
             body, condition, ..
         } => handle_while_loop(body, condition, tokens),
-        TyExpressionVariant::Break => (),
-        TyExpressionVariant::Continue => (),
-        TyExpressionVariant::Reassignment(reassignment) => {
+        ty::TyExpressionVariant::Break => (),
+        ty::TyExpressionVariant::Continue => (),
+        ty::TyExpressionVariant::Reassignment(reassignment) => {
             handle_expression(&reassignment.rhs, tokens);
 
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&reassignment.lhs_base_name)) {
@@ -429,7 +427,7 @@ fn handle_expression(expression: &TyExpression, tokens: &TokenMap) {
                 }
             }
         }
-        TyExpressionVariant::StorageReassignment(storage_reassignment) => {
+        ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {
             for field in &storage_reassignment.fields {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&field.name)) {
                     token.typed = Some(TypedAstToken::TypeCheckedStorageReassignDescriptor(
@@ -439,7 +437,7 @@ fn handle_expression(expression: &TyExpression, tokens: &TokenMap) {
             }
             handle_expression(&storage_reassignment.rhs, tokens);
         }
-        TyExpressionVariant::Return(stmt) => handle_expression(&stmt.expr, tokens),
+        ty::TyExpressionVariant::Return(exp) => handle_expression(exp, tokens),
     }
 }
 
@@ -452,7 +450,7 @@ fn handle_intrinsic_function(
     }
 }
 
-fn handle_while_loop(body: &TyCodeBlock, condition: &TyExpression, tokens: &TokenMap) {
+fn handle_while_loop(body: &TyCodeBlock, condition: &ty::TyExpression, tokens: &TokenMap) {
     handle_expression(condition, tokens);
     for node in &body.contents {
         traverse_node(node, tokens);

@@ -1,13 +1,15 @@
 use dashmap::DashMap;
 use sway_core::{
-    language::parsed::{
-        Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
-        ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
-        TraitFn,
+    language::{
+        parsed::{
+            Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
+            ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
+            TraitFn,
+        },
+        ty,
     },
     semantic_analysis::ast_node::{
-        expression::typed_expression::TyExpression, TyDeclaration, TyEnumVariant,
-        TyFunctionDeclaration, TyFunctionParameter, TyReassignment, TyStorageField,
+        TyEnumVariant, TyFunctionDeclaration, TyFunctionParameter, TyReassignment, TyStorageField,
         TyStorageReassignDescriptor, TyStructField, TyTraitFn,
     },
     type_system::TypeId,
@@ -58,8 +60,8 @@ pub enum AstToken {
 
 #[derive(Debug, Clone)]
 pub enum TypedAstToken {
-    TypedDeclaration(TyDeclaration),
-    TypedExpression(TyExpression),
+    TypedDeclaration(ty::TyDeclaration),
+    TypedExpression(ty::TyExpression),
     TypedFunctionDeclaration(TyFunctionDeclaration),
     TypedFunctionParameter(TyFunctionParameter),
     TypedStructField(TyStructField),
