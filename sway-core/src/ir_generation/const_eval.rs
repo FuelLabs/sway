@@ -223,8 +223,9 @@ fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant.
                 return None;
             }
-            let aggregate = get_aggregate_for_types(lookup.context, &field_typs).unwrap();
-            Some(Constant::new_struct(&aggregate, field_vals))
+            get_aggregate_for_types(lookup.context, &field_typs).map_or(None, |aggregate| {
+                Some(Constant::new_struct(&aggregate, field_vals))
+            })
         }
         ty::TyExpressionVariant::Tuple { fields } => {
             let (field_typs, field_vals): (Vec<_>, Vec<_>) = fields
@@ -238,8 +239,9 @@ fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant.
                 return None;
             }
-            let aggregate = create_tuple_aggregate(lookup.context, field_typs).unwrap();
-            Some(Constant::new_struct(&aggregate, field_vals))
+            create_tuple_aggregate(lookup.context, field_typs).map_or(None, |aggregate| {
+                Some(Constant::new_struct(&aggregate, field_vals))
+            })
         }
         ty::TyExpressionVariant::Array { contents } => {
             let (element_typs, element_vals): (Vec<_>, Vec<_>) = contents
@@ -262,34 +264,36 @@ fn const_eval_typed_expr(
                 // This shouldn't happen if the type checker did its job.
                 return None;
             }
-            let aggregate = create_array_aggregate(
+            create_array_aggregate(
                 lookup.context,
                 element_type_id,
                 element_typs.len().try_into().unwrap(),
             )
-            .unwrap();
-            Some(Constant::new_array(&aggregate, element_vals))
+            .map_or(None, |aggregate| {
+                Some(Constant::new_array(&aggregate, element_vals))
+            })
         }
         ty::TyExpressionVariant::EnumInstantiation {
             enum_decl,
             tag,
             contents,
             ..
-        } => {
-            let aggregate =
-                create_enum_aggregate(lookup.context, enum_decl.variants.clone()).unwrap();
-            let tag_value = Constant::new_uint(64, *tag as u64);
-            let mut fields: Vec<Constant> = vec![tag_value];
-            match contents {
-                None => fields.push(Constant::new_unit()),
-                Some(subexpr) => const_eval_typed_expr(lookup, known_consts, subexpr)
-                    .into_iter()
-                    .for_each(|enum_val| {
-                        fields.push(enum_val);
-                    }),
-            }
-            Some(Constant::new_struct(&aggregate, fields))
-        }
+        } => create_enum_aggregate(lookup.context, enum_decl.variants.clone()).map_or(
+            None,
+            |aggregate| {
+                let tag_value = Constant::new_uint(64, *tag as u64);
+                let mut fields: Vec<Constant> = vec![tag_value];
+                match contents {
+                    None => fields.push(Constant::new_unit()),
+                    Some(subexpr) => const_eval_typed_expr(lookup, known_consts, subexpr)
+                        .into_iter()
+                        .for_each(|enum_val| {
+                            fields.push(enum_val);
+                        }),
+                }
+                Some(Constant::new_struct(&aggregate, fields))
+            },
+        ),
         ty::TyExpressionVariant::StructFieldAccess {
             prefix,
             field_to_access,
