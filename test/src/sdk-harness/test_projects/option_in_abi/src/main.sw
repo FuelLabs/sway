@@ -1,5 +1,9 @@
 contract;
 
+pub enum SomeError {
+    SomeErrorString: str[5],
+}
+
 struct MyStruct {
     first_field: Option<Address>,
     second_field: u64,
@@ -22,6 +26,7 @@ abi MyContract {
     fn enum_test(input: Option<MyEnum>) -> Option<MyEnum>;
     fn array_test(input: Option<[Option<Address>; 3]>) -> Option<[Option<Address>; 3]>;
     fn string_test(input: Option<str[4]>) -> Option<str[4]>;
+    fn result_in_option_test(input: Option<Result<str[4], SomeError>>) -> Option<Result<str[4], SomeError>>;
 }
 
 impl MyContract for Contract {
@@ -56,6 +61,9 @@ impl MyContract for Contract {
         input
     }
     fn string_test(input: Option<str[4]>) -> Option<str[4]> {
+        input
+    }
+    fn result_in_option_test(input: Option<Result<str[4], SomeError>>) -> Option<Result<str[4], SomeError>> {
         input
     }
 }

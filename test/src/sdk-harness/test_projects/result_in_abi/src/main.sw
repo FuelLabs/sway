@@ -26,6 +26,7 @@ abi MyContract {
     fn enum_test(input: Result<MyEnum, SomeError>) -> Result<MyEnum, SomeError>;
     fn array_test(input: Result<[Result<Address, SomeError>; 3], SomeError>) -> Result<[Result<Address, SomeError>; 3], SomeError>;
     fn string_test(input: Result<str[4], SomeError>) -> Result<str[4], SomeError>;
+    fn option_in_result_test(input: Result<Option<str[4]>, SomeError>) -> Result<Option<str[4]>, SomeError>;
 }
 
 impl MyContract for Contract {
@@ -64,6 +65,9 @@ impl MyContract for Contract {
         input
     }
     fn string_test(input: Result<str[4], SomeError>) -> Result<str[4], SomeError> {
+        input
+    }
+    fn option_in_result_test(input: Result<Option<str[4]>, SomeError>) -> Result<Option<str[4]>, SomeError> {
         input
     }
 }

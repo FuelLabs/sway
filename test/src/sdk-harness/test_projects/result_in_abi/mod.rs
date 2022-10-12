@@ -273,3 +273,32 @@ async fn test_string() -> Result<(), Error> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_option_in_result() -> Result<(), Error> {
+    let (instance, _id) = get_result_in_abi_instance().await;
+    let contract_methods = instance.methods();
+
+    let input = Ok(Some("fuel".try_into().unwrap()));
+    let response = contract_methods
+        .option_in_result_test(input.clone())
+        .call()
+        .await?;
+    assert_eq!(input, response.value);
+
+    let input = Ok(None);
+    let response = contract_methods
+        .option_in_result_test(input.clone())
+        .call()
+        .await?;
+    assert_eq!(input, response.value);
+
+    let input = Err(SomeError::SomeErrorString("error".try_into().unwrap()));
+    let response = contract_methods
+        .option_in_result_test(input.clone())
+        .call()
+        .await?;
+    assert_eq!(input, response.value);
+
+    Ok(())
+}
