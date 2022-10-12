@@ -653,7 +653,7 @@ pub enum CompileError {
     ConfigTimeConstantNotALiteral { span: Span },
     #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident },
-    #[error("returning raw_ptrs are not allowed for main()")]
+    #[error("returning a `raw_ptr` from `main()` is not allowed")]
     PointerReturnNotAllowedInMain { span: Span },
 }
 
