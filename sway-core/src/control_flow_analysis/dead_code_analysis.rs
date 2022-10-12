@@ -2,13 +2,7 @@ use super::*;
 use crate::{
     declaration_engine::declaration_engine::*,
     language::{parsed::TreeType, ty, CallPath, Visibility},
-    semantic_analysis::{
-        ast_node::{
-            TyAbiDeclaration, TyEnumDeclaration, TyFunctionDeclaration, TyStructDeclaration,
-            TyTraitDeclaration, TyVariableDeclaration,
-        },
-        TyAstNode, TyAstNodeContent, TyImplTrait, TyStorageDeclaration,
-    },
+    semantic_analysis::*,
     type_system::{to_typeinfo, TypeInfo},
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
@@ -492,7 +486,7 @@ fn connect_trait_declaration(
 
 /// See [connect_trait_declaration] for implementation details.
 fn connect_abi_declaration(
-    decl: &TyAbiDeclaration,
+    decl: &ty::TyAbiDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
 ) {

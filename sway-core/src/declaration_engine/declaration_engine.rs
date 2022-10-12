@@ -193,12 +193,16 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_storage(span)
     }
 
-    fn insert_abi(&self, abi: TyAbiDeclaration) -> DeclarationId {
+    fn insert_abi(&self, abi: ty::TyAbiDeclaration) -> DeclarationId {
         let span = abi.span.clone();
         DeclarationId::new(self.slab.insert(DeclarationWrapper::Abi(abi)), span)
     }
 
-    fn get_abi(&self, index: DeclarationId, span: &Span) -> Result<TyAbiDeclaration, CompileError> {
+    fn get_abi(
+        &self,
+        index: DeclarationId,
+        span: &Span,
+    ) -> Result<ty::TyAbiDeclaration, CompileError> {
         self.slab.get(*index).expect_abi(span)
     }
 
@@ -343,11 +347,11 @@ pub fn de_get_storage(
     DECLARATION_ENGINE.get_storage(index, span)
 }
 
-pub(crate) fn de_insert_abi(abi: TyAbiDeclaration) -> DeclarationId {
+pub(crate) fn de_insert_abi(abi: ty::TyAbiDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.insert_abi(abi)
 }
 
-pub fn de_get_abi(index: DeclarationId, span: &Span) -> Result<TyAbiDeclaration, CompileError> {
+pub fn de_get_abi(index: DeclarationId, span: &Span) -> Result<ty::TyAbiDeclaration, CompileError> {
     DECLARATION_ENGINE.get_abi(index, span)
 }
 

@@ -22,7 +22,7 @@ pub(crate) enum DeclarationWrapper {
     ImplTrait(TyImplTrait),
     Struct(TyStructDeclaration),
     Storage(TyStorageDeclaration),
-    Abi(TyAbiDeclaration),
+    Abi(ty::TyAbiDeclaration),
     Constant(Box<ty::TyConstantDeclaration>),
     Enum(TyEnumDeclaration),
 }
@@ -181,7 +181,7 @@ impl DeclarationWrapper {
         }
     }
 
-    pub(super) fn expect_abi(self, span: &Span) -> Result<TyAbiDeclaration, CompileError> {
+    pub(super) fn expect_abi(self, span: &Span) -> Result<ty::TyAbiDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Abi(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(

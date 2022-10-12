@@ -405,7 +405,7 @@ impl TyAstNode {
                         }
                         Declaration::AbiDeclaration(abi_decl) => {
                             let abi_decl = check!(
-                                TyAbiDeclaration::type_check(ctx.by_ref(), abi_decl),
+                                ty::TyAbiDeclaration::type_check(ctx.by_ref(), abi_decl),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
