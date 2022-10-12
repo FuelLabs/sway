@@ -437,7 +437,7 @@ fn handle_expression(expression: &ty::TyExpression, tokens: &TokenMap) {
             }
             handle_expression(&storage_reassignment.rhs, tokens);
         }
-        ty::TyExpressionVariant::Return(stmt) => handle_expression(&stmt.expr, tokens),
+        ty::TyExpressionVariant::Return(exp) => handle_expression(exp, tokens),
     }
 }
 

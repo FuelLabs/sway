@@ -186,8 +186,7 @@ impl TyFunctionDeclaration {
         let return_statements: Vec<&ty::TyExpression> = body
             .contents
             .iter()
-            .flat_map(|node| -> Vec<&TyReturnStatement> { node.gather_return_statements() })
-            .map(|TyReturnStatement { expr, .. }| expr)
+            .flat_map(|node| node.gather_return_statements())
             .collect();
 
         // unify the types of the return statements with the function return type
