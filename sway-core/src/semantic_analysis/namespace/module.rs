@@ -1,12 +1,12 @@
 use crate::{
     error::*,
-    language::{parsed::*, Visibility},
+    language::{parsed::*, ty, Visibility},
     semantic_analysis::{
         ast_node::{TyAstNode, TyAstNodeContent, TyVariableDeclaration},
         declaration::VariableMutability,
         TypeCheckContext,
     },
-    CompileResult, Ident, Namespace, TyDeclaration,
+    Ident, Namespace,
 };
 
 use super::{
@@ -342,7 +342,7 @@ impl Module {
                     errors.push(CompileError::ImportPrivateSymbol { name: item.clone() });
                 }
                 // if this is a const, insert it into the local namespace directly
-                if let TyDeclaration::VariableDeclaration(ref var_decl) = decl {
+                if let ty::TyDeclaration::VariableDeclaration(ref var_decl) = decl {
                     let TyVariableDeclaration {
                         mutability, name, ..
                     } = &**var_decl;

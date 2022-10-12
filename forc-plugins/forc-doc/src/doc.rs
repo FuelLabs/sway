@@ -2,9 +2,9 @@ use crate::descriptor::Descriptor;
 use std::collections::BTreeMap;
 use sway_core::{
     language::parsed::{AstNode, AstNodeContent, Declaration, ParseProgram, ParseSubmodule},
+    language::ty::TyDeclaration,
     semantic_analysis::TySubmodule,
-    Attribute, AttributeKind, AttributesMap, CompileResult, TyAstNodeContent, TyDeclaration,
-    TyProgram,
+    Attribute, AttributeKind, AttributesMap, CompileResult, TyAstNodeContent, TyProgram,
 };
 
 type TypeInformation = TyDeclaration;

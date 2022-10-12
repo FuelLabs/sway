@@ -1,7 +1,7 @@
 use crate::{
     declaration_engine::{declaration_engine::de_get_storage, declaration_id::DeclarationId},
     error::*,
-    language::CallPath,
+    language::{ty, CallPath},
     namespace::*,
     semantic_analysis::*,
     type_system::*,
@@ -9,7 +9,10 @@ use crate::{
 
 use super::TraitMap;
 
-use sway_error::error::CompileError;
+use sway_error::{
+    error::CompileError,
+    warning::{CompileWarning, Warning},
+};
 use sway_types::{span::Span, Spanned};
 
 use std::sync::Arc;
@@ -21,7 +24,7 @@ pub(crate) enum GlobImport {
     No,
 }
 
-pub(super) type SymbolMap = im::OrdMap<Ident, TyDeclaration>;
+pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDeclaration>;
 pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 
@@ -56,7 +59,7 @@ impl Items {
         fields: Vec<Ident>,
         storage_fields: &[TyStorageField],
         access_span: &Span,
-    ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
+    ) -> CompileResult<(ty::TyStorageAccess, TypeId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match self.declared_storage {
@@ -95,17 +98,22 @@ impl Items {
         self.symbols().keys()
     }
 
-    pub(crate) fn insert_symbol(&mut self, name: Ident, item: TyDeclaration) -> CompileResult<()> {
+    pub(crate) fn insert_symbol(
+        &mut self,
+        name: Ident,
+        item: ty::TyDeclaration,
+    ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
         // purposefully do not preemptively return errors so that the
         // new definition allows later usages to compile
         if self.symbols.get(&name).is_some() {
             match item {
-                TyDeclaration::EnumDeclaration { .. } | TyDeclaration::StructDeclaration { .. } => {
+                ty::TyDeclaration::EnumDeclaration { .. }
+                | ty::TyDeclaration::StructDeclaration { .. } => {
                     errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
                 }
-                TyDeclaration::GenericTypeForFunctionScope { .. } => {
+                ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
                     errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
                 }
                 _ => {
@@ -120,7 +128,7 @@ impl Items {
         ok((), warnings, errors)
     }
 
-    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&TyDeclaration, CompileError> {
+    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDeclaration, CompileError> {
         self.symbols
             .get(name)
             .ok_or_else(|| CompileError::SymbolNotFound { name: name.clone() })

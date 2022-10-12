@@ -1,8 +1,7 @@
 use crate::capabilities;
-use crate::core::{
-    document::{DocumentError, TextDocument},
-    session::Session,
-};
+use crate::core::{document::TextDocument, session::Session};
+pub use crate::error::DocumentError;
+use crate::error::LanguageServerError;
 use crate::utils::debug::{self, DebugFlags};
 use forc_util::find_manifest_dir;
 use serde::{Deserialize, Serialize};
@@ -33,6 +32,10 @@ impl Backend {
         self.client.log_message(MessageType::INFO, message).await;
     }
 
+    async fn log_error_message(&self, message: &str) {
+        self.client.log_message(MessageType::ERROR, message).await;
+    }
+
     async fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
         if let Some(path) = find_manifest_dir(&std::env::current_dir().unwrap()) {
             // Store the documents.
@@ -49,7 +52,8 @@ impl Backend {
         let diagnostics = match self.session.parse_project(uri) {
             Ok(diagnostics) => diagnostics,
             Err(err) => {
-                if let DocumentError::FailedToParse(diagnostics) = err {
+                self.log_error_message(err.to_string().as_str()).await;
+                if let LanguageServerError::FailedToParse { diagnostics } = err {
                     diagnostics
                 } else {
                     vec![]
@@ -365,8 +369,10 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use std::{borrow::Cow, env, fs, io::Read, path::PathBuf};
+    use std::{borrow::Cow, fs, io::Read, path::PathBuf};
     use tower::{Service, ServiceExt};
+
+    use crate::test_utils::sway_workspace_dir;
 
     use super::*;
     use serial_test::serial;
@@ -374,10 +380,6 @@ mod tests {
         jsonrpc::{self, Id, Request, Response},
         ExitedError, LspService,
     };
-
-    fn sway_workspace_dir() -> PathBuf {
-        env::current_dir().unwrap().parent().unwrap().to_path_buf()
-    }
 
     fn e2e_language_dir() -> PathBuf {
         PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass/language")

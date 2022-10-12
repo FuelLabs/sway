@@ -194,12 +194,12 @@ fn connect_node(
 
 fn connect_declaration(
     node: &TyAstNode,
-    decl: &TyDeclaration,
+    decl: &ty::TyDeclaration,
     graph: &mut ControlFlowGraph,
     span: Span,
     leaves: &[NodeIndex],
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    use TyDeclaration::*;
+    use ty::TyDeclaration::*;
     match decl {
         TraitDeclaration(_)
         | AbiDeclaration(_)

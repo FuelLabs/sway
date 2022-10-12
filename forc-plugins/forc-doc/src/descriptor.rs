@@ -1,6 +1,7 @@
 use crate::render::create_html_file_name;
 use sway_core::{
-    declaration_engine::*, language::parsed::Declaration, AbiName, TyDeclaration, TypeInfo,
+    declaration_engine::*, language::parsed::Declaration, language::ty::TyDeclaration, AbiName,
+    TypeInfo,
 };
 use sway_types::{Ident, Spanned};
 

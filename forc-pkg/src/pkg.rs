@@ -1702,8 +1702,7 @@ pub fn sway_build_config(
     )
     .print_finalized_asm(build_profile.print_finalized_asm)
     .print_intermediate_asm(build_profile.print_intermediate_asm)
-    .print_ir(build_profile.print_ir)
-    .generate_logged_types(build_profile.generate_logged_types);
+    .print_ir(build_profile.print_ir);
     Ok(build_config)
 }
 
@@ -1991,8 +1990,6 @@ pub struct BuildOptions {
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
-    /// Include logged types in the JSON ABI.
-    pub generate_logged_types: bool,
 }
 
 /// The suffix that helps identify the file which contains the hash of the binary file created when
@@ -2025,7 +2022,6 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
         build_profile,
         release,
         time_phases,
-        generate_logged_types,
     } = build_options;
 
     let mut selected_build_profile = key_debug;
@@ -2076,7 +2072,6 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
     profile.print_intermediate_asm |= print_intermediate_asm;
     profile.terse |= terse_mode;
     profile.time_phases |= time_phases;
-    profile.generate_logged_types |= generate_logged_types;
 
     // Build it!
     let (compiled, source_map) = build(&plan, &profile)?;
@@ -2382,7 +2377,7 @@ pub fn check(
             Some(program) => program,
         };
 
-        let ast_result = sway_core::parsed_to_ast(&parse_program, dep_namespace, false);
+        let ast_result = sway_core::parsed_to_ast(&parse_program, dep_namespace);
         warnings.extend(ast_result.warnings);
         errors.extend(ast_result.errors);
 
