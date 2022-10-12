@@ -76,4 +76,4 @@ Note that `ra` will include the value being logged. The additional registers `rc
 Note that `data` in the receipt above will include the value being logged as a hexadecimal. Similarly to the `Log` receipt, additional registers are written: `ra` will always be zero when using `log`, while `rb` will contain a unique ID for the `log` instance.
 
 > **Note**
-> The Rust SDK exposes [APIs](https://fuellabs.github.io/fuels-rs/master/calling-contracts/logs.html#logs) that allow you to retreive the logged values and display them nicely based on their types as indicated in the JSON ABI file.
+> The Rust SDK exposes [APIs](https://fuellabs.github.io/fuels-rs/master/calling-contracts/logs.html#logs) that allow you to retrieve the logged values and display them nicely based on their types as indicated in the JSON ABI file.
