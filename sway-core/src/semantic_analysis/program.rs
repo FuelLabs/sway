@@ -1,6 +1,6 @@
 use super::{
-    storage_only_types, TyAstNode, TyAstNodeContent, TyDeclaration, TyFunctionDeclaration,
-    TyImplTrait, TyStorageDeclaration,
+    storage_only_types, TyAstNode, TyAstNodeContent, TyFunctionDeclaration, TyImplTrait,
+    TyStorageDeclaration,
 };
 use crate::{
     declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait, de_get_storage},
@@ -84,12 +84,12 @@ impl TyProgram {
         }
 
         let mut mains = Vec::new();
-        let mut declarations = Vec::<TyDeclaration>::new();
+        let mut declarations = Vec::<ty::TyDeclaration>::new();
         let mut abi_entries = Vec::new();
         let mut fn_declarations = std::collections::HashSet::new();
         for node in &root.all_nodes {
             match &node.content {
-                TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)) => {
+                TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(decl_id)) => {
                     let func = check!(
                         CompileResult::from(de_get_function(decl_id.clone(), &node.span)),
                         return err(warnings, errors),
@@ -106,11 +106,11 @@ impl TyProgram {
                             .push(CompileError::MultipleDefinitionsOfFunction { name: func.name });
                     }
 
-                    declarations.push(TyDeclaration::FunctionDeclaration(decl_id.clone()));
+                    declarations.push(ty::TyDeclaration::FunctionDeclaration(decl_id.clone()));
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself.
-                TyAstNodeContent::Declaration(TyDeclaration::ImplTrait(decl_id)) => {
+                TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)) => {
                     let TyImplTrait {
                         methods,
                         implementing_for_type_id,
@@ -155,9 +155,9 @@ impl TyProgram {
             // `storage` declarations are not allowed in non-contracts
             let storage_decl = declarations
                 .iter()
-                .find(|decl| matches!(decl, TyDeclaration::StorageDeclaration(_)));
+                .find(|decl| matches!(decl, ty::TyDeclaration::StorageDeclaration(_)));
 
-            if let Some(TyDeclaration::StorageDeclaration(decl_id)) = storage_decl {
+            if let Some(ty::TyDeclaration::StorageDeclaration(decl_id)) = storage_decl {
                 let TyStorageDeclaration { span, .. } = check!(
                     CompileResult::from(de_get_storage(decl_id.clone(), &decl_id.span())),
                     return err(warnings, errors),
@@ -334,11 +334,11 @@ impl TyProgram {
             TyProgramKind::Contract { declarations, .. } => {
                 let storage_decl = declarations
                     .iter()
-                    .find(|decl| matches!(decl, TyDeclaration::StorageDeclaration(_)));
+                    .find(|decl| matches!(decl, ty::TyDeclaration::StorageDeclaration(_)));
 
                 // Expecting at most a single storage declaration
                 match storage_decl {
-                    Some(TyDeclaration::StorageDeclaration(decl_id)) => {
+                    Some(ty::TyDeclaration::StorageDeclaration(decl_id)) => {
                         let decl = check!(
                             CompileResult::from(de_get_storage(decl_id.clone(), &decl_id.span())),
                             return err(warnings, errors),
@@ -463,18 +463,18 @@ impl TyProgram {
 pub enum TyProgramKind {
     Contract {
         abi_entries: Vec<TyFunctionDeclaration>,
-        declarations: Vec<TyDeclaration>,
+        declarations: Vec<ty::TyDeclaration>,
     },
     Library {
         name: Ident,
     },
     Predicate {
         main_function: TyFunctionDeclaration,
-        declarations: Vec<TyDeclaration>,
+        declarations: Vec<ty::TyDeclaration>,
     },
     Script {
         main_function: TyFunctionDeclaration,
-        declarations: Vec<TyDeclaration>,
+        declarations: Vec<ty::TyDeclaration>,
     },
 }
 
@@ -491,14 +491,14 @@ impl TyProgramKind {
 }
 
 fn disallow_impure_functions(
-    declarations: &[TyDeclaration],
+    declarations: &[ty::TyDeclaration],
     mains: &[TyFunctionDeclaration],
 ) -> Vec<CompileError> {
     let mut errs: Vec<CompileError> = vec![];
     let fn_decls = declarations
         .iter()
         .filter_map(|decl| match decl {
-            TyDeclaration::FunctionDeclaration(decl_id) => {
+            ty::TyDeclaration::FunctionDeclaration(decl_id) => {
                 match de_get_function(decl_id.clone(), &decl.span()) {
                     Ok(fn_decl) => Some(fn_decl),
                     Err(err) => {

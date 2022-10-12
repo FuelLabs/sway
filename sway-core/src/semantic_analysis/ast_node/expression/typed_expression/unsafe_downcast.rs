@@ -1,11 +1,11 @@
-use sway_types::Span;
+use sway_types::{integer_bits::IntegerBits, Span};
 
 use crate::{
     language::{ty, Literal},
     semantic_analysis::{
         ast_node::expression::match_expression::MatchReqMap, IsConstant, TyEnumVariant,
     },
-    type_system::{insert_type, IntegerBits},
+    type_system::insert_type,
     TypeInfo,
 };
 // currently the unsafe downcast expr is only used for enums, so this method is specialized for enums

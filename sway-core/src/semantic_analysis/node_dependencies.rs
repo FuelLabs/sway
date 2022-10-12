@@ -5,11 +5,12 @@ use crate::type_system::{TypeArgument, TypeParameter};
 use crate::{
     error::*,
     language::{parsed::*, CallPath},
-    type_system::{look_up_type_id, AbiName, IntegerBits},
+    type_system::{look_up_type_id, AbiName},
     TypeInfo,
 };
 
 use sway_error::error::CompileError;
+use sway_types::integer_bits::IntegerBits;
 use sway_types::Spanned;
 use sway_types::{ident::Ident, span::Span};
 

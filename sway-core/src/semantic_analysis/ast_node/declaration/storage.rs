@@ -5,9 +5,7 @@ use crate::{
     },
     language::ty,
     metadata::MetadataManager,
-    semantic_analysis::{
-        TyStructField, TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor,
-    },
+    semantic_analysis::TyStructField,
     type_system::{look_up_type_id, TypeId, TypeInfo},
     AttributesMap, Ident,
 };
@@ -47,7 +45,7 @@ impl TyStorageDeclaration {
         &self,
         fields: Vec<Ident>,
         storage_fields: &[TyStorageField],
-    ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
+    ) -> CompileResult<(ty::TyStorageAccess, TypeId)> {
         let mut errors = vec![];
         let warnings = vec![];
 
@@ -74,7 +72,7 @@ impl TyStorageDeclaration {
             }
         };
 
-        type_checked_buf.push(TypeCheckedStorageAccessDescriptor {
+        type_checked_buf.push(ty::TyStorageAccessDescriptor {
             name: first_field.clone(),
             type_id: *initial_field_type,
             span: first_field.span(),
@@ -99,7 +97,7 @@ impl TyStorageDeclaration {
                 .find(|x| x.name.as_str() == field.as_str())
             {
                 Some(struct_field) => {
-                    type_checked_buf.push(TypeCheckedStorageAccessDescriptor {
+                    type_checked_buf.push(ty::TyStorageAccessDescriptor {
                         name: field.clone(),
                         type_id: struct_field.type_id,
                         span: field.span().clone(),
@@ -125,7 +123,7 @@ impl TyStorageDeclaration {
 
         ok(
             (
-                TypeCheckedStorageAccess {
+                ty::TyStorageAccess {
                     fields: type_checked_buf,
                     ix,
                 },

@@ -14,7 +14,7 @@ use crate::{
     language::{ty, *},
     metadata::MetadataManager,
     semantic_analysis::*,
-    type_system::{look_up_type_id, to_typeinfo, IntegerBits, TypeId, TypeInfo},
+    type_system::{look_up_type_id, to_typeinfo, TypeId, TypeInfo},
 };
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::{CompileError, Hint};
@@ -22,6 +22,7 @@ use sway_ir::{Context, *};
 use sway_types::{
     constants,
     ident::Ident,
+    integer_bits::IntegerBits,
     span::{Span, Spanned},
     state::StateIndex,
 };
@@ -113,32 +114,38 @@ impl FnCompiler {
         let span_md_idx = md_mgr.span_to_md(context, &ast_node.span);
         match ast_node.content {
             TyAstNodeContent::Declaration(td) => match td {
-                TyDeclaration::VariableDeclaration(tvd) => {
+                ty::TyDeclaration::VariableDeclaration(tvd) => {
                     self.compile_var_decl(context, md_mgr, *tvd, span_md_idx)
                 }
-                TyDeclaration::ConstantDeclaration(decl_id) => {
+                ty::TyDeclaration::ConstantDeclaration(decl_id) => {
                     let tcd = declaration_engine::de_get_constant(decl_id, &ast_node.span)?;
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
                 }
-                TyDeclaration::FunctionDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
-                    decl_type: "function",
-                    span: ast_node.span,
-                }),
-                TyDeclaration::TraitDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
-                    decl_type: "trait",
-                    span: ast_node.span,
-                }),
-                TyDeclaration::StructDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
-                    decl_type: "struct",
-                    span: ast_node.span,
-                }),
-                TyDeclaration::EnumDeclaration(decl_id) => {
+                ty::TyDeclaration::FunctionDeclaration(_) => {
+                    Err(CompileError::UnexpectedDeclaration {
+                        decl_type: "function",
+                        span: ast_node.span,
+                    })
+                }
+                ty::TyDeclaration::TraitDeclaration(_) => {
+                    Err(CompileError::UnexpectedDeclaration {
+                        decl_type: "trait",
+                        span: ast_node.span,
+                    })
+                }
+                ty::TyDeclaration::StructDeclaration(_) => {
+                    Err(CompileError::UnexpectedDeclaration {
+                        decl_type: "struct",
+                        span: ast_node.span,
+                    })
+                }
+                ty::TyDeclaration::EnumDeclaration(decl_id) => {
                     let ted = declaration_engine::de_get_enum(decl_id, &ast_node.span)?;
                     create_enum_aggregate(context, ted.variants).map(|_| ())?;
                     Ok(None)
                 }
-                TyDeclaration::ImplTrait(_) => {
+                ty::TyDeclaration::ImplTrait(_) => {
                     // XXX What if we ignore the trait implementation???  Potentially since
                     // we currently inline everything and below we 'recreate' the functions
                     // lazily as they are called, nothing needs to be done here.  BUT!
@@ -146,24 +153,28 @@ impl FnCompiler {
                     // compile and then call these properly.
                     Ok(None)
                 }
-                TyDeclaration::AbiDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
+                ty::TyDeclaration::AbiDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
                     decl_type: "abi",
                     span: ast_node.span,
                 }),
-                TyDeclaration::GenericTypeForFunctionScope { .. } => {
+                ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "abi",
                         span: ast_node.span,
                     })
                 }
-                TyDeclaration::ErrorRecovery { .. } => Err(CompileError::UnexpectedDeclaration {
-                    decl_type: "error recovery",
-                    span: ast_node.span,
-                }),
-                TyDeclaration::StorageDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
-                    decl_type: "storage",
-                    span: ast_node.span,
-                }),
+                ty::TyDeclaration::ErrorRecovery { .. } => {
+                    Err(CompileError::UnexpectedDeclaration {
+                        decl_type: "error recovery",
+                        span: ast_node.span,
+                    })
+                }
+                ty::TyDeclaration::StorageDeclaration(_) => {
+                    Err(CompileError::UnexpectedDeclaration {
+                        decl_type: "storage",
+                        span: ast_node.span,
+                    })
+                }
             },
             TyAstNodeContent::Expression(te) => {
                 // An expression with an ignored return value... I assume.
@@ -363,8 +374,8 @@ impl FnCompiler {
                     &storage_reassignment.rhs,
                     span_md_idx,
                 ),
-            ty::TyExpressionVariant::Return(stmt) => {
-                self.compile_return_statement(context, md_mgr, stmt.expr)
+            ty::TyExpressionVariant::Return(exp) => {
+                self.compile_return_statement(context, md_mgr, *exp)
             }
         }
     }
@@ -1879,7 +1890,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        fields: &[TypeCheckedStorageAccessDescriptor],
+        fields: &[ty::TyStorageAccessDescriptor],
         ix: &StateIndex,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {

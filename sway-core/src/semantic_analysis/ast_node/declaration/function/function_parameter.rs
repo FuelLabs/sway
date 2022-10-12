@@ -6,7 +6,7 @@ use crate::{
         VariableMutability,
     },
     type_system::*,
-    CompileResult, Ident, Namespace, TyDeclaration,
+    CompileResult, Ident, Namespace,
 };
 
 use sway_error::error::CompileError;
@@ -189,7 +189,7 @@ impl TyFunctionParameter {
 fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &TyFunctionParameter) {
     ctx.namespace.insert_symbol(
         typed_parameter.name.clone(),
-        TyDeclaration::VariableDeclaration(Box::new(TyVariableDeclaration {
+        ty::TyDeclaration::VariableDeclaration(Box::new(TyVariableDeclaration {
             name: typed_parameter.name.clone(),
             body: ty::TyExpression {
                 expression: ty::TyExpressionVariant::FunctionParameter,

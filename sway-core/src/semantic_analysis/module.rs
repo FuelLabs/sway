@@ -1,5 +1,8 @@
 use crate::{
-    declaration_engine::declaration_engine::*, error::*, language::parsed::*, semantic_analysis::*,
+    declaration_engine::declaration_engine::*,
+    error::*,
+    language::{parsed::*, ty},
+    semantic_analysis::*,
     type_system::*,
 };
 
@@ -104,7 +107,8 @@ impl TySubmodule {
 fn check_supertraits(typed_tree_nodes: &[TyAstNode], namespace: &Namespace) -> Vec<CompileError> {
     let mut errors = vec![];
     for node in typed_tree_nodes {
-        if let TyAstNodeContent::Declaration(TyDeclaration::ImplTrait(decl_id)) = &node.content {
+        if let TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)) = &node.content
+        {
             let TyImplTrait {
                 trait_name,
                 span,
@@ -118,7 +122,7 @@ fn check_supertraits(typed_tree_nodes: &[TyAstNode], namespace: &Namespace) -> V
                 }
             };
             if let CompileResult {
-                value: Some(TyDeclaration::TraitDeclaration(decl_id)),
+                value: Some(ty::TyDeclaration::TraitDeclaration(decl_id)),
                 ..
             } = namespace.resolve_call_path(&trait_name)
             {
@@ -131,8 +135,9 @@ fn check_supertraits(typed_tree_nodes: &[TyAstNode], namespace: &Namespace) -> V
                 };
                 for supertrait in &tr.supertraits {
                     if !typed_tree_nodes.iter().any(|search_node| {
-                        if let TyAstNodeContent::Declaration(TyDeclaration::ImplTrait(decl_id)) =
-                            &search_node.content
+                        if let TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(
+                            decl_id,
+                        )) = &search_node.content
                         {
                             let TyImplTrait {
                                 trait_name: search_node_trait_name,
@@ -147,11 +152,11 @@ fn check_supertraits(typed_tree_nodes: &[TyAstNode], namespace: &Namespace) -> V
                             };
                             if let (
                                 CompileResult {
-                                    value: Some(TyDeclaration::TraitDeclaration(decl_id1)),
+                                    value: Some(ty::TyDeclaration::TraitDeclaration(decl_id1)),
                                     ..
                                 },
                                 CompileResult {
-                                    value: Some(TyDeclaration::TraitDeclaration(decl_id2)),
+                                    value: Some(ty::TyDeclaration::TraitDeclaration(decl_id2)),
                                     ..
                                 },
                             ) = (

@@ -1,4 +1,5 @@
 use sway_error::error::CompileError;
+use sway_error::warning::CompileWarning;
 use sway_types::{Span, Spanned};
 
 use crate::{
@@ -6,7 +7,7 @@ use crate::{
     error::*,
     language::ty,
     semantic_analysis::{
-        TyAstNodeContent, TyCodeBlock, TyConstantDeclaration, TyDeclaration, TyEnumDeclaration,
+        TyAstNodeContent, TyCodeBlock, TyConstantDeclaration, TyEnumDeclaration,
         TyFunctionDeclaration, TyImplTrait, TyIntrinsicFunctionKind, TyReassignment,
         TyStorageDeclaration, TyStructDeclaration,
     },
@@ -132,8 +133,8 @@ fn expr_validate(expr: &ty::TyExpression) -> CompileResult<()> {
             );
             check!(expr_validate(rhs), (), warnings, errors)
         }
-        ty::TyExpressionVariant::Return(stmt) => {
-            check!(expr_validate(&stmt.expr), (), warnings, errors)
+        ty::TyExpressionVariant::Return(exp) => {
+            check!(expr_validate(exp), (), warnings, errors)
         }
     }
     ok((), warnings, errors)
@@ -169,11 +170,11 @@ fn check_type(ty: TypeId, span: Span, ignore_self: bool) -> CompileResult<()> {
     ok((), warnings, errors)
 }
 
-fn decl_validate(decl: &TyDeclaration) -> CompileResult<()> {
+fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut errors: Vec<CompileError> = vec![];
     match decl {
-        TyDeclaration::VariableDeclaration(decl) => {
+        ty::TyDeclaration::VariableDeclaration(decl) => {
             check!(
                 check_type(decl.body.return_type, decl.name.span(), false),
                 (),
@@ -182,7 +183,7 @@ fn decl_validate(decl: &TyDeclaration) -> CompileResult<()> {
             );
             check!(expr_validate(&decl.body), (), warnings, errors)
         }
-        TyDeclaration::ConstantDeclaration(decl_id) => {
+        ty::TyDeclaration::ConstantDeclaration(decl_id) => {
             let TyConstantDeclaration {
                 value: expr, name, ..
             } = check!(
@@ -199,7 +200,7 @@ fn decl_validate(decl: &TyDeclaration) -> CompileResult<()> {
             );
             check!(expr_validate(&expr), (), warnings, errors)
         }
-        TyDeclaration::FunctionDeclaration(decl_id) => {
+        ty::TyDeclaration::FunctionDeclaration(decl_id) => {
             let TyFunctionDeclaration {
                 body, parameters, ..
             } = check!(
@@ -223,10 +224,10 @@ fn decl_validate(decl: &TyDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TyDeclaration::AbiDeclaration(_) | TyDeclaration::TraitDeclaration(_) => {
+        ty::TyDeclaration::AbiDeclaration(_) | ty::TyDeclaration::TraitDeclaration(_) => {
             // These methods are not typed. They are however handled from ImplTrait.
         }
-        TyDeclaration::ImplTrait(decl_id) => {
+        ty::TyDeclaration::ImplTrait(decl_id) => {
             let TyImplTrait { methods, .. } = check!(
                 CompileResult::from(de_get_impl_trait(decl_id.clone(), &decl_id.span())),
                 return err(warnings, errors),
@@ -242,7 +243,7 @@ fn decl_validate(decl: &TyDeclaration) -> CompileResult<()> {
                 )
             }
         }
-        TyDeclaration::StructDeclaration(decl_id) => {
+        ty::TyDeclaration::StructDeclaration(decl_id) => {
             let TyStructDeclaration { fields, .. } = check!(
                 CompileResult::from(de_get_struct(decl_id.clone(), &decl_id.span())),
                 return err(warnings, errors),
@@ -258,7 +259,7 @@ fn decl_validate(decl: &TyDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TyDeclaration::EnumDeclaration(decl_id) => {
+        ty::TyDeclaration::EnumDeclaration(decl_id) => {
             let TyEnumDeclaration { variants, .. } = check!(
                 CompileResult::from(de_get_enum(decl_id.clone(), &decl.span())),
                 return err(warnings, errors),
@@ -274,7 +275,7 @@ fn decl_validate(decl: &TyDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TyDeclaration::StorageDeclaration(decl_id) => {
+        ty::TyDeclaration::StorageDeclaration(decl_id) => {
             let TyStorageDeclaration { fields, .. } = check!(
                 CompileResult::from(de_get_storage(decl_id.clone(), &decl.span())),
                 return err(warnings, errors),
@@ -290,7 +291,8 @@ fn decl_validate(decl: &TyDeclaration) -> CompileResult<()> {
                 );
             }
         }
-        TyDeclaration::GenericTypeForFunctionScope { .. } | TyDeclaration::ErrorRecovery => {}
+        ty::TyDeclaration::GenericTypeForFunctionScope { .. }
+        | ty::TyDeclaration::ErrorRecovery => {}
     }
     ok((), warnings, errors)
 }
