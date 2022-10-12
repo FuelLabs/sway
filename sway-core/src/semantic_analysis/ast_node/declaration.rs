@@ -320,24 +320,6 @@ impl TyTraitFn {
     }
 }
 
-/// Represents the left hand side of a reassignment -- a name to locate it in the
-/// namespace, and the type that the name refers to. The type is used for memory layout
-/// in asm generation.
-#[derive(Clone, Debug, Eq)]
-pub struct ReassignmentLhs {
-    pub kind: ProjectionKind,
-    pub type_id: TypeId,
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for ReassignmentLhs {
-    fn eq(&self, other: &Self) -> bool {
-        self.kind == other.kind && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ProjectionKind {
     StructField { name: Ident },
