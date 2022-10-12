@@ -1,15 +1,7 @@
-use crate::core::{
-    session::Session,
-    token::{SymbolKind, Token, TypedAstToken},
-};
-use sway_core::{
-    type_system::TypeInfo,
-    TypedDeclaration
-};
+use crate::core::{session::Session, token::TypedAstToken};
+use sway_core::{language::ty::TyDeclaration, type_system::TypeInfo};
 use sway_types::Spanned;
-use tower_lsp::lsp_types::{
-    self, Range, InlayHintParams, Url,
-};
+use tower_lsp::lsp_types::{self, Range, Url};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
@@ -34,101 +26,60 @@ pub struct InlayHint {
     pub label: String,
 }
 
-pub(crate) fn inlay_hints(session: &Session, uri: &Url, range: &Range, config: &InlayHintsConfig) -> Option<Vec<lsp_types::InlayHint>> {    
+pub(crate) fn inlay_hints(
+    session: &Session,
+    uri: &Url,
+    range: &Range,
+    config: &InlayHintsConfig,
+) -> Option<Vec<lsp_types::InlayHint>> {
     // 1. Loop through all our tokens and filter out all tokens that aren't TypedVariableDeclaration tokens
     // 2. Also filter out all tokens that have a span that fall outside of the provide range
     // 3. Filter out all variable tokens that have a type_ascription
     // 4. Look up the type id for the remaining tokens
     // 5. Convert the type into a string
-
-    let hints: Vec<lsp_types::InlayHint> = session.tokens_for_file(uri)
+    let hints: Vec<lsp_types::InlayHint> = session
+        .tokens_for_file(uri)
         .iter()
         .filter_map(|item| {
             let token = item.value();
-            match &token.typed {
-                Some(t) => match t {
-                    TypedAstToken::TypedDeclaration(decl) => match decl {
-                        TypedDeclaration::VariableDeclaration(var_decl) => {
-                            match var_decl.type_ascription_span {
-                                Some(_) => None,
-                                None => {
-                                    let var_range = crate::utils::common::get_range_from_span(&var_decl.name.span());
-                                    if var_range.start >= range.start && var_range.end <= range.end {
-                                        Some(var_decl.clone())
-                                    } else {
-                                        None
-                                    }
-                                }
+            token.typed.as_ref().and_then(|t| match t {
+                TypedAstToken::TypedDeclaration(TyDeclaration::VariableDeclaration(var_decl)) => {
+                    match var_decl.type_ascription_span {
+                        Some(_) => None,
+                        None => {
+                            let var_range =
+                                crate::utils::common::get_range_from_span(&var_decl.name.span());
+                            if var_range.start >= range.start && var_range.end <= range.end {
+                                Some(var_decl.clone())
+                            } else {
+                                None
                             }
                         }
-                        _ => None,
                     }
-                    _ => None,
                 }
-                None => None,
-            }
+                _ => None,
+            })
         })
         .filter_map(|var| {
             let type_info = sway_core::type_system::look_up_type_id(var.type_ascription);
             match type_info {
-                TypeInfo::Numeric | TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
-                _ => Some(var)
+                TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
+                _ => Some(var),
             }
         })
         .map(|var| {
             let range = crate::utils::common::get_range_from_span(&var.name.span());
             let kind = InlayKind::TypeHint;
-            let label = format!("{}",var.type_ascription);
-            let inlay_hint = InlayHint {
-                range,
-                kind,
-                label,
-            };
+            let label = format!("{}", var.type_ascription);
+            let inlay_hint = InlayHint { range, kind, label };
             self::inlay_hint(config.render_colons, inlay_hint)
-        }).collect();
-    
+        })
+        .collect();
+
     Some(hints)
-
-    // let v = document.get_token_map()
-    //     .iter()
-    //     .map(|((ident, span), token)| {
-    //         let range = crate::utils::common::get_range_from_span(span);
-    //         let kind = InlayKind::TypeHint;
-    //         //let label = "$$$$".to_string();
-
-    //         let label = match crate::core::traverse_typed_tree::get_type_id(token) {
-    //             Some(type_id) => {
-    //                 tracing::info!("type_id = {:#?}", type_id);
-
-    //                 // Use the TypeId to look up the actual type (I think there is a method in the type_engine for this)
-    //                 let type_info = sway_core::type_engine::look_up_type_id(type_id);
-    //                 tracing::info!("type_info = {:#?}", type_info);
-    //                 type_info.friendly_type_str()
-    //             }
-    //             None => "".to_string()
-    //         };
-    //         let inlay_hint = InlayHint {
-    //             range,
-    //             kind,
-    //             label,
-    //         };
-    //         self::inlay_hint(config.render_colons, inlay_hint)
-    // }).collect();
-
-    //return Ok(Some(v));
-    
-
-    // iter over all tokens in out token_map.
-    // filter_map? all tokens that are outside of the params.range 
-    // map the remaining tokens into an LSP InlayHint
-    // collect all these into a vector 
-    // return
 }
 
-pub(crate) fn inlay_hint(
-    render_colons: bool,
-    inlay_hint: InlayHint,
-) -> lsp_types::InlayHint {
+pub(crate) fn inlay_hint(render_colons: bool, inlay_hint: InlayHint) -> lsp_types::InlayHint {
     lsp_types::InlayHint {
         position: match inlay_hint.kind {
             // after annotated thing
@@ -136,10 +87,10 @@ pub(crate) fn inlay_hint(
         },
         label: lsp_types::InlayHintLabel::String(match inlay_hint.kind {
             InlayKind::TypeHint if render_colons => format!(": {}", inlay_hint.label),
-            _ => inlay_hint.label.to_string(),
+            _ => inlay_hint.label,
         }),
         kind: match inlay_hint.kind {
-            InlayKind::TypeHint => Some(lsp_types::InlayHintKind::TYPE)
+            InlayKind::TypeHint => Some(lsp_types::InlayHintKind::TYPE),
         },
         tooltip: None,
         padding_left: Some(match inlay_hint.kind {

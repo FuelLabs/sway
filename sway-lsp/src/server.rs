@@ -412,7 +412,10 @@ pub struct ShowAstParams {
 
 // Custom LSP-Server Methods
 impl Backend {
-    pub async fn inlay_hints(&self, params: InlayHintParams) -> jsonrpc::Result<Option<Vec<InlayHint>>> {
+    pub async fn inlay_hints(
+        &self,
+        params: InlayHintParams,
+    ) -> jsonrpc::Result<Option<Vec<InlayHint>>> {
         let config = capabilities::inlay_hints::InlayHintsConfig::default();
         Ok(capabilities::inlay_hints::inlay_hints(
             &self.session,
@@ -421,7 +424,7 @@ impl Backend {
             &config,
         ))
     }
-    
+
     pub async fn runnables(
         &self,
         _params: RunnableParams,
