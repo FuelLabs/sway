@@ -311,7 +311,7 @@ fn connect_typed_fn_decl(
 type ReturnStatementNodes = Vec<NodeIndex>;
 
 fn depth_first_insertion_code_block(
-    node_content: &TyCodeBlock,
+    node_content: &ty::TyCodeBlock,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
 ) -> Result<(ReturnStatementNodes, Vec<NodeIndex>), CompileError> {

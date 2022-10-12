@@ -11,7 +11,7 @@ use crate::{
     language::{parsed::*, ty, CallPath, Visibility},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
-        Mode, TyCodeBlock, TypeCheckContext,
+        Mode, TypeCheckContext,
     },
     type_system::*,
     Namespace, TyFunctionDeclaration,
@@ -234,7 +234,7 @@ fn convert_trait_methods_to_dummy_funcs(
         dummy_funcs.push(TyFunctionDeclaration {
             purity: Default::default(),
             name: name.clone(),
-            body: TyCodeBlock { contents: vec![] },
+            body: ty::TyCodeBlock { contents: vec![] },
             parameters: typed_parameters,
             attributes: method.attributes.clone(),
             span: name.span(),

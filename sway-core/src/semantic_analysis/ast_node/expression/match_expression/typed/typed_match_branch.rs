@@ -4,8 +4,7 @@ use crate::{
     error::{err, ok},
     language::{parsed::MatchBranch, ty},
     semantic_analysis::{
-        IsConstant, TyAstNode, TyAstNodeContent, TyCodeBlock, TyVariableDeclaration,
-        TypeCheckContext,
+        IsConstant, TyAstNode, TyAstNodeContent, TyVariableDeclaration, TypeCheckContext,
     },
     type_system::insert_type,
     types::DeterministicallyAborts,
@@ -103,7 +102,7 @@ impl ty::TyMatchBranch {
             span: typed_result_span,
         } = typed_result;
         match typed_result_expression_variant {
-            ty::TyExpressionVariant::CodeBlock(TyCodeBlock { mut contents, .. }) => {
+            ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock { mut contents, .. }) => {
                 code_block_contents.append(&mut contents);
             }
             typed_result_expression_variant => {
@@ -122,7 +121,7 @@ impl ty::TyMatchBranch {
         // assemble a new branch result that includes both the variable declarations
         // that we create and the typed result from the original untyped branch
         let new_result = ty::TyExpression {
-            expression: ty::TyExpressionVariant::CodeBlock(TyCodeBlock {
+            expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
                 contents: code_block_contents,
             }),
             return_type: typed_result.return_type,

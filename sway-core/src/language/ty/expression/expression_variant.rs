@@ -9,8 +9,8 @@ use sway_types::{state::StateIndex, Ident, Span};
 use crate::{
     language::{ty::*, *},
     semantic_analysis::{
-        ProjectionKind, TyCodeBlock, TyEnumDeclaration, TyEnumVariant, TyReassignment,
-        TyStorageReassignment, TyStructField,
+        ProjectionKind, TyEnumDeclaration, TyEnumVariant, TyReassignment, TyStorageReassignment,
+        TyStructField,
     },
     type_system::*,
     TyFunctionDeclaration,

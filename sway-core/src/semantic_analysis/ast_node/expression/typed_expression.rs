@@ -98,7 +98,7 @@ impl ty::TyExpression {
                 }
                 buf
             }
-            ty::TyExpressionVariant::CodeBlock(TyCodeBlock { contents, .. }) => {
+            ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock { contents, .. }) => {
                 let mut buf = vec![];
                 for node in contents {
                     buf.append(&mut node.gather_return_statements())
@@ -597,9 +597,9 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (typed_block, block_return_type) = check!(
-            TyCodeBlock::type_check(ctx.by_ref(), contents),
+            ty::TyCodeBlock::type_check(ctx.by_ref(), contents),
             (
-                TyCodeBlock { contents: vec![] },
+                ty::TyCodeBlock { contents: vec![] },
                 crate::type_system::insert_type(TypeInfo::Tuple(Vec::new()))
             ),
             warnings,
@@ -613,7 +613,7 @@ impl ty::TyExpression {
         );
 
         let exp = ty::TyExpression {
-            expression: ty::TyExpressionVariant::CodeBlock(TyCodeBlock {
+            expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
                 contents: typed_block.contents,
             }),
             return_type: block_return_type,
@@ -1522,7 +1522,7 @@ impl ty::TyExpression {
                  instead.",
         );
         let (typed_body, _block_implicit_return) = check!(
-            TyCodeBlock::type_check(ctx, body),
+            ty::TyCodeBlock::type_check(ctx, body),
             return err(warnings, errors),
             warnings,
             errors

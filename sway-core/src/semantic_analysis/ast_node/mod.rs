@@ -5,7 +5,6 @@ pub mod mode;
 
 use std::fmt;
 
-pub(crate) use code_block::*;
 pub use declaration::*;
 pub(crate) use expression::*;
 pub(crate) use mode::*;
@@ -674,7 +673,7 @@ fn type_check_trait_methods(
                 annotation.",
             );
         let (body, _code_block_implicit_return) = check!(
-            TyCodeBlock::type_check(ctx, body),
+            ty::TyCodeBlock::type_check(ctx, body),
             continue,
             warnings,
             errors
@@ -715,7 +714,7 @@ fn error_recovery_function_declaration(decl: FunctionDeclaration) -> TyFunctionD
     TyFunctionDeclaration {
         purity: Default::default(),
         name,
-        body: TyCodeBlock {
+        body: ty::TyCodeBlock {
             contents: Default::default(),
         },
         span,

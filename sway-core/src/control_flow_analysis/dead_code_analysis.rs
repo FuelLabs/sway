@@ -4,8 +4,8 @@ use crate::{
     language::{parsed::TreeType, ty, CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
-            TyAbiDeclaration, TyCodeBlock, TyConstantDeclaration, TyEnumDeclaration,
-            TyFunctionDeclaration, TyStructDeclaration, TyTraitDeclaration, TyVariableDeclaration,
+            TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyFunctionDeclaration,
+            TyStructDeclaration, TyTraitDeclaration, TyVariableDeclaration,
         },
         TyAstNode, TyAstNodeContent, TyImplTrait, TyStorageDeclaration,
     },
@@ -609,7 +609,7 @@ fn connect_fn_params_struct_enums(
 }
 
 fn depth_first_insertion_code_block(
-    node_content: &TyCodeBlock,
+    node_content: &ty::TyCodeBlock,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
@@ -796,7 +796,7 @@ fn connect_expression(
 
             Ok([condition_expr, then_expr, else_expr].concat())
         }
-        CodeBlock(a @ TyCodeBlock { .. }) => {
+        CodeBlock(a @ ty::TyCodeBlock { .. }) => {
             connect_code_block(a, graph, leaves, exit_node, tree_type)
         }
         StructExpression {
@@ -1160,7 +1160,7 @@ fn connect_intrinsic_function(
 }
 
 fn connect_code_block(
-    block: &TyCodeBlock,
+    block: &ty::TyCodeBlock,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
