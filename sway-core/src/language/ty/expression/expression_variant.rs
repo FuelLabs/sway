@@ -11,8 +11,7 @@ use crate::{
     semantic_analysis::{
         ContractCallParams, ProjectionKind, TyAsmRegisterDeclaration, TyCodeBlock,
         TyEnumDeclaration, TyEnumVariant, TyIntrinsicFunctionKind, TyReassignment,
-        TyReturnStatement, TyStorageReassignment, TyStructExpressionField, TyStructField,
-        VariableMutability,
+        TyStorageReassignment, TyStructExpressionField, TyStructField, VariableMutability,
     },
     type_system::*,
     TyFunctionDeclaration,
@@ -129,7 +128,7 @@ pub enum TyExpressionVariant {
     Continue,
     Reassignment(Box<TyReassignment>),
     StorageReassignment(Box<TyStorageReassignment>),
-    Return(Box<TyReturnStatement>),
+    Return(Box<TyExpression>),
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -582,8 +581,8 @@ impl fmt::Display for TyExpressionVariant {
                 };
                 format!("storage reassignment to {}", place)
             }
-            TyExpressionVariant::Return(stmt) => {
-                format!("return {}", stmt.expr)
+            TyExpressionVariant::Return(exp) => {
+                format!("return {}", *exp)
             }
         };
         write!(f, "{}", s)
