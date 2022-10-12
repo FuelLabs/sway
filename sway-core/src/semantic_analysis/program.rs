@@ -9,7 +9,7 @@ use crate::{
     metadata::MetadataManager,
     semantic_analysis::{
         namespace::{self, Namespace},
-        TyAstNode, TyAstNodeContent, TyModule, TypeCheckContext,
+        TyAstNode, TyAstNodeContent, TypeCheckContext,
     },
     type_system::*,
 };
@@ -32,7 +32,7 @@ impl ty::TyProgram {
         let ctx = TypeCheckContext::from_root(&mut namespace);
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
-        let mod_res = TyModule::type_check(ctx, root);
+        let mod_res = ty::TyModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
             let kind_res = Self::validate_root(&root, kind.clone(), mod_span);
             kind_res.map(|kind| Self {
@@ -46,7 +46,7 @@ impl ty::TyProgram {
 
     /// Validate the root module given the expected program kind.
     pub fn validate_root(
-        root: &TyModule,
+        root: &ty::TyModule,
         kind: TreeType,
         module_span: Span,
     ) -> CompileResult<ty::TyProgramKind> {

@@ -28,10 +28,7 @@ use std::sync::Arc;
 use sway_ast::Dependency;
 use sway_ir::{Context, Function, Instruction, Kind, Module, Value};
 
-pub use semantic_analysis::{
-    namespace::{self, Namespace},
-    TyModule,
-};
+pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
 
 pub use error::CompileResult;
@@ -674,7 +671,7 @@ fn dead_code_analysis(program: &ty::TyProgram) -> CompileResult<ControlFlowGraph
 
 /// Recursively collect modules into the given `ControlFlowGraph` ready for dead code analysis.
 fn module_dead_code_analysis(
-    module: &TyModule,
+    module: &ty::TyModule,
     tree_type: &parsed::TreeType,
     graph: &mut ControlFlowGraph,
 ) -> CompileResult<()> {
@@ -700,7 +697,7 @@ fn return_path_analysis(program: &ty::TyProgram) -> Vec<CompileError> {
     errors
 }
 
-fn module_return_path_analysis(module: &TyModule, errors: &mut Vec<CompileError>) {
+fn module_return_path_analysis(module: &ty::TyModule, errors: &mut Vec<CompileError>) {
     for (_, submodule) in &module.submodules {
         module_return_path_analysis(&submodule.module, errors);
     }

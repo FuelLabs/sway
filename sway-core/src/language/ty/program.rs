@@ -3,7 +3,7 @@ use sway_types::Ident;
 
 use crate::{
     language::{parsed, ty::*},
-    TyModule, TypeId,
+    TypeId,
 };
 
 #[derive(Debug)]
