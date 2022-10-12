@@ -26,7 +26,6 @@ async fn get_parsing_logs_instance() -> (ParsingLogsTestContract, ContractId) {
 async fn test_parse_logged_varibles() -> Result<(), Error> {
     let (instance, _id) = get_parsing_logs_instance().await;
 
-    // ANCHOR: produce_logs
     let contract_methods = instance.methods();
     let response = contract_methods.produce_logs_variables().call().await?;
 
@@ -44,7 +43,6 @@ async fn test_parse_logged_varibles() -> Result<(), Error> {
     assert_eq!(log_bits256, vec![expected_bits256]);
     assert_eq!(log_string, vec!["Fuel"]);
     assert_eq!(log_array, vec![[1, 2, 3]]);
-    // ANCHOR_END: produce_logs
 
     Ok(())
 }
@@ -144,11 +142,9 @@ async fn test_parse_logs_generic_types() -> Result<(), Error> {
 async fn test_fetch_logs() -> Result<(), Error> {
     let (instance, _id) = get_parsing_logs_instance().await;
 
-    // ANCHOR: fetch_logs
     let contract_methods = instance.methods();
     let response = contract_methods.produce_multiple_logs().call().await?;
     let logs = instance.fetch_logs(&response.receipts);
-    // ANCHOR_END: fetch_logs
 
     let expected_bits256 = Bits256([
         239, 134, 175, 169, 105, 108, 240, 220, 99, 133, 226, 196, 7, 166, 225, 89, 161, 16, 60,
