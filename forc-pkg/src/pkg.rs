@@ -1216,11 +1216,11 @@ fn fetch_deps(
     let parent_id = graph[node].id();
     let package_manifest = manifest_map[&parent_id].to_owned();
     // If the current package is a contract, we need to first get the deployment dependencies
-    if package_manifest.program_type()? == TreeType::Contract {
-        let contract_deps: Vec<_> = package_manifest
-            .contract_deps()
-            .map(|(n, d)| (n.to_owned(), d.to_owned()))
-            .collect();
+    let contract_deps: Vec<_> = package_manifest
+        .contract_deps()
+        .map(|(n, d)| (n.to_owned(), d.to_owned()))
+        .collect();
+    if !contract_deps.is_empty() {
         fetch_deps_helper(
             fetch_id,
             offline,
@@ -2556,7 +2556,7 @@ pub fn check(
     bail!("unable to check sway program: build plan contains no packages")
 }
 
-/// Returns a parsed AST from the supplied [ManifestFile]
+/// Returns a parsed AST from the supplied [PackageManifestFile]
 pub fn parse(
     manifest: &PackageManifestFile,
     terse_mode: bool,
