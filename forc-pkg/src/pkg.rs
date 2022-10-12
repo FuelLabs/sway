@@ -435,9 +435,20 @@ fn validate_graph(graph: &Graph, proj_manifest: &PackageManifestFile) -> BTreeSe
         Ok(node) => node,
         Err(_) => return graph.edge_indices().collect(),
     };
+    // Collect contract_dependencies
+    let mut contract_dependencies: HashSet<String> = proj_manifest
+        .contract_deps()
+        .map(|contract_dep| contract_dep.0.to_owned())
+        .collect();
     // Collect all invalid dependency nodes.
     let mut visited = HashSet::new();
-    validate_deps(graph, proj_node, proj_manifest, &mut visited)
+    validate_deps(
+        graph,
+        proj_node,
+        proj_manifest,
+        &mut contract_dependencies,
+        &mut visited,
+    )
 }
 
 /// Recursively validate all dependencies of the given `node`.
@@ -447,19 +458,35 @@ fn validate_deps(
     graph: &Graph,
     node: NodeIx,
     node_manifest: &PackageManifestFile,
+    contract_dependencies: &mut HashSet<String>,
     visited: &mut HashSet<NodeIx>,
 ) -> BTreeSet<EdgeIx> {
     let mut remove = BTreeSet::default();
     for edge in graph.edges_directed(node, Direction::Outgoing) {
         let dep_name = edge.weight();
         let dep_node = edge.target();
-        match validate_dep(graph, node_manifest, dep_name, dep_node) {
+        match validate_dep(
+            graph,
+            node_manifest,
+            dep_name,
+            dep_node,
+            contract_dependencies,
+        ) {
             Err(_) => {
                 remove.insert(edge.id());
             }
             Ok(dep_manifest) => {
                 if visited.insert(dep_node) {
-                    let rm = validate_deps(graph, dep_node, &dep_manifest, visited);
+                    for contract_dependency in dep_manifest.contract_deps() {
+                        contract_dependencies.insert(contract_dependency.0.to_owned());
+                    }
+                    let rm = validate_deps(
+                        graph,
+                        dep_node,
+                        &dep_manifest,
+                        contract_dependencies,
+                        visited,
+                    );
                     remove.extend(rm);
                 }
                 continue;
@@ -477,6 +504,7 @@ fn validate_dep(
     node_manifest: &PackageManifestFile,
     dep_name: &str,
     dep_node: NodeIx,
+    contract_dependencies: &mut HashSet<String>,
 ) -> Result<PackageManifestFile> {
     // Check the validity of the dependency path, including its path root.
     let dep_path = dep_path(graph, node_manifest, dep_name, dep_node).map_err(|e| {
@@ -500,21 +528,27 @@ fn validate_dep(
         bail!("dependency node's source does not match manifest entry");
     }
 
-    validate_dep_manifest(&graph[dep_node], &dep_manifest)?;
+    validate_dep_manifest(&graph[dep_node], &dep_manifest, contract_dependencies)?;
 
     Ok(dep_manifest)
 }
 /// Part of dependency validation, any checks related to the depenency's manifest content.
-fn validate_dep_manifest(dep: &Pinned, dep_manifest: &PackageManifestFile) -> Result<()> {
-    // Ensure that the dependency is a library.
-    /*
-    if !matches!(dep_manifest.program_type()?, TreeType::Library { .. }) {
+fn validate_dep_manifest(
+    dep: &Pinned,
+    dep_manifest: &PackageManifestFile,
+    contract_dependencies: &HashSet<String>,
+) -> Result<()> {
+    // If the dependency is a script or a contract (which is not a contract dependency for any of
+    // the parent nodes).
+    if matches!(dep_manifest.program_type()?, TreeType::Script { .. })
+        || matches!(dep_manifest.program_type()?, TreeType::Contract)
+            && !contract_dependencies.contains(&dep.name)
+    {
         bail!(
-            "\"{}\" is not a library! Depending on a non-library package is not supported.",
+            "\"{}\" is not a library or a contract dependency! Depending on such a package is not supported.",
             dep.name
         );
     }
-    */
     // Ensure the name matches the manifest project name.
     if dep.name != dep_manifest.project.name {
         bail!(
@@ -1112,10 +1146,16 @@ fn fetch_deps(
         added: &mut HashSet<NodeIx>,
         parent_id: PinnedId,
         deps: Vec<(String, Dependency)>,
+        parent_contract_deps: &mut HashSet<String>,
     ) -> Result<()> {
         for (dep_name, dep) in deps {
             let name = dep.package().unwrap_or(&dep_name).to_string();
-            let source = dep_to_source_patched(&manifest_map[&parent_id], &name, &dep)
+            let parent_manifest = manifest_map[&parent_id].to_owned();
+            for contract_dep in parent_manifest.contract_deps() {
+                parent_contract_deps.insert(contract_dep.0.to_owned());
+            }
+
+            let source = dep_to_source_patched(&parent_manifest, &name, &dep)
                 .context("Failed to source dependency")?;
 
             // If we haven't yet fetched this dependency, fetch it, pin it and add it to the graph.
@@ -1141,15 +1181,16 @@ fn fetch_deps(
 
             let dep_pinned = &graph[dep_node];
             let dep_pkg_id = dep_pinned.id();
-            validate_dep_manifest(dep_pinned, &manifest_map[&dep_pkg_id]).map_err(|e| {
-                let parent = &graph[node];
-                anyhow!(
-                    "dependency of {:?} named {:?} is invalid: {}",
-                    parent.name,
-                    dep_name,
-                    e
-                )
-            })?;
+            validate_dep_manifest(dep_pinned, &manifest_map[&dep_pkg_id], parent_contract_deps)
+                .map_err(|e| {
+                    let parent = &graph[node];
+                    anyhow!(
+                        "dependency of {:?} named {:?} is invalid: {}",
+                        parent.name,
+                        dep_name,
+                        e
+                    )
+                })?;
 
             let path_root = match dep_pinned.source {
                 SourcePinned::Root | SourcePinned::Git(_) | SourcePinned::Registry(_) => dep_pkg_id,
@@ -1171,6 +1212,7 @@ fn fetch_deps(
         Ok(())
     }
     let mut added = HashSet::default();
+    let mut parent_contract_deps = HashSet::default();
     let parent_id = graph[node].id();
     let package_manifest = manifest_map[&parent_id].to_owned();
     // If the current package is a contract, we need to first get the deployment dependencies
@@ -1191,6 +1233,7 @@ fn fetch_deps(
             &mut added,
             parent_id,
             contract_deps,
+            &mut parent_contract_deps,
         )?;
     }
     let deps: Vec<_> = package_manifest
@@ -1209,6 +1252,7 @@ fn fetch_deps(
         &mut added,
         parent_id,
         deps,
+        &mut parent_contract_deps,
     )?;
     Ok(added)
 }
