@@ -109,10 +109,10 @@ impl Items {
         // new definition allows later usages to compile
         if self.symbols.get(&name).is_some() {
             match item {
-                TyDeclaration::EnumDeclaration { .. }
-                | TyDeclaration::StructDeclaration { .. }
-                | TyDeclaration::TraitDeclaration { .. }
-                | TyDeclaration::AbiDeclaration { .. } => {
+                ty::TyDeclaration::EnumDeclaration { .. }
+                | ty::TyDeclaration::StructDeclaration { .. }
+                | ty::TyDeclaration::TraitDeclaration { .. }
+                | ty::TyDeclaration::AbiDeclaration { .. } => {
                     errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
                 }
                 ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
