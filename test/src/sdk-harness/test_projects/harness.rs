@@ -11,6 +11,7 @@ mod hashing;
 mod logging;
 mod methods;
 mod option_field_order;
+mod parsing_logs;
 mod predicate_data_simple;
 mod predicate_data_struct;
 mod reentrancy;

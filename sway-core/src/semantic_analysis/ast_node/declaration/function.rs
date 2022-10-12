@@ -39,7 +39,7 @@ impl From<&TyFunctionDeclaration> for TyAstNode {
     fn from(o: &TyFunctionDeclaration) -> Self {
         let span = o.span.clone();
         TyAstNode {
-            content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(
+            content: TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(
                 de_insert_function(o.clone()),
             )),
             span,

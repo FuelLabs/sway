@@ -42,7 +42,7 @@ pub(crate) enum IsConstant {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TyAstNodeContent {
-    Declaration(TyDeclaration),
+    Declaration(ty::TyDeclaration),
     Expression(ty::TyExpression),
     ImplicitReturnExpression(ty::TyExpression),
     // a no-op node used for something that just issues a side effect, like an import statement.
@@ -139,7 +139,8 @@ impl TyAstNode {
         match &self {
             TyAstNode {
                 span,
-                content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)),
+                content:
+                    TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(decl_id)),
                 ..
             } => {
                 let TyFunctionDeclaration { name, .. } = check!(
@@ -164,7 +165,7 @@ impl TyAstNode {
         match &self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref exp) => exp.gather_return_statements(),
             // assignments and  reassignments can happen during control flow and can abort
-            TyAstNodeContent::Declaration(TyDeclaration::VariableDeclaration(decl)) => {
+            TyAstNodeContent::Declaration(ty::TyDeclaration::VariableDeclaration(decl)) => {
                 decl.body.gather_return_statements()
             }
             TyAstNodeContent::Expression(exp) => exp.gather_return_statements(),
@@ -261,7 +262,7 @@ impl TyAstNode {
                                 warnings,
                                 errors
                             );
-                            let typed_var_decl = TyDeclaration::VariableDeclaration(Box::new(
+                            let typed_var_decl = ty::TyDeclaration::VariableDeclaration(Box::new(
                                 TyVariableDeclaration {
                                     name: name.clone(),
                                     body,
@@ -304,7 +305,7 @@ impl TyAstNode {
                                 visibility,
                             };
                             let typed_const_decl =
-                                TyDeclaration::ConstantDeclaration(de_insert_constant(decl));
+                                ty::TyDeclaration::ConstantDeclaration(de_insert_constant(decl));
                             ctx.namespace.insert_symbol(name, typed_const_decl.clone());
                             typed_const_decl
                         }
@@ -316,7 +317,8 @@ impl TyAstNode {
                                 errors
                             );
                             let name = enum_decl.name.clone();
-                            let decl = TyDeclaration::EnumDeclaration(de_insert_enum(enum_decl));
+                            let decl =
+                                ty::TyDeclaration::EnumDeclaration(de_insert_enum(enum_decl));
                             check!(
                                 ctx.namespace.insert_symbol(name, decl.clone()),
                                 return err(warnings, errors),
@@ -336,7 +338,7 @@ impl TyAstNode {
 
                             let name = fn_decl.name.clone();
                             let decl =
-                                TyDeclaration::FunctionDeclaration(de_insert_function(fn_decl));
+                                ty::TyDeclaration::FunctionDeclaration(de_insert_function(fn_decl));
                             ctx.namespace.insert_symbol(name, decl.clone());
                             decl
                         }
@@ -349,7 +351,7 @@ impl TyAstNode {
                             );
                             let name = trait_decl.name.clone();
                             let decl_id = de_insert_trait(trait_decl);
-                            let decl = TyDeclaration::TraitDeclaration(decl_id);
+                            let decl = ty::TyDeclaration::TraitDeclaration(decl_id);
                             ctx.namespace.insert_symbol(name, decl.clone());
                             decl
                         }
@@ -365,7 +367,7 @@ impl TyAstNode {
                                 implementing_for_type_id,
                                 impl_trait.methods.clone(),
                             );
-                            TyDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
+                            ty::TyDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
                         }
                         Declaration::ImplSelf(impl_self) => {
                             let impl_trait = check!(
@@ -379,7 +381,7 @@ impl TyAstNode {
                                 impl_trait.implementing_for_type_id,
                                 impl_trait.methods.clone(),
                             );
-                            TyDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
+                            ty::TyDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
                         }
                         Declaration::StructDeclaration(decl) => {
                             let decl = check!(
@@ -390,7 +392,7 @@ impl TyAstNode {
                             );
                             let name = decl.name.clone();
                             let decl_id = de_insert_struct(decl);
-                            let decl = TyDeclaration::StructDeclaration(decl_id);
+                            let decl = ty::TyDeclaration::StructDeclaration(decl_id);
                             // insert the struct decl into namespace
                             check!(
                                 ctx.namespace.insert_symbol(name, decl.clone()),
@@ -408,7 +410,7 @@ impl TyAstNode {
                                 errors
                             );
                             let name = abi_decl.name.clone();
-                            let decl = TyDeclaration::AbiDeclaration(de_insert_abi(abi_decl));
+                            let decl = ty::TyDeclaration::AbiDeclaration(de_insert_abi(abi_decl));
                             ctx.namespace.insert_symbol(name, decl.clone());
                             decl
                         }
@@ -468,7 +470,7 @@ impl TyAstNode {
                                 warnings,
                                 errors
                             );
-                            TyDeclaration::StorageDeclaration(decl_id)
+                            ty::TyDeclaration::StorageDeclaration(decl_id)
                         }
                     })
                 }
