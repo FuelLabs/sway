@@ -8,8 +8,8 @@ use crate::{
     language::ty,
     semantic_analysis::{
         TyAstNodeContent, TyCodeBlock, TyConstantDeclaration, TyEnumDeclaration,
-        TyFunctionDeclaration, TyImplTrait, TyIntrinsicFunctionKind, TyReassignment,
-        TyStorageDeclaration, TyStructDeclaration,
+        TyFunctionDeclaration, TyImplTrait, TyReassignment, TyStorageDeclaration,
+        TyStructDeclaration,
     },
     type_system::*,
 };
@@ -53,7 +53,7 @@ fn expr_validate(expr: &ty::TyExpression) -> CompileResult<()> {
             check!(expr_validate(expr1), (), warnings, errors);
             check!(expr_validate(expr2), (), warnings, errors);
         }
-        ty::TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
+        ty::TyExpressionVariant::IntrinsicFunction(ty::TyIntrinsicFunctionKind {
             arguments: exprvec,
             ..
         })

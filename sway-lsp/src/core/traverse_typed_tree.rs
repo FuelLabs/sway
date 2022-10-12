@@ -9,7 +9,6 @@ use sway_core::{
     language::ty,
     semantic_analysis::ast_node::{
         code_block::TyCodeBlock,
-        expression::TyIntrinsicFunctionKind,
         ProjectionKind, TyFunctionDeclaration, TyFunctionParameter, TyImplTrait, TyTraitFn,
         {TyAstNode, TyAstNodeContent},
     },
@@ -442,7 +441,7 @@ fn handle_expression(expression: &ty::TyExpression, tokens: &TokenMap) {
 }
 
 fn handle_intrinsic_function(
-    TyIntrinsicFunctionKind { arguments, .. }: &TyIntrinsicFunctionKind,
+    ty::TyIntrinsicFunctionKind { arguments, .. }: &ty::TyIntrinsicFunctionKind,
     tokens: &TokenMap,
 ) {
     for arg in arguments {
