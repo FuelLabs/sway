@@ -13,15 +13,13 @@ use crate::{
     CompileError, CompileResult, TypeInfo,
 };
 
-use super::typed_scrutinee::TyScrutinee;
-
 impl ty::TyMatchExpression {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         typed_value: ty::TyExpression,
         branches: Vec<MatchBranch>,
         span: Span,
-    ) -> CompileResult<(ty::TyMatchExpression, Vec<TyScrutinee>)> {
+    ) -> CompileResult<(ty::TyMatchExpression, Vec<ty::TyScrutinee>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
