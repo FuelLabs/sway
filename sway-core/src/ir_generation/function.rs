@@ -14,7 +14,7 @@ use crate::{
     language::{ty, *},
     metadata::MetadataManager,
     semantic_analysis::*,
-    type_system::{look_up_type_id, to_typeinfo, IntegerBits, TypeId, TypeInfo},
+    type_system::{look_up_type_id, to_typeinfo, TypeId, TypeInfo},
 };
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::{CompileError, Hint};
@@ -22,6 +22,7 @@ use sway_ir::{Context, *};
 use sway_types::{
     constants,
     ident::Ident,
+    integer_bits::IntegerBits,
     span::{Span, Spanned},
     state::StateIndex,
 };
@@ -1879,7 +1880,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        fields: &[TypeCheckedStorageAccessDescriptor],
+        fields: &[ty::TyStorageAccessDescriptor],
         ix: &StateIndex,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
