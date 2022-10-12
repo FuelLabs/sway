@@ -2,7 +2,9 @@
 //! execution.
 
 use crate::{
-    semantic_analysis::{ast_node::TyEnumVariant, ast_node::TyStructField, TyAstNode},
+    language::ty,
+    semantic_analysis::declaration::TyStorageField,
+    semantic_analysis::{ast_node::TyStructField, TyAstNode},
     Ident,
 };
 
@@ -11,7 +13,6 @@ use sway_types::span::Span;
 use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 
 mod namespace;
-use crate::semantic_analysis::declaration::TyStorageField;
 use namespace::ControlFlowNamespace;
 pub(crate) use namespace::FunctionNamespaceEntry;
 
@@ -153,7 +154,7 @@ impl ControlFlowGraph {
 
 impl ControlFlowGraphNode {
     pub(crate) fn from_enum_variant(
-        other: &TyEnumVariant,
+        other: &ty::TyEnumVariant,
         is_public: bool,
     ) -> ControlFlowGraphNode {
         ControlFlowGraphNode::EnumVariant {

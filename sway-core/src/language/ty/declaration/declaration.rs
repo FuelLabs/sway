@@ -3,13 +3,7 @@ use std::fmt;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    declaration_engine::*,
-    error::*,
-    language::ty::*,
-    semantic_analysis::{
-        TyEnumDeclaration, TyStructDeclaration, TyTraitDeclaration, TyVariableDeclaration,
-    },
-    type_system::*,
+    declaration_engine::*, error::*, language::ty::*, semantic_analysis::*, type_system::*,
     TyFunctionDeclaration,
 };
 

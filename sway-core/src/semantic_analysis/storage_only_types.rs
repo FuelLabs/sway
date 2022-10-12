@@ -3,13 +3,7 @@ use sway_error::warning::CompileWarning;
 use sway_types::{Span, Spanned};
 
 use crate::{
-    declaration_engine::declaration_engine::*,
-    error::*,
-    language::ty,
-    semantic_analysis::{
-        TyAstNodeContent, TyEnumDeclaration, TyFunctionDeclaration, TyImplTrait,
-        TyStorageDeclaration, TyStructDeclaration,
-    },
+    declaration_engine::declaration_engine::*, error::*, language::ty, semantic_analysis::*,
     type_system::*,
 };
 
@@ -259,7 +253,7 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
             }
         }
         ty::TyDeclaration::EnumDeclaration(decl_id) => {
-            let TyEnumDeclaration { variants, .. } = check!(
+            let ty::TyEnumDeclaration { variants, .. } = check!(
                 CompileResult::from(de_get_enum(decl_id.clone(), &decl.span())),
                 return err(warnings, errors),
                 warnings,

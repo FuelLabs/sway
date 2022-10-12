@@ -1,6 +1,9 @@
 use sway_types::{Ident, Span};
 
-use crate::{language::*, semantic_analysis::TyEnumVariant, type_system::*};
+use crate::{
+    language::{ty::*, *},
+    type_system::*,
+};
 
 #[derive(Debug, Clone)]
 pub(crate) struct TyScrutinee {

@@ -7,7 +7,7 @@ use crate::{
             instantiate_unsafe_downcast,
         },
         namespace::Namespace,
-        IsConstant, TyEnumVariant,
+        IsConstant,
     },
     type_system::unify,
     CompileResult, Ident, TypeId,
@@ -191,7 +191,7 @@ fn match_struct(
 
 fn match_enum(
     exp: &ty::TyExpression,
-    variant: TyEnumVariant,
+    variant: ty::TyEnumVariant,
     scrutinee: ty::TyScrutinee,
     span: Span,
     namespace: &mut Namespace,

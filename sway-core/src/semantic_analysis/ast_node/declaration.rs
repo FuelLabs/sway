@@ -30,8 +30,8 @@ use sway_types::{Span, Spanned};
 impl ty::TyDeclaration {
     /// Retrieves the declaration as an enum declaration.
     ///
-    /// Returns an error if `self` is not a [TyEnumDeclaration].
-    pub(crate) fn expect_enum(&self, access_span: &Span) -> CompileResult<TyEnumDeclaration> {
+    /// Returns an error if `self` is not a [ty::TyEnumDeclaration].
+    pub(crate) fn expect_enum(&self, access_span: &Span) -> CompileResult<ty::TyEnumDeclaration> {
         match self {
             ty::TyDeclaration::EnumDeclaration(decl_id) => {
                 CompileResult::from(de_get_enum(decl_id.clone(), access_span))
@@ -242,7 +242,7 @@ impl ty::TyDeclaration {
                 visibility
             }
             EnumDeclaration(decl_id) => {
-                let TyEnumDeclaration { visibility, .. } = check!(
+                let ty::TyEnumDeclaration { visibility, .. } = check!(
                     CompileResult::from(de_get_enum(decl_id.clone(), &decl_id.span())),
                     return err(warnings, errors),
                     warnings,

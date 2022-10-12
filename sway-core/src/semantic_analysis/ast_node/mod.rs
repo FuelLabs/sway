@@ -312,7 +312,7 @@ impl TyAstNode {
                         }
                         Declaration::EnumDeclaration(decl) => {
                             let enum_decl = check!(
-                                TyEnumDeclaration::type_check(ctx.by_ref(), decl),
+                                ty::TyEnumDeclaration::type_check(ctx.by_ref(), decl),
                                 return err(warnings, errors),
                                 warnings,
                                 errors

@@ -45,7 +45,7 @@ pub enum TypeInfo {
     Enum {
         name: Ident,
         type_parameters: Vec<TypeParameter>,
-        variant_types: Vec<TyEnumVariant>,
+        variant_types: Vec<ty::TyEnumVariant>,
     },
     Struct {
         name: Ident,
@@ -1110,7 +1110,7 @@ impl TypeInfo {
         &self,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<(&Ident, &Vec<TyEnumVariant>)> {
+    ) -> CompileResult<(&Ident, &Vec<ty::TyEnumVariant>)> {
         let warnings = vec![];
         let errors = vec![];
         match self {

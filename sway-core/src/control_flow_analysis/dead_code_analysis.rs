@@ -504,7 +504,7 @@ fn connect_abi_declaration(
 /// variant. When a variant is constructed, we can point an edge at that variant. This way,
 /// we can see clearly, and thusly warn, when individual variants are not ever constructed.
 fn connect_enum_declaration(
-    enum_decl: &TyEnumDeclaration,
+    enum_decl: &ty::TyEnumDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
 ) {
@@ -1178,7 +1178,7 @@ fn connect_code_block(
 }
 
 fn connect_enum_instantiation(
-    enum_decl: &TyEnumDeclaration,
+    enum_decl: &ty::TyEnumDeclaration,
     contents: &Option<Box<ty::TyExpression>>,
     variant_name: &Ident,
     graph: &mut ControlFlowGraph,
