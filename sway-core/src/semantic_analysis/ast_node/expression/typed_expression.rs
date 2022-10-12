@@ -718,11 +718,11 @@ impl ty::TyExpression {
             errors
         );
 
-        // type check the match expression and create a TyMatchExpression object
+        // type check the match expression and create a ty::TyMatchExpression object
         let (typed_match_expression, typed_scrutinees) = {
             let ctx = ctx.by_ref().with_help_text("");
             check!(
-                TyMatchExpression::type_check(ctx, typed_value, branches, span.clone()),
+                ty::TyMatchExpression::type_check(ctx, typed_value, branches, span.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors

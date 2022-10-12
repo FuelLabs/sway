@@ -1,4 +1,4 @@
-use sway_types::{Span, Spanned};
+use sway_types::Spanned;
 
 use crate::{
     error::{err, ok},
@@ -13,22 +13,14 @@ use crate::{
     CompileResult, TypeInfo,
 };
 
-use super::matcher::{matcher, MatchReqMap};
+use super::matcher::matcher;
 
-#[derive(Debug)]
-pub(crate) struct TyMatchBranch {
-    pub(crate) conditions: MatchReqMap,
-    pub(crate) result: ty::TyExpression,
-    #[allow(dead_code)]
-    span: Span,
-}
-
-impl TyMatchBranch {
+impl ty::TyMatchBranch {
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
         typed_value: &ty::TyExpression,
         branch: MatchBranch,
-    ) -> CompileResult<(TyMatchBranch, TyScrutinee)> {
+    ) -> CompileResult<(ty::TyMatchBranch, TyScrutinee)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -140,7 +132,7 @@ impl TyMatchBranch {
         };
 
         // return!
-        let typed_branch = TyMatchBranch {
+        let typed_branch = ty::TyMatchBranch {
             conditions: match_req_map,
             result: new_result,
             span: branch_span,
