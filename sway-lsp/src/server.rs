@@ -369,7 +369,7 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use std::{borrow::Cow, env, fs, io::Read, path::PathBuf};
+    use std::{borrow::Cow, fs, io::Read, path::PathBuf};
     use tower::{Service, ServiceExt};
 
     use crate::test_utils::sway_workspace_dir;
