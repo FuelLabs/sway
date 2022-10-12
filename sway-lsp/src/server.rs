@@ -245,12 +245,17 @@ impl LanguageServer for Backend {
         // overwrite the contents of the tmp/folder with everything in
         // the current workspace. (resync)
         self.session.sync.clone_manifest_dir_to_temp();
-        if let Ok(manifest) = PackageManifestFile::from_dir(&self.session.sync.manifest_path()) {
-            sync::edit_manifest_dependency_paths(
-                &manifest,
-                &self.session.sync.temp_manifest_path(),
-            );
-        }
+
+        let _ = self
+            .session
+            .sync
+            .manifest_path()
+            .and_then(|manifest_path| PackageManifestFile::from_dir(&manifest_path).ok())
+            .map(|manifest| {
+                if let Some(temp_manifest_path) = &self.session.sync.temp_manifest_path() {
+                    sync::edit_manifest_dependency_paths(&manifest, temp_manifest_path)
+                }
+            });
 
         if let Ok(uri) = self
             .session

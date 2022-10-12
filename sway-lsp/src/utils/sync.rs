@@ -46,7 +46,9 @@ impl SyncWorkspace {
     /// Clean up the temp directory that was created once the
     /// server closes down.
     pub(crate) fn remove_temp_dir(&self) {
-        fs::remove_dir_all(self.temp_dir().parent().unwrap()).unwrap();
+        if let Some(dir) = self.temp_dir() {
+            dir.parent().map(fs::remove_dir);
+        }
     }
 
     pub(crate) fn create_temp_dir_from_workspace(&self, manifest_dir: &Path) {
@@ -74,7 +76,12 @@ impl SyncWorkspace {
     }
 
     pub(crate) fn clone_manifest_dir_to_temp(&self) {
-        let _ = copy_dir_contents(self.manifest_dir(), self.temp_dir());
+        if let Some(manifest_dir) = self.manifest_dir() {
+            if let Some(temp_dir) = self.temp_dir() {
+                // TODO: return an error is unsuccessful
+                let _ = copy_dir_contents(manifest_dir, temp_dir);
+            }
+        }
     }
 
     /// Check if the current path is part of the users workspace.
@@ -86,15 +93,15 @@ impl SyncWorkspace {
     /// Convert the Url path from the client to point to the same file in our temp folder
     pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, ()> {
         let path = PathBuf::from(uri.path());
-        let p = path.strip_prefix(self.manifest_dir()).unwrap();
-        Url::from_file_path(self.temp_dir().join(p))
+        let p = path.strip_prefix(self.manifest_dir().unwrap()).unwrap();
+        Url::from_file_path(self.temp_dir().unwrap().join(p))
     }
 
     /// Convert the Url path from the temp folder to point to the same file in the users workspace
     pub(crate) fn temp_to_workspace_url(&self, uri: &Url) -> Result<Url, ()> {
         let path = PathBuf::from(uri.path());
-        let p = path.strip_prefix(self.temp_dir()).unwrap();
-        Url::from_file_path(self.manifest_dir().join(p))
+        let p = path.strip_prefix(self.temp_dir().unwrap()).unwrap();
+        Url::from_file_path(self.manifest_dir().unwrap().join(p))
     }
 
     /// If path is part of the users workspace, then convert URL from temp to workspace dir.
@@ -109,63 +116,65 @@ impl SyncWorkspace {
 
     /// Watch the manifest directory and check for any save events on Forc.toml
     pub(crate) fn watch_and_sync_manifest(&self) {
-        if let Ok(manifest) = PackageManifestFile::from_dir(&self.manifest_path()) {
-            let manifest_dir = Arc::new(manifest.clone());
-            let temp_manifest_path = self.temp_manifest_path();
-            edit_manifest_dependency_paths(&manifest, &temp_manifest_path);
-
-            let handle = tokio::spawn(async move {
-                let (tx, mut rx) = tokio::sync::mpsc::channel(10);
-                // Setup debouncer. No specific tickrate, max debounce time 2 seconds
-                let mut debouncer =
-                    new_debouncer(std::time::Duration::from_secs(1), None, move |event| {
-                        if let Ok(e) = event {
-                            let _ = tx.blocking_send(e);
-                        }
-                    })
-                    .unwrap();
-
-                debouncer
-                    .watcher()
-                    .watch(manifest_dir.as_ref().path(), RecursiveMode::NonRecursive)
-                    .unwrap();
-
-                while let Some(_events) = rx.recv().await {
-                    // Rescan the Forc.toml and convert
-                    // relative paths to absolute. Save into our temp directory.
+        let _ = self
+            .manifest_path()
+            .and_then(|manifest_path| PackageManifestFile::from_dir(&manifest_path).ok())
+            .map(|manifest| {
+                let manifest_dir = Arc::new(manifest.clone());
+                if let Some(temp_manifest_path) = self.temp_manifest_path() {
                     edit_manifest_dependency_paths(&manifest, &temp_manifest_path);
+
+                    let handle = tokio::spawn(async move {
+                        let (tx, mut rx) = tokio::sync::mpsc::channel(10);
+                        // Setup debouncer. No specific tickrate, max debounce time 2 seconds
+                        let mut debouncer =
+                            new_debouncer(std::time::Duration::from_secs(1), None, move |event| {
+                                if let Ok(e) = event {
+                                    let _ = tx.blocking_send(e);
+                                }
+                            })
+                            .unwrap();
+
+                        debouncer
+                            .watcher()
+                            .watch(manifest_dir.as_ref().path(), RecursiveMode::NonRecursive)
+                            .unwrap();
+
+                        while let Some(_events) = rx.recv().await {
+                            // Rescan the Forc.toml and convert
+                            // relative paths to absolute. Save into our temp directory.
+                            edit_manifest_dependency_paths(&manifest, &temp_manifest_path);
+                        }
+                    });
+
+                    // Store the join handle so we can clean up the thread on shutdown
+                    if let LockResult::Ok(mut join_handle) = self.notify_join_handle.write() {
+                        *join_handle = Some(handle);
+                    }
                 }
             });
-
-            // Store the join handle so we can clean up the thread on shutdown
-            if let LockResult::Ok(mut join_handle) = self.notify_join_handle.write() {
-                *join_handle = Some(handle);
-            }
-        }
     }
 
-    fn manifest_dir(&self) -> PathBuf {
+    fn manifest_dir(&self) -> Option<PathBuf> {
         self.directories
             .get(&Directory::Manifest)
             .map(|item| item.value().clone())
-            .unwrap()
     }
 
-    fn temp_dir(&self) -> PathBuf {
+    fn temp_dir(&self) -> Option<PathBuf> {
         self.directories
             .get(&Directory::Temp)
             .map(|item| item.value().clone())
-            .unwrap()
     }
 
-    pub(crate) fn temp_manifest_path(&self) -> PathBuf {
+    pub(crate) fn temp_manifest_path(&self) -> Option<PathBuf> {
         self.temp_dir()
-            .join(sway_utils::constants::MANIFEST_FILE_NAME)
+            .map(|dir| dir.join(sway_utils::constants::MANIFEST_FILE_NAME))
     }
 
-    pub(crate) fn manifest_path(&self) -> PathBuf {
+    pub(crate) fn manifest_path(&self) -> Option<PathBuf> {
         self.manifest_dir()
-            .join(sway_utils::constants::MANIFEST_FILE_NAME)
+            .map(|dir| dir.join(sway_utils::constants::MANIFEST_FILE_NAME))
     }
 }
 
