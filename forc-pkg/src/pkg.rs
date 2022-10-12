@@ -2187,18 +2187,6 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
             } else {
                 serde_json::to_writer_pretty(&storage_slots_file, &compiled.storage_slots)
             };
-            // Construct the contract ID
-            let contract = Contract::from(compiled.bytecode.clone());
-            let salt = fuel_tx::Salt::new([0; 32]);
-            let mut storage_slots = compiled.storage_slots.clone();
-            storage_slots.sort();
-            let state_root = Contract::initial_state_root(storage_slots.iter());
-            let contract_id = contract.id(&salt, &contract.root(), &state_root);
-
-            // Output the contract id to `.out/build_profile/<project-name>-contract-id`
-            let deployment_info_filename = format!("{}-contract-id", &manifest.project.name);
-            let deployment_info_path = output_dir.join(&deployment_info_filename);
-            fs::write(deployment_info_path, hex::encode(contract_id))?;
 
             res?;
         }
@@ -2225,9 +2213,14 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
 }
 
 /// Returns the ContractId of a compiled contract with specified `salt`.
-fn get_contract_id() -> ContractId {
-    // TODO: actually find the contract id
-    ContractId::default()
+fn get_contract_id(compiled: &Compiled) -> ContractId {
+    // Construct the contract ID
+    let contract = Contract::from(compiled.bytecode.clone());
+    let salt = fuel_tx::Salt::new([0; 32]);
+    let mut storage_slots = compiled.storage_slots.clone();
+    storage_slots.sort();
+    let state_root = Contract::initial_state_root(storage_slots.iter());
+    contract.id(&salt, &contract.root(), &state_root)
 }
 
 /// Build an entire forc package and return the compiled output.
@@ -2255,26 +2248,19 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
         .expect("Compilation order is empty!");
     let root_node_pinned = &plan.graph()[*root_node];
     let root_manifest = &plan.manifest_map()[&root_node_pinned.id()];
-    let mut contract_dependency_ids = HashMap::new();
+    let mut contract_dependency_ids: HashMap<String, ContractId> = HashMap::new();
     for &node in &plan.compilation_order {
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
-        // If the current node is a contract dependency, collect
-        if root_manifest
-            .contract_deps()
-            .any(|dep| *dep.0 == manifest.project.name)
-        {
-            let contract_id = get_contract_id();
-            contract_dependency_ids.insert(pkg.name.clone(), contract_id);
-        }
         let mut constants = manifest.config_time_constants();
         if node == *root_node {
             // Add collected contract dependency ids to this packages constants
             for (contract_dep_name, contract_dep_id) in &contract_dependency_ids {
                 let contract_dep_constant_name = format!("{contract_dep_name}_CONTRACT_ID");
+                let contract_id_value = format!("\"{contract_dep_id}\"");
                 let config_time_constants = ConfigTimeConstant {
                     r#type: "b256".to_string(),
-                    value: contract_dep_id.to_string(),
+                    value: contract_id_value,
                 };
                 constants.insert(contract_dep_constant_name, config_time_constants);
             }
@@ -2289,6 +2275,14 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
         };
         let res = compile(pkg, manifest, profile, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
+        // If the current node is a contract dependency, collect the contract_id
+        if root_manifest
+            .contract_deps()
+            .any(|dep| *dep.0 == manifest.project.name)
+        {
+            let contract_id = get_contract_id(&compiled);
+            contract_dependency_ids.insert(pkg.name.clone(), contract_id);
+        }
         if let Some(namespace) = maybe_namespace {
             namespace_map.insert(node, namespace.into());
         }
