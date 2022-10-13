@@ -24,19 +24,21 @@ pub(super) fn compile_script(
     namespace: &namespace::Module,
     declarations: Vec<ty::TyDeclaration>,
     logged_types_map: &HashMap<TypeId, LogId>,
+    test_fns: Vec<ty::TyFunctionDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(context, &mut md_mgr, module, namespace)?;
     compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
-    compile_function(
+    compile_entry_function(
         context,
         &mut md_mgr,
         module,
         main_function,
         logged_types_map,
     )?;
+    compile_tests(context, &mut md_mgr, module, logged_types_map, test_fns)?;
 
     Ok(module)
 }
@@ -46,13 +48,16 @@ pub(super) fn compile_predicate(
     main_function: ty::TyFunctionDeclaration,
     namespace: &namespace::Module,
     declarations: Vec<ty::TyDeclaration>,
+    logged_types: &HashMap<TypeId, LogId>,
+    test_fns: Vec<ty::TyFunctionDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Predicate);
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(context, &mut md_mgr, module, namespace)?;
     compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
-    compile_function(context, &mut md_mgr, module, main_function, &HashMap::new())?;
+    compile_entry_function(context, &mut md_mgr, module, main_function, &HashMap::new())?;
+    compile_tests(context, &mut md_mgr, module, logged_types, test_fns)?;
 
     Ok(module)
 }
@@ -63,6 +68,7 @@ pub(super) fn compile_contract(
     namespace: &namespace::Module,
     declarations: Vec<ty::TyDeclaration>,
     logged_types_map: &HashMap<TypeId, LogId>,
+    test_fns: Vec<ty::TyFunctionDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
@@ -72,6 +78,24 @@ pub(super) fn compile_contract(
     for decl in abi_entries {
         compile_abi_method(context, &mut md_mgr, module, decl, logged_types_map)?;
     }
+    compile_tests(context, &mut md_mgr, module, logged_types_map, test_fns)?;
+
+    Ok(module)
+}
+
+pub(super) fn compile_library(
+    context: &mut Context,
+    namespace: &namespace::Module,
+    declarations: Vec<ty::TyDeclaration>,
+    logged_types: &HashMap<TypeId, LogId>,
+    test_fns: Vec<ty::TyFunctionDeclaration>,
+) -> Result<Module, CompileError> {
+    let module = Module::new(context, Kind::Library);
+    let mut md_mgr = MetadataManager::default();
+
+    compile_constants(context, &mut md_mgr, module, namespace)?;
+    compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
+    compile_tests(context, &mut md_mgr, module, logged_types, test_fns)?;
 
     Ok(module)
 }
@@ -171,6 +195,7 @@ pub(super) fn compile_function(
     module: Module,
     ast_fn_decl: ty::TyFunctionDeclaration,
     logged_types_map: &HashMap<TypeId, LogId>,
+    is_entry: bool,
 ) -> Result<Option<Function>, CompileError> {
     // Currently monomorphisation of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
@@ -188,12 +213,38 @@ pub(super) fn compile_function(
             md_mgr,
             module,
             ast_fn_decl,
+            is_entry,
             args,
             None,
             logged_types_map,
         )
         .map(Some)
     }
+}
+
+pub(super) fn compile_entry_function(
+    context: &mut Context,
+    md_mgr: &mut MetadataManager,
+    module: Module,
+    ast_fn_decl: ty::TyFunctionDeclaration,
+    logged_types: &HashMap<TypeId, LogId>,
+) -> Result<Function, CompileError> {
+    let is_entry = true;
+    compile_function(context, md_mgr, module, ast_fn_decl, logged_types, is_entry)
+        .map(|f| f.expect("entry point should never contain generics"))
+}
+
+pub(super) fn compile_tests(
+    context: &mut Context,
+    md_mgr: &mut MetadataManager,
+    module: Module,
+    logged_types: &HashMap<TypeId, LogId>,
+    test_fns: Vec<ty::TyFunctionDeclaration>,
+) -> Result<Vec<Function>, CompileError> {
+    test_fns
+        .into_iter()
+        .map(|ast_fn_decl| compile_entry_function(context, md_mgr, module, ast_fn_decl, logged_types))
+        .collect()
 }
 
 fn convert_fn_param(
@@ -218,6 +269,7 @@ fn compile_fn_with_args(
     md_mgr: &mut MetadataManager,
     module: Module,
     ast_fn_decl: ty::TyFunctionDeclaration,
+    is_entry: bool,
     args: Vec<(String, Type, Span)>,
     selector: Option<[u8; 4]>,
     logged_types_map: &HashMap<TypeId, LogId>,
@@ -241,9 +293,6 @@ fn compile_fn_with_args(
 
     let ret_type = convert_resolved_typeid(context, &return_type, &return_type_span)?;
 
-    let is_entry = selector.is_some()
-        || (matches!(module.get_kind(context), Kind::Script | Kind::Predicate)
-            && name.as_str() == "main");
     let returns_by_ref = !is_entry && !ret_type.is_copy_type();
     if returns_by_ref {
         // Instead of 'returning' a by-ref value we make the last argument an 'out' parameter.
@@ -271,6 +320,7 @@ fn compile_fn_with_args(
         ret_type,
         selector,
         visibility == Visibility::Public,
+        is_entry,
         metadata,
     );
 
@@ -374,6 +424,9 @@ fn compile_abi_method(
         }
     };
 
+    // An ABI method is always an entry point.
+    let is_entry = true;
+
     let args = ast_fn_decl
         .parameters
         .iter()
@@ -388,6 +441,7 @@ fn compile_abi_method(
         md_mgr,
         module,
         ast_fn_decl,
+        is_entry,
         args,
         Some(selector),
         logged_types_map,

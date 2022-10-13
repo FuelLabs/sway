@@ -349,22 +349,11 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         Err(e) => return err(warnings, vec![e]),
     };
 
-    // Find all the entry points.  This is main for scripts and predicates, or ABI methods for
-    // contracts, identified by them having a selector.
+    // Find all the entry points for purity checking and DCE.
     let entry_point_functions: Vec<::sway_ir::Function> = ir
         .module_iter()
         .flat_map(|module| module.function_iter(&ir))
-        .filter(|func| {
-            let is_script_or_predicate = matches!(
-                tree_type,
-                parsed::TreeType::Script | parsed::TreeType::Predicate
-            );
-            let is_contract = tree_type == parsed::TreeType::Contract;
-            let has_entry_name =
-                func.get_name(&ir) == sway_types::constants::DEFAULT_ENTRY_POINT_FN_NAME;
-
-            (is_script_or_predicate && has_entry_name) || (is_contract && func.has_selector(&ir))
-        })
+        .filter(|func| func.is_entry(&ir))
         .collect();
 
     // Do a purity check on the _unoptimised_ IR.
