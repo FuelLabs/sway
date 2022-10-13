@@ -322,8 +322,8 @@ impl TypeEngine {
             (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
             (r, e) => {
                 let errors = vec![TypeError::MismatchedType {
-                    expected: r.to_string(),
-                    received: e.to_string(),
+                    expected: e.to_string(),
+                    received: r.to_string(),
                     help_text: help_text.to_string(),
                     span: span.clone(),
                 }];
@@ -470,8 +470,8 @@ impl TypeEngine {
             (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
             (r, e) => {
                 let errors = vec![TypeError::MismatchedType {
-                    expected: r.to_string(),
-                    received: e.to_string(),
+                    expected: e.to_string(),
+                    received: r.to_string(),
                     help_text: help_text.to_string(),
                     span: span.clone(),
                 }];
