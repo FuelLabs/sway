@@ -31,16 +31,16 @@ use crate::error::*;
 use std::fmt::Debug;
 
 #[cfg(test)]
-use sway_types::{integer_bits::IntegerBits, Ident, Span};
+use sway_types::{integer_bits::IntegerBits, Span};
 
 #[test]
 fn generic_enum_resolution() {
-    use crate::semantic_analysis::ast_node::TyEnumVariant;
+    use crate::{language::ty, span::Span, Ident};
     let engine = TypeEngine::default();
 
     let sp = Span::dummy();
 
-    let variant_types = vec![TyEnumVariant {
+    let variant_types = vec![ty::TyEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
         tag: 0,
         type_id: engine.insert_type(TypeInfo::UnknownGeneric {
@@ -59,7 +59,7 @@ fn generic_enum_resolution() {
         type_parameters: vec![],
     });
 
-    let variant_types = vec![TyEnumVariant {
+    let variant_types = vec![ty::TyEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
         tag: 0,
         type_id: engine.insert_type(TypeInfo::Boolean),
