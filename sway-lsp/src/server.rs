@@ -1,10 +1,7 @@
 pub use crate::error::DocumentError;
 use crate::{
     capabilities,
-    core::{
-        document::TextDocument,
-        session::Session,
-    },
+    core::{document::TextDocument, session::Session},
     error::LanguageServerError,
     utils::{
         debug::{self, DebugFlags},
