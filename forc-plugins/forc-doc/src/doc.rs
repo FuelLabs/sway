@@ -6,10 +6,9 @@ use sway_core::{
         de_get_abi, de_get_constant, de_get_enum, de_get_function, de_get_impl_trait,
         de_get_storage, de_get_struct, de_get_trait,
     },
-    language::parsed::{AstNodeContent, Declaration, ParseProgram, ParseSubmodule},
-    language::ty::TyDeclaration,
-    semantic_analysis::TySubmodule,
-    Attribute, AttributeKind, AttributesMap, CompileResult, TyAstNode, TyAstNodeContent, TyProgram,
+    language::ty::{TyAstNode, TyAstNodeContent, TyDeclaration, TySubmodule},
+    language::{parsed::ParseProgram, ty::TyProgram},
+    Attribute, AttributeKind, AttributesMap, CompileResult,
 };
 use sway_types::Spanned;
 
@@ -26,12 +25,14 @@ pub(crate) fn get_compiled_docs(
         for ast_node in &typed_program.root.all_nodes {
             // first, populate the descriptors and type information (decl).
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
+                // TODO: Refactor this
                 let mut entry = docs
                     .entry(Descriptor::from_typed_decl(decl, vec![]))
                     .or_insert((Vec::new(), decl.clone()));
                 entry.1 = decl.clone();
+
                 let docstrings = doc_attributes(ast_node)?;
-                if let Some(entry) = docs.get_mut(&Descriptor::from_decl(decl, vec![])) {
+                if let Some(entry) = docs.get_mut(&Descriptor::from_typed_decl(decl, vec![])) {
                     entry.0 = docstrings;
                 } else {
                     // this could be invalid in the case of a partial compilation. TODO audit this
@@ -49,20 +50,17 @@ pub(crate) fn get_compiled_docs(
                 let module_prefix = vec![];
                 extract_typed_submodule(typed_submodule, &mut docs, &module_prefix);
             }
-            for (_, ref parse_submodule) in &parse_program.root.submodules {
-                let module_prefix = vec![];
-                extract_parse_submodule(parse_submodule, &mut docs, &module_prefix);
-            }
         }
     }
 
     Ok(docs)
 }
+// TODO: Refactor this
 fn extract_typed_submodule(
     typed_submodule: &TySubmodule,
     docs: &mut Documentation,
     module_prefix: &Vec<String>,
-) {
+) -> Result<()> {
     let mut new_submodule_prefix = module_prefix.clone();
     new_submodule_prefix.push(typed_submodule.library_name.as_str().to_string());
     for ast_node in &typed_submodule.module.all_nodes {
@@ -75,27 +73,12 @@ fn extract_typed_submodule(
                 ))
                 .or_insert((Vec::new(), decl.clone()));
             entry.1 = decl.clone();
-        }
-    }
-    // if there is another submodule we need to go a level deeper
-    if let Some((_, submodule)) = typed_submodule.module.submodules.first() {
-        extract_typed_submodule(submodule, docs, &new_submodule_prefix);
-    }
-}
-fn extract_parse_submodule(
-    parse_submodule: &ParseSubmodule,
-    docs: &mut Documentation,
-    module_prefix: &Vec<String>,
-) -> Result<()> {
-    let mut new_submodule_prefix = module_prefix.clone();
-    new_submodule_prefix.push(parse_submodule.library_name.as_str().to_string());
 
-    for ast_node in &parse_submodule.module.tree.root_nodes {
-        if let AstNodeContent::Declaration(ref decl) = ast_node.content {
             let docstrings = doc_attributes(ast_node)?;
-            if let Some(entry) =
-                docs.get_mut(&Descriptor::from_decl(decl, new_submodule_prefix.clone()))
-            {
+            if let Some(entry) = docs.get_mut(&Descriptor::from_typed_decl(
+                decl,
+                new_submodule_prefix.clone(),
+            )) {
                 entry.0 = docstrings;
             } else {
                 // this could be invalid in the case of a partial compilation. TODO audit this
@@ -104,8 +87,8 @@ fn extract_parse_submodule(
         }
     }
     // if there is another submodule we need to go a level deeper
-    if let Some((_, submodule)) = parse_submodule.module.submodules.first() {
-        extract_parse_submodule(submodule, docs, &new_submodule_prefix);
+    if let Some((_, submodule)) = typed_submodule.module.submodules.first() {
+        extract_typed_submodule(submodule, docs, &new_submodule_prefix);
     }
 
     Ok(())
@@ -170,7 +153,7 @@ fn attributes_map(ast_node: &TyAstNode) -> Result<Option<Vec<AttributesMap>>> {
             TyDeclaration::ImplTrait(decl_id) => {
                 let decl = de_get_impl_trait(decl_id.clone(), &decl_id.span())?;
                 let mut attr_map = Vec::new();
-                for method in decl.functions {
+                for method in decl.methods {
                     attr_map.push(method.attributes)
                 }
 

@@ -44,7 +44,7 @@ pub fn main() -> Result<()> {
     // compile the program and extract the docs
     let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
     let compilation = pkg::check(&plan, silent_mode)?;
-    let docs = get_compiled_docs(&compilation, no_deps);
+    let docs = get_compiled_docs(&compilation, no_deps)?;
     // render docs to HTML
     let rendered = RenderedDocumentation::render(&docs);
 

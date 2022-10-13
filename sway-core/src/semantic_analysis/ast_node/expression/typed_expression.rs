@@ -98,7 +98,7 @@ impl ty::TyExpression {
                 }
                 buf
             }
-            ty::TyExpressionVariant::CodeBlock(TyCodeBlock { contents, .. }) => {
+            ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock { contents, .. }) => {
                 let mut buf = vec![];
                 for node in contents {
                     buf.append(&mut node.gather_return_statements())
@@ -191,10 +191,10 @@ impl ty::TyExpression {
     }
 
     /// gathers the mutability of the expressions within
-    pub(crate) fn gather_mutability(&self) -> VariableMutability {
+    pub(crate) fn gather_mutability(&self) -> ty::VariableMutability {
         match &self.expression {
             ty::TyExpressionVariant::VariableExpression { mutability, .. } => *mutability,
-            _ => VariableMutability::Immutable,
+            _ => ty::VariableMutability::Immutable,
         }
     }
 
@@ -460,7 +460,7 @@ impl ty::TyExpression {
         let mut errors = vec![];
         let exp = match namespace.resolve_symbol(&name).value {
             Some(ty::TyDeclaration::VariableDeclaration(decl)) => {
-                let TyVariableDeclaration {
+                let ty::TyVariableDeclaration {
                     name: decl_name,
                     body,
                     mutability,
@@ -478,7 +478,7 @@ impl ty::TyExpression {
                 }
             }
             Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
-                let TyConstantDeclaration {
+                let ty::TyConstantDeclaration {
                     name: decl_name,
                     value,
                     ..
@@ -496,7 +496,7 @@ impl ty::TyExpression {
                     expression: ty::TyExpressionVariant::VariableExpression {
                         name: decl_name,
                         span: name.span(),
-                        mutability: VariableMutability::Immutable,
+                        mutability: ty::VariableMutability::Immutable,
                     },
                     span,
                 }
@@ -597,9 +597,9 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (typed_block, block_return_type) = check!(
-            TyCodeBlock::type_check(ctx.by_ref(), contents),
+            ty::TyCodeBlock::type_check(ctx.by_ref(), contents),
             (
-                TyCodeBlock { contents: vec![] },
+                ty::TyCodeBlock { contents: vec![] },
                 crate::type_system::insert_type(TypeInfo::Tuple(Vec::new()))
             ),
             warnings,
@@ -613,7 +613,7 @@ impl ty::TyExpression {
         );
 
         let exp = ty::TyExpression {
-            expression: ty::TyExpressionVariant::CodeBlock(TyCodeBlock {
+            expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
                 contents: typed_block.contents,
             }),
             return_type: block_return_type,
@@ -718,11 +718,11 @@ impl ty::TyExpression {
             errors
         );
 
-        // type check the match expression and create a TyMatchExpression object
+        // type check the match expression and create a ty::TyMatchExpression object
         let (typed_match_expression, typed_scrutinees) = {
             let ctx = ctx.by_ref().with_help_text("");
             check!(
-                TyMatchExpression::type_check(ctx, typed_value, branches, span.clone()),
+                ty::TyMatchExpression::type_check(ctx, typed_value, branches, span.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -798,7 +798,7 @@ impl ty::TyExpression {
             .registers
             .into_iter()
             .map(
-                |AsmRegisterDeclaration { name, initializer }| TyAsmRegisterDeclaration {
+                |AsmRegisterDeclaration { name, initializer }| ty::TyAsmRegisterDeclaration {
                     name,
                     initializer: initializer.map(|initializer| {
                         let ctx = ctx
@@ -873,7 +873,7 @@ impl ty::TyExpression {
                             struct_name: struct_name.clone(),
                             span: span.clone(),
                         });
-                        typed_fields_buf.push(TyStructExpressionField {
+                        typed_fields_buf.push(ty::TyStructExpressionField {
                             name: def_field.name.clone(),
                             value: ty::TyExpression {
                                 expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
@@ -900,7 +900,7 @@ impl ty::TyExpression {
             );
 
             def_field.span = typed_field.span.clone();
-            typed_fields_buf.push(TyStructExpressionField {
+            typed_fields_buf.push(ty::TyStructExpressionField {
                 value: typed_field,
                 name: expr_field.name.clone(),
             });
@@ -1234,7 +1234,7 @@ impl ty::TyExpression {
                 )
             }
             ty::TyDeclaration::VariableDeclaration(ref decl) => {
-                let TyVariableDeclaration { body: expr, .. } = &**decl;
+                let ty::TyVariableDeclaration { body: expr, .. } = &**decl;
                 let ret_ty = look_up_type_id(expr.return_type);
                 let abi_name = match ret_ty {
                     TypeInfo::ContractCaller { abi_name, .. } => abi_name,
@@ -1308,7 +1308,7 @@ impl ty::TyExpression {
                 .with_type_annotation(insert_type(TypeInfo::Unknown))
                 .with_mode(Mode::ImplAbiFn);
             type_checked_fn_buf.push(check!(
-                TyFunctionDeclaration::type_check(ctx, method.clone()),
+                ty::TyFunctionDeclaration::type_check(ctx, method.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1480,7 +1480,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (intrinsic_function, return_type) = check!(
-            TyIntrinsicFunctionKind::type_check(ctx, kind_binding, arguments, span.clone()),
+            ty::TyIntrinsicFunctionKind::type_check(ctx, kind_binding, arguments, span.clone()),
             return err(warnings, errors),
             warnings,
             errors
@@ -1522,7 +1522,7 @@ impl ty::TyExpression {
                  instead.",
         );
         let (typed_body, _block_implicit_return) = check!(
-            TyCodeBlock::type_check(ctx, body),
+            ty::TyCodeBlock::type_check(ctx, body),
             return err(warnings, errors),
             warnings,
             errors
@@ -1582,7 +1582,7 @@ impl ty::TyExpression {
                             field_to_access,
                             ..
                         }) => {
-                            names_vec.push(ProjectionKind::StructField {
+                            names_vec.push(ty::ProjectionKind::StructField {
                                 name: field_to_access,
                             });
                             expr = prefix;
@@ -1593,7 +1593,7 @@ impl ty::TyExpression {
                             index_span,
                             ..
                         }) => {
-                            names_vec.push(ProjectionKind::TupleField { index, index_span });
+                            names_vec.push(ty::ProjectionKind::TupleField { index, index_span });
                             expr = prefix;
                         }
                         _ => {
@@ -1622,7 +1622,7 @@ impl ty::TyExpression {
                 ok(
                     ty::TyExpression {
                         expression: ty::TyExpressionVariant::Reassignment(Box::new(
-                            TyReassignment {
+                            ty::TyReassignment {
                                 lhs_base_name: base_name,
                                 lhs_type: final_return_type,
                                 lhs_indices: names_vec,
