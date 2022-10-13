@@ -2,7 +2,7 @@ use sway_error::{
     error::CompileError,
     warning::{CompileWarning, Warning},
 };
-use sway_types::{style::is_upper_camel_case, Span, Spanned};
+use sway_types::{style::is_upper_camel_case, Spanned};
 
 use crate::{
     declaration_engine::*,
@@ -41,21 +41,20 @@ impl ty::TyTraitDeclaration {
             })
         }
 
-        if !type_parameters.is_empty() {
-            let spans = type_parameters
-                .into_iter()
-                .map(|type_param| type_param.span())
-                .collect();
-            errors.push(CompileError::Unimplemented(
-                "Generic traits are not yet implemented.",
-                Span::join_all(spans),
-            ));
-            return err(warnings, errors);
-        }
-
         // A temporary namespace for checking within the trait's scope.
         let mut trait_namespace = ctx.namespace.clone();
-        let ctx = ctx.scoped(&mut trait_namespace);
+        let mut ctx = ctx.scoped(&mut trait_namespace);
+
+        // type check the type parameters, which will insert them into the namespace
+        let mut new_type_parameters = vec![];
+        for type_parameter in type_parameters.into_iter() {
+            new_type_parameters.push(check!(
+                TypeParameter::type_check(ctx.by_ref(), type_parameter),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
 
         // type check the interface surface
         let interface_surface = check!(
@@ -87,6 +86,7 @@ impl ty::TyTraitDeclaration {
                 .map(|x| x.to_dummy_func(Mode::NonAbi))
                 .collect(),
         );
+
         // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
         let ctx = ctx.with_self_type(insert_type(TypeInfo::SelfType));
         let _methods = check!(
@@ -95,8 +95,10 @@ impl ty::TyTraitDeclaration {
             warnings,
             errors
         );
+
         let typed_trait_decl = ty::TyTraitDeclaration {
             name,
+            type_parameters: new_type_parameters,
             interface_surface,
             methods,
             supertraits,

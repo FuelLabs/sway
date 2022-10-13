@@ -10,6 +10,7 @@ use crate::{
 #[derivative(PartialEq, Eq)]
 pub struct TyTraitDeclaration {
     pub name: Ident,
+    pub type_parameters: Vec<TypeParameter>,
     pub interface_surface: Vec<TyTraitFn>,
     // NOTE: deriving partialeq and hash on this element may be important in the
     // future, but I am not sure. For now, adding this would 2x the amount of
@@ -23,9 +24,22 @@ pub struct TyTraitDeclaration {
 
 impl CopyTypes for TyTraitDeclaration {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        self.type_parameters
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
         self.interface_surface
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
         // we don't have to type check the methods because it hasn't been type checked yet
+    }
+}
+
+impl MonomorphizeHelper for TyTraitDeclaration {
+    fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    fn type_parameters(&self) -> &[TypeParameter] {
+        &self.type_parameters
     }
 }

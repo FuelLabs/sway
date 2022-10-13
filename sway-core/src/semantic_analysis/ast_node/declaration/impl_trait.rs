@@ -29,18 +29,6 @@ impl ty::TyImplTrait {
             block_span,
         } = impl_trait;
 
-        if !trait_type_parameters.is_empty() {
-            let spans = trait_type_parameters
-                .into_iter()
-                .map(|type_param| type_param.span())
-                .collect();
-            errors.push(CompileError::Unimplemented(
-                "Generic traits are not yet implemented.",
-                Span::join_all(spans),
-            ));
-            return err(warnings, errors);
-        }
-
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut impl_namespace);
@@ -92,17 +80,44 @@ impl ty::TyImplTrait {
             .cloned()
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
-                let tr = check!(
+                let mut trait_decl = check!(
                     CompileResult::from(de_get_trait(decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
+
+                // create the type arguments
+                let mut trait_type_arguments = trait_type_parameters
+                    .iter()
+                    .map(|type_param| TypeArgument {
+                        type_id: type_param.type_id,
+                        initial_type_id: type_param.type_id,
+                        span: type_param.name_ident.span(),
+                    })
+                    .collect::<Vec<_>>();
+
+                // monomorphize the trait declaration
+                check!(
+                    ctx.monomorphize(
+                        &mut trait_decl,
+                        &mut trait_type_arguments,
+                        EnforceTypeArguments::Yes,
+                        &trait_name.span()
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                // Update the context with the new `self` type.
+                let ctx = ctx.with_self_type(implementing_for_type_id);
+
                 let functions_buf = check!(
                     type_check_trait_implementation(
                         ctx,
-                        &tr.interface_surface,
-                        &tr.methods,
+                        &trait_decl.interface_surface,
+                        &trait_decl.methods,
                         &functions,
                         &trait_name,
                         &type_implementing_for_span,
@@ -113,9 +128,10 @@ impl ty::TyImplTrait {
                     warnings,
                     errors
                 );
+
                 let impl_trait = ty::TyImplTrait {
                     impl_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
-                    trait_name,
+                    trait_name: trait_name.clone(),
                     trait_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     span: block_span,
                     methods: functions_buf,
