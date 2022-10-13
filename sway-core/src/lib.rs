@@ -371,34 +371,6 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
-    // If the program is a script or a predicate,
-    // check if its main() returns a type containing a raw_ptr.
-    match &program.kind {
-        TyProgramKind::Script { main_function, .. }
-        | TyProgramKind::Predicate { main_function, .. } => {
-            let nested_types = check!(
-                look_up_type_id(main_function.return_type)
-                    .extract_nested_types(&main_function.return_type_span),
-                vec![],
-                warnings,
-                errors
-            );
-
-            if nested_types
-                .iter()
-                .any(|ty| matches!(ty, TypeInfo::RawUntypedPtr))
-            {
-                return err(
-                    vec![],
-                    vec![CompileError::PointerReturnNotAllowedInMain {
-                        span: main_function.return_type_span.clone(),
-                    }],
-                );
-            }
-        }
-        _ => (),
-    }
-
     // the IR pipeline relies on type information being fully resolved.
     // If type information is found to still be generic or unresolved inside of
     // IR, this is considered an internal compiler error. To resolve this situation,
