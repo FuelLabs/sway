@@ -4,7 +4,7 @@
 use crate::{
     control_flow_analysis::*,
     declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait},
-    language::CallPath,
+    language::{ty, CallPath},
     semantic_analysis::*,
     type_system::*,
 };
@@ -126,8 +126,8 @@ fn connect_node(
 ) -> Result<(NodeConnection, ReturnStatementNodes), CompileError> {
     let span = node.span.clone();
     match &node.content {
-        TyAstNodeContent::Expression(TyExpression {
-            expression: TyExpressionVariant::Return(..),
+        TyAstNodeContent::Expression(ty::TyExpression {
+            expression: ty::TyExpressionVariant::Return(..),
             ..
         })
         | TyAstNodeContent::ImplicitReturnExpression(_) => {
@@ -137,8 +137,8 @@ fn connect_node(
             }
             Ok((NodeConnection::Return(this_index), vec![]))
         }
-        TyAstNodeContent::Expression(TyExpression {
-            expression: TyExpressionVariant::WhileLoop { body, .. },
+        TyAstNodeContent::Expression(ty::TyExpression {
+            expression: ty::TyExpressionVariant::WhileLoop { body, .. },
             ..
         }) => {
             // This is very similar to the dead code analysis for a while loop.
@@ -175,7 +175,7 @@ fn connect_node(
                 inner_returns,
             ))
         }
-        TyAstNodeContent::Expression(TyExpression { .. }) => {
+        TyAstNodeContent::Expression(ty::TyExpression { .. }) => {
             let entry = graph.add_node(node.into());
             // insert organizational dominator node
             // connected to all current leaves
@@ -194,12 +194,12 @@ fn connect_node(
 
 fn connect_declaration(
     node: &TyAstNode,
-    decl: &TyDeclaration,
+    decl: &ty::TyDeclaration,
     graph: &mut ControlFlowGraph,
     span: Span,
     leaves: &[NodeIndex],
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    use TyDeclaration::*;
+    use ty::TyDeclaration::*;
     match decl {
         TraitDeclaration(_)
         | AbiDeclaration(_)

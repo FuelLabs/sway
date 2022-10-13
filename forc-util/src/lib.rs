@@ -10,8 +10,9 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::str;
 use std::{env, io};
-use sway_core::{language::parsed::TreeType, CompileWarning};
+use sway_core::language::parsed::TreeType;
 use sway_error::error::CompileError;
+use sway_error::warning::CompileWarning;
 use sway_types::{LineCol, Spanned};
 use sway_utils::constants;
 use tracing::{Level, Metadata};
@@ -282,7 +283,7 @@ fn format_err(err: &CompileError) {
     tracing::error!("{}\n____\n", DisplayList::from(snippet))
 }
 
-fn format_warning(err: &sway_core::CompileWarning) {
+fn format_warning(err: &CompileWarning) {
     let span = err.span();
     let input = span.input();
     let path = err.path();

@@ -3,10 +3,8 @@
 //! During creation, deserialization and optimization the IR should be verified to be in a
 //! consistent valid state, using the functions in this module.
 
-use std::iter::FromIterator;
-
 use crate::{
-    block::{Block, BlockContent},
+    block::BlockContent,
     context::Context,
     error::IrError,
     function::{Function, FunctionContent},
@@ -16,7 +14,7 @@ use crate::{
     module::ModuleContent,
     pointer::Pointer,
     value::{Value, ValueDatum},
-    BinaryOpKind,
+    BinaryOpKind, BlockArgument, BranchToWithArgs,
 };
 
 impl Context {
@@ -53,9 +51,16 @@ impl Context {
         cur_function: &FunctionContent,
         block: &BlockContent,
     ) -> Result<(), IrError> {
-        if block.instructions.len() <= 1 && block.num_predecessors(self) == 0 {
-            // Empty (containing only the phi) unreferenced blocks are a harmless artefact.
+        if block.instructions.len() <= 1 && block.preds.is_empty() {
+            // Empty unreferenced blocks are a harmless artefact.
             return Ok(());
+        }
+
+        for (arg_idx, arg_val) in block.args.iter().enumerate() {
+            match self.values[arg_val.0].value {
+                ValueDatum::Argument(BlockArgument { idx, .. }) if idx == arg_idx => (),
+                _ => return Err(IrError::VerifyBlockArgMalformed),
+            }
         }
 
         InstructionVerifier {
@@ -192,7 +197,6 @@ impl<'a> InstructionVerifier<'a> {
                         log_id,
                     } => self.verify_log(log_val, log_ty, log_id)?,
                     Instruction::Nop => (),
-                    Instruction::Phi(pairs) => self.verify_phi(&pairs[..])?,
                     Instruction::ReadRegister(_) => (),
                     Instruction::Ret(val, ty) => self.verify_ret(self.cur_function, val, ty)?,
                     Instruction::Revert(val) => self.verify_revert(val)?,
@@ -292,13 +296,13 @@ impl<'a> InstructionVerifier<'a> {
         Ok(())
     }
 
-    fn verify_br(&self, dest_block: &Block) -> Result<(), IrError> {
-        if !self.cur_function.blocks.contains(dest_block) {
+    fn verify_br(&self, dest_block: &BranchToWithArgs) -> Result<(), IrError> {
+        if !self.cur_function.blocks.contains(&dest_block.block) {
             Err(IrError::VerifyBranchToMissingBlock(
-                self.context.blocks[dest_block.0].label.clone(),
+                self.context.blocks[dest_block.block.0].label.clone(),
             ))
         } else {
-            Ok(())
+            self.verify_dest_args(dest_block)
         }
     }
 
@@ -313,7 +317,9 @@ impl<'a> InstructionVerifier<'a> {
                 .arguments
                 .iter()
                 .map(|(_, arg_val)| {
-                    if let ValueDatum::Argument(ty) = &self.context.values[arg_val.0].value {
+                    if let ValueDatum::Argument(BlockArgument { ty, .. }) =
+                        &self.context.values[arg_val.0].value
+                    {
                         Ok(*ty)
                     } else {
                         Err(IrError::VerifyArgumentValueIsNotArgument(
@@ -345,24 +351,46 @@ impl<'a> InstructionVerifier<'a> {
         }
     }
 
+    fn verify_dest_args(&self, dest: &BranchToWithArgs) -> Result<(), IrError> {
+        if dest.block.num_args(self.context) != dest.args.len() {
+            return Err(IrError::VerifyBranchParamsMismatch);
+        }
+        for (arg_idx, dest_param) in dest.block.arg_iter(self.context).enumerate() {
+            match dest.args.get(arg_idx) {
+                Some(actual)
+                    if dest_param
+                        .get_type(self.context)
+                        .unwrap()
+                        .eq(self.context, &actual.get_type(self.context).unwrap()) => {}
+                _ =>
+                // TODO: https://github.com/FuelLabs/sway/pull/2880
+                {
+                    // return Err(IrError::VerifyBranchParamsMismatch)
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn verify_cbr(
         &self,
         cond_val: &Value,
-        true_block: &Block,
-        false_block: &Block,
+        true_block: &BranchToWithArgs,
+        false_block: &BranchToWithArgs,
     ) -> Result<(), IrError> {
         if !matches!(cond_val.get_type(self.context), Some(Type::Bool)) {
             Err(IrError::VerifyConditionExprNotABool)
-        } else if !self.cur_function.blocks.contains(true_block) {
+        } else if !self.cur_function.blocks.contains(&true_block.block) {
             Err(IrError::VerifyBranchToMissingBlock(
-                self.context.blocks[true_block.0].label.clone(),
+                self.context.blocks[true_block.block.0].label.clone(),
             ))
-        } else if !self.cur_function.blocks.contains(false_block) {
+        } else if !self.cur_function.blocks.contains(&false_block.block) {
             Err(IrError::VerifyBranchToMissingBlock(
-                self.context.blocks[false_block.0].label.clone(),
+                self.context.blocks[false_block.block.0].label.clone(),
             ))
         } else {
-            Ok(())
+            self.verify_dest_args(true_block)
+                .and_then(|()| self.verify_dest_args(false_block))
         }
     }
 
@@ -607,37 +635,6 @@ impl<'a> InstructionVerifier<'a> {
         Ok(())
     }
 
-    fn verify_phi(&self, pairs: &[(Block, Value)]) -> Result<(), IrError> {
-        if pairs.is_empty() {
-            Ok(())
-        } else if std::collections::HashSet::<&String>::from_iter(
-            pairs
-                .iter()
-                .map(|(block, _)| &(self.context.blocks[block.0].label)),
-        )
-        .len()
-            != pairs.len()
-        {
-            Err(IrError::VerifyPhiNonUniqueLabels)
-        } else if pairs
-            .iter()
-            .map(|(_, v)| v.get_type(self.context))
-            .reduce(|a, b| if self.opt_ty_not_eq(&a, &b) { None } else { b })
-            .is_none()
-        {
-            Err(IrError::VerifyPhiInconsistentTypes)
-        } else if let Some((from_block, _)) = pairs
-            .iter()
-            .find(|(from_block, _)| !self.cur_function.blocks.contains(from_block))
-        {
-            Err(IrError::VerifyPhiFromMissingBlock(
-                self.context.blocks[from_block.0].label.clone(),
-            ))
-        } else {
-            Ok(())
-        }
-    }
-
     fn verify_ret(
         &self,
         function: &FunctionContent,
@@ -713,7 +710,10 @@ impl<'a> InstructionVerifier<'a> {
     fn get_pointer(&self, ptr_val: &Value) -> Option<Pointer> {
         match &self.context.values[ptr_val.0].value {
             ValueDatum::Instruction(Instruction::GetPointer { base_ptr, .. }) => Some(*base_ptr),
-            ValueDatum::Argument(Type::Pointer(ptr)) => Some(*ptr),
+            ValueDatum::Argument(BlockArgument {
+                ty: Type::Pointer(ptr),
+                ..
+            }) => Some(*ptr),
             _otherwise => None,
         }
     }
@@ -727,7 +727,7 @@ impl<'a> InstructionVerifier<'a> {
     //
     fn is_ptr_argument(&self, ptr_val: &Value) -> bool {
         match &self.context.values[ptr_val.0].value {
-            ValueDatum::Argument(arg_ty) => !arg_ty.is_copy_type(),
+            ValueDatum::Argument(BlockArgument { ty, .. }) => !ty.is_copy_type(),
             _otherwise => false,
         }
     }
@@ -738,11 +738,16 @@ impl<'a> InstructionVerifier<'a> {
                 Some(*ptr_ty.get_type(self.context))
             }
             ValueDatum::Instruction(Instruction::IntToPtr(_, ty)) => Some(*ty),
-            ValueDatum::Argument(Type::Pointer(ptr)) => Some(*ptr.get_type(self.context)),
-            ValueDatum::Argument(arg_ty) => match arg_ty.is_copy_type() && !arg_ty.is_ptr_type() {
-                true => None,
-                false => Some(*arg_ty),
-            },
+            ValueDatum::Argument(BlockArgument {
+                ty: Type::Pointer(ptr),
+                ..
+            }) => Some(*ptr.get_type(self.context)),
+            ValueDatum::Argument(BlockArgument { ty: arg_ty, .. }) => {
+                match arg_ty.is_copy_type() && !arg_ty.is_ptr_type() {
+                    true => None,
+                    false => Some(*arg_ty),
+                }
+            }
             _otherwise => None,
         }
     }

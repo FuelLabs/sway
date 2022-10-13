@@ -2,12 +2,12 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
-    language::{parsed::*, *},
+    language::{parsed::*, ty, *},
     semantic_analysis::{
         ast_node::expression::typed_expression::{
             instantiate_if_expression, instantiate_lazy_operator,
         },
-        IsConstant, TyExpression, TyExpressionVariant, TypeCheckContext,
+        IsConstant, TypeCheckContext,
     },
     type_system::{insert_type, TypeId},
     CompileError, CompileResult, TypeInfo,
@@ -26,7 +26,7 @@ pub(crate) struct TyMatchExpression {
 impl TyMatchExpression {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
-        typed_value: TyExpression,
+        typed_value: ty::TyExpression,
         branches: Vec<MatchBranch>,
         span: Span,
     ) -> CompileResult<(TyMatchExpression, Vec<TyScrutinee>)> {
@@ -64,14 +64,14 @@ impl TyMatchExpression {
     pub(crate) fn convert_to_typed_if_expression(
         self,
         mut ctx: TypeCheckContext,
-    ) -> CompileResult<TyExpression> {
+    ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         let TyMatchExpression { branches, .. } = self;
 
         // create the typed if expression object that we will be building on to
-        let mut typed_if_exp: Option<TyExpression> = None;
+        let mut typed_if_exp: Option<ty::TyExpression> = None;
 
         // for every branch of the match expression, in reverse
         for TyMatchBranch {
@@ -79,12 +79,12 @@ impl TyMatchExpression {
         } in branches.into_iter().rev()
         {
             // create the conditional that will act as the conditional for the if statement, in reverse
-            let mut conditional: Option<TyExpression> = None;
+            let mut conditional: Option<ty::TyExpression> = None;
             for (left_req, right_req) in conditions.into_iter().rev() {
                 let joined_span = Span::join(left_req.span.clone(), right_req.span.clone());
                 let args = vec![left_req, right_req];
                 let new_condition = check!(
-                    TyExpression::core_ops_eq(ctx.by_ref(), args, joined_span),
+                    ty::TyExpression::core_ops_eq(ctx.by_ref(), args, joined_span),
                     continue,
                     warnings,
                     errors
@@ -126,8 +126,8 @@ impl TyMatchExpression {
                     )
                 }
                 (Some(prev_if_exp), None) => {
-                    let conditional = TyExpression {
-                        expression: TyExpressionVariant::Literal(Literal::Boolean(true)),
+                    let conditional = ty::TyExpression {
+                        expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
                         return_type: insert_type(TypeInfo::Boolean),
                         is_constant: IsConstant::No,
                         span: result_span.clone(),

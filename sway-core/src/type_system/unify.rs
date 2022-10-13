@@ -1,10 +1,9 @@
-use sway_error::type_error::TypeError;
-use sway_types::{Ident, Span};
+use sway_error::{type_error::TypeError, warning::Warning};
+use sway_types::{integer_bits::IntegerBits, Ident, Span};
 
 use crate::{
-    error::Warning,
     semantic_analysis::{TyEnumVariant, TyStructField},
-    CompileWarning, IntegerBits, TypeArgument, TypeId, TypeParameter,
+    CompileWarning, TypeArgument, TypeId, TypeParameter,
 };
 use sway_types::Spanned;
 

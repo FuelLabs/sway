@@ -151,9 +151,10 @@ pub enum CompileError {
     #[error(
         "Expected: {expected} \n\
          found:    {given}. The definition of this function must \
-         match the one in the trait declaration."
+         match the one in the {interface_name} declaration."
     )]
-    MismatchedTypeInTrait {
+    MismatchedTypeInInterfaceSurface {
+        interface_name: InterfaceName,
         span: Span,
         given: String,
         expected: String,
@@ -694,7 +695,7 @@ impl Spanned for CompileError {
             AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
             MultipleImmediates(span) => span.clone(),
-            MismatchedTypeInTrait { span, .. } => span.clone(),
+            MismatchedTypeInInterfaceSurface { span, .. } => span.clone(),
             NotATrait { span, .. } => span.clone(),
             UnknownTrait { span, .. } => span.clone(),
             FunctionNotAPartOfInterfaceSurface { span, .. } => span.clone(),

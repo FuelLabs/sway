@@ -2,14 +2,14 @@
 
 script {
     fn main() -> bool {
-        entry:
+        entry():
         v0 = const u64 11
         v1 = const u64 0
 // not: cmp
         v2 = cmp eq v0 v1
-        br block0
+        br block0()
 
-        block0:
+        block0():
         v9 = const bool false
         ret bool v9
     }

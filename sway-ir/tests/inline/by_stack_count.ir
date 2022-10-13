@@ -4,7 +4,7 @@ script {
     fn one_local() -> u64 {
         local ptr u64 num
 
-        entry:
+        entry():
         v0 = const u64 11
         ret u64 v0
     }
@@ -13,7 +13,7 @@ script {
         local ptr u64 num
         local ptr bool flag
 
-        entry:
+        entry():
         v0 = const u64 22
         ret u64 v0
     }
@@ -23,7 +23,7 @@ script {
         local ptr bool flag
         local ptr string<10> name
 
-        entry:
+        entry():
         v0 = const u64 33
         ret u64 v0
     }
@@ -31,7 +31,7 @@ script {
     fn two_struct_locals() -> u64 {
         local ptr { u64, u64 } pair
 
-        entry:
+        entry():
         v0 = const u64 44
         ret u64 v0
     }
@@ -39,7 +39,7 @@ script {
     fn three_struct_locals() -> u64 {
         local ptr { u64, u64, bool } triple
 
-        entry:
+        entry():
         v0 = const u64 55
         ret u64 v0
     }
@@ -48,7 +48,7 @@ script {
         local ptr { u64 } single
         local ptr bool flag
 
-        entry:
+        entry():
         v0 = const u64 66
         ret u64 v0
     }
@@ -57,14 +57,14 @@ script {
         local ptr { u64, string<10> } pair
         local ptr bool flag
 
-        entry:
+        entry():
         v0 = const u64 77
         ret u64 v0
     }
 
     fn main() -> u64 {
 // check: fn main() -> u64
-        entry:
+        entry():
 
         v0 = call one_local()
 // not: call one_local()
