@@ -4287,6 +4287,7 @@ dependencies = [
 name = "sway-lsp"
 version = "0.25.2"
 dependencies = [
+ "anyhow",
  "async-trait",
  "dashmap",
  "forc-pkg",
@@ -4301,6 +4302,7 @@ dependencies = [
  "sway-types",
  "sway-utils",
  "swayfmt",
+ "thiserror",
  "tokio",
  "tower",
  "tower-lsp",
