@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-DF52F43C9B324936'
+dependencies = []
+
+[[package]]
+name = 'option_in_abi'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-DF52F43C9B324936'
+dependencies = ['core']
