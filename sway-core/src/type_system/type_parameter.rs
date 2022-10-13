@@ -71,7 +71,7 @@ impl TypeParameter {
         let mut errors = vec![];
         if !type_parameter.trait_constraints.is_empty() {
             errors.push(CompileError::WhereClauseNotYetSupported {
-                span: type_parameter.name_ident.span(),
+                span: type_parameter.trait_constraints.first().unwrap().span(),
             });
             return err(warnings, errors);
         }
