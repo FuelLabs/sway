@@ -71,6 +71,7 @@ pub struct TyEnumVariant {
     pub type_span: Span,
     pub(crate) tag: usize,
     pub(crate) span: Span,
+    pub attributes: AttributesMap,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
