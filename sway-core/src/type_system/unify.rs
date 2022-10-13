@@ -1,10 +1,10 @@
-use sway_error::{type_error::TypeError, warning::Warning};
+use sway_error::{
+    type_error::TypeError,
+    warning::{CompileWarning, Warning},
+};
 use sway_types::{integer_bits::IntegerBits, Ident, Span};
 
-use crate::{
-    semantic_analysis::{TyEnumVariant, TyStructField},
-    CompileWarning, TypeArgument, TypeId, TypeParameter,
-};
+use crate::{language::ty, type_system::*};
 use sway_types::Spanned;
 
 pub(super) fn unify_strs(
@@ -108,8 +108,8 @@ pub(super) fn unify_structs<F>(
     expected: TypeId,
     span: &Span,
     help_text: &str,
-    r: (Ident, Vec<TypeParameter>, Vec<TyStructField>),
-    e: (Ident, Vec<TypeParameter>, Vec<TyStructField>),
+    r: (Ident, Vec<TypeParameter>, Vec<ty::TyStructField>),
+    e: (Ident, Vec<TypeParameter>, Vec<ty::TyStructField>),
     unifier: F,
 ) -> (Vec<CompileWarning>, Vec<TypeError>)
 where
@@ -150,8 +150,8 @@ pub(super) fn unify_enums<F>(
     expected: TypeId,
     span: &Span,
     help_text: &str,
-    r: (Ident, Vec<TypeParameter>, Vec<TyEnumVariant>),
-    e: (Ident, Vec<TypeParameter>, Vec<TyEnumVariant>),
+    r: (Ident, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
+    e: (Ident, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
     unifier: F,
 ) -> (Vec<CompileWarning>, Vec<TypeError>)
 where
