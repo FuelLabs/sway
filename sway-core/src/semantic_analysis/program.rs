@@ -103,6 +103,7 @@ impl ty::TyProgram {
                     let ty::TyImplTrait {
                         methods,
                         implementing_for_type_id,
+                        span,
                         ..
                     } = check!(
                         CompileResult::from(de_get_impl_trait(decl_id.clone(), &node.span)),
@@ -114,7 +115,14 @@ impl ty::TyProgram {
                         look_up_type_id(implementing_for_type_id),
                         TypeInfo::Contract
                     ) {
-                        abi_entries.extend(methods.clone());
+                        let mut abi_methods = vec![];
+                        for method_id in methods {
+                            match de_get_function(method_id, &span) {
+                                Ok(method) => abi_methods.push(method),
+                                Err(err) => errors.push(err),
+                            }
+                        }
+                        abi_entries.extend(abi_methods.clone());
                     }
                 }
                 // XXX we're excluding the above ABI methods, is that OK?

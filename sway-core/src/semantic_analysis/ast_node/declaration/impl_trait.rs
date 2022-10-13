@@ -100,10 +100,14 @@ impl ty::TyImplTrait {
                     warnings,
                     errors
                 );
+                let functions_decl_id = functions_buf
+                    .iter()
+                    .map(|d| de_insert_function(d.clone()))
+                    .collect::<Vec<_>>();
                 let impl_trait = ty::TyImplTrait {
                     trait_name,
                     span: block_span,
-                    methods: functions_buf,
+                    methods: functions_decl_id,
                     implementing_for_type_id,
                     type_implementing_for_span: type_implementing_for_span.clone(),
                 };
@@ -155,10 +159,14 @@ impl ty::TyImplTrait {
                     warnings,
                     errors
                 );
+                let functions_decl_id = functions_buf
+                    .iter()
+                    .map(|d| de_insert_function(d.clone()))
+                    .collect::<Vec<_>>();
                 let impl_trait = ty::TyImplTrait {
                     trait_name,
                     span: block_span,
-                    methods: functions_buf,
+                    methods: functions_decl_id,
                     implementing_for_type_id,
                     type_implementing_for_span,
                 };
@@ -445,10 +453,14 @@ impl ty::TyImplTrait {
             errors
         );
 
+        let methods_ids = methods
+            .iter()
+            .map(|d| de_insert_function(d.clone()))
+            .collect::<Vec<_>>();
         let impl_trait = ty::TyImplTrait {
             trait_name,
             span: block_span,
-            methods,
+            methods: methods_ids,
             implementing_for_type_id,
             type_implementing_for_span,
         };

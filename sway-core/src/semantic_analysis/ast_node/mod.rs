@@ -296,10 +296,17 @@ impl ty::TyAstNode {
                                 warnings,
                                 errors
                             );
+                            let mut methods = vec![];
+                            for method_id in &impl_trait.methods {
+                                match de_get_function(method_id.clone(), &impl_trait.span) {
+                                    Ok(method) => methods.push(method),
+                                    Err(err) => errors.push(err),
+                                }
+                            }
                             ctx.namespace.insert_trait_implementation(
                                 impl_trait.trait_name.clone(),
                                 implementing_for_type_id,
-                                impl_trait.methods.clone(),
+                                methods,
                             );
                             ty::TyDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
                         }
@@ -310,10 +317,17 @@ impl ty::TyAstNode {
                                 warnings,
                                 errors
                             );
+                            let mut methods = vec![];
+                            for method_id in &impl_trait.methods {
+                                match de_get_function(method_id.clone(), &impl_trait.span) {
+                                    Ok(method) => methods.push(method),
+                                    Err(err) => errors.push(err),
+                                }
+                            }
                             ctx.namespace.insert_trait_implementation(
                                 impl_trait.trait_name.clone(),
                                 impl_trait.implementing_for_type_id,
-                                impl_trait.methods.clone(),
+                                methods,
                             );
                             ty::TyDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
                         }

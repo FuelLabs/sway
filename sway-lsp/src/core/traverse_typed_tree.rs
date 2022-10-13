@@ -156,8 +156,12 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
                     token.type_def = Some(TypeDefinition::TypeId(implementing_for_type_id));
                 }
 
-                for method in methods {
-                    collect_typed_fn_decl(&method, tokens);
+                for method_id in methods {
+                    if let Ok(method) =
+                        declaration_engine::de_get_function(method_id.clone(), &decl_id.span())
+                    {
+                        collect_typed_fn_decl(&method, tokens);
+                    }
                 }
             }
         }

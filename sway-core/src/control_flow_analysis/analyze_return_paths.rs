@@ -225,13 +225,20 @@ fn connect_declaration(
         ImplTrait(decl_id) => {
             let ty::TyImplTrait {
                 trait_name,
-                methods,
+                methods: methods_ids,
                 ..
             } = de_get_impl_trait(decl_id.clone(), &span)?;
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
+
+            let mut methods = vec![];
+            for decl_id in methods_ids {
+                let method = de_get_function(decl_id, &trait_name.span())?;
+                methods.push(method);
+            }
+
             connect_impl_trait(&trait_name, graph, &methods, entry_node)?;
             Ok(leaves.to_vec())
         }
