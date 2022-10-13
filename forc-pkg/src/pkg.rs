@@ -26,10 +26,13 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    language::parsed::{ParseProgram, TreeType},
+    language::{
+        parsed::{ParseProgram, TreeType},
+        ty,
+    },
     semantic_analysis::namespace,
     source_map::SourceMap,
-    BytecodeOrLib, CompileResult, TyProgram,
+    BytecodeOrLib, CompileResult,
 };
 use sway_error::error::CompileError;
 use sway_types::{Ident, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
@@ -1808,7 +1811,7 @@ pub fn compile_ast(
     manifest: &PackageManifestFile,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
-) -> Result<CompileResult<TyProgram>> {
+) -> Result<CompileResult<ty::TyProgram>> {
     let source = manifest.entry_string()?;
     let sway_build_config =
         sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
@@ -2355,7 +2358,7 @@ fn update_json_type_declaration(
 pub fn check(
     plan: &BuildPlan,
     terse_mode: bool,
-) -> anyhow::Result<CompileResult<(ParseProgram, Option<TyProgram>)>> {
+) -> anyhow::Result<CompileResult<(ParseProgram, Option<ty::TyProgram>)>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
     let mut namespace_map = Default::default();

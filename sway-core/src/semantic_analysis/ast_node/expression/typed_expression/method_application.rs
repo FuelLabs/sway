@@ -1,14 +1,11 @@
 use crate::{
     error::*,
     language::{parsed::*, ty, *},
-    semantic_analysis::{
-        typed_expression::{
-            check_function_arguments_arity, instantiate_function_application_simple,
-        },
-        ContractCallParams, IsConstant, TyFunctionParameter, TyStorageField, TypeCheckContext,
-    },
+    semantic_analysis::*,
     type_system::*,
-    TyFunctionDeclaration,
+};
+use ast_node::typed_expression::{
+    check_function_arguments_arity, instantiate_function_application_simple,
 };
 use std::collections::{HashMap, VecDeque};
 use sway_error::error::CompileError;
@@ -140,7 +137,7 @@ pub(crate) fn type_check_method_application(
                 let self_state_idx = match storage_fields
                     .iter()
                     .enumerate()
-                    .find(|(_, TyStorageField { name, .. })| name == &first_field)
+                    .find(|(_, ty::TyStorageField { name, .. })| name == &first_field)
                 {
                     Some((ix, _)) => StateIndex::new(ix),
                     None => {
@@ -182,7 +179,7 @@ pub(crate) fn type_check_method_application(
             expression: ty::TyExpressionVariant::VariableExpression { name, .. },
             ..
         }),
-        Some(TyFunctionParameter { is_mutable, .. }),
+        Some(ty::TyFunctionParameter { is_mutable, .. }),
     ) = (args_buf.get(0), method.parameters.get(0))
     {
         let unknown_decl = check!(
@@ -263,7 +260,7 @@ pub(crate) fn type_check_method_application(
             return err(warnings, errors);
         };
         let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
-        Some(ContractCallParams {
+        Some(ty::ContractCallParams {
             func_selector,
             contract_address,
         })
@@ -319,7 +316,7 @@ pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
     method_name: &TypeBinding<MethodName>,
     arguments: VecDeque<ty::TyExpression>,
-) -> CompileResult<TyFunctionDeclaration> {
+) -> CompileResult<ty::TyFunctionDeclaration> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
