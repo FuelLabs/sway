@@ -1,16 +1,10 @@
-use crate::{language::ty, type_system::*};
-
 use sway_types::Ident;
 
-#[derive(Clone, Debug)]
-pub struct ContractCallParams {
-    pub(crate) func_selector: [u8; 4],
-    pub(crate) contract_address: Box<ty::TyExpression>,
-}
+use crate::{language::ty::*, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyAsmRegisterDeclaration {
-    pub(crate) initializer: Option<ty::TyExpression>,
+    pub(crate) initializer: Option<TyExpression>,
     pub(crate) name: Ident,
 }
 

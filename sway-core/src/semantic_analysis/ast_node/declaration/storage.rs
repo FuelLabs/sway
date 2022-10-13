@@ -5,35 +5,17 @@ use crate::{
     },
     language::ty,
     metadata::MetadataManager,
-    semantic_analysis::TyStructField,
-    type_system::{look_up_type_id, TypeId, TypeInfo},
+    type_system::{TypeId, TypeInfo},
     AttributesMap, Ident,
 };
-use derivative::Derivative;
 use fuel_tx::StorageSlot;
 use sway_error::error::CompileError;
 use sway_ir::{Context, Module};
 use sway_types::{state::StateIndex, Span, Spanned};
 
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
-pub struct TyStorageDeclaration {
-    pub fields: Vec<TyStorageField>,
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub span: Span,
-    pub attributes: AttributesMap,
-}
-
-impl Spanned for TyStorageDeclaration {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-impl TyStorageDeclaration {
-    pub fn new(fields: Vec<TyStorageField>, span: Span, attributes: AttributesMap) -> Self {
-        TyStorageDeclaration {
+impl ty::TyStorageDeclaration {
+    pub fn new(fields: Vec<ty::TyStorageField>, span: Span, attributes: AttributesMap) -> Self {
+        ty::TyStorageDeclaration {
             fields,
             span,
             attributes,
@@ -44,7 +26,7 @@ impl TyStorageDeclaration {
     pub fn apply_storage_load(
         &self,
         fields: Vec<Ident>,
-        storage_fields: &[TyStorageField],
+        storage_fields: &[ty::TyStorageField],
     ) -> CompileResult<(ty::TyStorageAccess, TypeId)> {
         let mut errors = vec![];
         let warnings = vec![];
@@ -56,11 +38,11 @@ impl TyStorageDeclaration {
         let (ix, initial_field_type) = match storage_fields
             .iter()
             .enumerate()
-            .find(|(_, TyStorageField { name, .. })| name == &first_field)
+            .find(|(_, ty::TyStorageField { name, .. })| name == &first_field)
         {
             Some((
                 ix,
-                TyStorageField {
+                ty::TyStorageField {
                     type_id: r#type, ..
                 },
             )) => (StateIndex::new(ix), r#type),
@@ -78,7 +60,7 @@ impl TyStorageDeclaration {
             span: first_field.span(),
         });
 
-        fn update_available_struct_fields(id: TypeId) -> Vec<TyStructField> {
+        fn update_available_struct_fields(id: TypeId) -> Vec<ty::TyStructField> {
             match crate::type_system::look_up_type_id(id) {
                 TypeInfo::Struct { fields, .. } => fields,
                 _ => vec![],
@@ -134,18 +116,18 @@ impl TyStorageDeclaration {
         )
     }
 
-    pub(crate) fn fields_as_typed_struct_fields(&self) -> Vec<TyStructField> {
+    pub(crate) fn fields_as_typed_struct_fields(&self) -> Vec<ty::TyStructField> {
         self.fields
             .iter()
             .map(
-                |TyStorageField {
+                |ty::TyStorageField {
                      ref name,
                      type_id: ref r#type,
                      ref span,
                      ref initializer,
                      ref attributes,
                      ..
-                 }| TyStructField {
+                 }| ty::TyStructField {
                     name: name.clone(),
                     type_id: *r#type,
                     initial_type_id: *r#type,
@@ -182,28 +164,7 @@ impl TyStorageDeclaration {
     }
 }
 
-#[derive(Clone, Debug, Eq)]
-pub struct TyStorageField {
-    pub name: Ident,
-    pub type_id: TypeId,
-    pub type_span: Span,
-    pub initializer: ty::TyExpression,
-    pub(crate) span: Span,
-    pub attributes: AttributesMap,
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyStorageField {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
-            && self.initializer == other.initializer
-    }
-}
-
-impl TyStorageField {
+impl ty::TyStorageField {
     pub(crate) fn get_initialized_storage_slots(
         &self,
         context: &mut Context,

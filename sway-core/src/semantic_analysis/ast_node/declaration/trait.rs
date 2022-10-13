@@ -1,9 +1,8 @@
-use derivative::Derivative;
 use sway_error::{
     error::CompileError,
     warning::{CompileWarning, Warning},
 };
-use sway_types::{style::is_upper_camel_case, Ident, Spanned};
+use sway_types::{style::is_upper_camel_case, Spanned};
 
 use crate::{
     declaration_engine::*,
@@ -11,39 +10,13 @@ use crate::{
     language::{parsed::*, ty, CallPath, Visibility},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
-        Mode, TyCodeBlock, TypeCheckContext,
+        Mode, TypeCheckContext,
     },
     type_system::*,
-    Namespace, TyFunctionDeclaration,
+    Namespace,
 };
 
-use super::{EnforceTypeArguments, TyFunctionParameter, TyTraitFn};
-
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
-pub struct TyTraitDeclaration {
-    pub name: Ident,
-    pub interface_surface: Vec<TyTraitFn>,
-    // NOTE: deriving partialeq and hash on this element may be important in the
-    // future, but I am not sure. For now, adding this would 2x the amount of
-    // work, so I am just going to exclude it
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub(crate) methods: Vec<FunctionDeclaration>,
-    pub(crate) supertraits: Vec<Supertrait>,
-    pub visibility: Visibility,
-}
-
-impl CopyTypes for TyTraitDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.interface_surface
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-        // we don't have to type check the methods because it hasn't been type checked yet
-    }
-}
-
-impl TyTraitDeclaration {
+impl ty::TyTraitDeclaration {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         trait_decl: TraitDeclaration,
@@ -101,7 +74,7 @@ impl TyTraitDeclaration {
             warnings,
             errors
         );
-        let typed_trait_decl = TyTraitDeclaration {
+        let typed_trait_decl = ty::TyTraitDeclaration {
             name: trait_decl.name,
             interface_surface,
             methods: trait_decl.methods.to_vec(),
@@ -128,7 +101,7 @@ fn handle_supertraits(
             .cloned()
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
-                let TyTraitDeclaration {
+                let ty::TyTraitDeclaration {
                     ref interface_surface,
                     ref methods,
                     ref supertraits,
@@ -187,12 +160,12 @@ fn handle_supertraits(
     ok((), warnings, errors)
 }
 
-/// Convert a vector of FunctionDeclarations into a vector of [TyFunctionDeclaration]'s where only
+/// Convert a vector of FunctionDeclarations into a vector of [ty::TyFunctionDeclaration]'s where only
 /// the parameters and the return types are type checked.
 fn convert_trait_methods_to_dummy_funcs(
     methods: &[FunctionDeclaration],
     trait_namespace: &mut Namespace,
-) -> CompileResult<Vec<TyFunctionDeclaration>> {
+) -> CompileResult<Vec<ty::TyFunctionDeclaration>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut dummy_funcs = vec![];
@@ -209,7 +182,10 @@ fn convert_trait_methods_to_dummy_funcs(
         let mut typed_parameters = vec![];
         for param in parameters.iter() {
             typed_parameters.push(check!(
-                TyFunctionParameter::type_check_interface_parameter(trait_namespace, param.clone()),
+                ty::TyFunctionParameter::type_check_interface_parameter(
+                    trait_namespace,
+                    param.clone()
+                ),
                 continue,
                 warnings,
                 errors
@@ -231,10 +207,10 @@ fn convert_trait_methods_to_dummy_funcs(
             errors,
         );
 
-        dummy_funcs.push(TyFunctionDeclaration {
+        dummy_funcs.push(ty::TyFunctionDeclaration {
             purity: Default::default(),
             name: name.clone(),
-            body: TyCodeBlock { contents: vec![] },
+            body: ty::TyCodeBlock { contents: vec![] },
             parameters: typed_parameters,
             attributes: method.attributes.clone(),
             span: name.span(),
