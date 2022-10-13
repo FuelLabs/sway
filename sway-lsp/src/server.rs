@@ -505,40 +505,16 @@ impl Backend {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::test_utils::{doc_comments_dir, e2e_test_dir};
+    use serial_test::serial;
     use serde_json::json;
     use std::{borrow::Cow, fs, io::Read, path::PathBuf};
     use tower::{Service, ServiceExt};
-
-    use crate::test_utils::sway_workspace_dir;
-
-    use super::*;
-    use serial_test::serial;
     use tower_lsp::{
         jsonrpc::{self, Id, Request, Response},
         ExitedError, LspService,
     };
-
-    fn e2e_language_dir() -> PathBuf {
-        PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass/language")
-    }
-
-    #[allow(dead_code)]
-    fn e2e_test_dir() -> PathBuf {
-        sway_workspace_dir()
-            .join(e2e_language_dir())
-            .join("struct_field_access")
-    }
-
-    #[allow(dead_code)]
-    fn sway_example_dir() -> PathBuf {
-        sway_workspace_dir().join("examples/storage_variables")
-    }
-
-    fn doc_comments_dir() -> PathBuf {
-        sway_workspace_dir()
-            .join(e2e_language_dir())
-            .join("doc_comments")
-    }
 
     fn load_sway_example(manifest_dir: PathBuf) -> (Url, String) {
         let src_path = manifest_dir.join("src/main.sw");
