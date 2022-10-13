@@ -2,27 +2,16 @@ use sway_error::error::CompileError;
 use sway_error::warning::CompileWarning;
 use sway_types::{Span, Spanned};
 
-use crate::{
-    declaration_engine::declaration_engine::*,
-    error::*,
-    language::ty,
-    semantic_analysis::{
-        TyAstNodeContent, TyCodeBlock, TyConstantDeclaration, TyEnumDeclaration,
-        TyFunctionDeclaration, TyImplTrait, TyIntrinsicFunctionKind, TyReassignment,
-        TyStorageDeclaration, TyStructDeclaration,
-    },
-    type_system::*,
-};
+use crate::{declaration_engine::declaration_engine::*, error::*, language::ty, type_system::*};
 
-fn ast_node_validate(x: &TyAstNodeContent) -> CompileResult<()> {
+fn ast_node_validate(x: &ty::TyAstNodeContent) -> CompileResult<()> {
     let errors: Vec<CompileError> = vec![];
     let warnings: Vec<CompileWarning> = vec![];
     match x {
-        TyAstNodeContent::Expression(expr) | TyAstNodeContent::ImplicitReturnExpression(expr) => {
-            expr_validate(expr)
-        }
-        TyAstNodeContent::Declaration(decl) => decl_validate(decl),
-        TyAstNodeContent::SideEffect => ok((), warnings, errors),
+        ty::TyAstNodeContent::Expression(expr)
+        | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => expr_validate(expr),
+        ty::TyAstNodeContent::Declaration(decl) => decl_validate(decl),
+        ty::TyAstNodeContent::SideEffect => ok((), warnings, errors),
     }
 }
 
@@ -53,7 +42,7 @@ fn expr_validate(expr: &ty::TyExpression) -> CompileResult<()> {
             check!(expr_validate(expr1), (), warnings, errors);
             check!(expr_validate(expr2), (), warnings, errors);
         }
-        ty::TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
+        ty::TyExpressionVariant::IntrinsicFunction(ty::TyIntrinsicFunctionKind {
             arguments: exprvec,
             ..
         })
@@ -111,7 +100,7 @@ fn expr_validate(expr: &ty::TyExpression) -> CompileResult<()> {
         ty::TyExpressionVariant::Break => (),
         ty::TyExpressionVariant::Continue => (),
         ty::TyExpressionVariant::Reassignment(reassignment) => {
-            let TyReassignment {
+            let ty::TyReassignment {
                 lhs_base_name, rhs, ..
             } = &**reassignment;
             check!(
@@ -184,7 +173,7 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
             check!(expr_validate(&decl.body), (), warnings, errors)
         }
         ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-            let TyConstantDeclaration {
+            let ty::TyConstantDeclaration {
                 value: expr, name, ..
             } = check!(
                 CompileResult::from(de_get_constant(decl_id.clone(), &decl_id.span())),
@@ -201,7 +190,7 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
             check!(expr_validate(&expr), (), warnings, errors)
         }
         ty::TyDeclaration::FunctionDeclaration(decl_id) => {
-            let TyFunctionDeclaration {
+            let ty::TyFunctionDeclaration {
                 body, parameters, ..
             } = check!(
                 CompileResult::from(de_get_function(decl_id.clone(), &decl.span())),
@@ -228,7 +217,7 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
             // These methods are not typed. They are however handled from ImplTrait.
         }
         ty::TyDeclaration::ImplTrait(decl_id) => {
-            let TyImplTrait { methods, .. } = check!(
+            let ty::TyImplTrait { methods, .. } = check!(
                 CompileResult::from(de_get_impl_trait(decl_id.clone(), &decl_id.span())),
                 return err(warnings, errors),
                 warnings,
@@ -244,7 +233,7 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
             }
         }
         ty::TyDeclaration::StructDeclaration(decl_id) => {
-            let TyStructDeclaration { fields, .. } = check!(
+            let ty::TyStructDeclaration { fields, .. } = check!(
                 CompileResult::from(de_get_struct(decl_id.clone(), &decl_id.span())),
                 return err(warnings, errors),
                 warnings,
@@ -260,7 +249,7 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
             }
         }
         ty::TyDeclaration::EnumDeclaration(decl_id) => {
-            let TyEnumDeclaration { variants, .. } = check!(
+            let ty::TyEnumDeclaration { variants, .. } = check!(
                 CompileResult::from(de_get_enum(decl_id.clone(), &decl.span())),
                 return err(warnings, errors),
                 warnings,
@@ -276,7 +265,7 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
             }
         }
         ty::TyDeclaration::StorageDeclaration(decl_id) => {
-            let TyStorageDeclaration { fields, .. } = check!(
+            let ty::TyStorageDeclaration { fields, .. } = check!(
                 CompileResult::from(de_get_storage(decl_id.clone(), &decl.span())),
                 return err(warnings, errors),
                 warnings,
@@ -297,11 +286,15 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
     ok((), warnings, errors)
 }
 
-pub fn validate_decls_for_storage_only_types_in_ast(ast_n: &TyAstNodeContent) -> CompileResult<()> {
+pub fn validate_decls_for_storage_only_types_in_ast(
+    ast_n: &ty::TyAstNodeContent,
+) -> CompileResult<()> {
     ast_node_validate(ast_n)
 }
 
-pub fn validate_decls_for_storage_only_types_in_codeblock(cb: &TyCodeBlock) -> CompileResult<()> {
+pub fn validate_decls_for_storage_only_types_in_codeblock(
+    cb: &ty::TyCodeBlock,
+) -> CompileResult<()> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut errors: Vec<CompileError> = vec![];
     for x in &cb.contents {

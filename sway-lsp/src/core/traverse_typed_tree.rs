@@ -4,26 +4,17 @@ use crate::{
     core::token::{TokenMap, TypeDefinition, TypedAstToken},
     utils::token::{struct_declaration_of_type_id, to_ident_key},
 };
-use sway_core::{
-    declaration_engine,
-    language::ty,
-    semantic_analysis::ast_node::{
-        code_block::TyCodeBlock,
-        expression::TyIntrinsicFunctionKind,
-        ProjectionKind, TyFunctionDeclaration, TyFunctionParameter, TyImplTrait, TyTraitFn,
-        {TyAstNode, TyAstNodeContent},
-    },
-};
+use sway_core::{declaration_engine, language::ty};
 use sway_types::{ident::Ident, Spanned};
 
-pub fn traverse_node(node: &TyAstNode, tokens: &TokenMap) {
+pub fn traverse_node(node: &ty::TyAstNode, tokens: &TokenMap) {
     match &node.content {
-        TyAstNodeContent::Declaration(declaration) => handle_declaration(declaration, tokens),
-        TyAstNodeContent::Expression(expression) => handle_expression(expression, tokens),
-        TyAstNodeContent::ImplicitReturnExpression(expression) => {
+        ty::TyAstNodeContent::Declaration(declaration) => handle_declaration(declaration, tokens),
+        ty::TyAstNodeContent::Expression(expression) => handle_expression(expression, tokens),
+        ty::TyAstNodeContent::ImplicitReturnExpression(expression) => {
             handle_expression(expression, tokens)
         }
-        TyAstNodeContent::SideEffect => (),
+        ty::TyAstNodeContent::SideEffect => (),
     };
 }
 
@@ -134,7 +125,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
             }
         }
         ty::TyDeclaration::ImplTrait(decl_id) => {
-            if let Ok(TyImplTrait {
+            if let Ok(ty::TyImplTrait {
                 trait_name,
                 methods,
                 implementing_for_type_id,
@@ -409,7 +400,7 @@ fn handle_expression(expression: &ty::TyExpression, tokens: &TokenMap) {
             }
 
             for proj_kind in &reassignment.lhs_indices {
-                if let ProjectionKind::StructField { name } = proj_kind {
+                if let ty::ProjectionKind::StructField { name } = proj_kind {
                     if let Some(mut token) = tokens.get_mut(&to_ident_key(name)) {
                         token.typed =
                             Some(TypedAstToken::TypedReassignment((**reassignment).clone()));
@@ -442,7 +433,7 @@ fn handle_expression(expression: &ty::TyExpression, tokens: &TokenMap) {
 }
 
 fn handle_intrinsic_function(
-    TyIntrinsicFunctionKind { arguments, .. }: &TyIntrinsicFunctionKind,
+    ty::TyIntrinsicFunctionKind { arguments, .. }: &ty::TyIntrinsicFunctionKind,
     tokens: &TokenMap,
 ) {
     for arg in arguments {
@@ -450,14 +441,14 @@ fn handle_intrinsic_function(
     }
 }
 
-fn handle_while_loop(body: &TyCodeBlock, condition: &ty::TyExpression, tokens: &TokenMap) {
+fn handle_while_loop(body: &ty::TyCodeBlock, condition: &ty::TyExpression, tokens: &TokenMap) {
     handle_expression(condition, tokens);
     for node in &body.contents {
         traverse_node(node, tokens);
     }
 }
 
-fn collect_typed_trait_fn_token(trait_fn: &TyTraitFn, tokens: &TokenMap) {
+fn collect_typed_trait_fn_token(trait_fn: &ty::TyTraitFn, tokens: &TokenMap) {
     if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_fn.name)) {
         token.typed = Some(TypedAstToken::TypedTraitFn(trait_fn.clone()));
     }
@@ -473,7 +464,7 @@ fn collect_typed_trait_fn_token(trait_fn: &TyTraitFn, tokens: &TokenMap) {
     }
 }
 
-fn collect_typed_fn_param_token(param: &TyFunctionParameter, tokens: &TokenMap) {
+fn collect_typed_fn_param_token(param: &ty::TyFunctionParameter, tokens: &TokenMap) {
     let typed_token = TypedAstToken::TypedFunctionParameter(param.clone());
     if let Some(mut token) = tokens.get_mut(&to_ident_key(&param.name)) {
         token.typed = Some(typed_token.clone());
@@ -486,7 +477,7 @@ fn collect_typed_fn_param_token(param: &TyFunctionParameter, tokens: &TokenMap) 
     }
 }
 
-fn collect_typed_fn_decl(func_decl: &TyFunctionDeclaration, tokens: &TokenMap) {
+fn collect_typed_fn_decl(func_decl: &ty::TyFunctionDeclaration, tokens: &TokenMap) {
     if let Some(mut token) = tokens.get_mut(&to_ident_key(&func_decl.name)) {
         token.typed = Some(TypedAstToken::TypedFunctionDeclaration(func_decl.clone()));
     }
