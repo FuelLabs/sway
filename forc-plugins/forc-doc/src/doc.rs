@@ -1,11 +1,14 @@
 use crate::descriptor::Descriptor;
+use anyhow::Result;
 use std::collections::BTreeMap;
 use sway_core::{
+    declaration_engine::de_get_enum,
     language::parsed::{AstNode, AstNodeContent, Declaration, ParseProgram, ParseSubmodule},
     language::ty::TyDeclaration,
     semantic_analysis::TySubmodule,
-    Attribute, AttributeKind, AttributesMap, CompileResult, TyAstNodeContent, TyProgram,
+    Attribute, AttributeKind, AttributesMap, CompileResult, TyAstNode, TyAstNodeContent, TyProgram,
 };
+use sway_types::Spanned;
 
 type TypeInformation = TyDeclaration;
 pub(crate) type Documentation = BTreeMap<Descriptor, (Vec<Attribute>, TypeInformation)>;
@@ -27,6 +30,13 @@ pub(crate) fn get_compiled_docs(
                     .entry(Descriptor::from_typed_decl(decl, vec![]))
                     .or_insert((Vec::new(), decl.clone()));
                 entry.1 = decl.clone();
+                let docstrings = doc_attributes(ast_node);
+                if let Some(entry) = docs.get_mut(&Descriptor::from_decl(decl, vec![])) {
+                    entry.0 = docstrings;
+                } else {
+                    // this could be invalid in the case of a partial compilation. TODO audit this
+                    panic!("Invariant violated: we shouldn't have parsed stuff that isnt in the typed tree");
+                }
             }
         }
         // then, grab the docstrings
@@ -125,13 +135,14 @@ impl std::iter::FromIterator<std::option::Option<Vec<Attribute>>> for Attributes
         Self(c)
     }
 }
-fn attributes_map(ast_node: &AstNode) -> Option<Vec<AttributesMap>> {
+fn attributes_map(ast_node: &TyAstNode) -> Result<Option<Vec<AttributesMap>>> {
     match ast_node.content.clone() {
-        AstNodeContent::Declaration(decl) => match decl {
-            Declaration::EnumDeclaration(decl) => {
+        TyAstNodeContent::Declaration(decl) => match decl {
+            TyDeclaration::EnumDeclaration(decl) => {
+                let decl = de_get_enum(decl.clone(), &decl.span())?;
                 let mut attr_map = vec![decl.attributes];
                 for variant in decl.variants {
-                    attr_map.push(variant.attributes)
+                    variant.type_id
                 }
 
                 Some(attr_map)
@@ -199,7 +210,7 @@ fn attributes_map(ast_node: &AstNode) -> Option<Vec<AttributesMap>> {
         _ => None,
     }
 }
-fn doc_attributes(ast_node: &AstNode) -> Vec<Attribute> {
+fn doc_attributes(ast_node: &TyAstNode) -> Vec<Attribute> {
     attributes_map(ast_node)
         .map(|attributes| {
             let attr_map = attributes
