@@ -495,7 +495,7 @@ fn type_check_trait_implementation(
     let mut processed_fns = std::collections::HashSet::<Ident>::new();
 
     let mut trait_fns = vec![];
-    for decl_id in trait_interface_surface.iter() {
+    for decl_id in trait_interface_surface {
         match de_get_trait_fn(decl_id.clone(), block_span) {
             Ok(decl) => trait_fns.push(decl),
             Err(err) => errors.push(err),

@@ -115,14 +115,12 @@ impl ty::TyProgram {
                         look_up_type_id(implementing_for_type_id),
                         TypeInfo::Contract
                     ) {
-                        let mut abi_methods = vec![];
                         for method_id in methods {
                             match de_get_function(method_id, &span) {
-                                Ok(method) => abi_methods.push(method),
+                                Ok(method) => abi_entries.push(method),
                                 Err(err) => errors.push(err),
                             }
                         }
-                        abi_entries.extend(abi_methods.clone());
                     }
                 }
                 // XXX we're excluding the above ABI methods, is that OK?
