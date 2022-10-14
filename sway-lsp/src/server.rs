@@ -598,10 +598,29 @@ mod tests {
         assert_eq!(response, Ok(None));
     }
 
-    async fn did_change_request(
-        service: &mut LspService<Backend>,
-        params: serde_json::value::Value,
-    ) -> Request {
+    async fn did_change_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+                "version": 2
+            },
+            "contentChanges": [
+                {
+                    "range": {
+                        "start": {
+                            "line": 1,
+                            "character": 0
+                        },
+                        "end": {
+                            "line": 1,
+                            "character": 0
+                        }
+                    },
+                    "rangeLength": 0,
+                    "text": "\n",
+                }
+            ]
+        });
         let did_change = Request::build("textDocument/didChange")
             .params(params)
             .finish();
@@ -652,29 +671,35 @@ mod tests {
         document_symbol
     }
 
-    async fn go_to_definition_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+    async fn go_to_definition_request(
+        service: &mut LspService<Backend>,
+        uri: &Url,
+        token_req_line: i32,
+        token_def_line: i32,
+        id: i64,
+    ) -> Request {
         let params = json!({
             "textDocument": {
                 "uri": uri,
             },
             "position": {
-                "line": 44,
-                "character": 24
+                "line": token_req_line,
+                "character": 24,
             }
         });
-        let definition = build_request_with_id("textDocument/definition", params, 1);
+        let definition = build_request_with_id("textDocument/definition", params, id);
         let response = call_request(service, definition.clone()).await;
         let ok = Response::from_ok(
-            1.into(),
+            id.into(),
             json!({
                 "range": {
                     "end": {
                         "character": 11,
-                        "line": 19
+                        "line": token_def_line,
                     },
                     "start": {
                         "character": 7,
-                        "line": 19
+                        "line": token_def_line,
                     }
                 },
                 "uri": uri,
@@ -853,32 +878,19 @@ mod tests {
     #[serial]
     async fn did_change() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-        let uri = init_and_open(&mut service, e2e_test_dir()).await;
+        let uri = init_and_open(&mut service, doc_comments_dir()).await;
+        let _ = did_change_request(&mut service, &uri).await;
+        shutdown_and_exit(&mut service).await;
+    }
 
-        let params = json!({
-            "textDocument": {
-                "uri": uri,
-                "version": 1
-            },
-            "contentChanges": [
-                {
-                    "range": {
-                        "start": {
-                            "line": 3,
-                            "character": 4
-                        },
-                        "end": {
-                            "line": 3,
-                            "character": 4
-                        }
-                    },
-                    "rangeLength": 0,
-                    "text": "let x = 0.0;",
-                }
-            ]
-        });
-
-        let _ = did_change_request(&mut service, params).await;
+    #[tokio::test]
+    #[serial]
+    async fn lsp_syncs_with_workspace_edits() {
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let uri = init_and_open(&mut service, doc_comments_dir()).await;
+        let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
+        let _ = did_change_request(&mut service, &uri).await;
+        let _ = go_to_definition_request(&mut service, &uri, 45, 20, 2).await;
         shutdown_and_exit(&mut service).await;
     }
 
@@ -891,6 +903,15 @@ mod tests {
 
         let uri = init_and_open(&mut service, e2e_test_dir()).await;
         let _ = show_ast_request(&mut service, &uri).await;
+        shutdown_and_exit(&mut service).await;
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn go_to_definition() {
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let uri = init_and_open(&mut service, doc_comments_dir()).await;
+        let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
         shutdown_and_exit(&mut service).await;
     }
 
@@ -921,7 +942,6 @@ mod tests {
 
     lsp_capability_test!(semantic_tokens, semantic_tokens_request);
     lsp_capability_test!(document_symbol, document_symbol_request);
-    lsp_capability_test!(go_to_definition, go_to_definition_request);
     lsp_capability_test!(format, format_request);
     lsp_capability_test!(hover, hover_request);
     lsp_capability_test!(highlight, highlight_request);
