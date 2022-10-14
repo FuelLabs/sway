@@ -12,7 +12,7 @@ fn adder(a: u64, b: u64, c: u64) -> (u64, u64) {
 }
 
 fn main() -> bool {
-    let(first, second) = adder(1, 2, 3);
+    let (first, second) = adder(1, 2, 3);
     assert(first == 3);
     assert(second == 5);
     true
