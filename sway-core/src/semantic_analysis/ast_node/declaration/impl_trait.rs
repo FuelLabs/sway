@@ -4,7 +4,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    declaration_engine::declaration_engine::*,
+    declaration_engine::{declaration_engine::*, DeclarationId},
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::{Mode, TypeCheckContext},
@@ -128,13 +128,16 @@ impl ty::TyImplTrait {
                     warnings,
                     errors
                 );
-
+                let functions_decl_id = functions_buf
+                    .iter()
+                    .map(|d| de_insert_function(d.clone()))
+                    .collect::<Vec<_>>();
                 let impl_trait = ty::TyImplTrait {
                     impl_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     trait_name: trait_name.clone(),
                     trait_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     span: block_span,
-                    methods: functions_buf,
+                    methods: functions_decl_id,
                     implementing_for_type_id,
                     type_implementing_for_span: type_implementing_for_span.clone(),
                 };
@@ -186,12 +189,16 @@ impl ty::TyImplTrait {
                     warnings,
                     errors
                 );
+                let functions_decl_id = functions_buf
+                    .iter()
+                    .map(|d| de_insert_function(d.clone()))
+                    .collect::<Vec<_>>();
                 let impl_trait = ty::TyImplTrait {
                     impl_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     trait_name,
                     trait_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     span: block_span,
-                    methods: functions_buf,
+                    methods: functions_decl_id,
                     implementing_for_type_id,
                     type_implementing_for_span,
                 };
@@ -478,12 +485,16 @@ impl ty::TyImplTrait {
             errors
         );
 
+        let methods_ids = methods
+            .iter()
+            .map(|d| de_insert_function(d.clone()))
+            .collect::<Vec<_>>();
         let impl_trait = ty::TyImplTrait {
             impl_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
             trait_name,
             trait_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
             span: block_span,
-            methods,
+            methods: methods_ids,
             implementing_for_type_id,
             type_implementing_for_span,
         };
@@ -494,7 +505,7 @@ impl ty::TyImplTrait {
 #[allow(clippy::too_many_arguments)]
 fn type_check_trait_implementation(
     mut ctx: TypeCheckContext,
-    trait_interface_surface: &[ty::TyTraitFn],
+    trait_interface_surface: &[DeclarationId],
     trait_methods: &[FunctionDeclaration],
     functions: &[FunctionDeclaration],
     trait_name: &CallPath,
@@ -517,13 +528,19 @@ fn type_check_trait_implementation(
     let mut functions_buf: Vec<ty::TyFunctionDeclaration> = vec![];
     let mut processed_fns = std::collections::HashSet::<Ident>::new();
 
+    let mut trait_fns = vec![];
+    for decl_id in trait_interface_surface {
+        match de_get_trait_fn(decl_id.clone(), block_span) {
+            Ok(decl) => trait_fns.push(decl),
+            Err(err) => errors.push(err),
+        }
+    }
+
     // this map keeps track of the remaining functions in the
     // interface surface that still need to be implemented for the
     // trait to be fully implemented
-    let mut function_checklist: std::collections::BTreeMap<&Ident, _> = trait_interface_surface
-        .iter()
-        .map(|decl| (&decl.name, decl))
-        .collect();
+    let mut function_checklist: std::collections::BTreeMap<&Ident, _> =
+        trait_fns.iter().map(|decl| (&decl.name, decl)).collect();
     for fn_decl in functions {
         let mut ctx = ctx
             .by_ref()

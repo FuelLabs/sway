@@ -1,10 +1,7 @@
 use derivative::Derivative;
 use sway_types::{Ident, Span};
 
-use crate::{
-    language::{parsed, ty::*},
-    type_system::*,
-};
+use crate::{declaration_engine::DeclarationId, language::parsed, type_system::*, AttributesMap};
 
 /// A [TyAbiDeclaration] contains the type-checked version of the parse tree's `AbiDeclaration`.
 #[derive(Clone, Debug, Derivative)]
@@ -13,7 +10,7 @@ pub struct TyAbiDeclaration {
     /// The name of the abi trait (also known as a "contract trait")
     pub name: Ident,
     /// The methods a contract is required to implement in order opt in to this interface
-    pub interface_surface: Vec<TyTraitFn>,
+    pub interface_surface: Vec<DeclarationId>,
     /// The methods provided to a contract "for free" upon opting in to this interface
     // NOTE: It may be important in the future to include this component
     #[derivative(PartialEq = "ignore")]
@@ -22,6 +19,7 @@ pub struct TyAbiDeclaration {
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
     pub(crate) span: Span,
+    pub attributes: AttributesMap,
 }
 
 impl CreateTypeId for TyAbiDeclaration {

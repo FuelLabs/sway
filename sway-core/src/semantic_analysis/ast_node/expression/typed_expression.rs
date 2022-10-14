@@ -533,7 +533,7 @@ impl ty::TyExpression {
     }
 
     fn type_check_function_application(
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         mut call_path_binding: TypeBinding<CallPath>,
         arguments: Vec<Expression>,
         span: Span,
@@ -543,7 +543,7 @@ impl ty::TyExpression {
 
         // type deck the declaration
         let unknown_decl = check!(
-            TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx),
+            TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref()),
             return err(warnings, errors),
             warnings,
             errors
@@ -1079,7 +1079,7 @@ impl ty::TyExpression {
     }
 
     fn type_check_delineated_path(
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         call_path_binding: TypeBinding<CallPath>,
         span: Span,
         args: Vec<Expression>,
@@ -1113,7 +1113,7 @@ impl ty::TyExpression {
         let mut function_probe_errors = Vec::new();
         let maybe_function = {
             let mut call_path_binding = call_path_binding.clone();
-            TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx)
+            TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
                 .flat_map(|unknown_decl| unknown_decl.expect_function(&span))
                 .ok(&mut function_probe_warnings, &mut function_probe_errors)
         };
@@ -1131,7 +1131,7 @@ impl ty::TyExpression {
                 type_arguments: call_path_binding.type_arguments,
                 span: call_path_binding.span,
             };
-            TypeBinding::type_check_with_ident(&mut call_path_binding, &ctx)
+            TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
                 .flat_map(|unknown_decl| unknown_decl.expect_enum(&call_path_binding.span()))
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
                 .map(|enum_decl| (enum_decl, enum_name, variant_name))
@@ -1293,8 +1293,15 @@ impl ty::TyExpression {
             address: Some(Box::new(address_expr.clone())),
         });
 
-        let mut functions_buf = abi
-            .interface_surface
+        let mut trait_fns = vec![];
+        for decl_id in abi.interface_surface.iter() {
+            match de_get_trait_fn(decl_id.clone(), &abi.span) {
+                Ok(decl) => trait_fns.push(decl),
+                Err(err) => errors.push(err),
+            }
+        }
+
+        let mut functions_buf = trait_fns
             .iter()
             .map(|x| x.to_dummy_func(Mode::ImplAbiFn))
             .collect::<Vec<_>>();

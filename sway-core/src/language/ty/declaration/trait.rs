@@ -2,8 +2,10 @@ use derivative::Derivative;
 use sway_types::Ident;
 
 use crate::{
-    language::{parsed, ty::*, Visibility},
+    declaration_engine::DeclarationId,
+    language::{parsed, Visibility},
     type_system::*,
+    AttributesMap,
 };
 
 #[derive(Clone, Debug, Derivative)]
@@ -11,7 +13,7 @@ use crate::{
 pub struct TyTraitDeclaration {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
-    pub interface_surface: Vec<TyTraitFn>,
+    pub interface_surface: Vec<DeclarationId>,
     // NOTE: deriving partialeq and hash on this element may be important in the
     // future, but I am not sure. For now, adding this would 2x the amount of
     // work, so I am just going to exclude it
@@ -20,6 +22,7 @@ pub struct TyTraitDeclaration {
     pub(crate) methods: Vec<parsed::FunctionDeclaration>,
     pub(crate) supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
+    pub attributes: AttributesMap,
 }
 
 impl CopyTypes for TyTraitDeclaration {

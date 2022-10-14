@@ -27,7 +27,7 @@ impl ty::TyTraitDeclaration {
         let TraitDeclaration {
             name,
             type_parameters,
-            attributes: _,
+            attributes,
             interface_surface,
             methods,
             supertraits,
@@ -63,6 +63,13 @@ impl ty::TyTraitDeclaration {
             warnings,
             errors
         );
+        let mut trait_fns = vec![];
+        for decl_id in interface_surface.iter() {
+            match de_get_trait_fn(decl_id.clone(), &name.span()) {
+                Ok(decl) => trait_fns.push(decl),
+                Err(err) => errors.push(err),
+            }
+        }
 
         // Recursively handle supertraits: make their interfaces and methods available to this trait
         check!(
@@ -81,7 +88,7 @@ impl ty::TyTraitDeclaration {
                 is_absolute: false,
             },
             insert_type(TypeInfo::SelfType),
-            interface_surface
+            trait_fns
                 .iter()
                 .map(|x| x.to_dummy_func(Mode::NonAbi))
                 .collect(),
@@ -103,6 +110,7 @@ impl ty::TyTraitDeclaration {
             methods,
             supertraits,
             visibility,
+            attributes,
         };
         ok(typed_trait_decl, warnings, errors)
     }
@@ -128,6 +136,7 @@ fn handle_supertraits(
                     ref interface_surface,
                     ref methods,
                     ref supertraits,
+                    ref name,
                     ..
                 } = check!(
                     CompileResult::from(de_get_trait(decl_id.clone(), &supertrait.span())),
@@ -136,11 +145,19 @@ fn handle_supertraits(
                     errors
                 );
 
+                let mut trait_fns = vec![];
+                for decl_id in interface_surface.iter() {
+                    match de_get_trait_fn(decl_id.clone(), &name.span()) {
+                        Ok(decl) => trait_fns.push(decl),
+                        Err(err) => errors.push(err),
+                    }
+                }
+
                 // insert dummy versions of the interfaces for all of the supertraits
                 trait_namespace.insert_trait_implementation(
                     supertrait.name.clone(),
                     insert_type(TypeInfo::SelfType),
-                    interface_surface
+                    trait_fns
                         .iter()
                         .map(|x| x.to_dummy_func(Mode::NonAbi))
                         .collect(),
