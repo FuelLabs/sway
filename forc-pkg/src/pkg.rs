@@ -2292,14 +2292,14 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
         let constants = manifest.config_time_constants();
-        let mut dep_namespace = match dependency_namespace(&namespace_map, &plan.graph, node, constants)
-        {
-            Ok(o) => o,
-            Err(errs) => {
-                print_on_failure(profile.terse, &[], &errs);
-                bail!("Failed to compile {}", pkg.name);
-            }
-        };
+        let mut dep_namespace =
+            match dependency_namespace(&namespace_map, &plan.graph, node, constants) {
+                Ok(o) => o,
+                Err(errs) => {
+                    print_on_failure(profile.terse, &[], &errs);
+                    bail!("Failed to compile {}", pkg.name);
+                }
+            };
         if node == *root_node {
             // Create namespaces for the contract_dependencies encountered and insert them as submodules to the
             // root
@@ -2312,15 +2312,20 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
                     public: true,
                 };
                 let mut contract_dep_constants = BTreeMap::new();
-                contract_dep_constants.insert(contract_dep_constant_name.to_string(), config_time_constant);
-                let contract_dep_namesapce = match namespace::Module::default_with_constants(contract_dep_constants) {
-                    Ok(o) => o,
-                    Err(errs) => {
-                        print_on_failure(profile.terse, &[], &errs);
-                        bail!("Failed to compile {}", contract_dep_name);
-                    }
-                };
-                dep_namespace.insert_submodule(kebab_to_snake_case(contract_dep_name), contract_dep_namesapce);
+                contract_dep_constants
+                    .insert(contract_dep_constant_name.to_string(), config_time_constant);
+                let contract_dep_namesapce =
+                    match namespace::Module::default_with_constants(contract_dep_constants) {
+                        Ok(o) => o,
+                        Err(errs) => {
+                            print_on_failure(profile.terse, &[], &errs);
+                            bail!("Failed to compile {}", contract_dep_name);
+                        }
+                    };
+                dep_namespace.insert_submodule(
+                    kebab_to_snake_case(contract_dep_name),
+                    contract_dep_namesapce,
+                );
                 println!("{:?}", dep_namespace);
             }
         }
