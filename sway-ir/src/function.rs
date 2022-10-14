@@ -8,6 +8,8 @@
 
 use std::collections::{BTreeMap, HashMap};
 
+use rustc_hash::FxHashSet;
+
 use crate::{
     block::{Block, BlockIterator, Label},
     constant::Constant,
@@ -18,7 +20,7 @@ use crate::{
     module::Module,
     pointer::{Pointer, PointerContent},
     value::Value,
-    BlockArgument,
+    BlockArgument, BranchToWithArgs,
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
@@ -441,6 +443,33 @@ impl Function {
         for block in block_iter {
             block.replace_value(context, old_val, new_val);
         }
+    }
+
+    /// A graphviz dot graph of the control-flow-graph.
+    pub fn dot_cfg(&self, context: &Context) -> String {
+        let mut worklist = Vec::<Block>::new();
+        let mut visited = FxHashSet::<Block>::default();
+        let entry = self.get_entry_block(context);
+        let mut res = format!("digraph {} {{\n", self.get_name(context));
+
+        worklist.push(entry);
+        while !worklist.is_empty() {
+            let n = worklist.pop().unwrap();
+            visited.insert(n);
+            for BranchToWithArgs { block: n_succ, .. } in n.successors(context) {
+                res += &(format!(
+                    "\t{} -> {}\n",
+                    n.get_label(context),
+                    n_succ.get_label(context)
+                ));
+                if !visited.contains(&n_succ) {
+                    worklist.push(n_succ);
+                }
+            }
+        }
+
+        res += "}\n";
+        res
     }
 }
 
