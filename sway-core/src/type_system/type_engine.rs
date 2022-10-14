@@ -7,12 +7,8 @@ use crate::{
 };
 
 use lazy_static::lazy_static;
-use sway_error::error::CompileError;
-use sway_error::type_error::TypeError;
-use sway_error::warning::{CompileWarning, Warning};
-use sway_types::integer_bits::IntegerBits;
-use sway_types::span::Span;
-use sway_types::{Ident, Spanned};
+use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
+use sway_types::{span::Span, Ident, Spanned};
 
 lazy_static! {
     static ref TYPE_ENGINE: TypeEngine = TypeEngine::default();
@@ -184,253 +180,89 @@ impl TypeEngine {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        help_text: impl Into<String>,
+        help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         use TypeInfo::*;
-        let help_text = help_text.into();
+
+        // a curried version of this method to use in the helper functions
+        let curried = |received: TypeId, expected: TypeId, span: &Span, help_text: &str| {
+            self.unify(received, expected, span, help_text)
+        };
+
         match (self.slab.get(*received), self.slab.get(*expected)) {
-            // If the types are exactly the same, we are done.
+            // If they have the same `TypeInfo`, then we either compare them for
+            // correctness or perform further unification.
             (Boolean, Boolean) => (vec![], vec![]),
             (SelfType, SelfType) => (vec![], vec![]),
             (B256, B256) => (vec![], vec![]),
             (Numeric, Numeric) => (vec![], vec![]),
             (RawUntypedPtr, RawUntypedPtr) => (vec![], vec![]),
             (Contract, Contract) => (vec![], vec![]),
-            (Str(l), Str(r)) => {
-                let warnings = vec![];
-                let mut errors = vec![];
-                if l != r {
-                    errors.push(TypeError::MismatchedType {
-                        expected: expected.to_string(),
-                        received: received.to_string(),
-                        help_text,
-                        span: span.clone(),
-                    });
-                }
-                (warnings, errors)
+            (Str(l), Str(r)) => unify::unify_strs(received, expected, span, help_text, l, r),
+            (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
+                unify::unify_tuples(help_text, rfs, efs, curried)
             }
-
-            // When we don't know anything about either term, assume that
-            // they match and make the one we know nothing about reference the
-            // one we may know something about
-            (Unknown, Unknown) => (vec![], vec![]),
-            (Unknown, expected_info) => {
-                match self.slab.replace(received, &Unknown, expected_info) {
-                    None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
-                }
-            }
-            (received_info, Unknown) => {
-                match self.slab.replace(expected, &Unknown, received_info) {
-                    None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
-                }
-            }
-
-            (Tuple(fields_a), Tuple(fields_b)) if fields_a.len() == fields_b.len() => {
-                let mut warnings = vec![];
-                let mut errors = vec![];
-                for (field_a, field_b) in fields_a.iter().zip(fields_b.iter()) {
-                    append!(
-                        self.unify(
-                            field_a.type_id,
-                            field_b.type_id,
-                            &field_a.span,
-                            help_text.clone(),
-                        ),
-                        warnings,
-                        errors
-                    );
-                }
-                (warnings, errors)
-            }
-
-            (UnsignedInteger(received_width), UnsignedInteger(expected_width)) => {
-                // E.g., in a variable declaration `let a: u32 = 10u64` the 'expected' type will be
-                // the annotation `u32`, and the 'received' type is 'self' of the initialiser, or
-                // `u64`.  So we're casting received TO expected.
-                let warnings = match numeric_cast_compat(expected_width, received_width) {
-                    NumericCastCompatResult::CastableWithWarning(warn) => {
-                        vec![CompileWarning {
-                            span: span.clone(),
-                            warning_content: warn,
-                        }]
-                    }
-                    NumericCastCompatResult::Compatible => {
-                        vec![]
-                    }
-                };
-
-                // we don't want to do a slab replacement here, because
-                // we don't want to overwrite the original numeric type with the new one.
-                // This isn't actually inferencing the original type to the new numeric type.
-                // We just want to say "up until this point, this was a u32 (eg) and now it is a
-                // u64 (eg)". If we were to do a slab replace here, we'd be saying "this was always a
-                // u64 (eg)".
-                (warnings, vec![])
-            }
-
-            (UnknownGeneric { name: l_name }, UnknownGeneric { name: r_name })
-                if l_name.as_str() == r_name.as_str() =>
-            {
-                (vec![], vec![])
-            }
-            (ref received_info @ UnknownGeneric { .. }, expected_info) => {
-                self.slab.replace(received, received_info, expected_info);
-                (vec![], vec![])
-            }
-
-            (received_info, ref expected_info @ UnknownGeneric { .. }) => {
-                self.slab.replace(expected, expected_info, received_info);
-                (vec![], vec![])
-            }
-
-            // if the types, once their ids have been looked up, are the same, we are done
+            (UnsignedInteger(r), UnsignedInteger(e)) => unify::unify_unsigned_ints(span, r, e),
+            (Numeric, e @ UnsignedInteger(_)) => match self.slab.replace(received, &Numeric, e) {
+                None => (vec![], vec![]),
+                Some(_) => self.unify(received, expected, span, help_text),
+            },
+            (r @ UnsignedInteger(_), Numeric) => match self.slab.replace(expected, &Numeric, r) {
+                None => (vec![], vec![]),
+                Some(_) => self.unify(received, expected, span, help_text),
+            },
             (
                 Struct {
-                    name: a_name,
-                    fields: a_fields,
-                    type_parameters: a_parameters,
-                    ..
+                    name: rn,
+                    type_parameters: rpts,
+                    fields: rfs,
                 },
                 Struct {
-                    name: b_name,
-                    fields: b_fields,
-                    type_parameters: b_parameters,
-                    ..
+                    name: en,
+                    type_parameters: etps,
+                    fields: efs,
                 },
-            ) => {
-                let mut warnings = vec![];
-                let mut errors = vec![];
-                if a_name == b_name
-                    && a_fields.len() == b_fields.len()
-                    && a_parameters.len() == b_parameters.len()
-                {
-                    a_fields.iter().zip(b_fields.iter()).for_each(|(a, b)| {
-                        append!(
-                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone()),
-                            warnings,
-                            errors
-                        );
-                    });
-                    a_parameters
-                        .iter()
-                        .zip(b_parameters.iter())
-                        .for_each(|(a, b)| {
-                            append!(
-                                self.unify(
-                                    a.type_id,
-                                    b.type_id,
-                                    &a.name_ident.span(),
-                                    help_text.clone(),
-                                ),
-                                warnings,
-                                errors
-                            );
-                        });
-                } else {
-                    errors.push(TypeError::MismatchedType {
-                        expected: expected.to_string(),
-                        received: received.to_string(),
-                        help_text,
-                        span: span.clone(),
-                    });
-                }
-                (warnings, errors)
-            }
+            ) => unify::unify_structs(
+                received,
+                expected,
+                span,
+                help_text,
+                (rn, rpts, rfs),
+                (en, etps, efs),
+                curried,
+            ),
             (
                 Enum {
-                    name: a_name,
-                    variant_types: a_variants,
-                    type_parameters: a_parameters,
+                    name: rn,
+                    type_parameters: rtps,
+                    variant_types: rvs,
                 },
                 Enum {
-                    name: b_name,
-                    variant_types: b_variants,
-                    type_parameters: b_parameters,
+                    name: en,
+                    type_parameters: etps,
+                    variant_types: evs,
                 },
-            ) => {
-                let mut warnings = vec![];
-                let mut errors = vec![];
-                if a_name == b_name
-                    && a_variants.len() == b_variants.len()
-                    && a_parameters.len() == b_parameters.len()
-                {
-                    a_variants.iter().zip(b_variants.iter()).for_each(|(a, b)| {
-                        append!(
-                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone()),
-                            warnings,
-                            errors
-                        );
-                    });
-                    a_parameters
-                        .iter()
-                        .zip(b_parameters.iter())
-                        .for_each(|(a, b)| {
-                            append!(
-                                self.unify(
-                                    a.type_id,
-                                    b.type_id,
-                                    &a.name_ident.span(),
-                                    help_text.clone(),
-                                ),
-                                warnings,
-                                errors
-                            );
-                        });
-                } else {
-                    errors.push(TypeError::MismatchedType {
-                        expected: expected.to_string(),
-                        received: received.to_string(),
-                        help_text,
-                        span: span.clone(),
-                    });
-                }
-                (warnings, errors)
+            ) => unify::unify_enums(
+                received,
+                expected,
+                span,
+                help_text,
+                (rn, rtps, rvs),
+                (en, etps, evs),
+                curried,
+            ),
+            (Array(re, rc, _), Array(ee, ec, _)) if rc == ec => {
+                unify::unify_arrays(received, expected, span, help_text, re, ee, curried)
             }
-
-            (Numeric, expected_info @ UnsignedInteger(_)) => {
-                match self.slab.replace(received, &Numeric, expected_info) {
-                    None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
-                }
-            }
-            (received_info @ UnsignedInteger(_), Numeric) => {
-                match self.slab.replace(expected, &Numeric, received_info) {
-                    None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
-                }
-            }
-
-            (Array(a_elem, a_count, _), Array(b_elem, b_count, _)) if a_count == b_count => {
-                let (warnings, new_errors) = self.unify(a_elem, b_elem, span, help_text.clone());
-
-                // If there was an error then we want to report the array types as mismatching, not
-                // the elem types.
-                let mut errors = vec![];
-                if !new_errors.is_empty() {
-                    errors.push(TypeError::MismatchedType {
-                        expected: expected.to_string(),
-                        received: received.to_string(),
-                        help_text,
-                        span: span.clone(),
-                    });
-                }
-                (warnings, errors)
-            }
-
             (
                 ref r @ TypeInfo::ContractCaller {
-                    abi_name: ref abi_name_received,
-                    address: ref received_address,
+                    abi_name: ref ran,
+                    address: ref rra,
                 },
                 TypeInfo::ContractCaller {
-                    abi_name: ref abi_name_expected,
-                    ..
+                    abi_name: ref ean, ..
                 },
-            ) if (abi_name_received == abi_name_expected && received_address.is_none())
-                || matches!(abi_name_received, AbiName::Deferred) =>
-            {
+            ) if (ran == ean && rra.is_none()) || matches!(ran, AbiName::Deferred) => {
                 // if one address is empty, coerce to the other one
                 match self.slab.replace(received, r, look_up_type_id(expected)) {
                     None => (vec![], vec![]),
@@ -439,16 +271,13 @@ impl TypeEngine {
             }
             (
                 TypeInfo::ContractCaller {
-                    abi_name: ref abi_name_received,
-                    ..
+                    abi_name: ref ran, ..
                 },
                 ref e @ TypeInfo::ContractCaller {
-                    abi_name: ref abi_name_expected,
-                    ref address,
+                    abi_name: ref ean,
+                    address: ref ea,
                 },
-            ) if (abi_name_received == abi_name_expected && address.is_none())
-                || matches!(abi_name_expected, AbiName::Deferred) =>
-            {
+            ) if (ran == ean && ea.is_none()) || matches!(ean, AbiName::Deferred) => {
                 // if one address is empty, coerce to the other one
                 match self.slab.replace(expected, e, look_up_type_id(received)) {
                     None => (vec![], vec![]),
@@ -462,14 +291,189 @@ impl TypeEngine {
                 (vec![], vec![])
             }
 
+            // When we don't know anything about either term, assume that
+            // they match and make the one we know nothing about reference the
+            // one we may know something about
+            (Unknown, Unknown) => (vec![], vec![]),
+            (Unknown, e) => match self.slab.replace(received, &Unknown, e) {
+                None => (vec![], vec![]),
+                Some(_) => self.unify(received, expected, span, help_text),
+            },
+            (r, Unknown) => match self.slab.replace(expected, &Unknown, r) {
+                None => (vec![], vec![]),
+                Some(_) => self.unify(received, expected, span, help_text),
+            },
+
+            (UnknownGeneric { name: rn }, UnknownGeneric { name: en })
+                if rn.as_str() == en.as_str() =>
+            {
+                (vec![], vec![])
+            }
+            (ref r @ UnknownGeneric { .. }, e) => match self.slab.replace(received, r, e) {
+                None => (vec![], vec![]),
+                Some(_) => self.unify(received, expected, span, help_text),
+            },
+            (r, ref e @ UnknownGeneric { .. }) => match self.slab.replace(expected, e, r) {
+                None => (vec![], vec![]),
+                Some(_) => self.unify(received, expected, span, help_text),
+            },
+
             // If no previous attempts to unify were successful, raise an error
             (TypeInfo::ErrorRecovery, _) => (vec![], vec![]),
             (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
-            (_, _) => {
+            (r, e) => {
                 let errors = vec![TypeError::MismatchedType {
-                    expected: expected.to_string(),
-                    received: received.to_string(),
-                    help_text,
+                    expected: e.to_string(),
+                    received: r.to_string(),
+                    help_text: help_text.to_string(),
+                    span: span.clone(),
+                }];
+                (vec![], errors)
+            }
+        }
+    }
+
+    /// Make the type of `expected` equivalent to `received`.
+    pub(crate) fn unify_right(
+        &self,
+        received: TypeId,
+        expected: TypeId,
+        span: &Span,
+        help_text: &str,
+    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
+        use TypeInfo::*;
+
+        // a curried version of this method to use in the helper functions
+        let curried = |received: TypeId, expected: TypeId, span: &Span, help_text: &str| {
+            self.unify_right(received, expected, span, help_text)
+        };
+
+        match (self.slab.get(*received), self.slab.get(*expected)) {
+            // If they have the same `TypeInfo`, then we either compare them for
+            // correctness or perform further unification.
+            (Boolean, Boolean) => (vec![], vec![]),
+            (SelfType, SelfType) => (vec![], vec![]),
+            (B256, B256) => (vec![], vec![]),
+            (Numeric, Numeric) => (vec![], vec![]),
+            (Contract, Contract) => (vec![], vec![]),
+            (Str(l), Str(r)) => unify::unify_strs(received, expected, span, help_text, l, r),
+            (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
+                unify::unify_tuples(help_text, rfs, efs, curried)
+            }
+            (UnsignedInteger(r), UnsignedInteger(e)) => unify::unify_unsigned_ints(span, r, e),
+            (Numeric, UnsignedInteger(_)) => (vec![], vec![]),
+            (r @ UnsignedInteger(_), Numeric) => match self.slab.replace(expected, &Numeric, r) {
+                None => (vec![], vec![]),
+                Some(_) => self.unify_right(received, expected, span, help_text),
+            },
+            (
+                Struct {
+                    name: rn,
+                    type_parameters: rpts,
+                    fields: rfs,
+                },
+                Struct {
+                    name: en,
+                    type_parameters: etps,
+                    fields: efs,
+                },
+            ) => unify::unify_structs(
+                received,
+                expected,
+                span,
+                help_text,
+                (rn, rpts, rfs),
+                (en, etps, efs),
+                curried,
+            ),
+            (
+                Enum {
+                    name: rn,
+                    type_parameters: rtps,
+                    variant_types: rvs,
+                },
+                Enum {
+                    name: en,
+                    type_parameters: etps,
+                    variant_types: evs,
+                },
+            ) => unify::unify_enums(
+                received,
+                expected,
+                span,
+                help_text,
+                (rn, rtps, rvs),
+                (en, etps, evs),
+                curried,
+            ),
+            (Array(re, rc, _), Array(ee, ec, _)) if rc == ec => {
+                unify::unify_arrays(received, expected, span, help_text, re, ee, curried)
+            }
+            (
+                TypeInfo::ContractCaller {
+                    abi_name: ref ran, ..
+                },
+                ref e @ TypeInfo::ContractCaller {
+                    abi_name: ref ean,
+                    address: ref ea,
+                },
+            ) if (ran == ean && ea.is_none()) || matches!(ean, AbiName::Deferred) => {
+                // if one address is empty, coerce to the other one
+                match self.slab.replace(expected, e, look_up_type_id(received)) {
+                    None => (vec![], vec![]),
+                    Some(_) => self.unify_right(received, expected, span, help_text),
+                }
+            }
+            (
+                TypeInfo::ContractCaller {
+                    abi_name: ref ran,
+                    address: ref ra,
+                },
+                TypeInfo::ContractCaller {
+                    abi_name: ref ean, ..
+                },
+            ) if (ran == ean && ra.is_none()) || matches!(ran, AbiName::Deferred) => {
+                (vec![], vec![])
+            }
+            (ref r @ TypeInfo::ContractCaller { .. }, ref e @ TypeInfo::ContractCaller { .. })
+                if r == e =>
+            {
+                // if they are the same, then it's ok
+                (vec![], vec![])
+            }
+
+            // When we don't know anything about either term, assume that
+            // they match and make the one we know nothing about reference the
+            // one we may know something about
+            (Unknown, Unknown) => (vec![], vec![]),
+            (r, Unknown) => match self.slab.replace(expected, &Unknown, r) {
+                None => (vec![], vec![]),
+                Some(_) => self.unify_right(received, expected, span, help_text),
+            },
+            (Unknown, _) => (vec![], vec![]),
+
+            (UnknownGeneric { name: rn }, UnknownGeneric { name: en })
+                if rn.as_str() == en.as_str() =>
+            {
+                (vec![], vec![])
+            }
+            (r, ref e @ UnknownGeneric { .. }) => match self.slab.replace(expected, e, r) {
+                None => (vec![], vec![]),
+                Some(_) => self.unify_right(received, expected, span, help_text),
+            },
+            // this case is purposefully removed because it should cause an
+            // error. trying to unify_right a generic with anything other an an
+            // unknown or another generic is a type error
+            //(UnknownGeneric { .. }, _) => (vec![], vec![]),
+
+            // If no previous attempts to unify were successful, raise an error
+            (TypeInfo::ErrorRecovery, _) => (vec![], vec![]),
+            (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
+            (r, e) => {
+                let errors = vec![TypeError::MismatchedType {
+                    expected: e.to_string(),
+                    received: r.to_string(),
+                    help_text: help_text.to_string(),
                     span: span.clone(),
                 }];
                 (vec![], errors)
@@ -486,7 +490,7 @@ impl TypeEngine {
         mut expected: TypeId,
         self_type: TypeId,
         span: &Span,
-        help_text: impl Into<String>,
+        help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         received.replace_self_type(self_type);
         expected.replace_self_type(self_type);
@@ -719,13 +723,14 @@ where
 }
 
 pub fn unify_with_self(
-    a: TypeId,
-    b: TypeId,
+    received: TypeId,
+    expected: TypeId,
     self_type: TypeId,
     span: &Span,
-    help_text: impl Into<String>,
+    help_text: &str,
 ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-    let (warnings, errors) = TYPE_ENGINE.unify_with_self(a, b, self_type, span, help_text);
+    let (warnings, errors) =
+        TYPE_ENGINE.unify_with_self(received, expected, self_type, span, help_text);
     (
         warnings,
         errors.into_iter().map(|error| error.into()).collect(),
@@ -733,12 +738,25 @@ pub fn unify_with_self(
 }
 
 pub(crate) fn unify(
-    a: TypeId,
-    b: TypeId,
+    received: TypeId,
+    expected: TypeId,
     span: &Span,
-    help_text: impl Into<String>,
+    help_text: &str,
 ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-    let (warnings, errors) = TYPE_ENGINE.unify(a, b, span, help_text);
+    let (warnings, errors) = TYPE_ENGINE.unify(received, expected, span, help_text);
+    (
+        warnings,
+        errors.into_iter().map(|error| error.into()).collect(),
+    )
+}
+
+pub(crate) fn unify_right(
+    received: TypeId,
+    expected: TypeId,
+    span: &Span,
+    help_text: &str,
+) -> (Vec<CompileWarning>, Vec<CompileError>) {
+    let (warnings, errors) = TYPE_ENGINE.unify_right(received, expected, span, help_text);
     (
         warnings,
         errors.into_iter().map(|error| error.into()).collect(),
@@ -789,31 +807,6 @@ pub(crate) fn resolve_type_with_self(
         namespace,
         mod_path,
     )
-}
-
-fn numeric_cast_compat(new_size: IntegerBits, old_size: IntegerBits) -> NumericCastCompatResult {
-    // If this is a downcast, warn for loss of precision. If upcast, then no warning.
-    use IntegerBits::*;
-    match (new_size, old_size) {
-        // These should generate a downcast warning.
-        (Eight, Sixteen)
-        | (Eight, ThirtyTwo)
-        | (Eight, SixtyFour)
-        | (Sixteen, ThirtyTwo)
-        | (Sixteen, SixtyFour)
-        | (ThirtyTwo, SixtyFour) => {
-            NumericCastCompatResult::CastableWithWarning(Warning::LossOfPrecision {
-                initial_type: old_size,
-                cast_to: new_size,
-            })
-        }
-        // Upcasting is ok, so everything else is ok.
-        _ => NumericCastCompatResult::Compatible,
-    }
-}
-enum NumericCastCompatResult {
-    Compatible,
-    CastableWithWarning(Warning),
 }
 
 pub(crate) trait MonomorphizeHelper {

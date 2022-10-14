@@ -60,8 +60,13 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
                 }
 
-                for trait_fn in &trait_decl.interface_surface {
-                    collect_typed_trait_fn_token(trait_fn, tokens);
+                for trait_fn_decl_id in &trait_decl.interface_surface {
+                    if let Ok(trait_fn) = declaration_engine::de_get_trait_fn(
+                        trait_fn_decl_id.clone(),
+                        &trait_fn_decl_id.span(),
+                    ) {
+                        collect_typed_trait_fn_token(&trait_fn, tokens);
+                    }
                 }
             }
         }
@@ -151,8 +156,12 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
                     token.type_def = Some(TypeDefinition::TypeId(implementing_for_type_id));
                 }
 
-                for method in methods {
-                    collect_typed_fn_decl(&method, tokens);
+                for method_id in methods {
+                    if let Ok(method) =
+                        declaration_engine::de_get_function(method_id.clone(), &decl_id.span())
+                    {
+                        collect_typed_fn_decl(&method, tokens);
+                    }
                 }
             }
         }
@@ -162,8 +171,13 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
                 }
 
-                for trait_fn in &abi_decl.interface_surface {
-                    collect_typed_trait_fn_token(trait_fn, tokens);
+                for trait_fn_decl_id in &abi_decl.interface_surface {
+                    if let Ok(trait_fn) = declaration_engine::de_get_trait_fn(
+                        trait_fn_decl_id.clone(),
+                        &trait_fn_decl_id.span(),
+                    ) {
+                        collect_typed_trait_fn_token(&trait_fn, tokens);
+                    }
                 }
             }
         }
