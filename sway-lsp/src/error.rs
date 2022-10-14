@@ -36,7 +36,7 @@ pub enum DirectoryError {
     CantExtractProjectName { dir: String },
     #[error("Failed to create temp directory")]
     TempDirFailed,
-    #[error("Failed to create temp directory")]
+    #[error("Failed to canonicalize path")]
     CanonicalizeFailed,
     #[error("Failed to copy workspace contents to temp directory")]
     CopyContentsFailed,
