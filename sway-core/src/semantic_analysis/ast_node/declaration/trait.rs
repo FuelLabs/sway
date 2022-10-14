@@ -80,6 +80,7 @@ impl ty::TyTraitDeclaration {
             methods: trait_decl.methods.to_vec(),
             supertraits: trait_decl.supertraits.to_vec(),
             visibility: trait_decl.visibility,
+            attributes: trait_decl.attributes,
         };
         ok(typed_trait_decl, warnings, errors)
     }
