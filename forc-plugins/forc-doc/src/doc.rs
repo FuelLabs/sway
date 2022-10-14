@@ -48,7 +48,7 @@ pub(crate) fn get_compiled_docs(
             // this is the same process as before but for dependencies
             for (_, ref typed_submodule) in &typed_program.root.submodules {
                 let module_prefix = vec![];
-                extract_typed_submodule(typed_submodule, &mut docs, &module_prefix);
+                extract_typed_submodule(typed_submodule, &mut docs, &module_prefix)?;
             }
         }
     }
@@ -88,7 +88,7 @@ fn extract_typed_submodule(
     }
     // if there is another submodule we need to go a level deeper
     if let Some((_, submodule)) = typed_submodule.module.submodules.first() {
-        extract_typed_submodule(submodule, docs, &new_submodule_prefix);
+        extract_typed_submodule(submodule, docs, &new_submodule_prefix)?;
     }
 
     Ok(())
@@ -101,7 +101,7 @@ fn attributes_map(ast_node: &TyAstNode) -> Result<Option<Vec<AttributesMap>>> {
                 let decl = de_get_enum(decl_id.clone(), &decl_id.span())?;
                 let mut attr_map = vec![decl.attributes];
                 for variant in decl.variants {
-                    // TODO: add attr from variants
+                    attr_map.push(variant.attributes)
                 }
 
                 Ok(Some(attr_map))
@@ -140,7 +140,6 @@ fn attributes_map(ast_node: &TyAstNode) -> Result<Option<Vec<AttributesMap>>> {
                 Ok(Some(attr_map))
             }
             TyDeclaration::TraitDeclaration(decl_id) => {
-                // TODO: add attributes for traits
                 let decl = de_get_trait(decl_id.clone(), &decl_id.span())?;
                 let mut attr_map = vec![decl.attributes];
                 for method in decl.methods {
@@ -159,7 +158,6 @@ fn attributes_map(ast_node: &TyAstNode) -> Result<Option<Vec<AttributesMap>>> {
                 Ok(Some(attr_map))
             }
             TyDeclaration::AbiDeclaration(decl) => {
-                // TODO: add attributes for abi
                 let decl = de_get_abi(decl.clone(), &decl.span())?;
                 let mut attr_map = Vec::new();
                 for method in decl.methods {
@@ -175,12 +173,12 @@ fn attributes_map(ast_node: &TyAstNode) -> Result<Option<Vec<AttributesMap>>> {
 }
 // Gather all Attributes from the AttributesMap.
 fn doc_attributes(ast_node: &TyAstNode) -> Result<Vec<Attribute>> {
-    let result = Vec::new();
+    let mut result = Vec::new();
     if let Some(attributes_map) = attributes_map(ast_node)? {
         for hashmap in attributes_map {
             if let Some(attributes) = hashmap.get(&AttributeKind::Doc) {
                 for attribute in attributes {
-                    result.push(*attribute)
+                    result.push(attribute.clone())
                 }
             }
         }
