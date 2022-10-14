@@ -214,6 +214,9 @@ impl LeafSpans for AsmBlockContents {
         for instruction in &self.instructions {
             collected_spans.append(&mut instruction.leaf_spans());
         }
+        if let Some(final_expr) = &self.final_expr_opt {
+            collected_spans.append(&mut final_expr.leaf_spans());
+        }
         collected_spans
     }
 }
