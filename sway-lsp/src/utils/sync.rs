@@ -49,7 +49,7 @@ impl SyncWorkspace {
     /// Clean up the temp directory that was created once the
     /// server closes down.
     pub(crate) fn remove_temp_dir(&self) {
-        if let Some(dir) = self.temp_dir() {
+        if let Ok(dir) = self.temp_dir() {
             dir.parent().map(fs::remove_dir);
         }
     }
@@ -98,11 +98,7 @@ impl SyncWorkspace {
     }
 
     pub(crate) fn clone_manifest_dir_to_temp(&self) -> Result<(), LanguageServerError> {
-        let manifest_dir = self
-            .manifest_dir()
-            .ok_or(DirectoryError::ManifestDirNotFound)?;
-        let temp_dir = self.temp_dir().ok_or(DirectoryError::TempDirNotFound)?;
-        copy_dir_contents(manifest_dir, temp_dir)
+        copy_dir_contents(self.manifest_dir()?, self.temp_dir()?)
             .map_err(|_| DirectoryError::CopyContentsFailed)?;
 
         Ok(())
@@ -115,19 +111,33 @@ impl SyncWorkspace {
     }
 
     /// Convert the Url path from the client to point to the same file in our temp folder
-    pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, ()> {
-        let path = PathBuf::from(uri.path());
-        // TODO remove unwraps
-        let p = path.strip_prefix(self.manifest_dir().unwrap()).unwrap();
-        Url::from_file_path(self.temp_dir().unwrap().join(p))
+    pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, DirectoryError> {
+        self.convert_url(uri, self.temp_dir()?, self.manifest_dir()?)
     }
 
     /// Convert the Url path from the temp folder to point to the same file in the users workspace
-    pub(crate) fn temp_to_workspace_url(&self, uri: &Url) -> Result<Url, ()> {
-        let path = PathBuf::from(uri.path());
-        // TODO remove unwraps
-        let p = path.strip_prefix(self.temp_dir().unwrap()).unwrap();
-        Url::from_file_path(self.manifest_dir().unwrap().join(p))
+    pub(crate) fn temp_to_workspace_url(&self, uri: &Url) -> Result<Url, DirectoryError> {
+        self.convert_url(uri, self.manifest_dir()?, self.temp_dir()?)
+    }
+
+    pub(crate) fn convert_url(
+        &self,
+        uri: &Url,
+        from: PathBuf,
+        to: PathBuf,
+    ) -> Result<Url, DirectoryError> {
+        let path = from.join(
+            PathBuf::from(uri.path())
+                .strip_prefix(to)
+                .map_err(DirectoryError::StripPrefixError)?,
+        );
+        self.url_from_path(&path)
+    }
+
+    pub(crate) fn url_from_path(&self, path: &PathBuf) -> Result<Url, DirectoryError> {
+        Url::from_file_path(&path).map_err(|_| DirectoryError::UrlFromPathFailed {
+            path: path.to_string_lossy().to_string(),
+        })
     }
 
     /// If path is part of the users workspace, then convert URL from temp to workspace dir.
@@ -181,26 +191,30 @@ impl SyncWorkspace {
             });
     }
 
-    fn manifest_dir(&self) -> Option<PathBuf> {
+    fn manifest_dir(&self) -> Result<PathBuf, DirectoryError> {
         self.directories
             .get(&Directory::Manifest)
             .map(|item| item.value().clone())
+            .ok_or(DirectoryError::ManifestDirNotFound)
     }
 
-    fn temp_dir(&self) -> Option<PathBuf> {
+    fn temp_dir(&self) -> Result<PathBuf, DirectoryError> {
         self.directories
             .get(&Directory::Temp)
             .map(|item| item.value().clone())
+            .ok_or(DirectoryError::TempDirNotFound)
     }
 
     pub(crate) fn temp_manifest_path(&self) -> Option<PathBuf> {
         self.temp_dir()
             .map(|dir| dir.join(sway_utils::constants::MANIFEST_FILE_NAME))
+            .ok()
     }
 
     pub(crate) fn manifest_path(&self) -> Option<PathBuf> {
         self.manifest_dir()
             .map(|dir| dir.join(sway_utils::constants::MANIFEST_FILE_NAME))
+            .ok()
     }
 }
 

@@ -40,4 +40,10 @@ pub enum DirectoryError {
     CanonicalizeFailed,
     #[error("Failed to copy workspace contents to temp directory")]
     CopyContentsFailed,
+
+    #[error("Failed to create build plan. {0}")]
+    StripPrefixError(std::path::StripPrefixError),
+
+    #[error("Unable to create Url from path {:?}", path)]
+    UrlFromPathFailed { path: String },
 }
