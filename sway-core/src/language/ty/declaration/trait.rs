@@ -4,6 +4,7 @@ use sway_types::Ident;
 use crate::{
     language::{parsed, ty::*, Visibility},
     type_system::*,
+    AttributesMap,
 };
 
 #[derive(Clone, Debug, Derivative)]
@@ -19,6 +20,7 @@ pub struct TyTraitDeclaration {
     pub methods: Vec<parsed::FunctionDeclaration>,
     pub(crate) supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
+    pub attributes: AttributesMap,
 }
 
 impl CopyTypes for TyTraitDeclaration {
