@@ -35,7 +35,7 @@ use sway_types::{integer_bits::IntegerBits, Span};
 
 #[test]
 fn generic_enum_resolution() {
-    use crate::{language::ty, span::Span, Ident};
+    use crate::{language::ty, span::Span, AttributesMap, Ident};
     let engine = TypeEngine::default();
 
     let sp = Span::dummy();
@@ -51,6 +51,7 @@ fn generic_enum_resolution() {
         }),
         span: sp.clone(),
         type_span: sp.clone(),
+        attributes: AttributesMap::default(),
     }];
 
     let ty_1 = engine.insert_type(TypeInfo::Enum {
@@ -66,6 +67,7 @@ fn generic_enum_resolution() {
         initial_type_id: engine.insert_type(TypeInfo::Boolean),
         span: sp.clone(),
         type_span: sp.clone(),
+        attributes: AttributesMap::default(),
     }];
 
     let ty_2 = engine.insert_type(TypeInfo::Enum {
