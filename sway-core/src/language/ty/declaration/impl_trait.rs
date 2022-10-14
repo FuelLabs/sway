@@ -1,15 +1,12 @@
 use sway_types::Span;
 
-use crate::{
-    language::{ty::*, CallPath},
-    type_system::*,
-};
+use crate::{declaration_engine::DeclarationId, language::CallPath, type_system::*};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TyImplTrait {
     pub trait_name: CallPath,
     pub(crate) span: Span,
-    pub methods: Vec<TyFunctionDeclaration>,
+    pub methods: Vec<DeclarationId>,
     pub implementing_for_type_id: TypeId,
     pub type_implementing_for_span: Span,
 }

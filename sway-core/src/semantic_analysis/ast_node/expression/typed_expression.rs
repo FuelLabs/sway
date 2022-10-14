@@ -1293,8 +1293,15 @@ impl ty::TyExpression {
             address: Some(Box::new(address_expr.clone())),
         });
 
-        let mut functions_buf = abi
-            .interface_surface
+        let mut trait_fns = vec![];
+        for decl_id in abi.interface_surface.iter() {
+            match de_get_trait_fn(decl_id.clone(), &abi.span) {
+                Ok(decl) => trait_fns.push(decl),
+                Err(err) => errors.push(err),
+            }
+        }
+
+        let mut functions_buf = trait_fns
             .iter()
             .map(|x| x.to_dummy_func(Mode::ImplAbiFn))
             .collect::<Vec<_>>();
