@@ -58,7 +58,7 @@ impl SyncWorkspace {
         &self,
         manifest_dir: &Path,
     ) -> Result<(), LanguageServerError> {
-        let manifest = PackageManifestFile::from_dir(&manifest_dir).map_err(|_| {
+        let manifest = PackageManifestFile::from_dir(manifest_dir).map_err(|_| {
             DocumentError::ManifestFileNotFound {
                 dir: manifest_dir.to_string_lossy().to_string(),
             }
@@ -97,13 +97,15 @@ impl SyncWorkspace {
         Ok(())
     }
 
-    pub(crate) fn clone_manifest_dir_to_temp(&self) {
-        if let Some(manifest_dir) = self.manifest_dir() {
-            if let Some(temp_dir) = self.temp_dir() {
-                // TODO: return an error is unsuccessful
-                let _ = copy_dir_contents(manifest_dir, temp_dir);
-            }
-        }
+    pub(crate) fn clone_manifest_dir_to_temp(&self) -> Result<(), LanguageServerError> {
+        let manifest_dir = self
+            .manifest_dir()
+            .ok_or(DirectoryError::ManifestDirNotFound)?;
+        let temp_dir = self.temp_dir().ok_or(DirectoryError::TempDirNotFound)?;
+        copy_dir_contents(manifest_dir, temp_dir)
+            .map_err(|_| DirectoryError::CopyContentsFailed)?;
+
+        Ok(())
     }
 
     /// Check if the current path is part of the users workspace.

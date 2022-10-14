@@ -28,8 +28,8 @@ pub enum DocumentError {
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum DirectoryError {
-    #[error("No document found at {:?}", path)]
-    TempDirNotFound { path: String },
+    #[error("Can't find temporary directory")]
+    TempDirNotFound,
     #[error("Can't find manifest directory")]
     ManifestDirNotFound,
     #[error("Can't extract project name from {:?}", dir)]
@@ -38,4 +38,6 @@ pub enum DirectoryError {
     TempDirFailed,
     #[error("Failed to create temp directory")]
     CanonicalizeFailed,
+    #[error("Failed to copy workspace contents to temp directory")]
+    CopyContentsFailed,
 }

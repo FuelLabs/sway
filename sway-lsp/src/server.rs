@@ -39,20 +39,22 @@ impl Backend {
         }
     }
 
-    fn init(&self, uri: &Url) {
+    fn init(&self, uri: &Url) -> Result<(), LanguageServerError> {
         let manifest_dir = PathBuf::from(uri.path());
         // Create a new temp dir that clones the current workspace
         // and store manifest and temp paths
         self.session
             .sync
-            .create_temp_dir_from_workspace(&manifest_dir);
+            .create_temp_dir_from_workspace(&manifest_dir)?;
 
-        self.session.sync.clone_manifest_dir_to_temp();
+        self.session.sync.clone_manifest_dir_to_temp()?;
 
         // iterate over the project dir, parse all sway files
         let _ = self.parse_and_store_sway_files();
 
         self.session.sync.watch_and_sync_manifest();
+
+        Ok(())
     }
 
     async fn log_info_message(&self, message: &str) {
@@ -203,8 +205,14 @@ impl LanguageServer for Backend {
         // to the correct path of the project until this function.
         if let std::sync::LockResult::Ok(mut init_state) = self.session.sync.init_state.write() {
             if let sync::InitializedState::Uninitialized = *init_state {
-                *init_state = sync::InitializedState::Initialized;
-                self.init(&params.text_document.uri);
+                match self.init(&params.text_document.uri) {
+                    Ok(()) => {
+                        *init_state = sync::InitializedState::Initialized;
+                    }
+                    Err(err) => {
+                        tracing::error!("{}", err.to_string().as_str());
+                    }
+                }
             }
         }
 
@@ -241,7 +249,9 @@ impl LanguageServer for Backend {
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         // overwrite the contents of the tmp/folder with everything in
         // the current workspace. (resync)
-        self.session.sync.clone_manifest_dir_to_temp();
+        if let Err(err) = self.session.sync.clone_manifest_dir_to_temp() {
+            tracing::error!("{}", err.to_string().as_str());
+        }
 
         let _ = self
             .session
