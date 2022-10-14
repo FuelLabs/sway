@@ -8,7 +8,7 @@ pub(crate) use expression::*;
 pub(crate) use mode::*;
 
 use crate::{
-    declaration_engine::declaration_engine::*,
+    declaration_engine::{declaration_engine::*, DeclarationId},
     error::*,
     language::{
         parsed::*,
@@ -458,7 +458,7 @@ impl ty::TyAstNode {
 fn type_check_interface_surface(
     interface_surface: Vec<TraitFn>,
     namespace: &mut Namespace,
-) -> CompileResult<Vec<ty::TyTraitFn>> {
+) -> CompileResult<Vec<DeclarationId>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut typed_surface = vec![];
@@ -497,14 +497,14 @@ fn type_check_interface_surface(
             errors,
         );
 
-        typed_surface.push(ty::TyTraitFn {
+        typed_surface.push(de_insert_trait_fn(ty::TyTraitFn {
             name,
             purity,
             return_type_span,
             parameters: typed_parameters,
             return_type,
             attributes: trait_fn.attributes,
-        });
+        }));
     }
     ok(typed_surface, warnings, errors)
 }

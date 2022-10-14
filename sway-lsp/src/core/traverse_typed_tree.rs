@@ -60,8 +60,13 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
                 }
 
-                for trait_fn in &trait_decl.interface_surface {
-                    collect_typed_trait_fn_token(trait_fn, tokens);
+                for trait_fn_decl_id in &trait_decl.interface_surface {
+                    if let Ok(trait_fn) = declaration_engine::de_get_trait_fn(
+                        trait_fn_decl_id.clone(),
+                        &trait_fn_decl_id.span(),
+                    ) {
+                        collect_typed_trait_fn_token(&trait_fn, tokens);
+                    }
                 }
             }
         }
@@ -162,8 +167,13 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
                 }
 
-                for trait_fn in &abi_decl.interface_surface {
-                    collect_typed_trait_fn_token(trait_fn, tokens);
+                for trait_fn_decl_id in &abi_decl.interface_surface {
+                    if let Ok(trait_fn) = declaration_engine::de_get_trait_fn(
+                        trait_fn_decl_id.clone(),
+                        &trait_fn_decl_id.span(),
+                    ) {
+                        collect_typed_trait_fn_token(&trait_fn, tokens);
+                    }
                 }
             }
         }

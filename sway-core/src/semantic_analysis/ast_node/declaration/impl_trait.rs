@@ -4,7 +4,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    declaration_engine::declaration_engine::*,
+    declaration_engine::{declaration_engine::*, DeclarationId},
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::{Mode, TypeCheckContext},
@@ -459,7 +459,7 @@ impl ty::TyImplTrait {
 #[allow(clippy::too_many_arguments)]
 fn type_check_trait_implementation(
     mut ctx: TypeCheckContext,
-    trait_interface_surface: &[ty::TyTraitFn],
+    trait_interface_surface: &[DeclarationId],
     trait_methods: &[FunctionDeclaration],
     functions: &[FunctionDeclaration],
     trait_name: &CallPath,
@@ -482,13 +482,19 @@ fn type_check_trait_implementation(
     let mut functions_buf: Vec<ty::TyFunctionDeclaration> = vec![];
     let mut processed_fns = std::collections::HashSet::<Ident>::new();
 
+    let mut trait_fns = vec![];
+    for decl_id in trait_interface_surface.iter() {
+        match de_get_trait_fn(decl_id.clone(), block_span) {
+            Ok(decl) => trait_fns.push(decl),
+            Err(err) => errors.push(err),
+        }
+    }
+
     // this map keeps track of the remaining functions in the
     // interface surface that still need to be implemented for the
     // trait to be fully implemented
-    let mut function_checklist: std::collections::BTreeMap<&Ident, _> = trait_interface_surface
-        .iter()
-        .map(|decl| (&decl.name, decl))
-        .collect();
+    let mut function_checklist: std::collections::BTreeMap<&Ident, _> =
+        trait_fns.iter().map(|decl| (&decl.name, decl)).collect();
     for fn_decl in functions {
         let mut ctx = ctx
             .by_ref()

@@ -2,7 +2,8 @@ use derivative::Derivative;
 use sway_types::Ident;
 
 use crate::{
-    language::{parsed, ty::*, Visibility},
+    declaration_engine::DeclarationId,
+    language::{parsed, Visibility},
     type_system::*,
     AttributesMap,
 };
@@ -11,7 +12,7 @@ use crate::{
 #[derivative(PartialEq, Eq)]
 pub struct TyTraitDeclaration {
     pub name: Ident,
-    pub interface_surface: Vec<TyTraitFn>,
+    pub interface_surface: Vec<DeclarationId>,
     // NOTE: deriving partialeq and hash on this element may be important in the
     // future, but I am not sure. For now, adding this would 2x the amount of
     // work, so I am just going to exclude it
