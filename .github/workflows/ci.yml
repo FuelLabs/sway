@@ -24,7 +24,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
       - uses: Swatinem/rust-cache@v1
       - name: Install Forc
         uses: actions-rs/cargo@v1
@@ -41,7 +40,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
       - uses: Swatinem/rust-cache@v1
       - name: Install Forc
         uses: actions-rs/cargo@v1
@@ -58,7 +56,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
       - uses: Swatinem/rust-cache@v1
       - name: Install Forc
         uses: actions-rs/cargo@v1
@@ -83,7 +80,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
       - uses: Swatinem/rust-cache@v1
       - name: Install Forc
         uses: actions-rs/cargo@v1
@@ -108,7 +104,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
       - uses: Swatinem/rust-cache@v1
       - name: Install Forc
         uses: actions-rs/cargo@v1
@@ -147,7 +142,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
       - uses: Swatinem/rust-cache@v1
       - name: Install Forc
         uses: actions-rs/cargo@v1
@@ -185,7 +179,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
       - uses: Swatinem/rust-cache@v1
       - uses: actions-rs/cargo@v1
         name: Cargo Build Workspace
@@ -200,8 +193,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
       - uses: Swatinem/rust-cache@v1
       - name: Check Clippy Linter
         uses: actions-rs/cargo@v1
@@ -214,8 +205,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
       - name: Install Cargo.toml linter
         uses: baptiste0928/cargo-install@v1
         with:
@@ -229,8 +218,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
       - name: Check Formatting
         uses: actions-rs/cargo@v1
         with:
@@ -249,7 +236,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
       - uses: Swatinem/rust-cache@v1
       - name: Cargo Run E2E Tests
         uses: actions-rs/cargo@v1
@@ -265,7 +251,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
       - uses: Swatinem/rust-cache@v1
       - name: Build All Tests
         run: cd test/src/sdk-harness && bash build.sh --locked && cd ../../../
@@ -282,7 +267,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
       - uses: Swatinem/rust-cache@v1
       - name: Run tests
         uses: actions-rs/cargo@v1
@@ -298,7 +282,7 @@ jobs:
         with:
           # `cargo-udeps` requires nightly to run
           toolchain: nightly
-          default: true
+          override: true
       - uses: Swatinem/rust-cache@v1
       - name: Install cargo-udeps
         uses: actions-rs/cargo@v1
@@ -366,9 +350,6 @@ jobs:
 
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
 
       - name: Verify tag version
         run: |
@@ -577,9 +558,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
           target: ${{ matrix.job.target }}
-          override: true
 
       - uses: Swatinem/rust-cache@v1
         with:
