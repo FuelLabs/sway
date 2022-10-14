@@ -353,6 +353,12 @@ fn connect_declaration(
                 methods,
                 ..
             } = de_get_impl_trait(decl_id.clone(), &span)?;
+
+            let methods = methods
+                .into_iter()
+                .map(|decl_id| de_get_function(decl_id, &trait_name.span()))
+                .collect::<Result<Vec<_>, CompileError>>()?;
+
             connect_impl_trait(&trait_name, graph, &methods, entry_node, tree_type)?;
             Ok(leaves.to_vec())
         }

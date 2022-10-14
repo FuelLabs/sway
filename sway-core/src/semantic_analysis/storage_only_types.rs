@@ -217,19 +217,22 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
             // These methods are not typed. They are however handled from ImplTrait.
         }
         ty::TyDeclaration::ImplTrait(decl_id) => {
-            let ty::TyImplTrait { methods, .. } = check!(
+            let ty::TyImplTrait { methods, span, .. } = check!(
                 CompileResult::from(de_get_impl_trait(decl_id.clone(), &decl_id.span())),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
-            for method in methods {
-                check!(
-                    validate_decls_for_storage_only_types_in_codeblock(&method.body),
-                    continue,
-                    warnings,
-                    errors
-                )
+            for method_id in methods {
+                match de_get_function(method_id, &span) {
+                    Ok(method) => check!(
+                        validate_decls_for_storage_only_types_in_codeblock(&method.body),
+                        continue,
+                        warnings,
+                        errors
+                    ),
+                    Err(err) => errors.push(err),
+                };
             }
         }
         ty::TyDeclaration::StructDeclaration(decl_id) => {

@@ -1,12 +1,14 @@
 use sway_error::error::CompileError;
 
 use crate::{
+    declaration_engine::de_get_trait_fn,
     error::*,
     language::{parsed::*, ty},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
         TypeCheckContext,
     },
+    CompileResult,
 };
 
 impl ty::TyAbiDeclaration {
@@ -36,13 +38,18 @@ impl ty::TyAbiDeclaration {
             warnings,
             errors
         );
-        for typed_fn in &interface_surface {
-            for param in &typed_fn.parameters {
-                if param.is_reference && param.is_mutable {
-                    errors.push(CompileError::RefMutableNotAllowedInContractAbi {
-                        param_name: param.name.clone(),
-                    })
+        for typed_fn_decl_id in &interface_surface {
+            match de_get_trait_fn(typed_fn_decl_id.clone(), &span) {
+                Ok(typed_fn) => {
+                    for param in &typed_fn.parameters {
+                        if param.is_reference && param.is_mutable {
+                            errors.push(CompileError::RefMutableNotAllowedInContractAbi {
+                                param_name: param.name.clone(),
+                            })
+                        }
+                    }
                 }
+                Err(err) => errors.push(err),
             }
         }
 
