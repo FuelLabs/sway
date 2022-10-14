@@ -22,17 +22,17 @@ impl ty::TyImplTrait {
         let ImplTrait {
             impl_type_parameters,
             trait_name,
-            trait_type_parameters,
+            trait_type_arguments,
             type_implementing_for,
             type_implementing_for_span,
             functions,
             block_span,
         } = impl_trait;
 
-        if !trait_type_parameters.is_empty() {
-            let spans = trait_type_parameters
+        if !trait_type_arguments.is_empty() {
+            let spans = trait_type_arguments
                 .into_iter()
-                .map(|type_param| type_param.span())
+                .map(|type_arg| type_arg.span())
                 .collect();
             errors.push(CompileError::Unimplemented(
                 "Generic traits are not yet implemented.",
@@ -386,9 +386,9 @@ impl ty::TyImplTrait {
         let mut errors = vec![];
 
         let ImplSelf {
+            impl_type_parameters,
             type_implementing_for,
             type_implementing_for_span,
-            type_parameters,
             functions,
             block_span,
         } = impl_self;
@@ -410,7 +410,7 @@ impl ty::TyImplTrait {
         // type check the type parameters
         // insert them into the namespace
         let mut new_type_parameters = vec![];
-        for type_parameter in type_parameters.into_iter() {
+        for type_parameter in impl_type_parameters.into_iter() {
             new_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
