@@ -125,7 +125,6 @@ fn attributes_map(ast_node: &TyAstNode) -> Result<Option<Vec<AttributesMap>>> {
                 Ok(Some(attr_map))
             }
             TyDeclaration::ConstantDeclaration(decl) => {
-                // TODO: add in attributes for consts
                 let decl = de_get_constant(decl.clone(), &decl.span())?;
                 let attr_map = vec![decl.attributes];
 
