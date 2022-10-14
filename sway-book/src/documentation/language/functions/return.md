@@ -29,11 +29,11 @@ A return expression is typically used at the end of a function however as long a
 To return from a function implicitly we do not use the `return` keyword and we omit the ending semi-colon at the end of the line.
 
 ```sway
-{{#include ../../../code/language/functions/src/explicit.sw:main}}
+{{#include ../../../code/language/functions/src/implicit.sw:main}}
 ```
 
 Similarly to the explicit usage of a `return` this will typically be used at the end of a function but it can also be used anywhere. 
 
 ```sway
-{{#include ../../../code/language/functions/src/explicit.sw:return_data}}
+{{#include ../../../code/language/functions/src/implicit.sw:return_data}}
 ```

@@ -6,25 +6,10 @@ fn main() -> bool {
 }
 // ANCHOR_END: main
 // ANCHOR: return_data
-fn return_data(
-    parameter_one: u64,
-    parameter_two: b256,
-    parameter_three: bool,
-) -> (b256, bool, u64) {
-    // if parameter_three is true
-    if parameter_three {
-        return (
-            parameter_two,
-            parameter_three,
-            parameter_one * 2,
-        );
+fn return_data(parameter_one: u64, parameter_two: bool) -> (bool, u64) {
+    if parameter_two {
+        return (!parameter_two, parameter_one + 42);
     }
-
-    // some code here
-    return (
-        parameter_two,
-        false,
-        42,
-    );
+    return (parameter_two, 42);
 }
 // ANCHOR_END: return_data

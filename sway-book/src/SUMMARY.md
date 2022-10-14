@@ -40,6 +40,8 @@
       - [Multiple Values](./documentation/language/control-flow/match/complex/multiple-values.md)
   - [Looping](./documentation/language/control-flow/looping/index.md)
     - [while](./documentation/language/control-flow/looping/while.md)
+    - [break](./documentation/language/control-flow/looping/break.md)
+    - [continue](./documentation/language/control-flow/looping/continue.md)
 - [Annotations](./documentation/language/annotations/index.md)
   - [Types](./documentation/language/annotations/type.md)
   - [Attributes](./documentation/language/annotations/attributes/index.md)
