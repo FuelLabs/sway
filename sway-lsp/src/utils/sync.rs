@@ -120,26 +120,6 @@ impl SyncWorkspace {
         self.convert_url(uri, self.manifest_dir()?, self.temp_dir()?)
     }
 
-    pub(crate) fn convert_url(
-        &self,
-        uri: &Url,
-        from: PathBuf,
-        to: PathBuf,
-    ) -> Result<Url, DirectoryError> {
-        let path = from.join(
-            PathBuf::from(uri.path())
-                .strip_prefix(to)
-                .map_err(DirectoryError::StripPrefixError)?,
-        );
-        self.url_from_path(&path)
-    }
-
-    pub(crate) fn url_from_path(&self, path: &PathBuf) -> Result<Url, DirectoryError> {
-        Url::from_file_path(&path).map_err(|_| DirectoryError::UrlFromPathFailed {
-            path: path.to_string_lossy().to_string(),
-        })
-    }
-
     /// If path is part of the users workspace, then convert URL from temp to workspace dir.
     /// Otherwise, pass through if it points to a dependency path
     pub(crate) fn to_workspace_url(&self, url: Url) -> Option<Url> {
@@ -148,6 +128,18 @@ impl SyncWorkspace {
         } else {
             Some(url)
         }
+    }
+
+    pub(crate) fn temp_manifest_path(&self) -> Option<PathBuf> {
+        self.temp_dir()
+            .map(|dir| dir.join(sway_utils::constants::MANIFEST_FILE_NAME))
+            .ok()
+    }
+
+    pub(crate) fn manifest_path(&self) -> Option<PathBuf> {
+        self.manifest_dir()
+            .map(|dir| dir.join(sway_utils::constants::MANIFEST_FILE_NAME))
+            .ok()
     }
 
     /// Watch the manifest directory and check for any save events on Forc.toml
@@ -205,16 +197,19 @@ impl SyncWorkspace {
             .ok_or(DirectoryError::TempDirNotFound)
     }
 
-    pub(crate) fn temp_manifest_path(&self) -> Option<PathBuf> {
-        self.temp_dir()
-            .map(|dir| dir.join(sway_utils::constants::MANIFEST_FILE_NAME))
-            .ok()
+    fn convert_url(&self, uri: &Url, from: PathBuf, to: PathBuf) -> Result<Url, DirectoryError> {
+        let path = from.join(
+            PathBuf::from(uri.path())
+                .strip_prefix(to)
+                .map_err(DirectoryError::StripPrefixError)?,
+        );
+        self.url_from_path(&path)
     }
 
-    pub(crate) fn manifest_path(&self) -> Option<PathBuf> {
-        self.manifest_dir()
-            .map(|dir| dir.join(sway_utils::constants::MANIFEST_FILE_NAME))
-            .ok()
+    fn url_from_path(&self, path: &PathBuf) -> Result<Url, DirectoryError> {
+        Url::from_file_path(&path).map_err(|_| DirectoryError::UrlFromPathFailed {
+            path: path.to_string_lossy().to_string(),
+        })
     }
 }
 
