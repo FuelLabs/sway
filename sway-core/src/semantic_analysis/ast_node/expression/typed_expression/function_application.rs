@@ -47,10 +47,24 @@ pub(crate) fn instantiate_function_application(
                     not match the declared type of the parameter in the function \
                     declaration.",
                 )
-                .with_type_annotation(param.type_id);
+                .with_type_annotation(insert_type(TypeInfo::Unknown));
+
             let exp = check!(
                 ty::TyExpression::type_check(ctx, arg.clone()),
                 ty::error_recovery_expr(arg.span()),
+                warnings,
+                errors
+            );
+
+            append!(
+                unify_right(
+                    exp.return_type,
+                    param.type_id,
+                    &exp.span,
+                    "The argument that has been provided to this function's type does \
+                    not match the declared type of the parameter in the function \
+                    declaration."
+                ),
                 warnings,
                 errors
             );

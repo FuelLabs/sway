@@ -1,4 +1,5 @@
 mod function_parameter;
+
 pub use function_parameter::*;
 use sway_error::warning::{CompileWarning, Warning};
 
@@ -42,7 +43,6 @@ impl ty::TyFunctionDeclaration {
 
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
-
         let mut ctx = ctx.scoped(&mut fn_namespace).with_purity(purity);
 
         // type check the type parameters
