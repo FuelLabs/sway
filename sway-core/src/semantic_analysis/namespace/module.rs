@@ -75,10 +75,21 @@ impl Module {
         let mut warnings = vec![];
         let mut errors = vec![];
         // this for loop performs a miniature compilation of each const item in the config
-        for (name, ConfigTimeConstant { r#type, value }) in constants.into_iter() {
+        for (
+            name,
+            ConfigTimeConstant {
+                r#type,
+                value,
+                public,
+            },
+        ) in constants.into_iter()
+        {
             // FIXME(Centril): Stop parsing. Construct AST directly instead!
             // parser config
-            let const_item = format!("const {name}: {type} = {value};");
+            let const_item = match public {
+                true => format!("pub const {name}: {type} = {value};"),
+                false => format!("const {name}: {type} = {value};"),
+            };
             let const_item_len = const_item.len();
             let input_arc = std::sync::Arc::from(const_item);
             let handler = Handler::default();

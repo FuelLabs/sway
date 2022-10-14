@@ -102,6 +102,7 @@ where
 pub struct ConfigTimeConstant {
     pub r#type: String,
     pub value: String,
+    pub public: bool,
 }
 impl AsRef<PathBuf> for Source {
     fn as_ref(&self) -> &PathBuf {

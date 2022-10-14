@@ -2291,20 +2291,8 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
     for &node in &plan.compilation_order {
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
-        let mut constants = manifest.config_time_constants();
-        if node == *root_node {
-            // Add collected contract dependency ids to this packages constants
-            for (contract_dep_name, contract_dep_id) in &contract_dependency_ids {
-                let contract_dep_constant_name = format!("{contract_dep_name}_CONTRACT_ID");
-                let contract_id_value = format!("\"{contract_dep_id}\"");
-                let config_time_constants = ConfigTimeConstant {
-                    r#type: "b256".to_string(),
-                    value: contract_id_value,
-                };
-                constants.insert(contract_dep_constant_name, config_time_constants);
-            }
-        }
-        let dep_namespace = match dependency_namespace(&namespace_map, &plan.graph, node, constants)
+        let constants = manifest.config_time_constants();
+        let mut dep_namespace = match dependency_namespace(&namespace_map, &plan.graph, node, constants)
         {
             Ok(o) => o,
             Err(errs) => {
@@ -2312,6 +2300,30 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
                 bail!("Failed to compile {}", pkg.name);
             }
         };
+        if node == *root_node {
+            // Create namespaces for the contract_dependencies encountered and insert them as submodules to the
+            // root
+            for (contract_dep_name, contract_dep_id) in &contract_dependency_ids {
+                let contract_dep_constant_name = "CONTRACT_ID";
+                let contract_id_value = format!("\"{contract_dep_id}\"");
+                let config_time_constant = ConfigTimeConstant {
+                    r#type: "b256".to_string(),
+                    value: contract_id_value,
+                    public: true,
+                };
+                let mut contract_dep_constants = BTreeMap::new();
+                contract_dep_constants.insert(contract_dep_constant_name.to_string(), config_time_constant);
+                let contract_dep_namesapce = match namespace::Module::default_with_constants(contract_dep_constants) {
+                    Ok(o) => o,
+                    Err(errs) => {
+                        print_on_failure(profile.terse, &[], &errs);
+                        bail!("Failed to compile {}", contract_dep_name);
+                    }
+                };
+                dep_namespace.insert_submodule(kebab_to_snake_case(contract_dep_name), contract_dep_namesapce);
+                println!("{:?}", dep_namespace);
+            }
+        }
         let res = compile(pkg, manifest, profile, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
         // If the current node is a contract dependency, collect the contract_id
@@ -2502,6 +2514,7 @@ pub fn check(
                 let config_time_constants = ConfigTimeConstant {
                     r#type: "b256".to_string(),
                     value: contract_id_value,
+                    public: true,
                 };
                 constants.insert(contract_dep_constant_name, config_time_constants);
             }
