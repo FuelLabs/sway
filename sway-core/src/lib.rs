@@ -3,6 +3,7 @@ pub mod error;
 
 mod asm_generation;
 mod asm_lang;
+mod ast_transformation;
 mod build_config;
 mod concurrent_slab;
 mod control_flow_analysis;
