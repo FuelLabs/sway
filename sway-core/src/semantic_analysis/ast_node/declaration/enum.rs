@@ -112,6 +112,7 @@ impl ty::TyEnumVariant {
                 type_span: variant.type_span.clone(),
                 tag: variant.tag,
                 span: variant.span,
+                attributes: variant.attributes,
             },
             vec![],
             errors,
