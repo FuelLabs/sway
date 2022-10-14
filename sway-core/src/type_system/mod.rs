@@ -11,6 +11,7 @@ mod type_id;
 mod type_info;
 mod type_mapping;
 mod type_parameter;
+mod unconstrained_type_parameters;
 mod unify;
 
 pub(crate) use collect_types_metadata::*;
@@ -26,6 +27,7 @@ pub use type_id::*;
 pub use type_info::*;
 pub(crate) use type_mapping::*;
 pub use type_parameter::*;
+pub(crate) use unconstrained_type_parameters::*;
 
 use crate::error::*;
 use std::fmt::Debug;

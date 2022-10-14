@@ -4,8 +4,6 @@ use crate::{
     TypeInfo, TypeMapping,
 };
 
-type TraitName = CallPath;
-
 // This cannot be a HashMap because of how TypeInfo's are handled.
 //
 // In Rust, in general, a custom type should uphold the invariant
@@ -30,6 +28,7 @@ type TraitName = CallPath;
 // be resolved.
 type TraitMapInner = im::Vector<((TraitName, TypeId), TraitMethods)>;
 type TraitMethods = im::HashMap<String, ty::TyFunctionDeclaration>;
+type TraitName = CallPath;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct TraitMap {

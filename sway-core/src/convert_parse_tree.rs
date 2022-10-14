@@ -647,12 +647,12 @@ fn item_impl_to_declaration(
 
     match item_impl.trait_opt {
         Some((path_type, _)) => {
-            let (trait_name, trait_type_parameters) =
-                path_type_to_call_path_and_type_parameters(ec, path_type)?;
+            let (trait_name, trait_type_arguments) =
+                path_type_to_call_path_and_type_arguments(ec, path_type)?;
             let impl_trait = ImplTrait {
                 impl_type_parameters,
                 trait_name,
-                trait_type_parameters,
+                trait_type_arguments,
                 type_implementing_for,
                 type_implementing_for_span,
                 functions,
@@ -668,7 +668,7 @@ fn item_impl_to_declaration(
                 let impl_self = ImplSelf {
                     type_implementing_for,
                     type_implementing_for_span,
-                    type_parameters: impl_type_parameters,
+                    impl_type_parameters,
                     functions,
                     block_span,
                 };
@@ -678,10 +678,10 @@ fn item_impl_to_declaration(
     }
 }
 
-fn path_type_to_call_path_and_type_parameters(
+fn path_type_to_call_path_and_type_arguments(
     ec: &mut ErrorContext,
     path_type: PathType,
-) -> Result<(CallPath, Vec<TypeParameter>), ErrorEmitted> {
+) -> Result<(CallPath, Vec<TypeArgument>), ErrorEmitted> {
     let PathType {
         root_opt,
         prefix,
@@ -696,8 +696,8 @@ fn path_type_to_call_path_and_type_parameters(
                     name,
                     generics_opt,
                 } = trait_segment;
-                let trait_type_parameters = match generics_opt {
-                    Some((_, generic_args)) => generic_args_to_type_parameters(ec, generic_args)?,
+                let trait_type_arguments = match generics_opt {
+                    Some((_, generic_args)) => generic_args_to_type_arguments(ec, generic_args)?,
                     None => vec![],
                 };
                 let mut prefixes = vec![path_type_segment_to_ident(ec, prefix)?];
@@ -714,12 +714,12 @@ fn path_type_to_call_path_and_type_parameters(
                         suffix: call_path_suffix.name,
                         is_absolute,
                     },
-                    trait_type_parameters,
+                    trait_type_arguments,
                 ))
             }
             None => {
-                let trait_type_parameters = match prefix.generics_opt {
-                    Some((_, generic_args)) => generic_args_to_type_parameters(ec, generic_args)?,
+                let trait_type_arguments = match prefix.generics_opt {
+                    Some((_, generic_args)) => generic_args_to_type_arguments(ec, generic_args)?,
                     None => vec![],
                 };
                 let prefixes = if prefix.fully_qualified.is_some() {
@@ -733,13 +733,13 @@ fn path_type_to_call_path_and_type_parameters(
                         suffix: call_path_suffix.name,
                         is_absolute,
                     },
-                    trait_type_parameters,
+                    trait_type_arguments,
                 ))
             }
         },
         None => {
-            let trait_type_parameters = match prefix.generics_opt {
-                Some((_, generic_args)) => generic_args_to_type_parameters(ec, generic_args)?,
+            let trait_type_arguments = match prefix.generics_opt {
+                Some((_, generic_args)) => generic_args_to_type_arguments(ec, generic_args)?,
                 None => vec![],
             };
             Ok((
@@ -748,7 +748,7 @@ fn path_type_to_call_path_and_type_parameters(
                     suffix: prefix.name.clone(),
                     is_absolute,
                 },
-                trait_type_parameters,
+                trait_type_arguments,
             ))
         }
     }

@@ -168,6 +168,22 @@ impl TypeEngine {
         }
     }
 
+    /// Replace any instances of the [TypeInfo::SelfType] variant with
+    /// `self_type` in both `received` and `expected`, then unify `received` and
+    /// `expected`.
+    fn unify_with_self(
+        &self,
+        mut received: TypeId,
+        mut expected: TypeId,
+        self_type: TypeId,
+        span: &Span,
+        help_text: &str,
+    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
+        received.replace_self_type(self_type);
+        expected.replace_self_type(self_type);
+        self.unify(received, expected, span, help_text)
+    }
+
     /// Make the types of `received` and `expected` equivalent (or produce an
     /// error if there is a conflict between them).
     ///
@@ -332,6 +348,22 @@ impl TypeEngine {
         }
     }
 
+    /// Replace any instances of the [TypeInfo::SelfType] variant with
+    /// `self_type` in both `received` and `expected`, then unify_right
+    /// `received` and `expected`.
+    fn unify_right_with_self(
+        &self,
+        mut received: TypeId,
+        mut expected: TypeId,
+        self_type: TypeId,
+        span: &Span,
+        help_text: &str,
+    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
+        received.replace_self_type(self_type);
+        expected.replace_self_type(self_type);
+        self.unify_right(received, expected, span, help_text)
+    }
+
     /// Make the type of `expected` equivalent to `received`.
     pub(crate) fn unify_right(
         &self,
@@ -478,22 +510,6 @@ impl TypeEngine {
                 (vec![], errors)
             }
         }
-    }
-
-    /// Replace any instances of the [TypeInfo::SelfType] variant with
-    /// `self_type` in both `received` and `expected`, then unify `received` and
-    /// `expected`.
-    fn unify_with_self(
-        &self,
-        mut received: TypeId,
-        mut expected: TypeId,
-        self_type: TypeId,
-        span: &Span,
-        help_text: &str,
-    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        received.replace_self_type(self_type);
-        expected.replace_self_type(self_type);
-        self.unify(received, expected, span, help_text)
     }
 
     pub fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
@@ -743,6 +759,21 @@ pub(crate) fn unify(
     help_text: &str,
 ) -> (Vec<CompileWarning>, Vec<CompileError>) {
     let (warnings, errors) = TYPE_ENGINE.unify(received, expected, span, help_text);
+    (
+        warnings,
+        errors.into_iter().map(|error| error.into()).collect(),
+    )
+}
+
+pub(crate) fn unify_right_with_self(
+    received: TypeId,
+    expected: TypeId,
+    self_type: TypeId,
+    span: &Span,
+    help_text: &str,
+) -> (Vec<CompileWarning>, Vec<CompileError>) {
+    let (warnings, errors) =
+        TYPE_ENGINE.unify_right_with_self(received, expected, self_type, span, help_text);
     (
         warnings,
         errors.into_iter().map(|error| error.into()).collect(),
