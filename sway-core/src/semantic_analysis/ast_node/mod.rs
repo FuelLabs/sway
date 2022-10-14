@@ -208,6 +208,7 @@ impl ty::TyAstNode {
                             type_ascription,
                             value,
                             visibility,
+                            attributes,
                             ..
                         }) => {
                             let result =
@@ -232,6 +233,7 @@ impl ty::TyAstNode {
                                 name: name.clone(),
                                 value,
                                 visibility,
+                                attributes,
                             };
                             let typed_const_decl =
                                 ty::TyDeclaration::ConstantDeclaration(de_insert_constant(decl));
