@@ -356,6 +356,7 @@ impl TypeEngine {
             (B256, B256) => (vec![], vec![]),
             (Numeric, Numeric) => (vec![], vec![]),
             (Contract, Contract) => (vec![], vec![]),
+            (RawUntypedPtr, RawUntypedPtr) => (vec![], vec![]),
             (Str(l), Str(r)) => unify::unify_strs(received, expected, span, help_text, l, r),
             (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
                 unify::unify_tuples(help_text, rfs, efs, curried)
