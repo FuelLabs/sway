@@ -1,3 +1,4 @@
+use crate::error::{DirectoryError, DocumentError, LanguageServerError};
 use dashmap::DashMap;
 use forc_pkg::{manifest::Dependency, PackageManifestFile};
 use notify::RecursiveMode;
@@ -53,29 +54,47 @@ impl SyncWorkspace {
         }
     }
 
-    pub(crate) fn create_temp_dir_from_workspace(&self, manifest_dir: &Path) {
-        // TODO remove unwraps
-        if let Ok(manifest) = PackageManifestFile::from_dir(manifest_dir) {
-            // strip Forc.toml from the path
-            let manifest_dir = manifest.path().parent().unwrap();
-            // extract the project name from the path
-            let project_name = manifest_dir.file_name().unwrap().to_str().unwrap();
+    pub(crate) fn create_temp_dir_from_workspace(
+        &self,
+        manifest_dir: &Path,
+    ) -> Result<(), LanguageServerError> {
+        let manifest = PackageManifestFile::from_dir(&manifest_dir).map_err(|_| {
+            DocumentError::ManifestFileNotFound {
+                dir: manifest_dir.to_string_lossy().to_string(),
+            }
+        })?;
 
-            // Create a new temporary directory that we can clone the current workspace into.
-            let temp_dir = Builder::new()
-                .prefix(SyncWorkspace::LSP_TEMP_PREFIX)
-                .tempdir()
-                .unwrap();
-            let temp_path = temp_dir
-                .into_path()
-                .canonicalize()
-                .unwrap()
-                .join(project_name);
+        // strip Forc.toml from the path to get the manifest directory
+        let manifest_dir = manifest
+            .path()
+            .parent()
+            .ok_or(DirectoryError::ManifestDirNotFound)?;
 
-            self.directories
-                .insert(Directory::Manifest, manifest_dir.to_path_buf());
-            self.directories.insert(Directory::Temp, temp_path);
-        }
+        // extract the project name from the path
+        let project_name = manifest_dir
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or(DirectoryError::CantExtractProjectName {
+                dir: manifest_dir.to_string_lossy().to_string(),
+            })?;
+
+        // Create a new temporary directory that we can clone the current workspace into.
+        let temp_dir = Builder::new()
+            .prefix(SyncWorkspace::LSP_TEMP_PREFIX)
+            .tempdir()
+            .map_err(|_| DirectoryError::TempDirFailed)?;
+
+        let temp_path = temp_dir
+            .into_path()
+            .canonicalize()
+            .map_err(|_| DirectoryError::CanonicalizeFailed)?
+            .join(project_name);
+
+        self.directories
+            .insert(Directory::Manifest, manifest_dir.to_path_buf());
+        self.directories.insert(Directory::Temp, temp_path);
+
+        Ok(())
     }
 
     pub(crate) fn clone_manifest_dir_to_temp(&self) {
