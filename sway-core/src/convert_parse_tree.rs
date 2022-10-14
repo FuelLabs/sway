@@ -1,9 +1,8 @@
 use crate::{
-    error::{err, ok, CompileResult, CompileWarning, Warning},
+    error::{err, ok, CompileResult},
     language::{parsed::*, *},
     type_system::{
-        insert_type, AbiName, IntegerBits, TraitConstraint, TypeArgument, TypeBinding,
-        TypeParameter,
+        insert_type, AbiName, TraitConstraint, TypeArgument, TypeBinding, TypeParameter,
     },
     TypeInfo,
 };
@@ -22,10 +21,14 @@ use sway_ast::{
 };
 use sway_error::convert_parse_tree_error::ConvertParseTreeError;
 use sway_error::error::CompileError;
-use sway_types::constants::{
-    DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX,
-    STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
-    TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
+use sway_error::warning::{CompileWarning, Warning};
+use sway_types::{
+    constants::{
+        DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX,
+        STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
+        TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
+    },
+    integer_bits::IntegerBits,
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -201,7 +204,7 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
             vec![AstNodeContent::Declaration(declaration)]
         }
         ItemKind::Abi(item_abi) => {
-            let abi_declaration = item_abi_to_abi_declaration(ec, item_abi)?;
+            let abi_declaration = item_abi_to_abi_declaration(ec, item_abi, attributes)?;
             vec![AstNodeContent::Declaration(Declaration::AbiDeclaration(
                 abi_declaration,
             ))]
@@ -648,22 +651,28 @@ fn item_impl_to_declaration(
             };
             Ok(Declaration::ImplTrait(impl_trait))
         }
-        None => {
-            let impl_self = ImplSelf {
-                type_implementing_for,
-                type_implementing_for_span,
-                type_parameters,
-                functions,
-                block_span,
-            };
-            Ok(Declaration::ImplSelf(impl_self))
-        }
+        None => match type_implementing_for {
+            TypeInfo::Contract => {
+                Err(ec.error(ConvertParseTreeError::SelfImplForContract { span: block_span }))
+            }
+            _ => {
+                let impl_self = ImplSelf {
+                    type_implementing_for,
+                    type_implementing_for_span,
+                    type_parameters,
+                    functions,
+                    block_span,
+                };
+                Ok(Declaration::ImplSelf(impl_self))
+            }
+        },
     }
 }
 
 fn item_abi_to_abi_declaration(
     ec: &mut ErrorContext,
     item_abi: ItemAbi,
+    attributes: AttributesMap,
 ) -> Result<AbiDeclaration, ErrorEmitted> {
     let span = item_abi.span();
     Ok(AbiDeclaration {
@@ -691,6 +700,7 @@ fn item_abi_to_abi_declaration(
                 .collect::<Result<_, _>>()?,
         },
         span,
+        attributes,
     })
 }
 

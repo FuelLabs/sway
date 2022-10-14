@@ -306,8 +306,8 @@ impl CollectTypesMetadata for TyExpression {
                     ));
                 }
             }
-            Return(stmt) => res.append(&mut check!(
-                stmt.expr.collect_types_metadata(),
+            Return(exp) => res.append(&mut check!(
+                exp.collect_types_metadata(),
                 return err(warnings, errors),
                 warnings,
                 errors

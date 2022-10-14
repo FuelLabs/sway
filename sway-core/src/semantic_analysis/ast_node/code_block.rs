@@ -1,26 +1,7 @@
 use super::*;
 use crate::language::{parsed::CodeBlock, ty};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct TyCodeBlock {
-    pub contents: Vec<TyAstNode>,
-}
-
-impl CopyTypes for TyCodeBlock {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.contents
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-    }
-}
-
-impl DeterministicallyAborts for TyCodeBlock {
-    fn deterministically_aborts(&self) -> bool {
-        self.contents.iter().any(|x| x.deterministically_aborts())
-    }
-}
-
-impl TyCodeBlock {
+impl ty::TyCodeBlock {
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
         code_block: CodeBlock,
@@ -35,9 +16,9 @@ impl TyCodeBlock {
             .iter()
             .filter_map(|node| {
                 let ctx = ctx.by_ref().scoped(&mut code_block_namespace);
-                TyAstNode::type_check(ctx, node.clone()).ok(&mut warnings, &mut errors)
+                ty::TyAstNode::type_check(ctx, node.clone()).ok(&mut warnings, &mut errors)
             })
-            .collect::<Vec<TyAstNode>>();
+            .collect::<Vec<ty::TyAstNode>>();
 
         let implicit_return_span = code_block
             .contents
@@ -59,9 +40,9 @@ impl TyCodeBlock {
                     Some(insert_type(TypeInfo::Unknown))
                 } else {
                     match node {
-                        TyAstNode {
+                        ty::TyAstNode {
                             content:
-                                TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
+                                ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
                                     ref return_type,
                                     ..
                                 }),
@@ -75,7 +56,7 @@ impl TyCodeBlock {
 
         append!(ctx.unify_with_self(block_type, &span), warnings, errors);
 
-        let typed_code_block = TyCodeBlock {
+        let typed_code_block = ty::TyCodeBlock {
             contents: evaluated_contents,
         };
         ok((typed_code_block, block_type), warnings, errors)

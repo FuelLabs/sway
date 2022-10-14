@@ -12,11 +12,12 @@ pub use code_block::*;
 pub use declaration::*;
 pub use expression::*;
 pub(crate) use include_statement::IncludeStatement;
-pub use module::{DepName, ParseModule, ParseSubmodule};
+pub use module::{ParseModule, ParseSubmodule};
 pub use program::{ParseProgram, TreeType};
 pub use return_statement::*;
-use sway_types::span::Span;
 pub use use_statement::{ImportType, UseStatement};
+
+use sway_types::span::Span;
 
 /// Represents some exportable information that results from compiling some
 /// Sway source code.

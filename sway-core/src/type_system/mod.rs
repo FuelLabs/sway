@@ -1,7 +1,6 @@
 mod collect_types_metadata;
 mod copy_types;
 mod create_type_id;
-mod integer_bits;
 mod replace_self_type;
 mod resolved_type;
 mod trait_constraint;
@@ -12,11 +11,11 @@ mod type_id;
 mod type_info;
 mod type_mapping;
 mod type_parameter;
+mod unify;
 
 pub(crate) use collect_types_metadata::*;
 pub(crate) use copy_types::*;
 pub(crate) use create_type_id::*;
-pub use integer_bits::*;
 pub(crate) use replace_self_type::*;
 pub(crate) use resolved_type::*;
 pub(crate) use trait_constraint::*;
@@ -31,15 +30,17 @@ pub use type_parameter::*;
 use crate::error::*;
 use std::fmt::Debug;
 
+#[cfg(test)]
+use sway_types::{integer_bits::IntegerBits, Span};
+
 #[test]
 fn generic_enum_resolution() {
-    use crate::semantic_analysis::ast_node::TyEnumVariant;
-    use crate::{span::Span, Ident};
+    use crate::{language::ty, span::Span, AttributesMap, Ident};
     let engine = TypeEngine::default();
 
     let sp = Span::dummy();
 
-    let variant_types = vec![TyEnumVariant {
+    let variant_types = vec![ty::TyEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
         tag: 0,
         type_id: engine.insert_type(TypeInfo::UnknownGeneric {
@@ -50,6 +51,7 @@ fn generic_enum_resolution() {
         }),
         span: sp.clone(),
         type_span: sp.clone(),
+        attributes: AttributesMap::default(),
     }];
 
     let ty_1 = engine.insert_type(TypeInfo::Enum {
@@ -58,13 +60,14 @@ fn generic_enum_resolution() {
         type_parameters: vec![],
     });
 
-    let variant_types = vec![TyEnumVariant {
+    let variant_types = vec![ty::TyEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
         tag: 0,
         type_id: engine.insert_type(TypeInfo::Boolean),
         initial_type_id: engine.insert_type(TypeInfo::Boolean),
         span: sp.clone(),
         type_span: sp.clone(),
+        attributes: AttributesMap::default(),
     }];
 
     let ty_2 = engine.insert_type(TypeInfo::Enum {
@@ -95,7 +98,6 @@ fn generic_enum_resolution() {
 
 #[test]
 fn basic_numeric_unknown() {
-    use sway_types::Span;
     let engine = TypeEngine::default();
 
     let sp = Span::dummy();
@@ -115,7 +117,6 @@ fn basic_numeric_unknown() {
 
 #[test]
 fn unify_numerics() {
-    use sway_types::Span;
     let engine = TypeEngine::default();
     let sp = Span::dummy();
 
@@ -135,7 +136,6 @@ fn unify_numerics() {
 
 #[test]
 fn unify_numerics_2() {
-    use sway_types::Span;
     let engine = TypeEngine::default();
     let sp = Span::dummy();
 

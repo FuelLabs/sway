@@ -1,34 +1,22 @@
-use sway_types::{Span, Spanned};
+use sway_types::Spanned;
 
 use crate::{
     error::{err, ok},
     language::{parsed::MatchBranch, ty},
-    semantic_analysis::{
-        ast_node::expression::match_expression::typed::typed_scrutinee::TyScrutinee, IsConstant,
-        TyAstNode, TyAstNodeContent, TyCodeBlock, TyVariableDeclaration, TypeCheckContext,
-        VariableMutability,
-    },
+    semantic_analysis::*,
     type_system::insert_type,
     types::DeterministicallyAborts,
-    CompileResult, TyDeclaration, TypeInfo,
+    CompileResult, TypeInfo,
 };
 
-use super::matcher::{matcher, MatchReqMap};
+use super::matcher::matcher;
 
-#[derive(Debug)]
-pub(crate) struct TyMatchBranch {
-    pub(crate) conditions: MatchReqMap,
-    pub(crate) result: ty::TyExpression,
-    #[allow(dead_code)]
-    span: Span,
-}
-
-impl TyMatchBranch {
+impl ty::TyMatchBranch {
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
         typed_value: &ty::TyExpression,
         branch: MatchBranch,
-    ) -> CompileResult<(TyMatchBranch, TyScrutinee)> {
+    ) -> CompileResult<(ty::TyMatchBranch, ty::TyScrutinee)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -40,7 +28,7 @@ impl TyMatchBranch {
 
         // type check the scrutinee
         let typed_scrutinee = check!(
-            TyScrutinee::type_check(ctx.by_ref(), scrutinee),
+            ty::TyScrutinee::type_check(ctx.by_ref(), scrutinee),
             return err(warnings, errors),
             warnings,
             errors
@@ -60,20 +48,21 @@ impl TyMatchBranch {
 
         // for every item in the declarations map, create a variable declaration,
         // insert it into the branch namespace, and add it to a block of code statements
-        let mut code_block_contents: Vec<TyAstNode> = vec![];
+        let mut code_block_contents: Vec<ty::TyAstNode> = vec![];
         for (left_decl, right_decl) in match_decl_map.into_iter() {
             let type_ascription = right_decl.return_type;
             let span = left_decl.span().clone();
-            let var_decl = TyDeclaration::VariableDeclaration(Box::new(TyVariableDeclaration {
-                name: left_decl.clone(),
-                body: right_decl,
-                mutability: VariableMutability::Immutable,
-                type_ascription,
-                type_ascription_span: None,
-            }));
+            let var_decl =
+                ty::TyDeclaration::VariableDeclaration(Box::new(ty::TyVariableDeclaration {
+                    name: left_decl.clone(),
+                    body: right_decl,
+                    mutability: ty::VariableMutability::Immutable,
+                    type_ascription,
+                    type_ascription_span: None,
+                }));
             ctx.namespace.insert_symbol(left_decl, var_decl.clone());
-            code_block_contents.push(TyAstNode {
-                content: TyAstNodeContent::Declaration(var_decl),
+            code_block_contents.push(ty::TyAstNode {
+                content: ty::TyAstNodeContent::Declaration(var_decl),
                 span,
             });
         }
@@ -111,12 +100,12 @@ impl TyMatchBranch {
             span: typed_result_span,
         } = typed_result;
         match typed_result_expression_variant {
-            ty::TyExpressionVariant::CodeBlock(TyCodeBlock { mut contents, .. }) => {
+            ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock { mut contents, .. }) => {
                 code_block_contents.append(&mut contents);
             }
             typed_result_expression_variant => {
-                code_block_contents.push(TyAstNode {
-                    content: TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
+                code_block_contents.push(ty::TyAstNode {
+                    content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
                         expression: typed_result_expression_variant,
                         return_type: typed_result_return_type,
                         is_constant: typed_result_is_constant,
@@ -130,7 +119,7 @@ impl TyMatchBranch {
         // assemble a new branch result that includes both the variable declarations
         // that we create and the typed result from the original untyped branch
         let new_result = ty::TyExpression {
-            expression: ty::TyExpressionVariant::CodeBlock(TyCodeBlock {
+            expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
                 contents: code_block_contents,
             }),
             return_type: typed_result.return_type,
@@ -139,7 +128,7 @@ impl TyMatchBranch {
         };
 
         // return!
-        let typed_branch = TyMatchBranch {
+        let typed_branch = ty::TyMatchBranch {
             conditions: match_req_map,
             result: new_result,
             span: branch_span,

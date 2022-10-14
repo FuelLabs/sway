@@ -2,7 +2,7 @@ use crate::{
     error::*,
     language::{ty, CallPath},
     type_system::*,
-    CompileResult, Ident, TyDeclaration, TyFunctionDeclaration, TypeInfo,
+    CompileResult, Ident, TypeInfo,
 };
 
 use super::{module::Module, namespace::Namespace, Path};
@@ -34,7 +34,7 @@ impl Root {
         &self,
         mod_path: &Path,
         call_path: &CallPath,
-    ) -> CompileResult<&TyDeclaration> {
+    ) -> CompileResult<&ty::TyDeclaration> {
         let symbol_path: Vec<_> = mod_path
             .iter()
             .chain(&call_path.prefixes)
@@ -52,7 +52,7 @@ impl Root {
         &self,
         mod_path: &Path,
         symbol: &Ident,
-    ) -> CompileResult<&TyDeclaration> {
+    ) -> CompileResult<&ty::TyDeclaration> {
         self.check_submodule(mod_path).flat_map(|module| {
             let true_symbol = self[mod_path]
                 .use_aliases
@@ -83,7 +83,7 @@ impl Root {
         method_name: &Ident,
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
-    ) -> CompileResult<TyFunctionDeclaration> {
+    ) -> CompileResult<ty::TyFunctionDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -131,7 +131,7 @@ impl Root {
 
         match methods
             .into_iter()
-            .find(|TyFunctionDeclaration { name, .. }| name == method_name)
+            .find(|ty::TyFunctionDeclaration { name, .. }| name == method_name)
         {
             Some(o) => ok(o, warnings, errors),
             None => {
