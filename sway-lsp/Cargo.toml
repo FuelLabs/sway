@@ -25,7 +25,7 @@ swayfmt = { version = "0.26.0", path = "../swayfmt" }
 tempfile = "3"
 thiserror = "1.0.30"
 tokio = { version = "1.3", features = ["io-std", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
-toml_edit = "0.13"
+toml_edit = "0.14.4"
 tower-lsp = "0.17"
 tracing = "0.1"
 
