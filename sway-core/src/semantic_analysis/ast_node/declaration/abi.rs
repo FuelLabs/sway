@@ -22,6 +22,7 @@ impl ty::TyAbiDeclaration {
             interface_surface,
             methods,
             span,
+            attributes,
         } = abi_decl;
 
         // type check the interface surface and methods
@@ -68,6 +69,7 @@ impl ty::TyAbiDeclaration {
             methods,
             name,
             span,
+            attributes,
         };
         ok(abi_decl, warnings, errors)
     }

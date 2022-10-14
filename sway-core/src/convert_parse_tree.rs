@@ -204,7 +204,7 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
             vec![AstNodeContent::Declaration(declaration)]
         }
         ItemKind::Abi(item_abi) => {
-            let abi_declaration = item_abi_to_abi_declaration(ec, item_abi)?;
+            let abi_declaration = item_abi_to_abi_declaration(ec, item_abi, attributes)?;
             vec![AstNodeContent::Declaration(Declaration::AbiDeclaration(
                 abi_declaration,
             ))]
@@ -672,6 +672,7 @@ fn item_impl_to_declaration(
 fn item_abi_to_abi_declaration(
     ec: &mut ErrorContext,
     item_abi: ItemAbi,
+    attributes: AttributesMap,
 ) -> Result<AbiDeclaration, ErrorEmitted> {
     let span = item_abi.span();
     Ok(AbiDeclaration {
@@ -699,6 +700,7 @@ fn item_abi_to_abi_declaration(
                 .collect::<Result<_, _>>()?,
         },
         span,
+        attributes,
     })
 }
 

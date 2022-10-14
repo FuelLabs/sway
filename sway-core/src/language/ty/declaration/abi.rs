@@ -4,6 +4,7 @@ use sway_types::{Ident, Span};
 use crate::{
     language::{parsed, ty::*},
     type_system::*,
+    AttributesMap,
 };
 
 /// A [TyAbiDeclaration] contains the type-checked version of the parse tree's `AbiDeclaration`.
@@ -22,6 +23,7 @@ pub struct TyAbiDeclaration {
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
     pub(crate) span: Span,
+    pub attributes: AttributesMap,
 }
 
 impl CreateTypeId for TyAbiDeclaration {
