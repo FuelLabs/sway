@@ -3,8 +3,8 @@ use sway_types::{Ident, Span};
 
 use crate::{
     language::{ty::*, Purity},
+    transform,
     type_system::*,
-    AttributesMap,
 };
 
 #[derive(Clone, Debug, Derivative)]
@@ -17,7 +17,7 @@ pub struct TyTraitFn {
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
     pub return_type_span: Span,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
 }
 
 impl CopyTypes for TyTraitFn {

@@ -1,7 +1,7 @@
 use derivative::Derivative;
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{language::ty::*, type_system::*, AttributesMap};
+use crate::{language::ty::*, transform, type_system::*};
 
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
@@ -10,7 +10,7 @@ pub struct TyStorageDeclaration {
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
     pub span: Span,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
 }
 
 impl Spanned for TyStorageDeclaration {
@@ -26,7 +26,7 @@ pub struct TyStorageField {
     pub type_span: Span,
     pub initializer: TyExpression,
     pub(crate) span: Span,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

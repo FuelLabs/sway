@@ -5,8 +5,9 @@ use crate::{
     },
     language::ty,
     metadata::MetadataManager,
+    transform,
     type_system::{TypeId, TypeInfo},
-    AttributesMap, Ident,
+    Ident,
 };
 use fuel_tx::StorageSlot;
 use sway_error::error::CompileError;
@@ -14,7 +15,11 @@ use sway_ir::{Context, Module};
 use sway_types::{state::StateIndex, Span, Spanned};
 
 impl ty::TyStorageDeclaration {
-    pub fn new(fields: Vec<ty::TyStorageField>, span: Span, attributes: AttributesMap) -> Self {
+    pub fn new(
+        fields: Vec<ty::TyStorageField>,
+        span: Span,
+        attributes: transform::AttributesMap,
+    ) -> Self {
         ty::TyStorageDeclaration {
             fields,
             span,

@@ -3,17 +3,16 @@ pub mod error;
 
 mod asm_generation;
 mod asm_lang;
-mod ast_transformation;
 mod build_config;
 mod concurrent_slab;
 mod control_flow_analysis;
-mod convert_parse_tree;
 pub mod declaration_engine;
 pub mod ir_generation;
 pub mod language;
 mod metadata;
 pub mod semantic_analysis;
 pub mod source_map;
+pub mod transform;
 pub mod type_system;
 
 use crate::{error::*, source_map::SourceMap};
@@ -21,7 +20,6 @@ pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
-pub use convert_parse_tree::{Attribute, AttributeKind, AttributesMap};
 use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -39,6 +37,7 @@ use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
 use language::{parsed, ty};
+use transform::to_parsed_lang;
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
@@ -74,7 +73,7 @@ fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> CompileResult<sway_a
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
 fn parse_in_memory(src: Arc<str>, include_test_fns: bool) -> CompileResult<parsed::ParseProgram> {
     parse_file(src, None).flat_map(|module| {
-        convert_parse_tree::convert_parse_tree(module, include_test_fns).flat_map(|(kind, tree)| {
+        to_parsed_lang::convert_parse_tree(module, include_test_fns).flat_map(|(kind, tree)| {
             let submodules = Default::default();
             let root = parsed::ParseModule { tree, submodules };
             ok(parsed::ParseProgram { kind, root }, vec![], vec![])
@@ -167,7 +166,7 @@ fn parse_module_tree(
         let submodules_res = parse_submodules(&module.dependencies, module_dir, include_test_fns);
 
         // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-        convert_parse_tree::convert_parse_tree(module, include_test_fns).flat_map(
+        to_parsed_lang::convert_parse_tree(module, include_test_fns).flat_map(
             |(prog_kind, tree)| {
                 submodules_res
                     .map(|submodules| (prog_kind, parsed::ParseModule { tree, submodules }))
