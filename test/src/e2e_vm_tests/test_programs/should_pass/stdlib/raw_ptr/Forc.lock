@@ -1,0 +1,14 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-31A3D7F7F014D285'
+dependencies = []
+
+[[package]]
+name = 'raw_ptr'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-31A3D7F7F014D285'
+dependencies = ['core']

@@ -201,6 +201,12 @@ impl Eq for b256 {
     }
 }
 
+impl Eq for raw_ptr {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
 pub trait Ord {
     fn gt(self, other: Self) -> bool;
     fn lt(self, other: Self) -> bool;
@@ -298,6 +304,21 @@ impl Ord for b256 {
             self_word_3.lt(other_word_3)
         } else {
             self_word_4.lt(other_word_4)
+        }
+    }
+}
+
+impl Ord for raw_ptr {
+    fn gt(self, other: Self) -> bool {
+        asm(r1: self, r2: other, r3) {
+            gt r3 r1 r2;
+            r3: bool
+        }
+    }
+    fn lt(self, other: Self) -> bool {
+        asm(r1: self, r2: other, r3) {
+            lt r3 r1 r2;
+            r3: bool
         }
     }
 }

@@ -21,7 +21,7 @@ pub fn store<T>(key: b256, value: T) {
 
         // Cast the pointer to `value` to a u64. This lets us increment
         // this pointer later on to iterate over 32 byte chunks of `value`.
-        let mut ptr_to_value = asm(v: value) { v };
+        let mut ptr_to_value = asm(ptr: value) { ptr: raw_ptr };
 
         while size_left > 32 {
             // Store a 4 words (32 byte) at a time

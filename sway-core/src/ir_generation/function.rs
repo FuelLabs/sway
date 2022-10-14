@@ -21,7 +21,6 @@ use sway_ir::{Context, *};
 use sway_types::{
     constants,
     ident::Ident,
-    integer_bits::IntegerBits,
     span::{Span, Spanned},
     state::StateIndex,
 };
@@ -572,11 +571,11 @@ impl FnCompiler {
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
                 let val_ty = to_typeinfo(val_exp.return_type, &span)?;
-                if val_ty != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) {
+                if val_ty != TypeInfo::RawUntypedPtr {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
-                        hint: Hint::new("This argument must be u64".to_string()),
+                        hint: Hint::new("This argument must be raw_ptr".to_string()),
                     });
                 }
                 let key_value = self.compile_expression(context, md_mgr, key_exp)?;

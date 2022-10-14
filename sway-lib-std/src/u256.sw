@@ -1,6 +1,5 @@
 library u256;
 
-use core::num::*;
 use ::result::Result;
 use ::u128::U128;
 use ::assert::assert;
