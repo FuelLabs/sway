@@ -24,7 +24,7 @@ pub mod setup {
         .await
         .unwrap();
 
-        let instance = MyContractBuilder::new(id.to_string(), wallet).build();
+        let instance = MyContract::new(id.to_string(), wallet);
 
         (instance, id.into())
     }
@@ -34,42 +34,91 @@ pub mod wrappers {
     use super::*;
 
     pub async fn push(instance: &MyContract, value: String) {
-        instance.str_push(SizedAsciiString::try_from(value).unwrap()).call().await.unwrap();
+        instance
+            .methods()
+            .str_push(SizedAsciiString::try_from(value).unwrap())
+            .call()
+            .await
+            .unwrap();
     }
 
     pub async fn get(instance: &MyContract, index: u64) -> String {
-        instance.str_get(index).call().await.unwrap().value.into()
+        instance
+            .methods()
+            .str_get(index)
+            .call()
+            .await
+            .unwrap()
+            .value
+            .into()
     }
 
     pub async fn pop(instance: &MyContract) -> String {
-        instance.str_pop().call().await.unwrap().value.into()
+        instance
+            .methods()
+            .str_pop()
+            .call()
+            .await
+            .unwrap()
+            .value
+            .into()
     }
 
     pub async fn remove(instance: &MyContract, index: u64) -> String {
-        instance.str_remove(index).call().await.unwrap().value.into()
+        instance
+            .methods()
+            .str_remove(index)
+            .call()
+            .await
+            .unwrap()
+            .value
+            .into()
     }
 
     pub async fn swap_remove(instance: &MyContract, index: u64) -> String {
-        instance.str_swap_remove(index).call().await.unwrap().value.into()
+        instance
+            .methods()
+            .str_swap_remove(index)
+            .call()
+            .await
+            .unwrap()
+            .value
+            .into()
     }
 
     pub async fn set(instance: &MyContract, index: u64, value: String) {
-        instance.str_set(index, SizedAsciiString::try_from(value).unwrap()).call().await.unwrap();
+        instance
+            .methods()
+            .str_set(index, SizedAsciiString::try_from(value).unwrap())
+            .call()
+            .await
+            .unwrap();
     }
 
     pub async fn insert(instance: &MyContract, index: u64, value: String) {
-        instance.str_insert(index, SizedAsciiString::try_from(value).unwrap()).call().await.unwrap();
+        instance
+            .methods()
+            .str_insert(index, SizedAsciiString::try_from(value).unwrap())
+            .call()
+            .await
+            .unwrap();
     }
 
     pub async fn len(instance: &MyContract) -> u64 {
-        instance.str_len().call().await.unwrap().value
+        instance.methods().str_len().call().await.unwrap().value
     }
 
     pub async fn is_empty(instance: &MyContract) -> bool {
-        instance.str_is_empty().call().await.unwrap().value
+        instance
+            .methods()
+            .str_is_empty()
+            .call()
+            .await
+            .unwrap()
+            .value
     }
 
     pub async fn clear(instance: &MyContract) {
-        instance.str_clear().call().await.unwrap();
+        instance.methods().str_clear().call().await.unwrap();
     }
 }

@@ -11,7 +11,7 @@ use std::{
         call_frames::msg_asset_id,
         msg_amount,
     },
-    token::transfer_to_output,
+    token::transfer_to_address,
 };
 
 // ANCHOR: abi_import
@@ -50,10 +50,10 @@ impl Wallet for Contract {
 
         storage.balance = current_balance - amount_to_send;
 
-        // Note: `transfer_to_output()` is not a call and thus not an
+        // Note: `transfer_to_address()` is not a call and thus not an
         // interaction. Regardless, this code conforms to
         // checks-effects-interactions to avoid re-entrancy.
-        transfer_to_output(amount_to_send, BASE_ASSET_ID, recipient_address);
+        transfer_to_address(amount_to_send, BASE_ASSET_ID, recipient_address);
     }
 }
 // ANCHOR_END: abi_impl

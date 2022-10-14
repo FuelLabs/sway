@@ -1,4 +1,4 @@
-use crate::{Parse, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsumed};
+use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::keywords::{
     AbiToken, ClassToken, ConstToken, EnumToken, FnToken, ImplToken, MutToken,
@@ -9,6 +9,7 @@ use sway_ast::{
     FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait,
     ItemUse, TypeField,
 };
+use sway_error::parser_error::ParseErrorKind;
 
 mod item_abi;
 mod item_const;
@@ -159,7 +160,7 @@ impl Parse for FnSignature {
 
 #[cfg(test)]
 mod tests {
-    use crate::handler::Handler;
+    use sway_error::handler::Handler;
 
     use super::*;
     use std::sync::Arc;
@@ -167,9 +168,10 @@ mod tests {
     use sway_types::Ident;
 
     fn parse_item(input: &str) -> Item {
-        let token_stream = crate::token::lex(&Arc::from(input), 0, input.len(), None).unwrap();
         let handler = Handler::default();
-        let mut parser = Parser::new(&token_stream, &handler);
+        let token_stream =
+            crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
+        let mut parser = Parser::new(&handler, &token_stream);
         match Item::parse(&mut parser) {
             Ok(item) => item,
             Err(_) => {

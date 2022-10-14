@@ -1,26 +1,7 @@
 use super::*;
-use crate::CodeBlock;
+use crate::language::{parsed::CodeBlock, ty};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct TypedCodeBlock {
-    pub contents: Vec<TypedAstNode>,
-}
-
-impl CopyTypes for TypedCodeBlock {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.contents
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-    }
-}
-
-impl DeterministicallyAborts for TypedCodeBlock {
-    fn deterministically_aborts(&self) -> bool {
-        self.contents.iter().any(|x| x.deterministically_aborts())
-    }
-}
-
-impl TypedCodeBlock {
+impl ty::TyCodeBlock {
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
         code_block: CodeBlock,
@@ -35,9 +16,9 @@ impl TypedCodeBlock {
             .iter()
             .filter_map(|node| {
                 let ctx = ctx.by_ref().scoped(&mut code_block_namespace);
-                TypedAstNode::type_check(ctx, node.clone()).ok(&mut warnings, &mut errors)
+                ty::TyAstNode::type_check(ctx, node.clone()).ok(&mut warnings, &mut errors)
             })
-            .collect::<Vec<TypedAstNode>>();
+            .collect::<Vec<ty::TyAstNode>>();
 
         let implicit_return_span = code_block
             .contents
@@ -59,9 +40,9 @@ impl TypedCodeBlock {
                     Some(insert_type(TypeInfo::Unknown))
                 } else {
                     match node {
-                        TypedAstNode {
+                        ty::TyAstNode {
                             content:
-                                TypedAstNodeContent::ImplicitReturnExpression(TypedExpression {
+                                ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
                                     ref return_type,
                                     ..
                                 }),
@@ -73,11 +54,9 @@ impl TypedCodeBlock {
             })
             .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
 
-        let (new_warnings, new_errors) = ctx.unify_with_self(block_type, &span);
-        warnings.extend(new_warnings);
-        errors.extend(new_errors.into_iter().map(|type_error| type_error.into()));
+        append!(ctx.unify_with_self(block_type, &span), warnings, errors);
 
-        let typed_code_block = TypedCodeBlock {
+        let typed_code_block = ty::TyCodeBlock {
             contents: evaluated_contents,
         };
         ok((typed_code_block, block_type), warnings, errors)

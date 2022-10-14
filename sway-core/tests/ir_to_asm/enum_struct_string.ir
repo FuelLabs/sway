@@ -4,7 +4,7 @@ script {
     fn main() -> u64 {
         local ptr { { string<17>, u64 }, u64, bool } b
 
-        entry:
+        entry():
         v0 = const { u64, ( { { string<17>, u64 }, u64, bool } ) } { u64 undef, ( { { string<17>, u64 }, u64, bool } ) undef }
         v1 = const u64 0
         v2 = insert_value v0, { u64, ( { { string<17>, u64 }, u64, bool } ) }, v1, 0
@@ -23,22 +23,21 @@ script {
         v15 = extract_value v14, { u64, ( { { string<17>, u64 }, u64, bool } ) }, 0
         v16 = const u64 0
         v17 = cmp eq v15 v16
-        cbr v17, block0, block1
+        cbr v17, block0(), block1()
 
-        block0:
+        block0():
         v18 = extract_value v14, { u64, ( { { string<17>, u64 }, u64, bool } ) }, 1, 0
         v19 = get_ptr ptr { { string<17>, u64 }, u64, bool } b, ptr { { string<17>, u64 }, u64, bool }, 0
         store v18, ptr v19
         v20 = get_ptr ptr { { string<17>, u64 }, u64, bool } b, ptr { { string<17>, u64 }, u64, bool }, 0
         v21 = extract_value v20, { { string<17>, u64 }, u64, bool }, 1
-        br block2
+        br block2(v21)
 
-        block1:
+        block1():
         v22 = const u64 0
-        br block2
+        br block2(v22)
 
-        block2:
-        v23 = phi(block0: v21, block1: v22)
+        block2(v23: u64):
         ret u64 v23
     }
 }

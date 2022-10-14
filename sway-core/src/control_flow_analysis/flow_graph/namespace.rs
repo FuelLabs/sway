@@ -1,8 +1,9 @@
 use super::{EntryPoint, ExitPoint};
-use crate::parse_tree::CallPath;
-use crate::semantic_analysis::declaration::TypedStorageField;
-use crate::type_system::TypeInfo;
-use crate::Ident;
+use crate::{
+    language::{ty, CallPath},
+    type_system::TypeInfo,
+    Ident,
+};
 use petgraph::prelude::NodeIndex;
 use std::collections::HashMap;
 
@@ -122,7 +123,7 @@ impl ControlFlowNamespace {
         }
     }
 
-    pub(crate) fn insert_storage(&mut self, field_nodes: Vec<(TypedStorageField, NodeIndex)>) {
+    pub(crate) fn insert_storage(&mut self, field_nodes: Vec<(ty::TyStorageField, NodeIndex)>) {
         for (field, node) in field_nodes {
             self.storage.insert(field.name, node);
         }

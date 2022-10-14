@@ -9,4 +9,4 @@ lw   $r0 data_0               ; literal instantiation
 ret  $r0
 noop                          ; word-alignment of data section
 .data:
-data_0 .u64 0x2a
+data_0 .word 42

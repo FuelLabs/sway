@@ -1,41 +1,28 @@
 contract {
-    fn foo1<2994c98e>() -> b256 {
-        entry:
+    fn foo1<2994c98e>() -> b256, !1 {
+        local ptr {  } __anon_0
+
+        entry():
         v0 = get_storage_key, !5
-        br block0
-
-        block0:
-        v1 = phi(entry: v0)
-        ret b256 v1
-    }
-
-    fn anon_0() -> b256 {
-        entry:
-        v0 = get_storage_key, !1
         ret b256 v0
     }
 
-    fn foo2<f57bdec8>() -> b256 {
-        entry:
-        v0 = get_storage_key, !6
-        br block0
+    fn foo2<f57bdec8>() -> b256, !6 {
+        local ptr {  } __anon_0
 
-        block0:
-        v1 = phi(entry: v0)
-        ret b256 v1
-    }
-
-    fn anon_1() -> b256 {
-        entry:
-        v0 = get_storage_key, !3
+        entry():
+        v0 = get_storage_key, !9
         ret b256 v0
     }
 }
 
 !0 = "/path/to/get_storage_key.sw"
-!1 = span !0 72 91
-!2 = state_index 0
-!3 = span !0 72 91
-!4 = state_index 1
-!5 = (!1 !2)
-!6 = (!3 !4)
+!1 = span !0 287 337
+!2 = span !0 315 331
+!3 = state_index 0
+!4 = span !0 76 95
+!5 = (!2 !3 !4)
+!6 = span !0 342 392
+!7 = span !0 370 386
+!8 = state_index 1
+!9 = (!7 !8 !4)

@@ -15,6 +15,7 @@ use crate::{
     metadata::{combine, MetadataIndex},
     pointer::Pointer,
     value::{Value, ValueContent, ValueDatum},
+    BlockArgument,
 };
 
 /// Inline all calls made from a specific function, effectively removing all `Call` instructions.
@@ -150,12 +151,15 @@ pub fn inline_function_call(
     // Remove the call from the pre_block instructions.  It's still in the context.values[] though.
     context.blocks[pre_block.0].instructions.pop();
 
-    // Replace any reference to the call with the `phi` in `post_block` since it'll now receive the
-    // old return value from the inlined function.
+    // Returned values, if any, go to `post_block`, so a block arg there.
+    // We don't expect `post_block` to already have any block args.
+    if post_block.new_arg(context, call_site.get_type(context).unwrap()) != 0 {
+        panic!("Expected newly created post_block to not have block args")
+    }
     function.replace_value(
         context,
         call_site,
-        post_block.get_phi(context),
+        post_block.get_arg(context, 0).unwrap(),
         Some(post_block),
     );
 
@@ -208,6 +212,21 @@ pub fn inline_function_call(
             )
             .unwrap();
         block_map.insert(inlined_block, new_block);
+        // We collect so that context can be mutably borrowed later.
+        let inlined_args: Vec<_> = inlined_block.arg_iter(context).copied().collect();
+        for inlined_arg in inlined_args {
+            if let ValueDatum::Argument(BlockArgument {
+                block: _,
+                idx: _,
+                ty,
+            }) = &context.values[inlined_arg.0].value
+            {
+                let index = new_block.new_arg(context, *ty);
+                value_map.insert(inlined_arg, new_block.get_arg(context, index).unwrap());
+            } else {
+                unreachable!("Expected a block argument")
+            }
+        }
         block_map
     });
 
@@ -215,8 +234,6 @@ pub fn inline_function_call(
     // old values (locals and args at this stage) to new values.  We can copy instructions over,
     // translating their blocks and values to refer to the new ones.  The value map is still live
     // as we add new instructions which replace the old ones to it too.
-    //
-    // Note: inline_instruction() doesn't translate `phi` instructions here.
     let inlined_blocks = context.functions[inlined_function.0].blocks.clone();
     for block in &inlined_blocks {
         for ins in context.blocks[block.0].instructions.clone() {
@@ -230,25 +247,6 @@ pub fn inline_function_call(
                 &ptr_map,
                 metadata,
             );
-        }
-    }
-
-    // Now we can go through and update the `phi` instructions.  We need to clone the instruction
-    // here, which is unfortunate.  Maybe in the future we restructure instructions somehow, so we
-    // don't need a peristent `&Context` to access them.
-    for old_block in inlined_blocks {
-        let new_block = block_map.get(&old_block).unwrap();
-        let old_phi_val = old_block.get_phi(context);
-        if let ValueDatum::Instruction(Instruction::Phi(pairs)) =
-            context.values[old_phi_val.0].value.clone()
-        {
-            for (from_block, phi_value) in pairs {
-                new_block.add_phi(
-                    context,
-                    block_map.get(&from_block).copied().unwrap(),
-                    value_map.get(&phi_value).copied().unwrap_or(phi_value),
-                );
-            }
         }
     }
 
@@ -313,7 +311,10 @@ fn inline_instruction(
             }
             // For `br` and `cbr` below we don't need to worry about the phi values, they're
             // adjusted later in `inline_function_call()`.
-            Instruction::Branch(b) => new_block.ins(context).branch(map_block(b), None),
+            Instruction::Branch(b) => new_block.ins(context).branch(
+                map_block(b.block),
+                b.args.iter().map(|v| map_value(*v)).collect(),
+            ),
             Instruction::Call(f, args) => new_block.ins(context).call(
                 f,
                 args.iter()
@@ -332,9 +333,10 @@ fn inline_instruction(
                 false_block,
             } => new_block.ins(context).conditional_branch(
                 map_value(cond_value),
-                map_block(true_block),
-                map_block(false_block),
-                None,
+                map_block(true_block.block),
+                map_block(false_block.block),
+                true_block.args.iter().map(|v| map_value(*v)).collect(),
+                false_block.args.iter().map(|v| map_value(*v)).collect(),
             ),
             Instruction::ContractCall {
                 return_type,
@@ -417,7 +419,8 @@ fn inline_instruction(
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
             Instruction::Ret(val, _) => new_block
                 .ins(context)
-                .branch(*post_block, Some(map_value(val))),
+                .branch(*post_block, vec![map_value(val)]),
+            Instruction::Revert(val) => new_block.ins(context).revert(map_value(val)),
             Instruction::StateLoadQuadWord { load_val, key } => new_block
                 .ins(context)
                 .state_load_quad_word(map_value(load_val), map_value(key)),
@@ -436,11 +439,6 @@ fn inline_instruction(
             } => new_block
                 .ins(context)
                 .store(map_value(dst_val), map_value(stored_val)),
-            // NOTE: We're not translating the phi value yet, since this is the single instance of
-            // use of a value which may not be mapped yet -- a branch from a subsequent block,
-            // back up to this block.  And we don't need to add a `phi` instruction because an
-            // empty one is added upon block creation; we can return that instead.
-            Instruction::Phi(_) => new_block.get_phi(context),
         }
         .add_metadatum(context, metadata);
 

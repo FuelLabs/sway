@@ -1,46 +1,22 @@
-use derivative::Derivative;
-use sway_types::{Ident, Spanned};
+use sway_error::{
+    error::CompileError,
+    warning::{CompileWarning, Warning},
+};
+use sway_types::{style::is_upper_camel_case, Spanned};
 
 use crate::{
-    declaration_engine::declaration_engine::de_get_trait,
-    error::{err, ok},
+    declaration_engine::*,
+    error::*,
+    language::{parsed::*, ty, CallPath, Visibility},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
-        Mode, TypeCheckContext, TypedCodeBlock,
+        Mode, TypeCheckContext,
     },
-    style::is_upper_camel_case,
-    type_system::{insert_type, CopyTypes, TypeMapping},
-    CallPath, CompileError, CompileResult, FunctionDeclaration, FunctionParameter, Namespace,
-    Supertrait, TraitDeclaration, TypeInfo, TypedDeclaration, TypedFunctionDeclaration, Visibility,
+    type_system::*,
+    Namespace,
 };
 
-use super::{EnforceTypeArguments, TypedFunctionParameter, TypedTraitFn};
-
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
-pub struct TypedTraitDeclaration {
-    pub name: Ident,
-    pub interface_surface: Vec<TypedTraitFn>,
-    // NOTE: deriving partialeq and hash on this element may be important in the
-    // future, but I am not sure. For now, adding this would 2x the amount of
-    // work, so I am just going to exclude it
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub(crate) methods: Vec<FunctionDeclaration>,
-    pub(crate) supertraits: Vec<Supertrait>,
-    pub visibility: Visibility,
-}
-
-impl CopyTypes for TypedTraitDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.interface_surface
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-        // we don't have to type check the methods because it hasn't been type checked yet
-    }
-}
-
-impl TypedTraitDeclaration {
+impl ty::TyTraitDeclaration {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         trait_decl: TraitDeclaration,
@@ -48,7 +24,13 @@ impl TypedTraitDeclaration {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
-        is_upper_camel_case(&trait_decl.name).ok(&mut warnings, &mut errors);
+        let name = trait_decl.name.clone();
+        if !is_upper_camel_case(name.as_str()) {
+            warnings.push(CompileWarning {
+                span: name.span(),
+                warning_content: Warning::NonClassCaseTraitName { name },
+            })
+        }
 
         // type check the interface surface
         let interface_surface = check!(
@@ -70,6 +52,14 @@ impl TypedTraitDeclaration {
             errors
         );
 
+        let mut trait_fns = vec![];
+        for decl_id in interface_surface.iter() {
+            match de_get_trait_fn(decl_id.clone(), &trait_decl.name.span()) {
+                Ok(decl) => trait_fns.push(decl),
+                Err(err) => errors.push(err),
+            }
+        }
+
         // insert placeholder functions representing the interface surface
         // to allow methods to use those functions
         ctx.namespace.insert_trait_implementation(
@@ -79,7 +69,7 @@ impl TypedTraitDeclaration {
                 is_absolute: false,
             },
             insert_type(TypeInfo::SelfType),
-            interface_surface
+            trait_fns
                 .iter()
                 .map(|x| x.to_dummy_func(Mode::NonAbi))
                 .collect(),
@@ -92,12 +82,13 @@ impl TypedTraitDeclaration {
             warnings,
             errors
         );
-        let typed_trait_decl = TypedTraitDeclaration {
-            name: trait_decl.name.clone(),
+        let typed_trait_decl = ty::TyTraitDeclaration {
+            name: trait_decl.name,
             interface_surface,
             methods: trait_decl.methods.to_vec(),
             supertraits: trait_decl.supertraits.to_vec(),
             visibility: trait_decl.visibility,
+            attributes: trait_decl.attributes,
         };
         ok(typed_trait_decl, warnings, errors)
     }
@@ -118,11 +109,12 @@ fn handle_supertraits(
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(TypedDeclaration::TraitDeclaration(decl_id)) => {
-                let TypedTraitDeclaration {
+            Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
+                let ty::TyTraitDeclaration {
                     ref interface_surface,
                     ref methods,
                     ref supertraits,
+                    ref name,
                     ..
                 } = check!(
                     CompileResult::from(de_get_trait(decl_id.clone(), &supertrait.span())),
@@ -131,11 +123,19 @@ fn handle_supertraits(
                     errors
                 );
 
+                let mut trait_fns = vec![];
+                for decl_id in interface_surface.iter() {
+                    match de_get_trait_fn(decl_id.clone(), &name.span()) {
+                        Ok(decl) => trait_fns.push(decl),
+                        Err(err) => errors.push(err),
+                    }
+                }
+
                 // insert dummy versions of the interfaces for all of the supertraits
                 trait_namespace.insert_trait_implementation(
                     supertrait.name.clone(),
                     insert_type(TypeInfo::SelfType),
-                    interface_surface
+                    trait_fns
                         .iter()
                         .map(|x| x.to_dummy_func(Mode::NonAbi))
                         .collect(),
@@ -163,13 +163,14 @@ fn handle_supertraits(
                     errors
                 );
             }
-            Some(TypedDeclaration::AbiDeclaration(_)) => {
+            Some(ty::TyDeclaration::AbiDeclaration(_)) => {
                 errors.push(CompileError::AbiAsSupertrait {
                     span: supertrait.name.span().clone(),
                 })
             }
             _ => errors.push(CompileError::TraitNotFound {
-                name: supertrait.name.clone(),
+                name: supertrait.name.to_string(),
+                span: supertrait.name.span(),
             }),
         }
     }
@@ -177,83 +178,71 @@ fn handle_supertraits(
     ok((), warnings, errors)
 }
 
-/// Convert a vector of FunctionDeclarations into a vector of TypedFunctionDeclarations where only
+/// Convert a vector of FunctionDeclarations into a vector of [ty::TyFunctionDeclaration]'s where only
 /// the parameters and the return types are type checked.
 fn convert_trait_methods_to_dummy_funcs(
     methods: &[FunctionDeclaration],
     trait_namespace: &mut Namespace,
-) -> CompileResult<Vec<TypedFunctionDeclaration>> {
+) -> CompileResult<Vec<ty::TyFunctionDeclaration>> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let dummy_funcs = methods
-        .iter()
-        .map(
-            |FunctionDeclaration {
-                 name,
-                 parameters,
-                 return_type,
-                 return_type_span,
-                 ..
-             }| {
-                let initial_return_type = insert_type(return_type.clone());
-                TypedFunctionDeclaration {
-                    purity: Default::default(),
-                    name: name.clone(),
-                    body: TypedCodeBlock { contents: vec![] },
-                    parameters: parameters
-                        .iter()
-                        .map(
-                            |FunctionParameter {
-                                 name,
-                                 is_reference,
-                                 is_mutable,
-                                 mutability_span,
-                                 type_id,
-                                 type_span,
-                             }| TypedFunctionParameter {
-                                name: name.clone(),
-                                is_reference: *is_reference,
-                                is_mutable: *is_mutable,
-                                mutability_span: mutability_span.clone(),
-                                type_id: check!(
-                                    trait_namespace.resolve_type_with_self(
-                                        *type_id,
-                                        insert_type(TypeInfo::SelfType),
-                                        type_span,
-                                        EnforceTypeArguments::Yes,
-                                        None
-                                    ),
-                                    insert_type(TypeInfo::ErrorRecovery),
-                                    warnings,
-                                    errors,
-                                ),
-                                initial_type_id: *type_id,
-                                type_span: type_span.clone(),
-                            },
-                        )
-                        .collect(),
-                    span: name.span(),
-                    return_type: check!(
-                        trait_namespace.resolve_type_with_self(
-                            initial_return_type,
-                            insert_type(TypeInfo::SelfType),
-                            return_type_span,
-                            EnforceTypeArguments::Yes,
-                            None
-                        ),
-                        insert_type(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors,
-                    ),
-                    initial_return_type,
-                    return_type_span: return_type_span.clone(),
-                    visibility: Visibility::Public,
-                    type_parameters: vec![],
-                    is_contract_call: false,
-                }
-            },
-        )
-        .collect::<Vec<_>>();
+    let mut dummy_funcs = vec![];
+    for method in methods.iter() {
+        let FunctionDeclaration {
+            name,
+            parameters,
+            return_type,
+            return_type_span,
+            ..
+        } = method;
 
-    ok(dummy_funcs, warnings, errors)
+        // type check the parameters
+        let mut typed_parameters = vec![];
+        for param in parameters.iter() {
+            typed_parameters.push(check!(
+                ty::TyFunctionParameter::type_check_interface_parameter(
+                    trait_namespace,
+                    param.clone()
+                ),
+                continue,
+                warnings,
+                errors
+            ));
+        }
+
+        // type check the return type
+        let initial_return_type = insert_type(return_type.clone());
+        let return_type = check!(
+            trait_namespace.resolve_type_with_self(
+                initial_return_type,
+                insert_type(TypeInfo::SelfType),
+                return_type_span,
+                EnforceTypeArguments::Yes,
+                None
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
+
+        dummy_funcs.push(ty::TyFunctionDeclaration {
+            purity: Default::default(),
+            name: name.clone(),
+            body: ty::TyCodeBlock { contents: vec![] },
+            parameters: typed_parameters,
+            attributes: method.attributes.clone(),
+            span: name.span(),
+            return_type,
+            initial_return_type,
+            return_type_span: return_type_span.clone(),
+            visibility: Visibility::Public,
+            type_parameters: vec![],
+            is_contract_call: false,
+        });
+    }
+    if errors.is_empty() {
+        ok(dummy_funcs, warnings, errors)
+    } else {
+        err(warnings, errors)
+    }
 }

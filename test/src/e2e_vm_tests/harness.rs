@@ -27,7 +27,7 @@ pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
                 "{}/src/e2e_vm_tests/test_programs/{}",
                 manifest_dir, file_name
             )),
-            silent_mode: !verbose,
+            terse_mode: !verbose,
             locked,
             unsigned: true,
             ..Default::default()
@@ -58,7 +58,7 @@ pub(crate) fn runs_on_node(
             manifest_dir, file_name
         )),
         node_url: Some("http://127.0.0.1:4000".into()),
-        silent_mode: !verbose,
+        terse_mode: !verbose,
         contract: Some(contracts),
         locked,
         unsigned: true,
@@ -150,7 +150,7 @@ pub(crate) fn compile_to_bytes_verbose(
             manifest_dir, file_name
         )),
         locked,
-        silent_mode: !verbose,
+        terse_mode: !verbose,
         ..Default::default()
     });
 
@@ -179,10 +179,10 @@ pub(crate) fn test_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> 
         manifest_dir, file_name, "json_abi_output.json"
     );
     if fs::metadata(oracle_path.clone()).is_err() {
-        bail!("JSON ABI flat oracle file does not exist for this test.");
+        bail!("JSON ABI oracle file does not exist for this test.");
     }
     if fs::metadata(output_path.clone()).is_err() {
-        bail!("JSON ABI flat output file does not exist for this test.");
+        bail!("JSON ABI output file does not exist for this test.");
     }
     let oracle_contents =
         fs::read_to_string(oracle_path).expect("Something went wrong reading the file.");
@@ -195,7 +195,7 @@ pub(crate) fn test_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> 
 }
 
 fn emit_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> {
-    tracing::info!("   ABI gen flat {}", file_name);
+    tracing::info!("   ABI gen {}", file_name);
     let json_abi = serde_json::json!(compiled.json_abi_program);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let file = std::fs::File::create(format!(

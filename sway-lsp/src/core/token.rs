@@ -1,13 +1,14 @@
 use dashmap::DashMap;
 use sway_core::{
-    semantic_analysis::ast_node::{
-        expression::typed_expression::TypedExpression, TypeCheckedStorageReassignDescriptor,
-        TypedDeclaration, TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter,
-        TypedReassignment, TypedStorageField, TypedStructField, TypedTraitFn,
+    language::{
+        parsed::{
+            Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
+            ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
+            TraitFn,
+        },
+        ty,
     },
     type_system::TypeId,
-    Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
-    ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField, TraitFn,
 };
 use sway_types::{Ident, Span};
 
@@ -55,16 +56,16 @@ pub enum AstToken {
 
 #[derive(Debug, Clone)]
 pub enum TypedAstToken {
-    TypedDeclaration(TypedDeclaration),
-    TypedExpression(TypedExpression),
-    TypedFunctionDeclaration(TypedFunctionDeclaration),
-    TypedFunctionParameter(TypedFunctionParameter),
-    TypedStructField(TypedStructField),
-    TypedEnumVariant(TypedEnumVariant),
-    TypedTraitFn(TypedTraitFn),
-    TypedStorageField(TypedStorageField),
-    TypeCheckedStorageReassignDescriptor(TypeCheckedStorageReassignDescriptor),
-    TypedReassignment(TypedReassignment),
+    TypedDeclaration(ty::TyDeclaration),
+    TypedExpression(ty::TyExpression),
+    TypedFunctionDeclaration(ty::TyFunctionDeclaration),
+    TypedFunctionParameter(ty::TyFunctionParameter),
+    TypedStructField(ty::TyStructField),
+    TypedEnumVariant(ty::TyEnumVariant),
+    TypedTraitFn(ty::TyTraitFn),
+    TypedStorageField(ty::TyStorageField),
+    TypeCheckedStorageReassignDescriptor(ty::TyStorageReassignDescriptor),
+    TypedReassignment(ty::TyReassignment),
 }
 
 #[derive(Debug, Clone)]

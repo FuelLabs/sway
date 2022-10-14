@@ -10,8 +10,10 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::str;
 use std::{env, io};
-use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
-use sway_types::Spanned;
+use sway_core::language::parsed::TreeType;
+use sway_error::error::CompileError;
+use sway_error::warning::CompileWarning;
+use sway_types::{LineCol, Spanned};
 use sway_utils::constants;
 use tracing::{Level, Metadata};
 use tracing_subscriber::{
@@ -43,10 +45,6 @@ pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option
 /// Continually go up in the file tree until a Forc manifest file is found.
 pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
     find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
-}
-/// Continually go up in the file tree until a Cargo manifest file is found.
-pub fn find_cargo_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
-    find_parent_dir_with_file(starter_path, constants::TEST_MANIFEST_FILE_NAME)
 }
 
 pub fn is_sway_file(file: &Path) -> bool {
@@ -134,7 +132,7 @@ pub fn git_checkouts_directory() -> PathBuf {
 }
 
 pub fn print_on_success(
-    silent_mode: bool,
+    terse_mode: bool,
     proj_name: &str,
     warnings: &[CompileWarning],
     tree_type: &TreeType,
@@ -146,7 +144,7 @@ pub fn print_on_success(
         TreeType::Library { .. } => "library",
     };
 
-    if !silent_mode {
+    if !terse_mode {
         warnings.iter().for_each(format_warning);
     }
 
@@ -167,8 +165,8 @@ pub fn print_on_success(
     }
 }
 
-pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[CompileWarning]) {
-    if !silent_mode {
+pub fn print_on_success_library(terse_mode: bool, proj_name: &str, warnings: &[CompileWarning]) {
+    if !terse_mode {
         warnings.iter().for_each(format_warning);
     }
 
@@ -188,10 +186,10 @@ pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[
     }
 }
 
-pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: &[CompileError]) {
+pub fn print_on_failure(terse_mode: bool, warnings: &[CompileWarning], errors: &[CompileError]) {
     let e_len = errors.len();
 
-    if !silent_mode {
+    if !terse_mode {
         warnings.iter().for_each(format_warning);
         errors.iter().for_each(format_err);
     }
@@ -231,7 +229,7 @@ fn println_std_err(txt: &str, color: Colour) {
     tracing::error!("{}", color.paint(txt));
 }
 
-fn format_err(err: &sway_core::CompileError) {
+fn format_err(err: &CompileError) {
     let span = err.span();
     let input = span.input();
     let path = err.path();
@@ -247,7 +245,7 @@ fn format_err(err: &sway_core::CompileError) {
             annotation_type: AnnotationType::Error,
         });
 
-        let (mut start, end) = err.line_col();
+        let (mut start, end) = err.span().line_col();
         let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
         let slices = vec![Slice {
             source: input,
@@ -285,7 +283,7 @@ fn format_err(err: &sway_core::CompileError) {
     tracing::error!("{}\n____\n", DisplayList::from(snippet))
 }
 
-fn format_warning(err: &sway_core::CompileWarning) {
+fn format_warning(err: &CompileWarning) {
     let span = err.span();
     let input = span.input();
     let path = err.path();
@@ -299,7 +297,7 @@ fn format_warning(err: &sway_core::CompileWarning) {
         end_pos += 1;
     }
 
-    let (mut start, end) = err.line_col();
+    let (mut start, end) = err.span.line_col();
     let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
     let snippet = Snippet {
         title: Some(Annotation {
@@ -417,20 +415,39 @@ impl<'a> MakeWriter<'a> for StdioTracingWriter {
     }
 }
 
+#[derive(Default)]
+pub struct TracingSubscriberOptions {
+    pub verbosity: Option<u8>,
+    pub silent: Option<bool>,
+    pub log_level: Option<LevelFilter>,
+}
+
 /// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
 ///
 /// `RUST_LOG` environment variable can be used to set different minimum level for the subscriber, default is `INFO`.
-pub fn init_tracing_subscriber(verbosity: Option<u8>) {
+pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
     let env_filter = match env::var_os(LOG_FILTER) {
         Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
         None => EnvFilter::new("info"),
     };
 
-    let level_filter = verbosity.and_then(|verbosity| match verbosity {
-        1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
-        2 => Some(LevelFilter::TRACE), // matches -vv
-        _ => None,
-    });
+    let level_filter = options
+        .log_level
+        .or_else(|| {
+            options.verbosity.and_then(|verbosity| {
+                match verbosity {
+                    1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
+                    2 => Some(LevelFilter::TRACE), // matches -vv
+                    _ => None,
+                }
+            })
+        })
+        .or_else(|| {
+            options.silent.and_then(|silent| match silent {
+                true => Some(LevelFilter::OFF),
+                _ => None,
+            })
+        });
 
     let builder = tracing_subscriber::fmt::Subscriber::builder()
         .with_env_filter(env_filter)
@@ -442,7 +459,7 @@ pub fn init_tracing_subscriber(verbosity: Option<u8>) {
         .with_target(false)
         .with_writer(StdioTracingWriter);
 
-    // If verbosity is set, it overrides the RUST_LOG setting
+    // If log level, verbosity, or silent mode is set, it overrides the RUST_LOG setting
     if let Some(level_filter) = level_filter {
         builder.with_max_level(level_filter).init();
     } else {

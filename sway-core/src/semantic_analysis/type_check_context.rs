@@ -1,13 +1,14 @@
 use crate::{
+    language::Purity,
     namespace::Path,
-    parse_tree::declaration::Purity,
     semantic_analysis::{ast_node::Mode, Namespace},
     type_system::{
         insert_type, monomorphize, unify_with_self, CopyTypes, EnforceTypeArguments,
         MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
     },
-    CompileResult, CompileWarning, TypeError,
+    CompileResult, CompileWarning,
 };
+use sway_error::error::CompileError;
 use sway_types::{span::Span, Ident};
 
 /// Contextual state tracked and accumulated throughout type-checking.
@@ -230,7 +231,7 @@ impl<'ns> TypeCheckContext<'ns> {
         &self,
         ty: TypeId,
         span: &Span,
-    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
+    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         unify_with_self(
             ty,
             self.type_annotation(),

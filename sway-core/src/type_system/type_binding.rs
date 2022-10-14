@@ -2,10 +2,11 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     declaration_engine::declaration_engine::*,
-    error::{err, ok},
+    error::*,
+    language::{ty, CallPath},
     semantic_analysis::TypeCheckContext,
     type_system::{insert_type, EnforceTypeArguments},
-    CallPath, CompileResult, TypeInfo, TypedDeclaration,
+    TypeInfo,
 };
 
 use super::{ReplaceSelfType, TypeArgument, TypeId};
@@ -129,8 +130,8 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
 impl TypeBinding<CallPath> {
     pub(crate) fn type_check_with_ident(
         &mut self,
-        ctx: &TypeCheckContext,
-    ) -> CompileResult<TypedDeclaration> {
+        mut ctx: TypeCheckContext,
+    ) -> CompileResult<ty::TyDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -145,11 +146,17 @@ impl TypeBinding<CallPath> {
         // replace the self types inside of the type arguments
         for type_argument in self.type_arguments.iter_mut() {
             type_argument.replace_self_type(ctx.self_type());
+            type_argument.type_id = check!(
+                ctx.resolve_type_without_self(type_argument.type_id, &type_argument.span, None),
+                insert_type(TypeInfo::ErrorRecovery),
+                warnings,
+                errors
+            );
         }
 
         // monomorphize the declaration, if needed
         let new_decl = match unknown_decl {
-            TypedDeclaration::FunctionDeclaration(original_id) => {
+            ty::TyDeclaration::FunctionDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
                     CompileResult::from(de_get_function(original_id.clone(), &self.span())),
@@ -177,9 +184,9 @@ impl TypeBinding<CallPath> {
                 // add the new copy as a monomorphized copy of the original id
                 de_add_monomorphized_copy(original_id, new_id.clone());
 
-                TypedDeclaration::FunctionDeclaration(new_id)
+                ty::TyDeclaration::FunctionDeclaration(new_id)
             }
-            TypedDeclaration::EnumDeclaration(original_id) => {
+            ty::TyDeclaration::EnumDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
                     CompileResult::from(de_get_enum(original_id.clone(), &self.span())),
@@ -207,9 +214,9 @@ impl TypeBinding<CallPath> {
                 // add the new copy as a monomorphized copy of the original id
                 de_add_monomorphized_copy(original_id, new_id.clone());
 
-                TypedDeclaration::EnumDeclaration(new_id)
+                ty::TyDeclaration::EnumDeclaration(new_id)
             }
-            TypedDeclaration::StructDeclaration(original_id) => {
+            ty::TyDeclaration::StructDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
                     CompileResult::from(de_get_struct(original_id.clone(), &self.span())),
@@ -237,7 +244,7 @@ impl TypeBinding<CallPath> {
                 // add the new copy as a monomorphized copy of the original id
                 de_add_monomorphized_copy(original_id, new_id.clone());
 
-                TypedDeclaration::StructDeclaration(new_id)
+                ty::TyDeclaration::StructDeclaration(new_id)
             }
             _ => unknown_decl,
         };

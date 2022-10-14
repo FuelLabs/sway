@@ -78,15 +78,6 @@ impl TypeMapping {
     /// they can be used for `subset`.
     pub(crate) fn from_superset_and_subset(superset: TypeId, subset: TypeId) -> TypeMapping {
         match (look_up_type_id(superset), look_up_type_id(subset)) {
-            (TypeInfo::Ref(superset_type, _), TypeInfo::Ref(subset_type, _)) => {
-                TypeMapping::from_superset_and_subset(superset_type, subset_type)
-            }
-            (TypeInfo::Ref(superset_type, _), _) => {
-                TypeMapping::from_superset_and_subset(superset_type, subset)
-            }
-            (_, TypeInfo::Ref(subset_type, _)) => {
-                TypeMapping::from_superset_and_subset(superset, subset_type)
-            }
             (TypeInfo::UnknownGeneric { .. }, _) => TypeMapping {
                 mapping: vec![(superset, subset)],
             },
@@ -185,7 +176,6 @@ impl TypeMapping {
             (TypeInfo::Unknown, TypeInfo::Unknown)
             | (TypeInfo::Boolean, TypeInfo::Boolean)
             | (TypeInfo::SelfType, TypeInfo::SelfType)
-            | (TypeInfo::Byte, TypeInfo::Byte)
             | (TypeInfo::B256, TypeInfo::B256)
             | (TypeInfo::Numeric, TypeInfo::Numeric)
             | (TypeInfo::Contract, TypeInfo::Contract)
@@ -296,10 +286,8 @@ impl TypeMapping {
             | TypeInfo::Str(..)
             | TypeInfo::UnsignedInteger(..)
             | TypeInfo::Boolean
-            | TypeInfo::Ref(..)
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::SelfType
-            | TypeInfo::Byte
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::Contract
@@ -317,14 +305,16 @@ impl TypeMapping {
         let mut warnings = vec![];
         let mut errors = vec![];
         for ((_, destination_type), type_arg) in self.mapping.iter().zip(type_arguments.iter()) {
-            let (mut new_warnings, new_errors) = unify(
-                *destination_type,
-                type_arg.type_id,
-                &type_arg.span,
-                "Type argument is not assignable to generic type parameter.",
+            append!(
+                unify_right(
+                    type_arg.type_id,
+                    *destination_type,
+                    &type_arg.span,
+                    "Type argument is not assignable to generic type parameter.",
+                ),
+                warnings,
+                errors
             );
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
         }
         ok((), warnings, errors)
     }

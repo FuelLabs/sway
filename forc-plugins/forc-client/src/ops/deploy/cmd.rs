@@ -33,9 +33,9 @@ pub struct DeployCommand {
     /// Meaning it will only try to use previously downloaded dependencies.
     #[clap(long = "offline")]
     pub offline_mode: bool,
-    /// Silent mode. Don't output any warnings or errors to the command line.
-    #[clap(long = "silent", short = 's')]
-    pub silent_mode: bool,
+    /// Terse mode. Limited warning and error output.
+    #[clap(long = "terse", short = 't')]
+    pub terse_mode: bool,
     /// The directory in which the sway compiler output artifacts are placed.
     ///
     /// By default, this is `<project-root>/out`.
@@ -69,9 +69,6 @@ pub struct DeployCommand {
     /// Output the time elapsed over each part of the compilation process.
     #[clap(long)]
     pub time_phases: bool,
-    /// Include logged types in the JSON ABI.
-    #[clap(long)]
-    pub generate_logged_types: bool,
     /// Do not sign the transaction
     #[clap(long)]
     pub unsigned: bool,

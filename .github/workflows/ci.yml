@@ -120,7 +120,7 @@ jobs:
           cargo install --debug --path ./forc-plugins/forc-fmt
           cargo install --debug --path ./forc-plugins/forc-lsp
           cargo install --debug --path ./forc-plugins/forc-explore
-          cargo install --debug forc-client
+          cargo install --debug --path ./forc-plugins/forc-client
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
         with:
@@ -158,15 +158,25 @@ jobs:
         run: forc new test-proj
       - name: Update project forc manifest to use local sway-lib-std
         run: echo "std = { path = \"../sway-lib-std/\" }" >> test-proj/Forc.toml
+      - name: Build test project
+        run: forc build --path test-proj
+      # TODO: Re-add this upon landing unit test support: #1832
+      # - name: Run test project's test suite
+      #   run: (cd test-proj && forc test)
+      - name: Install cargo-generate
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-generate
+      - name: Generate Rust Integration Tests
+        run: (cd test-proj && cargo generate --init --path ../templates/sway-test-rs --name test-proj)
       - name: Update project cargo manifest with workspace
         run: |
           echo "
 
           [workspace]" >> test-proj/Cargo.toml
-      - name: Build test project
-        run: forc build --path test-proj
-      - name: Run test project's test suite
-        run: cd test-proj && forc test
+      - name: Build and Run Default Integration Test
+        run: (cd test-proj && cargo test)
 
   cargo-build-workspace:
     runs-on: ubuntu-latest
@@ -212,7 +222,7 @@ jobs:
           crate: cargo-toml-lint
           version: "0.1"
       - name: Run Cargo.toml linter
-        run: git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
+        run: git ls-files | grep Cargo.toml$ | grep -v 'templates/sway-test-rs' | xargs --verbose -n 1 cargo-toml-lint
 
   cargo-fmt-check:
     runs-on: ubuntu-latest
@@ -369,6 +379,7 @@ jobs:
         run: |
           cargo install toml-cli
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-client/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-explore/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-fmt/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-lsp/Cargo.toml
@@ -609,6 +620,12 @@ jobs:
           command: install
           args: --profile=release --path ./forc-plugins/forc-explore
 
+      - name: Install Forc-Client
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --profile=release --path ./forc-plugins/forc-client
+
       - name: Prep Assets
         id: prep_assets
         env:
@@ -619,7 +636,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for binary in forc forc-fmt forc-lsp forc-explore; do
+          for binary in forc forc-fmt forc-lsp forc-explore forc-deploy forc-run; do
             cp $(which ${binary}) ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries

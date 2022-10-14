@@ -4,12 +4,13 @@ use std::iter::FromIterator;
 use crate::type_system::{TypeArgument, TypeParameter};
 use crate::{
     error::*,
-    parse_tree::*,
-    type_system::{look_up_type_id, AbiName, IntegerBits},
-    AstNode, AstNodeContent, CodeBlock, Declaration, Expression, IntrinsicFunctionExpression,
-    TypeInfo, WhileLoopExpression,
+    language::{parsed::*, CallPath},
+    type_system::{look_up_type_id, AbiName},
+    TypeInfo,
 };
 
+use sway_error::error::CompileError;
+use sway_types::integer_bits::IntegerBits;
 use sway_types::Spanned;
 use sway_types::{ident::Ident, span::Span};
 
@@ -325,7 +326,7 @@ impl Dependencies {
                 })
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                        deps.gather_from_typeinfo(&look_up_type_id(param.type_id))
+                        deps.gather_from_typeinfo(&param.type_info)
                     })
                     .gather_from_typeinfo(&sig.return_type)
                 })
@@ -361,7 +362,7 @@ impl Dependencies {
             }) => self
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                        deps.gather_from_typeinfo(&look_up_type_id(param.type_id))
+                        deps.gather_from_typeinfo(&param.type_info)
                     })
                     .gather_from_typeinfo(&sig.return_type)
                 })
@@ -384,7 +385,7 @@ impl Dependencies {
             ..
         } = fn_decl;
         self.gather_from_iter(parameters.iter(), |deps, param| {
-            deps.gather_from_typeinfo(&look_up_type_id(param.type_id))
+            deps.gather_from_typeinfo(&param.type_info)
         })
         .gather_from_typeinfo(return_type)
         .gather_from_block(body)
@@ -479,22 +480,24 @@ impl Dependencies {
                 self.gather_from_call_path(&abi_cast_expression.abi_name, false, false)
             }
 
-            ExpressionKind::Literal(_) => self,
+            ExpressionKind::Literal(_)
+            | ExpressionKind::Break
+            | ExpressionKind::Continue
+            | ExpressionKind::StorageAccess(_)
+            | ExpressionKind::Error(_) => self,
+
             ExpressionKind::Tuple(fields) => {
                 self.gather_from_iter(fields.iter(), |deps, field| deps.gather_from_expr(field))
             }
             ExpressionKind::TupleIndex(TupleIndexExpression { prefix, .. }) => {
                 self.gather_from_expr(prefix)
             }
-            ExpressionKind::StorageAccess(_) => self,
             ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
                 arguments, ..
             }) => self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
             ExpressionKind::WhileLoop(WhileLoopExpression {
                 condition, body, ..
             }) => self.gather_from_expr(condition).gather_from_block(body),
-            ExpressionKind::Break => self,
-            ExpressionKind::Continue => self,
             ExpressionKind::Reassignment(reassignment) => self.gather_from_expr(&reassignment.rhs),
             ExpressionKind::Return(expr) => self.gather_from_expr(expr),
         }
@@ -735,12 +738,10 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Tuple(fields) if fields.is_empty() => "unit",
         TypeInfo::Tuple(..) => "tuple",
         TypeInfo::SelfType => "self",
-        TypeInfo::Byte => "byte",
         TypeInfo::B256 => "b256",
         TypeInfo::Numeric => "numeric",
         TypeInfo::Contract => "contract",
         TypeInfo::ErrorRecovery => "err_recov",
-        TypeInfo::Ref(x, _sp) => return format!("T{}", x),
         TypeInfo::Unknown => "unknown",
         TypeInfo::UnknownGeneric { name } => return format!("generic {}", name),
         TypeInfo::ContractCaller { abi_name, .. } => {

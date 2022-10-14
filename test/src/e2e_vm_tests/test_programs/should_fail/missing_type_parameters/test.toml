@@ -1,0 +1,8 @@
+category = "fail"
+
+# check: $()Could not find symbol "A" in this scope.
+# check: $()Unknown type name "A"
+# check: $()Could not find symbol "B" in this scope.
+# check: $()Unknown type name "B"
+# check: $()Could not find symbol "C" in this scope.
+# check: $()Unknown type name "C"

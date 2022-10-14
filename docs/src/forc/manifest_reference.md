@@ -70,7 +70,7 @@ The following fields needs to be provided for a build-profile:
 * `print-finalized-asm` - Whether to compile to bytecode (false) or to print out the generated ASM (true).
 * `print-intermediate-asm` - Whether to compile to bytecode (false) or to print out the generated ASM (true).
 * `print-ir` - Whether to compile to bytecode (false) or to print out the generated IR (true).
-* `silent-mode` - Silent mode. Don't output any warnings or errors to the command line.
+* `terse-mode` - Terse mode. Limited warning and error output.
 
 There are two default `[build-profile]` available with every manifest file. These are `debug` and `release` profiles. If you want to override these profiles, you can provide them explicitly in the manifest file like the following example:
 
@@ -86,13 +86,13 @@ name = "wallet_contract"
 print-finalized-asm = false
 print-intermediate-asm = false
 print-ir = false
-silent = false
+terse = false
 
 [build-profiles.release]
 print-finalized-asm = false 
 print-intermediate-asm = false
 print-ir = false
-silent = true
+terse = true
 ```
 
 Since `release` and `debug` implicitly included in every manifest file, you can use them by just passing `--release` or by not passing anything (debug is default). For using a user defined build profile there is `--build-profile <profile name>` option available to the relevant commands. (For an example see [forc-build](../forc/commands/forc_build.md))
@@ -102,7 +102,7 @@ Note that providing the corresponding cli options (like `--print-finalized-asm`)
 * print-finalized-asm - true
 * print-intermediate-asm - false
 * print-ir - false
-* silent - false
+* terse - false
 
 ## The `[patch]` section
 

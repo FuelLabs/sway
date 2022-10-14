@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()Expected a field name.
+# check: $()Mismatched types.

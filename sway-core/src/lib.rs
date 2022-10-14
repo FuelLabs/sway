@@ -5,16 +5,14 @@ mod asm_generation;
 mod asm_lang;
 mod build_config;
 mod concurrent_slab;
-pub mod constants;
 mod control_flow_analysis;
 mod convert_parse_tree;
 pub mod declaration_engine;
 pub mod ir_generation;
+pub mod language;
 mod metadata;
-pub mod parse_tree;
 pub mod semantic_analysis;
 pub mod source_map;
-mod style;
 pub mod type_system;
 
 use crate::{error::*, source_map::SourceMap};
@@ -28,20 +26,18 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_ast::Dependency;
-use sway_ir::{Kind, Module};
+use sway_ir::{Context, Function, Instruction, Kind, Module, Value};
 
-pub use semantic_analysis::{
-    namespace::{self, Namespace},
-    TypedDeclaration, TypedFunctionDeclaration, TypedModule, TypedProgram, TypedProgramKind,
-};
+pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
-pub use crate::parse_tree::{
-    Declaration, Expression, ParseModule, ParseProgram, TreeType, UseStatement, *,
-};
 
-pub use error::{CompileError, CompileResult, CompileWarning};
+pub use error::CompileResult;
+use sway_error::error::CompileError;
+use sway_error::warning::CompileWarning;
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
+
+use language::{parsed, ty};
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
@@ -56,47 +52,45 @@ pub use type_system::*;
 ///
 /// # Panics
 /// Panics if the parser panics.
-pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<ParseProgram> {
+pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<parsed::ParseProgram> {
+    // Omit tests by default so that a test that fails to typecheck doesn't block the rest of the
+    // program (similar behaviour to rust). Later, we'll add a flag for including tests on
+    // invocations of `forc test` or `forc check --tests`. See #1832.
+    let include_test_fns = false;
     match config {
-        None => parse_in_memory(input),
-        Some(config) => parse_files(input, config),
+        None => parse_in_memory(input, include_test_fns),
+        Some(config) => parse_files(input, config, include_test_fns),
     }
 }
 
 /// Parse a file with contents `src` at `path`.
 fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> CompileResult<sway_ast::Module> {
-    let handler = sway_parse::handler::Handler::default();
-    match sway_parse::parse_file(&handler, src, path) {
-        Ok(module) => ok(
-            module,
-            vec![],
-            parse_file_error_to_compile_errors(handler, None),
-        ),
-        Err(error) => err(
-            vec![],
-            parse_file_error_to_compile_errors(handler, Some(error)),
-        ),
-    }
+    let handler = sway_error::handler::Handler::default();
+    let res = sway_parse::parse_file(&handler, src, path);
+    CompileResult::new(res.ok(), vec![], handler.into_errors())
 }
 
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
-fn parse_in_memory(src: Arc<str>) -> CompileResult<ParseProgram> {
+fn parse_in_memory(src: Arc<str>, include_test_fns: bool) -> CompileResult<parsed::ParseProgram> {
     parse_file(src, None).flat_map(|module| {
-        convert_parse_tree::convert_parse_tree(module).flat_map(|(kind, tree)| {
+        convert_parse_tree::convert_parse_tree(module, include_test_fns).flat_map(|(kind, tree)| {
             let submodules = Default::default();
-            let root = ParseModule { tree, submodules };
-            let program = ParseProgram { kind, root };
-            ok(program, vec![], vec![])
+            let root = parsed::ParseModule { tree, submodules };
+            ok(parsed::ParseProgram { kind, root }, vec![], vec![])
         })
     })
 }
 
 /// When a `BuildConfig` is given, the module source may declare `dep`s that must be parsed from
 /// other files.
-fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<ParseProgram> {
+fn parse_files(
+    src: Arc<str>,
+    config: &BuildConfig,
+    include_test_fns: bool,
+) -> CompileResult<parsed::ParseProgram> {
     let root_mod_path = config.canonical_root_module();
-    parse_module_tree(src, root_mod_path).flat_map(|(kind, root)| {
-        let program = ParseProgram { kind, root };
+    parse_module_tree(src, root_mod_path, include_test_fns).flat_map(|(kind, root)| {
+        let program = parsed::ParseProgram { kind, root };
         ok(program, vec![], vec![])
     })
 }
@@ -105,28 +99,40 @@ fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<ParseProgra
 fn parse_submodules(
     deps: &[Dependency],
     module_dir: &Path,
-) -> CompileResult<Vec<(Ident, ParseSubmodule)>> {
-    let init_res = ok(vec![], vec![], vec![]);
-    deps.iter().fold(init_res, |res, dep| {
+    include_test_fns: bool,
+) -> CompileResult<Vec<(Ident, parsed::ParseSubmodule)>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
+    let mut submods = Vec::with_capacity(deps.len());
+
+    deps.iter().for_each(|dep| {
+        // Read the source code from the dependency.
+        // If we cannot, record as an error, but continue with other files.
         let dep_path = Arc::new(module_path(module_dir, dep));
         let dep_str: Arc<str> = match std::fs::read_to_string(&*dep_path) {
             Ok(s) => Arc::from(s),
             Err(e) => {
-                let error = CompileError::FileCouldNotBeRead {
+                errors.push(CompileError::FileCouldNotBeRead {
                     span: dep.path.span(),
                     file_path: dep_path.to_string_lossy().to_string(),
                     stringified_error: e.to_string(),
-                };
-                return res.flat_map(|_| err(vec![], vec![error]));
+                });
+                return;
             }
         };
-        parse_module_tree(dep_str.clone(), dep_path.clone()).flat_map(|(kind, module)| {
+
+        let mt_res = parse_module_tree(dep_str.clone(), dep_path.clone(), include_test_fns);
+        warnings.extend(mt_res.warnings);
+        errors.extend(mt_res.errors);
+
+        if let Some((kind, module)) = mt_res.value {
             let library_name = match kind {
-                TreeType::Library { name } => name,
+                parsed::TreeType::Library { name } => name,
                 _ => {
                     let span = span::Span::new(dep_str, 0, 0, Some(dep_path)).unwrap();
-                    let error = CompileError::ImportMustBeLibrary { span };
-                    return err(vec![], vec![error]);
+                    errors.push(CompileError::ImportMustBeLibrary { span });
+                    return;
                 }
             };
             // NOTE: Typed `IncludStatement`'s include an `alias` field, however its only
@@ -134,35 +140,38 @@ fn parse_submodules(
             // is where we should use it.
             let dep_alias = None;
             let dep_name = dep_alias.unwrap_or_else(|| library_name.clone());
-            let submodule = ParseSubmodule {
+            let submodule = parsed::ParseSubmodule {
                 library_name,
                 module,
             };
-            res.flat_map(|mut submods| {
-                submods.push((dep_name, submodule));
-                ok(submods, vec![], vec![])
-            })
-        })
-    })
+            submods.push((dep_name, submodule));
+        }
+    });
+
+    ok(submods, warnings, errors)
 }
 
-/// Given the source of the module along with its path, parse this module including all of its
-/// submodules.
-fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeType, ParseModule)> {
+/// Given the source of the module along with its path,
+/// parse this module including all of its submodules.
+fn parse_module_tree(
+    src: Arc<str>,
+    path: Arc<PathBuf>,
+    include_test_fns: bool,
+) -> CompileResult<(parsed::TreeType, parsed::ParseModule)> {
     // Parse this module first.
     parse_file(src, Some(path.clone())).flat_map(|module| {
         let module_dir = path.parent().expect("module file has no parent directory");
 
         // Parse all submodules before converting to the `ParseTree`.
-        let submodules_res = parse_submodules(&module.dependencies, module_dir);
+        let submodules_res = parse_submodules(&module.dependencies, module_dir, include_test_fns);
 
         // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-        convert_parse_tree::convert_parse_tree(module).flat_map(|(prog_kind, tree)| {
-            submodules_res.flat_map(|submodules| {
-                let parse_module = ParseModule { tree, submodules };
-                ok((prog_kind, parse_module), vec![], vec![])
-            })
-        })
+        convert_parse_tree::convert_parse_tree(module, include_test_fns).flat_map(
+            |(prog_kind, tree)| {
+                submodules_res
+                    .map(|submodules| (prog_kind, parsed::ParseModule { tree, submodules }))
+            },
+        )
     })
 }
 
@@ -171,21 +180,7 @@ fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf 
         .iter()
         .chain(dep.path.span().as_str().split('/').map(AsRef::as_ref))
         .collect::<PathBuf>()
-        .with_extension(crate::constants::DEFAULT_FILE_EXTENSION)
-}
-
-fn parse_file_error_to_compile_errors(
-    handler: sway_parse::handler::Handler,
-    error: Option<sway_parse::ParseFileError>,
-) -> Vec<CompileError> {
-    match error {
-        Some(sway_parse::ParseFileError::Lex(error)) => vec![CompileError::Lex { error }],
-        Some(sway_parse::ParseFileError::Parse(_)) | None => handler
-            .into_errors()
-            .into_iter()
-            .map(|error| CompileError::Parse { error })
-            .collect(),
-    }
+        .with_extension(sway_types::constants::DEFAULT_FILE_EXTENSION)
 }
 
 /// Either finalized ASM or a library.
@@ -204,16 +199,15 @@ pub enum BytecodeOrLib {
 }
 
 pub fn parsed_to_ast(
-    parse_program: &ParseProgram,
+    parse_program: &parsed::ParseProgram,
     initial_namespace: namespace::Module,
-    generate_logged_types: bool,
-) -> CompileResult<TypedProgram> {
+) -> CompileResult<ty::TyProgram> {
     // Type check the program.
     let CompileResult {
         value: typed_program_opt,
         mut warnings,
         mut errors,
-    } = TypedProgram::type_check(parse_program, initial_namespace);
+    } = ty::TyProgram::type_check(parse_program, initial_namespace);
     let mut typed_program = match typed_program_opt {
         Some(typed_program) => typed_program,
         None => return err(warnings, errors),
@@ -232,15 +226,12 @@ pub fn parsed_to_ast(
         None => return deduped_err(warnings, errors),
     };
 
-    // Collect all the types of logged values. These are required when generating the JSON ABI.
-    if generate_logged_types {
-        typed_program
-            .logged_types
-            .extend(types_metadata.iter().filter_map(|m| match m {
-                TypeMetadata::LoggedType(type_id) => Some(*type_id),
-                _ => None,
-            }));
-    }
+    typed_program
+        .logged_types
+        .extend(types_metadata.iter().filter_map(|m| match m {
+            TypeMetadata::LoggedType(type_id) => Some(*type_id),
+            _ => None,
+        }));
 
     // Perform control flow analysis and extend with any errors.
     let cfa_res = perform_control_flow_analysis(&typed_program);
@@ -276,12 +267,9 @@ pub fn parsed_to_ast(
 
     // All unresolved types lead to compile errors.
     errors.extend(types_metadata.iter().filter_map(|m| match m {
-        TypeMetadata::UnresolvedType {
-            name,
-            span_override,
-        } => Some(CompileError::UnableToInferGeneric {
+        TypeMetadata::UnresolvedType(name) => Some(CompileError::UnableToInferGeneric {
             ty: name.as_str().to_string(),
-            span: span_override.clone().unwrap_or_else(|| name.span()),
+            span: name.span(),
         }),
         _ => None,
     }));
@@ -297,7 +285,7 @@ pub fn compile_to_ast(
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
-) -> CompileResult<TypedProgram> {
+) -> CompileResult<ty::TyProgram> {
     // Parse the program to a concrete syntax tree (CST).
     let CompileResult {
         value: parse_program_opt,
@@ -310,8 +298,7 @@ pub fn compile_to_ast(
     };
 
     // Type check (+ other static analysis) the CST to a typed AST.
-    let generate_logged_types = build_config.map_or(false, |bc| bc.generate_logged_types);
-    let typed_res = parsed_to_ast(&parse_program, initial_namespace, generate_logged_types);
+    let typed_res = parsed_to_ast(&parse_program, initial_namespace);
     errors.extend(typed_res.errors);
     warnings.extend(typed_res.warnings);
     let typed_program = match typed_res.value {
@@ -342,7 +329,7 @@ pub fn compile_to_asm(
 /// try compiling to a `AsmOrLib`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn ast_to_asm(
-    ast_res: CompileResult<TypedProgram>,
+    ast_res: CompileResult<ty::TyProgram>,
     build_config: &BuildConfig,
 ) -> CompileResult<AsmOrLib> {
     match ast_res.value {
@@ -353,7 +340,9 @@ pub fn ast_to_asm(
 
             let tree_type = typed_program.kind.tree_type();
             match tree_type {
-                TreeType::Contract | TreeType::Script | TreeType::Predicate => {
+                parsed::TreeType::Contract
+                | parsed::TreeType::Script
+                | parsed::TreeType::Predicate => {
                     let asm = check!(
                         compile_ast_to_ir_to_asm(typed_program, build_config),
                         return deduped_err(warnings, errors),
@@ -362,7 +351,7 @@ pub fn ast_to_asm(
                     );
                     ok(AsmOrLib::Asm(asm), warnings, errors)
                 }
-                TreeType::Library { name } => {
+                parsed::TreeType::Library { name } => {
                     let namespace = Box::new(typed_program.root.namespace.into());
                     let lib = AsmOrLib::Library { name, namespace };
                     ok(lib, warnings, errors)
@@ -372,10 +361,8 @@ pub fn ast_to_asm(
     }
 }
 
-use sway_ir::{context::Context, function::Function};
-
 pub(crate) fn compile_ast_to_ir_to_asm(
-    program: TypedProgram,
+    program: ty::TyProgram,
     build_config: &BuildConfig,
 ) -> CompileResult<FinalizedAsm> {
     let mut warnings = Vec::new();
@@ -401,17 +388,18 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // Find all the entry points.  This is main for scripts and predicates, or ABI methods for
     // contracts, identified by them having a selector.
     let entry_point_functions: Vec<::sway_ir::Function> = ir
-        .functions
-        .iter()
-        .filter_map(|(idx, fc)| {
-            if (matches!(tree_type, TreeType::Script | TreeType::Predicate)
-                && fc.name == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME)
-                || (tree_type == TreeType::Contract && fc.selector.is_some())
-            {
-                Some(::sway_ir::function::Function(idx))
-            } else {
-                None
-            }
+        .module_iter()
+        .flat_map(|module| module.function_iter(&ir))
+        .filter(|func| {
+            let is_script_or_predicate = matches!(
+                tree_type,
+                parsed::TreeType::Script | parsed::TreeType::Predicate
+            );
+            let is_contract = tree_type == parsed::TreeType::Contract;
+            let has_entry_name =
+                func.get_name(&ir) == sway_types::constants::DEFAULT_ENTRY_POINT_FN_NAME;
+
+            (is_script_or_predicate && has_entry_name) || (is_contract && func.has_selector(&ir))
         })
         .collect();
 
@@ -428,9 +416,15 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors
     );
 
-    // Inline function calls from the entry points.
+    // Now we're working with all functions in the module.
+    let all_functions = ir
+        .module_iter()
+        .flat_map(|module| module.function_iter(&ir))
+        .collect::<Vec<_>>();
+
+    // Inline function calls.
     check!(
-        inline_function_calls(&mut ir, &entry_point_functions),
+        inline_function_calls(&mut ir, &all_functions, &tree_type),
         return err(warnings, errors),
         warnings,
         errors
@@ -439,33 +433,33 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // TODO: Experiment with putting combine-constants and simplify-cfg
     // in a loop, but per function.
     check!(
-        combine_constants(&mut ir, &entry_point_functions),
+        combine_constants(&mut ir, &all_functions),
         return err(warnings, errors),
         warnings,
         errors
     );
     check!(
-        simplify_cfg(&mut ir, &entry_point_functions),
+        simplify_cfg(&mut ir, &all_functions),
         return err(warnings, errors),
         warnings,
         errors
     );
     // Simplify-CFG helps combine constants.
     check!(
-        combine_constants(&mut ir, &entry_point_functions),
+        combine_constants(&mut ir, &all_functions),
         return err(warnings, errors),
         warnings,
         errors
     );
     // And that in-turn enables more simplify-cfg.
     check!(
-        simplify_cfg(&mut ir, &entry_point_functions),
+        simplify_cfg(&mut ir, &all_functions),
         return err(warnings, errors),
         warnings,
         errors
     );
 
-    // Remove dead definitions.
+    // Remove dead definitions based on the entry points root set.
     check!(
         dce(&mut ir, &entry_point_functions),
         return err(warnings, errors),
@@ -480,9 +474,68 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     compile_ir_to_asm(&ir, Some(build_config))
 }
 
-fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+// Inline function calls based on two conditions:
+// 1. The program we're compiling is a "predicate". Predicates cannot jump backwards which means
+//    that supporting function calls (i.e. without inlining) is not possible. This is a protocl
+//    restriction and not a heuristic.
+// 2. If the program is not a "predicate" then, we rely on some heuristic which is described below
+//    in the `inline_heuristc` closure.
+//
+fn inline_function_calls(
+    ir: &mut Context,
+    functions: &[Function],
+    tree_type: &parsed::TreeType,
+) -> CompileResult<()> {
+    // Inspect ALL calls and count how often each function is called.
+    // This is not required for predicates because we don't inline their function calls
+    let call_counts: HashMap<Function, u64> = match tree_type {
+        parsed::TreeType::Predicate => HashMap::new(),
+        _ => functions.iter().fold(HashMap::new(), |mut counts, func| {
+            for (_block, ins) in func.instruction_iter(ir) {
+                if let Some(Instruction::Call(callee, _args)) = ins.get_instruction(ir) {
+                    counts
+                        .entry(*callee)
+                        .and_modify(|count| *count += 1)
+                        .or_insert(1);
+                }
+            }
+            counts
+        }),
+    };
+
+    let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
+        // For now, pending improvements to ASMgen for calls, we must inline any function which has
+        // a non-copy return type or has too many args.
+        if !func.get_return_type(ctx).is_copy_type()
+            || func.args_iter(ctx).count() as u8
+                > crate::asm_generation::compiler_constants::NUM_ARG_REGISTERS
+        {
+            return true;
+        }
+
+        // If the function is called only once then definitely inline it.
+        let call_count = call_counts.get(func).copied().unwrap_or(0);
+        if call_count == 1 {
+            return true;
+        }
+
+        // If the function is (still) small then also inline it.
+        const MAX_INLINE_INSTRS_COUNT: usize = 4;
+        if func.num_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
+            return true;
+        }
+
+        false
+    };
+
     for function in functions {
-        if let Err(ir_error) = sway_ir::optimize::inline_all_function_calls(ir, function) {
+        if let Err(ir_error) = match tree_type {
+            parsed::TreeType::Predicate => {
+                // Inline everything for predicates
+                sway_ir::optimize::inline_all_function_calls(ir, function)
+            }
+            _ => sway_ir::optimize::inline_some_function_calls(ir, function, inline_heuristic),
+        } {
             return err(
                 Vec::new(),
                 vec![CompileError::InternalOwned(
@@ -510,16 +563,24 @@ fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<
     ok((), Vec::new(), Vec::new())
 }
 
-fn dce(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
-    for function in functions {
-        if let Err(ir_error) = sway_ir::optimize::dce(ir, function) {
-            return err(
-                Vec::new(),
-                vec![CompileError::InternalOwned(
-                    ir_error.to_string(),
-                    span::Span::dummy(),
-                )],
-            );
+fn dce(ir: &mut Context, entry_functions: &[Function]) -> CompileResult<()> {
+    // Remove entire dead functions first.
+    for module in ir.module_iter() {
+        sway_ir::optimize::func_dce(ir, &module, entry_functions);
+    }
+
+    // Then DCE all the remaining functions.
+    for module in ir.module_iter() {
+        for function in module.function_iter(ir) {
+            if let Err(ir_error) = sway_ir::optimize::dce(ir, &function) {
+                return err(
+                    Vec::new(),
+                    vec![CompileError::InternalOwned(
+                        ir_error.to_string(),
+                        span::Span::dummy(),
+                    )],
+                );
+            }
         }
     }
     ok((), Vec::new(), Vec::new())
@@ -582,9 +643,9 @@ pub fn clear_lazy_statics() {
     declaration_engine::declaration_engine::de_clear();
 }
 
-/// Given a [TypedProgram], which is type-checked Sway source, construct a graph to analyze
+/// Given a [ty::TyProgram], which is type-checked Sway source, construct a graph to analyze
 /// control flow and determine if it is valid.
-fn perform_control_flow_analysis(program: &TypedProgram) -> CompileResult<()> {
+fn perform_control_flow_analysis(program: &ty::TyProgram) -> CompileResult<()> {
     let dca_res = dead_code_analysis(program);
     let rpa_errors = return_path_analysis(program);
     let rpa_res = if rpa_errors.is_empty() {
@@ -599,7 +660,7 @@ fn perform_control_flow_analysis(program: &TypedProgram) -> CompileResult<()> {
 /// code.
 ///
 /// Returns the graph that was used for analysis.
-fn dead_code_analysis(program: &TypedProgram) -> CompileResult<ControlFlowGraph> {
+fn dead_code_analysis(program: &ty::TyProgram) -> CompileResult<ControlFlowGraph> {
     let mut dead_code_graph = Default::default();
     let tree_type = program.kind.tree_type();
     module_dead_code_analysis(&program.root, &tree_type, &mut dead_code_graph).flat_map(|_| {
@@ -610,8 +671,8 @@ fn dead_code_analysis(program: &TypedProgram) -> CompileResult<ControlFlowGraph>
 
 /// Recursively collect modules into the given `ControlFlowGraph` ready for dead code analysis.
 fn module_dead_code_analysis(
-    module: &TypedModule,
-    tree_type: &TreeType,
+    module: &ty::TyModule,
+    tree_type: &parsed::TreeType,
     graph: &mut ControlFlowGraph,
 ) -> CompileResult<()> {
     let init_res = ok((), vec![], vec![]);
@@ -620,7 +681,7 @@ fn module_dead_code_analysis(
         .iter()
         .fold(init_res, |res, (_, submodule)| {
             let name = submodule.library_name.clone();
-            let tree_type = TreeType::Library { name };
+            let tree_type = parsed::TreeType::Library { name };
             res.flat_map(|_| module_dead_code_analysis(&submodule.module, &tree_type, graph))
         });
     submodules_res.flat_map(|()| {
@@ -630,13 +691,13 @@ fn module_dead_code_analysis(
     })
 }
 
-fn return_path_analysis(program: &TypedProgram) -> Vec<CompileError> {
+fn return_path_analysis(program: &ty::TyProgram) -> Vec<CompileError> {
     let mut errors = vec![];
     module_return_path_analysis(&program.root, &mut errors);
     errors
 }
 
-fn module_return_path_analysis(module: &TypedModule, errors: &mut Vec<CompileError>) {
+fn module_return_path_analysis(module: &ty::TyModule, errors: &mut Vec<CompileError>) {
     for (_, submodule) in &module.submodules {
         module_return_path_analysis(&submodule.module, errors);
     }
@@ -758,7 +819,8 @@ fn test_parenthesized() {
 
 #[test]
 fn test_unary_ordering() {
-    use crate::parse_tree::declaration::FunctionDeclaration;
+    use crate::language::{self, parsed};
+
     let prog = parse(
         r#"
     script;
@@ -775,25 +837,27 @@ fn test_unary_ordering() {
     let prog = prog.unwrap(&mut warnings, &mut errors);
     // this should parse as `(!a) && b`, not `!(a && b)`. So, the top level
     // expression should be `&&`
-    if let AstNode {
+    if let parsed::AstNode {
         content:
-            AstNodeContent::Declaration(Declaration::FunctionDeclaration(FunctionDeclaration {
-                body,
-                ..
-            })),
+            parsed::AstNodeContent::Declaration(parsed::Declaration::FunctionDeclaration(
+                parsed::FunctionDeclaration { body, .. },
+            )),
         ..
     } = &prog.root.tree.root_nodes[0]
     {
-        if let AstNode {
+        if let parsed::AstNode {
             content:
-                AstNodeContent::Expression(Expression {
-                    kind: ExpressionKind::LazyOperator(LazyOperatorExpression { op, .. }),
+                parsed::AstNodeContent::Expression(parsed::Expression {
+                    kind:
+                        parsed::ExpressionKind::LazyOperator(parsed::LazyOperatorExpression {
+                            op, ..
+                        }),
                     ..
                 }),
             ..
         } = &body.contents[2]
         {
-            assert_eq!(op, &LazyOp::And)
+            assert_eq!(op, &language::LazyOp::And)
         } else {
             panic!("Was not lazy operator.")
         }

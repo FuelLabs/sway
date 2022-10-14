@@ -2,37 +2,36 @@
 
 script {
     fn one_block() -> bool {
-        entry:
+        entry():
         v0 = const bool false
         ret bool v0
     }
 
     fn two_blocks() -> bool {
-        entry:
+        entry():
         v0 = const bool true
-        br block
+        br block(v0)
 
-        block:
-        v1 = phi(entry: v0)
+        block(v1: bool):
         ret bool v1
     }
 
     fn three_blocks(b: bool) -> bool {
-        entry:
-        cbr b, then_block, else_block
+        entry(b: bool):
+        cbr b, then_block(), else_block()
 
-        then_block:
+        then_block():
         v0 = const bool false
         ret bool v0
 
-        else_block:
+        else_block():
         v1 = const bool true
         ret bool v1
     }
 
     fn main() -> bool {
 // check: fn main() -> bool
-        entry:
+        entry():
 
         v0 = call one_block()
 // not: call one_block()

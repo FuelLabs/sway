@@ -3,45 +3,31 @@ use crate::{
     ir_generation::{
         const_eval::compile_constant_expression_to_constant, storage::serialize_to_storage_slots,
     },
+    language::ty,
     metadata::MetadataManager,
-    semantic_analysis::{
-        TypeCheckedStorageAccess, TypeCheckedStorageAccessDescriptor, TypedExpression,
-        TypedStructField,
-    },
-    type_system::{look_up_type_id, TypeId, TypeInfo},
-    Ident,
+    type_system::{TypeId, TypeInfo},
+    AttributesMap, Ident,
 };
-use derivative::Derivative;
 use fuel_tx::StorageSlot;
+use sway_error::error::CompileError;
 use sway_ir::{Context, Module};
 use sway_types::{state::StateIndex, Span, Spanned};
 
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
-pub struct TypedStorageDeclaration {
-    pub fields: Vec<TypedStorageField>,
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub span: Span,
-}
-
-impl Spanned for TypedStorageDeclaration {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-impl TypedStorageDeclaration {
-    pub fn new(fields: Vec<TypedStorageField>, span: Span) -> Self {
-        TypedStorageDeclaration { fields, span }
+impl ty::TyStorageDeclaration {
+    pub fn new(fields: Vec<ty::TyStorageField>, span: Span, attributes: AttributesMap) -> Self {
+        ty::TyStorageDeclaration {
+            fields,
+            span,
+            attributes,
+        }
     }
     /// Given a field, find its type information in the declaration and return it. If the field has not
     /// been declared as a part of storage, return an error.
     pub fn apply_storage_load(
         &self,
         fields: Vec<Ident>,
-        storage_fields: &[TypedStorageField],
-    ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
+        storage_fields: &[ty::TyStorageField],
+    ) -> CompileResult<(ty::TyStorageAccess, TypeId)> {
         let mut errors = vec![];
         let warnings = vec![];
 
@@ -52,11 +38,11 @@ impl TypedStorageDeclaration {
         let (ix, initial_field_type) = match storage_fields
             .iter()
             .enumerate()
-            .find(|(_, TypedStorageField { name, .. })| name == &first_field)
+            .find(|(_, ty::TyStorageField { name, .. })| name == &first_field)
         {
             Some((
                 ix,
-                TypedStorageField {
+                ty::TyStorageField {
                     type_id: r#type, ..
                 },
             )) => (StateIndex::new(ix), r#type),
@@ -68,13 +54,13 @@ impl TypedStorageDeclaration {
             }
         };
 
-        type_checked_buf.push(TypeCheckedStorageAccessDescriptor {
+        type_checked_buf.push(ty::TyStorageAccessDescriptor {
             name: first_field.clone(),
             type_id: *initial_field_type,
             span: first_field.span(),
         });
 
-        fn update_available_struct_fields(id: TypeId) -> Vec<TypedStructField> {
+        fn update_available_struct_fields(id: TypeId) -> Vec<ty::TyStructField> {
             match crate::type_system::look_up_type_id(id) {
                 TypeInfo::Struct { fields, .. } => fields,
                 _ => vec![],
@@ -93,7 +79,7 @@ impl TypedStorageDeclaration {
                 .find(|x| x.name.as_str() == field.as_str())
             {
                 Some(struct_field) => {
-                    type_checked_buf.push(TypeCheckedStorageAccessDescriptor {
+                    type_checked_buf.push(ty::TyStorageAccessDescriptor {
                         name: field.clone(),
                         type_id: struct_field.type_id,
                         span: field.span().clone(),
@@ -119,7 +105,7 @@ impl TypedStorageDeclaration {
 
         ok(
             (
-                TypeCheckedStorageAccess {
+                ty::TyStorageAccess {
                     fields: type_checked_buf,
                     ix,
                 },
@@ -130,22 +116,24 @@ impl TypedStorageDeclaration {
         )
     }
 
-    pub(crate) fn fields_as_typed_struct_fields(&self) -> Vec<TypedStructField> {
+    pub(crate) fn fields_as_typed_struct_fields(&self) -> Vec<ty::TyStructField> {
         self.fields
             .iter()
             .map(
-                |TypedStorageField {
+                |ty::TyStorageField {
                      ref name,
                      type_id: ref r#type,
                      ref span,
                      ref initializer,
+                     ref attributes,
                      ..
-                 }| TypedStructField {
+                 }| ty::TyStructField {
                     name: name.clone(),
                     type_id: *r#type,
                     initial_type_id: *r#type,
                     span: span.clone(),
                     type_span: initializer.span.clone(),
+                    attributes: attributes.clone(),
                 },
             )
             .collect()
@@ -176,43 +164,7 @@ impl TypedStorageDeclaration {
     }
 }
 
-#[derive(Clone, Debug, Eq)]
-pub struct TypedStorageField {
-    pub name: Ident,
-    pub type_id: TypeId,
-    pub type_span: Span,
-    pub initializer: TypedExpression,
-    pub(crate) span: Span,
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedStorageField {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
-            && self.initializer == other.initializer
-    }
-}
-
-impl TypedStorageField {
-    pub fn new(
-        name: Ident,
-        r#type: TypeId,
-        type_span: Span,
-        initializer: TypedExpression,
-        span: Span,
-    ) -> Self {
-        TypedStorageField {
-            name,
-            type_id: r#type,
-            type_span,
-            initializer,
-            span,
-        }
-    }
-
+impl ty::TyStorageField {
     pub(crate) fn get_initialized_storage_slots(
         &self,
         context: &mut Context,
