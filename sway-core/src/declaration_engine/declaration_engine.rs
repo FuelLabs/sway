@@ -301,10 +301,7 @@ pub(crate) fn de_insert_trait_fn(trait_fn: ty::TyTraitFn) -> DeclarationId {
     DECLARATION_ENGINE.insert_trait_fn(trait_fn)
 }
 
-pub(crate) fn de_get_trait_fn(
-    index: DeclarationId,
-    span: &Span,
-) -> Result<ty::TyTraitFn, CompileError> {
+pub fn de_get_trait_fn(index: DeclarationId, span: &Span) -> Result<ty::TyTraitFn, CompileError> {
     DECLARATION_ENGINE.get_trait_fn(index, span)
 }
 

@@ -8,7 +8,7 @@ pub(crate) use expression::*;
 pub(crate) use mode::*;
 
 use crate::{
-    declaration_engine::declaration_engine::*,
+    declaration_engine::{declaration_engine::*, DeclarationId},
     error::*,
     language::{
         parsed::*,
@@ -208,6 +208,7 @@ impl ty::TyAstNode {
                             type_ascription,
                             value,
                             visibility,
+                            attributes,
                             ..
                         }) => {
                             let result =
@@ -232,6 +233,7 @@ impl ty::TyAstNode {
                                 name: name.clone(),
                                 value,
                                 visibility,
+                                attributes,
                             };
                             let typed_const_decl =
                                 ty::TyDeclaration::ConstantDeclaration(de_insert_constant(decl));
@@ -294,10 +296,17 @@ impl ty::TyAstNode {
                                 warnings,
                                 errors
                             );
+                            let mut methods = vec![];
+                            for method_id in &impl_trait.methods {
+                                match de_get_function(method_id.clone(), &impl_trait.span) {
+                                    Ok(method) => methods.push(method),
+                                    Err(err) => errors.push(err),
+                                }
+                            }
                             ctx.namespace.insert_trait_implementation(
                                 impl_trait.trait_name.clone(),
                                 implementing_for_type_id,
-                                impl_trait.methods.clone(),
+                                methods,
                             );
                             ty::TyDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
                         }
@@ -308,10 +317,17 @@ impl ty::TyAstNode {
                                 warnings,
                                 errors
                             );
+                            let mut methods = vec![];
+                            for method_id in &impl_trait.methods {
+                                match de_get_function(method_id.clone(), &impl_trait.span) {
+                                    Ok(method) => methods.push(method),
+                                    Err(err) => errors.push(err),
+                                }
+                            }
                             ctx.namespace.insert_trait_implementation(
                                 impl_trait.trait_name.clone(),
                                 impl_trait.implementing_for_type_id,
-                                impl_trait.methods.clone(),
+                                methods,
                             );
                             ty::TyDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
                         }
@@ -456,7 +472,7 @@ impl ty::TyAstNode {
 fn type_check_interface_surface(
     interface_surface: Vec<TraitFn>,
     namespace: &mut Namespace,
-) -> CompileResult<Vec<ty::TyTraitFn>> {
+) -> CompileResult<Vec<DeclarationId>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut typed_surface = vec![];
@@ -495,14 +511,14 @@ fn type_check_interface_surface(
             errors,
         );
 
-        typed_surface.push(ty::TyTraitFn {
+        typed_surface.push(de_insert_trait_fn(ty::TyTraitFn {
             name,
             purity,
             return_type_span,
             parameters: typed_parameters,
             return_type,
             attributes: trait_fn.attributes,
-        });
+        }));
     }
     ok(typed_surface, warnings, errors)
 }

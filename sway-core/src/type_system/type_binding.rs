@@ -130,7 +130,7 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
 impl TypeBinding<CallPath> {
     pub(crate) fn type_check_with_ident(
         &mut self,
-        ctx: &TypeCheckContext,
+        mut ctx: TypeCheckContext,
     ) -> CompileResult<ty::TyDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -146,6 +146,12 @@ impl TypeBinding<CallPath> {
         // replace the self types inside of the type arguments
         for type_argument in self.type_arguments.iter_mut() {
             type_argument.replace_self_type(ctx.self_type());
+            type_argument.type_id = check!(
+                ctx.resolve_type_without_self(type_argument.type_id, &type_argument.span, None),
+                insert_type(TypeInfo::ErrorRecovery),
+                warnings,
+                errors
+            );
         }
 
         // monomorphize the declaration, if needed

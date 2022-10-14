@@ -10,7 +10,7 @@ use crate::{
         {traverse_parse_tree, traverse_typed_tree},
     },
     error::{DocumentError, LanguageServerError},
-    utils,
+    utils::{self, sync::SyncWorkspace},
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
@@ -25,8 +25,8 @@ use sway_core::{
 use sway_types::{Ident, Spanned};
 use swayfmt::Formatter;
 use tower_lsp::lsp_types::{
-    CompletionItem, Diagnostic, GotoDefinitionParams, GotoDefinitionResponse, Location, Position,
-    Range, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
+    CompletionItem, Diagnostic, GotoDefinitionResponse, Location, Position, Range,
+    SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
 };
 
 pub type Documents = DashMap<String, TextDocument>;
@@ -43,6 +43,7 @@ pub struct Session {
     pub token_map: TokenMap,
     pub runnables: DashMap<RunnableType, Runnable>,
     pub compiled_program: RwLock<CompiledProgram>,
+    pub sync: SyncWorkspace,
 }
 
 impl Session {
@@ -52,6 +53,7 @@ impl Session {
             token_map: DashMap::new(),
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
+            sync: SyncWorkspace::new(),
         }
     }
 
@@ -267,12 +269,17 @@ impl Session {
         }
     }
 
-    pub fn update_text_document(&self, url: &Url, changes: Vec<TextDocumentContentChangeEvent>) {
-        if let Some(ref mut document) = self.documents.get_mut(url.path()) {
+    pub fn update_text_document(
+        &self,
+        url: &Url,
+        changes: Vec<TextDocumentContentChangeEvent>,
+    ) -> Option<String> {
+        self.documents.get_mut(url.path()).map(|mut document| {
             changes.iter().for_each(|change| {
                 document.apply_change(change);
             });
-        }
+            document.get_text()
+        })
     }
 
     // Token
@@ -291,18 +298,19 @@ impl Session {
 
     pub fn token_definition_response(
         &self,
-        params: GotoDefinitionParams,
+        uri: Url,
+        position: Position,
     ) -> Option<GotoDefinitionResponse> {
-        let url = params.text_document_position_params.text_document.uri;
-        let position = params.text_document_position_params.position;
-
-        self.token_at_position(&url, position)
+        self.token_at_position(&uri, position)
             .and_then(|(_, token)| self.declared_token_ident(&token))
             .and_then(|decl_ident| {
                 let range = utils::common::get_range_from_span(&decl_ident.span());
                 match decl_ident.span().path() {
                     Some(path) => match Url::from_file_path(path.as_ref()) {
-                        Ok(url) => Some(GotoDefinitionResponse::Scalar(Location::new(url, range))),
+                        Ok(url) => self
+                            .sync
+                            .to_workspace_url(url)
+                            .map(|url| GotoDefinitionResponse::Scalar(Location::new(url, range))),
                         Err(_) => None,
                     },
                     None => None,
@@ -318,10 +326,9 @@ impl Session {
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
         let tokens = self.tokens_for_file(url);
-        Some(capabilities::document_symbol::to_symbol_information(
-            &tokens,
-            url.clone(),
-        ))
+        self.sync
+            .to_workspace_url(url.clone())
+            .map(|url| capabilities::document_symbol::to_symbol_information(&tokens, url))
     }
 
     pub fn format_text(&self, url: &Url) -> Option<Vec<TextEdit>> {

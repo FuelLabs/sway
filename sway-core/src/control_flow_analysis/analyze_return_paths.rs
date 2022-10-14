@@ -232,6 +232,12 @@ fn connect_declaration(
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
+
+            let methods = methods
+                .into_iter()
+                .map(|decl_id| de_get_function(decl_id, &trait_name.span()))
+                .collect::<Result<Vec<_>, CompileError>>()?;
+
             connect_impl_trait(&trait_name, graph, &methods, entry_node)?;
             Ok(leaves.to_vec())
         }
