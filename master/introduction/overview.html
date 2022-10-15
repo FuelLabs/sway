@@ -183,7 +183,7 @@ $ tree .
 <p><code>cd</code> (change directories) into your contract project and delete the boilerplate code in <code>src/main.sw</code>. Every Sway file must start with a declaration of what type of program the file contains; here, we've declared that this file is a contract.</p>
 <pre><code class="language-sway">contract;
 </code></pre>
-<p>Next, we'll define a our storage value. In our case, we have a single counter that we'll call <code>counter</code> of type 64-bit unsigned integer and initialize it to 0.</p>
+<p>Next, we'll define a storage value. In our case, we have a single counter that we'll call <code>counter</code> of type 64-bit unsigned integer and initialize it to 0.</p>
 <pre><code class="language-sway">storage {
     counter: u64 = 0,
 }
@@ -272,7 +272,7 @@ TransactionId(HexFormatted(7cef24ea33513733ab78c5daa5328d622d4b38187d0f0d1857b27
 <p>In the directory <code>tests</code>, navigate to <code>harness.rs.</code> Here you'll see there is some boilerplate code to help you start interacting with and testing your contract.</p>
 <p>At the bottom of the file, define the body of <code>can_get_contract_instance</code>. Here is what your code should look like to verify that the value of the counter did get incremented:</p>
 <pre><code class="language-sway">#[tokio::test]
-async fn can_get_contract_id() {
+async fn can_get_contract_instance() {
     // Increment the counter
     let _result = instance.increment().call().await.unwrap();
 
