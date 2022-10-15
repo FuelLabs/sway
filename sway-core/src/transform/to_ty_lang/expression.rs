@@ -2,7 +2,6 @@ use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
 
 use crate::{
     language::{parsed, ty, Literal},
-    semantic_analysis::IsConstant,
     type_system::*,
 };
 
@@ -52,7 +51,6 @@ fn transform_to_ty_literal(lit: Literal, span: Span) -> ty::TyExpression {
     ty::TyExpression {
         expression: ty::TyExpressionVariant::Literal(lit),
         return_type: insert_type(type_info),
-        is_constant: IsConstant::Yes,
         span,
     }
 }
@@ -68,7 +66,6 @@ fn transform_to_ty_lazy_op(exp: parsed::LazyOperatorExpression, span: Span) -> t
             rhs: Box::new(rhs),
         },
         return_type: insert_type(TypeInfo::Unknown),
-        is_constant: IsConstant::No,
         span,
     }
 }
@@ -81,20 +78,22 @@ fn transform_to_ty_variable(name: Ident, span: Span) -> ty::TyExpression {
             mutability: ty::VariableMutability::Immutable,
         },
         return_type: insert_type(TypeInfo::Unknown),
-        is_constant: IsConstant::No,
         span,
     }
 }
 
 fn transform_to_ty_tuple(elems: Vec<parsed::Expression>, span: Span) -> ty::TyExpression {
-    let fields = elems.into_iter().map(|elem| transform_to_ty_expression(elem)).collect::<Vec<_>>();
-    let field_types = fields.iter().map(|field| field.return_type).collect::<Vec<_>>();
+    let fields = elems
+        .into_iter()
+        .map(|elem| transform_to_ty_expression(elem))
+        .collect::<Vec<_>>();
+    let field_types = fields
+        .iter()
+        .map(|field| field.return_type)
+        .collect::<Vec<_>>();
     ty::TyExpression {
-        expression: ty::TyExpressionVariant::Tuple {
-            fields,
-        },
-        return_type: insert_type(TypeInfo::Tuple(field_types)),
-        is_constant,
+        expression: ty::TyExpressionVariant::Tuple { fields },
+        return_type: insert_type(TypeInfo::Tuple(todo!())),
         span,
     }
 }

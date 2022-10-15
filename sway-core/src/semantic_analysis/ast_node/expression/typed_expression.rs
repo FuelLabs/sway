@@ -74,7 +74,6 @@ impl ty::TyExpression {
             arguments,
             method,
             None,
-            IsConstant::No,
             None,
             span,
         )
@@ -326,7 +325,6 @@ impl ty::TyExpression {
                 let expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Break,
                     return_type: insert_type(TypeInfo::Unknown),
-                    is_constant: IsConstant::No,
                     span,
                 };
                 ok(expr, vec![], vec![])
@@ -335,7 +333,6 @@ impl ty::TyExpression {
                 let expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Continue,
                     return_type: insert_type(TypeInfo::Unknown),
-                    is_constant: IsConstant::No,
                     span,
                 };
                 ok(expr, vec![], vec![])
@@ -372,7 +369,6 @@ impl ty::TyExpression {
                     expression: ty::TyExpressionVariant::Return(Box::new(expr)),
                     return_type: insert_type(TypeInfo::Unknown),
                     // FIXME: This should be Yes?
-                    is_constant: IsConstant::No,
                     span,
                 };
                 ok(typed_expr, warnings, errors)
@@ -445,7 +441,6 @@ impl ty::TyExpression {
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::Literal(lit),
             return_type: id,
-            is_constant: IsConstant::Yes,
             span,
         };
         ok(exp, vec![], vec![])
@@ -468,7 +463,6 @@ impl ty::TyExpression {
                 } = &**decl;
                 ty::TyExpression {
                     return_type: body.return_type,
-                    is_constant: body.is_constant,
                     expression: ty::TyExpressionVariant::VariableExpression {
                         name: decl_name.clone(),
                         span: name.span(),
@@ -490,7 +484,6 @@ impl ty::TyExpression {
                 );
                 ty::TyExpression {
                     return_type: value.return_type,
-                    is_constant: IsConstant::Yes,
                     // Although this isn't strictly a 'variable' expression we can treat it as one for
                     // this context.
                     expression: ty::TyExpressionVariant::VariableExpression {
@@ -510,7 +503,6 @@ impl ty::TyExpression {
                 );
                 ty::TyExpression {
                     return_type: decl.create_type_id(),
-                    is_constant: IsConstant::Yes,
                     expression: ty::TyExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
                     span,
                 }
@@ -617,8 +609,6 @@ impl ty::TyExpression {
                 contents: typed_block.contents,
             }),
             return_type: block_return_type,
-            is_constant: IsConstant::No, /* TODO if all elements of block are constant
-                                          * then this is constant */
             span,
         };
         ok(exp, warnings, errors)
@@ -827,7 +817,6 @@ impl ty::TyExpression {
                 returns: asm.returns,
             },
             return_type,
-            is_constant: IsConstant::No,
             span,
         };
         ok(exp, warnings, errors)
@@ -878,7 +867,6 @@ impl ty::TyExpression {
                             value: ty::TyExpression {
                                 expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
                                 return_type: insert_type(TypeInfo::ErrorRecovery),
-                                is_constant: IsConstant::No,
                                 span: span.clone(),
                             },
                         });
@@ -923,7 +911,6 @@ impl ty::TyExpression {
                 span: call_path_binding.inner.suffix.1.clone(),
             },
             return_type: type_id,
-            is_constant: IsConstant::No,
             span,
         };
         ok(exp, warnings, errors)
@@ -971,7 +958,6 @@ impl ty::TyExpression {
         };
         let mut typed_field_types = Vec::with_capacity(fields.len());
         let mut typed_fields = Vec::with_capacity(fields.len());
-        let mut is_constant = IsConstant::Yes;
         for (i, field) in fields.into_iter().enumerate() {
             let field_type = field_type_opt
                 .as_ref()
@@ -988,9 +974,6 @@ impl ty::TyExpression {
                 warnings,
                 errors
             );
-            if let IsConstant::No = typed_field.is_constant {
-                is_constant = IsConstant::No;
-            }
             typed_field_types.push(TypeArgument {
                 type_id: typed_field.return_type,
                 initial_type_id: field_type.type_id,
@@ -1003,7 +986,6 @@ impl ty::TyExpression {
                 fields: typed_fields,
             },
             return_type: crate::type_system::insert_type(TypeInfo::Tuple(typed_field_types)),
-            is_constant,
             span,
         };
         ok(exp, warnings, errors)
@@ -1043,7 +1025,6 @@ impl ty::TyExpression {
             ty::TyExpression {
                 expression: ty::TyExpressionVariant::StorageAccess(storage_access),
                 return_type,
-                is_constant: IsConstant::No,
                 span: span.clone(),
             },
             warnings,
@@ -1270,7 +1251,6 @@ impl ty::TyExpression {
                                     address: None,
                                 }),
                                 expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                                is_constant: IsConstant::Yes,
                                 span,
                             },
                             warnings,
@@ -1332,7 +1312,6 @@ impl ty::TyExpression {
                 span: span.clone(),
             },
             return_type,
-            is_constant: IsConstant::No,
             span,
         };
         ok(exp, warnings, errors)
@@ -1351,7 +1330,6 @@ impl ty::TyExpression {
                         contents: Vec::new(),
                     },
                     return_type: insert_type(TypeInfo::Array(unknown_type, 0, unknown_type)),
-                    is_constant: IsConstant::Yes,
                     span,
                 },
                 Vec::new(),
@@ -1401,8 +1379,7 @@ impl ty::TyExpression {
                 expression: ty::TyExpressionVariant::Array {
                     contents: typed_contents,
                 },
-                return_type: insert_type(TypeInfo::Array(elem_type, array_count, elem_type)),
-                is_constant: IsConstant::No, // Maybe?
+                return_type: insert_type(TypeInfo::Array(elem_type, array_count, elem_type)), // Maybe?
                 span,
             },
             warnings,
@@ -1452,7 +1429,6 @@ impl ty::TyExpression {
                         index: Box::new(index_te),
                     },
                     return_type: elem_type_id,
-                    is_constant: IsConstant::No,
                     span,
                 },
                 warnings,
@@ -1495,7 +1471,6 @@ impl ty::TyExpression {
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::IntrinsicFunction(intrinsic_function),
             return_type,
-            is_constant: IsConstant::No,
             span,
         };
         ok(exp, warnings, errors)
@@ -1540,7 +1515,6 @@ impl ty::TyExpression {
                 body: typed_body,
             },
             return_type: unit_ty,
-            is_constant: IsConstant::Yes,
             span,
         };
         ok(exp, warnings, errors)
@@ -1637,8 +1611,6 @@ impl ty::TyExpression {
                             },
                         )),
                         return_type: crate::type_system::insert_type(TypeInfo::Tuple(Vec::new())),
-                        // TODO: if the rhs is constant then this should be constant, no?
-                        is_constant: IsConstant::No,
                         span,
                     },
                     warnings,
@@ -1661,7 +1633,6 @@ impl ty::TyExpression {
                             reassignment,
                         )),
                         return_type: crate::type_system::insert_type(TypeInfo::Tuple(Vec::new())),
-                        is_constant: IsConstant::No,
                         span,
                     },
                     warnings,
@@ -1743,7 +1714,6 @@ impl ty::TyExpression {
                 let exp = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Literal(v),
                     return_type: new_integer_type,
-                    is_constant: IsConstant::Yes,
                     span,
                 };
                 ok(exp, vec![], vec![])

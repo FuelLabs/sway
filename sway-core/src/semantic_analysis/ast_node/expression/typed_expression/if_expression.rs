@@ -1,9 +1,7 @@
 use sway_error::error::CompileError;
 use sway_types::Span;
 
-use crate::{
-    error::*, language::ty, semantic_analysis::*, type_system::*, types::DeterministicallyAborts,
-};
+use crate::{error::*, language::ty, type_system::*, types::DeterministicallyAborts};
 
 pub(crate) fn instantiate_if_expression(
     condition: ty::TyExpression,
@@ -99,7 +97,6 @@ pub(crate) fn instantiate_if_expression(
             then: Box::new(then),
             r#else,
         },
-        is_constant: IsConstant::No,
         return_type,
         span,
     };
