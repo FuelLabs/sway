@@ -73,13 +73,13 @@ pub enum TyExpressionVariant {
         prefix: Box<TyExpression>,
         field_to_access: TyStructField,
         field_instantiation_span: Span,
-        resolved_type_of_parent: TypeId,
+        resolved_prefix_type_id: TypeId,
     },
     TupleElemAccess {
         prefix: Box<TyExpression>,
-        elem_to_access_num: usize,
-        resolved_type_of_parent: TypeId,
-        elem_to_access_span: Span,
+        index: usize,
+        resolved_prefix_type_id: TypeId,
+        index_span: Span,
     },
     EnumInstantiation {
         /// for printing
@@ -254,13 +254,13 @@ impl PartialEq for TyExpressionVariant {
                 Self::StructFieldAccess {
                     prefix: l_prefix,
                     field_to_access: l_field_to_access,
-                    resolved_type_of_parent: l_resolved_type_of_parent,
+                    resolved_prefix_type_id: l_resolved_type_of_parent,
                     ..
                 },
                 Self::StructFieldAccess {
                     prefix: r_prefix,
                     field_to_access: r_field_to_access,
-                    resolved_type_of_parent: r_resolved_type_of_parent,
+                    resolved_prefix_type_id: r_resolved_type_of_parent,
                     ..
                 },
             ) => {
@@ -272,14 +272,14 @@ impl PartialEq for TyExpressionVariant {
             (
                 Self::TupleElemAccess {
                     prefix: l_prefix,
-                    elem_to_access_num: l_elem_to_access_num,
-                    resolved_type_of_parent: l_resolved_type_of_parent,
+                    index: l_elem_to_access_num,
+                    resolved_prefix_type_id: l_resolved_type_of_parent,
                     ..
                 },
                 Self::TupleElemAccess {
                     prefix: r_prefix,
-                    elem_to_access_num: r_elem_to_access_num,
-                    resolved_type_of_parent: r_resolved_type_of_parent,
+                    index: r_elem_to_access_num,
+                    resolved_prefix_type_id: r_resolved_type_of_parent,
                     ..
                 },
             ) => {
@@ -410,7 +410,7 @@ impl CopyTypes for TyExpressionVariant {
             StructFieldAccess {
                 prefix,
                 field_to_access,
-                ref mut resolved_type_of_parent,
+                resolved_prefix_type_id: ref mut resolved_type_of_parent,
                 ..
             } => {
                 resolved_type_of_parent.copy_types(type_mapping);
@@ -419,7 +419,7 @@ impl CopyTypes for TyExpressionVariant {
             }
             TupleElemAccess {
                 prefix,
-                ref mut resolved_type_of_parent,
+                resolved_prefix_type_id: ref mut resolved_type_of_parent,
                 ..
             } => {
                 resolved_type_of_parent.copy_types(type_mapping);
@@ -499,7 +499,7 @@ impl fmt::Display for TyExpressionVariant {
                 format!("abi cast {}", abi_name.suffix.as_str())
             }
             TyExpressionVariant::StructFieldAccess {
-                resolved_type_of_parent,
+                resolved_prefix_type_id: resolved_type_of_parent,
                 field_to_access,
                 ..
             } => {
@@ -510,8 +510,8 @@ impl fmt::Display for TyExpressionVariant {
                 )
             }
             TyExpressionVariant::TupleElemAccess {
-                resolved_type_of_parent,
-                elem_to_access_num,
+                resolved_prefix_type_id: resolved_type_of_parent,
+                index: elem_to_access_num,
                 ..
             } => {
                 format!(

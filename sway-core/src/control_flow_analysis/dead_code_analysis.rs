@@ -840,7 +840,7 @@ fn connect_expression(
         }
         StructFieldAccess {
             field_to_access,
-            resolved_type_of_parent,
+            resolved_prefix_type_id: resolved_type_of_parent,
             ..
         } => {
             let resolved_type_of_parent =

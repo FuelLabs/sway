@@ -181,7 +181,7 @@ impl CollectTypesMetadata for TyExpression {
             }
             StructFieldAccess {
                 prefix,
-                resolved_type_of_parent,
+                resolved_prefix_type_id: resolved_type_of_parent,
                 ..
             } => {
                 res.append(&mut check!(
@@ -199,7 +199,7 @@ impl CollectTypesMetadata for TyExpression {
             }
             TupleElemAccess {
                 prefix,
-                resolved_type_of_parent,
+                resolved_prefix_type_id: resolved_type_of_parent,
                 ..
             } => {
                 res.append(&mut check!(

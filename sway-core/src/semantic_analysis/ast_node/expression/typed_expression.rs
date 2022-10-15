@@ -21,6 +21,7 @@ use crate::{
         *,
     },
     semantic_analysis::*,
+    transform::to_ty_lang,
     type_system::*,
 };
 
@@ -205,6 +206,9 @@ impl ty::TyExpression {
     pub(crate) fn type_check(mut ctx: TypeCheckContext, expr: Expression) -> CompileResult<Self> {
         let expr_span = expr.span();
         let span = expr_span.clone();
+
+        let _ty_expression = to_ty_lang::transform_to_ty_expression(expr.clone());
+
         let res = match expr.kind {
             // We've already emitted an error for the `::Error` case.
             ExpressionKind::Error(_) => ok(ty::TyExpression::error(span), vec![], vec![]),

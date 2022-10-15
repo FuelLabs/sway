@@ -23,7 +23,7 @@ pub(crate) fn instantiate_struct_field_access(
     );
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::StructFieldAccess {
-            resolved_type_of_parent: parent.return_type,
+            resolved_prefix_type_id: parent.return_type,
             prefix: Box::new(parent),
             field_to_access: field.clone(),
             field_instantiation_span,

@@ -47,12 +47,6 @@ impl fmt::Display for TypeArgument {
     }
 }
 
-impl TypeArgument {
-    pub fn json_abi_str(&self) -> String {
-        look_up_type_id(self.type_id).json_abi_str()
-    }
-}
-
 impl ReplaceSelfType for TypeArgument {
     fn replace_self_type(&mut self, self_type: TypeId) {
         self.type_id.replace_self_type(self_type);
@@ -62,5 +56,11 @@ impl ReplaceSelfType for TypeArgument {
 impl CopyTypes for TypeArgument {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         self.type_id.copy_types(type_mapping);
+    }
+}
+
+impl TypeArgument {
+    pub fn json_abi_str(&self) -> String {
+        look_up_type_id(self.type_id).json_abi_str()
     }
 }

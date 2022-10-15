@@ -292,7 +292,7 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::StructFieldAccess {
             prefix,
             field_to_access,
-            resolved_type_of_parent,
+            resolved_prefix_type_id: resolved_type_of_parent,
             ..
         } => match const_eval_typed_expr(lookup, known_consts, prefix) {
             Some(Constant {
@@ -312,7 +312,7 @@ fn const_eval_typed_expr(
         },
         ty::TyExpressionVariant::TupleElemAccess {
             prefix,
-            elem_to_access_num,
+            index: elem_to_access_num,
             ..
         } => match const_eval_typed_expr(lookup, known_consts, prefix) {
             Some(Constant {

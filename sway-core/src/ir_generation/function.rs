@@ -280,7 +280,7 @@ impl FnCompiler {
             ty::TyExpressionVariant::StructFieldAccess {
                 prefix,
                 field_to_access,
-                resolved_type_of_parent,
+                resolved_prefix_type_id: resolved_type_of_parent,
                 ..
             } => {
                 let span_md_idx = md_mgr.span_to_md(context, &field_to_access.span);
@@ -304,9 +304,9 @@ impl FnCompiler {
             }
             ty::TyExpressionVariant::TupleElemAccess {
                 prefix,
-                elem_to_access_num: idx,
-                elem_to_access_span: span,
-                resolved_type_of_parent: tuple_type,
+                index: idx,
+                index_span: span,
+                resolved_prefix_type_id: tuple_type,
             } => self.compile_tuple_elem_expr(context, md_mgr, *prefix, tuple_type, idx, span),
             ty::TyExpressionVariant::AbiCast { span, .. } => {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
