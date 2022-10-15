@@ -1,14 +1,14 @@
 use crate::{
     language::{parsed::*, *},
+    transform,
     type_system::*,
-    AttributesMap,
 };
 use sway_types::{ident::Ident, span::Span};
 
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration {
     pub purity: Purity,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
     pub name: Ident,
     pub visibility: Visibility,
     pub body: CodeBlock,

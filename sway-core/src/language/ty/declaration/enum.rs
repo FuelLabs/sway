@@ -2,13 +2,13 @@ use std::hash::{Hash, Hasher};
 
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{language::Visibility, type_system::*, AttributesMap};
+use crate::{language::Visibility, transform, type_system::*};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyEnumDeclaration {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
     pub variants: Vec<TyEnumVariant>,
     pub(crate) span: Span,
     pub visibility: Visibility,
@@ -71,7 +71,7 @@ pub struct TyEnumVariant {
     pub type_span: Span,
     pub(crate) tag: usize,
     pub(crate) span: Span,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

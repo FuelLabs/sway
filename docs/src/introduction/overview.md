@@ -64,7 +64,7 @@ We'll be writing our code in the `src/main.sw`.
 contract;
 ```
 
-Next, we'll define a our storage value. In our case, we have a single counter that we'll call `counter` of type 64-bit unsigned integer and initialize it to 0.
+Next, we'll define a storage value. In our case, we have a single counter that we'll call `counter` of type 64-bit unsigned integer and initialize it to 0.
 
 ```sway
 storage {
@@ -201,7 +201,7 @@ At the bottom of the file, define the body of `can_get_contract_instance`. Here 
 
 ```sway
 #[tokio::test]
-async fn can_get_contract_id() {
+async fn can_get_contract_instance() {
     // Increment the counter
     let _result = instance.increment().call().await.unwrap();
 
