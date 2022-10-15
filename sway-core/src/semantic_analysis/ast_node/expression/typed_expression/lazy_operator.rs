@@ -2,7 +2,6 @@ use sway_types::Span;
 
 use crate::{
     language::{ty, LazyOp},
-    semantic_analysis::IsConstant,
     type_system::TypeId,
 };
 
@@ -20,7 +19,6 @@ pub(crate) fn instantiate_lazy_operator(
             rhs: Box::new(rhs),
         },
         return_type,
-        is_constant: IsConstant::No,
         span,
     }
 }

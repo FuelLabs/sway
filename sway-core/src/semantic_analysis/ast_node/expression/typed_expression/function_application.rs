@@ -87,7 +87,6 @@ pub(crate) fn instantiate_function_application(
         typed_arguments,
         function_decl,
         None,
-        IsConstant::No,
         None,
         span,
     );
@@ -101,7 +100,6 @@ pub(crate) fn instantiate_function_application_simple(
     arguments: VecDeque<ty::TyExpression>,
     function_decl: ty::TyFunctionDeclaration,
     selector: Option<ty::ContractCallParams>,
-    is_constant: IsConstant,
     self_state_idx: Option<StateIndex>,
     span: Span,
 ) -> CompileResult<ty::TyExpression> {
@@ -129,7 +127,6 @@ pub(crate) fn instantiate_function_application_simple(
         args_and_names,
         function_decl,
         selector,
-        is_constant,
         self_state_idx,
         span,
     );
@@ -173,7 +170,6 @@ fn instantiate_function_application_inner(
     arguments: Vec<(Ident, ty::TyExpression)>,
     function_decl: ty::TyFunctionDeclaration,
     selector: Option<ty::ContractCallParams>,
-    is_constant: IsConstant,
     self_state_idx: Option<StateIndex>,
     span: Span,
 ) -> ty::TyExpression {
@@ -187,7 +183,6 @@ fn instantiate_function_application_inner(
             selector,
         },
         return_type: function_decl.return_type,
-        is_constant,
         span,
     }
 }
