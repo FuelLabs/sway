@@ -28,7 +28,7 @@ pub fn store<T>(key: b256, value: T) {
             __state_store_quad(local_key, ptr_to_value);
 
             // Move by 32 bytes
-            ptr_to_value = ptr_to_value + 32;
+            ptr_to_value = ptr_to_value.add(32);
             size_left -= 32;
 
             // Generate a new key for each 32 byte chunk TODO Should eventually

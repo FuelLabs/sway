@@ -19,7 +19,7 @@ pub fn stack_start_ptr() -> raw_ptr {
 
 /// Memory address on top of current writable stack area (points to free memory).
 pub fn stack_ptr() -> raw_ptr {
-    asm() { fp: raw_ptr }
+    asm() { sp: raw_ptr }
 }
 
 /// Memory address of beginning of current call frame.
