@@ -1,7 +1,7 @@
 use crate::{
     error::{err, ok},
     language::{parsed::FunctionParameter, ty},
-    semantic_analysis::{IsConstant, TypeCheckContext},
+    semantic_analysis::TypeCheckContext,
     type_system::*,
     CompileResult, Namespace,
 };
@@ -163,7 +163,6 @@ fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &ty::TyFunction
             body: ty::TyExpression {
                 expression: ty::TyExpressionVariant::FunctionParameter,
                 return_type: typed_parameter.type_id,
-                is_constant: IsConstant::No,
                 span: typed_parameter.name.span(),
             },
             mutability: ty::VariableMutability::new_from_ref_mut(
