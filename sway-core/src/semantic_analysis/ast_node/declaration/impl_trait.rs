@@ -614,7 +614,7 @@ fn type_check_trait_implementation(
                 });
             }
 
-            let (mut new_warnings, new_errors) = unify_right_with_self(
+            let (new_warnings, new_errors) = unify_right_with_self(
                 fn_decl_param.type_id,
                 fn_signature_param.type_id,
                 ctx.self_type(),
