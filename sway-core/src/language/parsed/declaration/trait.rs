@@ -1,13 +1,13 @@
 use super::{FunctionDeclaration, FunctionParameter};
 
-use crate::{language::*, type_system::*, AttributesMap};
+use crate::{language::*, transform, type_system::*};
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration {
     pub name: Ident,
     pub(crate) type_parameters: Vec<TypeParameter>,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
     pub interface_surface: Vec<TraitFn>,
     pub methods: Vec<FunctionDeclaration>,
     pub(crate) supertraits: Vec<Supertrait>,
@@ -28,7 +28,7 @@ impl Spanned for Supertrait {
 #[derive(Debug, Clone)]
 pub struct TraitFn {
     pub name: Ident,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
     pub purity: Purity,
     pub parameters: Vec<FunctionParameter>,
     pub return_type: TypeInfo,

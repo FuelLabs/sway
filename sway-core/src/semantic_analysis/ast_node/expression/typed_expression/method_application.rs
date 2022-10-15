@@ -303,7 +303,6 @@ pub(crate) fn type_check_method_application(
             args_buf,
             method,
             selector,
-            IsConstant::No,
             self_state_idx,
             span,
         ),

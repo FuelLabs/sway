@@ -1,10 +1,8 @@
 use crate::{
-    error::{err, ok, CompileResult},
+    error::*,
     language::{parsed::*, *},
-    type_system::{
-        insert_type, AbiName, TraitConstraint, TypeArgument, TypeBinding, TypeParameter,
-    },
-    TypeInfo,
+    transform::{attribute::*, to_parsed_lang::*},
+    type_system::*,
 };
 
 use sway_ast::{
@@ -19,9 +17,10 @@ use sway_ast::{
     PatternStructField, PubToken, Punctuated, QualifiedPathRoot, Statement, StatementLet, Traits,
     Ty, TypeField, UseTree, WhereClause,
 };
-use sway_error::convert_parse_tree_error::ConvertParseTreeError;
-use sway_error::error::CompileError;
-use sway_error::warning::{CompileWarning, Warning};
+use sway_error::{
+    convert_parse_tree_error::ConvertParseTreeError,
+    warning::{CompileWarning, Warning},
+};
 use sway_types::{
     constants::{
         DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX,
@@ -43,54 +42,6 @@ use std::{
         Arc,
     },
 };
-
-#[derive(Debug, Default)]
-/// Contains any errors or warnings that were generated during the conversion into the parse tree.
-/// Typically these warnings and errors are populated as a side effect in the `From` and `Into`
-/// implementations of error types into [ErrorEmitted].
-pub struct ErrorContext {
-    pub(crate) warnings: Vec<CompileWarning>,
-    pub(crate) errors: Vec<CompileError>,
-}
-
-#[derive(Debug)]
-/// Represents that an error was emitted to the error context. This struct does not contain the
-/// error, rather, other errors are responsible for pushing to the [ErrorContext] in their `Into`
-/// implementations.
-pub struct ErrorEmitted {
-    _priv: (),
-}
-
-impl ErrorContext {
-    #[allow(dead_code)]
-    pub fn warning<W>(&mut self, warning: W)
-    where
-        W: Into<CompileWarning>,
-    {
-        self.warnings.push(warning.into());
-    }
-
-    pub fn error<E>(&mut self, error: E) -> ErrorEmitted
-    where
-        E: Into<CompileError>,
-    {
-        self.errors.push(error.into());
-        ErrorEmitted { _priv: () }
-    }
-
-    pub fn errors<I, E>(&mut self, errors: I) -> Option<ErrorEmitted>
-    where
-        I: IntoIterator<Item = E>,
-        E: Into<CompileError>,
-    {
-        let mut emitted_opt = None;
-        self.errors.extend(errors.into_iter().map(|error| {
-            emitted_opt = Some(ErrorEmitted { _priv: () });
-            error.into()
-        }));
-        emitted_opt
-    }
-}
 
 pub fn convert_parse_tree(
     module: Module,
@@ -232,94 +183,6 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
             content,
         })
         .collect())
-}
-
-// Each item may have a list of attributes, each with a name (the key to the hashmap) and a list of
-// zero or more args.  Attributes may be specified more than once in which case we use the union of
-// their args.
-//
-// E.g.,
-//
-//   #[foo(bar)]
-//   #[foo(baz, xyzzy)]
-//
-// is essentially equivalent to
-//
-//   #[foo(bar, baz, xyzzy)]
-//
-// but no uniquing is done so
-//
-//   #[foo(bar)]
-//   #[foo(bar)]
-//
-// is
-//
-//   #[foo(bar, bar)]
-
-/// An attribute has a name (i.e "doc", "storage") and
-/// a vector of possible arguments.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Attribute {
-    pub name: Ident,
-    pub args: Vec<Ident>,
-}
-
-/// Valid kinds of attributes supported by the compiler
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub enum AttributeKind {
-    Doc,
-    Storage,
-    Test,
-}
-
-/// Stores the attributes associated with the type.
-pub type AttributesMap = Arc<HashMap<AttributeKind, Vec<Attribute>>>;
-
-fn item_attrs_to_map(
-    ec: &mut ErrorContext,
-    attribute_list: &[AttributeDecl],
-) -> Result<AttributesMap, ErrorEmitted> {
-    let mut attrs_map: HashMap<_, Vec<Attribute>> = HashMap::new();
-    for attr_decl in attribute_list {
-        let attr = attr_decl.attribute.get();
-        let name = attr.name.as_str();
-        if !VALID_ATTRIBUTE_NAMES.contains(&name) {
-            ec.warning(CompileWarning {
-                span: attr_decl.span().clone(),
-                warning_content: Warning::UnrecognizedAttribute {
-                    attrib_name: attr.name.clone(),
-                },
-            })
-        }
-
-        let args = attr
-            .args
-            .as_ref()
-            .map(|parens| parens.get().into_iter().cloned().collect())
-            .unwrap_or_else(Vec::new);
-
-        let attribute = Attribute {
-            name: attr.name.clone(),
-            args,
-        };
-
-        if let Some(attr_kind) = match name {
-            DOC_ATTRIBUTE_NAME => Some(AttributeKind::Doc),
-            STORAGE_PURITY_ATTRIBUTE_NAME => Some(AttributeKind::Storage),
-            TEST_ATTRIBUTE_NAME => Some(AttributeKind::Test),
-            _ => None,
-        } {
-            match attrs_map.get_mut(&attr_kind) {
-                Some(old_args) => {
-                    old_args.push(attribute);
-                }
-                None => {
-                    attrs_map.insert(attr_kind, vec![attribute]);
-                }
-            }
-        }
-    }
-    Ok(Arc::new(attrs_map))
 }
 
 fn item_use_to_use_statements(
@@ -3473,4 +3336,51 @@ where
     }
     let ret = unsafe { ret.assume_init() };
     Some(ret)
+}
+
+fn item_attrs_to_map(
+    ec: &mut ErrorContext,
+    attribute_list: &[AttributeDecl],
+) -> Result<AttributesMap, ErrorEmitted> {
+    let mut attrs_map: HashMap<_, Vec<Attribute>> = HashMap::new();
+    for attr_decl in attribute_list {
+        let attr = attr_decl.attribute.get();
+        let name = attr.name.as_str();
+        if !VALID_ATTRIBUTE_NAMES.contains(&name) {
+            ec.warning(CompileWarning {
+                span: attr_decl.span().clone(),
+                warning_content: Warning::UnrecognizedAttribute {
+                    attrib_name: attr.name.clone(),
+                },
+            })
+        }
+
+        let args = attr
+            .args
+            .as_ref()
+            .map(|parens| parens.get().into_iter().cloned().collect())
+            .unwrap_or_else(Vec::new);
+
+        let attribute = Attribute {
+            name: attr.name.clone(),
+            args,
+        };
+
+        if let Some(attr_kind) = match name {
+            DOC_ATTRIBUTE_NAME => Some(AttributeKind::Doc),
+            STORAGE_PURITY_ATTRIBUTE_NAME => Some(AttributeKind::Storage),
+            TEST_ATTRIBUTE_NAME => Some(AttributeKind::Test),
+            _ => None,
+        } {
+            match attrs_map.get_mut(&attr_kind) {
+                Some(old_args) => {
+                    old_args.push(attribute);
+                }
+                None => {
+                    attrs_map.insert(attr_kind, vec![attribute]);
+                }
+            }
+        }
+    }
+    Ok(Arc::new(attrs_map))
 }
