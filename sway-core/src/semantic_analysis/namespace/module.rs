@@ -2,6 +2,7 @@ use crate::{
     error::*,
     language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
+    transform::to_parsed_lang,
     Ident, Namespace,
 };
 
@@ -66,7 +67,7 @@ impl Module {
         // it would be nice to one day maintain a span from the manifest file, but
         // we don't keep that around so we just use the span from the generated const decl instead.
         let mut compiled_constants: SymbolMap = Default::default();
-        let mut ec: crate::convert_parse_tree::ErrorContext = Default::default();
+        let mut ec: to_parsed_lang::ErrorContext = Default::default();
         let ec = &mut ec;
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -97,7 +98,7 @@ impl Module {
             let name = const_item.name.clone();
             let attributes = Default::default();
             // convert to const decl
-            let const_decl = match crate::convert_parse_tree::item_const_to_constant_declaration(
+            let const_decl = match to_parsed_lang::item_const_to_constant_declaration(
                 ec, const_item, attributes,
             ) {
                 Ok(o) => o,

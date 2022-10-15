@@ -7,7 +7,6 @@ use crate::{
             instantiate_unsafe_downcast,
         },
         namespace::Namespace,
-        IsConstant,
     },
     type_system::unify,
     CompileResult, Ident, TypeId,
@@ -107,7 +106,6 @@ fn match_literal(
         ty::TyExpression {
             expression: ty::TyExpressionVariant::Literal(scrutinee),
             return_type: exp.return_type,
-            is_constant: IsConstant::No,
             span,
         },
     )];
@@ -137,7 +135,6 @@ fn match_constant(
                 mutability: ty::VariableMutability::Immutable,
             },
             return_type: scrutinee_type_id,
-            is_constant: IsConstant::Yes,
             span,
         },
     )];
