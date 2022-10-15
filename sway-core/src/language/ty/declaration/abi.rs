@@ -1,7 +1,7 @@
 use derivative::Derivative;
 use sway_types::{Ident, Span};
 
-use crate::{declaration_engine::DeclarationId, language::parsed, type_system::*, AttributesMap};
+use crate::{declaration_engine::DeclarationId, language::parsed, transform, type_system::*};
 
 /// A [TyAbiDeclaration] contains the type-checked version of the parse tree's `AbiDeclaration`.
 #[derive(Clone, Debug, Derivative)]
@@ -19,7 +19,7 @@ pub struct TyAbiDeclaration {
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
     pub(crate) span: Span,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
 }
 
 impl CreateTypeId for TyAbiDeclaration {
