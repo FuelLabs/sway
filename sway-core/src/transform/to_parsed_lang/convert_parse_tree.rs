@@ -2346,52 +2346,41 @@ fn literal_to_literal(
 fn path_expr_to_call_path_binding(
     ec: &mut ErrorContext,
     path_expr: PathExpr,
-) -> Result<TypeBinding<CallPath<(TypeInfo, Span)>>, ErrorEmitted> {
+) -> Result<TypeBinding<CallPath>, ErrorEmitted> {
     let PathExpr {
         root_opt,
         prefix,
         mut suffix,
     } = path_expr;
     let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
-    let (prefixes, type_info, type_info_span, type_arguments) = match suffix.pop() {
-        Some((_double_colon_token, call_path_suffix)) => {
+    let (prefixes, suffix, span, type_arguments) = match suffix.pop() {
+        Some((_, call_path_suffix)) => {
             let mut prefixes = vec![path_expr_segment_to_ident(ec, prefix)?];
-            for (_double_colon_token, call_path_prefix) in suffix {
+            for (_, call_path_prefix) in suffix {
                 let ident = path_expr_segment_to_ident(ec, call_path_prefix)?;
                 // note that call paths only support one set of type arguments per call path right
                 // now
                 prefixes.push(ident);
             }
+            let span = call_path_suffix.span();
             let (suffix, ty_args) =
                 path_expr_segment_to_ident_or_type_argument(ec, call_path_suffix)?;
-            let type_info_span = suffix.span();
-            let type_info = type_name_to_type_info_opt(&suffix).unwrap_or(TypeInfo::Custom {
-                name: suffix,
-                type_arguments: None,
-            });
-            (prefixes, type_info, type_info_span, ty_args)
+            (prefixes, suffix, span, ty_args)
         }
         None => {
+            let span = prefix.span();
             let (suffix, ty_args) = path_expr_segment_to_ident_or_type_argument(ec, prefix)?;
-            let type_info_span = suffix.span();
-            let type_info = match type_name_to_type_info_opt(&suffix) {
-                Some(type_info) => type_info,
-                None => TypeInfo::Custom {
-                    name: suffix,
-                    type_arguments: None,
-                },
-            };
-            (vec![], type_info, type_info_span, ty_args)
+            (vec![], suffix, span, ty_args)
         }
     };
     Ok(TypeBinding {
         inner: CallPath {
             prefixes,
-            suffix: (type_info, type_info_span.clone()),
+            suffix,
             is_absolute,
         },
         type_arguments,
-        span: type_info_span, // TODO: change this span so that it includes the type arguments
+        span,
     })
 }
 

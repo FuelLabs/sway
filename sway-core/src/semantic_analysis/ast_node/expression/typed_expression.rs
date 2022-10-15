@@ -533,7 +533,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        // type deck the declaration
+        // type check the declaration
         let unknown_decl = check!(
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref()),
             return err(warnings, errors),
@@ -825,92 +825,98 @@ impl ty::TyExpression {
     #[allow(clippy::too_many_arguments)]
     fn type_check_struct_expression(
         mut ctx: TypeCheckContext,
-        call_path_binding: TypeBinding<CallPath<(TypeInfo, Span)>>,
+        mut call_path_binding: TypeBinding<CallPath>,
         fields: Vec<StructExpressionField>,
         span: Span,
     ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        // type check the call path
-        let type_id = check!(
-            call_path_binding.type_check_with_type_info(&mut ctx),
-            insert_type(TypeInfo::ErrorRecovery),
-            warnings,
-            errors
-        );
-
-        // extract the struct name and fields from the type info
-        let type_info = look_up_type_id(type_id);
-        let (struct_name, struct_fields) = check!(
-            type_info.expect_struct(&span),
+        // type check the declaration
+        let unknown_decl = check!(
+            TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref()),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let mut struct_fields = struct_fields.clone();
 
-        // match up the names with their type annotations from the declaration
-        let mut typed_fields_buf = vec![];
-        for def_field in struct_fields.iter_mut() {
-            let expr_field: StructExpressionField =
-                match fields.iter().find(|x| x.name == def_field.name) {
-                    Some(val) => val.clone(),
-                    None => {
-                        errors.push(CompileError::StructMissingField {
-                            field_name: def_field.name.clone(),
-                            struct_name: struct_name.clone(),
-                            span: span.clone(),
-                        });
-                        typed_fields_buf.push(ty::TyStructExpressionField {
-                            name: def_field.name.clone(),
-                            value: ty::TyExpression {
-                                expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                                return_type: insert_type(TypeInfo::ErrorRecovery),
-                                span: span.clone(),
-                            },
-                        });
-                        continue;
-                    }
-                };
+        // check that the decl is a struct decl
+        let struct_decl = check!(
+            unknown_decl.expect_struct(&span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
-            let ctx = ctx
-                .by_ref()
-                .with_help_text(
-                    "Struct field's type must match up with the type specified in its declaration.",
-                )
-                .with_type_annotation(def_field.type_id);
-            let typed_field = check!(
-                ty::TyExpression::type_check(ctx, expr_field.value),
-                continue,
-                warnings,
-                errors
-            );
-
-            def_field.span = typed_field.span.clone();
-            typed_fields_buf.push(ty::TyStructExpressionField {
-                value: typed_field,
-                name: expr_field.name.clone(),
-            });
-        }
+        let ty::TyStructDeclaration {
+            name: struct_decl_name,
+            fields: struct_decl_fields,
+            ..
+        } = struct_decl.clone();
 
         // check that there are no extra fields
-        for field in fields {
-            if !struct_fields.iter().any(|x| x.name == field.name) {
+        for field in fields.iter() {
+            if !struct_decl_fields.iter().any(|x| x.name == field.name) {
                 errors.push(CompileError::StructDoesNotHaveField {
                     field_name: field.name.clone(),
-                    struct_name: struct_name.clone(),
-                    span: field.span,
+                    struct_name: struct_decl_name.clone(),
+                    span: field.span.clone(),
                 });
             }
         }
+
+        // match up the names with their type annotations from the declaration
+        let mut exp_fields_map = fields
+            .into_iter()
+            .map(|field| (field.name.clone(), field))
+            .collect::<HashMap<_, _>>();
+        let mut decl_fields_map = struct_decl_fields
+            .into_iter()
+            .map(|field| (field.name.clone(), field))
+            .collect::<HashMap<_, _>>();
+        let mut typed_fields = vec![];
+        for (decl_field_name, decl_field) in decl_fields_map.iter_mut() {
+            match exp_fields_map.remove(decl_field_name) {
+                Some(exp_field) => {
+                    let ctx = ctx
+                        .by_ref()
+                        .with_help_text(
+                            "Struct field's type must match up with the type specified in its declaration.",
+                        )
+                        .with_type_annotation(decl_field.type_id);
+                    let value = check!(
+                        ty::TyExpression::type_check(ctx, exp_field.value),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                    decl_field.span = value.span.clone();
+                    typed_fields.push(ty::TyStructExpressionField {
+                        name: exp_field.name.clone(),
+                        value,
+                    });
+                }
+                None => {
+                    errors.push(CompileError::StructMissingField {
+                        field_name: decl_field.name.clone(),
+                        struct_name: struct_decl_name.clone(),
+                        span: span.clone(),
+                    });
+                    typed_fields.push(ty::TyStructExpressionField {
+                        name: decl_field.name.clone(),
+                        value: ty::error_recovery_expr(span.clone()),
+                    });
+                }
+            }
+        }
+
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::StructExpression {
-                struct_name: struct_name.clone(),
-                fields: typed_fields_buf,
-                span: call_path_binding.inner.suffix.1.clone(),
+                struct_name: struct_decl_name,
+                fields: typed_fields,
+                span: call_path_binding.inner.span(),
             },
-            return_type: type_id,
+            return_type: struct_decl.create_type_id(),
             span,
         };
         ok(exp, warnings, errors)
