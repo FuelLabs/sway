@@ -39,7 +39,12 @@ struct TestDescription {
     checker: filecheck::Checker,
 }
 
-pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
+pub fn run(
+    locked: bool,
+    filter_regex: Option<&regex::Regex>,
+    skip_regex: Option<&regex::Regex>,
+    skip_until_regex: Option<&regex::Regex>,
+) {
     init_tracing_subscriber(Default::default());
 
     let configured_tests = discover_test_configs().unwrap_or_else(|e| {
@@ -51,6 +56,8 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
     let mut number_of_disabled_tests = 0;
 
     let mut deployed_contracts = HashMap::<String, ContractId>::new();
+
+    let mut found = false;
 
     for TestDescription {
         name,
@@ -67,6 +74,29 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
             .map(|regex| regex.is_match(&name))
             .unwrap_or(true)
         {
+            continue;
+        }
+
+        // Skip if `skip_regex` is matched
+        if skip_regex
+            .map(|regex| regex.is_match(&name))
+            .unwrap_or(false)
+        {
+            continue;
+        }
+
+        // Skip until `skip_until_regex` is matched
+        if let Some(regex) = skip_until_regex {
+            if !found {
+                if regex.is_match(&name) {
+                    found = true;
+                } else {
+                    continue;
+                }
+            }
+        }
+
+        if !validate_abi {
             continue;
         }
 
