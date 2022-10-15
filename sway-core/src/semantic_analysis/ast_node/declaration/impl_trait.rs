@@ -621,9 +621,7 @@ fn type_check_trait_implementation(
                 &fn_signature_param.type_span,
                 ctx.help_text(),
             );
-            warnings.append(&mut new_warnings);
-
-            if !new_errors.is_empty() {
+            if !new_warnings.is_empty() || !new_errors.is_empty() {
                 errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
                     span: fn_decl_param.type_span.clone(),
@@ -656,16 +654,14 @@ fn type_check_trait_implementation(
 
         // unify the return type of the implemented function and the return
         // type of the signature
-        let (mut new_warnings, new_errors) = unify_right_with_self(
+        let (new_warnings, new_errors) = unify_right_with_self(
             fn_decl.return_type,
             fn_signature.return_type,
             ctx.self_type(),
             &fn_decl.return_type_span,
             ctx.help_text(),
         );
-        warnings.append(&mut new_warnings);
-
-        if !new_errors.is_empty() {
+        if !new_warnings.is_empty() || !new_errors.is_empty() {
             errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                 interface_name: interface_name(),
                 span: fn_decl.return_type_span.clone(),
