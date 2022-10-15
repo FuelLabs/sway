@@ -27,14 +27,6 @@ use sway_error::{
 };
 use sway_types::{span::Span, state::StateIndex, style::is_screaming_snake_case, Spanned};
 
-/// whether or not something is constantly evaluatable (if the result is known at compile
-/// time)
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub(crate) enum IsConstant {
-    Yes,
-    No,
-}
-
 impl ty::TyAstNode {
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
     pub(crate) fn is_public(&self) -> CompileResult<bool> {
