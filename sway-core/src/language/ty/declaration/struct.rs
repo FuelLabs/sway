@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{language::Visibility, type_system::*, AttributesMap};
+use crate::{language::Visibility, transform, type_system::*};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyStructDeclaration {
@@ -11,7 +11,7 @@ pub struct TyStructDeclaration {
     pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
     pub(crate) span: Span,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -70,7 +70,7 @@ pub struct TyStructField {
     pub initial_type_id: TypeId,
     pub(crate) span: Span,
     pub type_span: Span,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

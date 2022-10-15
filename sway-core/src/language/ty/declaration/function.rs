@@ -3,8 +3,8 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     declaration_engine::*,
     language::{parsed, ty::*, Purity, Visibility},
+    transform,
     type_system::*,
-    AttributesMap,
 };
 
 #[derive(Clone, Debug, Eq)]
@@ -13,7 +13,7 @@ pub struct TyFunctionDeclaration {
     pub body: TyCodeBlock,
     pub parameters: Vec<TyFunctionParameter>,
     pub span: Span,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
     pub return_type: TypeId,
     pub initial_return_type: TypeId,
     pub type_parameters: Vec<TypeParameter>,

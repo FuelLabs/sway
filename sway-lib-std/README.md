@@ -4,7 +4,7 @@ The Sway Standard Library is the foundation of portable Sway software, a set of 
 
 ## Usage
 
-The standard library is made implicitly available to all Forc projects created using `forc new`. In other words, it is not required to manually specify `std` as an explicit dependency. Forc will automagically use the version of `std` that matches its version.
+The standard library is made implicitly available to all Forc projects created using `forc new`. In other words, it is not required to manually specify `std` as an explicit dependency. Forc will automatically use the version of `std` that matches its version.
 
 Importing items from the standard library can be done using the `use` keyword, just as importing items from any other Sway library. For example:
 

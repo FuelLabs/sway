@@ -2,18 +2,12 @@ use std::fmt;
 
 use sway_types::Span;
 
-use crate::{
-    error::*, language::ty::*, semantic_analysis::IsConstant, type_system::*,
-    types::DeterministicallyAborts,
-};
+use crate::{error::*, language::ty::*, type_system::*, types::DeterministicallyAborts};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyExpression {
     pub expression: TyExpressionVariant,
     pub return_type: TypeId,
-    /// whether or not this expression is constantly evaluable (if the result is known at compile
-    /// time)
-    pub(crate) is_constant: IsConstant,
     pub span: Span,
 }
 
@@ -24,7 +18,6 @@ impl PartialEq for TyExpression {
     fn eq(&self, other: &Self) -> bool {
         self.expression == other.expression
             && look_up_type_id(self.return_type) == look_up_type_id(other.return_type)
-            && self.is_constant == other.is_constant
     }
 }
 
@@ -434,7 +427,6 @@ impl TyExpression {
         TyExpression {
             expression: TyExpressionVariant::Tuple { fields: vec![] },
             return_type: insert_type(TypeInfo::ErrorRecovery),
-            is_constant: IsConstant::No,
             span,
         }
     }

@@ -96,7 +96,6 @@ impl ty::TyMatchBranch {
         let ty::TyExpression {
             expression: typed_result_expression_variant,
             return_type: typed_result_return_type,
-            is_constant: typed_result_is_constant,
             span: typed_result_span,
         } = typed_result;
         match typed_result_expression_variant {
@@ -108,7 +107,6 @@ impl ty::TyMatchBranch {
                     content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
                         expression: typed_result_expression_variant,
                         return_type: typed_result_return_type,
-                        is_constant: typed_result_is_constant,
                         span: typed_result_span.clone(),
                     }),
                     span: typed_result_span.clone(),
@@ -123,7 +121,6 @@ impl ty::TyMatchBranch {
                 contents: code_block_contents,
             }),
             return_type: typed_result.return_type,
-            is_constant: IsConstant::No,
             span: typed_result_span,
         };
 

@@ -1,4 +1,4 @@
-use crate::AttributesMap;
+use crate::transform;
 
 use super::{FunctionDeclaration, TraitFn};
 
@@ -15,5 +15,5 @@ pub struct AbiDeclaration {
     /// The methods provided to a contract "for free" upon opting in to this interface
     pub methods: Vec<FunctionDeclaration>,
     pub(crate) span: Span,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
 }
