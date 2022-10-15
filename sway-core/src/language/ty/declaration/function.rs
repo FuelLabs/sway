@@ -2,7 +2,7 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     declaration_engine::*,
-    language::{ty::*, Purity, Visibility},
+    language::{parsed, ty::*, Purity, Visibility},
     type_system::*,
     AttributesMap,
 };
@@ -80,6 +80,38 @@ impl MonomorphizeHelper for TyFunctionDeclaration {
 
     fn name(&self) -> &Ident {
         &self.name
+    }
+}
+
+impl TyFunctionDeclaration {
+    /// Used to create a stubbed out function when the function fails to compile, preventing cascading
+    /// namespace errors
+    pub(crate) fn error(decl: parsed::FunctionDeclaration) -> TyFunctionDeclaration {
+        let parsed::FunctionDeclaration {
+            name,
+            return_type,
+            span,
+            return_type_span,
+            visibility,
+            ..
+        } = decl;
+        let initial_return_type = insert_type(return_type);
+        TyFunctionDeclaration {
+            purity: Default::default(),
+            name,
+            body: TyCodeBlock {
+                contents: Default::default(),
+            },
+            span,
+            attributes: Default::default(),
+            is_contract_call: false,
+            return_type_span,
+            parameters: Default::default(),
+            visibility,
+            return_type: initial_return_type,
+            initial_return_type,
+            type_parameters: Default::default(),
+        }
     }
 }
 

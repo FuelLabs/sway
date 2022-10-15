@@ -185,7 +185,7 @@ impl ty::TyAstNode {
                             let result = ty::TyExpression::type_check(ctx.by_ref(), body);
                             let body = check!(
                                 result,
-                                ty::error_recovery_expr(name.span()),
+                                ty::TyExpression::error(name.span()),
                                 warnings,
                                 errors
                             );
@@ -225,7 +225,7 @@ impl ty::TyAstNode {
 
                             let value = check!(
                                 result,
-                                ty::error_recovery_expr(name.span()),
+                                ty::TyExpression::error(name.span()),
                                 warnings,
                                 errors
                             );
@@ -265,7 +265,7 @@ impl ty::TyAstNode {
                                     ctx.by_ref(),
                                     fn_decl.clone()
                                 ),
-                                error_recovery_function_declaration(fn_decl),
+                                ty::TyFunctionDeclaration::error(fn_decl),
                                 warnings,
                                 errors
                             );
@@ -428,7 +428,7 @@ impl ty::TyAstNode {
                         .with_help_text("");
                     let inner = check!(
                         ty::TyExpression::type_check(ctx, expr.clone()),
-                        ty::error_recovery_expr(expr.span()),
+                        ty::TyExpression::error(expr.span()),
                         warnings,
                         errors
                     );
@@ -439,7 +439,7 @@ impl ty::TyAstNode {
                         ctx.with_help_text("Implicit return must match up with block's type.");
                     let typed_expr = check!(
                         ty::TyExpression::type_check(ctx, expr.clone()),
-                        ty::error_recovery_expr(expr.span()),
+                        ty::TyExpression::error(expr.span()),
                         warnings,
                         errors
                     );
@@ -646,36 +646,6 @@ fn type_check_trait_methods(
     ok(methods_buf, warnings, errors)
 }
 
-/// Used to create a stubbed out function when the function fails to compile, preventing cascading
-/// namespace errors
-fn error_recovery_function_declaration(decl: FunctionDeclaration) -> ty::TyFunctionDeclaration {
-    let FunctionDeclaration {
-        name,
-        return_type,
-        span,
-        return_type_span,
-        visibility,
-        ..
-    } = decl;
-    let initial_return_type = insert_type(return_type);
-    ty::TyFunctionDeclaration {
-        purity: Default::default(),
-        name,
-        body: ty::TyCodeBlock {
-            contents: Default::default(),
-        },
-        span,
-        attributes: Default::default(),
-        is_contract_call: false,
-        return_type_span,
-        parameters: Default::default(),
-        visibility,
-        return_type: initial_return_type,
-        initial_return_type,
-        type_parameters: Default::default(),
-    }
-}
-
 pub(crate) fn reassign_storage_subfield(
     ctx: TypeCheckContext,
     fields: Vec<Ident>,
@@ -770,7 +740,7 @@ pub(crate) fn reassign_storage_subfield(
     let ctx = ctx.with_type_annotation(curr_type).with_help_text("");
     let rhs = check!(
         ty::TyExpression::type_check(ctx, rhs),
-        ty::error_recovery_expr(span),
+        ty::TyExpression::error(span),
         warnings,
         errors
     );

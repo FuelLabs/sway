@@ -429,11 +429,13 @@ impl DeterministicallyAborts for TyExpression {
     }
 }
 
-pub(crate) fn error_recovery_expr(span: Span) -> TyExpression {
-    TyExpression {
-        expression: TyExpressionVariant::Tuple { fields: vec![] },
-        return_type: crate::type_system::insert_type(TypeInfo::ErrorRecovery),
-        is_constant: IsConstant::No,
-        span,
+impl TyExpression {
+    pub(crate) fn error(span: Span) -> TyExpression {
+        TyExpression {
+            expression: TyExpressionVariant::Tuple { fields: vec![] },
+            return_type: insert_type(TypeInfo::ErrorRecovery),
+            is_constant: IsConstant::No,
+            span,
+        }
     }
 }
