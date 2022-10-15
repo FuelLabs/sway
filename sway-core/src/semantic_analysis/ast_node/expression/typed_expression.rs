@@ -208,7 +208,7 @@ impl ty::TyExpression {
         let span = expr_span.clone();
         let res = match expr.kind {
             // We've already emitted an error for the `::Error` case.
-            ExpressionKind::Error(_) => ok(ty::error_recovery_expr(span), vec![], vec![]),
+            ExpressionKind::Error(_) => ok(ty::TyExpression::error(span), vec![], vec![]),
             ExpressionKind::Literal(lit) => Self::type_check_literal(lit, span),
             ExpressionKind::Variable(name) => {
                 Self::type_check_variable_expression(ctx.namespace, name, span)
@@ -364,7 +364,7 @@ impl ty::TyExpression {
                 let expr_span = expr.span();
                 let expr = check!(
                     ty::TyExpression::type_check(ctx, *expr),
-                    ty::error_recovery_expr(expr_span),
+                    ty::TyExpression::error(expr_span),
                     warnings,
                     errors,
                 );
@@ -520,13 +520,13 @@ impl ty::TyExpression {
                     name: name.clone(),
                     what_it_is: a.friendly_name(),
                 });
-                ty::error_recovery_expr(name.span())
+                ty::TyExpression::error(name.span())
             }
             None => {
                 errors.push(CompileError::UnknownVariable {
                     var_name: name.clone(),
                 });
-                ty::error_recovery_expr(name.span())
+                ty::TyExpression::error(name.span())
             }
         };
         ok(exp, warnings, errors)
@@ -572,14 +572,14 @@ impl ty::TyExpression {
         let mut ctx = ctx.with_help_text("");
         let typed_lhs = check!(
             ty::TyExpression::type_check(ctx.by_ref(), lhs.clone()),
-            ty::error_recovery_expr(lhs.span()),
+            ty::TyExpression::error(lhs.span()),
             warnings,
             errors
         );
 
         let typed_rhs = check!(
             ty::TyExpression::type_check(ctx.by_ref(), rhs.clone()),
-            ty::error_recovery_expr(rhs.span()),
+            ty::TyExpression::error(rhs.span()),
             warnings,
             errors
         );
@@ -641,7 +641,7 @@ impl ty::TyExpression {
                 .with_type_annotation(insert_type(TypeInfo::Boolean));
             check!(
                 ty::TyExpression::type_check(ctx, condition.clone()),
-                ty::error_recovery_expr(condition.span()),
+                ty::TyExpression::error(condition.span()),
                 warnings,
                 errors
             )
@@ -653,7 +653,7 @@ impl ty::TyExpression {
                 .with_type_annotation(insert_type(TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, then.clone()),
-                ty::error_recovery_expr(then.span()),
+                ty::TyExpression::error(then.span()),
                 warnings,
                 errors
             )
@@ -665,7 +665,7 @@ impl ty::TyExpression {
                 .with_type_annotation(insert_type(TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, expr.clone()),
-                ty::error_recovery_expr(expr.span()),
+                ty::TyExpression::error(expr.span()),
                 warnings,
                 errors
             )
@@ -703,7 +703,7 @@ impl ty::TyExpression {
                 .with_type_annotation(insert_type(TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, value.clone()),
-                ty::error_recovery_expr(value.span()),
+                ty::TyExpression::error(value.span()),
                 warnings,
                 errors
             )
@@ -807,7 +807,7 @@ impl ty::TyExpression {
                             .with_type_annotation(insert_type(TypeInfo::Unknown));
                         check!(
                             ty::TyExpression::type_check(ctx, initializer.clone()),
-                            ty::error_recovery_expr(initializer.span()),
+                            ty::TyExpression::error(initializer.span()),
                             warnings,
                             errors
                         )
@@ -984,7 +984,7 @@ impl ty::TyExpression {
                 .with_type_annotation(field_type.type_id);
             let typed_field = check!(
                 ty::TyExpression::type_check(ctx, field),
-                ty::error_recovery_expr(field_span),
+                ty::TyExpression::error(field_span),
                 warnings,
                 errors
             );
@@ -1212,7 +1212,7 @@ impl ty::TyExpression {
                 .with_type_annotation(insert_type(TypeInfo::B256));
             check!(
                 ty::TyExpression::type_check(ctx, address),
-                ty::error_recovery_expr(err_span),
+                ty::TyExpression::error(err_span),
                 warnings,
                 errors
             )
@@ -1371,7 +1371,7 @@ impl ty::TyExpression {
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 check!(
                     Self::type_check(ctx, expr),
-                    ty::error_recovery_expr(span),
+                    ty::TyExpression::error(span),
                     warnings,
                     errors
                 )
@@ -1621,7 +1621,7 @@ impl ty::TyExpression {
                 let rhs_span = rhs.span();
                 let rhs = check!(
                     ty::TyExpression::type_check(ctx, rhs),
-                    ty::error_recovery_expr(rhs_span),
+                    ty::TyExpression::error(rhs_span),
                     warnings,
                     errors
                 );
@@ -1750,7 +1750,7 @@ impl ty::TyExpression {
             }
             Err(e) => {
                 errors.push(e);
-                let exp = ty::error_recovery_expr(span);
+                let exp = ty::TyExpression::error(span);
                 ok(exp, vec![], errors)
             }
         }
