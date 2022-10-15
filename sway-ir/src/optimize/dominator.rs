@@ -23,6 +23,8 @@ impl DomTreeNode {
 
 // The dominator tree is represented by mapping each Block to its DomTreeNode.
 pub type DomTree = FxHashMap<Block, DomTreeNode>;
+// Dominance frontier sets.
+pub type DomFronts = FxHashMap<Block, FxHashSet<Block>>;
 
 /// Reverse Post ordering of blocks in the CFG.
 pub struct ReversePostOrder {
@@ -140,6 +142,33 @@ pub fn compute_dom_tree(context: &Context, function: &Function) -> DomTree {
     dom_tree
 }
 
+/// Compute dominance frontiers set for each block.
+pub fn compute_dom_fronts(context: &Context, function: &Function, dom_tree: &DomTree) -> DomFronts {
+    let mut res = DomFronts::default();
+    for b in function.block_iter(context) {
+        res.insert(b, FxHashSet::default());
+    }
+
+    // for all nodes, b
+    for b in function.block_iter(context) {
+        // if the number of predecessors of b >= 2
+        if b.num_predecessors(context) > 1 {
+            // unwrap() is safe as b is not "entry", and hence must have idom.
+            let b_idom = dom_tree[&b].parent.unwrap();
+            // for all predecessors, p, of b
+            for p in b.pred_iter(context) {
+                let mut runner = *p;
+                while runner != b_idom {
+                    // add b to runner’s dominance frontier set
+                    res.get_mut(&runner).unwrap().insert(b);
+                    runner = dom_tree[&runner].parent.unwrap();
+                }
+            }
+        }
+    }
+    res
+}
+
 /// Print dominator tree in the graphviz dot format.
 pub fn print_dot(context: &Context, func_name: &str, dom_tree: &DomTree) -> String {
     let mut res = format!("digraph {} {{\n", func_name);
@@ -156,5 +185,18 @@ pub fn print_dot(context: &Context, func_name: &str, dom_tree: &DomTree) -> Stri
         }
     }
     res += "}\n";
+    res
+}
+
+/// Print dominator frontiers information.
+pub fn print_dom_fronts(context: &Context, func_name: &str, dom_fronts: &DomFronts) -> String {
+    let mut res = format!("Dominance frontiers set for {}:\n", func_name);
+    for (b, dfs) in dom_fronts.iter() {
+        res += &("\t".to_string() + &b.get_label(context) + ": ");
+        for f in dfs {
+            res += &(f.get_label(context) + " ");
+        }
+        res += "\n";
+    }
     res
 }
