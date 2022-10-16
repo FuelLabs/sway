@@ -26,8 +26,12 @@ fn compute(deposit: u64) {
 fn single_loop() {
     // ANCHOR: single_loop
     let mut counter = 0;
-    while counter < 10 {
+    let mut condition = true;
+    while counter < 10 && condition {
         counter += 1;
+        if 5 < counter {
+            condition = false;
+        }
     }
     // ANCHOR_END: single_loop
 }
@@ -43,37 +47,30 @@ fn nested_loop() {
     // ANCHOR_END: nested_loop
 }
 
-// ANCHOR: break_example
-fn break_example() -> u64 {
-    let mut counter = 1;
-    let mut sum = 0;
-    let num = 10;
-    while true {
-        if counter > num {
+fn break_example() {
+    // ANCHOR: break_example
+    let mut counter = 0;
+    while counter < 10 {
+        counter += 1;
+        if 5 < counter {
             break;
         }
-        sum += counter;
-        counter += 1;
     }
-    sum // 1 + 2 + .. + 10 = 55
+    // ANCHOR_END: break_example
 }
-// ANCHOR_END: break_example
 
-// ANCHOR: continue_example
-fn continue_example() -> u64 {
+fn continue_example() {
+    // ANCHOR: continue_example
     let mut counter = 0;
-    let mut sum = 0;
-    let num = 10;
-    while counter < num {
+    while counter < 10 {
         counter += 1;
         if counter % 2 == 0 {
             continue;
         }
-        sum += counter;
+        // "other code"
     }
-    sum // 1 + 3 + .. + 9 = 25
+    // ANCHOR_END: continue_example
 }
-// ANCHOR_END: continue_example
 
 // ANCHOR: if_let_enum
 enum Foo {

@@ -1,9 +1,9 @@
 # continue
 
-`continue` is a keyword available for use inside of a `while` loop and it allows us to skip to the next iteration without executing the code after it.
-
-In this example the `while` loop will iterate until the `counter` is greater than or equal to `num`. During iteration if the value of `counter` is even then it will skip the summation and jump to the next iteration effectively adding together odd numbers.
+`continue` is a keyword available for use inside of a `while` loop and it is used to skip to the next iteration without executing the code after `continue`.
 
 ```sway
 {{#include ../../../../code/language/control_flow/src/lib.sw:continue_example}}
 ```
+
+In the example above the `while` loop is set to iterate until `counter` reaches the value of `10` however the [if expression](../if-expressions.md) will skip (not execute) the "other code" when `counter` is an even value. For example, this could be used to add all the odd numbers from `0` to `10`.

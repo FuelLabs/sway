@@ -1,16 +1,21 @@
 # while
 
-Loops in Sway are currently limited to `while` loops. This is what they look like:
+A `while` loop uses the `while` keyword followed by a condition which evaluates to a boolean.
 
 ```sway
 {{#include ../../../../code/language/control_flow/src/lib.sw:single_loop}}
 ```
 
-You need the `while` keyword, some condition (`value < 10` in this case) which will be evaluated each iteration, and a block of code inside the curly braces (`{...}`) to execute each iteration.
+In the example above we use two conditions.
+
+1. If the `counter` is less than `10` then continue to iterate
+2. If the `condition` variable is `true` then continue to iterate
+
+As long as both those conditions are `true` then the loop will iterate. In this case the loop will finish iterating once `counter` reaches the value of `6` because `condition` will be set to `false`.
 
 ### Nested loops
 
-You can also nest `while` loops if needed:
+Sway also allows nested `while` loops.
 
 ```sway
 {{#include ../../../../code/language/control_flow/src/lib.sw:nested_loop}}
