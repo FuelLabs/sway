@@ -14,7 +14,7 @@ A smart contract consists of two parts:
 
 The `ABI` is a structure which defines the endpoints that a contract exposes for other contracts to call. That is to say that functions defined in the `ABI` are considered to be `external` and thus a contract cannot call its own functions.
 
-The following example demonstrates a simple interface for a wallet which is able to receive and send funds.
+The following example demonstrates an interface for a wallet which is able to receive and send funds.
 
 The structure begins by using the keyword `abi` followed by the name of the contract. 
 
