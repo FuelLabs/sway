@@ -7,7 +7,7 @@ A Sway program can be one of four types:
 - [contract](contract.md)
   - Primarily used for protocols or systems that operate within a fixed set of rules e.g. staking contracts, decentralized exchanges
 - [library](library.md)
-  - Reusable code for handling common situations
+  - Reusable code for handling common operations
 - [script](script.md)
   - Used for complex, multi-step, on-chain interactions that won't persist e.g. using a decentralized exchange to create a leveraged position (borrow, swap, re-collateralize, borrow)
 - [predicate](predicate.md)
