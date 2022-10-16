@@ -187,6 +187,9 @@ impl ty::TyExpression {
             | ty::TyExpressionVariant::StorageAccess { .. }
             | ty::TyExpressionVariant::Break
             | ty::TyExpressionVariant::Continue => vec![],
+            ty::TyExpressionVariant::ReassignmentTypeable { rhs, .. } => {
+                rhs.gather_return_statements()
+            }
         }
     }
 

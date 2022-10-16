@@ -4,6 +4,7 @@ use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
 
 use crate::{
     language::{parsed, ty, Literal},
+    transform::to_ty_lang::*,
     type_system::*,
 };
 
@@ -31,9 +32,11 @@ pub(crate) fn transform_to_ty_expression(exp: parsed::Expression) -> ty::TyExpre
         parsed::ExpressionKind::DelineatedPath(_) => todo!(),
         parsed::ExpressionKind::AbiCast(_) => todo!(),
         parsed::ExpressionKind::ArrayIndex(exp) => transform_to_ty_array_index(exp, span),
-        parsed::ExpressionKind::StorageAccess(exp) => todo!(),
-        parsed::ExpressionKind::IntrinsicFunction(_) => todo!(),
-        parsed::ExpressionKind::WhileLoop(_) => todo!(),
+        parsed::ExpressionKind::StorageAccess(_) => todo!(),
+        parsed::ExpressionKind::IntrinsicFunction(exp) => {
+            transform_to_ty_intrinsic_function(exp, span)
+        }
+        parsed::ExpressionKind::WhileLoop(exp) => transform_to_ty_while_loop(exp, span),
         parsed::ExpressionKind::Break => ty::TyExpression {
             expression: ty::TyExpressionVariant::Break,
             return_type: insert_type(TypeInfo::Unknown),
@@ -290,14 +293,90 @@ fn transform_to_ty_array_index(exp: parsed::ArrayIndexExpression, span: Span) ->
     }
 }
 
-fn transform_to_ty_storage_access(
-    exp: parsed::StorageAccessExpression,
+fn transform_to_ty_intrinsic_function(
+    exp: parsed::IntrinsicFunctionExpression,
     span: Span,
 ) -> ty::TyExpression {
-    let parsed::StorageAccessExpression { field_names } = exp;
-    ty::TyExpression {
-        expression: ty::TyExpressionVariant::StorageAccess(storage_access),
-        return_type,
+    let parsed::IntrinsicFunctionExpression {
+        kind_binding,
+        arguments,
+    } = exp;
+    let TypeBinding {
+        inner: kind,
+        type_arguments,
+        ..
+    } = kind_binding;
+    let arguments = arguments
+        .into_iter()
+        .map(transform_to_ty_expression)
+        .collect();
+    let type_info = match kind {
+        sway_ast::Intrinsic::GetStorageKey => TypeInfo::B256,
+        sway_ast::Intrinsic::IsReferenceType => TypeInfo::Boolean,
+        sway_ast::Intrinsic::SizeOfType => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        sway_ast::Intrinsic::SizeOfVal => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        sway_ast::Intrinsic::Eq => TypeInfo::Boolean,
+        sway_ast::Intrinsic::Gtf => TypeInfo::Unknown,
+        sway_ast::Intrinsic::AddrOf => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        sway_ast::Intrinsic::StateLoadWord => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        sway_ast::Intrinsic::StateStoreWord => TypeInfo::Tuple(vec![]),
+        sway_ast::Intrinsic::StateLoadQuad => TypeInfo::Tuple(vec![]),
+        sway_ast::Intrinsic::StateStoreQuad => TypeInfo::Tuple(vec![]),
+        sway_ast::Intrinsic::Log => TypeInfo::Tuple(vec![]),
+        sway_ast::Intrinsic::Add => TypeInfo::Unknown,
+        sway_ast::Intrinsic::Sub => TypeInfo::Unknown,
+        sway_ast::Intrinsic::Mul => TypeInfo::Unknown,
+        sway_ast::Intrinsic::Div => TypeInfo::Unknown,
+        sway_ast::Intrinsic::Revert => TypeInfo::Unknown,
+    };
+    let intrinsic_function = ty::TyIntrinsicFunctionKind {
+        kind,
+        arguments,
+        type_arguments,
         span: span.clone(),
+    };
+    ty::TyExpression {
+        expression: ty::TyExpressionVariant::IntrinsicFunction(intrinsic_function),
+        return_type: insert_type(type_info),
+        span,
+    }
+}
+
+fn transform_to_ty_while_loop(exp: parsed::WhileLoopExpression, span: Span) -> ty::TyExpression {
+    let parsed::WhileLoopExpression { condition, body } = exp;
+    let condition = transform_to_ty_expression(*condition);
+    let body = transform_to_ty_code_block(body);
+    ty::TyExpression {
+        expression: ty::TyExpressionVariant::WhileLoop {
+            condition: Box::new(condition),
+            body,
+        },
+        return_type: insert_type(TypeInfo::Tuple(vec![])),
+        span,
+    }
+}
+
+fn transform_to_ty_reassignment(
+    exp: parsed::ReassignmentExpression,
+    span: Span,
+) -> ty::TyExpression {
+    let parsed::ReassignmentExpression { lhs, rhs } = exp;
+    let rhs = transform_to_ty_expression(*rhs);
+    let lhs = match lhs {
+        parsed::ReassignmentTarget::VariableExpression(exp) => {
+            let exp = transform_to_ty_expression(*exp);
+            ty::TyReassignmentTarget::VariableExpression(Box::new(exp))
+        }
+        parsed::ReassignmentTarget::StorageField(name) => {
+            ty::TyReassignmentTarget::StorageField(name)
+        }
+    };
+    ty::TyExpression {
+        expression: ty::TyExpressionVariant::ReassignmentTypeable {
+            lhs,
+            rhs: Box::new(rhs),
+        },
+        return_type: insert_type(TypeInfo::Tuple(vec![])),
+        span,
     }
 }

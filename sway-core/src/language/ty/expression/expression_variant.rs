@@ -120,6 +120,10 @@ pub enum TyExpressionVariant {
     },
     Break,
     Continue,
+    ReassignmentTypeable {
+        lhs: TyReassignmentTarget,
+        rhs: Box<TyExpression>,
+    },
     Reassignment(Box<TyReassignment>),
     StorageReassignment(Box<TyStorageReassignment>),
     Return(Box<TyExpression>),
@@ -461,6 +465,10 @@ impl CopyTypes for TyExpressionVariant {
             Reassignment(reassignment) => reassignment.copy_types(type_mapping),
             StorageReassignment(..) => (),
             Return(stmt) => stmt.copy_types(type_mapping),
+            ReassignmentTypeable { lhs, rhs } => {
+                lhs.copy_types(type_mapping);
+                rhs.copy_types(type_mapping);
+            }
         }
     }
 }
@@ -577,6 +585,9 @@ impl fmt::Display for TyExpressionVariant {
             }
             TyExpressionVariant::Return(exp) => {
                 format!("return {}", *exp)
+            }
+            TyExpressionVariant::ReassignmentTypeable { lhs, .. } => {
+                format!("reassignment to {}", lhs)
             }
         };
         write!(f, "{}", s)

@@ -1,8 +1,57 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt};
 
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
-use crate::{language::ty::*, type_system::*};
+use crate::{error::*, language::ty::*, type_system::*, types::DeterministicallyAborts};
+
+#[derive(Clone, Debug)]
+pub enum TyReassignmentTarget {
+    VariableExpression(Box<TyExpression>),
+    StorageField(Vec<Ident>),
+}
+
+impl CopyTypes for TyReassignmentTarget {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        if let TyReassignmentTarget::VariableExpression(exp) = self {
+            exp.copy_types(type_mapping);
+        }
+    }
+}
+
+impl fmt::Display for TyReassignmentTarget {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TyReassignmentTarget::VariableExpression(exp) => write!(f, "{}", exp),
+            TyReassignmentTarget::StorageField(names) => write!(
+                f,
+                "{}",
+                names
+                    .iter()
+                    .map(|name| name.to_string())
+                    .collect::<Vec<_>>()
+                    .join(".")
+            ),
+        }
+    }
+}
+
+impl CollectTypesMetadata for TyReassignmentTarget {
+    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
+        match self {
+            TyReassignmentTarget::VariableExpression(exp) => exp.collect_types_metadata(),
+            TyReassignmentTarget::StorageField(_) => ok(vec![], vec![], vec![]),
+        }
+    }
+}
+
+impl DeterministicallyAborts for TyReassignmentTarget {
+    fn deterministically_aborts(&self) -> bool {
+        match self {
+            TyReassignmentTarget::VariableExpression(exp) => exp.deterministically_aborts(),
+            TyReassignmentTarget::StorageField(_) => false,
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TyReassignment {

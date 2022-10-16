@@ -125,6 +125,12 @@ fn expr_validate(expr: &ty::TyExpression) -> CompileResult<()> {
         ty::TyExpressionVariant::Return(exp) => {
             check!(expr_validate(exp), (), warnings, errors)
         }
+        ty::TyExpressionVariant::ReassignmentTypeable { lhs, rhs } => {
+            if let ty::TyReassignmentTarget::VariableExpression(lhs) = lhs {
+                check!(expr_validate(lhs), (), warnings, errors);
+            }
+            check!(expr_validate(rhs), (), warnings, errors)
+        }
     }
     ok((), warnings, errors)
 }

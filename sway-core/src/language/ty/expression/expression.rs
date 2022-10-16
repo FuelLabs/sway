@@ -339,6 +339,20 @@ impl CollectTypesMetadata for TyExpression {
                     errors
                 ));
             }
+            ReassignmentTypeable { lhs, rhs } => {
+                res.append(&mut check!(
+                    lhs.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                res.append(&mut check!(
+                    rhs.collect_types_metadata(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+            }
         }
         ok(res, warnings, errors)
     }
@@ -418,6 +432,9 @@ impl DeterministicallyAborts for TyExpression {
             // someone could write `return break;` in a loop, which would mean the return never
             // gets executed.
             Return(..) => true,
+            ReassignmentTypeable { lhs, rhs } => {
+                lhs.deterministically_aborts() || rhs.deterministically_aborts()
+            }
         }
     }
 }
