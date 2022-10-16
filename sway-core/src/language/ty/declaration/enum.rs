@@ -1,8 +1,9 @@
 use std::hash::{Hash, Hasher};
 
+use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{language::Visibility, transform, type_system::*};
+use crate::{error::*, language::Visibility, transform, type_system::*};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyEnumDeclaration {
@@ -60,6 +61,31 @@ impl MonomorphizeHelper for TyEnumDeclaration {
 
     fn name(&self) -> &Ident {
         &self.name
+    }
+}
+
+impl TyEnumDeclaration {
+    pub(crate) fn expect_variant_from_name(
+        &self,
+        variant_name: &Ident,
+    ) -> CompileResult<&TyEnumVariant> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self
+            .variants
+            .iter()
+            .find(|x| x.name.as_str() == variant_name.as_str())
+        {
+            Some(variant) => ok(variant, warnings, errors),
+            None => {
+                errors.push(CompileError::UnknownEnumVariant {
+                    enum_name: self.name.clone(),
+                    variant_name: variant_name.clone(),
+                    span: self.span.clone(),
+                });
+                err(warnings, errors)
+            }
+        }
     }
 }
 

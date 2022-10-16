@@ -51,7 +51,7 @@ pub(crate) fn instantiate_function_application(
 
             let exp = check!(
                 ty::TyExpression::type_check(ctx, arg.clone()),
-                ty::error_recovery_expr(arg.span()),
+                ty::TyExpression::error(arg.span()),
                 warnings,
                 errors
             );
