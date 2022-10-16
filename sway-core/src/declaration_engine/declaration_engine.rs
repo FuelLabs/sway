@@ -1,15 +1,9 @@
 use lazy_static::lazy_static;
 use std::{collections::HashMap, sync::RwLock};
+use sway_error::error::CompileError;
 use sway_types::{Span, Spanned};
 
-use crate::{
-    concurrent_slab::ConcurrentSlab,
-    semantic_analysis::{
-        TypedAbiDeclaration, TypedConstantDeclaration, TypedEnumDeclaration, TypedImplTrait,
-        TypedStorageDeclaration, TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
-    },
-    CompileError, TypedFunctionDeclaration,
-};
+use crate::{concurrent_slab::ConcurrentSlab, language::ty};
 
 use super::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper};
 
@@ -64,7 +58,7 @@ impl DeclarationEngine {
         }
     }
 
-    fn insert_function(&self, function: TypedFunctionDeclaration) -> DeclarationId {
+    fn insert_function(&self, function: ty::TyFunctionDeclaration) -> DeclarationId {
         let span = function.span();
         DeclarationId::new(
             self.slab.insert(DeclarationWrapper::Function(function)),
@@ -76,14 +70,14 @@ impl DeclarationEngine {
         &self,
         index: DeclarationId,
         span: &Span,
-    ) -> Result<TypedFunctionDeclaration, CompileError> {
+    ) -> Result<ty::TyFunctionDeclaration, CompileError> {
         self.slab.get(*index).expect_function(span)
     }
 
     fn add_monomorphized_function_copy(
         &self,
         original_id: DeclarationId,
-        new_copy: TypedFunctionDeclaration,
+        new_copy: ty::TyFunctionDeclaration,
     ) {
         let span = new_copy.span();
         let new_id = DeclarationId::new(
@@ -97,14 +91,14 @@ impl DeclarationEngine {
         &self,
         original_id: DeclarationId,
         span: &Span,
-    ) -> Result<Vec<TypedFunctionDeclaration>, CompileError> {
+    ) -> Result<Vec<ty::TyFunctionDeclaration>, CompileError> {
         self.get_monomorphized_copies(original_id)
             .into_iter()
             .map(|x| x.expect_function(span))
             .collect::<Result<_, _>>()
     }
 
-    fn insert_trait(&self, r#trait: TypedTraitDeclaration) -> DeclarationId {
+    fn insert_trait(&self, r#trait: ty::TyTraitDeclaration) -> DeclarationId {
         let span = r#trait.name.span();
         DeclarationId::new(self.slab.insert(DeclarationWrapper::Trait(r#trait)), span)
     }
@@ -113,11 +107,11 @@ impl DeclarationEngine {
         &self,
         index: DeclarationId,
         span: &Span,
-    ) -> Result<TypedTraitDeclaration, CompileError> {
+    ) -> Result<ty::TyTraitDeclaration, CompileError> {
         self.slab.get(*index).expect_trait(span)
     }
 
-    fn insert_trait_fn(&self, trait_fn: TypedTraitFn) -> DeclarationId {
+    fn insert_trait_fn(&self, trait_fn: ty::TyTraitFn) -> DeclarationId {
         let span = trait_fn.name.span();
         DeclarationId::new(
             self.slab.insert(DeclarationWrapper::TraitFn(trait_fn)),
@@ -129,11 +123,11 @@ impl DeclarationEngine {
         &self,
         index: DeclarationId,
         span: &Span,
-    ) -> Result<TypedTraitFn, CompileError> {
+    ) -> Result<ty::TyTraitFn, CompileError> {
         self.slab.get(*index).expect_trait_fn(span)
     }
 
-    fn insert_impl_trait(&self, impl_trait: TypedImplTrait) -> DeclarationId {
+    fn insert_impl_trait(&self, impl_trait: ty::TyImplTrait) -> DeclarationId {
         let span = impl_trait.span.clone();
         DeclarationId::new(
             self.slab.insert(DeclarationWrapper::ImplTrait(impl_trait)),
@@ -145,11 +139,11 @@ impl DeclarationEngine {
         &self,
         index: DeclarationId,
         span: &Span,
-    ) -> Result<TypedImplTrait, CompileError> {
+    ) -> Result<ty::TyImplTrait, CompileError> {
         self.slab.get(*index).expect_impl_trait(span)
     }
 
-    fn insert_struct(&self, r#struct: TypedStructDeclaration) -> DeclarationId {
+    fn insert_struct(&self, r#struct: ty::TyStructDeclaration) -> DeclarationId {
         let span = r#struct.span();
         DeclarationId::new(self.slab.insert(DeclarationWrapper::Struct(r#struct)), span)
     }
@@ -158,14 +152,14 @@ impl DeclarationEngine {
         &self,
         index: DeclarationId,
         span: &Span,
-    ) -> Result<TypedStructDeclaration, CompileError> {
+    ) -> Result<ty::TyStructDeclaration, CompileError> {
         self.slab.get(*index).expect_struct(span)
     }
 
     fn add_monomorphized_struct_copy(
         &self,
         original_id: DeclarationId,
-        new_copy: TypedStructDeclaration,
+        new_copy: ty::TyStructDeclaration,
     ) {
         let span = new_copy.span();
         let new_id =
@@ -177,14 +171,14 @@ impl DeclarationEngine {
         &self,
         original_id: DeclarationId,
         span: &Span,
-    ) -> Result<Vec<TypedStructDeclaration>, CompileError> {
+    ) -> Result<Vec<ty::TyStructDeclaration>, CompileError> {
         self.get_monomorphized_copies(original_id)
             .into_iter()
             .map(|x| x.expect_struct(span))
             .collect::<Result<_, _>>()
     }
 
-    fn insert_storage(&self, storage: TypedStorageDeclaration) -> DeclarationId {
+    fn insert_storage(&self, storage: ty::TyStorageDeclaration) -> DeclarationId {
         let span = storage.span();
         DeclarationId::new(self.slab.insert(DeclarationWrapper::Storage(storage)), span)
     }
@@ -193,11 +187,11 @@ impl DeclarationEngine {
         &self,
         index: DeclarationId,
         span: &Span,
-    ) -> Result<TypedStorageDeclaration, CompileError> {
+    ) -> Result<ty::TyStorageDeclaration, CompileError> {
         self.slab.get(*index).expect_storage(span)
     }
 
-    fn insert_abi(&self, abi: TypedAbiDeclaration) -> DeclarationId {
+    fn insert_abi(&self, abi: ty::TyAbiDeclaration) -> DeclarationId {
         let span = abi.span.clone();
         DeclarationId::new(self.slab.insert(DeclarationWrapper::Abi(abi)), span)
     }
@@ -206,11 +200,11 @@ impl DeclarationEngine {
         &self,
         index: DeclarationId,
         span: &Span,
-    ) -> Result<TypedAbiDeclaration, CompileError> {
+    ) -> Result<ty::TyAbiDeclaration, CompileError> {
         self.slab.get(*index).expect_abi(span)
     }
 
-    fn insert_constant(&self, constant: TypedConstantDeclaration) -> DeclarationId {
+    fn insert_constant(&self, constant: ty::TyConstantDeclaration) -> DeclarationId {
         let span = constant.name.span();
         DeclarationId::new(
             self.slab
@@ -223,11 +217,11 @@ impl DeclarationEngine {
         &self,
         index: DeclarationId,
         span: &Span,
-    ) -> Result<TypedConstantDeclaration, CompileError> {
+    ) -> Result<ty::TyConstantDeclaration, CompileError> {
         self.slab.get(*index).expect_constant(span)
     }
 
-    fn insert_enum(&self, enum_decl: TypedEnumDeclaration) -> DeclarationId {
+    fn insert_enum(&self, enum_decl: ty::TyEnumDeclaration) -> DeclarationId {
         let span = enum_decl.span();
         DeclarationId::new(self.slab.insert(DeclarationWrapper::Enum(enum_decl)), span)
     }
@@ -236,14 +230,14 @@ impl DeclarationEngine {
         &self,
         index: DeclarationId,
         span: &Span,
-    ) -> Result<TypedEnumDeclaration, CompileError> {
+    ) -> Result<ty::TyEnumDeclaration, CompileError> {
         self.slab.get(*index).expect_enum(span)
     }
 
     fn add_monomorphized_enum_copy(
         &self,
         original_id: DeclarationId,
-        new_copy: TypedEnumDeclaration,
+        new_copy: ty::TyEnumDeclaration,
     ) {
         let span = new_copy.span();
         let new_id = DeclarationId::new(self.slab.insert(DeclarationWrapper::Enum(new_copy)), span);
@@ -267,20 +261,20 @@ pub(crate) fn de_add_monomorphized_copy(original_id: DeclarationId, new_id: Decl
     DECLARATION_ENGINE.add_monomorphized_copy(original_id, new_id);
 }
 
-pub(crate) fn de_insert_function(function: TypedFunctionDeclaration) -> DeclarationId {
+pub(crate) fn de_insert_function(function: ty::TyFunctionDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.insert_function(function)
 }
 
 pub fn de_get_function(
     index: DeclarationId,
     span: &Span,
-) -> Result<TypedFunctionDeclaration, CompileError> {
+) -> Result<ty::TyFunctionDeclaration, CompileError> {
     DECLARATION_ENGINE.get_function(index, span)
 }
 
 pub(crate) fn de_add_monomorphized_function_copy(
     original_id: DeclarationId,
-    new_copy: TypedFunctionDeclaration,
+    new_copy: ty::TyFunctionDeclaration,
 ) {
     DECLARATION_ENGINE.add_monomorphized_function_copy(original_id, new_copy);
 }
@@ -288,57 +282,54 @@ pub(crate) fn de_add_monomorphized_function_copy(
 pub(crate) fn de_get_monomorphized_function_copies(
     original_id: DeclarationId,
     span: &Span,
-) -> Result<Vec<TypedFunctionDeclaration>, CompileError> {
+) -> Result<Vec<ty::TyFunctionDeclaration>, CompileError> {
     DECLARATION_ENGINE.get_monomorphized_function_copies(original_id, span)
 }
 
-pub(crate) fn de_insert_trait(r#trait: TypedTraitDeclaration) -> DeclarationId {
+pub(crate) fn de_insert_trait(r#trait: ty::TyTraitDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.insert_trait(r#trait)
 }
 
 pub fn de_get_trait(
     index: DeclarationId,
     span: &Span,
-) -> Result<TypedTraitDeclaration, CompileError> {
+) -> Result<ty::TyTraitDeclaration, CompileError> {
     DECLARATION_ENGINE.get_trait(index, span)
 }
 
-pub(crate) fn de_insert_trait_fn(trait_fn: TypedTraitFn) -> DeclarationId {
+pub(crate) fn de_insert_trait_fn(trait_fn: ty::TyTraitFn) -> DeclarationId {
     DECLARATION_ENGINE.insert_trait_fn(trait_fn)
 }
 
-pub(crate) fn de_get_trait_fn(
-    index: DeclarationId,
-    span: &Span,
-) -> Result<TypedTraitFn, CompileError> {
+pub fn de_get_trait_fn(index: DeclarationId, span: &Span) -> Result<ty::TyTraitFn, CompileError> {
     DECLARATION_ENGINE.get_trait_fn(index, span)
 }
 
-pub(crate) fn de_insert_impl_trait(impl_trait: TypedImplTrait) -> DeclarationId {
+pub(crate) fn de_insert_impl_trait(impl_trait: ty::TyImplTrait) -> DeclarationId {
     DECLARATION_ENGINE.insert_impl_trait(impl_trait)
 }
 
 pub fn de_get_impl_trait(
     index: DeclarationId,
     span: &Span,
-) -> Result<TypedImplTrait, CompileError> {
+) -> Result<ty::TyImplTrait, CompileError> {
     DECLARATION_ENGINE.get_impl_trait(index, span)
 }
 
-pub(crate) fn de_insert_struct(r#struct: TypedStructDeclaration) -> DeclarationId {
+pub(crate) fn de_insert_struct(r#struct: ty::TyStructDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.insert_struct(r#struct)
 }
 
 pub fn de_get_struct(
     index: DeclarationId,
     span: &Span,
-) -> Result<TypedStructDeclaration, CompileError> {
+) -> Result<ty::TyStructDeclaration, CompileError> {
     DECLARATION_ENGINE.get_struct(index, span)
 }
 
 pub(crate) fn de_add_monomorphized_struct_copy(
     original_id: DeclarationId,
-    new_copy: TypedStructDeclaration,
+    new_copy: ty::TyStructDeclaration,
 ) {
     DECLARATION_ENGINE.add_monomorphized_struct_copy(original_id, new_copy);
 }
@@ -346,54 +337,54 @@ pub(crate) fn de_add_monomorphized_struct_copy(
 pub(crate) fn de_get_monomorphized_struct_copies(
     original_id: DeclarationId,
     span: &Span,
-) -> Result<Vec<TypedStructDeclaration>, CompileError> {
+) -> Result<Vec<ty::TyStructDeclaration>, CompileError> {
     DECLARATION_ENGINE.get_monomorphized_struct_copies(original_id, span)
 }
 
-pub(crate) fn de_insert_storage(storage: TypedStorageDeclaration) -> DeclarationId {
+pub(crate) fn de_insert_storage(storage: ty::TyStorageDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.insert_storage(storage)
 }
 
 pub fn de_get_storage(
     index: DeclarationId,
     span: &Span,
-) -> Result<TypedStorageDeclaration, CompileError> {
+) -> Result<ty::TyStorageDeclaration, CompileError> {
     DECLARATION_ENGINE.get_storage(index, span)
 }
 
-pub(crate) fn de_insert_abi(abi: TypedAbiDeclaration) -> DeclarationId {
+pub(crate) fn de_insert_abi(abi: ty::TyAbiDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.insert_abi(abi)
 }
 
-pub fn de_get_abi(index: DeclarationId, span: &Span) -> Result<TypedAbiDeclaration, CompileError> {
+pub fn de_get_abi(index: DeclarationId, span: &Span) -> Result<ty::TyAbiDeclaration, CompileError> {
     DECLARATION_ENGINE.get_abi(index, span)
 }
 
-pub(crate) fn de_insert_constant(constant: TypedConstantDeclaration) -> DeclarationId {
+pub(crate) fn de_insert_constant(constant: ty::TyConstantDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.insert_constant(constant)
 }
 
 pub fn de_get_constant(
     index: DeclarationId,
     span: &Span,
-) -> Result<TypedConstantDeclaration, CompileError> {
+) -> Result<ty::TyConstantDeclaration, CompileError> {
     DECLARATION_ENGINE.get_constant(index, span)
 }
 
-pub(crate) fn de_insert_enum(enum_decl: TypedEnumDeclaration) -> DeclarationId {
+pub(crate) fn de_insert_enum(enum_decl: ty::TyEnumDeclaration) -> DeclarationId {
     DECLARATION_ENGINE.insert_enum(enum_decl)
 }
 
 pub fn de_get_enum(
     index: DeclarationId,
     span: &Span,
-) -> Result<TypedEnumDeclaration, CompileError> {
+) -> Result<ty::TyEnumDeclaration, CompileError> {
     DECLARATION_ENGINE.get_enum(index, span)
 }
 
 pub(crate) fn de_add_monomorphized_enum_copy(
     original_id: DeclarationId,
-    new_copy: TypedEnumDeclaration,
+    new_copy: ty::TyEnumDeclaration,
 ) {
     DECLARATION_ENGINE.add_monomorphized_enum_copy(original_id, new_copy);
 }

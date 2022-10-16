@@ -1,6 +1,6 @@
 use super::*;
 use std::fmt;
-use sway_types::{JsonTypeApplication, JsonTypeDeclaration, Span};
+use sway_types::{JsonTypeApplication, JsonTypeDeclaration};
 
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
@@ -33,17 +33,8 @@ impl From<usize> for TypeId {
 
 impl CollectTypesMetadata for TypeId {
     fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
-        use TypeInfo::*;
-        let span_override = if let TypeInfo::Ref(_, span) = look_up_type_id_raw(*self) {
-            Some(span)
-        } else {
-            None
-        };
         let res = match look_up_type_id(*self) {
-            UnknownGeneric { name } => vec![TypeMetadata::UnresolvedType {
-                name,
-                span_override,
-            }],
+            TypeInfo::UnknownGeneric { name } => vec![TypeMetadata::UnresolvedType(name)],
             _ => vec![],
         };
         ok(res, vec![], vec![])
@@ -80,9 +71,6 @@ impl ReplaceSelfType for TypeId {
                     field.replace_self_type(self_type);
                 }
             }
-            TypeInfo::Ref(mut type_id, _) => {
-                type_id.replace_self_type(self_type);
-            }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.replace_self_type(self_type);
@@ -109,7 +97,6 @@ impl ReplaceSelfType for TypeId {
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
-            | TypeInfo::Byte
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::Contract
@@ -118,15 +105,17 @@ impl ReplaceSelfType for TypeId {
     }
 }
 
+impl CopyTypes for TypeId {
+    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        if let Some(matching_id) = type_mapping.find_match(*self) {
+            *self = matching_id;
+        }
+    }
+}
+
 impl TypeId {
     pub(super) fn new(index: usize) -> TypeId {
         TypeId(index)
-    }
-
-    pub(crate) fn update_type(&mut self, type_mapping: &TypeMapping, span: &Span) {
-        if let Some(matching_id) = type_mapping.find_match(*self) {
-            *self = insert_type(TypeInfo::Ref(matching_id, span.clone()));
-        }
     }
 
     pub(crate) fn get_type_parameters(&self) -> Option<Vec<TypeParameter>> {
@@ -387,6 +376,35 @@ impl TypeId {
                     })
                     .collect::<Vec<_>>()
             }),
+            TypeInfo::Enum {
+                type_parameters, ..
+            }
+            | TypeInfo::Struct {
+                type_parameters, ..
+            } => {
+                // Here, type_id for each type parameter should contain resolved types
+                let json_type_arguments = type_parameters
+                    .iter()
+                    .map(|v| JsonTypeDeclaration {
+                        type_id: *v.type_id,
+                        type_field: v.type_id.get_json_type_str(v.type_id),
+                        components: v.type_id.get_json_type_components(types, v.type_id),
+                        type_parameters: v.type_id.get_json_type_parameters(types, v.type_id),
+                    })
+                    .collect::<Vec<_>>();
+                types.extend(json_type_arguments);
+
+                Some(
+                    type_parameters
+                        .iter()
+                        .map(|arg| JsonTypeApplication {
+                            name: "".to_string(),
+                            type_id: *arg.type_id,
+                            type_arguments: arg.type_id.get_json_type_arguments(types, arg.type_id),
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            }
             _ => None,
         }
     }

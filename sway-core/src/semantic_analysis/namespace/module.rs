@@ -1,12 +1,9 @@
 use crate::{
     error::*,
-    parse_tree::{Declaration, ExpressionKind, Visibility},
-    semantic_analysis::{
-        ast_node::{TypedAstNode, TypedAstNodeContent, TypedVariableDeclaration},
-        declaration::VariableMutability,
-        TypeCheckContext,
-    },
-    AstNode, AstNodeContent, CompileResult, Ident, Namespace, TypedDeclaration,
+    language::{parsed::*, ty, Visibility},
+    semantic_analysis::*,
+    transform::to_parsed_lang,
+    Ident, Namespace,
 };
 
 use super::{
@@ -17,7 +14,9 @@ use super::{
 
 use std::collections::BTreeMap;
 use sway_ast::ItemConst;
-use sway_parse::{handler::Handler, lex, Parser};
+use sway_error::error::CompileError;
+use sway_error::handler::Handler;
+use sway_parse::{lex, Parser};
 use sway_types::{span::Span, ConfigTimeConstant, Spanned};
 
 /// A single `Module` within a Sway project.
@@ -68,19 +67,20 @@ impl Module {
         // it would be nice to one day maintain a span from the manifest file, but
         // we don't keep that around so we just use the span from the generated const decl instead.
         let mut compiled_constants: SymbolMap = Default::default();
-        let mut ec: crate::convert_parse_tree::ErrorContext = Default::default();
+        let mut ec: to_parsed_lang::ErrorContext = Default::default();
         let ec = &mut ec;
         let mut warnings = vec![];
         let mut errors = vec![];
         // this for loop performs a miniature compilation of each const item in the config
         for (name, ConfigTimeConstant { r#type, value }) in constants.into_iter() {
+            // FIXME(Centril): Stop parsing. Construct AST directly instead!
             // parser config
             let const_item = format!("const {name}: {type} = {value};");
             let const_item_len = const_item.len();
             let input_arc = std::sync::Arc::from(const_item);
-            let token_stream = lex(&input_arc, 0, const_item_len, None).unwrap();
             let handler = Handler::default();
-            let mut parser = Parser::new(&token_stream, &handler);
+            let token_stream = lex(&handler, &input_arc, 0, const_item_len, None).unwrap();
+            let mut parser = Parser::new(&handler, &token_stream);
             // perform the parse
             let const_item: ItemConst = match parser.parse() {
                 Ok(o) => o,
@@ -96,9 +96,9 @@ impl Module {
 
             // perform the conversions from parser code to parse tree types
             let name = const_item.name.clone();
-            let attributes = std::collections::HashMap::new();
+            let attributes = Default::default();
             // convert to const decl
-            let const_decl = match crate::convert_parse_tree::item_const_to_constant_declaration(
+            let const_decl = match to_parsed_lang::item_const_to_constant_declaration(
                 ec, const_item, attributes,
             ) {
                 Ok(o) => o,
@@ -125,14 +125,14 @@ impl Module {
             };
             let mut ns = Namespace::init_root(Default::default());
             let type_check_ctx = TypeCheckContext::from_root(&mut ns);
-            let typed_node =
-                TypedAstNode::type_check(type_check_ctx, ast_node).unwrap(&mut vec![], &mut vec![]);
+            let typed_node = ty::TyAstNode::type_check(type_check_ctx, ast_node)
+                .unwrap(&mut vec![], &mut vec![]);
             // get the decl out of the typed node:
             // we know as an invariant this must be a const decl, as we hardcoded a const decl in
             // the above `format!`.  if it isn't we report an
             // error that only constant items are alowed, defensive programming etc...
             let typed_decl = match typed_node.content {
-                TypedAstNodeContent::Declaration(decl) => decl,
+                ty::TyAstNodeContent::Declaration(decl) => decl,
                 _ => {
                     errors.push(CompileError::ConfigTimeConstantNotAConstDecl {
                         span: const_item_span,
@@ -339,11 +339,11 @@ impl Module {
                     errors.push(CompileError::ImportPrivateSymbol { name: item.clone() });
                 }
                 // if this is a const, insert it into the local namespace directly
-                if let TypedDeclaration::VariableDeclaration(ref var_decl) = decl {
-                    let TypedVariableDeclaration {
+                if let ty::TyDeclaration::VariableDeclaration(ref var_decl) = decl {
+                    let ty::TyVariableDeclaration {
                         mutability, name, ..
                     } = &**var_decl;
-                    if mutability == &VariableMutability::ExportedConst {
+                    if mutability == &ty::VariableMutability::ExportedConst {
                         self[dst]
                             .insert_symbol(alias.unwrap_or_else(|| name.clone()), decl.clone());
                         return ok((), warnings, errors);

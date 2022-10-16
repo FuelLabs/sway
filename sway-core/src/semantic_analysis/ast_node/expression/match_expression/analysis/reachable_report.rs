@@ -1,6 +1,6 @@
 use sway_types::Span;
 
-use crate::semantic_analysis::TypedScrutinee;
+use crate::language::ty;
 
 pub(crate) struct ReachableReport {
     pub(crate) reachable: bool,
@@ -8,7 +8,7 @@ pub(crate) struct ReachableReport {
 }
 
 impl ReachableReport {
-    pub(super) fn new(reachable: bool, scrutinee: TypedScrutinee) -> ReachableReport {
+    pub(super) fn new(reachable: bool, scrutinee: ty::TyScrutinee) -> ReachableReport {
         ReachableReport {
             reachable,
             span: scrutinee.span,

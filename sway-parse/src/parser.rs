@@ -1,5 +1,4 @@
-use crate::handler::Handler;
-use crate::{Parse, ParseError, ParseErrorKind, ParseToEnd, Peek};
+use crate::{Parse, ParseToEnd, Peek};
 
 use core::marker::PhantomData;
 use sway_ast::keywords::Keyword;
@@ -8,6 +7,9 @@ use sway_ast::token::{
     Delimiter, DocComment, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree,
 };
 use sway_ast::PubToken;
+use sway_error::error::CompileError;
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::parser_error::{ParseError, ParseErrorKind};
 use sway_types::{Ident, Span, Spanned};
 
 pub struct Parser<'a, 'e> {
@@ -17,7 +19,7 @@ pub struct Parser<'a, 'e> {
 }
 
 impl<'a, 'e> Parser<'a, 'e> {
-    pub fn new(token_stream: &'a TokenStream, handler: &'e Handler) -> Parser<'a, 'e> {
+    pub fn new(handler: &'e Handler, token_stream: &'a TokenStream) -> Parser<'a, 'e> {
         Parser {
             token_trees: token_stream.token_trees(),
             full_span: token_stream.span(),
@@ -46,8 +48,7 @@ impl<'a, 'e> Parser<'a, 'e> {
 
     pub fn emit_error_with_span(&mut self, kind: ParseErrorKind, span: Span) -> ErrorEmitted {
         let error = ParseError { span, kind };
-        self.handler.emit_err(error);
-        ErrorEmitted { _priv: () }
+        self.handler.emit_err(CompileError::Parse { error })
     }
 
     /// Eats a `P` in its canonical way by peeking.
@@ -248,11 +249,6 @@ impl<'a> Peeker<'a> {
             _ => Err(self),
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ErrorEmitted {
-    _priv: (),
 }
 
 pub struct ParserConsumed<'a> {

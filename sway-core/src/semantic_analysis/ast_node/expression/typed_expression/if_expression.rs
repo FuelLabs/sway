@@ -1,17 +1,16 @@
+use sway_error::error::CompileError;
 use sway_types::Span;
 
-use crate::{error::*, semantic_analysis::*, type_system::*, types::DeterministicallyAborts};
-
-use super::TypedExpression;
+use crate::{error::*, language::ty, type_system::*, types::DeterministicallyAborts};
 
 pub(crate) fn instantiate_if_expression(
-    condition: TypedExpression,
-    then: TypedExpression,
-    r#else: Option<TypedExpression>,
+    condition: ty::TyExpression,
+    then: ty::TyExpression,
+    r#else: Option<ty::TyExpression>,
     span: Span,
     type_annotation: TypeId,
     self_type: TypeId,
-) -> CompileResult<TypedExpression> {
+) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -92,13 +91,12 @@ pub(crate) fn instantiate_if_expression(
     } else {
         r#else_ret_ty
     };
-    let exp = TypedExpression {
-        expression: TypedExpressionVariant::IfExp {
+    let exp = ty::TyExpression {
+        expression: ty::TyExpressionVariant::IfExp {
             condition: Box::new(condition),
             then: Box::new(then),
             r#else,
         },
-        is_constant: IsConstant::No,
         return_type,
         span,
     };

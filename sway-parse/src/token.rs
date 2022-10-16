@@ -8,79 +8,11 @@ use sway_ast::token::{
     Comment, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter, DocComment,
     DocStyle, Punct, PunctKind, Spacing, TokenStream,
 };
-use sway_types::{Ident, Span, Spanned};
-use thiserror::Error;
+use sway_error::error::CompileError;
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::lex_error::{LexError, LexErrorKind};
+use sway_types::{Ident, Span};
 use unicode_xid::UnicodeXID;
-
-#[derive(Error, Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-#[error("{}", kind)]
-pub struct LexError {
-    span: Span,
-    kind: LexErrorKind,
-}
-
-#[derive(Error, Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub enum LexErrorKind {
-    #[error("unclosed multiline comment")]
-    UnclosedMultilineComment { unclosed_indices: Vec<usize> },
-    #[error("unexpected close delimiter")]
-    UnexpectedCloseDelimiter {
-        position: usize,
-        close_delimiter: Delimiter,
-    },
-    #[error("mismatched delimiters")]
-    MismatchedDelimiters {
-        open_position: usize,
-        close_position: usize,
-        open_delimiter: Delimiter,
-        close_delimiter: Delimiter,
-    },
-    #[error("unclosed delimiter")]
-    UnclosedDelimiter {
-        open_position: usize,
-        open_delimiter: Delimiter,
-    },
-    #[error("unclosed string literal")]
-    UnclosedStringLiteral { position: usize },
-    #[error("unclosed char literal")]
-    UnclosedCharLiteral { position: usize },
-    #[error("expected close quote")]
-    ExpectedCloseQuote { position: usize },
-    #[error("incomplete hex int literal")]
-    IncompleteHexIntLiteral { position: usize },
-    #[error("incomplete binary int literal")]
-    IncompleteBinaryIntLiteral { position: usize },
-    #[error("incomplete octal int literal")]
-    IncompleteOctalIntLiteral { position: usize },
-    #[error("invalid int suffix: {}", suffix)]
-    InvalidIntSuffix { suffix: Ident },
-    #[error("invalid character")]
-    InvalidCharacter { position: usize, character: char },
-    #[error("invalid hex escape")]
-    InvalidHexEscape,
-    #[error("unicode escape missing brace")]
-    UnicodeEscapeMissingBrace { position: usize },
-    #[error("invalid unicode escape digit")]
-    InvalidUnicodeEscapeDigit { position: usize },
-    #[error("unicode escape out of range")]
-    UnicodeEscapeOutOfRange { position: usize },
-    #[error("unicode escape represents an invalid char value")]
-    UnicodeEscapeInvalidCharValue { span: Span },
-    #[error("invalid escape code")]
-    InvalidEscapeCode { position: usize },
-}
-
-impl Spanned for LexError {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-impl LexError {
-    pub fn span_ref(&self) -> &Span {
-        &self.span
-    }
-}
 
 #[extension_trait]
 impl CharExt for char {
@@ -152,41 +84,60 @@ impl Iterator for CharIndicesInner<'_> {
 }
 
 type CharIndices<'a> = std::iter::Peekable<CharIndicesInner<'a>>;
+type Result<T> = core::result::Result<T, ErrorEmitted>;
+
+struct Lexer<'l> {
+    handler: &'l Handler,
+    src: &'l Arc<str>,
+    path: &'l Option<Arc<PathBuf>>,
+    stream: &'l mut CharIndices<'l>,
+}
 
 pub fn lex(
+    handler: &Handler,
     src: &Arc<str>,
     start: usize,
     end: usize,
     path: Option<Arc<PathBuf>>,
-) -> Result<TokenStream, LexError> {
-    lex_commented(src, start, end, path).map(|stream| stream.strip_comments())
+) -> Result<TokenStream> {
+    lex_commented(handler, src, start, end, &path).map(|stream| stream.strip_comments())
 }
 
 pub fn lex_commented(
+    handler: &Handler,
     src: &Arc<str>,
     start: usize,
     end: usize,
-    path: Option<Arc<PathBuf>>,
-) -> Result<CommentedTokenStream, LexError> {
-    let mut char_indices = CharIndicesInner {
+    path: &Option<Arc<PathBuf>>,
+) -> Result<CommentedTokenStream> {
+    let stream = &mut CharIndicesInner {
         src: &src[..end],
         position: start,
     }
     .peekable();
+    let mut l = Lexer {
+        handler,
+        src,
+        path,
+        stream,
+    };
+
     let mut parent_token_trees = Vec::new();
-    let mut token_trees: Vec<CommentedTokenTree> = Vec::new();
-    while let Some((mut index, mut character)) = char_indices.next() {
+    let mut token_trees = Vec::new();
+    while let Some((mut index, mut character)) = l.stream.next() {
         if character.is_whitespace() {
             continue;
         }
         if character == '/' {
-            match char_indices.peek() {
+            match l.stream.peek() {
                 Some((_, '/')) => {
-                    token_trees.push(lex_line_comment(end, src, &path, &mut char_indices, index));
+                    token_trees.push(lex_line_comment(&mut l, end, index));
                     continue;
                 }
                 Some((_, '*')) => {
-                    token_trees.push(lex_multiline_comment(src, &path, &mut char_indices, index)?);
+                    if let Some(token) = lex_multiline_comment(&mut l, index) {
+                        token_trees.push(token);
+                    }
                     continue;
                 }
                 Some(_) | None => {}
@@ -194,10 +145,10 @@ pub fn lex_commented(
         }
         if character.is_xid_start() || character == '_' {
             // Raw identifier, e.g., `r#foo`? Then mark as such, stripping the prefix `r#`.
-            let is_raw_ident = character == 'r' && matches!(char_indices.peek(), Some((_, '#')));
+            let is_raw_ident = character == 'r' && matches!(l.stream.peek(), Some((_, '#')));
             if is_raw_ident {
-                char_indices.next();
-                if let Some((next_index, next_character)) = char_indices.next() {
+                l.stream.next();
+                if let Some((next_index, next_character)) = l.stream.next() {
                     character = next_character;
                     index = next_index;
                 }
@@ -205,14 +156,13 @@ pub fn lex_commented(
 
             // Don't accept just `_` as an identifier.
             let not_is_single_underscore = character != '_'
-                || char_indices
+                || l.stream
                     .peek()
                     .map_or(false, |(_, next)| next.is_xid_continue());
             if not_is_single_underscore {
                 // Consume until we hit other than `XID_CONTINUE`.
-                while char_indices.next_if(|(_, c)| c.is_xid_continue()).is_some() {}
-                let span = span_until(src, index, &mut char_indices, &path);
-                let ident = Ident::new_with_raw(span, is_raw_ident);
+                while l.stream.next_if(|(_, c)| c.is_xid_continue()).is_some() {}
+                let ident = Ident::new_with_raw(span_until(&mut l, index), is_raw_ident);
                 token_trees.push(CommentedTokenTree::Tree(ident.into()));
                 continue;
             }
@@ -225,124 +175,129 @@ pub fn lex_commented(
         if let Some(close_delimiter) = character.as_close_delimiter() {
             match parent_token_trees.pop() {
                 None => {
-                    return Err(LexError {
-                        kind: LexErrorKind::UnexpectedCloseDelimiter {
-                            position: index,
-                            close_delimiter,
-                        },
-                        span: Span::new(
-                            src.clone(),
-                            index,
-                            index + character.len_utf8(),
-                            path.clone(),
-                        )
-                        .unwrap(),
-                    });
-                }
-                Some((mut parent, open_index, open_delimiter)) => {
-                    if open_delimiter != close_delimiter {
-                        return Err(LexError {
-                            kind: LexErrorKind::MismatchedDelimiters {
-                                open_position: open_index,
-                                close_position: index,
-                                open_delimiter,
-                                close_delimiter,
-                            },
-                            span: Span::new(
-                                src.clone(),
-                                index,
-                                index + character.len_utf8(),
-                                path.clone(),
-                            )
-                            .unwrap(),
-                        });
-                    }
-                    mem::swap(&mut parent, &mut token_trees);
-                    let start_index = open_index + open_delimiter.as_open_char().len_utf8();
-                    let full_span =
-                        Span::new(src.clone(), start_index, index, path.clone()).unwrap();
-                    let group = CommentedGroup {
-                        token_stream: CommentedTokenStream {
-                            token_trees: parent,
-                            full_span,
-                        },
-                        delimiter: close_delimiter,
-                        span: span_until(src, open_index, &mut char_indices, &path),
+                    // Recover by ignoring the unexpected closing delim,
+                    // giving the parser opportunities to realize the need for an opening delim
+                    // in e.g., this example:
+                    //
+                    // fn foo() // <-- Parser expects grouped tokens in `{ ... }` here.
+                    //     let x = 0;
+                    // } // <- This recovery.
+                    let kind = LexErrorKind::UnexpectedCloseDelimiter {
+                        position: index,
+                        close_delimiter,
                     };
-                    token_trees.push(CommentedTokenTree::Tree(group.into()));
+                    let span = span_one(&l, index, character);
+                    error(l.handler, LexError { kind, span });
+                }
+                Some((parent, open_index, open_delimiter)) => {
+                    if open_delimiter != close_delimiter {
+                        // Recover on e.g., a `{ )` mismatch by having `)` interpreted as `}`.
+                        let kind = LexErrorKind::MismatchedDelimiters {
+                            open_position: open_index,
+                            close_position: index,
+                            open_delimiter,
+                            close_delimiter,
+                        };
+                        let span = span_one(&l, index, character);
+                        error(l.handler, LexError { kind, span });
+                    }
+                    token_trees = lex_close_delimiter(
+                        &mut l,
+                        index,
+                        parent,
+                        token_trees,
+                        open_index,
+                        open_delimiter,
+                    );
                 }
             }
             continue;
         }
-        if let Some(token) = lex_string(src, &path, &mut char_indices, index, character)? {
+        if let Some(token) = lex_string(&mut l, index, character)? {
             token_trees.push(token);
             continue;
         }
-        if let Some(token) = lex_char(src, &path, &mut char_indices, index, character)? {
+        if let Some(token) = lex_char(&mut l, index, character)? {
             token_trees.push(token);
             continue;
         }
-        if let Some(token) = lex_int_lit(src, &path, &mut char_indices, index, character)? {
+        if let Some(token) = lex_int_lit(&mut l, index, character)? {
             token_trees.push(token);
             continue;
         }
-        if let Some(token) = lex_punctuation(src, &path, &mut char_indices, index, character) {
+        if let Some(token) = lex_punctuation(&mut l, index, character) {
             token_trees.push(token);
             continue;
         }
-        return Err(LexError {
-            kind: LexErrorKind::InvalidCharacter {
-                position: index,
-                character,
-            },
-            span: Span::new(
-                src.clone(),
-                index,
-                index + character.len_utf8(),
-                path.clone(),
-            )
-            .unwrap(),
-        });
+
+        // Recover by simply ignoring the character.
+        // NOTE(Centril): I'm not sure how good of an idea this is... time will tell.
+        let kind = LexErrorKind::InvalidCharacter {
+            position: index,
+            character,
+        };
+        let span = span_one(&l, index, character);
+        error(l.handler, LexError { kind, span });
+        continue;
     }
-    if let Some((_, open_position, open_delimiter)) = parent_token_trees.pop() {
-        return Err(LexError {
-            kind: LexErrorKind::UnclosedDelimiter {
-                open_position,
-                open_delimiter,
-            },
-            span: Span::new(
-                src.clone(),
-                open_position,
-                open_position + open_delimiter.as_open_char().len_utf8(),
-                path.clone(),
-            )
-            .unwrap(),
-        });
+
+    // Recover all unclosed delimiters.
+    while let Some((parent, open_index, open_delimiter)) = parent_token_trees.pop() {
+        let kind = LexErrorKind::UnclosedDelimiter {
+            open_position: open_index,
+            open_delimiter,
+        };
+        let span = span_one(&l, open_index, open_delimiter.as_open_char());
+        error(l.handler, LexError { kind, span });
+
+        token_trees = lex_close_delimiter(
+            &mut l,
+            src.len(),
+            parent,
+            token_trees,
+            open_index,
+            open_delimiter,
+        );
     }
-    let full_span = Span::new(src.clone(), start, end, path).unwrap();
-    let token_stream = CommentedTokenStream {
+    Ok(CommentedTokenStream {
         token_trees,
-        full_span,
-    };
-    Ok(token_stream)
+        full_span: span(&l, start, end),
+    })
 }
 
-fn lex_line_comment(
-    end: usize,
-    src: &Arc<str>,
-    path: &Option<Arc<PathBuf>>,
-    char_indices: &mut CharIndices,
+fn lex_close_delimiter(
+    l: &mut Lexer<'_>,
     index: usize,
-) -> CommentedTokenTree {
-    let _ = char_indices.next();
+    mut parent: Vec<CommentedTokenTree>,
+    token_trees: Vec<CommentedTokenTree>,
+    open_index: usize,
+    delimiter: Delimiter,
+) -> Vec<CommentedTokenTree> {
+    let start_index = open_index + delimiter.as_open_char().len_utf8();
+    let full_span = span(l, start_index, index);
+    let group = CommentedGroup {
+        token_stream: CommentedTokenStream {
+            token_trees,
+            full_span,
+        },
+        delimiter,
+        span: span_until(l, open_index),
+    };
+    parent.push(CommentedTokenTree::Tree(group.into()));
+    parent
+}
+
+fn lex_line_comment(l: &mut Lexer<'_>, end: usize, index: usize) -> CommentedTokenTree {
+    let _ = l.stream.next();
 
     // Find end; either at EOF or at `\n`.
-    let end = char_indices
+    let end = l
+        .stream
         .find(|(_, character)| *character == '\n')
         .map_or(end, |(end, _)| end);
-    let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
+    let sp = span(l, index, end);
 
-    let doc_style = match (span.as_str().chars().nth(2), span.as_str().chars().nth(3)) {
+    let doc_style = match (sp.as_str().chars().nth(2), sp.as_str().chars().nth(3)) {
         // `//!` is an inner line doc comment.
         (Some('!'), _) => {
             // TODO: Add support for inner line doc comments.
@@ -357,47 +312,35 @@ fn lex_line_comment(
     };
 
     if let Some(doc_style) = doc_style {
-        let content_span = Span::new(src.clone(), index + 3, end, path.clone()).unwrap();
         let doc_comment = DocComment {
-            span,
+            span: sp,
             doc_style,
-            content_span,
+            content_span: span(l, index + 3, end),
         };
         CommentedTokenTree::Tree(doc_comment.into())
     } else {
-        Comment { span }.into()
+        Comment { span: sp }.into()
     }
 }
 
-fn lex_multiline_comment(
-    src: &Arc<str>,
-    path: &Option<Arc<PathBuf>>,
-    char_indices: &mut CharIndices,
-    index: usize,
-) -> Result<CommentedTokenTree, LexError> {
+fn lex_multiline_comment(l: &mut Lexer<'_>, index: usize) -> Option<CommentedTokenTree> {
     // Lexing a multi-line comment.
-    let _ = char_indices.next();
+    let _ = l.stream.next();
     let mut unclosed_indices = vec![index];
 
-    let unclosed_multiline_comment = |unclosed_indices: Vec<_>| {
-        let span = Span::new(
-            src.clone(),
-            *unclosed_indices.last().unwrap(),
-            src.len() - 1,
-            path.clone(),
-        )
-        .unwrap();
-        LexError {
-            kind: LexErrorKind::UnclosedMultilineComment { unclosed_indices },
-            span,
-        }
+    let unclosed_multiline_comment = |l: &Lexer<'_>, unclosed_indices: Vec<_>| {
+        let span = span(l, *unclosed_indices.last().unwrap(), l.src.len() - 1);
+        let kind = LexErrorKind::UnclosedMultilineComment { unclosed_indices };
+        error(l.handler, LexError { kind, span });
+        None
     };
 
     loop {
-        match char_indices.next() {
-            None => return Err(unclosed_multiline_comment(unclosed_indices)),
-            Some((_, '*')) => match char_indices.next() {
-                None => return Err(unclosed_multiline_comment(unclosed_indices)),
+        match l.stream.next() {
+            None => return unclosed_multiline_comment(l, unclosed_indices),
+            Some((_, '*')) => match l.stream.next() {
+                None => return unclosed_multiline_comment(l, unclosed_indices),
+                // Matched `*/`, so we're closing some multi-line comment. It could be nested.
                 Some((slash_ix, '/')) => {
                     let start = unclosed_indices.pop().unwrap();
                     if unclosed_indices.is_empty() {
@@ -405,14 +348,15 @@ fn lex_multiline_comment(
                         // nested multi-line comments constitute a single multi-line comment.
                         // We could represent them as several ones, but that's unnecessary.
                         let end = slash_ix + '/'.len_utf8();
-                        let span = Span::new(src.clone(), start, end, path.clone()).unwrap();
-                        return Ok(Comment { span }.into());
+                        let span = span(l, start, end);
+                        return Some(Comment { span }.into());
                     }
                 }
                 Some(_) => {}
             },
-            Some((next_index, '/')) => match char_indices.next() {
-                None => return Err(unclosed_multiline_comment(unclosed_indices)),
+            // Found nested multi-line comment.
+            Some((next_index, '/')) => match l.stream.next() {
+                None => return unclosed_multiline_comment(l, unclosed_indices),
                 Some((_, '*')) => unclosed_indices.push(next_index),
                 Some(_) => {}
             },
@@ -422,98 +366,113 @@ fn lex_multiline_comment(
 }
 
 fn lex_string(
-    src: &Arc<str>,
-    path: &Option<Arc<PathBuf>>,
-    char_indices: &mut CharIndices,
+    l: &mut Lexer<'_>,
     index: usize,
     character: char,
-) -> Result<Option<CommentedTokenTree>, LexError> {
+) -> Result<Option<CommentedTokenTree>> {
     if character != '"' {
         return Ok(None);
     }
     let mut parsed = String::new();
     loop {
-        let unclosed_string_lit = |end| LexError {
-            kind: LexErrorKind::UnclosedStringLiteral { position: index },
-            span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
+        let unclosed_string_lit = |l: &Lexer<'_>, end| {
+            error(
+                l.handler,
+                LexError {
+                    kind: LexErrorKind::UnclosedStringLiteral { position: index },
+                    span: span(l, index, end),
+                },
+            )
         };
-        let next_character = match char_indices.next() {
-            Some((_, c)) => c,
-            None => return Err(unclosed_string_lit(src.len() - 1)),
-        };
+        let (_, next_character) = l
+            .stream
+            .next()
+            .ok_or_else(|| unclosed_string_lit(l, l.src.len() - 1))?;
         parsed.push(match next_character {
-            '\\' => match parse_escape_code(src, char_indices, path) {
-                Ok(c) => c,
-                Err(e) => return Err(e.unwrap_or_else(|| unclosed_string_lit(src.len()))),
-            },
+            '\\' => parse_escape_code(l)
+                .map_err(|e| e.unwrap_or_else(|| unclosed_string_lit(l, l.src.len())))?,
             '"' => break,
             _ => next_character,
         });
     }
-    let span = span_until(src, index, char_indices, path);
+    let span = span_until(l, index);
     let literal = Literal::String(LitString { span, parsed });
     Ok(Some(CommentedTokenTree::Tree(literal.into())))
 }
 
 fn lex_char(
-    src: &Arc<str>,
-    path: &Option<Arc<PathBuf>>,
-    char_indices: &mut CharIndices,
+    l: &mut Lexer<'_>,
     index: usize,
     character: char,
-) -> Result<Option<CommentedTokenTree>, LexError> {
-    if character != '\'' {
+) -> Result<Option<CommentedTokenTree>> {
+    let is_quote = |c| c == '\'';
+    if !is_quote(character) {
         return Ok(None);
     }
 
-    let unclosed_char_lit = || LexError {
-        kind: LexErrorKind::UnclosedCharLiteral { position: index },
-        span: Span::new(src.clone(), index, src.len(), path.clone()).unwrap(),
+    let unclosed_char_lit = |l: &Lexer<'_>| {
+        let err = LexError {
+            kind: LexErrorKind::UnclosedCharLiteral { position: index },
+            span: span(l, index, l.src.len()),
+        };
+        error(l.handler, err)
     };
-    let next_character = match char_indices.next() {
-        Some((_, next_character)) => next_character,
-        None => return Err(unclosed_char_lit()),
-    };
-    let parsed = if next_character == '\\' {
-        match parse_escape_code(src, char_indices, path) {
-            Ok(parsed) => parsed,
-            Err(e) => return Err(e.unwrap_or_else(unclosed_char_lit)),
+    let next = |l: &mut Lexer<'_>| l.stream.next().ok_or_else(|| unclosed_char_lit(l));
+    let escape = |l: &mut Lexer<'_>, next_char| {
+        if next_char == '\\' {
+            parse_escape_code(l).map_err(|e| e.unwrap_or_else(|| unclosed_char_lit(l)))
+        } else {
+            Ok(next_char)
         }
-    } else {
-        next_character
     };
 
+    let (_, next_char) = next(l)?;
+    let parsed = escape(l, next_char)?;
+
     // Consume the closing `'`.
-    match char_indices.next() {
-        None => return Err(unclosed_char_lit()),
-        Some((_, '\'')) => {}
-        Some((next_index, unexpected_char)) => {
-            // FIXME(Centril, #2864): Recover as string lit instead of char lit.
-            return Err(LexError {
+    let (next_index, next_char) = next(l)?;
+    let sp = span_until(l, index);
+
+    // Not a closing quote? Then this is e.g., 'ab'.
+    // Most likely the user meant a string literal, so recover as that instead.
+    let literal = if !is_quote(next_char) {
+        let mut string = String::new();
+        string.push(parsed);
+        string.push(escape(l, next_char)?);
+        loop {
+            let (_, next_char) = next(l)?;
+            if is_quote(next_char) {
+                break;
+            }
+            string.push(next_char);
+        }
+
+        // Emit the expected closing quote error.
+        error(
+            l.handler,
+            LexError {
                 kind: LexErrorKind::ExpectedCloseQuote {
                     position: next_index,
                 },
-                span: Span::new(
-                    src.clone(),
-                    next_index,
-                    next_index + unexpected_char.len_utf8(),
-                    path.clone(),
-                )
-                .unwrap(),
-            });
-        }
-    }
-    let span = span_until(src, index, char_indices, path);
-    let literal = Literal::Char(LitChar { span, parsed });
+                span: span(l, next_index, next_index + string.len()),
+            },
+        );
+
+        Literal::String(LitString {
+            span: sp,
+            parsed: string,
+        })
+    } else {
+        Literal::Char(LitChar { span: sp, parsed })
+    };
+
     Ok(Some(CommentedTokenTree::Tree(literal.into())))
 }
 
-fn parse_escape_code(
-    src: &Arc<str>,
-    char_indices: &mut CharIndices,
-    path: &Option<Arc<PathBuf>>,
-) -> Result<char, Option<LexError>> {
-    match char_indices.next() {
+fn parse_escape_code(l: &mut Lexer<'_>) -> core::result::Result<char, Option<ErrorEmitted>> {
+    let error = |kind, span| Err(Some(error(l.handler, LexError { kind, span })));
+
+    match l.stream.next() {
         None => Err(None),
         Some((_, '"')) => Ok('"'),
         Some((_, '\'')) => Ok('\''),
@@ -523,44 +482,31 @@ fn parse_escape_code(
         Some((_, '\\')) => Ok('\\'),
         Some((_, '0')) => Ok('\0'),
         Some((index, 'x')) => {
-            let (high, low) = match (char_indices.next(), char_indices.next()) {
+            let (high, low) = match (l.stream.next(), l.stream.next()) {
                 (Some((_, high)), Some((_, low))) => (high, low),
                 _ => return Err(None),
             };
             let (high, low) = match (high.to_digit(16), low.to_digit(16)) {
                 (Some(high), Some(low)) => (high, low),
-                _ => {
-                    let span = span_until(src, index, char_indices, path);
-                    return Err(Some(LexError {
-                        kind: LexErrorKind::InvalidHexEscape,
-                        span,
-                    }));
-                }
+                _ => return error(LexErrorKind::InvalidHexEscape, span_until(l, index)),
             };
             let parsed_character = char::from_u32((high << 4) | low).unwrap();
             Ok(parsed_character)
         }
         Some((index, 'u')) => {
-            match char_indices.next() {
+            match l.stream.next() {
                 None => return Err(None),
                 Some((_, '{')) => (),
                 Some((_, unexpected_char)) => {
-                    return Err(Some(LexError {
-                        kind: LexErrorKind::UnicodeEscapeMissingBrace { position: index },
-                        span: Span::new(
-                            src.clone(),
-                            index,
-                            index + unexpected_char.len_utf8(),
-                            path.clone(),
-                        )
-                        .unwrap(),
-                    }));
+                    let span = span_one(l, index, unexpected_char);
+                    let kind = LexErrorKind::UnicodeEscapeMissingBrace { position: index };
+                    return error(kind, span);
                 }
             }
             let mut digits_start_position_opt = None;
             let mut char_value = BigUint::from(0u32);
             let digits_end_position = loop {
-                let (position, digit) = match char_indices.next() {
+                let (position, digit) = match l.stream.next() {
                     None => return Err(None),
                     Some((position, '}')) => break position,
                     Some((position, digit)) => (position, digit),
@@ -570,16 +516,9 @@ fn parse_escape_code(
                 };
                 let digit = match digit.to_digit(16) {
                     None => {
-                        return Err(Some(LexError {
-                            kind: LexErrorKind::InvalidUnicodeEscapeDigit { position },
-                            span: Span::new(
-                                src.clone(),
-                                position,
-                                position + digit.len_utf8(),
-                                path.clone(),
-                            )
-                            .unwrap(),
-                        }));
+                        let span = span_one(l, position, digit);
+                        let kind = LexErrorKind::InvalidUnicodeEscapeDigit { position };
+                        return error(kind, span);
                     }
                     Some(digit) => digit,
                 };
@@ -589,135 +528,122 @@ fn parse_escape_code(
             let digits_start_position = digits_start_position_opt.unwrap_or(digits_end_position);
             let char_value = match u32::try_from(char_value) {
                 Err(..) => {
-                    return Err(Some(LexError {
-                        kind: LexErrorKind::UnicodeEscapeOutOfRange { position: index },
-                        span: Span::new(
-                            src.clone(),
-                            digits_start_position,
-                            digits_end_position,
-                            path.clone(),
-                        )
-                        .unwrap(),
-                    }));
+                    let span = span(l, digits_start_position, digits_end_position);
+                    let kind = LexErrorKind::UnicodeEscapeOutOfRange { position: index };
+                    return error(kind, span);
                 }
                 Ok(char_value) => char_value,
             };
             let parsed_character = match char::from_u32(char_value) {
                 None => {
-                    let span = span_until(src, index, char_indices, path);
-                    return Err(Some(LexError {
-                        kind: LexErrorKind::UnicodeEscapeInvalidCharValue { span },
-                        span: Span::new(
-                            src.clone(),
-                            digits_start_position,
-                            digits_end_position,
-                            path.clone(),
-                        )
-                        .unwrap(),
-                    }));
+                    let span_all = span_until(l, index);
+                    let kind = LexErrorKind::UnicodeEscapeInvalidCharValue { span: span_all };
+                    let span = span(l, digits_start_position, digits_end_position);
+                    return error(kind, span);
                 }
                 Some(parsed_character) => parsed_character,
             };
             Ok(parsed_character)
         }
-        Some((index, unexpected_char)) => Err(Some(LexError {
-            kind: LexErrorKind::InvalidEscapeCode { position: index },
-            span: Span::new(
-                src.clone(),
-                index,
-                index + unexpected_char.len_utf8(),
-                path.clone(),
-            )
-            .unwrap(),
-        })),
+        Some((index, unexpected_char)) => error(
+            LexErrorKind::InvalidEscapeCode { position: index },
+            span_one(l, index, unexpected_char),
+        ),
     }
 }
 
 fn lex_int_lit(
-    src: &Arc<str>,
-    path: &Option<Arc<PathBuf>>,
-    char_indices: &mut CharIndices,
+    l: &mut Lexer<'_>,
     index: usize,
     character: char,
-) -> Result<Option<CommentedTokenTree>, LexError> {
+) -> Result<Option<CommentedTokenTree>> {
     let digit = match character.to_digit(10) {
         None => return Ok(None),
         Some(d) => d,
     };
 
-    let decimal_int_lit = |char_indices, digit: u32| {
+    let decimal_int_lit = |l, digit: u32| {
         let mut big_uint = BigUint::from(digit);
-        let end_opt = parse_digits(&mut big_uint, char_indices, 10);
+        let end_opt = parse_digits(&mut big_uint, l, 10);
         (big_uint, end_opt)
     };
     let (big_uint, end_opt) = if digit == 0 {
-        let prefixed_int_lit = |char_indices: &mut CharIndices<'_>, radix| {
-            let incomplete_int_lit = |end| LexError {
-                kind: match radix {
+        let prefixed_int_lit = |l: &mut Lexer<'_>, radix| {
+            let _ = l.stream.next();
+            let d = l.stream.next();
+            let incomplete_int_lit = |end| {
+                let kind = match radix {
                     16 => LexErrorKind::IncompleteHexIntLiteral { position: index },
                     8 => LexErrorKind::IncompleteOctalIntLiteral { position: index },
                     2 => LexErrorKind::IncompleteBinaryIntLiteral { position: index },
                     _ => unreachable!(),
-                },
-                span: Span::new(src.clone(), index, end, path.clone()).unwrap(),
+                };
+                let span = span(l, index, end);
+                error(l.handler, LexError { kind, span })
             };
-            let _ = char_indices.next();
-            let (digit_pos, digit) = match char_indices.next() {
-                None => return Err(incomplete_int_lit(src.len())),
-                Some(d) => d,
-            };
-            let radix_digit = match digit.to_digit(radix) {
-                Some(rd) => rd,
-                None => return Err(incomplete_int_lit(digit_pos)),
-            };
+            let (digit_pos, digit) = d.ok_or_else(|| incomplete_int_lit(l.src.len()))?;
+            let radix_digit = digit
+                .to_digit(radix)
+                .ok_or_else(|| incomplete_int_lit(digit_pos))?;
             let mut big_uint = BigUint::from(radix_digit);
-            let end_opt = parse_digits(&mut big_uint, char_indices, radix);
+            let end_opt = parse_digits(&mut big_uint, l, radix);
             Ok((big_uint, end_opt))
         };
 
-        match char_indices.peek() {
-            Some((_, 'x')) => prefixed_int_lit(char_indices, 16)?,
-            Some((_, 'o')) => prefixed_int_lit(char_indices, 8)?,
-            Some((_, 'b')) => prefixed_int_lit(char_indices, 2)?,
-            Some((_, '_' | '0'..='9')) => decimal_int_lit(char_indices, 0),
+        match l.stream.peek() {
+            Some((_, 'x')) => prefixed_int_lit(l, 16)?,
+            Some((_, 'o')) => prefixed_int_lit(l, 8)?,
+            Some((_, 'b')) => prefixed_int_lit(l, 2)?,
+            Some((_, '_' | '0'..='9')) => decimal_int_lit(l, 0),
             Some(&(next_index, _)) => (BigUint::from(0u32), Some(next_index)),
             None => (BigUint::from(0u32), None),
         }
     } else {
-        decimal_int_lit(char_indices, digit)
+        decimal_int_lit(l, digit)
     };
-    let end = end_opt.unwrap_or(src.len());
-    let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
-    let ty_opt = lex_int_ty_opt(src, path, char_indices)?;
     let literal = Literal::Int(LitInt {
-        span,
+        span: span(l, index, end_opt.unwrap_or(l.src.len())),
         parsed: big_uint,
-        ty_opt,
+        ty_opt: lex_int_ty_opt(l)?,
     });
     Ok(Some(CommentedTokenTree::Tree(literal.into())))
 }
 
-fn lex_int_ty_opt(
-    src: &Arc<str>,
-    path: &Option<Arc<PathBuf>>,
-    char_indices: &mut CharIndices,
-) -> Result<Option<(LitIntType, Span)>, LexError> {
-    let (suffix_start_position, c) = match char_indices.next_if(|(_, c)| c.is_xid_continue()) {
+fn lex_int_ty_opt(l: &mut Lexer<'_>) -> Result<Option<(LitIntType, Span)>> {
+    let (suffix_start_position, c) = match l.stream.next_if(|(_, c)| c.is_xid_continue()) {
         None => return Ok(None),
         Some(x) => x,
     };
     let mut suffix = String::from(c);
     let suffix_end_position = loop {
-        match char_indices.peek() {
+        match l.stream.peek() {
             Some((_, c)) if c.is_xid_continue() => {
                 suffix.push(*c);
-                let _ = char_indices.next();
+                let _ = l.stream.next();
             }
             Some((pos, _)) => break *pos,
-            None => break src.len(),
+            None => break l.src.len(),
         }
     };
-    let ty = match &suffix[..] {
+    // Parse the suffix to a known one, or if unknown, recover by throwing it away.
+    let ty = match parse_int_suffix(&suffix) {
+        Some(s) => s,
+        None => {
+            let span = span(l, suffix_start_position, suffix_end_position);
+            let kind = LexErrorKind::InvalidIntSuffix {
+                suffix: Ident::new(span.clone()),
+            };
+            error(l.handler, LexError { kind, span });
+            return Ok(None);
+        }
+    };
+    let span = span_until(l, suffix_start_position);
+    Ok(Some((ty, span)))
+}
+
+/// Interpret the given `suffix` string as a `LitIntType`.
+fn parse_int_suffix(suffix: &str) -> Option<LitIntType> {
+    Some(match suffix {
         "u8" => LitIntType::U8,
         "u16" => LitIntType::U16,
         "u32" => LitIntType::U32,
@@ -726,42 +652,21 @@ fn lex_int_ty_opt(
         "i16" => LitIntType::I16,
         "i32" => LitIntType::I32,
         "i64" => LitIntType::I64,
-        _ => {
-            // FIXME(Centril, #2865): Recover here by throwing away the suffix.
-            let span = Span::new(
-                src.clone(),
-                suffix_start_position,
-                suffix_end_position,
-                path.clone(),
-            )
-            .unwrap();
-            return Err(LexError {
-                kind: LexErrorKind::InvalidIntSuffix {
-                    suffix: Ident::new(span.clone()),
-                },
-                span,
-            });
-        }
-    };
-    let span = span_until(src, suffix_start_position, char_indices, path);
-    Ok(Some((ty, span)))
+        _ => return None,
+    })
 }
 
-fn parse_digits(
-    big_uint: &mut BigUint,
-    char_indices: &mut CharIndices,
-    radix: u32,
-) -> Option<usize> {
+fn parse_digits(big_uint: &mut BigUint, l: &mut Lexer<'_>, radix: u32) -> Option<usize> {
     loop {
-        match char_indices.peek() {
+        match l.stream.peek() {
             None => break None,
             Some((_, '_')) => {
-                let _ = char_indices.next();
+                let _ = l.stream.next();
             }
             Some(&(index, character)) => match character.to_digit(radix) {
                 None => break Some(index),
                 Some(digit) => {
-                    let _ = char_indices.next();
+                    let _ = l.stream.next();
                     *big_uint *= radix;
                     *big_uint += digit;
                 }
@@ -770,41 +675,47 @@ fn parse_digits(
     }
 }
 
-fn lex_punctuation(
-    src: &Arc<str>,
-    path: &Option<Arc<PathBuf>>,
-    char_indices: &mut CharIndices,
-    index: usize,
-    character: char,
-) -> Option<CommentedTokenTree> {
+fn lex_punctuation(l: &mut Lexer<'_>, index: usize, character: char) -> Option<CommentedTokenTree> {
     let punct = Punct {
         kind: character.as_punct_kind()?,
-        spacing: match char_indices.peek() {
+        spacing: match l.stream.peek() {
             Some((_, next_character)) if next_character.as_punct_kind().is_some() => Spacing::Joint,
             _ => Spacing::Alone,
         },
-        span: span_until(src, index, char_indices, path),
+        span: span_until(l, index),
     };
     Some(CommentedTokenTree::Tree(punct.into()))
 }
 
-fn span_until(
-    src: &Arc<str>,
-    start: usize,
-    char_indices: &mut CharIndices,
-    path: &Option<Arc<PathBuf>>,
-) -> Span {
-    let end = char_indices.peek().map_or(src.len(), |(end, _)| *end);
-    Span::new(src.clone(), start, end, path.clone()).unwrap()
+fn span_until(l: &mut Lexer<'_>, start: usize) -> Span {
+    let end = l.stream.peek().map_or(l.src.len(), |(end, _)| *end);
+    span(l, start, end)
+}
+
+fn span_one(l: &Lexer<'_>, start: usize, c: char) -> Span {
+    span(l, start, start + c.len_utf8())
+}
+
+fn span(l: &Lexer<'_>, start: usize, end: usize) -> Span {
+    Span::new(l.src.clone(), start, end, l.path.clone()).unwrap()
+}
+
+/// Emit a lexer error.
+fn error(handler: &Handler, error: LexError) -> ErrorEmitted {
+    handler.emit_err(CompileError::Lex { error })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::lex_commented;
+    use super::{lex, lex_commented};
     use crate::priv_prelude::*;
     use assert_matches::assert_matches;
     use std::sync::Arc;
-    use sway_ast::token::{Comment, CommentedTokenTree, CommentedTree, DocComment, DocStyle};
+    use sway_ast::{
+        literal::{LitChar, Literal},
+        token::{Comment, CommentedTokenTree, CommentedTree, DocComment, DocStyle, TokenTree},
+    };
+    use sway_error::handler::Handler;
 
     #[test]
     fn lex_commented_token_stream() {
@@ -821,7 +732,9 @@ mod tests {
         let start = 0;
         let end = input.len();
         let path = None;
-        let stream = lex_commented(&Arc::from(input), start, end, path).unwrap();
+        let handler = Handler::default();
+        let stream = lex_commented(&handler, &Arc::from(input), start, end, &path).unwrap();
+        assert!(handler.into_errors().is_empty());
         let mut tts = stream.token_trees().iter();
         assert_eq!(tts.next().unwrap().span().as_str(), "//");
         assert_eq!(
@@ -861,7 +774,9 @@ mod tests {
         let start = 0;
         let end = input.len();
         let path = None;
-        let stream = lex_commented(&Arc::from(input), start, end, path).unwrap();
+        let handler = Handler::default();
+        let stream = lex_commented(&handler, &Arc::from(input), start, end, &path).unwrap();
+        assert!(handler.into_errors().is_empty());
         let mut tts = stream.token_trees().iter();
         assert_matches!(
             tts.next(),
@@ -905,6 +820,25 @@ mod tests {
                 span,
                 content_span
             }))) if span.as_str() ==  "/// outer" && content_span.as_str() == " outer"
+        );
+        assert_eq!(tts.next(), None);
+    }
+
+    #[test]
+    fn lex_char_escaped_quote() {
+        let input = r#"
+        '\''
+        "#;
+        let handler = Handler::default();
+        let stream = lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
+        assert!(handler.into_errors().is_empty());
+        let mut tts = stream.token_trees().iter();
+        assert_matches!(
+            tts.next(),
+            Some(TokenTree::Literal(Literal::Char(LitChar {
+                parsed: '\'',
+                ..
+            })))
         );
         assert_eq!(tts.next(), None);
     }

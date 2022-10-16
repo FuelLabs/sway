@@ -1,12 +1,22 @@
-use crate::capabilities;
-use crate::core::{
-    document::{DocumentError, TextDocument},
-    session::Session,
+pub use crate::error::DocumentError;
+use crate::{
+    capabilities,
+    core::{document::TextDocument, session::Session},
+    error::LanguageServerError,
+    utils::{
+        debug::{self, DebugFlags},
+        sync,
+    },
 };
-use crate::utils::debug::{self, DebugFlags};
-use forc_util::find_manifest_dir;
+use forc_pkg::manifest::PackageManifestFile;
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::Write, ops::Deref, path::Path, sync::Arc};
+use std::{
+    fs::File,
+    io::Write,
+    ops::Deref,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use sway_types::Spanned;
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::*;
@@ -29,39 +39,64 @@ impl Backend {
         }
     }
 
+    fn init(&self, uri: &Url) -> Result<(), LanguageServerError> {
+        let manifest_dir = PathBuf::from(uri.path());
+        // Create a new temp dir that clones the current workspace
+        // and store manifest and temp paths
+        self.session
+            .sync
+            .create_temp_dir_from_workspace(&manifest_dir)?;
+
+        self.session.sync.clone_manifest_dir_to_temp()?;
+
+        // iterate over the project dir, parse all sway files
+        let _ = self.parse_and_store_sway_files();
+
+        self.session.sync.watch_and_sync_manifest();
+
+        Ok(())
+    }
+
     async fn log_info_message(&self, message: &str) {
         self.client.log_message(MessageType::INFO, message).await;
     }
 
-    async fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
-        let curr_dir = std::env::current_dir().unwrap();
+    async fn log_error_message(&self, message: &str) {
+        self.client.log_message(MessageType::ERROR, message).await;
+    }
 
-        if let Some(path) = find_manifest_dir(&curr_dir) {
-            let files = get_sway_files(path);
-            for file_path in files {
-                if let Some(path) = file_path.to_str() {
-                    // store the document
-                    let text_document = TextDocument::build_from_path(path)?;
-                    self.session.store_document(text_document)?;
-                }
+    fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
+        if let Some(temp_dir) = self
+            .session
+            .sync
+            .directories
+            .get(&sync::Directory::Temp)
+            .map(|item| item.value().clone())
+        {
+            // Store the documents.
+            for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
+                self.session
+                    .store_document(TextDocument::build_from_path(path)?)?;
             }
         }
 
         Ok(())
     }
 
-    async fn parse_project(&self, uri: &Url) {
-        let diagnostics = match self.session.parse_project(uri) {
+    async fn parse_project(&self, uri: Url, workspace_uri: Url) {
+        // pass in the temp Url into parse_project, we can now get the updated AST's back.
+        let diagnostics = match self.session.parse_project(&uri) {
             Ok(diagnostics) => diagnostics,
             Err(err) => {
-                if let DocumentError::FailedToParse(diagnostics) = err {
+                self.log_error_message(err.to_string().as_str()).await;
+                if let LanguageServerError::FailedToParse { diagnostics } = err {
                     diagnostics
                 } else {
                     vec![]
                 }
             }
         };
-        self.publish_diagnostics(uri, diagnostics).await;
+        self.publish_diagnostics(&workspace_uri, diagnostics).await;
     }
 }
 
@@ -132,9 +167,6 @@ impl LanguageServer for Backend {
             .log_message(MessageType::INFO, "Initializing the Sway Language Server")
             .await;
 
-        // iterate over the project dir, parse all sway files
-        let _ = self.parse_and_store_sway_files().await;
-
         Ok(InitializeResult {
             server_info: None,
             capabilities: capabilities(),
@@ -150,38 +182,116 @@ impl LanguageServer for Backend {
     async fn shutdown(&self) -> jsonrpc::Result<()> {
         self.log_info_message("Shutting Down the Sway Language Server")
             .await;
+
+        // shutdown the thread watching the manifest file
+        if let std::sync::LockResult::Ok(handle) = self.session.sync.notify_join_handle.read() {
+            if let Some(join_handle) = &*handle {
+                join_handle.abort();
+            }
+        }
+
+        // Delete the temporary directory.
+        self.session.sync.remove_temp_dir();
+
         Ok(())
     }
 
     // Document Handlers
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let uri = params.text_document.uri.clone();
-        self.session.handle_open_file(&uri);
-        self.parse_project(&uri).await;
+        // The first time did_open gets called, we call init which sets up the temp directories
+        // to allow for synchronization between the users workspace and the temp workspacace.
+        // We then set InitializedState to Initialized so the function is never called again.
+        // Ideally we would call this in the `initialize` LSP function but we don't have access
+        // to the correct path of the project until this function.
+        if let std::sync::LockResult::Ok(mut init_state) = self.session.sync.init_state.write() {
+            if let sync::InitializedState::Uninitialized = *init_state {
+                match self.init(&params.text_document.uri) {
+                    Ok(()) => {
+                        *init_state = sync::InitializedState::Initialized;
+                    }
+                    Err(err) => {
+                        tracing::error!("{}", err.to_string().as_str());
+                    }
+                }
+            }
+        }
+
+        // convert the client Url to the temp uri
+        if let Ok(uri) = self
+            .session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
+        {
+            self.session.handle_open_file(&uri);
+            self.parse_project(uri, params.text_document.uri).await;
+        }
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let uri = params.text_document.uri.clone();
-        self.session
-            .update_text_document(&uri, params.content_changes);
-        self.parse_project(&uri).await;
+        if let Ok(uri) = self
+            .session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
+        {
+            // update this file with the new changes and write to disk
+            if let Some(src) = self
+                .session
+                .update_text_document(&uri, params.content_changes)
+            {
+                if let Ok(mut file) = File::create(uri.path()) {
+                    let _ = writeln!(&mut file, "{}", src);
+                }
+            }
+            self.parse_project(uri, params.text_document.uri).await;
+        }
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        let uri = params.text_document.uri.clone();
-        self.parse_project(&uri).await;
+        // overwrite the contents of the tmp/folder with everything in
+        // the current workspace. (resync)
+        if let Err(err) = self.session.sync.clone_manifest_dir_to_temp() {
+            tracing::error!("{}", err.to_string().as_str());
+        }
+
+        let _ = self
+            .session
+            .sync
+            .manifest_path()
+            .and_then(|manifest_path| PackageManifestFile::from_dir(&manifest_path).ok())
+            .map(|manifest| {
+                if let Some(temp_manifest_path) = &self.session.sync.temp_manifest_path() {
+                    sync::edit_manifest_dependency_paths(&manifest, temp_manifest_path)
+                }
+            });
+
+        if let Ok(uri) = self
+            .session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
+        {
+            self.parse_project(uri, params.text_document.uri).await;
+        }
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         for event in params.changes {
             if event.typ == FileChangeType::DELETED {
-                let _ = self.session.remove_document(&event.uri);
+                if let Ok(uri) = self.session.sync.workspace_to_temp_url(&event.uri) {
+                    let _ = self.session.remove_document(&uri);
+                }
             }
         }
     }
 
     async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
-        Ok(capabilities::hover::hover_data(&self.session, params))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document_position_params.text_document.uri)
+            .map(|uri| {
+                let position = params.text_document_position_params.position;
+                capabilities::hover::hover_data(&self.session, uri, position)
+            })
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn completion(
@@ -200,56 +310,91 @@ impl LanguageServer for Backend {
         &self,
         params: DocumentSymbolParams,
     ) -> jsonrpc::Result<Option<DocumentSymbolResponse>> {
-        Ok(self
-            .session
-            .symbol_information(&params.text_document.uri)
-            .map(DocumentSymbolResponse::Flat))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
+            .map(|uri| {
+                self.session
+                    .symbol_information(&uri)
+                    .map(DocumentSymbolResponse::Flat)
+            })
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn semantic_tokens_full(
         &self,
         params: SemanticTokensParams,
     ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
-        let url = params.text_document.uri;
-        Ok(capabilities::semantic_tokens::semantic_tokens_full(
-            &self.session,
-            &url,
-        ))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
+            .map(|uri| capabilities::semantic_tokens::semantic_tokens_full(&self.session, &uri))
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn document_highlight(
         &self,
         params: DocumentHighlightParams,
     ) -> jsonrpc::Result<Option<Vec<DocumentHighlight>>> {
-        Ok(capabilities::highlight::get_highlights(
-            &self.session,
-            params,
-        ))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document_position_params.text_document.uri)
+            .map(|uri| {
+                let position = params.text_document_position_params.position;
+                capabilities::highlight::get_highlights(&self.session, uri, position)
+            })
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn goto_definition(
         &self,
         params: GotoDefinitionParams,
     ) -> jsonrpc::Result<Option<GotoDefinitionResponse>> {
-        Ok(self.session.token_definition_response(params))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document_position_params.text_document.uri)
+            .map(|uri| {
+                let position = params.text_document_position_params.position;
+                self.session.token_definition_response(uri, position)
+            })
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn formatting(
         &self,
         params: DocumentFormattingParams,
     ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
-        Ok(self.session.format_text(&params.text_document.uri))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
+            .map(|uri| self.session.format_text(&uri))
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn rename(&self, params: RenameParams) -> jsonrpc::Result<Option<WorkspaceEdit>> {
-        Ok(capabilities::rename::rename(&self.session, params))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document_position.text_document.uri)
+            .map(|uri| {
+                let new_name = params.new_name;
+                let position = params.text_document_position.position;
+                capabilities::rename::rename(&self.session, new_name, uri, position)
+            })
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn prepare_rename(
         &self,
         params: TextDocumentPositionParams,
     ) -> jsonrpc::Result<Option<PrepareRenameResponse>> {
-        Ok(capabilities::rename::prepare_rename(&self.session, params))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
+            .map(|uri| {
+                let position = params.position;
+                capabilities::rename::prepare_rename(&self.session, uri, position)
+            })
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 }
 
@@ -370,36 +515,18 @@ impl Backend {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
-    use std::{env, fs, io::Read, path::PathBuf};
-    use tower::{Service, ServiceExt};
-
     use super::*;
-    use futures::stream::StreamExt;
-    use tower_lsp::jsonrpc::{self, Request, Response};
-    use tower_lsp::LspService;
+    use crate::test_utils::{doc_comments_dir, e2e_test_dir};
+    use serde_json::json;
+    use serial_test::serial;
+    use std::{borrow::Cow, fs, io::Read, path::PathBuf};
+    use tower::{Service, ServiceExt};
+    use tower_lsp::{
+        jsonrpc::{self, Id, Request, Response},
+        ExitedError, LspService,
+    };
 
-    #[allow(dead_code)]
-    fn e2e_test_dir() -> PathBuf {
-        env::current_dir()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
-            .join("struct_field_access")
-    }
-
-    #[allow(dead_code)]
-    fn sway_example_dir() -> PathBuf {
-        env::current_dir()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("examples/storage_variables")
-    }
-
-    fn load_sway_example() -> (Url, String) {
-        let manifest_dir = e2e_test_dir();
+    fn load_sway_example(manifest_dir: PathBuf) -> (Url, String) {
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();
@@ -410,17 +537,25 @@ mod tests {
         (uri, sway_program)
     }
 
+    fn build_request_with_id(
+        method: impl Into<Cow<'static, str>>,
+        params: serde_json::Value,
+        id: impl Into<Id>,
+    ) -> Request {
+        Request::build(method).params(params).id(id).finish()
+    }
+
+    async fn call_request(
+        service: &mut LspService<Backend>,
+        req: Request,
+    ) -> Result<Option<Response>, ExitedError> {
+        service.ready().await?.call(req).await
+    }
+
     async fn initialize_request(service: &mut LspService<Backend>) -> Request {
-        let initialize = Request::build("initialize")
-            .params(json!({ "capabilities": capabilities() }))
-            .id(1)
-            .finish();
-        let response = service
-            .ready()
-            .await
-            .unwrap()
-            .call(initialize.clone())
-            .await;
+        let params = json!({ "capabilities": capabilities() });
+        let initialize = build_request_with_id("initialize", params, 1);
+        let response = call_request(service, initialize.clone()).await;
         let ok = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
         assert_eq!(response, Ok(Some(ok)));
         initialize
@@ -428,13 +563,13 @@ mod tests {
 
     async fn initialized_notification(service: &mut LspService<Backend>) {
         let initialized = Request::build("initialized").finish();
-        let response = service.ready().await.unwrap().call(initialized).await;
+        let response = call_request(service, initialized).await;
         assert_eq!(response, Ok(None));
     }
 
     async fn shutdown_request(service: &mut LspService<Backend>) -> Request {
         let shutdown = Request::build("shutdown").id(1).finish();
-        let response = service.ready().await.unwrap().call(shutdown.clone()).await;
+        let response = call_request(service, shutdown.clone()).await;
         let ok = Response::from_ok(1.into(), json!(null));
         assert_eq!(response, Ok(Some(ok)));
         shutdown
@@ -442,30 +577,61 @@ mod tests {
 
     async fn exit_notification(service: &mut LspService<Backend>) {
         let exit = Request::build("exit").finish();
-        let response = service.ready().await.unwrap().call(exit.clone()).await;
+        let response = call_request(service, exit.clone()).await;
         assert_eq!(response, Ok(None));
     }
 
     async fn did_open_notification(service: &mut LspService<Backend>, uri: &Url, text: &str) {
-        let language_id = "sway";
         let params = json!({
             "textDocument": {
                 "uri": uri,
-                "languageId": language_id,
+                "languageId": "sway",
                 "version": 1,
                 "text": text,
             },
         });
+
         let did_open = Request::build("textDocument/didOpen")
             .params(params)
             .finish();
-        let response = service.ready().await.unwrap().call(did_open).await;
+        let response = call_request(service, did_open).await;
         assert_eq!(response, Ok(None));
+    }
+
+    async fn did_change_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+                "version": 2
+            },
+            "contentChanges": [
+                {
+                    "range": {
+                        "start": {
+                            "line": 1,
+                            "character": 0
+                        },
+                        "end": {
+                            "line": 1,
+                            "character": 0
+                        }
+                    },
+                    "rangeLength": 0,
+                    "text": "\n",
+                }
+            ]
+        });
+        let did_change = Request::build("textDocument/didChange")
+            .params(params)
+            .finish();
+        let response = call_request(service, did_change.clone()).await;
+        assert_eq!(response, Ok(None));
+        did_change
     }
 
     async fn did_close_notification(service: &mut LspService<Backend>) {
         let exit = Request::build("textDocument/didClose").finish();
-        let response = service.ready().await.unwrap().call(exit.clone()).await;
+        let response = call_request(service, exit.clone()).await;
         assert_eq!(response, Ok(None));
     }
 
@@ -476,247 +642,307 @@ mod tests {
             },
             "astKind": "typed",
         });
-        let show_ast = Request::build("sway/show_ast")
-            .params(params)
-            .id(1)
-            .finish();
-        let response = service.ready().await.unwrap().call(show_ast.clone()).await;
+        let show_ast = build_request_with_id("sway/show_ast", params, 1);
+        let response = call_request(service, show_ast.clone()).await;
         let ok = Response::from_ok(1.into(), json!({"uri": "file:///tmp/typed_ast.rs"}));
         assert_eq!(response, Ok(Some(ok)));
         show_ast
+    }
+
+    async fn semantic_tokens_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+        });
+        let semantic_tokens = build_request_with_id("textDocument/semanticTokens/full", params, 1);
+        let _response = call_request(service, semantic_tokens.clone()).await;
+        semantic_tokens
+    }
+
+    async fn document_symbol_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+        });
+        let document_symbol = build_request_with_id("textDocument/documentSymbol", params, 1);
+        let _response = call_request(service, document_symbol.clone()).await;
+        document_symbol
+    }
+
+    async fn go_to_definition_request(
+        service: &mut LspService<Backend>,
+        uri: &Url,
+        token_req_line: i32,
+        token_def_line: i32,
+        id: i64,
+    ) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+            "position": {
+                "line": token_req_line,
+                "character": 24,
+            }
+        });
+        let definition = build_request_with_id("textDocument/definition", params, id);
+        let response = call_request(service, definition.clone()).await;
+        let ok = Response::from_ok(
+            id.into(),
+            json!({
+                "range": {
+                    "end": {
+                        "character": 11,
+                        "line": token_def_line,
+                    },
+                    "start": {
+                        "character": 7,
+                        "line": token_def_line,
+                    }
+                },
+                "uri": uri,
+            }),
+        );
+        assert_eq!(response, Ok(Some(ok)));
+        definition
+    }
+
+    async fn hover_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+            "position": {
+                "line": 44,
+                "character": 24
+            }
+        });
+        let hover = build_request_with_id("textDocument/hover", params, 1);
+        let response = call_request(service, hover.clone()).await;
+        let ok = Response::from_ok(
+            1.into(),
+            json!({
+                "contents": {
+                    "kind": "markdown",
+                    "value": "```sway\nstruct Data\n```"
+                },
+                "range": {
+                    "end": {
+                        "character": 11,
+                        "line": 19
+                    },
+                    "start": {
+                        "character": 7,
+                        "line": 19
+                    }
+                }
+            }),
+        );
+        assert_eq!(response, Ok(Some(ok)));
+        hover
+    }
+
+    async fn format_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+            "options": {
+                "tabSize": 4,
+                "insertSpaces": true
+            },
+        });
+        let formatting = build_request_with_id("textDocument/formatting", params, 1);
+        let _response = call_request(service, formatting.clone()).await;
+        formatting
+    }
+
+    async fn highlight_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+            "position": {
+                "line": 44,
+                "character": 27
+            }
+        });
+        let highlight = build_request_with_id("textDocument/documentHighlight", params, 1);
+        let response = call_request(service, highlight.clone()).await;
+        let ok = Response::from_ok(
+            1.into(),
+            json!([{
+                "range": {
+                    "end": {
+                        "character": 27,
+                        "line": 44
+                    },
+                    "start": {
+                        "character": 23,
+                        "line": 44
+                    }
+                }
+            }]),
+        );
+        assert_eq!(response, Ok(Some(ok)));
+        highlight
     }
 
     fn config() -> DebugFlags {
         Default::default()
     }
 
+    async fn init_and_open(service: &mut LspService<Backend>, manifest_dir: PathBuf) -> Url {
+        let _ = initialize_request(service).await;
+        initialized_notification(service).await;
+        let (uri, sway_program) = load_sway_example(manifest_dir);
+        did_open_notification(service, &uri, &sway_program).await;
+        uri
+    }
+
+    async fn shutdown_and_exit(service: &mut LspService<Backend>) {
+        let _ = shutdown_request(service).await;
+        exit_notification(service).await;
+    }
+
     #[tokio::test]
+    #[serial]
     async fn initialize() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
         let _ = initialize_request(&mut service).await;
     }
 
     #[tokio::test]
+    #[serial]
     async fn initialized() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
         let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
         initialized_notification(&mut service).await;
     }
 
     #[tokio::test]
+    #[serial]
     async fn initializes_only_once() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
         let initialize = initialize_request(&mut service).await;
-
-        // send "initialized" notification
         initialized_notification(&mut service).await;
-
-        // send "initialize" request (again); should error
-        let response = service.ready().await.unwrap().call(initialize).await;
+        let response = call_request(&mut service, initialize).await;
         let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
         assert_eq!(response, Ok(Some(err)));
     }
 
     #[tokio::test]
+    #[serial]
     async fn shutdown() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
         let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
         initialized_notification(&mut service).await;
-
-        // send "shutdown" request
         let shutdown = shutdown_request(&mut service).await;
-
-        // send "shutdown" request (again); should error
-        let response = service.ready().await.unwrap().call(shutdown).await;
+        let response = call_request(&mut service, shutdown).await;
         let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
         assert_eq!(response, Ok(Some(err)));
-
-        // send "exit" request
         exit_notification(&mut service).await;
     }
 
     #[tokio::test]
+    #[serial]
     async fn refuses_requests_after_shutdown() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
         let _ = initialize_request(&mut service).await;
-
-        // send "shutdown" request
         let shutdown = shutdown_request(&mut service).await;
-
-        let response = service.ready().await.unwrap().call(shutdown).await;
+        let response = call_request(&mut service, shutdown).await;
         let err = Response::from_error(1.into(), jsonrpc::Error::invalid_request());
         assert_eq!(response, Ok(Some(err)));
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test]
+    #[serial]
     async fn did_open() {
-        let (mut service, mut messages) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        messages.next().await.unwrap();
-
-        let (uri, sway_program) = load_sway_example();
-
-        // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, &sway_program).await;
-
-        // ignore the "textDocument/publishDiagnostics" notification
-        messages.next().await.unwrap();
-
-        // send "shutdown" request
-        let _ = shutdown_request(&mut service).await;
-
-        // send "exit" request
-        exit_notification(&mut service).await;
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let _ = init_and_open(&mut service, e2e_test_dir()).await;
+        shutdown_and_exit(&mut service).await;
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test]
+    #[serial]
     async fn did_close() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        let (uri, sway_program) = load_sway_example();
-
-        // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, &sway_program).await;
-
-        // send "textDocument/didClose" notification for `uri`
+        let _ = init_and_open(&mut service, e2e_test_dir()).await;
         did_close_notification(&mut service).await;
-
-        // send "shutdown" request
-        let _ = shutdown_request(&mut service).await;
-
-        // send "exit" request
-        exit_notification(&mut service).await;
+        shutdown_and_exit(&mut service).await;
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test]
+    #[serial]
     async fn did_change() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        let uri = Url::parse("inmemory:///test").unwrap();
-        let text = r#"script;
-
-        fn main() {
-        
-        }
-        "#;
-
-        // This just an example of the changes made
-        // In reality, the only text that needs to be sent to the language server
-        // is "let x = 0.0;"
-        let _new_text = r#"script;
-
-        fn main() {
-            let x = 0.0;
-        }
-        "#;
-
-        // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, text).await;
-
-        // send "textDocument/didChange" notification for `uri`
-        let params = json!({
-            "textDocument": {
-                "uri": uri,
-                "version": 1
-            },
-            "contentChanges": [
-                {
-                    "range": {
-                        "start": {
-                            "line": 3,
-                            "character": 4
-                        },
-                        "end": {
-                            "line": 3,
-                            "character": 4
-                        }
-                    },
-                    "rangeLength": 0,
-                    "text": "let x = 0.0;",
-                }
-            ]
-        });
-        let did_change = Request::build("textDocument/didChange")
-            .params(params)
-            .finish();
-        let response = service.ready().await.unwrap().call(did_change).await;
-        assert_eq!(response, Ok(None));
-
-        // send "shutdown" request
-        let _ = shutdown_request(&mut service).await;
-
-        // send "exit" request
-        exit_notification(&mut service).await;
+        let uri = init_and_open(&mut service, doc_comments_dir()).await;
+        let _ = did_change_request(&mut service, &uri).await;
+        shutdown_and_exit(&mut service).await;
     }
 
-    //#[tokio::test]
-    #[allow(dead_code)]
+    #[tokio::test]
+    #[serial]
+    async fn lsp_syncs_with_workspace_edits() {
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let uri = init_and_open(&mut service, doc_comments_dir()).await;
+        let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
+        let _ = did_change_request(&mut service, &uri).await;
+        let _ = go_to_definition_request(&mut service, &uri, 45, 20, 2).await;
+        shutdown_and_exit(&mut service).await;
+    }
+
+    #[tokio::test]
+    #[serial]
     async fn show_ast() {
-        let (mut service, mut messages) =
-            LspService::build(|client| Backend::new(client, config()))
-                .custom_method("sway/show_ast", Backend::show_ast)
-                .finish();
+        let (mut service, _) = LspService::build(|client| Backend::new(client, config()))
+            .custom_method("sway/show_ast", Backend::show_ast)
+            .finish();
 
-        // send "initialize" request
-        let _ = initialize_request(&mut service).await;
-
-        // send "initialized" notification
-        initialized_notification(&mut service).await;
-
-        // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
-        messages.next().await.unwrap();
-
-        let (uri, sway_program) = load_sway_example();
-
-        // send "textDocument/didOpen" notification for `uri`
-        did_open_notification(&mut service, &uri, &sway_program).await;
-
-        // ignore the "textDocument/publishDiagnostics" notification
-        messages.next().await.unwrap();
-
-        // send "sway/show_typed_ast" request
+        let uri = init_and_open(&mut service, e2e_test_dir()).await;
         let _ = show_ast_request(&mut service, &uri).await;
-
-        // send "shutdown" request
-        let _ = shutdown_request(&mut service).await;
-
-        // send "exit" request
-        exit_notification(&mut service).await;
+        shutdown_and_exit(&mut service).await;
     }
+
+    #[tokio::test]
+    #[serial]
+    async fn go_to_definition() {
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let uri = init_and_open(&mut service, doc_comments_dir()).await;
+        let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
+        shutdown_and_exit(&mut service).await;
+    }
+
+    // This macro allows us to spin up a server / client for testing
+    // It initializes and performs the necessary handshake and then loads
+    // the sway example that was passed into `example_dir`.
+    // It then runs the specific capability to test before gracefully shutting down.
+    // The capability argument is an async function.
+    macro_rules! test_lsp_capability {
+        ($example_dir:expr, $capability:expr) => {{
+            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+            let uri = init_and_open(&mut service, $example_dir).await;
+            // Call the specific LSP capability function that was passed in.
+            let _ = $capability(&mut service, &uri).await;
+            shutdown_and_exit(&mut service).await;
+        }};
+    }
+
+    macro_rules! lsp_capability_test {
+        ($test:ident, $capability:expr) => {
+            #[tokio::test]
+            #[serial]
+            async fn $test() {
+                test_lsp_capability!(doc_comments_dir(), $capability);
+            }
+        };
+    }
+
+    lsp_capability_test!(semantic_tokens, semantic_tokens_request);
+    lsp_capability_test!(document_symbol, document_symbol_request);
+    lsp_capability_test!(format, format_request);
+    lsp_capability_test!(hover, hover_request);
+    lsp_capability_test!(highlight, highlight_request);
 }

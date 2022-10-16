@@ -59,7 +59,7 @@ pub struct Vec<T> {
 
 impl<T> Vec<T> {
     /// Constructs a new, empty `Vec<T>`.
-    /// 
+    ///
     /// The vector will not allocate until elements are pushed onto it.
     pub fn new() -> Self {
         Self {
@@ -69,10 +69,10 @@ impl<T> Vec<T> {
     }
 
     /// Constructs a new, empty `Vec<T>` with the specified capacity.
-    /// 
+    ///
     /// The vector will be able to hold exactly `capacity` elements without
     /// reallocating. If `capacity` is 0, the vector will not allocate.
-    /// 
+    ///
     /// It is important to note that although the returned vector has the
     /// *capacity* specified, the vector will have a zero *length*.
     pub fn with_capacity(capacity: u64) -> Self {
@@ -106,7 +106,7 @@ impl<T> Vec<T> {
     }
 
     /// Clears the vector, removing all values.
-    /// 
+    ///
     /// Note that this method has no effect on the allocated capacity
     /// of the vector.
     pub fn clear(ref mut self) {
@@ -206,14 +206,14 @@ impl<T> Vec<T> {
     }
 
     /// Swaps two elements.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * element1_index - The index of the first element
     /// * element2_index - The index of the second element
-    /// 
+    ///
     /// # Reverts
-    /// 
+    ///
     /// Reverts if `element1_index` or `element2_index` is greater than or equal to the length of vector.
     pub fn swap(ref mut self, element1_index: u64, element2_index: u64) {
         assert(element1_index < self.len);

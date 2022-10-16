@@ -8,16 +8,15 @@ fn main() -> u64 {
     }
 }
 
-// check: cbr $VAL, $(bl0=$ID), $(bl1=$ID)
+// check: cbr $VAL, $(bl0=$ID)(), $(bl1=$ID)()
 
-// check: $bl0:
+// check: $bl0():
 // check: $(bl0_val=$VAL) = const u64 1000000
-// check: br $(bl2=$ID)
+// check: br $(bl2=$ID)($bl0_val)
 
-// check: $bl1:
+// check: $bl1():
 // check: $(bl1_val=$VAL) = const u64 42
-// check: br $bl2
+// check: br $bl2($bl1_val)
 
-// check: $bl2:
-// check: $(ret_val=$VAL) = phi($bl0: $bl0_val, $bl1: $bl1_val)
+// check: $bl2($(ret_val=$VAL): u64):
 // check: ret u64 $ret_val

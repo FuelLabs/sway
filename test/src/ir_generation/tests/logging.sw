@@ -37,7 +37,7 @@ fn main() {
 
 // check: script {
 // check: fn main() -> ()
-// check: entry:
+// check: entry():
 
 // check: log b256 $VAL, $VAL
 // check: log u64 $VAL, $VAL

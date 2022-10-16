@@ -28,12 +28,12 @@ impl GetStorageKeyTest for Contract {
 }
 
 // check: fn foo1<2994c98e>() -> b256
-// nextln: entry:
-// nextln: $(empty_struct_val=$VAL) = const {  } {  }
+// check: entry():
+// nextln: $(empty_struct_val=$VAL) = get_ptr ptr {  } $ID, ptr {  }, 0
 // nextln: $(res=$VAL) = call $(fn_name=$ID)($empty_struct_val)
 // nextln: ret b256 $res
 
 // check: fn $fn_name(self $MD: {  }) -> b256
-// nextln: entry:
+// nextln: entry(self: {  }):
 // nextln: $(key_val=$VAL) = get_storage_key
 // nextln: ret b256 $key_val
