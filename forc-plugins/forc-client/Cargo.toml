@@ -14,12 +14,12 @@ clap = { version = "3", features = ["derive", "env"] }
 forc-pkg = { version = "0.26.0", path = "../../forc-pkg" }
 forc-util = { version = "0.26.0", path = "../../forc-util" }
 fuel-crypto = "0.6"
-fuel-gql-client = { version = "0.10", default-features = false }
-fuel-tx = "0.18"
-fuel-vm = "0.15"
-fuels-core = "0.24" 
-fuels-signers = "0.24"
-fuels-types = "0.24"
+fuel-gql-client = { version = "0.11", default-features = false }
+fuel-tx = "0.20"
+fuel-vm = "0.18"
+fuels-core = "0.26" 
+fuels-signers = "0.26"
+fuels-types = "0.26"
 futures = "0.3"
 hex = "0.4.3"
 serde = "1.0"
