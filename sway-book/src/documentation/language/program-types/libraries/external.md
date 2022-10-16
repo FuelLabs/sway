@@ -21,23 +21,27 @@ $ tree
         └── harness.rs
 ```
 
-If we take a look at each library then we see the following:
+## Libraries
 
-__my_library__
+### my_other_library
 
-```sway
-{{#include ../../../../code/language/program-types/libraries/external/my_library/src/lib.sw}}
-```
-
-__my_other_library__
+`my_other_library` has a function `quix()` which can be imported into `my_library` because it uses the `pub` keyword.
 
 ```sway
 {{#include ../../../../code/language/program-types/libraries/external/my_other_library/src/lib.sw}}
 ```
 
-The code in `my_library` references `my_other_library` however there is one more step required in order to link the two libraries and that is to tell `my_library` where to find `my_other_library`.
+### my_library
 
-This is done by listing `my_other_library` as a dependency in the `Forc.toml` file of `my_library` under the `[dependencies]` section.
+To be able to use `quix()` inside `my_library` there are two steps to take:
+
+1. Use the `use` keyword to selectively import our code from `my_other_library`
+
+```sway
+{{#include ../../../../code/language/program-types/libraries/external/my_library/src/lib.sw}}
+```
+
+2. Add `my_other_library` as a dependency under the `[dependencies]` section of the `my_library` `Forc.toml` file.
 
 ```bash
 {{#include ../../../../code/language/program-types/libraries/external/my_library/Forc.toml}}

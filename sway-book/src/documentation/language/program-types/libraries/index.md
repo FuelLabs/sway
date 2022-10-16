@@ -32,4 +32,4 @@ The following structures can be marked as `pub`:
 
 ## Deployment
 
-Libraries cannot be directly deployed to a blockchain however they can be deployed as part of a contract.
+Libraries cannot be directly deployed to a blockchain however they can be deployed as part of a [contract](../contract.md).
