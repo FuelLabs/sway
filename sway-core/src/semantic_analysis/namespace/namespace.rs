@@ -1,7 +1,7 @@
 use crate::{
     language::{ty, CallPath},
     type_system::*,
-    CompileResult, Ident, TyDeclaration, TyFunctionDeclaration,
+    CompileResult, Ident,
 };
 
 use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
@@ -86,12 +86,15 @@ impl Namespace {
     }
 
     /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
-    pub(crate) fn resolve_symbol(&self, symbol: &Ident) -> CompileResult<&TyDeclaration> {
+    pub(crate) fn resolve_symbol(&self, symbol: &Ident) -> CompileResult<&ty::TyDeclaration> {
         self.root.resolve_symbol(&self.mod_path, symbol)
     }
 
     /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path(&self, call_path: &CallPath) -> CompileResult<&TyDeclaration> {
+    pub(crate) fn resolve_call_path(
+        &self,
+        call_path: &CallPath,
+    ) -> CompileResult<&ty::TyDeclaration> {
         self.root.resolve_call_path(&self.mod_path, call_path)
     }
 
@@ -140,7 +143,7 @@ impl Namespace {
         method_name: &Ident,
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
-    ) -> CompileResult<TyFunctionDeclaration> {
+    ) -> CompileResult<ty::TyFunctionDeclaration> {
         self.root.find_method_for_type(
             &self.mod_path,
             r#type,

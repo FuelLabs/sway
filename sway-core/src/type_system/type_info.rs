@@ -1,11 +1,10 @@
 use super::*;
 use crate::{
     language::{ty, CallPath},
-    semantic_analysis::*,
     Ident,
 };
 use sway_error::error::CompileError;
-use sway_types::span::Span;
+use sway_types::{integer_bits::IntegerBits, span::Span};
 
 use derivative::Derivative;
 use std::{
@@ -45,12 +44,12 @@ pub enum TypeInfo {
     Enum {
         name: Ident,
         type_parameters: Vec<TypeParameter>,
-        variant_types: Vec<TyEnumVariant>,
+        variant_types: Vec<ty::TyEnumVariant>,
     },
     Struct {
         name: Ident,
         type_parameters: Vec<TypeParameter>,
-        fields: Vec<TyStructField>,
+        fields: Vec<ty::TyStructField>,
     },
     Boolean,
     Tuple(Vec<TypeArgument>),
@@ -85,7 +84,7 @@ pub enum TypeInfo {
     /// Stored without initializers here, as typed struct fields,
     /// so type checking is able to treat it as a struct with fields.
     Storage {
-        fields: Vec<TyStructField>,
+        fields: Vec<ty::TyStructField>,
     },
 }
 
@@ -1017,7 +1016,7 @@ impl TypeInfo {
     /// iterate through the elements of `subfields` as `subfield`,
     /// and recursively apply `subfield` to `self`.
     ///
-    /// Returns a [TyStructField] when all `subfields` could be
+    /// Returns a [ty::TyStructField] when all `subfields` could be
     /// applied without error.
     ///
     /// Returns an error when subfields could not be applied:
@@ -1028,7 +1027,7 @@ impl TypeInfo {
         &self,
         subfields: &[Ident],
         span: &Span,
-    ) -> CompileResult<TyStructField> {
+    ) -> CompileResult<ty::TyStructField> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match (self, subfields.split_first()) {
@@ -1110,7 +1109,7 @@ impl TypeInfo {
         &self,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<(&Ident, &Vec<TyEnumVariant>)> {
+    ) -> CompileResult<(&Ident, &Vec<ty::TyEnumVariant>)> {
         let warnings = vec![];
         let errors = vec![];
         match self {
@@ -1135,10 +1134,11 @@ impl TypeInfo {
     /// and return its contents.
     ///
     /// Returns an error if `self` is not a `TypeInfo::Struct`.
+    #[allow(dead_code)]
     pub(crate) fn expect_struct(
         &self,
         debug_span: &Span,
-    ) -> CompileResult<(&Ident, &Vec<TyStructField>)> {
+    ) -> CompileResult<(&Ident, &Vec<ty::TyStructField>)> {
         let warnings = vec![];
         let errors = vec![];
         match self {

@@ -1,3 +1,5 @@
+use crate::language::DepName;
+
 use super::ParseTree;
 use sway_types::Ident;
 
@@ -9,12 +11,6 @@ pub struct ParseModule {
     /// Submodules introduced within this module using the `dep` syntax in order of declaration.
     pub submodules: Vec<(DepName, ParseSubmodule)>,
 }
-
-/// The name used within a module to refer to one of its submodules.
-///
-/// If an alias was given to the `dep`, this will be the alias. If not, this is the submodule's
-/// library name.
-pub type DepName = Ident;
 
 /// A library module that was declared as a `dep` of another module.
 ///

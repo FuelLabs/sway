@@ -8,7 +8,7 @@ The entire Sway standard library is a Forc project called `std`, and is availabl
 
 ## Using the Standard Library
 
-The standard library is made implicitly available to all Forc projects created using [`forc new`](../forc/commands/forc_new.md). In other words, it is not required to manually specify `std` as an explicit dependency. Forc will automagically use the version of `std` that matches its version.
+The standard library is made implicitly available to all Forc projects created using [`forc new`](../forc/commands/forc_new.md). In other words, it is not required to manually specify `std` as an explicit dependency. Forc will automatically use the version of `std` that matches its version.
 
 Importing items from the standard library can be done using the `use` keyword, just as importing items from any Sway project. For example:
 

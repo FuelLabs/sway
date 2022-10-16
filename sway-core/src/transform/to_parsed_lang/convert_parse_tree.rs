@@ -1,11 +1,8 @@
 use crate::{
-    error::{err, ok, CompileResult, CompileWarning, Warning},
+    error::*,
     language::{parsed::*, *},
-    type_system::{
-        insert_type, AbiName, IntegerBits, TraitConstraint, TypeArgument, TypeBinding,
-        TypeParameter,
-    },
-    TypeInfo,
+    transform::{attribute::*, to_parsed_lang::*},
+    type_system::*,
 };
 
 use sway_ast::{
@@ -20,12 +17,17 @@ use sway_ast::{
     PatternStructField, PubToken, Punctuated, QualifiedPathRoot, Statement, StatementLet, Traits,
     Ty, TypeField, UseTree, WhereClause,
 };
-use sway_error::convert_parse_tree_error::ConvertParseTreeError;
-use sway_error::error::CompileError;
-use sway_types::constants::{
-    DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX,
-    STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
-    TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
+use sway_error::{
+    convert_parse_tree_error::ConvertParseTreeError,
+    warning::{CompileWarning, Warning},
+};
+use sway_types::{
+    constants::{
+        DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX,
+        STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
+        TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
+    },
+    integer_bits::IntegerBits,
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -40,54 +42,6 @@ use std::{
         Arc,
     },
 };
-
-#[derive(Debug, Default)]
-/// Contains any errors or warnings that were generated during the conversion into the parse tree.
-/// Typically these warnings and errors are populated as a side effect in the `From` and `Into`
-/// implementations of error types into [ErrorEmitted].
-pub struct ErrorContext {
-    pub(crate) warnings: Vec<CompileWarning>,
-    pub(crate) errors: Vec<CompileError>,
-}
-
-#[derive(Debug)]
-/// Represents that an error was emitted to the error context. This struct does not contain the
-/// error, rather, other errors are responsible for pushing to the [ErrorContext] in their `Into`
-/// implementations.
-pub struct ErrorEmitted {
-    _priv: (),
-}
-
-impl ErrorContext {
-    #[allow(dead_code)]
-    pub fn warning<W>(&mut self, warning: W)
-    where
-        W: Into<CompileWarning>,
-    {
-        self.warnings.push(warning.into());
-    }
-
-    pub fn error<E>(&mut self, error: E) -> ErrorEmitted
-    where
-        E: Into<CompileError>,
-    {
-        self.errors.push(error.into());
-        ErrorEmitted { _priv: () }
-    }
-
-    pub fn errors<I, E>(&mut self, errors: I) -> Option<ErrorEmitted>
-    where
-        I: IntoIterator<Item = E>,
-        E: Into<CompileError>,
-    {
-        let mut emitted_opt = None;
-        self.errors.extend(errors.into_iter().map(|error| {
-            emitted_opt = Some(ErrorEmitted { _priv: () });
-            error.into()
-        }));
-        emitted_opt
-    }
-}
 
 pub fn convert_parse_tree(
     module: Module,
@@ -201,7 +155,7 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
             vec![AstNodeContent::Declaration(declaration)]
         }
         ItemKind::Abi(item_abi) => {
-            let abi_declaration = item_abi_to_abi_declaration(ec, item_abi)?;
+            let abi_declaration = item_abi_to_abi_declaration(ec, item_abi, attributes)?;
             vec![AstNodeContent::Declaration(Declaration::AbiDeclaration(
                 abi_declaration,
             ))]
@@ -229,94 +183,6 @@ fn item_to_ast_nodes(ec: &mut ErrorContext, item: Item) -> Result<Vec<AstNode>, 
             content,
         })
         .collect())
-}
-
-// Each item may have a list of attributes, each with a name (the key to the hashmap) and a list of
-// zero or more args.  Attributes may be specified more than once in which case we use the union of
-// their args.
-//
-// E.g.,
-//
-//   #[foo(bar)]
-//   #[foo(baz, xyzzy)]
-//
-// is essentially equivalent to
-//
-//   #[foo(bar, baz, xyzzy)]
-//
-// but no uniquing is done so
-//
-//   #[foo(bar)]
-//   #[foo(bar)]
-//
-// is
-//
-//   #[foo(bar, bar)]
-
-/// An attribute has a name (i.e "doc", "storage") and
-/// a vector of possible arguments.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Attribute {
-    pub name: Ident,
-    pub args: Vec<Ident>,
-}
-
-/// Valid kinds of attributes supported by the compiler
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub enum AttributeKind {
-    Doc,
-    Storage,
-    Test,
-}
-
-/// Stores the attributes associated with the type.
-pub type AttributesMap = Arc<HashMap<AttributeKind, Vec<Attribute>>>;
-
-fn item_attrs_to_map(
-    ec: &mut ErrorContext,
-    attribute_list: &[AttributeDecl],
-) -> Result<AttributesMap, ErrorEmitted> {
-    let mut attrs_map: HashMap<_, Vec<Attribute>> = HashMap::new();
-    for attr_decl in attribute_list {
-        let attr = attr_decl.attribute.get();
-        let name = attr.name.as_str();
-        if !VALID_ATTRIBUTE_NAMES.contains(&name) {
-            ec.warning(CompileWarning {
-                span: attr_decl.span().clone(),
-                warning_content: Warning::UnrecognizedAttribute {
-                    attrib_name: attr.name.clone(),
-                },
-            })
-        }
-
-        let args = attr
-            .args
-            .as_ref()
-            .map(|parens| parens.get().into_iter().cloned().collect())
-            .unwrap_or_else(Vec::new);
-
-        let attribute = Attribute {
-            name: attr.name.clone(),
-            args,
-        };
-
-        if let Some(attr_kind) = match name {
-            DOC_ATTRIBUTE_NAME => Some(AttributeKind::Doc),
-            STORAGE_PURITY_ATTRIBUTE_NAME => Some(AttributeKind::Storage),
-            TEST_ATTRIBUTE_NAME => Some(AttributeKind::Test),
-            _ => None,
-        } {
-            match attrs_map.get_mut(&attr_kind) {
-                Some(old_args) => {
-                    old_args.push(attribute);
-                }
-                None => {
-                    attrs_map.insert(attr_kind, vec![attribute]);
-                }
-            }
-        }
-    }
-    Ok(Arc::new(attrs_map))
 }
 
 fn item_use_to_use_statements(
@@ -574,6 +440,11 @@ fn item_trait_to_trait_declaration(
     attributes: AttributesMap,
 ) -> Result<TraitDeclaration, ErrorEmitted> {
     let name = item_trait.name;
+    let type_parameters = generic_params_opt_to_type_parameters(
+        ec,
+        item_trait.generics,
+        item_trait.where_clause_opt,
+    )?;
     let interface_surface = {
         item_trait
             .trait_items
@@ -603,6 +474,7 @@ fn item_trait_to_trait_declaration(
     let visibility = pub_token_opt_to_visibility(item_trait.visibility);
     Ok(TraitDeclaration {
         name,
+        type_parameters,
         interface_surface,
         methods,
         supertraits,
@@ -630,33 +502,117 @@ fn item_impl_to_declaration(
             .collect::<Result<_, _>>()?
     };
 
-    let type_parameters = generic_params_opt_to_type_parameters(
+    let impl_type_parameters = generic_params_opt_to_type_parameters(
         ec,
         item_impl.generic_params_opt,
         item_impl.where_clause_opt,
     )?;
 
     match item_impl.trait_opt {
-        Some((path_type, _for_token)) => {
+        Some((path_type, _)) => {
+            let (trait_name, trait_type_arguments) =
+                path_type_to_call_path_and_type_arguments(ec, path_type)?;
             let impl_trait = ImplTrait {
-                trait_name: path_type_to_call_path(ec, path_type)?,
+                impl_type_parameters,
+                trait_name,
+                trait_type_arguments,
                 type_implementing_for,
                 type_implementing_for_span,
-                type_parameters,
                 functions,
                 block_span,
             };
             Ok(Declaration::ImplTrait(impl_trait))
         }
+        None => match type_implementing_for {
+            TypeInfo::Contract => {
+                Err(ec.error(ConvertParseTreeError::SelfImplForContract { span: block_span }))
+            }
+            _ => {
+                let impl_self = ImplSelf {
+                    type_implementing_for,
+                    type_implementing_for_span,
+                    impl_type_parameters,
+                    functions,
+                    block_span,
+                };
+                Ok(Declaration::ImplSelf(impl_self))
+            }
+        },
+    }
+}
+
+fn path_type_to_call_path_and_type_arguments(
+    ec: &mut ErrorContext,
+    path_type: PathType,
+) -> Result<(CallPath, Vec<TypeArgument>), ErrorEmitted> {
+    let PathType {
+        root_opt,
+        prefix,
+        mut suffix,
+    } = path_type;
+    let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
+    match suffix.pop() {
+        Some((_, call_path_suffix)) => match suffix.pop() {
+            Some((_, trait_segment)) => {
+                let PathTypeSegment {
+                    fully_qualified,
+                    name,
+                    generics_opt,
+                } = trait_segment;
+                let trait_type_arguments = match generics_opt {
+                    Some((_, generic_args)) => generic_args_to_type_arguments(ec, generic_args)?,
+                    None => vec![],
+                };
+                let mut prefixes = vec![path_type_segment_to_ident(ec, prefix)?];
+                for (_, call_path_prefix) in suffix {
+                    let ident = path_type_segment_to_ident(ec, call_path_prefix)?;
+                    prefixes.push(ident);
+                }
+                if fully_qualified.is_none() {
+                    prefixes.push(name);
+                }
+                Ok((
+                    CallPath {
+                        prefixes,
+                        suffix: call_path_suffix.name,
+                        is_absolute,
+                    },
+                    trait_type_arguments,
+                ))
+            }
+            None => {
+                let trait_type_arguments = match prefix.generics_opt {
+                    Some((_, generic_args)) => generic_args_to_type_arguments(ec, generic_args)?,
+                    None => vec![],
+                };
+                let prefixes = if prefix.fully_qualified.is_some() {
+                    vec![]
+                } else {
+                    vec![prefix.name]
+                };
+                Ok((
+                    CallPath {
+                        prefixes,
+                        suffix: call_path_suffix.name,
+                        is_absolute,
+                    },
+                    trait_type_arguments,
+                ))
+            }
+        },
         None => {
-            let impl_self = ImplSelf {
-                type_implementing_for,
-                type_implementing_for_span,
-                type_parameters,
-                functions,
-                block_span,
+            let trait_type_arguments = match prefix.generics_opt {
+                Some((_, generic_args)) => generic_args_to_type_arguments(ec, generic_args)?,
+                None => vec![],
             };
-            Ok(Declaration::ImplSelf(impl_self))
+            Ok((
+                CallPath {
+                    prefixes: vec![],
+                    suffix: prefix.name.clone(),
+                    is_absolute,
+                },
+                trait_type_arguments,
+            ))
         }
     }
 }
@@ -664,6 +620,7 @@ fn item_impl_to_declaration(
 fn item_abi_to_abi_declaration(
     ec: &mut ErrorContext,
     item_abi: ItemAbi,
+    attributes: AttributesMap,
 ) -> Result<AbiDeclaration, ErrorEmitted> {
     let span = item_abi.span();
     Ok(AbiDeclaration {
@@ -691,6 +648,7 @@ fn item_abi_to_abi_declaration(
                 .collect::<Result<_, _>>()?,
         },
         span,
+        attributes,
     })
 }
 
@@ -2473,52 +2431,41 @@ fn literal_to_literal(
 fn path_expr_to_call_path_binding(
     ec: &mut ErrorContext,
     path_expr: PathExpr,
-) -> Result<TypeBinding<CallPath<(TypeInfo, Span)>>, ErrorEmitted> {
+) -> Result<TypeBinding<CallPath>, ErrorEmitted> {
     let PathExpr {
         root_opt,
         prefix,
         mut suffix,
     } = path_expr;
     let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
-    let (prefixes, type_info, type_info_span, type_arguments) = match suffix.pop() {
-        Some((_double_colon_token, call_path_suffix)) => {
+    let (prefixes, suffix, span, type_arguments) = match suffix.pop() {
+        Some((_, call_path_suffix)) => {
             let mut prefixes = vec![path_expr_segment_to_ident(ec, prefix)?];
-            for (_double_colon_token, call_path_prefix) in suffix {
+            for (_, call_path_prefix) in suffix {
                 let ident = path_expr_segment_to_ident(ec, call_path_prefix)?;
                 // note that call paths only support one set of type arguments per call path right
                 // now
                 prefixes.push(ident);
             }
+            let span = call_path_suffix.span();
             let (suffix, ty_args) =
                 path_expr_segment_to_ident_or_type_argument(ec, call_path_suffix)?;
-            let type_info_span = suffix.span();
-            let type_info = type_name_to_type_info_opt(&suffix).unwrap_or(TypeInfo::Custom {
-                name: suffix,
-                type_arguments: None,
-            });
-            (prefixes, type_info, type_info_span, ty_args)
+            (prefixes, suffix, span, ty_args)
         }
         None => {
+            let span = prefix.span();
             let (suffix, ty_args) = path_expr_segment_to_ident_or_type_argument(ec, prefix)?;
-            let type_info_span = suffix.span();
-            let type_info = match type_name_to_type_info_opt(&suffix) {
-                Some(type_info) => type_info,
-                None => TypeInfo::Custom {
-                    name: suffix,
-                    type_arguments: None,
-                },
-            };
-            (vec![], type_info, type_info_span, ty_args)
+            (vec![], suffix, span, ty_args)
         }
     };
     Ok(TypeBinding {
         inner: CallPath {
             prefixes,
-            suffix: (type_info, type_info_span.clone()),
+            suffix,
             is_absolute,
         },
         type_arguments,
-        span: type_info_span, // TODO: change this span so that it includes the type arguments
+        span,
     })
 }
 
@@ -3378,4 +3325,51 @@ where
     }
     let ret = unsafe { ret.assume_init() };
     Some(ret)
+}
+
+fn item_attrs_to_map(
+    ec: &mut ErrorContext,
+    attribute_list: &[AttributeDecl],
+) -> Result<AttributesMap, ErrorEmitted> {
+    let mut attrs_map: HashMap<_, Vec<Attribute>> = HashMap::new();
+    for attr_decl in attribute_list {
+        let attr = attr_decl.attribute.get();
+        let name = attr.name.as_str();
+        if !VALID_ATTRIBUTE_NAMES.contains(&name) {
+            ec.warning(CompileWarning {
+                span: attr_decl.span().clone(),
+                warning_content: Warning::UnrecognizedAttribute {
+                    attrib_name: attr.name.clone(),
+                },
+            })
+        }
+
+        let args = attr
+            .args
+            .as_ref()
+            .map(|parens| parens.get().into_iter().cloned().collect())
+            .unwrap_or_else(Vec::new);
+
+        let attribute = Attribute {
+            name: attr.name.clone(),
+            args,
+        };
+
+        if let Some(attr_kind) = match name {
+            DOC_ATTRIBUTE_NAME => Some(AttributeKind::Doc),
+            STORAGE_PURITY_ATTRIBUTE_NAME => Some(AttributeKind::Storage),
+            TEST_ATTRIBUTE_NAME => Some(AttributeKind::Test),
+            _ => None,
+        } {
+            match attrs_map.get_mut(&attr_kind) {
+                Some(old_args) => {
+                    old_args.push(attribute);
+                }
+                None => {
+                    attrs_map.insert(attr_kind, vec![attribute]);
+                }
+            }
+        }
+    }
+    Ok(Arc::new(attrs_map))
 }

@@ -1,12 +1,8 @@
-use sway_types::Spanned;
-
-use crate::{error::*, Ident};
-
 /// Find the first index in the string which separates a lowercase character from an uppercase
 /// character. Used for splitting words in a CamelCase style identifier.
-fn find_camel_case_word_boundary(ident: &str) -> Option<usize> {
+fn find_camel_case_word_boundary(name: &str) -> Option<usize> {
     let mut previous_char_was_lowercase = false;
-    for (index, c) in ident.char_indices() {
+    for (index, c) in name.char_indices() {
         if c.is_uppercase() && previous_char_was_lowercase {
             return Some(index);
         }
@@ -16,89 +12,48 @@ fn find_camel_case_word_boundary(ident: &str) -> Option<usize> {
 }
 
 /// Split a CamelCase style identifier into words.
-fn camel_case_split_words(ident: &str) -> impl Iterator<Item = &str> {
-    let mut ident = ident;
+fn camel_case_split_words(mut name: &str) -> impl Iterator<Item = &str> {
     std::iter::from_fn(move || {
-        if ident.is_empty() {
+        if name.is_empty() {
             return None;
         }
-        let index = find_camel_case_word_boundary(ident).unwrap_or(ident.len());
-        let word = &ident[..index];
-        ident = &ident[index..];
+        let index = find_camel_case_word_boundary(name).unwrap_or(name.len());
+        let word = &name[..index];
+        name = &name[index..];
         Some(word)
     })
 }
 
-/// Split an identifier of unknown style into words.
-fn split_words(ident: &str) -> impl Iterator<Item = &str> {
-    ident.split('_').flat_map(camel_case_split_words)
+/// Split a string of unknown style into words.
+fn split_words(name: &str) -> impl Iterator<Item = &str> {
+    name.split('_').flat_map(camel_case_split_words)
 }
 
-/// Detect whether an identifier is written in snake_case.
-pub fn is_snake_case(ident: &Ident) -> CompileResult<()> {
-    let span = ident.span();
-    let name = ident.as_str();
+/// Detect whether an name is written in snake_case.
+pub fn is_snake_case(name: &str) -> bool {
     let trimmed = name.trim_start_matches('_');
-    if trimmed.contains("__") || trimmed.contains(char::is_uppercase) {
-        return ok(
-            (),
-            vec![CompileWarning {
-                span,
-                warning_content: Warning::NonSnakeCaseFunctionName {
-                    name: ident.clone(),
-                },
-            }],
-            vec![],
-        );
-    }
-    ok((), vec![], vec![])
+    !trimmed.contains("__") && !trimmed.contains(char::is_uppercase)
 }
 
-/// Detect whether an identifier is written in SCREAMING_SNAKE_CASE.
-pub fn is_screaming_snake_case(ident: &Ident) -> CompileResult<()> {
-    let trimmed = ident.as_str().trim_start_matches('_');
-    let span = ident.span();
-    if trimmed.contains("__") || trimmed.contains(char::is_lowercase) {
-        return ok(
-            (),
-            vec![CompileWarning {
-                span,
-                warning_content: Warning::NonScreamingSnakeCaseConstName {
-                    name: ident.clone(),
-                },
-            }],
-            vec![],
-        );
-    }
-    ok((), vec![], vec![])
+/// Detect whether a name is written in SCREAMING_SNAKE_CASE.
+pub fn is_screaming_snake_case(name: &str) -> bool {
+    let trimmed = name.trim_start_matches('_');
+    !trimmed.contains("__") && !trimmed.contains(char::is_lowercase)
 }
 
-/// Detect whether an identifier is written in UpperCamelCase.
-pub fn is_upper_camel_case(ident: &Ident) -> CompileResult<()> {
-    let trimmed = ident.as_str().trim_start_matches('_');
-    let span = ident.span();
-    if trimmed.contains('_') || trimmed.starts_with(char::is_lowercase) {
-        return ok(
-            (),
-            vec![CompileWarning {
-                span,
-                warning_content: Warning::NonScreamingSnakeCaseConstName {
-                    name: ident.clone(),
-                },
-            }],
-            vec![],
-        );
-    }
-    ok((), vec![], vec![])
+/// Detect whether a name is written in UpperCamelCase.
+pub fn is_upper_camel_case(name: &str) -> bool {
+    let trimmed = name.trim_start_matches('_');
+    !trimmed.contains('_') && !trimmed.starts_with(char::is_lowercase)
 }
 
-/// Convert an identifier into snake_case. This is a best-guess at what the identifier would look
+/// Convert an identifier into snake_case. This is a best-guess at what the name would look
 /// like if it were expressed in the correct style.
-pub fn to_snake_case(ident: &str) -> String {
-    let mut ret = String::with_capacity(ident.len());
+pub fn to_snake_case(name: &str) -> String {
+    let mut ret = String::with_capacity(name.len());
 
     let (leading_underscores, trimmed) =
-        ident.split_at(ident.find(|c| c != '_').unwrap_or(ident.len()));
+        name.split_at(name.find(|c| c != '_').unwrap_or(name.len()));
     ret.push_str(leading_underscores);
     let mut words = split_words(trimmed);
     if let Some(word) = words.next() {
@@ -111,13 +66,13 @@ pub fn to_snake_case(ident: &str) -> String {
     ret
 }
 
-/// Convert an identifier into SCREAMING_SNAKE_CASE. This is a best-guess at what the identifier
+/// Convert a name into SCREAMING_SNAKE_CASE. This is a best-guess at what the name
 /// would look like if it were expressed in the correct style.
-pub fn to_screaming_snake_case(ident: &str) -> String {
-    let mut ret = String::with_capacity(ident.len());
+pub fn to_screaming_snake_case(name: &str) -> String {
+    let mut ret = String::with_capacity(name.len());
 
     let (leading_underscores, trimmed) =
-        ident.split_at(ident.find(|c| c != '_').unwrap_or(ident.len()));
+        name.split_at(name.find(|c| c != '_').unwrap_or(name.len()));
     ret.push_str(leading_underscores);
     let mut words = split_words(trimmed);
     if let Some(word) = words.next() {
@@ -132,11 +87,11 @@ pub fn to_screaming_snake_case(ident: &str) -> String {
 
 /// Convert an identifier into UpperCamelCase. This is a best-guess at what the identifier would
 /// look like if it were expressed in the correct style.
-pub fn to_upper_camel_case(ident: &str) -> String {
-    let mut ret = String::with_capacity(ident.len());
+pub fn to_upper_camel_case(name: &str) -> String {
+    let mut ret = String::with_capacity(name.len());
 
     let (leading_underscores, trimmed) =
-        ident.split_at(ident.find(|c| c != '_').unwrap_or(ident.len()));
+        name.split_at(name.find(|c| c != '_').unwrap_or(name.len()));
     ret.push_str(leading_underscores);
     for word in split_words(trimmed) {
         let mut chars = word.chars();
@@ -151,7 +106,6 @@ pub fn to_upper_camel_case(ident: &str) -> String {
 #[cfg(test)]
 mod test {
     use super::*;
-    use sway_types::Span;
 
     #[test]
     fn detect_styles() {
@@ -172,46 +126,30 @@ mod test {
         ];
         let screaming_snake_case_or_upper_camel_case_idents = ["HELLO", "__HELLO", "BLAH32"];
         let styleless_idents = ["Mix_Of_Things", "__Mix_Of_Things", "FooBar_123"];
-        let snake_case_idents = snake_case_idents
-            .into_iter()
-            .map(|x| Ident::new_with_override(x, Span::dummy()));
-        let screaming_snake_case_idents = screaming_snake_case_idents
-            .into_iter()
-            .map(|x| Ident::new_with_override(x, Span::dummy()));
-        let styleless_idents = styleless_idents
-            .into_iter()
-            .map(|x| Ident::new_with_override(x, Span::dummy()));
-        let screaming_snake_case_or_upper_camel_case_idents =
-            screaming_snake_case_or_upper_camel_case_idents
-                .into_iter()
-                .map(|x| Ident::new_with_override(x, Span::dummy()));
-        let upper_camel_case_idents = upper_camel_case_idents
-            .into_iter()
-            .map(|x| Ident::new_with_override(x, Span::dummy()));
-        for ref ident in snake_case_idents {
-            assert!(is_snake_case(ident).is_ok_no_warn());
-            assert!(!is_screaming_snake_case(ident).is_ok_no_warn());
-            assert!(!is_upper_camel_case(ident).is_ok_no_warn());
+        for ident in &snake_case_idents {
+            assert!(is_snake_case(ident));
+            assert!(!is_screaming_snake_case(ident));
+            assert!(!is_upper_camel_case(ident));
         }
-        for ref ident in screaming_snake_case_idents {
-            assert!(!is_snake_case(ident).is_ok_no_warn());
-            assert!(is_screaming_snake_case(ident).is_ok_no_warn());
-            assert!(!is_upper_camel_case(ident).is_ok_no_warn());
+        for ident in &screaming_snake_case_idents {
+            assert!(!is_snake_case(ident));
+            assert!(is_screaming_snake_case(ident));
+            assert!(!is_upper_camel_case(ident));
         }
-        for ref ident in upper_camel_case_idents {
-            assert!(!is_snake_case(ident).is_ok_no_warn());
-            assert!(!is_screaming_snake_case(ident).is_ok_no_warn());
-            assert!(is_upper_camel_case(ident).is_ok_no_warn());
+        for ident in &upper_camel_case_idents {
+            assert!(!is_snake_case(ident));
+            assert!(!is_screaming_snake_case(ident));
+            assert!(is_upper_camel_case(ident));
         }
-        for ref ident in screaming_snake_case_or_upper_camel_case_idents {
-            assert!(!is_snake_case(ident).is_ok_no_warn());
-            assert!(is_screaming_snake_case(ident).is_ok_no_warn());
-            assert!(is_upper_camel_case(ident).is_ok_no_warn());
+        for ident in &screaming_snake_case_or_upper_camel_case_idents {
+            assert!(!is_snake_case(ident));
+            assert!(is_screaming_snake_case(ident));
+            assert!(is_upper_camel_case(ident));
         }
-        for ref ident in styleless_idents {
-            assert!(!is_snake_case(ident).is_ok_no_warn());
-            assert!(!is_screaming_snake_case(ident).is_ok_no_warn());
-            assert!(!is_upper_camel_case(ident).is_ok_no_warn());
+        for ident in &styleless_idents {
+            assert!(!is_snake_case(ident));
+            assert!(!is_screaming_snake_case(ident));
+            assert!(!is_upper_camel_case(ident));
         }
     }
 

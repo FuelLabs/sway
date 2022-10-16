@@ -10,7 +10,7 @@ use sway_types::{state::StateIndex, Spanned};
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
-    function_decl: TyFunctionDeclaration,
+    function_decl: ty::TyFunctionDeclaration,
     call_path: CallPath,
     arguments: Vec<Expression>,
 ) -> CompileResult<ty::TyExpression> {
@@ -47,7 +47,8 @@ pub(crate) fn instantiate_function_application(
                     not match the declared type of the parameter in the function \
                     declaration.",
                 )
-                .with_type_annotation(param.type_id);
+                .with_type_annotation(insert_type(TypeInfo::Unknown));
+
             let exp = check!(
                 ty::TyExpression::type_check(ctx, arg.clone()),
                 ty::error_recovery_expr(arg.span()),
@@ -55,9 +56,22 @@ pub(crate) fn instantiate_function_application(
                 errors
             );
 
+            append!(
+                unify_right(
+                    exp.return_type,
+                    param.type_id,
+                    &exp.span,
+                    "The argument that has been provided to this function's type does \
+                    not match the declared type of the parameter in the function \
+                    declaration."
+                ),
+                warnings,
+                errors
+            );
+
             // check for matching mutability
             let param_mutability =
-                convert_to_variable_immutability(param.is_reference, param.is_mutable);
+                ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
             if exp.gather_mutability().is_immutable() && param_mutability.is_mutable() {
                 errors.push(CompileError::ImmutableArgumentToMutableParameter { span: arg.span() });
             }
@@ -73,7 +87,6 @@ pub(crate) fn instantiate_function_application(
         typed_arguments,
         function_decl,
         None,
-        IsConstant::No,
         None,
         span,
     );
@@ -85,9 +98,8 @@ pub(crate) fn instantiate_function_application_simple(
     call_path: CallPath,
     contract_call_params: HashMap<String, ty::TyExpression, RandomState>,
     arguments: VecDeque<ty::TyExpression>,
-    function_decl: TyFunctionDeclaration,
-    selector: Option<ContractCallParams>,
-    is_constant: IsConstant,
+    function_decl: ty::TyFunctionDeclaration,
+    selector: Option<ty::ContractCallParams>,
     self_state_idx: Option<StateIndex>,
     span: Span,
 ) -> CompileResult<ty::TyExpression> {
@@ -115,7 +127,6 @@ pub(crate) fn instantiate_function_application_simple(
         args_and_names,
         function_decl,
         selector,
-        is_constant,
         self_state_idx,
         span,
     );
@@ -124,7 +135,7 @@ pub(crate) fn instantiate_function_application_simple(
 
 pub(crate) fn check_function_arguments_arity(
     arguments_len: usize,
-    function_decl: &TyFunctionDeclaration,
+    function_decl: &ty::TyFunctionDeclaration,
     call_path: &CallPath,
 ) -> CompileResult<()> {
     let warnings = vec![];
@@ -157,9 +168,8 @@ fn instantiate_function_application_inner(
     call_path: CallPath,
     contract_call_params: HashMap<String, ty::TyExpression, RandomState>,
     arguments: Vec<(Ident, ty::TyExpression)>,
-    function_decl: TyFunctionDeclaration,
-    selector: Option<ContractCallParams>,
-    is_constant: IsConstant,
+    function_decl: ty::TyFunctionDeclaration,
+    selector: Option<ty::ContractCallParams>,
     self_state_idx: Option<StateIndex>,
     span: Span,
 ) -> ty::TyExpression {
@@ -173,7 +183,6 @@ fn instantiate_function_application_inner(
             selector,
         },
         return_type: function_decl.return_type,
-        is_constant,
         span,
     }
 }

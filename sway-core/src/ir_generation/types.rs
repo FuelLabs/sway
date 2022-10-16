@@ -1,8 +1,5 @@
 use crate::{
-    semantic_analysis::{
-        ProjectionKind, TyEnumVariant, TyStorageReassignDescriptor,
-        TypeCheckedStorageAccessDescriptor,
-    },
+    language::ty,
     type_system::{to_typeinfo, TypeId, TypeInfo},
 };
 
@@ -14,7 +11,7 @@ use sway_types::span::Spanned;
 
 pub(super) fn create_enum_aggregate(
     context: &mut Context,
-    variants: Vec<TyEnumVariant>,
+    variants: Vec<ty::TyEnumVariant>,
 ) -> Result<Aggregate, CompileError> {
     // Create the enum aggregate first.  NOTE: single variant enums don't need an aggregate but are
     // getting one here anyway.  They don't need to be a tagged union either.
@@ -68,13 +65,13 @@ pub(super) fn get_aggregate_for_types(
 
 pub(super) fn get_struct_name_field_index_and_type(
     field_type: TypeId,
-    field_kind: ProjectionKind,
+    field_kind: ty::ProjectionKind,
 ) -> Option<(String, Option<(u64, TypeId)>)> {
     let ty_info = to_typeinfo(field_type, &field_kind.span()).ok()?;
     match (ty_info, field_kind) {
         (
             TypeInfo::Struct { name, fields, .. },
-            ProjectionKind::StructField { name: field_name },
+            ty::ProjectionKind::StructField { name: field_name },
         ) => Some((
             name.as_str().to_owned(),
             fields
@@ -93,14 +90,14 @@ pub(super) fn get_struct_name_field_index_and_type(
 // trait.  And we can even wrap the implementation in a macro.
 
 pub(super) trait TypedNamedField {
-    fn get_field_kind(&self) -> ProjectionKind;
+    fn get_field_kind(&self) -> ty::ProjectionKind;
 }
 
 macro_rules! impl_typed_named_field_for {
     ($field_type_name: ident) => {
         impl TypedNamedField for $field_type_name {
-            fn get_field_kind(&self) -> ProjectionKind {
-                ProjectionKind::StructField {
+            fn get_field_kind(&self) -> ty::ProjectionKind {
+                ty::ProjectionKind::StructField {
                     name: self.name.clone(),
                 }
             }
@@ -108,13 +105,15 @@ macro_rules! impl_typed_named_field_for {
     };
 }
 
-impl TypedNamedField for ProjectionKind {
-    fn get_field_kind(&self) -> ProjectionKind {
+impl TypedNamedField for ty::ProjectionKind {
+    fn get_field_kind(&self) -> ty::ProjectionKind {
         self.clone()
     }
 }
 
-impl_typed_named_field_for!(TypeCheckedStorageAccessDescriptor);
+use ty::TyStorageAccessDescriptor;
+use ty::TyStorageReassignDescriptor;
+impl_typed_named_field_for!(TyStorageAccessDescriptor);
 impl_typed_named_field_for!(TyStorageReassignDescriptor);
 
 pub(super) fn get_indices_for_struct_access<F: TypedNamedField>(
@@ -141,7 +140,7 @@ pub(super) fn get_indices_for_struct_access<F: TypedNamedField>(
                 match (ty_info, &field_kind) {
                     (
                         TypeInfo::Struct { name, fields, .. },
-                        ProjectionKind::StructField { name: field_name },
+                        ty::ProjectionKind::StructField { name: field_name },
                     ) => {
                         let field_idx_and_type_opt = fields
                             .iter()
@@ -164,7 +163,7 @@ pub(super) fn get_indices_for_struct_access<F: TypedNamedField>(
                         fld_idcs.push(field_idx);
                         Ok((fld_idcs, field_type))
                     }
-                    (TypeInfo::Tuple(fields), ProjectionKind::TupleField { index, .. }) => {
+                    (TypeInfo::Tuple(fields), ty::ProjectionKind::TupleField { index, .. }) => {
                         let field_type = match fields.get(*index) {
                             Some(field_type_argument) => field_type_argument.type_id,
                             None => {

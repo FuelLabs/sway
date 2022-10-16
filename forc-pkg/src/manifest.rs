@@ -72,7 +72,7 @@ pub enum Dependency {
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,
-    pub(crate) path: Option<String>,
+    pub path: Option<String>,
     pub(crate) git: Option<String>,
     pub(crate) branch: Option<String>,
     pub(crate) tag: Option<String>,
@@ -90,7 +90,6 @@ pub struct BuildProfile {
     pub print_intermediate_asm: bool,
     pub terse: bool,
     pub time_phases: bool,
-    pub generate_logged_types: bool,
 }
 
 impl Dependency {
@@ -405,7 +404,6 @@ impl BuildProfile {
             print_intermediate_asm: false,
             terse: false,
             time_phases: false,
-            generate_logged_types: false,
         }
     }
 
@@ -417,7 +415,6 @@ impl BuildProfile {
             print_intermediate_asm: false,
             terse: false,
             time_phases: false,
-            generate_logged_types: false,
         }
     }
 }

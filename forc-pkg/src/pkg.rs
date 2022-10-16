@@ -26,10 +26,13 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    language::parsed::{ParseProgram, TreeType},
+    language::{
+        parsed::{ParseProgram, TreeType},
+        ty,
+    },
     semantic_analysis::namespace,
     source_map::SourceMap,
-    BytecodeOrLib, CompileResult, TyProgram,
+    BytecodeOrLib, CompileResult,
 };
 use sway_error::error::CompileError;
 use sway_types::{Ident, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
@@ -1702,8 +1705,7 @@ pub fn sway_build_config(
     )
     .print_finalized_asm(build_profile.print_finalized_asm)
     .print_intermediate_asm(build_profile.print_intermediate_asm)
-    .print_ir(build_profile.print_ir)
-    .generate_logged_types(build_profile.generate_logged_types);
+    .print_ir(build_profile.print_ir);
     Ok(build_config)
 }
 
@@ -1809,7 +1811,7 @@ pub fn compile_ast(
     manifest: &PackageManifestFile,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
-) -> Result<CompileResult<TyProgram>> {
+) -> Result<CompileResult<ty::TyProgram>> {
     let source = manifest.entry_string()?;
     let sway_build_config =
         sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
@@ -1991,8 +1993,6 @@ pub struct BuildOptions {
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
-    /// Include logged types in the JSON ABI.
-    pub generate_logged_types: bool,
 }
 
 /// The suffix that helps identify the file which contains the hash of the binary file created when
@@ -2025,7 +2025,6 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
         build_profile,
         release,
         time_phases,
-        generate_logged_types,
     } = build_options;
 
     let mut selected_build_profile = key_debug;
@@ -2076,7 +2075,6 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
     profile.print_intermediate_asm |= print_intermediate_asm;
     profile.terse |= terse_mode;
     profile.time_phases |= time_phases;
-    profile.generate_logged_types |= generate_logged_types;
 
     // Build it!
     let (compiled, source_map) = build(&plan, &profile)?;
@@ -2360,7 +2358,7 @@ fn update_json_type_declaration(
 pub fn check(
     plan: &BuildPlan,
     terse_mode: bool,
-) -> anyhow::Result<CompileResult<(ParseProgram, Option<TyProgram>)>> {
+) -> anyhow::Result<CompileResult<(ParseProgram, Option<ty::TyProgram>)>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
     let mut namespace_map = Default::default();
@@ -2382,7 +2380,7 @@ pub fn check(
             Some(program) => program,
         };
 
-        let ast_result = sway_core::parsed_to_ast(&parse_program, dep_namespace, false);
+        let ast_result = sway_core::parsed_to_ast(&parse_program, dep_namespace);
         warnings.extend(ast_result.warnings);
         errors.extend(ast_result.errors);
 

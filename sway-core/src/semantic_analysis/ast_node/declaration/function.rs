@@ -1,95 +1,20 @@
 mod function_parameter;
+
 pub use function_parameter::*;
+use sway_error::warning::{CompileWarning, Warning};
 
 use crate::{
-    declaration_engine::declaration_engine::de_insert_function,
     error::*,
-    language::{parsed::*, ty, *},
+    language::{parsed::*, ty},
     semantic_analysis::*,
-    style::*,
     type_system::*,
-    AttributesMap,
 };
 use sha2::{Digest, Sha256};
-use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
+use sway_types::{
+    style::is_snake_case, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned,
+};
 
-#[derive(Clone, Debug, Eq)]
-pub struct TyFunctionDeclaration {
-    pub name: Ident,
-    pub body: TyCodeBlock,
-    pub parameters: Vec<TyFunctionParameter>,
-    pub span: Span,
-    pub attributes: AttributesMap,
-    pub return_type: TypeId,
-    pub initial_return_type: TypeId,
-    pub type_parameters: Vec<TypeParameter>,
-    /// Used for error messages -- the span pointing to the return type
-    /// annotation of the function
-    pub return_type_span: Span,
-    pub(crate) visibility: Visibility,
-    /// whether this function exists in another contract and requires a call to it or not
-    pub(crate) is_contract_call: bool,
-    pub(crate) purity: Purity,
-}
-
-impl From<&TyFunctionDeclaration> for TyAstNode {
-    fn from(o: &TyFunctionDeclaration) -> Self {
-        let span = o.span.clone();
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(
-                de_insert_function(o.clone()),
-            )),
-            span,
-        }
-    }
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyFunctionDeclaration {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.body == other.body
-            && self.parameters == other.parameters
-            && look_up_type_id(self.return_type) == look_up_type_id(other.return_type)
-            && self.type_parameters == other.type_parameters
-            && self.visibility == other.visibility
-            && self.is_contract_call == other.is_contract_call
-            && self.purity == other.purity
-    }
-}
-
-impl CopyTypes for TyFunctionDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-        self.return_type.copy_types(type_mapping);
-        self.body.copy_types(type_mapping);
-    }
-}
-
-impl Spanned for TyFunctionDeclaration {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-impl MonomorphizeHelper for TyFunctionDeclaration {
-    fn type_parameters(&self) -> &[TypeParameter] {
-        &self.type_parameters
-    }
-
-    fn name(&self) -> &Ident {
-        &self.name
-    }
-}
-
-impl TyFunctionDeclaration {
+impl ty::TyFunctionDeclaration {
     pub fn type_check(ctx: TypeCheckContext, fn_decl: FunctionDeclaration) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -107,11 +32,17 @@ impl TyFunctionDeclaration {
             purity,
             ..
         } = fn_decl;
-        is_snake_case(&name).ok(&mut warnings, &mut errors);
+
+        // Warn against non-snake case function names.
+        if !is_snake_case(name.as_str()) {
+            warnings.push(CompileWarning {
+                span: name.span(),
+                warning_content: Warning::NonSnakeCaseFunctionName { name: name.clone() },
+            })
+        }
 
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
-
         let mut ctx = ctx.scoped(&mut fn_namespace).with_purity(purity);
 
         // type check the type parameters
@@ -131,7 +62,7 @@ impl TyFunctionDeclaration {
         let mut new_parameters = vec![];
         for parameter in parameters.into_iter() {
             new_parameters.push(check!(
-                TyFunctionParameter::type_check(ctx.by_ref(), parameter),
+                ty::TyFunctionParameter::type_check(ctx.by_ref(), parameter),
                 continue,
                 warnings,
                 errors
@@ -162,9 +93,9 @@ impl TyFunctionDeclaration {
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
                 .with_type_annotation(return_type);
             check!(
-                TyCodeBlock::type_check(ctx, body),
+                ty::TyCodeBlock::type_check(ctx, body),
                 (
-                    TyCodeBlock { contents: vec![] },
+                    ty::TyCodeBlock { contents: vec![] },
                     insert_type(TypeInfo::ErrorRecovery)
                 ),
                 warnings,
@@ -176,8 +107,7 @@ impl TyFunctionDeclaration {
         let return_statements: Vec<&ty::TyExpression> = body
             .contents
             .iter()
-            .flat_map(|node| -> Vec<&TyReturnStatement> { node.gather_return_statements() })
-            .map(|TyReturnStatement { expr, .. }| expr)
+            .flat_map(|node| node.gather_return_statements())
             .collect();
 
         // unify the types of the return statements with the function return type
@@ -194,7 +124,7 @@ impl TyFunctionDeclaration {
             );
         }
 
-        let function_decl = TyFunctionDeclaration {
+        let function_decl = ty::TyFunctionDeclaration {
             name,
             body,
             parameters: new_parameters,
@@ -218,7 +148,7 @@ impl TyFunctionDeclaration {
         if !self.parameters.is_empty() {
             self.parameters.iter().fold(
                 self.parameters[0].name.span(),
-                |acc, TyFunctionParameter { type_span, .. }| Span::join(acc, type_span.clone()),
+                |acc, ty::TyFunctionParameter { type_span, .. }| Span::join(acc, type_span.clone()),
             )
         } else {
             self.name.span()
@@ -240,7 +170,7 @@ impl TyFunctionDeclaration {
         ok(hash.to_vec(), warnings, errors)
     }
 
-    /// Converts a [TyFunctionDeclaration] into a value that is to be used in contract function
+    /// Converts a [ty::TyFunctionDeclaration] into a value that is to be used in contract function
     /// selectors.
     /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
     pub fn to_fn_selector_value(&self) -> CompileResult<[u8; 4]> {
@@ -265,7 +195,7 @@ impl TyFunctionDeclaration {
             .parameters
             .iter()
             .map(
-                |TyFunctionParameter {
+                |ty::TyFunctionParameter {
                      type_id, type_span, ..
                  }| {
                     to_typeinfo(*type_id, type_span)
@@ -340,11 +270,12 @@ impl TyFunctionDeclaration {
 
 #[test]
 fn test_function_selector_behavior() {
-    use crate::type_system::IntegerBits;
-    let decl = TyFunctionDeclaration {
+    use crate::language::Visibility;
+    use sway_types::{integer_bits::IntegerBits, Ident};
+    let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_no_span("foo"),
-        body: TyCodeBlock { contents: vec![] },
+        body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![],
         span: Span::dummy(),
         attributes: Default::default(),
@@ -363,12 +294,12 @@ fn test_function_selector_behavior() {
 
     assert_eq!(selector_text, "foo()".to_string());
 
-    let decl = TyFunctionDeclaration {
+    let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_with_override("bar", Span::dummy()),
-        body: TyCodeBlock { contents: vec![] },
+        body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![
-            TyFunctionParameter {
+            ty::TyFunctionParameter {
                 name: Ident::new_no_span("foo"),
                 is_reference: false,
                 is_mutable: false,
@@ -377,7 +308,7 @@ fn test_function_selector_behavior() {
                 initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
-            TyFunctionParameter {
+            ty::TyFunctionParameter {
                 name: Ident::new_no_span("baz"),
                 is_reference: false,
                 is_mutable: false,

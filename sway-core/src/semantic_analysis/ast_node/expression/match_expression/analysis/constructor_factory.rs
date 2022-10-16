@@ -1,12 +1,13 @@
 use std::collections::HashSet;
 
+use sway_error::error::CompileError;
 use sway_types::{Ident, Span};
 
 use crate::{
-    error::{err, ok},
-    semantic_analysis::TyEnumVariant,
+    error::*,
+    language::ty,
     type_system::{look_up_type_id, TypeId},
-    CompileError, CompileResult, TypeInfo,
+    TypeInfo,
 };
 
 use super::{
@@ -606,7 +607,7 @@ impl ConstructorFactory {
 
     fn resolve_enum(
         enum_name: &Ident,
-        enum_variants: &[TyEnumVariant],
+        enum_variants: &[ty::TyEnumVariant],
         enum_pattern: &EnumPattern,
         rest: PatStack,
         span: &Span,

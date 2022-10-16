@@ -2,21 +2,12 @@ use super::*;
 use crate::{
     declaration_engine::declaration_engine::*,
     language::{parsed::TreeType, ty, CallPath, Visibility},
-    semantic_analysis::{
-        ast_node::{
-            TyAbiDeclaration, TyCodeBlock, TyConstantDeclaration, TyDeclaration, TyEnumDeclaration,
-            TyFunctionDeclaration, TyStructDeclaration, TyStructExpressionField,
-            TyTraitDeclaration, TyVariableDeclaration, VariableMutability,
-        },
-        TyAsmRegisterDeclaration, TyAstNode, TyAstNodeContent, TyImplTrait,
-        TyIntrinsicFunctionKind, TyStorageDeclaration,
-    },
     type_system::{to_typeinfo, TypeInfo},
-    CompileWarning, Warning,
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::BTreeSet;
 use sway_error::error::CompileError;
+use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{span::Span, Ident, Spanned};
 
 impl ControlFlowGraph {
@@ -103,7 +94,7 @@ impl ControlFlowGraph {
     }
 
     pub(crate) fn append_module_to_dead_code_graph(
-        module_nodes: &[TyAstNode],
+        module_nodes: &[ty::TyAstNode],
         tree_type: &TreeType,
         graph: &mut ControlFlowGraph,
         // the `Result` return is just to handle `Unimplemented` errors
@@ -126,12 +117,12 @@ impl ControlFlowGraph {
                 for i in graph.graph.node_indices() {
                     let count_it = match &graph.graph[i] {
                         ControlFlowGraphNode::OrganizationalDominator(_) => false,
-                        ControlFlowGraphNode::ProgramNode(TyAstNode {
+                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
                             span,
                             content:
-                                TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(
-                                    decl_id,
-                                )),
+                                ty::TyAstNodeContent::Declaration(
+                                    ty::TyDeclaration::FunctionDeclaration(decl_id),
+                                ),
                             ..
                         }) => {
                             let decl = de_get_function(decl_id.clone(), span)?;
@@ -150,40 +141,47 @@ impl ControlFlowGraph {
                 for i in graph.graph.node_indices() {
                     let count_it = match &graph.graph[i] {
                         ControlFlowGraphNode::OrganizationalDominator(_) => false,
-                        ControlFlowGraphNode::ProgramNode(TyAstNode {
+                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
                             content:
-                                TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(
-                                    decl_id,
-                                )),
+                                ty::TyAstNodeContent::Declaration(
+                                    ty::TyDeclaration::FunctionDeclaration(decl_id),
+                                ),
                             ..
                         }) => {
                             let function_decl = de_get_function(decl_id.clone(), &decl_id.span())?;
                             function_decl.visibility == Visibility::Public
                         }
-                        ControlFlowGraphNode::ProgramNode(TyAstNode {
+                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
                             content:
-                                TyAstNodeContent::Declaration(TyDeclaration::TraitDeclaration(decl_id)),
+                                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(
+                                    decl_id,
+                                )),
                             ..
                         }) => de_get_trait(decl_id.clone(), &decl_id.span())?
                             .visibility
                             .is_public(),
-                        ControlFlowGraphNode::ProgramNode(TyAstNode {
+                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
                             content:
-                                TyAstNodeContent::Declaration(TyDeclaration::StructDeclaration(decl_id)),
+                                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(
+                                    decl_id,
+                                )),
                             ..
                         }) => {
                             let struct_decl = de_get_struct(decl_id.clone(), &decl_id.span())?;
                             struct_decl.visibility == Visibility::Public
                         }
-                        ControlFlowGraphNode::ProgramNode(TyAstNode {
-                            content: TyAstNodeContent::Declaration(TyDeclaration::ImplTrait { .. }),
+                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
+                            content:
+                                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait {
+                                    ..
+                                }),
                             ..
                         }) => true,
-                        ControlFlowGraphNode::ProgramNode(TyAstNode {
+                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
                             content:
-                                TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration(
-                                    decl_id,
-                                )),
+                                ty::TyAstNodeContent::Declaration(
+                                    ty::TyDeclaration::ConstantDeclaration(decl_id),
+                                ),
                             ..
                         }) => {
                             let decl = de_get_constant(decl_id.clone(), &decl_id.span())?;
@@ -203,7 +201,7 @@ impl ControlFlowGraph {
 }
 
 fn connect_node(
-    node: &TyAstNode,
+    node: &ty::TyAstNode,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
@@ -212,7 +210,7 @@ fn connect_node(
     //    let mut graph = graph.clone();
     let span = node.span.clone();
     Ok(match &node.content {
-        TyAstNodeContent::ImplicitReturnExpression(expr) => {
+        ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
             let this_index = graph.add_node(node.into());
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());
@@ -237,7 +235,7 @@ fn connect_node(
             }
             (return_contents, None)
         }
-        TyAstNodeContent::Expression(ty::TyExpression {
+        ty::TyAstNodeContent::Expression(ty::TyExpression {
             expression: expr_variant,
             span,
             ..
@@ -262,8 +260,8 @@ fn connect_node(
                 exit_node,
             )
         }
-        TyAstNodeContent::SideEffect => (leaves.to_vec(), exit_node),
-        TyAstNodeContent::Declaration(decl) => {
+        ty::TyAstNodeContent::SideEffect => (leaves.to_vec(), exit_node),
+        ty::TyAstNodeContent::Declaration(decl) => {
             // all leaves connect to this node, then this node is the singular leaf
             let decl_node = graph.add_node(node.into());
             for leaf in leaves {
@@ -278,7 +276,7 @@ fn connect_node(
 }
 
 fn connect_declaration(
-    decl: &TyDeclaration,
+    decl: &ty::TyDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
     span: Span,
@@ -286,16 +284,16 @@ fn connect_declaration(
     tree_type: &TreeType,
     leaves: &[NodeIndex],
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    use TyDeclaration::*;
+    use ty::TyDeclaration::*;
     match decl {
         VariableDeclaration(var_decl) => {
-            let TyVariableDeclaration {
+            let ty::TyVariableDeclaration {
                 name,
                 body,
                 mutability: is_mutable,
                 ..
             } = &**var_decl;
-            if matches!(is_mutable, VariableMutability::ExportedConst) {
+            if matches!(is_mutable, ty::VariableMutability::ExportedConst) {
                 graph.namespace.insert_constant(name.clone(), entry_node);
                 Ok(leaves.to_vec())
             } else {
@@ -311,7 +309,7 @@ fn connect_declaration(
             }
         }
         ConstantDeclaration(decl_id) => {
-            let TyConstantDeclaration { name, value, .. } =
+            let ty::TyConstantDeclaration { name, value, .. } =
                 de_get_constant(decl_id.clone(), &span)?;
             graph.namespace.insert_constant(name, entry_node);
             connect_expression(
@@ -350,11 +348,17 @@ fn connect_declaration(
             Ok(leaves.to_vec())
         }
         ImplTrait(decl_id) => {
-            let TyImplTrait {
+            let ty::TyImplTrait {
                 trait_name,
                 methods,
                 ..
             } = de_get_impl_trait(decl_id.clone(), &span)?;
+
+            let methods = methods
+                .into_iter()
+                .map(|decl_id| de_get_function(decl_id, &trait_name.span()))
+                .collect::<Result<Vec<_>, CompileError>>()?;
+
             connect_impl_trait(&trait_name, graph, &methods, entry_node, tree_type)?;
             Ok(leaves.to_vec())
         }
@@ -370,12 +374,12 @@ fn connect_declaration(
 /// Connect each individual struct field, and when that field is accessed in a subfield expression,
 /// connect that field.
 fn connect_struct_declaration(
-    struct_decl: &TyStructDeclaration,
+    struct_decl: &ty::TyStructDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
     tree_type: &TreeType,
 ) {
-    let TyStructDeclaration {
+    let ty::TyStructDeclaration {
         name,
         fields,
         visibility,
@@ -413,7 +417,7 @@ fn connect_struct_declaration(
 fn connect_impl_trait(
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph,
-    methods: &[TyFunctionDeclaration],
+    methods: &[ty::TyFunctionDeclaration],
     entry_node: NodeIndex,
     tree_type: &TreeType,
 ) -> Result<(), CompileError> {
@@ -473,7 +477,7 @@ fn connect_impl_trait(
 /// The trait node itself has already been added (as `entry_node`), so we just need to insert that
 /// node index into the namespace for the trait.
 fn connect_trait_declaration(
-    decl: &TyTraitDeclaration,
+    decl: &ty::TyTraitDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
 ) {
@@ -489,7 +493,7 @@ fn connect_trait_declaration(
 
 /// See [connect_trait_declaration] for implementation details.
 fn connect_abi_declaration(
-    decl: &TyAbiDeclaration,
+    decl: &ty::TyAbiDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
 ) {
@@ -507,7 +511,7 @@ fn connect_abi_declaration(
 /// variant. When a variant is constructed, we can point an edge at that variant. This way,
 /// we can see clearly, and thusly warn, when individual variants are not ever constructed.
 fn connect_enum_declaration(
-    enum_decl: &TyEnumDeclaration,
+    enum_decl: &ty::TyEnumDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
 ) {
@@ -535,7 +539,7 @@ fn connect_enum_declaration(
 /// has no entry points, since it is just a declaration.
 /// When something eventually calls it, it gets connected to the declaration.
 fn connect_typed_fn_decl(
-    fn_decl: &TyFunctionDeclaration,
+    fn_decl: &ty::TyFunctionDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
     span: Span,
@@ -578,7 +582,7 @@ fn connect_typed_fn_decl(
 // corresponding struct/enum declaration to the function entry node, thus
 // making sure they are considered used by the DCA pass.
 fn connect_fn_params_struct_enums(
-    fn_decl: &TyFunctionDeclaration,
+    fn_decl: &ty::TyFunctionDeclaration,
     graph: &mut ControlFlowGraph,
     fn_decl_entry_node: NodeIndex,
 ) -> Result<(), CompileError> {
@@ -606,7 +610,7 @@ fn connect_fn_params_struct_enums(
 }
 
 fn depth_first_insertion_code_block(
-    node_content: &TyCodeBlock,
+    node_content: &ty::TyCodeBlock,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
@@ -793,7 +797,7 @@ fn connect_expression(
 
             Ok([condition_expr, then_expr, else_expr].concat())
         }
-        CodeBlock(a @ TyCodeBlock { .. }) => {
+        CodeBlock(a @ ty::TyCodeBlock { .. }) => {
             connect_code_block(a, graph, leaves, exit_node, tree_type)
         }
         StructExpression {
@@ -816,7 +820,7 @@ fn connect_expression(
 
             let mut current_leaf = vec![entry];
             // for every field, connect its expression
-            for TyStructExpressionField { value, .. } in fields {
+            for ty::TyStructExpressionField { value, .. } in fields {
                 current_leaf = connect_expression(
                     &value.expression,
                     graph,
@@ -879,7 +883,7 @@ fn connect_expression(
             }
 
             let mut current_leaf = vec![asm_node_entry];
-            for TyAsmRegisterDeclaration { initializer, .. } in registers {
+            for ty::TyAsmRegisterDeclaration { initializer, .. } in registers {
                 current_leaf = match initializer {
                     Some(initializer) => connect_expression(
                         &initializer.expression,
@@ -1099,19 +1103,19 @@ fn connect_expression(
             tree_type,
             typed_storage_reassignment.rhs.clone().span,
         ),
-        Return(stmt) => {
+        Return(exp) => {
             let this_index = graph.add_node("return entry".into());
             for leaf in leaves {
                 graph.add_edge(*leaf, this_index, "".into());
             }
             let return_contents = connect_expression(
-                &stmt.expr.expression,
+                &exp.expression,
                 graph,
                 &[this_index],
                 exit_node,
                 "",
                 tree_type,
-                stmt.expr.span.clone(),
+                exp.span.clone(),
             )?;
             // TODO: is this right? Shouldn't we connect the return_contents leaves to the exit
             // node?
@@ -1127,9 +1131,9 @@ fn connect_expression(
 }
 
 fn connect_intrinsic_function(
-    TyIntrinsicFunctionKind {
+    ty::TyIntrinsicFunctionKind {
         kind, arguments, ..
-    }: &TyIntrinsicFunctionKind,
+    }: &ty::TyIntrinsicFunctionKind,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
@@ -1157,7 +1161,7 @@ fn connect_intrinsic_function(
 }
 
 fn connect_code_block(
-    block: &TyCodeBlock,
+    block: &ty::TyCodeBlock,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
@@ -1181,7 +1185,7 @@ fn connect_code_block(
 }
 
 fn connect_enum_instantiation(
-    enum_decl: &TyEnumDeclaration,
+    enum_decl: &ty::TyEnumDeclaration,
     contents: &Option<Box<ty::TyExpression>>,
     variant_name: &Ident,
     graph: &mut ControlFlowGraph,
@@ -1237,35 +1241,35 @@ fn connect_enum_instantiation(
     Ok(vec![enum_instantiation_exit_idx])
 }
 
-/// Given a [TyAstNode] that we know is not reached in the graph, construct a warning
+/// Given a [ty::TyAstNode] that we know is not reached in the graph, construct a warning
 /// representing its unreached status. For example, we want to say "this function is never called"
 /// if the node is a function declaration, but "this trait is never used" if it is a trait
 /// declaration.
-fn construct_dead_code_warning_from_node(node: &TyAstNode) -> Option<CompileWarning> {
+fn construct_dead_code_warning_from_node(node: &ty::TyAstNode) -> Option<CompileWarning> {
     Some(match node {
         // if this is a function, struct, or trait declaration that is never called, then it is dead
         // code.
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(_)),
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(_)),
             span,
             ..
         } => CompileWarning {
             span: span.clone(),
             warning_content: Warning::DeadFunctionDeclaration,
         },
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(TyDeclaration::StructDeclaration { .. }),
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration { .. }),
             span,
         } => CompileWarning {
             span: span.clone(),
             warning_content: Warning::DeadStructDeclaration,
         },
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(TyDeclaration::TraitDeclaration(decl_id)),
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(decl_id)),
             ..
         } => {
             let span = match de_get_trait(decl_id.clone(), &decl_id.span()) {
-                Ok(TyTraitDeclaration { name, .. }) => name.span(),
+                Ok(ty::TyTraitDeclaration { name, .. }) => name.span(),
                 Err(_) => node.span.clone(),
             };
             CompileWarning {
@@ -1273,40 +1277,40 @@ fn construct_dead_code_warning_from_node(node: &TyAstNode) -> Option<CompileWarn
                 warning_content: Warning::DeadTrait,
             }
         }
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(TyDeclaration::ImplTrait(decl_id)),
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)),
             span,
         } => match de_get_impl_trait(decl_id.clone(), span) {
-            Ok(TyImplTrait { methods, .. }) if methods.is_empty() => return None,
+            Ok(ty::TyImplTrait { methods, .. }) if methods.is_empty() => return None,
             _ => CompileWarning {
                 span: span.clone(),
                 warning_content: Warning::DeadDeclaration,
             },
         },
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(TyDeclaration::AbiDeclaration { .. }),
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::AbiDeclaration { .. }),
             ..
         } => return None,
         // We handle storage fields individually. There is no need to emit any warnings for the
         // storage declaration itself.
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(TyDeclaration::StorageDeclaration { .. }),
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StorageDeclaration { .. }),
             ..
         } => return None,
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(..),
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(..),
             span,
         } => CompileWarning {
             span: span.clone(),
             warning_content: Warning::DeadDeclaration,
         },
         // Otherwise, this is unreachable.
-        TyAstNode {
+        ty::TyAstNode {
             span,
             content:
-                TyAstNodeContent::ImplicitReturnExpression(_)
-                | TyAstNodeContent::Expression(_)
-                | TyAstNodeContent::SideEffect,
+                ty::TyAstNodeContent::ImplicitReturnExpression(_)
+                | ty::TyAstNodeContent::Expression(_)
+                | ty::TyAstNodeContent::SideEffect,
         } => CompileWarning {
             span: span.clone(),
             warning_content: Warning::UnreachableCode,
@@ -1315,12 +1319,12 @@ fn construct_dead_code_warning_from_node(node: &TyAstNode) -> Option<CompileWarn
 }
 
 fn connect_storage_declaration(
-    decl: &TyStorageDeclaration,
+    decl: &ty::TyStorageDeclaration,
     graph: &mut ControlFlowGraph,
     _entry_node: NodeIndex,
     _tree_type: &TreeType,
 ) {
-    let TyStorageDeclaration { fields, .. } = decl;
+    let ty::TyStorageDeclaration { fields, .. } = decl;
 
     let field_nodes = fields
         .iter()

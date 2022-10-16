@@ -1,12 +1,22 @@
-use crate::capabilities;
-use crate::core::{
-    document::{DocumentError, TextDocument},
-    session::Session,
+pub use crate::error::DocumentError;
+use crate::{
+    capabilities,
+    core::{document::TextDocument, session::Session},
+    error::LanguageServerError,
+    utils::{
+        debug::{self, DebugFlags},
+        sync,
+    },
 };
-use crate::utils::debug::{self, DebugFlags};
-use forc_util::find_manifest_dir;
+use forc_pkg::manifest::PackageManifestFile;
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::Write, ops::Deref, path::Path, sync::Arc};
+use std::{
+    fs::File,
+    io::Write,
+    ops::Deref,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use sway_types::Spanned;
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::*;
@@ -29,14 +39,42 @@ impl Backend {
         }
     }
 
+    fn init(&self, uri: &Url) -> Result<(), LanguageServerError> {
+        let manifest_dir = PathBuf::from(uri.path());
+        // Create a new temp dir that clones the current workspace
+        // and store manifest and temp paths
+        self.session
+            .sync
+            .create_temp_dir_from_workspace(&manifest_dir)?;
+
+        self.session.sync.clone_manifest_dir_to_temp()?;
+
+        // iterate over the project dir, parse all sway files
+        let _ = self.parse_and_store_sway_files();
+
+        self.session.sync.watch_and_sync_manifest();
+
+        Ok(())
+    }
+
     async fn log_info_message(&self, message: &str) {
         self.client.log_message(MessageType::INFO, message).await;
     }
 
-    async fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
-        if let Some(path) = find_manifest_dir(&std::env::current_dir().unwrap()) {
+    async fn log_error_message(&self, message: &str) {
+        self.client.log_message(MessageType::ERROR, message).await;
+    }
+
+    fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
+        if let Some(temp_dir) = self
+            .session
+            .sync
+            .directories
+            .get(&sync::Directory::Temp)
+            .map(|item| item.value().clone())
+        {
             // Store the documents.
-            for path in get_sway_files(path).iter().filter_map(|fp| fp.to_str()) {
+            for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
                 self.session
                     .store_document(TextDocument::build_from_path(path)?)?;
             }
@@ -45,18 +83,20 @@ impl Backend {
         Ok(())
     }
 
-    async fn parse_project(&self, uri: &Url) {
-        let diagnostics = match self.session.parse_project(uri) {
+    async fn parse_project(&self, uri: Url, workspace_uri: Url) {
+        // pass in the temp Url into parse_project, we can now get the updated AST's back.
+        let diagnostics = match self.session.parse_project(&uri) {
             Ok(diagnostics) => diagnostics,
             Err(err) => {
-                if let DocumentError::FailedToParse(diagnostics) = err {
+                self.log_error_message(err.to_string().as_str()).await;
+                if let LanguageServerError::FailedToParse { diagnostics } = err {
                     diagnostics
                 } else {
                     vec![]
                 }
             }
         };
-        self.publish_diagnostics(uri, diagnostics).await;
+        self.publish_diagnostics(&workspace_uri, diagnostics).await;
     }
 }
 
@@ -127,9 +167,6 @@ impl LanguageServer for Backend {
             .log_message(MessageType::INFO, "Initializing the Sway Language Server")
             .await;
 
-        // iterate over the project dir, parse all sway files
-        let _ = self.parse_and_store_sway_files().await;
-
         Ok(InitializeResult {
             server_info: None,
             capabilities: capabilities(),
@@ -145,37 +182,116 @@ impl LanguageServer for Backend {
     async fn shutdown(&self) -> jsonrpc::Result<()> {
         self.log_info_message("Shutting Down the Sway Language Server")
             .await;
+
+        // shutdown the thread watching the manifest file
+        if let std::sync::LockResult::Ok(handle) = self.session.sync.notify_join_handle.read() {
+            if let Some(join_handle) = &*handle {
+                join_handle.abort();
+            }
+        }
+
+        // Delete the temporary directory.
+        self.session.sync.remove_temp_dir();
+
         Ok(())
     }
 
     // Document Handlers
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let uri = &params.text_document.uri;
-        self.session.handle_open_file(uri);
-        self.parse_project(uri).await;
+        // The first time did_open gets called, we call init which sets up the temp directories
+        // to allow for synchronization between the users workspace and the temp workspacace.
+        // We then set InitializedState to Initialized so the function is never called again.
+        // Ideally we would call this in the `initialize` LSP function but we don't have access
+        // to the correct path of the project until this function.
+        if let std::sync::LockResult::Ok(mut init_state) = self.session.sync.init_state.write() {
+            if let sync::InitializedState::Uninitialized = *init_state {
+                match self.init(&params.text_document.uri) {
+                    Ok(()) => {
+                        *init_state = sync::InitializedState::Initialized;
+                    }
+                    Err(err) => {
+                        tracing::error!("{}", err.to_string().as_str());
+                    }
+                }
+            }
+        }
+
+        // convert the client Url to the temp uri
+        if let Ok(uri) = self
+            .session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
+        {
+            self.session.handle_open_file(&uri);
+            self.parse_project(uri, params.text_document.uri).await;
+        }
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let uri = &params.text_document.uri;
-        self.session
-            .update_text_document(uri, params.content_changes);
-        self.parse_project(uri).await;
+        if let Ok(uri) = self
+            .session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
+        {
+            // update this file with the new changes and write to disk
+            if let Some(src) = self
+                .session
+                .update_text_document(&uri, params.content_changes)
+            {
+                if let Ok(mut file) = File::create(uri.path()) {
+                    let _ = writeln!(&mut file, "{}", src);
+                }
+            }
+            self.parse_project(uri, params.text_document.uri).await;
+        }
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        self.parse_project(&params.text_document.uri).await;
+        // overwrite the contents of the tmp/folder with everything in
+        // the current workspace. (resync)
+        if let Err(err) = self.session.sync.clone_manifest_dir_to_temp() {
+            tracing::error!("{}", err.to_string().as_str());
+        }
+
+        let _ = self
+            .session
+            .sync
+            .manifest_path()
+            .and_then(|manifest_path| PackageManifestFile::from_dir(&manifest_path).ok())
+            .map(|manifest| {
+                if let Some(temp_manifest_path) = &self.session.sync.temp_manifest_path() {
+                    sync::edit_manifest_dependency_paths(&manifest, temp_manifest_path)
+                }
+            });
+
+        if let Ok(uri) = self
+            .session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
+        {
+            self.parse_project(uri, params.text_document.uri).await;
+        }
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         for event in params.changes {
             if event.typ == FileChangeType::DELETED {
-                let _ = self.session.remove_document(&event.uri);
+                if let Ok(uri) = self.session.sync.workspace_to_temp_url(&event.uri) {
+                    let _ = self.session.remove_document(&uri);
+                }
             }
         }
     }
 
     async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
-        Ok(capabilities::hover::hover_data(&self.session, params))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document_position_params.text_document.uri)
+            .map(|uri| {
+                let position = params.text_document_position_params.position;
+                capabilities::hover::hover_data(&self.session, uri, position)
+            })
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn completion(
@@ -194,56 +310,91 @@ impl LanguageServer for Backend {
         &self,
         params: DocumentSymbolParams,
     ) -> jsonrpc::Result<Option<DocumentSymbolResponse>> {
-        Ok(self
-            .session
-            .symbol_information(&params.text_document.uri)
-            .map(DocumentSymbolResponse::Flat))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
+            .map(|uri| {
+                self.session
+                    .symbol_information(&uri)
+                    .map(DocumentSymbolResponse::Flat)
+            })
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn semantic_tokens_full(
         &self,
         params: SemanticTokensParams,
     ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
-        let url = params.text_document.uri;
-        Ok(capabilities::semantic_tokens::semantic_tokens_full(
-            &self.session,
-            &url,
-        ))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
+            .map(|uri| capabilities::semantic_tokens::semantic_tokens_full(&self.session, &uri))
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn document_highlight(
         &self,
         params: DocumentHighlightParams,
     ) -> jsonrpc::Result<Option<Vec<DocumentHighlight>>> {
-        Ok(capabilities::highlight::get_highlights(
-            &self.session,
-            params,
-        ))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document_position_params.text_document.uri)
+            .map(|uri| {
+                let position = params.text_document_position_params.position;
+                capabilities::highlight::get_highlights(&self.session, uri, position)
+            })
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn goto_definition(
         &self,
         params: GotoDefinitionParams,
     ) -> jsonrpc::Result<Option<GotoDefinitionResponse>> {
-        Ok(self.session.token_definition_response(params))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document_position_params.text_document.uri)
+            .map(|uri| {
+                let position = params.text_document_position_params.position;
+                self.session.token_definition_response(uri, position)
+            })
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn formatting(
         &self,
         params: DocumentFormattingParams,
     ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
-        Ok(self.session.format_text(&params.text_document.uri))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
+            .map(|uri| self.session.format_text(&uri))
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn rename(&self, params: RenameParams) -> jsonrpc::Result<Option<WorkspaceEdit>> {
-        Ok(capabilities::rename::rename(&self.session, params))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document_position.text_document.uri)
+            .map(|uri| {
+                let new_name = params.new_name;
+                let position = params.text_document_position.position;
+                capabilities::rename::rename(&self.session, new_name, uri, position)
+            })
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     async fn prepare_rename(
         &self,
         params: TextDocumentPositionParams,
     ) -> jsonrpc::Result<Option<PrepareRenameResponse>> {
-        Ok(capabilities::rename::prepare_rename(&self.session, params))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
+            .map(|uri| {
+                let position = params.position;
+                capabilities::rename::prepare_rename(&self.session, uri, position)
+            })
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 }
 
@@ -364,42 +515,16 @@ impl Backend {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
-    use std::{borrow::Cow, env, fs, io::Read, path::PathBuf};
-    use tower::{Service, ServiceExt};
-
     use super::*;
+    use crate::test_utils::{doc_comments_dir, e2e_test_dir};
+    use serde_json::json;
     use serial_test::serial;
+    use std::{borrow::Cow, fs, io::Read, path::PathBuf};
+    use tower::{Service, ServiceExt};
     use tower_lsp::{
         jsonrpc::{self, Id, Request, Response},
         ExitedError, LspService,
     };
-
-    fn sway_workspace_dir() -> PathBuf {
-        env::current_dir().unwrap().parent().unwrap().to_path_buf()
-    }
-
-    fn e2e_language_dir() -> PathBuf {
-        PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass/language")
-    }
-
-    #[allow(dead_code)]
-    fn e2e_test_dir() -> PathBuf {
-        sway_workspace_dir()
-            .join(e2e_language_dir())
-            .join("struct_field_access")
-    }
-
-    #[allow(dead_code)]
-    fn sway_example_dir() -> PathBuf {
-        sway_workspace_dir().join("examples/storage_variables")
-    }
-
-    fn doc_comments_dir() -> PathBuf {
-        sway_workspace_dir()
-            .join(e2e_language_dir())
-            .join("doc_comments")
-    }
 
     fn load_sway_example(manifest_dir: PathBuf) -> (Url, String) {
         let src_path = manifest_dir.join("src/main.sw");
@@ -473,10 +598,29 @@ mod tests {
         assert_eq!(response, Ok(None));
     }
 
-    async fn did_change_request(
-        service: &mut LspService<Backend>,
-        params: serde_json::value::Value,
-    ) -> Request {
+    async fn did_change_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+                "version": 2
+            },
+            "contentChanges": [
+                {
+                    "range": {
+                        "start": {
+                            "line": 1,
+                            "character": 0
+                        },
+                        "end": {
+                            "line": 1,
+                            "character": 0
+                        }
+                    },
+                    "rangeLength": 0,
+                    "text": "\n",
+                }
+            ]
+        });
         let did_change = Request::build("textDocument/didChange")
             .params(params)
             .finish();
@@ -527,29 +671,35 @@ mod tests {
         document_symbol
     }
 
-    async fn go_to_definition_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+    async fn go_to_definition_request(
+        service: &mut LspService<Backend>,
+        uri: &Url,
+        token_req_line: i32,
+        token_def_line: i32,
+        id: i64,
+    ) -> Request {
         let params = json!({
             "textDocument": {
                 "uri": uri,
             },
             "position": {
-                "line": 44,
-                "character": 24
+                "line": token_req_line,
+                "character": 24,
             }
         });
-        let definition = build_request_with_id("textDocument/definition", params, 1);
+        let definition = build_request_with_id("textDocument/definition", params, id);
         let response = call_request(service, definition.clone()).await;
         let ok = Response::from_ok(
-            1.into(),
+            id.into(),
             json!({
                 "range": {
                     "end": {
                         "character": 11,
-                        "line": 19
+                        "line": token_def_line,
                     },
                     "start": {
                         "character": 7,
-                        "line": 19
+                        "line": token_def_line,
                     }
                 },
                 "uri": uri,
@@ -728,32 +878,19 @@ mod tests {
     #[serial]
     async fn did_change() {
         let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
-        let uri = init_and_open(&mut service, e2e_test_dir()).await;
+        let uri = init_and_open(&mut service, doc_comments_dir()).await;
+        let _ = did_change_request(&mut service, &uri).await;
+        shutdown_and_exit(&mut service).await;
+    }
 
-        let params = json!({
-            "textDocument": {
-                "uri": uri,
-                "version": 1
-            },
-            "contentChanges": [
-                {
-                    "range": {
-                        "start": {
-                            "line": 3,
-                            "character": 4
-                        },
-                        "end": {
-                            "line": 3,
-                            "character": 4
-                        }
-                    },
-                    "rangeLength": 0,
-                    "text": "let x = 0.0;",
-                }
-            ]
-        });
-
-        let _ = did_change_request(&mut service, params).await;
+    #[tokio::test]
+    #[serial]
+    async fn lsp_syncs_with_workspace_edits() {
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let uri = init_and_open(&mut service, doc_comments_dir()).await;
+        let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
+        let _ = did_change_request(&mut service, &uri).await;
+        let _ = go_to_definition_request(&mut service, &uri, 45, 20, 2).await;
         shutdown_and_exit(&mut service).await;
     }
 
@@ -766,6 +903,15 @@ mod tests {
 
         let uri = init_and_open(&mut service, e2e_test_dir()).await;
         let _ = show_ast_request(&mut service, &uri).await;
+        shutdown_and_exit(&mut service).await;
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn go_to_definition() {
+        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let uri = init_and_open(&mut service, doc_comments_dir()).await;
+        let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
         shutdown_and_exit(&mut service).await;
     }
 
@@ -796,7 +942,6 @@ mod tests {
 
     lsp_capability_test!(semantic_tokens, semantic_tokens_request);
     lsp_capability_test!(document_symbol, document_symbol_request);
-    lsp_capability_test!(go_to_definition, go_to_definition_request);
     lsp_capability_test!(format, format_request);
     lsp_capability_test!(hover, hover_request);
     lsp_capability_test!(highlight, highlight_request);

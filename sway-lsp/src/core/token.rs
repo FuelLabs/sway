@@ -8,10 +8,6 @@ use sway_core::{
         },
         ty,
     },
-    semantic_analysis::ast_node::{
-        TyDeclaration, TyEnumVariant, TyFunctionDeclaration, TyFunctionParameter, TyReassignment,
-        TyStorageField, TyStorageReassignDescriptor, TyStructField, TyTraitFn,
-    },
     type_system::TypeId,
 };
 use sway_types::{Ident, Span};
@@ -60,16 +56,16 @@ pub enum AstToken {
 
 #[derive(Debug, Clone)]
 pub enum TypedAstToken {
-    TypedDeclaration(TyDeclaration),
+    TypedDeclaration(ty::TyDeclaration),
     TypedExpression(ty::TyExpression),
-    TypedFunctionDeclaration(TyFunctionDeclaration),
-    TypedFunctionParameter(TyFunctionParameter),
-    TypedStructField(TyStructField),
-    TypedEnumVariant(TyEnumVariant),
-    TypedTraitFn(TyTraitFn),
-    TypedStorageField(TyStorageField),
-    TypeCheckedStorageReassignDescriptor(TyStorageReassignDescriptor),
-    TypedReassignment(TyReassignment),
+    TypedFunctionDeclaration(ty::TyFunctionDeclaration),
+    TypedFunctionParameter(ty::TyFunctionParameter),
+    TypedStructField(ty::TyStructField),
+    TypedEnumVariant(ty::TyEnumVariant),
+    TypedTraitFn(ty::TyTraitFn),
+    TypedStorageField(ty::TyStorageField),
+    TypeCheckedStorageReassignDescriptor(ty::TyStorageReassignDescriptor),
+    TypedReassignment(ty::TyReassignment),
 }
 
 #[derive(Debug, Clone)]
