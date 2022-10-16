@@ -8,7 +8,7 @@ Let's take a look at an example where we define an enum called `Color` with a fe
 {{#include ../../../code/language/built-ins/enums/src/basic_enum.sw:definition}}
 ```
 
-We begin by using the `enum` keyword followed by the name for our enumeration. The variants are contained inside `{}` and they are sequentially ordered from top to bottom. Each variant has a name, such as the first `Blue` variant, and a type, which in this case they are all the unit type `()`. 
+We begin by using the `enum` keyword followed by the name for our enumeration. The variants are contained inside `{}` and they are ordered sequentially from top to bottom. Each variant has a name, such as the first `Blue` variant, and a type, which in this case they are all the unit type `()`. 
 
 The unit type is a type that does not contain any data however any type can be used.
 
