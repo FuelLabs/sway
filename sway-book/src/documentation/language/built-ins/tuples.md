@@ -5,9 +5,3 @@ A tuple is a general-purpose static-length aggregation of types, in other words,
 ```sway
 {{#include ../../../code/language/built-ins/tuples/src/lib.sw:syntax}}
 ```
-
-To create one-arity tuples, we will need to add a trailing comma:
-
-```sway
-{{#include ../../../code/language/built-ins/tuples/src/lib.sw:arity}}
-```

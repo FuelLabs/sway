@@ -24,18 +24,3 @@ fn syntax() {
     let (_, second) = balances;
 }
 // ANCHOR_END: syntax
-// ANCHOR: arity
-fn arity() {
-    // x is of type u64
-    let x: u64 = (42);
-
-    // y is of type u64
-    let y: (u64) = (42);
-
-    // z is of type (u64), i.e. a one-arity tuple
-    let z: (u64, ) = (42, );
-
-    // type error
-    // let w: (u64) = (42,);
-}
-// ANCHOR_END: arity
