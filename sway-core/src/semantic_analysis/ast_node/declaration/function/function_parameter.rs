@@ -10,10 +10,6 @@ use sway_error::error::CompileError;
 use sway_types::Spanned;
 
 impl ty::TyFunctionParameter {
-    pub fn is_self(&self) -> bool {
-        self.name.as_str() == "self"
-    }
-
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
         parameter: FunctionParameter,

@@ -15,11 +15,7 @@ pub(crate) use self::{
 use crate::{
     declaration_engine::declaration_engine::*,
     error::*,
-    language::{
-        parsed::*,
-        ty::{self, TyExpression},
-        *,
-    },
+    language::{parsed::*, ty, *},
     semantic_analysis::*,
     type_system::*,
 };
@@ -77,129 +73,6 @@ impl ty::TyExpression {
             None,
             span,
         )
-    }
-
-    /// recurse into `self` and get any return statements -- used to validate that all returns
-    /// do indeed return the correct type
-    /// This does _not_ extract implicit return statements as those are not control flow! This is
-    /// _only_ for explicit returns.
-    pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
-        match &self.expression {
-            ty::TyExpressionVariant::IfExp {
-                condition,
-                then,
-                r#else,
-            } => {
-                let mut buf = condition.gather_return_statements();
-                buf.append(&mut then.gather_return_statements());
-                if let Some(ref r#else) = r#else {
-                    buf.append(&mut r#else.gather_return_statements());
-                }
-                buf
-            }
-            ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock { contents, .. }) => {
-                let mut buf = vec![];
-                for node in contents {
-                    buf.append(&mut node.gather_return_statements())
-                }
-                buf
-            }
-            ty::TyExpressionVariant::WhileLoop { condition, body } => {
-                let mut buf = condition.gather_return_statements();
-                for node in &body.contents {
-                    buf.append(&mut node.gather_return_statements())
-                }
-                buf
-            }
-            ty::TyExpressionVariant::Reassignment(reassignment) => {
-                reassignment.rhs.gather_return_statements()
-            }
-            ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {
-                storage_reassignment.rhs.gather_return_statements()
-            }
-            ty::TyExpressionVariant::LazyOperator { lhs, rhs, .. } => [lhs, rhs]
-                .into_iter()
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            ty::TyExpressionVariant::Tuple { fields } => fields
-                .iter()
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            ty::TyExpressionVariant::Array { contents } => contents
-                .iter()
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            ty::TyExpressionVariant::ArrayIndex { prefix, index } => [prefix, index]
-                .into_iter()
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            ty::TyExpressionVariant::StructFieldAccess { prefix, .. } => {
-                prefix.gather_return_statements()
-            }
-            ty::TyExpressionVariant::TupleElemAccess { prefix, .. } => {
-                prefix.gather_return_statements()
-            }
-            ty::TyExpressionVariant::EnumInstantiation { contents, .. } => contents
-                .iter()
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            ty::TyExpressionVariant::AbiCast { address, .. } => address.gather_return_statements(),
-            ty::TyExpressionVariant::IntrinsicFunction(intrinsic_function_kind) => {
-                intrinsic_function_kind
-                    .arguments
-                    .iter()
-                    .flat_map(|expr| expr.gather_return_statements())
-                    .collect()
-            }
-            ty::TyExpressionVariant::StructExpression { fields, .. } => fields
-                .iter()
-                .flat_map(|field| field.value.gather_return_statements())
-                .collect(),
-            ty::TyExpressionVariant::FunctionApplication {
-                contract_call_params,
-                arguments,
-                selector,
-                ..
-            } => contract_call_params
-                .values()
-                .chain(arguments.iter().map(|(_name, expr)| expr))
-                .chain(
-                    selector
-                        .iter()
-                        .map(|contract_call_params| &*contract_call_params.contract_address),
-                )
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            ty::TyExpressionVariant::EnumTag { exp } => exp.gather_return_statements(),
-            ty::TyExpressionVariant::UnsafeDowncast { exp, .. } => exp.gather_return_statements(),
-
-            ty::TyExpressionVariant::Return(exp) => {
-                vec![exp]
-            }
-            // if it is impossible for an expression to contain a return _statement_ (not an
-            // implicit return!), put it in the pattern below.
-            ty::TyExpressionVariant::Literal(_)
-            | ty::TyExpressionVariant::FunctionParameter { .. }
-            | ty::TyExpressionVariant::AsmExpression { .. }
-            | ty::TyExpressionVariant::VariableExpression { .. }
-            | ty::TyExpressionVariant::AbiName(_)
-            | ty::TyExpressionVariant::StorageAccess { .. }
-            | ty::TyExpressionVariant::Break
-            | ty::TyExpressionVariant::Continue => vec![],
-        }
-    }
-
-    /// gathers the mutability of the expressions within
-    pub(crate) fn gather_mutability(&self) -> ty::VariableMutability {
-        match &self.expression {
-            ty::TyExpressionVariant::VariableExpression { mutability, .. } => *mutability,
-            _ => ty::VariableMutability::Immutable,
-        }
-    }
-
-    /// Returns `self` as a literal, if possible.
-    pub(crate) fn extract_literal_value(&self) -> Option<Literal> {
-        self.expression.extract_literal_value()
     }
 
     pub(crate) fn type_check(mut ctx: TypeCheckContext, expr: Expression) -> CompileResult<Self> {

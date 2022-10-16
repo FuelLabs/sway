@@ -3,7 +3,13 @@ use std::fmt;
 use derivative::Derivative;
 use sway_types::Span;
 
-use crate::{error::*, language::ty::*, type_system::*, types::DeterministicallyAborts};
+use crate::{
+    declaration_engine::de_get_function,
+    error::*,
+    language::{parsed, ty::*},
+    type_system::*,
+    types::DeterministicallyAborts,
+};
 
 #[derive(Clone, Debug, Eq, Derivative)]
 #[derivative(PartialEq)]
@@ -50,6 +56,87 @@ impl DeterministicallyAborts for TyAstNode {
             Declaration(_) => false,
             Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
             SideEffect => false,
+        }
+    }
+}
+
+impl TyAstNode {
+    /// recurse into `self` and get any return statements -- used to validate that all returns
+    /// do indeed return the correct type
+    /// This does _not_ extract implicit return statements as those are not control flow! This is
+    /// _only_ for explicit returns.
+    pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
+        match &self.content {
+            TyAstNodeContent::ImplicitReturnExpression(ref exp) => exp.gather_return_statements(),
+            // assignments and  reassignments can happen during control flow and can abort
+            TyAstNodeContent::Declaration(TyDeclaration::VariableDeclaration(decl)) => {
+                decl.body.gather_return_statements()
+            }
+            TyAstNodeContent::Expression(exp) => exp.gather_return_statements(),
+            TyAstNodeContent::SideEffect | TyAstNodeContent::Declaration(_) => vec![],
+        }
+    }
+
+    /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
+    pub(crate) fn is_public(&self) -> CompileResult<bool> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let public = match &self.content {
+            TyAstNodeContent::Declaration(decl) => {
+                let visibility = check!(
+                    decl.visibility(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                visibility.is_public()
+            }
+            TyAstNodeContent::Expression(_)
+            | TyAstNodeContent::SideEffect
+            | TyAstNodeContent::ImplicitReturnExpression(_) => false,
+        };
+        ok(public, warnings, errors)
+    }
+
+    /// Naive check to see if this node is a function declaration of a function called `main` if
+    /// the [TreeType] is Script or Predicate.
+    pub(crate) fn is_main_function(&self, tree_type: parsed::TreeType) -> CompileResult<bool> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match &self {
+            TyAstNode {
+                span,
+                content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)),
+                ..
+            } => {
+                let TyFunctionDeclaration { name, .. } = check!(
+                    CompileResult::from(de_get_function(decl_id.clone(), span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let is_main = name.as_str() == sway_types::constants::DEFAULT_ENTRY_POINT_FN_NAME
+                    && matches!(
+                        tree_type,
+                        parsed::TreeType::Script | parsed::TreeType::Predicate
+                    );
+                ok(is_main, warnings, errors)
+            }
+            _ => ok(false, warnings, errors),
+        }
+    }
+
+    pub(crate) fn type_info(&self) -> TypeInfo {
+        // return statement should be ()
+        match &self.content {
+            TyAstNodeContent::Declaration(_) => TypeInfo::Tuple(Vec::new()),
+            TyAstNodeContent::Expression(TyExpression { return_type, .. }) => {
+                look_up_type_id(*return_type)
+            }
+            TyAstNodeContent::ImplicitReturnExpression(TyExpression { return_type, .. }) => {
+                look_up_type_id(*return_type)
+            }
+            TyAstNodeContent::SideEffect => TypeInfo::Tuple(Vec::new()),
         }
     }
 }

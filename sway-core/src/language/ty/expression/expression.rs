@@ -2,7 +2,12 @@ use std::fmt;
 
 use sway_types::Span;
 
-use crate::{error::*, language::ty::*, type_system::*, types::DeterministicallyAborts};
+use crate::{
+    error::*,
+    language::{ty::*, Literal},
+    type_system::*,
+    types::DeterministicallyAborts,
+};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyExpression {
@@ -429,5 +434,26 @@ impl TyExpression {
             return_type: insert_type(TypeInfo::ErrorRecovery),
             span,
         }
+    }
+
+    /// recurse into `self` and get any return statements -- used to validate that all returns
+    /// do indeed return the correct type
+    /// This does _not_ extract implicit return statements as those are not control flow! This is
+    /// _only_ for explicit returns.
+    pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
+        self.expression.gather_return_statements()
+    }
+
+    /// gathers the mutability of the expressions within
+    pub(crate) fn gather_mutability(&self) -> VariableMutability {
+        match &self.expression {
+            TyExpressionVariant::VariableExpression { mutability, .. } => *mutability,
+            _ => VariableMutability::Immutable,
+        }
+    }
+
+    /// Returns `self` as a literal, if possible.
+    pub(crate) fn extract_literal_value(&self) -> Option<Literal> {
+        self.expression.extract_literal_value()
     }
 }
