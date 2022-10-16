@@ -440,6 +440,11 @@ fn item_trait_to_trait_declaration(
     attributes: AttributesMap,
 ) -> Result<TraitDeclaration, ErrorEmitted> {
     let name = item_trait.name;
+    let type_parameters = generic_params_opt_to_type_parameters(
+        ec,
+        item_trait.generics,
+        item_trait.where_clause_opt,
+    )?;
     let interface_surface = {
         item_trait
             .trait_items
@@ -469,6 +474,7 @@ fn item_trait_to_trait_declaration(
     let visibility = pub_token_opt_to_visibility(item_trait.visibility);
     Ok(TraitDeclaration {
         name,
+        type_parameters,
         interface_surface,
         methods,
         supertraits,
@@ -496,19 +502,22 @@ fn item_impl_to_declaration(
             .collect::<Result<_, _>>()?
     };
 
-    let type_parameters = generic_params_opt_to_type_parameters(
+    let impl_type_parameters = generic_params_opt_to_type_parameters(
         ec,
         item_impl.generic_params_opt,
         item_impl.where_clause_opt,
     )?;
 
     match item_impl.trait_opt {
-        Some((path_type, _for_token)) => {
+        Some((path_type, _)) => {
+            let (trait_name, trait_type_arguments) =
+                path_type_to_call_path_and_type_arguments(ec, path_type)?;
             let impl_trait = ImplTrait {
-                trait_name: path_type_to_call_path(ec, path_type)?,
+                impl_type_parameters,
+                trait_name,
+                trait_type_arguments,
                 type_implementing_for,
                 type_implementing_for_span,
-                type_parameters,
                 functions,
                 block_span,
             };
@@ -522,13 +531,89 @@ fn item_impl_to_declaration(
                 let impl_self = ImplSelf {
                     type_implementing_for,
                     type_implementing_for_span,
-                    type_parameters,
+                    impl_type_parameters,
                     functions,
                     block_span,
                 };
                 Ok(Declaration::ImplSelf(impl_self))
             }
         },
+    }
+}
+
+fn path_type_to_call_path_and_type_arguments(
+    ec: &mut ErrorContext,
+    path_type: PathType,
+) -> Result<(CallPath, Vec<TypeArgument>), ErrorEmitted> {
+    let PathType {
+        root_opt,
+        prefix,
+        mut suffix,
+    } = path_type;
+    let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
+    match suffix.pop() {
+        Some((_, call_path_suffix)) => match suffix.pop() {
+            Some((_, trait_segment)) => {
+                let PathTypeSegment {
+                    fully_qualified,
+                    name,
+                    generics_opt,
+                } = trait_segment;
+                let trait_type_arguments = match generics_opt {
+                    Some((_, generic_args)) => generic_args_to_type_arguments(ec, generic_args)?,
+                    None => vec![],
+                };
+                let mut prefixes = vec![path_type_segment_to_ident(ec, prefix)?];
+                for (_, call_path_prefix) in suffix {
+                    let ident = path_type_segment_to_ident(ec, call_path_prefix)?;
+                    prefixes.push(ident);
+                }
+                if fully_qualified.is_none() {
+                    prefixes.push(name);
+                }
+                Ok((
+                    CallPath {
+                        prefixes,
+                        suffix: call_path_suffix.name,
+                        is_absolute,
+                    },
+                    trait_type_arguments,
+                ))
+            }
+            None => {
+                let trait_type_arguments = match prefix.generics_opt {
+                    Some((_, generic_args)) => generic_args_to_type_arguments(ec, generic_args)?,
+                    None => vec![],
+                };
+                let prefixes = if prefix.fully_qualified.is_some() {
+                    vec![]
+                } else {
+                    vec![prefix.name]
+                };
+                Ok((
+                    CallPath {
+                        prefixes,
+                        suffix: call_path_suffix.name,
+                        is_absolute,
+                    },
+                    trait_type_arguments,
+                ))
+            }
+        },
+        None => {
+            let trait_type_arguments = match prefix.generics_opt {
+                Some((_, generic_args)) => generic_args_to_type_arguments(ec, generic_args)?,
+                None => vec![],
+            };
+            Ok((
+                CallPath {
+                    prefixes: vec![],
+                    suffix: prefix.name.clone(),
+                    is_absolute,
+                },
+                trait_type_arguments,
+            ))
+        }
     }
 }
 
@@ -2346,52 +2431,41 @@ fn literal_to_literal(
 fn path_expr_to_call_path_binding(
     ec: &mut ErrorContext,
     path_expr: PathExpr,
-) -> Result<TypeBinding<CallPath<(TypeInfo, Span)>>, ErrorEmitted> {
+) -> Result<TypeBinding<CallPath>, ErrorEmitted> {
     let PathExpr {
         root_opt,
         prefix,
         mut suffix,
     } = path_expr;
     let is_absolute = path_root_opt_to_bool(ec, root_opt)?;
-    let (prefixes, type_info, type_info_span, type_arguments) = match suffix.pop() {
-        Some((_double_colon_token, call_path_suffix)) => {
+    let (prefixes, suffix, span, type_arguments) = match suffix.pop() {
+        Some((_, call_path_suffix)) => {
             let mut prefixes = vec![path_expr_segment_to_ident(ec, prefix)?];
-            for (_double_colon_token, call_path_prefix) in suffix {
+            for (_, call_path_prefix) in suffix {
                 let ident = path_expr_segment_to_ident(ec, call_path_prefix)?;
                 // note that call paths only support one set of type arguments per call path right
                 // now
                 prefixes.push(ident);
             }
+            let span = call_path_suffix.span();
             let (suffix, ty_args) =
                 path_expr_segment_to_ident_or_type_argument(ec, call_path_suffix)?;
-            let type_info_span = suffix.span();
-            let type_info = type_name_to_type_info_opt(&suffix).unwrap_or(TypeInfo::Custom {
-                name: suffix,
-                type_arguments: None,
-            });
-            (prefixes, type_info, type_info_span, ty_args)
+            (prefixes, suffix, span, ty_args)
         }
         None => {
+            let span = prefix.span();
             let (suffix, ty_args) = path_expr_segment_to_ident_or_type_argument(ec, prefix)?;
-            let type_info_span = suffix.span();
-            let type_info = match type_name_to_type_info_opt(&suffix) {
-                Some(type_info) => type_info,
-                None => TypeInfo::Custom {
-                    name: suffix,
-                    type_arguments: None,
-                },
-            };
-            (vec![], type_info, type_info_span, ty_args)
+            (vec![], suffix, span, ty_args)
         }
     };
     Ok(TypeBinding {
         inner: CallPath {
             prefixes,
-            suffix: (type_info, type_info_span.clone()),
+            suffix,
             is_absolute,
         },
         type_arguments,
-        span: type_info_span, // TODO: change this span so that it includes the type arguments
+        span,
     })
 }
 

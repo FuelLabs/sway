@@ -406,7 +406,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        // type deck the declaration
+        // type check the declaration
         let unknown_decl = check!(
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref()),
             return err(warnings, errors),
@@ -698,16 +698,55 @@ impl ty::TyExpression {
     #[allow(clippy::too_many_arguments)]
     fn type_check_struct_expression(
         mut ctx: TypeCheckContext,
-        call_path_binding: TypeBinding<CallPath<(TypeInfo, Span)>>,
+        call_path_binding: TypeBinding<CallPath>,
         fields: Vec<StructExpressionField>,
         span: Span,
     ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        // type check the call path
+        let TypeBinding {
+            inner: CallPath {
+                prefixes, suffix, ..
+            },
+            type_arguments,
+            span: inner_span,
+        } = call_path_binding;
+        let type_info = match (suffix.as_str(), type_arguments.is_empty()) {
+            ("Self", true) => TypeInfo::SelfType,
+            ("Self", false) => {
+                errors.push(CompileError::TypeArgumentsNotAllowed {
+                    span: suffix.span(),
+                });
+                return err(warnings, errors);
+            }
+            (_, true) => TypeInfo::Custom {
+                name: suffix,
+                type_arguments: None,
+            },
+            (_, false) => TypeInfo::Custom {
+                name: suffix,
+                type_arguments: Some(type_arguments),
+            },
+        };
+
+        // find the module that the struct decl is in
+        let type_info_prefix = ctx.namespace.find_module_path(&prefixes);
+        check!(
+            ctx.namespace.root().check_submodule(&type_info_prefix),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // resolve the type of the struct decl
         let type_id = check!(
-            call_path_binding.type_check_with_type_info(&mut ctx),
+            ctx.resolve_type_with_self(
+                insert_type(type_info),
+                &inner_span,
+                EnforceTypeArguments::No,
+                Some(&type_info_prefix)
+            ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors
@@ -781,7 +820,7 @@ impl ty::TyExpression {
             expression: ty::TyExpressionVariant::StructExpression {
                 struct_name: struct_name.clone(),
                 fields: typed_fields_buf,
-                span: call_path_binding.inner.suffix.1.clone(),
+                span: inner_span,
             },
             return_type: type_id,
             span,

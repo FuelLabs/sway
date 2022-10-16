@@ -20,13 +20,26 @@ impl ty::TyImplTrait {
         let mut warnings = vec![];
 
         let ImplTrait {
+            impl_type_parameters,
             trait_name,
-            type_parameters,
-            functions,
+            trait_type_arguments,
             type_implementing_for,
             type_implementing_for_span,
+            functions,
             block_span,
         } = impl_trait;
+
+        if !trait_type_arguments.is_empty() {
+            let spans = trait_type_arguments
+                .into_iter()
+                .map(|type_arg| type_arg.span())
+                .collect();
+            errors.push(CompileError::Unimplemented(
+                "Generic traits are not yet implemented.",
+                Span::join_all(spans),
+            ));
+            return err(warnings, errors);
+        }
 
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
@@ -35,9 +48,9 @@ impl ty::TyImplTrait {
         // type check the type parameters
         // insert them into the namespace
         // TODO: eventually when we support generic traits, we will want to use this
-        let mut new_type_parameters = vec![];
-        for type_parameter in type_parameters.into_iter() {
-            new_type_parameters.push(check!(
+        let mut new_impl_type_parameters = vec![];
+        for type_parameter in impl_type_parameters.into_iter() {
+            new_impl_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
                 warnings,
@@ -60,7 +73,7 @@ impl ty::TyImplTrait {
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
-                &new_type_parameters,
+                &new_impl_type_parameters,
                 implementing_for_type_id,
                 &type_implementing_for_span
             ),
@@ -105,7 +118,9 @@ impl ty::TyImplTrait {
                     .map(|d| de_insert_function(d.clone()))
                     .collect::<Vec<_>>();
                 let impl_trait = ty::TyImplTrait {
+                    impl_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     trait_name,
+                    trait_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     span: block_span,
                     methods: functions_decl_id,
                     implementing_for_type_id,
@@ -164,7 +179,9 @@ impl ty::TyImplTrait {
                     .map(|d| de_insert_function(d.clone()))
                     .collect::<Vec<_>>();
                 let impl_trait = ty::TyImplTrait {
+                    impl_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     trait_name,
+                    trait_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     span: block_span,
                     methods: functions_decl_id,
                     implementing_for_type_id,
@@ -369,9 +386,9 @@ impl ty::TyImplTrait {
         let mut errors = vec![];
 
         let ImplSelf {
+            impl_type_parameters,
             type_implementing_for,
             type_implementing_for_span,
-            type_parameters,
             functions,
             block_span,
         } = impl_self;
@@ -393,7 +410,7 @@ impl ty::TyImplTrait {
         // type check the type parameters
         // insert them into the namespace
         let mut new_type_parameters = vec![];
-        for type_parameter in type_parameters.into_iter() {
+        for type_parameter in impl_type_parameters.into_iter() {
             new_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
@@ -458,7 +475,9 @@ impl ty::TyImplTrait {
             .map(|d| de_insert_function(d.clone()))
             .collect::<Vec<_>>();
         let impl_trait = ty::TyImplTrait {
+            impl_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
             trait_name,
+            trait_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
             span: block_span,
             methods: methods_ids,
             implementing_for_type_id,
