@@ -174,6 +174,13 @@ impl Span {
         }
     }
 
+    pub fn join_all(spans: Vec<Span>) -> Span {
+        spans
+            .into_iter()
+            .reduce(Span::join)
+            .unwrap_or_else(Span::dummy)
+    }
+
     /// Returns the line and column start and end.
     pub fn line_col(&self) -> (LineCol, LineCol) {
         (

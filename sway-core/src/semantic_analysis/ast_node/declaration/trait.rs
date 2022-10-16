@@ -2,7 +2,7 @@ use sway_error::{
     error::CompileError,
     warning::{CompileWarning, Warning},
 };
-use sway_types::{style::is_upper_camel_case, Spanned};
+use sway_types::{style::is_upper_camel_case, Span, Spanned};
 
 use crate::{
     declaration_engine::*,
@@ -24,48 +24,68 @@ impl ty::TyTraitDeclaration {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
-        let name = trait_decl.name.clone();
+        let TraitDeclaration {
+            name,
+            type_parameters,
+            attributes,
+            interface_surface,
+            methods,
+            supertraits,
+            visibility,
+        } = trait_decl;
+
         if !is_upper_camel_case(name.as_str()) {
             warnings.push(CompileWarning {
                 span: name.span(),
-                warning_content: Warning::NonClassCaseTraitName { name },
+                warning_content: Warning::NonClassCaseTraitName { name: name.clone() },
             })
         }
 
-        // type check the interface surface
-        let interface_surface = check!(
-            type_check_interface_surface(trait_decl.interface_surface.to_vec(), ctx.namespace),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        if !type_parameters.is_empty() {
+            let spans = type_parameters
+                .into_iter()
+                .map(|type_param| type_param.span())
+                .collect();
+            errors.push(CompileError::Unimplemented(
+                "Generic traits are not yet implemented.",
+                Span::join_all(spans),
+            ));
+            return err(warnings, errors);
+        }
 
         // A temporary namespace for checking within the trait's scope.
         let mut trait_namespace = ctx.namespace.clone();
         let ctx = ctx.scoped(&mut trait_namespace);
 
-        // Recursively handle supertraits: make their interfaces and methods available to this trait
-        check!(
-            handle_supertraits(&trait_decl.supertraits, ctx.namespace),
+        // type check the interface surface
+        let interface_surface = check!(
+            type_check_interface_surface(interface_surface, ctx.namespace),
             return err(warnings, errors),
             warnings,
             errors
         );
-
         let mut trait_fns = vec![];
         for decl_id in interface_surface.iter() {
-            match de_get_trait_fn(decl_id.clone(), &trait_decl.name.span()) {
+            match de_get_trait_fn(decl_id.clone(), &name.span()) {
                 Ok(decl) => trait_fns.push(decl),
                 Err(err) => errors.push(err),
             }
         }
+
+        // Recursively handle supertraits: make their interfaces and methods available to this trait
+        check!(
+            handle_supertraits(&supertraits, ctx.namespace),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // insert placeholder functions representing the interface surface
         // to allow methods to use those functions
         ctx.namespace.insert_trait_implementation(
             CallPath {
                 prefixes: vec![],
-                suffix: trait_decl.name.clone(),
+                suffix: name.clone(),
                 is_absolute: false,
             },
             insert_type(TypeInfo::SelfType),
@@ -77,18 +97,18 @@ impl ty::TyTraitDeclaration {
         // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
         let ctx = ctx.with_self_type(insert_type(TypeInfo::SelfType));
         let _methods = check!(
-            type_check_trait_methods(ctx, trait_decl.methods.clone()),
+            type_check_trait_methods(ctx, methods.clone()),
             vec![],
             warnings,
             errors
         );
         let typed_trait_decl = ty::TyTraitDeclaration {
-            name: trait_decl.name,
+            name,
             interface_surface,
-            methods: trait_decl.methods.to_vec(),
-            supertraits: trait_decl.supertraits.to_vec(),
-            visibility: trait_decl.visibility,
-            attributes: trait_decl.attributes,
+            methods,
+            supertraits,
+            visibility,
+            attributes,
         };
         ok(typed_trait_decl, warnings, errors)
     }
