@@ -26,26 +26,26 @@ pub type DomTree = FxHashMap<Block, DomTreeNode>;
 // Dominance frontier sets.
 pub type DomFronts = FxHashMap<Block, FxHashSet<Block>>;
 
-/// Reverse Post ordering of blocks in the CFG.
-pub struct ReversePostOrder {
-    pub block_to_rpo: FxHashMap<Block, usize>,
-    pub rpo_to_block: Vec<Block>,
+/// Post ordering of blocks in the CFG.
+pub struct PostOrder {
+    pub block_to_po: FxHashMap<Block, usize>,
+    pub po_to_block: Vec<Block>,
 }
 
-/// Compute the reverse-post-order traversal of the CFG.
-pub fn compute_reverse_post_order(context: &Context, function: &Function) -> ReversePostOrder {
-    let mut res = ReversePostOrder {
-        block_to_rpo: FxHashMap::default(),
-        rpo_to_block: Vec::default(),
+/// Compute the post-order traversal of the CFG.
+pub fn compute_post_order(context: &Context, function: &Function) -> PostOrder {
+    let mut res = PostOrder {
+        block_to_po: FxHashMap::default(),
+        po_to_block: Vec::default(),
     };
     let entry = function.get_entry_block(context);
 
-    let mut counter = function.num_blocks(context);
+    let mut counter = 0;
     let mut on_stack = FxHashSet::<Block>::default();
     fn post_order(
         context: &Context,
         n: Block,
-        res: &mut ReversePostOrder,
+        res: &mut PostOrder,
         on_stack: &mut FxHashSet<Block>,
         counter: &mut usize,
     ) {
@@ -56,28 +56,29 @@ pub fn compute_reverse_post_order(context: &Context, function: &Function) -> Rev
         for BranchToWithArgs { block: n_succ, .. } in n.successors(context) {
             post_order(context, n_succ, res, on_stack, counter);
         }
-        res.block_to_rpo.insert(n, *counter - 1);
-        res.rpo_to_block.push(n);
-        *counter -= 1;
+        res.block_to_po.insert(n, *counter);
+        res.po_to_block.push(n);
+        *counter += 1;
     }
     post_order(context, entry, &mut res, &mut on_stack, &mut counter);
-    res.rpo_to_block.reverse();
+
     // We could assert the whole thing, but it'd be expensive.
-    assert!(res.rpo_to_block[0] == entry);
+    assert!(res.po_to_block[function.num_blocks(context) - 1] == entry);
 
     res
 }
 
 /// Compute the dominator tree for the CFG.
 pub fn compute_dom_tree(context: &Context, function: &Function) -> DomTree {
-    let rpo = compute_reverse_post_order(context, function);
+    let po = compute_post_order(context, function);
     let mut dom_tree = DomTree::default();
     let entry = function.get_entry_block(context);
 
     // This is to make the algorithm happy. It'll be changed to None later.
     dom_tree.insert(entry, DomTreeNode::new(Some(entry)));
     // initialize the dominators tree. This allows us to do dom_tree[b] fearlessly.
-    for b in rpo.rpo_to_block.iter().skip(1) {
+    // Note that we just previously initialized "entry", so we skip that here.
+    for b in po.po_to_block.iter().take(function.num_blocks(context) - 1) {
         dom_tree.insert(*b, DomTreeNode::new(None));
     }
     let mut changed = true;
@@ -85,11 +86,11 @@ pub fn compute_dom_tree(context: &Context, function: &Function) -> DomTree {
     while changed {
         changed = false;
         // For all nodes, b, in reverse postorder (except start node)
-        for b in rpo.rpo_to_block.iter().skip(1) {
+        for b in po.po_to_block.iter().rev().skip(1) {
             // new_idom <- first (processed) predecessor of b (pick one)
             let mut new_idom = b
                 .pred_iter(context)
-                .find(|p| rpo.block_to_rpo[p] < rpo.block_to_rpo[b])
+                .find(|p| po.block_to_po[p] > po.block_to_po[b])
                 .cloned()
                 .unwrap();
             let picked_pred = new_idom;
@@ -98,7 +99,7 @@ pub fn compute_dom_tree(context: &Context, function: &Function) -> DomTree {
                 match dom_tree[p].parent {
                     Some(_) => {
                         // if doms[p] already calculated
-                        new_idom = intersect(&rpo, &mut dom_tree, *p, new_idom);
+                        new_idom = intersect(&po, &mut dom_tree, *p, new_idom);
                     }
                     None => (),
                 }
@@ -115,17 +116,16 @@ pub fn compute_dom_tree(context: &Context, function: &Function) -> DomTree {
     }
 
     fn intersect(
-        rpo: &ReversePostOrder,
+        po: &PostOrder,
         dom_tree: &mut DomTree,
         mut finger1: Block,
         mut finger2: Block,
     ) -> Block {
         while finger1 != finger2 {
-            // The condition here is reversed from that of the paper as we're using RPO.
-            while rpo.block_to_rpo[&finger1] > rpo.block_to_rpo[&finger2] {
+            while po.block_to_po[&finger1] < po.block_to_po[&finger2] {
                 finger1 = dom_tree[&finger1].parent.unwrap();
             }
-            while rpo.block_to_rpo[&finger2] > rpo.block_to_rpo[&finger1] {
+            while po.block_to_po[&finger2] < po.block_to_po[&finger1] {
                 finger2 = dom_tree[&finger2].parent.unwrap();
             }
         }
