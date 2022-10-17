@@ -1,7 +1,6 @@
 use crate::{
     language::{parsed::CodeBlock, *},
     type_system::TypeBinding,
-    TypeInfo,
 };
 use sway_types::{ident::Ident, Span, Spanned};
 
@@ -44,7 +43,7 @@ pub struct TupleIndexExpression {
 
 #[derive(Debug, Clone)]
 pub struct StructExpression {
-    pub call_path_binding: TypeBinding<CallPath<(TypeInfo, Span)>>,
+    pub call_path_binding: TypeBinding<CallPath>,
     pub fields: Vec<StructExpressionField>,
 }
 

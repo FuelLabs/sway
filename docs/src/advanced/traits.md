@@ -117,7 +117,7 @@ fn main() {
     play_game_with_deck(deck);
 }
 
-fn random_suit(i: u64) -> Suit {
+fn generate_random_suit() -> Suit {
   [ ... ]
 }
 ```

@@ -1,11 +1,6 @@
 use crate::{
-    declaration_engine::declaration_engine::de_get_constant,
-    language::ty,
-    metadata::MetadataManager,
-    semantic_analysis::{
-        declaration::ProjectionKind, namespace, TyAstNode, TyAstNodeContent, TyConstantDeclaration,
-        TyStructExpressionField,
-    },
+    declaration_engine::declaration_engine::de_get_constant, language::ty,
+    metadata::MetadataManager, semantic_analysis::*,
 };
 
 use super::{convert::convert_literal_to_constant, types::*};
@@ -44,7 +39,7 @@ pub(crate) fn compile_const_decl(
             let decl = module_ns.check_symbol(name)?;
             let decl_name_value = match decl {
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                    let TyConstantDeclaration { name, value, .. } =
+                    let ty::TyConstantDeclaration { name, value, .. } =
                         de_get_constant(decl_id.clone(), &name.span())?;
                     Some((name, value))
                 }
@@ -214,7 +209,7 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::StructExpression { fields, .. } => {
             let (field_typs, field_vals): (Vec<_>, Vec<_>) = fields
                 .iter()
-                .filter_map(|TyStructExpressionField { name: _, value, .. }| {
+                .filter_map(|ty::TyStructExpressionField { name: _, value, .. }| {
                     const_eval_typed_expr(lookup, known_consts, value)
                         .map(|cv| (value.return_type, cv))
                 })
@@ -304,7 +299,7 @@ fn const_eval_typed_expr(
                 value: ConstantValue::Struct(fields),
                 ..
             }) => {
-                let field_kind = ProjectionKind::StructField {
+                let field_kind = ty::ProjectionKind::StructField {
                     name: field_to_access.name.clone(),
                 };
                 get_struct_name_field_index_and_type(*resolved_type_of_parent, field_kind)
@@ -350,16 +345,16 @@ fn const_eval_typed_expr(
 fn const_eval_typed_ast_node(
     lookup: &mut LookupEnv,
     known_consts: &mut MappedStack<Ident, Constant>,
-    expr: &TyAstNode,
+    expr: &ty::TyAstNode,
 ) -> Option<Constant> {
     match &expr.content {
-        TyAstNodeContent::Declaration(_) => {
+        ty::TyAstNodeContent::Declaration(_) => {
             // TODO: add the binding to known_consts (if it's a const) and proceed.
             None
         }
-        TyAstNodeContent::Expression(e) | TyAstNodeContent::ImplicitReturnExpression(e) => {
+        ty::TyAstNodeContent::Expression(e) | ty::TyAstNodeContent::ImplicitReturnExpression(e) => {
             const_eval_typed_expr(lookup, known_consts, e)
         }
-        TyAstNodeContent::SideEffect => None,
+        ty::TyAstNodeContent::SideEffect => None,
     }
 }

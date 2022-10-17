@@ -7,29 +7,19 @@ use crate::{
         ast_node::expression::typed_expression::{
             instantiate_if_expression, instantiate_lazy_operator,
         },
-        IsConstant, TypeCheckContext,
+        TypeCheckContext,
     },
-    type_system::{insert_type, TypeId},
+    type_system::insert_type,
     CompileError, CompileResult, TypeInfo,
 };
 
-use super::{typed_match_branch::TyMatchBranch, typed_scrutinee::TyScrutinee};
-
-#[derive(Debug)]
-pub(crate) struct TyMatchExpression {
-    branches: Vec<TyMatchBranch>,
-    return_type_id: TypeId,
-    #[allow(dead_code)]
-    span: Span,
-}
-
-impl TyMatchExpression {
+impl ty::TyMatchExpression {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         typed_value: ty::TyExpression,
         branches: Vec<MatchBranch>,
         span: Span,
-    ) -> CompileResult<(TyMatchExpression, Vec<TyScrutinee>)> {
+    ) -> CompileResult<(ty::TyMatchExpression, Vec<ty::TyScrutinee>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -40,7 +30,7 @@ impl TyMatchExpression {
             ctx.with_help_text("all branches of a match statement must return the same type");
         for branch in branches.into_iter() {
             let (typed_branch, typed_scrutinee) = check!(
-                TyMatchBranch::type_check(ctx.by_ref(), &typed_value, branch),
+                ty::TyMatchBranch::type_check(ctx.by_ref(), &typed_value, branch),
                 continue,
                 warnings,
                 errors
@@ -53,7 +43,7 @@ impl TyMatchExpression {
             return err(warnings, errors);
         }
 
-        let typed_exp = TyMatchExpression {
+        let typed_exp = ty::TyMatchExpression {
             branches: typed_branches,
             return_type_id: ctx.type_annotation(),
             span,
@@ -68,13 +58,13 @@ impl TyMatchExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let TyMatchExpression { branches, .. } = self;
+        let ty::TyMatchExpression { branches, .. } = self;
 
         // create the typed if expression object that we will be building on to
         let mut typed_if_exp: Option<ty::TyExpression> = None;
 
         // for every branch of the match expression, in reverse
-        for TyMatchBranch {
+        for ty::TyMatchBranch {
             conditions, result, ..
         } in branches.into_iter().rev()
         {
@@ -129,7 +119,6 @@ impl TyMatchExpression {
                     let conditional = ty::TyExpression {
                         expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
                         return_type: insert_type(TypeInfo::Boolean),
-                        is_constant: IsConstant::No,
                         span: result_span.clone(),
                     };
                     check!(

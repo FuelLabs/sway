@@ -13,7 +13,7 @@ use sway_types::{Ident, Spanned};
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
     ctx: TypeCheckContext,
-    enum_decl: TyEnumDeclaration,
+    enum_decl: ty::TyEnumDeclaration,
     enum_name: Ident,
     enum_variant_name: Ident,
     args: Vec<Expression>,
@@ -45,7 +45,6 @@ pub(crate) fn instantiate_enum(
                     enum_instantiation_span: enum_name.span(),
                     variant_instantiation_span: enum_variant_name.span(),
                 },
-                is_constant: IsConstant::No,
                 span: enum_variant_name.span(),
             },
             warnings,
@@ -76,7 +75,6 @@ pub(crate) fn instantiate_enum(
                         enum_instantiation_span: enum_name.span(),
                         variant_instantiation_span: enum_variant_name.span(),
                     },
-                    is_constant: IsConstant::No,
                     span: enum_variant_name.span(),
                 },
                 warnings,

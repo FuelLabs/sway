@@ -1,28 +1,15 @@
 use crate::{
     declaration_engine::declaration_engine::*,
     error::*,
-    language::{parsed::*, ty},
+    language::{parsed::*, ty, DepName},
     semantic_analysis::*,
     type_system::*,
 };
 
 use sway_error::error::CompileError;
-use sway_types::{Ident, Spanned};
+use sway_types::Spanned;
 
-#[derive(Clone, Debug)]
-pub struct TyModule {
-    pub submodules: Vec<(DepName, TySubmodule)>,
-    pub namespace: namespace::Module,
-    pub all_nodes: Vec<TyAstNode>,
-}
-
-#[derive(Clone, Debug)]
-pub struct TySubmodule {
-    pub library_name: Ident,
-    pub module: TyModule,
-}
-
-impl TyModule {
+impl ty::TyModule {
     /// Type-check the given parsed module to produce a typed module.
     ///
     /// Recursively type-checks submodules first.
@@ -32,7 +19,7 @@ impl TyModule {
         // Type-check submodules first in order of declaration.
         let mut submodules_res = ok(vec![], vec![], vec![]);
         for (name, submodule) in submodules {
-            let submodule_res = TySubmodule::type_check(ctx.by_ref(), name.clone(), submodule);
+            let submodule_res = ty::TySubmodule::type_check(ctx.by_ref(), name.clone(), submodule);
             submodules_res = submodules_res.flat_map(|mut submodules| {
                 submodule_res.map(|submodule| {
                     submodules.push((name.clone(), submodule));
@@ -65,19 +52,19 @@ impl TyModule {
     fn type_check_nodes(
         mut ctx: TypeCheckContext,
         nodes: Vec<AstNode>,
-    ) -> CompileResult<Vec<TyAstNode>> {
+    ) -> CompileResult<Vec<ty::TyAstNode>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let typed_nodes = nodes
             .into_iter()
-            .map(|node| TyAstNode::type_check(ctx.by_ref(), node))
+            .map(|node| ty::TyAstNode::type_check(ctx.by_ref(), node))
             .filter_map(|res| res.ok(&mut warnings, &mut errors))
             .collect();
         ok(typed_nodes, warnings, errors)
     }
 }
 
-impl TySubmodule {
+impl ty::TySubmodule {
     pub fn type_check(
         parent_ctx: TypeCheckContext,
         dep_name: DepName,
@@ -88,8 +75,8 @@ impl TySubmodule {
             module,
         } = submodule;
         parent_ctx.enter_submodule(dep_name, |submod_ctx| {
-            let module_res = TyModule::type_check(submod_ctx, module);
-            module_res.map(|module| TySubmodule {
+            let module_res = ty::TyModule::type_check(submod_ctx, module);
+            module_res.map(|module| ty::TySubmodule {
                 library_name: library_name.clone(),
                 module,
             })
@@ -104,12 +91,16 @@ impl TySubmodule {
 ///
 /// This nicely works for transitive supertraits as well.
 ///
-fn check_supertraits(typed_tree_nodes: &[TyAstNode], namespace: &Namespace) -> Vec<CompileError> {
+fn check_supertraits(
+    typed_tree_nodes: &[ty::TyAstNode],
+    namespace: &Namespace,
+) -> Vec<CompileError> {
     let mut errors = vec![];
     for node in typed_tree_nodes {
-        if let TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)) = &node.content
+        if let ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)) =
+            &node.content
         {
-            let TyImplTrait {
+            let ty::TyImplTrait {
                 trait_name,
                 span,
                 implementing_for_type_id,
@@ -135,11 +126,11 @@ fn check_supertraits(typed_tree_nodes: &[TyAstNode], namespace: &Namespace) -> V
                 };
                 for supertrait in &tr.supertraits {
                     if !typed_tree_nodes.iter().any(|search_node| {
-                        if let TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(
+                        if let ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(
                             decl_id,
                         )) = &search_node.content
                         {
-                            let TyImplTrait {
+                            let ty::TyImplTrait {
                                 trait_name: search_node_trait_name,
                                 implementing_for_type_id: search_node_type_implementing_for,
                                 ..

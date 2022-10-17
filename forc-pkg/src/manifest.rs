@@ -73,7 +73,7 @@ pub enum Dependency {
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,
-    pub(crate) path: Option<String>,
+    pub path: Option<String>,
     pub(crate) git: Option<String>,
     pub(crate) branch: Option<String>,
     pub(crate) tag: Option<String>,
