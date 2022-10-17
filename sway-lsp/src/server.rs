@@ -2,7 +2,7 @@ pub use crate::error::DocumentError;
 use crate::{
     capabilities,
     core::{
-        config::{Config, Warnings},
+        config::{Warnings},
         document::TextDocument,
         session::Session,
     },
@@ -100,7 +100,7 @@ impl Backend {
                 }
             }
         };
-        self.publish_diagnostics(&workspace_uri, diagnostics).await;
+        self.publish_diagnostics(&uri, &workspace_uri, diagnostics).await;
     }
 }
 
@@ -135,41 +135,33 @@ fn capabilities() -> ServerCapabilities {
 }
 
 impl Backend {
-    async fn publish_diagnostics(&self, uri: &Url, diagnostics: Vec<Diagnostic>) {
-        if let LockResult::Ok(config) = self.session.config.read() {
-            match config.debug.show_collected_tokens_as_warnings {
-                Warnings::Default => {}
-                Warnings::Parsed => {}
-                Warnings::Typed => {}
-            }
-        }
-
-        match &self.config.collected_tokens_as_warnings {
-            Some(s) => {
-                let token_map = self.session.tokens_for_file(uri);
-
-                // If collected_tokens_as_warnings is Some, take over the normal error and warning display behavior
+    async fn publish_diagnostics(&self, uri: &Url, workspace_uri: &Url, diagnostics: Vec<Diagnostic>) {
+        let mut diagnostics_res = Vec::new();
+        {
+            let debug = &self.session.config.read().debug;
+            let token_map = self.session.tokens_for_file(uri);
+            diagnostics_res = match debug.show_collected_tokens_as_warnings {
+                Warnings::Default => {
+                    diagnostics
+                }
+                // If collected_tokens_as_warnings is Parsed or Typed, 
+                // take over the normal error and warning display behavior
                 // and instead show the either the parsed or typed tokens as warnings.
                 // This is useful for debugging the lsp parser.
-                let diagnostics = match s.as_str() {
-                    "parsed" => Some(debug::generate_warnings_for_parsed_tokens(&token_map)),
-                    "typed" => Some(debug::generate_warnings_for_typed_tokens(&token_map)),
-                    _ => None,
-                };
-                if let Some(diagnostics) = diagnostics {
-                    self.client
-                        .publish_diagnostics(uri.clone(), diagnostics, None)
-                        .await;
+                Warnings::Parsed => {
+                    debug::generate_warnings_for_parsed_tokens(&token_map)
                 }
-            }
-            None => {
-                // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
-                // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-                self.client
-                    .publish_diagnostics(uri.clone(), diagnostics, None)
-                    .await;
-            }
+                Warnings::Typed => {
+                    debug::generate_warnings_for_typed_tokens(&token_map)
+                }
+            };
         }
+
+        // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
+        // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
+        self.client
+            .publish_diagnostics(workspace_uri.clone(), diagnostics_res, None)
+            .await;
     }
 }
 
@@ -181,11 +173,10 @@ impl LanguageServer for Backend {
             .await;
 
         if let Some(initialization_options) = &params.initialization_options {
-            if let LockResult::Ok(mut config) = self.session.config.write() {
-                *config = serde_json::from_value(initialization_options.clone())
-                    .ok()
-                    .unwrap_or_else(Config::default);
-            }
+            let mut config = self.session.config.write();
+            *config = serde_json::from_value(initialization_options.clone())
+                .ok()
+                .unwrap_or_default();
         }
 
         Ok(InitializeResult {
