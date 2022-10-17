@@ -415,12 +415,10 @@ impl Backend {
         &self,
         params: InlayHintParams,
     ) -> jsonrpc::Result<Option<Vec<InlayHint>>> {
-        let config = crate::core::config::InlayHintsConfig::default();
         Ok(capabilities::inlay_hints::inlay_hints(
             &self.session,
             &params.text_document.uri,
             &params.range,
-            &config,
         ))
     }
 
