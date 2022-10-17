@@ -130,11 +130,10 @@ impl Backend {
         workspace_uri: &Url,
         diagnostics: Vec<Diagnostic>,
     ) {
-        let mut diagnostics_res = Vec::new();
-        {
+        let diagnostics_res = {
             let debug = &self.session.config.read().debug;
             let token_map = self.session.tokens_for_file(uri);
-            diagnostics_res = match debug.show_collected_tokens_as_warnings {
+            match debug.show_collected_tokens_as_warnings {
                 Warnings::Default => diagnostics,
                 // If collected_tokens_as_warnings is Parsed or Typed,
                 // take over the normal error and warning display behavior
@@ -142,8 +141,8 @@ impl Backend {
                 // This is useful for debugging the lsp parser.
                 Warnings::Parsed => debug::generate_warnings_for_parsed_tokens(&token_map),
                 Warnings::Typed => debug::generate_warnings_for_typed_tokens(&token_map),
-            };
-        }
+            }
+        };
 
         // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
         // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
