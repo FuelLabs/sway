@@ -12,7 +12,7 @@ use std::{
     io::Write,
     ops::Deref,
     path::{Path, PathBuf},
-    sync::{Arc, LockResult},
+    sync::Arc,
 };
 use sway_types::Spanned;
 use sway_utils::helpers::get_sway_files;
@@ -472,57 +472,54 @@ impl Backend {
                 None
             };
 
-        match self.session.compiled_program.read() {
-            LockResult::Ok(program) => {
-                match params.ast_kind.as_str() {
-                    "parsed" => {
-                        match program.parsed {
-                            Some(ref parsed_program) => {
-                                // Initialize the string with the AST from the root
-                                let mut formatted_ast: String =
-                                    format!("{:#?}", parsed_program.root.tree.root_nodes);
+        {
+            let program = self.session.compiled_program.read();
+            match params.ast_kind.as_str() {
+                "parsed" => {
+                    match program.parsed {
+                        Some(ref parsed_program) => {
+                            // Initialize the string with the AST from the root
+                            let mut formatted_ast: String =
+                                format!("{:#?}", parsed_program.root.tree.root_nodes);
 
-                                for (ident, submodule) in &parsed_program.root.submodules {
-                                    // if the current path matches the path of a submodule
-                                    // overwrite the root AST with the submodule AST
-                                    if ident.span().path().map(|a| a.deref()) == path.as_ref() {
-                                        formatted_ast =
-                                            format!("{:#?}", submodule.module.tree.root_nodes);
-                                    }
+                            for (ident, submodule) in &parsed_program.root.submodules {
+                                // if the current path matches the path of a submodule
+                                // overwrite the root AST with the submodule AST
+                                if ident.span().path().map(|a| a.deref()) == path.as_ref() {
+                                    formatted_ast =
+                                        format!("{:#?}", submodule.module.tree.root_nodes);
                                 }
-
-                                let tmp_ast_path = Path::new("/tmp/parsed_ast.rs");
-                                Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
                             }
-                            _ => Ok(None),
-                        }
-                    }
-                    "typed" => {
-                        match program.typed {
-                            Some(ref typed_program) => {
-                                // Initialize the string with the AST from the root
-                                let mut formatted_ast: String =
-                                    format!("{:#?}", typed_program.root.all_nodes);
 
-                                for (ident, submodule) in &typed_program.root.submodules {
-                                    // if the current path matches the path of a submodule
-                                    // overwrite the root AST with the submodule AST
-                                    if ident.span().path().map(|a| a.deref()) == path.as_ref() {
-                                        formatted_ast =
-                                            format!("{:#?}", submodule.module.all_nodes);
-                                    }
-                                }
-
-                                let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
-                                Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
-                            }
-                            _ => Ok(None),
+                            let tmp_ast_path = Path::new("/tmp/parsed_ast.rs");
+                            Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
                         }
+                        _ => Ok(None),
                     }
-                    _ => Ok(None),
                 }
+                "typed" => {
+                    match program.typed {
+                        Some(ref typed_program) => {
+                            // Initialize the string with the AST from the root
+                            let mut formatted_ast: String =
+                                format!("{:#?}", typed_program.root.all_nodes);
+
+                            for (ident, submodule) in &typed_program.root.submodules {
+                                // if the current path matches the path of a submodule
+                                // overwrite the root AST with the submodule AST
+                                if ident.span().path().map(|a| a.deref()) == path.as_ref() {
+                                    formatted_ast = format!("{:#?}", submodule.module.all_nodes);
+                                }
+                            }
+
+                            let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
+                            Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
+                        }
+                        _ => Ok(None),
+                    }
+                }
+                _ => Ok(None),
             }
-            _ => Ok(None),
         }
     }
 }
