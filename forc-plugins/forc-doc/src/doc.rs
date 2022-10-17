@@ -56,13 +56,14 @@ pub(crate) fn get_compiled_docs(
 
     Ok(docs)
 }
+
 // TODO: Refactor this
 fn extract_typed_submodule(
     typed_submodule: &TySubmodule,
     docs: &mut Documentation,
-    module_prefix: &Vec<String>,
+    module_prefix: &[String],
 ) -> Result<()> {
-    let mut new_submodule_prefix = module_prefix.clone();
+    let mut new_submodule_prefix = module_prefix.to_owned();
     new_submodule_prefix.push(typed_submodule.library_name.as_str().to_string());
     for ast_node in &typed_submodule.module.all_nodes {
         // first, populate the descriptors and type information (decl).
@@ -94,6 +95,7 @@ fn extract_typed_submodule(
 
     Ok(())
 }
+
 // Collect the AttributesMaps from a TyAstNode.
 fn attributes_map(ast_node: &TyAstNode) -> Result<Option<Vec<AttributesMap>>> {
     match ast_node.content.clone() {
@@ -173,6 +175,7 @@ fn attributes_map(ast_node: &TyAstNode) -> Result<Option<Vec<AttributesMap>>> {
         _ => Ok(None),
     }
 }
+
 // Gather all Attributes from the AttributesMap.
 fn doc_attributes(ast_node: &TyAstNode) -> Result<Vec<Attribute>> {
     let mut result = Vec::new();
