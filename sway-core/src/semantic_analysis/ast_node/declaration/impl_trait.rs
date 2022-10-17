@@ -29,18 +29,6 @@ impl ty::TyImplTrait {
             block_span,
         } = impl_trait;
 
-        if !trait_type_arguments.is_empty() {
-            let spans = trait_type_arguments
-                .into_iter()
-                .map(|type_arg| type_arg.span())
-                .collect();
-            errors.push(CompileError::Unimplemented(
-                "Generic traits are not yet implemented.",
-                Span::join_all(spans),
-            ));
-            return err(warnings, errors);
-        }
-
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut impl_namespace);
