@@ -8,15 +8,6 @@ use sway_core::language::{
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
-// Flags for debugging various parts of the server
-#[derive(Debug, Default)]
-pub struct DebugFlags {
-    /// Instructs the client to draw squiggly lines
-    /// under all of the tokens that our server managed to parse.
-    /// String can be either "typed" or "parsed".
-    pub collected_tokens_as_warnings: Option<String>,
-}
-
 pub(crate) fn generate_warnings_non_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
         .iter()
