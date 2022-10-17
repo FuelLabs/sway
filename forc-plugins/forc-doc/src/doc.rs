@@ -8,7 +8,8 @@ use sway_core::{
     },
     language::ty::{TyAstNode, TyAstNodeContent, TyDeclaration, TySubmodule},
     language::{parsed::ParseProgram, ty::TyProgram},
-    Attribute, AttributeKind, AttributesMap, CompileResult,
+    transform::{Attribute, AttributeKind, AttributesMap},
+    CompileResult,
 };
 use sway_types::Spanned;
 
@@ -152,6 +153,7 @@ fn attributes_map(ast_node: &TyAstNode) -> Result<Option<Vec<AttributesMap>>> {
                 let decl = de_get_impl_trait(decl_id.clone(), &decl_id.span())?;
                 let mut attr_map = Vec::new();
                 for method in decl.methods {
+                    let method = de_get_function(method.clone(), &method.span())?;
                     attr_map.push(method.attributes)
                 }
 
