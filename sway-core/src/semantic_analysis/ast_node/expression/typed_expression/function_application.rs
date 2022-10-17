@@ -90,6 +90,7 @@ pub(crate) fn instantiate_function_application(
         None,
         span,
     );
+
     ok(exp, warnings, errors)
 }
 
@@ -178,7 +179,7 @@ fn instantiate_function_application_inner(
             call_path,
             contract_call_params,
             arguments,
-            function_decl: function_decl.clone(),
+            function_decl_id: de_insert_function(function_decl.clone()),
             self_state_idx,
             selector,
         },
