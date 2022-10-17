@@ -25,6 +25,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_ast::Dependency;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Function, Instruction, Kind, Module, Value};
 
 pub use semantic_analysis::namespace::{self, Namespace};
@@ -57,52 +58,38 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<par
     // program (similar behaviour to rust). Later, we'll add a flag for including tests on
     // invocations of `forc test` or `forc check --tests`. See #1832.
     let include_test_fns = false;
-    match config {
-        None => parse_in_memory(input, include_test_fns),
-        Some(config) => parse_files(input, config, include_test_fns),
-    }
-}
 
-/// Parse a file with contents `src` at `path`.
-fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> CompileResult<sway_ast::Module> {
-    let handler = sway_error::handler::Handler::default();
-    let res = sway_parse::parse_file(&handler, src, path);
-    CompileResult::from_handler(res.ok(), handler)
+    CompileResult::with_handler(|h| match config {
+        None => parse_in_memory(h, input, include_test_fns),
+        // When a `BuildConfig` is given,
+        // the module source may declare `dep`s that must be parsed from other files.
+        Some(config) => {
+            parse_module_tree(h, input, config.canonical_root_module(), include_test_fns)
+                .map(|(kind, root)| parsed::ParseProgram { kind, root })
+        }
+    })
 }
 
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
-fn parse_in_memory(src: Arc<str>, include_test_fns: bool) -> CompileResult<parsed::ParseProgram> {
-    parse_file(src, None).flat_map(|module| {
-        to_parsed_lang::convert_parse_tree(module, include_test_fns).flat_map(|(kind, tree)| {
-            let submodules = Default::default();
-            let root = parsed::ParseModule { tree, submodules };
-            ok(parsed::ParseProgram { kind, root }, vec![], vec![])
-        })
-    })
-}
-
-/// When a `BuildConfig` is given, the module source may declare `dep`s that must be parsed from
-/// other files.
-fn parse_files(
+fn parse_in_memory(
+    handler: &Handler,
     src: Arc<str>,
-    config: &BuildConfig,
     include_test_fns: bool,
-) -> CompileResult<parsed::ParseProgram> {
-    let root_mod_path = config.canonical_root_module();
-    parse_module_tree(src, root_mod_path, include_test_fns).flat_map(|(kind, root)| {
-        let program = parsed::ParseProgram { kind, root };
-        ok(program, vec![], vec![])
-    })
+) -> Result<parsed::ParseProgram, ErrorEmitted> {
+    let module = sway_parse::parse_file(handler, src, None)?;
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, module, include_test_fns)?;
+    let submodules = Default::default();
+    let root = parsed::ParseModule { tree, submodules };
+    Ok(parsed::ParseProgram { kind, root })
 }
 
 /// Parse all dependencies `deps` as submodules.
 fn parse_submodules(
+    handler: &Handler,
     deps: &[Dependency],
     module_dir: &Path,
     include_test_fns: bool,
-) -> CompileResult<Vec<(Ident, parsed::ParseSubmodule)>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+) -> Vec<(Ident, parsed::ParseSubmodule)> {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut submods = Vec::with_capacity(deps.len());
 
@@ -113,7 +100,7 @@ fn parse_submodules(
         let dep_str: Arc<str> = match std::fs::read_to_string(&*dep_path) {
             Ok(s) => Arc::from(s),
             Err(e) => {
-                errors.push(CompileError::FileCouldNotBeRead {
+                handler.emit_err(CompileError::FileCouldNotBeRead {
                     span: dep.path.span(),
                     file_path: dep_path.to_string_lossy().to_string(),
                     stringified_error: e.to_string(),
@@ -122,16 +109,14 @@ fn parse_submodules(
             }
         };
 
-        let mt_res = parse_module_tree(dep_str.clone(), dep_path.clone(), include_test_fns);
-        warnings.extend(mt_res.warnings);
-        errors.extend(mt_res.errors);
-
-        if let Some((kind, module)) = mt_res.value {
+        if let Ok((kind, module)) =
+            parse_module_tree(handler, dep_str.clone(), dep_path.clone(), include_test_fns)
+        {
             let library_name = match kind {
                 parsed::TreeType::Library { name } => name,
                 _ => {
                     let span = span::Span::new(dep_str, 0, 0, Some(dep_path)).unwrap();
-                    errors.push(CompileError::ImportMustBeLibrary { span });
+                    handler.emit_err(CompileError::ImportMustBeLibrary { span });
                     return;
                 }
             };
@@ -148,31 +133,29 @@ fn parse_submodules(
         }
     });
 
-    ok(submods, warnings, errors)
+    submods
 }
 
 /// Given the source of the module along with its path,
 /// parse this module including all of its submodules.
 fn parse_module_tree(
+    handler: &Handler,
     src: Arc<str>,
     path: Arc<PathBuf>,
     include_test_fns: bool,
-) -> CompileResult<(parsed::TreeType, parsed::ParseModule)> {
+) -> Result<(parsed::TreeType, parsed::ParseModule), ErrorEmitted> {
     // Parse this module first.
-    parse_file(src, Some(path.clone())).flat_map(|module| {
-        let module_dir = path.parent().expect("module file has no parent directory");
+    let module_dir = path.parent().expect("module file has no parent directory");
+    let module = sway_parse::parse_file(handler, src, Some(path.clone()))?;
 
-        // Parse all submodules before converting to the `ParseTree`.
-        let submodules_res = parse_submodules(&module.dependencies, module_dir, include_test_fns);
+    // Parse all submodules before converting to the `ParseTree`.
+    // This always recovers on parse errors for the file itself by skipping that file.
+    let submodules = parse_submodules(handler, &module.dependencies, module_dir, include_test_fns);
 
-        // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-        to_parsed_lang::convert_parse_tree(module, include_test_fns).flat_map(
-            |(prog_kind, tree)| {
-                submodules_res
-                    .map(|submodules| (prog_kind, parsed::ParseModule { tree, submodules }))
-            },
-        )
-    })
+    // Convert from the raw parsed module to the `ParseTree` ready for type-check.
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, module, include_test_fns)?;
+
+    Ok((kind, parsed::ParseModule { tree, submodules }))
 }
 
 fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf {
