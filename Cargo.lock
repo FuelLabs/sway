@@ -4468,6 +4468,7 @@ dependencies = [
  "futures",
  "notify",
  "notify-debouncer-mini",
+ "parking_lot 0.12.1",
  "ropey",
  "serde",
  "serde_json",
