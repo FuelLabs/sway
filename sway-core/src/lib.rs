@@ -15,6 +15,7 @@ pub mod source_map;
 pub mod transform;
 pub mod type_system;
 
+use crate::ir_generation::check_function_purity;
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
@@ -387,17 +388,17 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         .collect();
 
     // Do a purity check on the _unoptimised_ IR.
-    let mut purity_checker = ir_generation::PurityChecker::default();
-    let mut md_mgr = metadata::MetadataManager::default();
-    for entry_point in &entry_point_functions {
-        purity_checker.check_function(&ir, &mut md_mgr, entry_point);
+    {
+        let handler = Handler::default();
+        let mut env = ir_generation::PurityEnv::default();
+        let mut md_mgr = metadata::MetadataManager::default();
+        for entry_point in &entry_point_functions {
+            check_function_purity(&handler, &mut env, &ir, &mut md_mgr, entry_point);
+        }
+        let (e, w) = handler.consume();
+        warnings.extend(w);
+        errors.extend(e);
     }
-    check!(
-        purity_checker.results(),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
 
     // Now we're working with all functions in the module.
     let all_functions = ir
@@ -454,7 +455,14 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         tracing::info!("{}", ir);
     }
 
-    compile_ir_to_asm(&ir, Some(build_config))
+    let final_asm = check!(
+        compile_ir_to_asm(&ir, Some(build_config)),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    ok(final_asm, warnings, errors)
 }
 
 // Inline function calls based on two conditions:
