@@ -414,42 +414,21 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors
     );
 
-    // TODO: Experiment with putting combine-constants and simplify-cfg
-    // in a loop, but per function.
-    check!(
-        combine_constants(&mut ir, &all_functions),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    check!(
-        simplify_cfg(&mut ir, &all_functions),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    // Simplify-CFG helps combine constants.
-    check!(
-        combine_constants(&mut ir, &all_functions),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    // And that in-turn enables more simplify-cfg.
-    check!(
-        simplify_cfg(&mut ir, &all_functions),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let res = CompileResult::with_handler(|handler| {
+        // TODO: Experiment with putting combine-constants and simplify-cfg
+        // in a loop, but per function.
+        combine_constants(handler, &mut ir, &all_functions)?;
+        simplify_cfg(handler, &mut ir, &all_functions)?;
+        // Simplify-CFG helps combine constants.
+        combine_constants(handler, &mut ir, &all_functions)?;
+        // And that in-turn enables more simplify-cfg.
+        simplify_cfg(handler, &mut ir, &all_functions)?;
 
-    // Remove dead definitions based on the entry points root set.
-    check!(
-        dce(&mut ir, &entry_point_functions),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+        // Remove dead definitions based on the entry points root set.
+        dce(handler, &mut ir, &entry_point_functions)?;
+        Ok(())
+    });
+    check!(res, return err(warnings, errors), warnings, errors);
 
     if build_config.print_ir {
         tracing::info!("{}", ir);
@@ -539,22 +518,27 @@ fn inline_function_calls(
     ok((), Vec::new(), Vec::new())
 }
 
-fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+fn combine_constants(
+    handler: &Handler,
+    ir: &mut Context,
+    functions: &[Function],
+) -> Result<(), ErrorEmitted> {
     for function in functions {
         if let Err(ir_error) = sway_ir::optimize::combine_constants(ir, function) {
-            return err(
-                Vec::new(),
-                vec![CompileError::InternalOwned(
-                    ir_error.to_string(),
-                    span::Span::dummy(),
-                )],
-            );
+            return Err(handler.emit_err(CompileError::InternalOwned(
+                ir_error.to_string(),
+                span::Span::dummy(),
+            )));
         }
     }
-    ok((), Vec::new(), Vec::new())
+    Ok(())
 }
 
-fn dce(ir: &mut Context, entry_functions: &[Function]) -> CompileResult<()> {
+fn dce(
+    handler: &Handler,
+    ir: &mut Context,
+    entry_functions: &[Function],
+) -> Result<(), ErrorEmitted> {
     // Remove entire dead functions first.
     for module in ir.module_iter() {
         sway_ir::optimize::func_dce(ir, &module, entry_functions);
@@ -564,32 +548,30 @@ fn dce(ir: &mut Context, entry_functions: &[Function]) -> CompileResult<()> {
     for module in ir.module_iter() {
         for function in module.function_iter(ir) {
             if let Err(ir_error) = sway_ir::optimize::dce(ir, &function) {
-                return err(
-                    Vec::new(),
-                    vec![CompileError::InternalOwned(
-                        ir_error.to_string(),
-                        span::Span::dummy(),
-                    )],
-                );
+                return Err(handler.emit_err(CompileError::InternalOwned(
+                    ir_error.to_string(),
+                    span::Span::dummy(),
+                )));
             }
         }
     }
-    ok((), Vec::new(), Vec::new())
+    Ok(())
 }
 
-fn simplify_cfg(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+fn simplify_cfg(
+    handler: &Handler,
+    ir: &mut Context,
+    functions: &[Function],
+) -> Result<(), ErrorEmitted> {
     for function in functions {
         if let Err(ir_error) = sway_ir::optimize::simplify_cfg(ir, function) {
-            return err(
-                Vec::new(),
-                vec![CompileError::InternalOwned(
-                    ir_error.to_string(),
-                    span::Span::dummy(),
-                )],
-            );
+            return Err(handler.emit_err(CompileError::InternalOwned(
+                ir_error.to_string(),
+                span::Span::dummy(),
+            )));
         }
     }
-    ok((), Vec::new(), Vec::new())
+    Ok(())
 }
 
 /// Given input Sway source code, compile to a [BytecodeOrLib], containing the asm in bytecode form.
