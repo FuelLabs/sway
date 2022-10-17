@@ -1,16 +1,9 @@
 pub use crate::error::DocumentError;
 use crate::{
     capabilities,
-    core::{
-        config::{Warnings},
-        document::TextDocument,
-        session::Session,
-    },
+    core::{config::Warnings, document::TextDocument, session::Session},
     error::LanguageServerError,
-    utils::{
-        debug::{self, DebugFlags},
-        sync,
-    },
+    utils::{debug, sync},
 };
 use forc_pkg::manifest::PackageManifestFile;
 use serde::{Deserialize, Serialize};
@@ -30,17 +23,12 @@ use tower_lsp::{jsonrpc, Client, LanguageServer};
 pub struct Backend {
     pub client: Client,
     session: Arc<Session>,
-    config: DebugFlags,
 }
 
 impl Backend {
-    pub fn new(client: Client, config: DebugFlags) -> Self {
+    pub fn new(client: Client) -> Self {
         let session = Arc::new(Session::new());
-        Backend {
-            client,
-            session,
-            config,
-        }
+        Backend { client, session }
     }
 
     fn init(&self, uri: &Url) -> Result<(), LanguageServerError> {
@@ -100,7 +88,8 @@ impl Backend {
                 }
             }
         };
-        self.publish_diagnostics(&uri, &workspace_uri, diagnostics).await;
+        self.publish_diagnostics(&uri, &workspace_uri, diagnostics)
+            .await;
     }
 }
 
@@ -135,25 +124,24 @@ fn capabilities() -> ServerCapabilities {
 }
 
 impl Backend {
-    async fn publish_diagnostics(&self, uri: &Url, workspace_uri: &Url, diagnostics: Vec<Diagnostic>) {
+    async fn publish_diagnostics(
+        &self,
+        uri: &Url,
+        workspace_uri: &Url,
+        diagnostics: Vec<Diagnostic>,
+    ) {
         let mut diagnostics_res = Vec::new();
         {
             let debug = &self.session.config.read().debug;
             let token_map = self.session.tokens_for_file(uri);
             diagnostics_res = match debug.show_collected_tokens_as_warnings {
-                Warnings::Default => {
-                    diagnostics
-                }
-                // If collected_tokens_as_warnings is Parsed or Typed, 
+                Warnings::Default => diagnostics,
+                // If collected_tokens_as_warnings is Parsed or Typed,
                 // take over the normal error and warning display behavior
                 // and instead show the either the parsed or typed tokens as warnings.
                 // This is useful for debugging the lsp parser.
-                Warnings::Parsed => {
-                    debug::generate_warnings_for_parsed_tokens(&token_map)
-                }
-                Warnings::Typed => {
-                    debug::generate_warnings_for_typed_tokens(&token_map)
-                }
+                Warnings::Parsed => debug::generate_warnings_for_parsed_tokens(&token_map),
+                Warnings::Typed => debug::generate_warnings_for_typed_tokens(&token_map),
             };
         }
 
@@ -816,10 +804,6 @@ mod tests {
         highlight
     }
 
-    fn config() -> DebugFlags {
-        Default::default()
-    }
-
     async fn init_and_open(service: &mut LspService<Backend>, manifest_dir: PathBuf) -> Url {
         let _ = initialize_request(service).await;
         initialized_notification(service).await;
@@ -836,14 +820,14 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn initialize() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(|client| Backend::new(client));
         let _ = initialize_request(&mut service).await;
     }
 
     #[tokio::test]
     #[serial]
     async fn initialized() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(|client| Backend::new(client));
         let _ = initialize_request(&mut service).await;
         initialized_notification(&mut service).await;
     }
@@ -851,7 +835,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn initializes_only_once() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(|client| Backend::new(client));
         let initialize = initialize_request(&mut service).await;
         initialized_notification(&mut service).await;
         let response = call_request(&mut service, initialize).await;
@@ -862,7 +846,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn shutdown() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(|client| Backend::new(client));
         let _ = initialize_request(&mut service).await;
         initialized_notification(&mut service).await;
         let shutdown = shutdown_request(&mut service).await;
@@ -875,7 +859,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn refuses_requests_after_shutdown() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(|client| Backend::new(client));
         let _ = initialize_request(&mut service).await;
         let shutdown = shutdown_request(&mut service).await;
         let response = call_request(&mut service, shutdown).await;
@@ -886,7 +870,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn did_open() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(|client| Backend::new(client));
         let _ = init_and_open(&mut service, e2e_test_dir()).await;
         shutdown_and_exit(&mut service).await;
     }
@@ -894,7 +878,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn did_close() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(|client| Backend::new(client));
         let _ = init_and_open(&mut service, e2e_test_dir()).await;
         did_close_notification(&mut service).await;
         shutdown_and_exit(&mut service).await;
@@ -903,7 +887,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn did_change() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(|client| Backend::new(client));
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
         let _ = did_change_request(&mut service, &uri).await;
         shutdown_and_exit(&mut service).await;
@@ -912,7 +896,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn lsp_syncs_with_workspace_edits() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(|client| Backend::new(client));
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
         let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
         let _ = did_change_request(&mut service, &uri).await;
@@ -923,7 +907,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn show_ast() {
-        let (mut service, _) = LspService::build(|client| Backend::new(client, config()))
+        let (mut service, _) = LspService::build(|client| Backend::new(client))
             .custom_method("sway/show_ast", Backend::show_ast)
             .finish();
 
@@ -935,7 +919,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn go_to_definition() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(|client| Backend::new(client));
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
         let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
         shutdown_and_exit(&mut service).await;
@@ -948,7 +932,7 @@ mod tests {
     // The capability argument is an async function.
     macro_rules! test_lsp_capability {
         ($example_dir:expr, $capability:expr) => {{
-            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+            let (mut service, _) = LspService::new(|client| Backend::new(client));
             let uri = init_and_open(&mut service, $example_dir).await;
             // Call the specific LSP capability function that was passed in.
             let _ = $capability(&mut service, &uri).await;
