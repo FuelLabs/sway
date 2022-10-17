@@ -1,7 +1,11 @@
 pub use crate::error::DocumentError;
 use crate::{
     capabilities,
-    core::{document::TextDocument, session::Session},
+    core::{
+        config::{Config, Warnings},
+        document::TextDocument,
+        session::Session,
+    },
     error::LanguageServerError,
     utils::{
         debug::{self, DebugFlags},
@@ -15,7 +19,7 @@ use std::{
     io::Write,
     ops::Deref,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, LockResult},
 };
 use sway_types::Spanned;
 use sway_utils::helpers::get_sway_files;
@@ -132,6 +136,14 @@ fn capabilities() -> ServerCapabilities {
 
 impl Backend {
     async fn publish_diagnostics(&self, uri: &Url, diagnostics: Vec<Diagnostic>) {
+        if let LockResult::Ok(config) = self.session.config.read() {
+            match config.debug.show_collected_tokens_as_warnings {
+                Warnings::Default => {}
+                Warnings::Parsed => {}
+                Warnings::Typed => {}
+            }
+        }
+
         match &self.config.collected_tokens_as_warnings {
             Some(s) => {
                 let token_map = self.session.tokens_for_file(uri);
@@ -163,10 +175,18 @@ impl Backend {
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
+    async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
         self.client
             .log_message(MessageType::INFO, "Initializing the Sway Language Server")
             .await;
+
+        if let Some(initialization_options) = &params.initialization_options {
+            if let LockResult::Ok(mut config) = self.session.config.write() {
+                *config = serde_json::from_value(initialization_options.clone())
+                    .ok()
+                    .unwrap_or_else(Config::default);
+            }
+        }
 
         Ok(InitializeResult {
             server_info: None,
@@ -416,7 +436,7 @@ impl Backend {
         &self,
         params: InlayHintParams,
     ) -> jsonrpc::Result<Option<Vec<InlayHint>>> {
-        let config = capabilities::inlay_hints::InlayHintsConfig::default();
+        let config = crate::core::config::InlayHintsConfig::default();
         Ok(capabilities::inlay_hints::inlay_hints(
             &self.session,
             &params.text_document.uri,
@@ -474,7 +494,7 @@ impl Backend {
             };
 
         match self.session.compiled_program.read() {
-            std::sync::LockResult::Ok(program) => {
+            LockResult::Ok(program) => {
                 match params.ast_kind.as_str() {
                     "parsed" => {
                         match program.parsed {

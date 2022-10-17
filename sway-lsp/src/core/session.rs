@@ -5,6 +5,7 @@ use crate::{
         runnable::{Runnable, RunnableType},
     },
     core::{
+        config::Config,
         document::TextDocument,
         token::{Token, TokenMap, TypeDefinition},
         {traverse_parse_tree, traverse_typed_tree},
@@ -42,6 +43,7 @@ pub struct Session {
     pub documents: Documents,
     pub token_map: TokenMap,
     pub runnables: DashMap<RunnableType, Runnable>,
+    pub config: RwLock<Config>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub sync: SyncWorkspace,
 }
@@ -52,6 +54,7 @@ impl Session {
             documents: DashMap::new(),
             token_map: DashMap::new(),
             runnables: DashMap::new(),
+            config: RwLock::new(Default::default()),
             compiled_program: RwLock::new(Default::default()),
             sync: SyncWorkspace::new(),
         }

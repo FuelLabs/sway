@@ -1,17 +1,7 @@
-use crate::core::{session::Session, token::TypedAstToken};
+use crate::core::{config::InlayHintsConfig, session::Session, token::TypedAstToken};
 use sway_core::{language::ty::TyDeclaration, type_system::TypeInfo};
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{self, Range, Url};
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InlayHintsConfig {
-    /// Whether to render leading colons for type hints, and trailing colons for parameter hints.
-    pub render_colons: bool,
-    /// Whether to show inlay type hints for variables.
-    pub type_hints: bool,
-    /// Maximum length for inlay hints. Set to null to have an unlimited length.
-    pub max_length: Option<usize>,
-}
 
 // Future PR's will add more kinds
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -101,15 +91,5 @@ pub(crate) fn inlay_hint(render_colons: bool, inlay_hint: InlayHint) -> lsp_type
         }),
         text_edits: None,
         data: None,
-    }
-}
-
-impl Default for InlayHintsConfig {
-    fn default() -> Self {
-        Self {
-            render_colons: true,
-            type_hints: true,
-            max_length: Some(25),
-        }
     }
 }
