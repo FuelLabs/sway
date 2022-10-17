@@ -6,8 +6,11 @@ use crate::{
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::BTreeSet;
-use sway_error::error::CompileError;
 use sway_error::warning::{CompileWarning, Warning};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{span::Span, Ident, Spanned};
 
 impl ControlFlowGraph {
@@ -94,11 +97,12 @@ impl ControlFlowGraph {
     }
 
     pub(crate) fn append_module_to_dead_code_graph(
+        handler: &Handler,
         module_nodes: &[ty::TyAstNode],
         tree_type: &TreeType,
         graph: &mut ControlFlowGraph,
         // the `Result` return is just to handle `Unimplemented` errors
-    ) -> Result<(), CompileError> {
+    ) -> Result<(), ErrorEmitted> {
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
         let exit_node = Some(graph.add_node(("Program exit".to_string()).into()));
@@ -125,7 +129,7 @@ impl ControlFlowGraph {
                                 ),
                             ..
                         }) => {
-                            let decl = de_get_function(decl_id.clone(), span)?;
+                            let decl = de_get_function(handler, decl_id.clone(), span)?;
                             decl.name.as_str() == "main"
                         }
                         _ => false,
@@ -148,7 +152,8 @@ impl ControlFlowGraph {
                                 ),
                             ..
                         }) => {
-                            let function_decl = de_get_function(decl_id.clone(), &decl_id.span())?;
+                            let function_decl =
+                                de_get_function(handler, decl_id.clone(), &decl_id.span())?;
                             function_decl.visibility == Visibility::Public
                         }
                         ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
@@ -157,7 +162,7 @@ impl ControlFlowGraph {
                                     decl_id,
                                 )),
                             ..
-                        }) => de_get_trait(decl_id.clone(), &decl_id.span())?
+                        }) => de_get_trait(handler, decl_id.clone(), &decl_id.span())?
                             .visibility
                             .is_public(),
                         ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
@@ -167,7 +172,8 @@ impl ControlFlowGraph {
                                 )),
                             ..
                         }) => {
-                            let struct_decl = de_get_struct(decl_id.clone(), &decl_id.span())?;
+                            let struct_decl =
+                                de_get_struct(handler, decl_id.clone(), &decl_id.span())?;
                             struct_decl.visibility == Visibility::Public
                         }
                         ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
@@ -184,7 +190,7 @@ impl ControlFlowGraph {
                                 ),
                             ..
                         }) => {
-                            let decl = de_get_constant(decl_id.clone(), &decl_id.span())?;
+                            let decl = de_get_constant(handler, decl_id.clone(), &decl_id.span())?;
                             decl.visibility.is_public()
                         }
                         _ => false,

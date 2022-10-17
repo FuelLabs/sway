@@ -218,7 +218,7 @@ pub fn parsed_to_ast(
         }));
 
     // Perform control flow analysis and extend with any errors.
-    let cfa_res = perform_control_flow_analysis(&typed_program);
+    let cfa_res = CompileResult::with_handler(|h| perform_control_flow_analysis(h, &typed_program));
     errors.extend(cfa_res.errors);
     warnings.extend(cfa_res.warnings);
 
@@ -616,68 +616,61 @@ pub fn clear_lazy_statics() {
     declaration_engine::declaration_engine::de_clear();
 }
 
-/// Given a [ty::TyProgram], which is type-checked Sway source, construct a graph to analyze
-/// control flow and determine if it is valid.
-fn perform_control_flow_analysis(program: &ty::TyProgram) -> CompileResult<()> {
-    let dca_res = dead_code_analysis(program);
-    let rpa_errors = return_path_analysis(program);
-    let rpa_res = if rpa_errors.is_empty() {
-        ok((), vec![], vec![])
-    } else {
-        err(vec![], rpa_errors)
-    };
-    dca_res.flat_map(|_| rpa_res)
+/// Given a [ty::TyProgram], which is type-checked Sway source,
+/// construct a graph to analyze control flow and determine if it is valid.
+fn perform_control_flow_analysis(
+    handler: &Handler,
+    program: &ty::TyProgram,
+) -> Result<(), ErrorEmitted> {
+    dead_code_analysis(handler, program)?;
+    return_path_analysis(handler, program);
+    Ok(())
 }
 
-/// Constructs a dead code graph from all modules within the graph and then attempts to find dead
-/// code.
+/// Constructs a dead code graph from all modules within the graph,
+/// and then attempts to find dead code.
 ///
 /// Returns the graph that was used for analysis.
-fn dead_code_analysis(program: &ty::TyProgram) -> CompileResult<ControlFlowGraph> {
-    let mut dead_code_graph = Default::default();
+fn dead_code_analysis(
+    handler: &Handler,
+    program: &ty::TyProgram,
+) -> Result<ControlFlowGraph, ErrorEmitted> {
+    let mut dead_code_graph = <_>::default();
     let tree_type = program.kind.tree_type();
-    module_dead_code_analysis(&program.root, &tree_type, &mut dead_code_graph).flat_map(|_| {
-        let warnings = dead_code_graph.find_dead_code();
-        ok(dead_code_graph, warnings, vec![])
-    })
+    module_dead_code_analysis(handler, &program.root, &tree_type, &mut dead_code_graph)?;
+    for warn in dead_code_graph.find_dead_code() {
+        handler.emit_warn(warn);
+    }
+    Ok(dead_code_graph)
 }
 
 /// Recursively collect modules into the given `ControlFlowGraph` ready for dead code analysis.
 fn module_dead_code_analysis(
+    handler: &Handler,
     module: &ty::TyModule,
     tree_type: &parsed::TreeType,
     graph: &mut ControlFlowGraph,
-) -> CompileResult<()> {
-    let init_res = ok((), vec![], vec![]);
-    let submodules_res = module
-        .submodules
-        .iter()
-        .fold(init_res, |res, (_, submodule)| {
-            let name = submodule.library_name.clone();
-            let tree_type = parsed::TreeType::Library { name };
-            res.flat_map(|_| module_dead_code_analysis(&submodule.module, &tree_type, graph))
-        });
-    submodules_res.flat_map(|()| {
-        ControlFlowGraph::append_module_to_dead_code_graph(&module.all_nodes, tree_type, graph)
-            .map(|_| ok((), vec![], vec![]))
-            .unwrap_or_else(|error| err(vec![], vec![error]))
-    })
-}
-
-fn return_path_analysis(program: &ty::TyProgram) -> Vec<CompileError> {
-    let mut errors = vec![];
-    module_return_path_analysis(&program.root, &mut errors);
-    errors
-}
-
-fn module_return_path_analysis(module: &ty::TyModule, errors: &mut Vec<CompileError>) {
+) -> Result<(), ErrorEmitted> {
     for (_, submodule) in &module.submodules {
-        module_return_path_analysis(&submodule.module, errors);
+        let name = submodule.library_name.clone();
+        let tree_type = parsed::TreeType::Library { name };
+        module_dead_code_analysis(handler, &submodule.module, &tree_type, graph)?;
     }
-    let graph = ControlFlowGraph::construct_return_path_graph(&module.all_nodes);
-    match graph {
-        Ok(graph) => errors.extend(graph.analyze_return_paths()),
-        Err(error) => errors.push(error),
+    ControlFlowGraph::append_module_to_dead_code_graph(handler, &module.all_nodes, tree_type, graph)
+}
+
+fn return_path_analysis(handler: &Handler, program: &ty::TyProgram) {
+    module_return_path_analysis(handler, &program.root);
+}
+
+fn module_return_path_analysis(handler: &Handler, module: &ty::TyModule) {
+    for (_, submodule) in &module.submodules {
+        module_return_path_analysis(handler, &submodule.module);
+    }
+    match ControlFlowGraph::construct_return_path_graph(handler, &module.all_nodes) {
+        Ok(graph) => graph.analyze_return_paths(handler),
+        // On error, eat it, and recover.
+        Err(_) => {}
     }
 }
 
