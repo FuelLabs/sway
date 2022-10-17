@@ -4,7 +4,10 @@ use crate::{
     core::token::{TokenMap, TypeDefinition, TypedAstToken},
     utils::token::{struct_declaration_of_type_id, to_ident_key},
 };
-use sway_core::{declaration_engine, language::ty};
+use sway_core::{
+    declaration_engine::{self, de_get_function},
+    language::ty,
+};
 use sway_types::{ident::Ident, Spanned};
 
 pub fn traverse_node(node: &ty::TyAstNode, tokens: &TokenMap) {
@@ -224,7 +227,7 @@ fn handle_expression(expression: &ty::TyExpression, tokens: &TokenMap) {
             call_path,
             contract_call_params,
             arguments,
-            function_decl,
+            function_decl_id,
             ..
         } => {
             for ident in &call_path.prefixes {
@@ -236,7 +239,11 @@ fn handle_expression(expression: &ty::TyExpression, tokens: &TokenMap) {
 
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&call_path.suffix)) {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                token.type_def = Some(TypeDefinition::Ident(function_decl.name.clone()));
+                if let Ok(function_decl) =
+                    de_get_function(function_decl_id.clone(), &call_path.span())
+                {
+                    token.type_def = Some(TypeDefinition::Ident(function_decl.name));
+                }
             }
 
             for exp in contract_call_params.values() {
@@ -250,8 +257,11 @@ fn handle_expression(expression: &ty::TyExpression, tokens: &TokenMap) {
                 handle_expression(exp, tokens);
             }
 
-            for node in &function_decl.body.contents {
-                traverse_node(node, tokens);
+            if let Ok(function_decl) = de_get_function(function_decl_id.clone(), &call_path.span())
+            {
+                for node in &function_decl.body.contents {
+                    traverse_node(node, tokens);
+                }
             }
         }
         ty::TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
