@@ -21,7 +21,7 @@ impl fmt::Display for TypeId {
 
 impl fmt::Debug for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        f.write_str(&look_up_type_id(*self).to_string())
     }
 }
 

@@ -46,7 +46,7 @@ If the value declared cannot be assigned to the declared type, there will be an 
 
 ## Configuration-time Constants
 
-It is possible to define and initialize constant variable in the manifest file `Forc.toml` of a Sway project. These constants then become visible and usable in the corresponding Sway program. Such variables are called configuration-time constants and have to be defined in their own section called `[constants]` in the manifest file. The syntax for declaring such constants is as follows:
+It is possible to define and initialize constant variables in the manifest file `Forc.toml` of a Sway project. These constants then become visible and usable in the corresponding Sway program. Such variables are called configuration-time constants and have to be defined in their own section called `[constants]` in the manifest file. The syntax for declaring such constants is as follows:
 
 ```sway
 {{#include ../../../examples/config_time_constants/Forc.toml:constants}}

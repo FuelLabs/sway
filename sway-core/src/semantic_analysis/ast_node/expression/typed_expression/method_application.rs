@@ -33,7 +33,7 @@ pub(crate) fn type_check_method_application(
             .with_type_annotation(insert_type(TypeInfo::Unknown));
         args_buf.push_back(check!(
             ty::TyExpression::type_check(ctx, arg.clone()),
-            ty::error_recovery_expr(span.clone()),
+            ty::TyExpression::error(span.clone()),
             warnings,
             errors
         ));
@@ -104,7 +104,7 @@ pub(crate) fn type_check_method_application(
                         param.name.to_string(),
                         check!(
                             ty::TyExpression::type_check(ctx, param.value),
-                            ty::error_recovery_expr(span.clone()),
+                            ty::TyExpression::error(span.clone()),
                             warnings,
                             errors
                         ),
@@ -301,7 +301,6 @@ pub(crate) fn type_check_method_application(
             args_buf,
             method,
             selector,
-            IsConstant::No,
             self_state_idx,
             span,
         ),

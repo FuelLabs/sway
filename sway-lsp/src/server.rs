@@ -1,12 +1,9 @@
 pub use crate::error::DocumentError;
 use crate::{
     capabilities,
-    core::{document::TextDocument, session::Session},
+    core::{config::Warnings, document::TextDocument, session::Session},
     error::LanguageServerError,
-    utils::{
-        debug::{self, DebugFlags},
-        sync,
-    },
+    utils::{debug, sync},
 };
 use forc_pkg::manifest::PackageManifestFile;
 use serde::{Deserialize, Serialize};
@@ -26,17 +23,12 @@ use tower_lsp::{jsonrpc, Client, LanguageServer};
 pub struct Backend {
     pub client: Client,
     session: Arc<Session>,
-    config: DebugFlags,
 }
 
 impl Backend {
-    pub fn new(client: Client, config: DebugFlags) -> Self {
+    pub fn new(client: Client) -> Self {
         let session = Arc::new(Session::new());
-        Backend {
-            client,
-            session,
-            config,
-        }
+        Backend { client, session }
     }
 
     fn init(&self, uri: &Url) -> Result<(), LanguageServerError> {
@@ -96,7 +88,8 @@ impl Backend {
                 }
             }
         };
-        self.publish_diagnostics(&workspace_uri, diagnostics).await;
+        self.publish_diagnostics(&uri, &workspace_uri, diagnostics)
+            .await;
     }
 }
 
@@ -125,51 +118,58 @@ fn capabilities() -> ServerCapabilities {
         }),
         document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
+        inlay_hint_provider: Some(OneOf::Left(true)),
         ..ServerCapabilities::default()
     }
 }
 
 impl Backend {
-    async fn publish_diagnostics(&self, uri: &Url, diagnostics: Vec<Diagnostic>) {
-        match &self.config.collected_tokens_as_warnings {
-            Some(s) => {
-                let token_map = self.session.tokens_for_file(uri);
-
-                // If collected_tokens_as_warnings is Some, take over the normal error and warning display behavior
+    async fn publish_diagnostics(
+        &self,
+        uri: &Url,
+        workspace_uri: &Url,
+        diagnostics: Vec<Diagnostic>,
+    ) {
+        let diagnostics_res = {
+            let debug = &self.session.config.read().debug;
+            let token_map = self.session.tokens_for_file(uri);
+            match debug.show_collected_tokens_as_warnings {
+                Warnings::Default => diagnostics,
+                // If collected_tokens_as_warnings is Parsed or Typed,
+                // take over the normal error and warning display behavior
                 // and instead show the either the parsed or typed tokens as warnings.
                 // This is useful for debugging the lsp parser.
-                let diagnostics = match s.as_str() {
-                    "parsed" => Some(debug::generate_warnings_for_parsed_tokens(&token_map)),
-                    "typed" => Some(debug::generate_warnings_for_typed_tokens(&token_map)),
-                    _ => None,
-                };
-                if let Some(diagnostics) = diagnostics {
-                    self.client
-                        .publish_diagnostics(uri.clone(), diagnostics, None)
-                        .await;
-                }
+                Warnings::Parsed => debug::generate_warnings_for_parsed_tokens(&token_map),
+                Warnings::Typed => debug::generate_warnings_for_typed_tokens(&token_map),
             }
-            None => {
-                // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
-                // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
-                self.client
-                    .publish_diagnostics(uri.clone(), diagnostics, None)
-                    .await;
-            }
-        }
+        };
+
+        // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
+        // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
+        self.client
+            .publish_diagnostics(workspace_uri.clone(), diagnostics_res, None)
+            .await;
     }
 }
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
+    async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
         self.client
             .log_message(MessageType::INFO, "Initializing the Sway Language Server")
             .await;
 
+        if let Some(initialization_options) = &params.initialization_options {
+            let mut config = self.session.config.write();
+            *config = serde_json::from_value(initialization_options.clone())
+                .ok()
+                .unwrap_or_default();
+        }
+
         Ok(InitializeResult {
             server_info: None,
             capabilities: capabilities(),
+            ..InitializeResult::default()
         })
     }
 
@@ -410,6 +410,17 @@ pub struct ShowAstParams {
 
 // Custom LSP-Server Methods
 impl Backend {
+    pub async fn inlay_hints(
+        &self,
+        params: InlayHintParams,
+    ) -> jsonrpc::Result<Option<Vec<InlayHint>>> {
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
+            .map(|uri| capabilities::inlay_hints::inlay_hints(&self.session, &uri, &params.range))
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
+    }
+
     pub async fn runnables(
         &self,
         _params: RunnableParams,
@@ -458,57 +469,54 @@ impl Backend {
                 None
             };
 
-        match self.session.compiled_program.read() {
-            std::sync::LockResult::Ok(program) => {
-                match params.ast_kind.as_str() {
-                    "parsed" => {
-                        match program.parsed {
-                            Some(ref parsed_program) => {
-                                // Initialize the string with the AST from the root
-                                let mut formatted_ast: String =
-                                    format!("{:#?}", parsed_program.root.tree.root_nodes);
+        {
+            let program = self.session.compiled_program.read();
+            match params.ast_kind.as_str() {
+                "parsed" => {
+                    match program.parsed {
+                        Some(ref parsed_program) => {
+                            // Initialize the string with the AST from the root
+                            let mut formatted_ast: String =
+                                format!("{:#?}", parsed_program.root.tree.root_nodes);
 
-                                for (ident, submodule) in &parsed_program.root.submodules {
-                                    // if the current path matches the path of a submodule
-                                    // overwrite the root AST with the submodule AST
-                                    if ident.span().path().map(|a| a.deref()) == path.as_ref() {
-                                        formatted_ast =
-                                            format!("{:#?}", submodule.module.tree.root_nodes);
-                                    }
+                            for (ident, submodule) in &parsed_program.root.submodules {
+                                // if the current path matches the path of a submodule
+                                // overwrite the root AST with the submodule AST
+                                if ident.span().path().map(|a| a.deref()) == path.as_ref() {
+                                    formatted_ast =
+                                        format!("{:#?}", submodule.module.tree.root_nodes);
                                 }
-
-                                let tmp_ast_path = Path::new("/tmp/parsed_ast.rs");
-                                Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
                             }
-                            _ => Ok(None),
-                        }
-                    }
-                    "typed" => {
-                        match program.typed {
-                            Some(ref typed_program) => {
-                                // Initialize the string with the AST from the root
-                                let mut formatted_ast: String =
-                                    format!("{:#?}", typed_program.root.all_nodes);
 
-                                for (ident, submodule) in &typed_program.root.submodules {
-                                    // if the current path matches the path of a submodule
-                                    // overwrite the root AST with the submodule AST
-                                    if ident.span().path().map(|a| a.deref()) == path.as_ref() {
-                                        formatted_ast =
-                                            format!("{:#?}", submodule.module.all_nodes);
-                                    }
-                                }
-
-                                let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
-                                Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
-                            }
-                            _ => Ok(None),
+                            let tmp_ast_path = Path::new("/tmp/parsed_ast.rs");
+                            Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
                         }
+                        _ => Ok(None),
                     }
-                    _ => Ok(None),
                 }
+                "typed" => {
+                    match program.typed {
+                        Some(ref typed_program) => {
+                            // Initialize the string with the AST from the root
+                            let mut formatted_ast: String =
+                                format!("{:#?}", typed_program.root.all_nodes);
+
+                            for (ident, submodule) in &typed_program.root.submodules {
+                                // if the current path matches the path of a submodule
+                                // overwrite the root AST with the submodule AST
+                                if ident.span().path().map(|a| a.deref()) == path.as_ref() {
+                                    formatted_ast = format!("{:#?}", submodule.module.all_nodes);
+                                }
+                            }
+
+                            let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
+                            Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
+                        }
+                        _ => Ok(None),
+                    }
+                }
+                _ => Ok(None),
             }
-            _ => Ok(None),
         }
     }
 }
@@ -790,10 +798,6 @@ mod tests {
         highlight
     }
 
-    fn config() -> DebugFlags {
-        Default::default()
-    }
-
     async fn init_and_open(service: &mut LspService<Backend>, manifest_dir: PathBuf) -> Url {
         let _ = initialize_request(service).await;
         initialized_notification(service).await;
@@ -810,14 +814,14 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn initialize() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(Backend::new);
         let _ = initialize_request(&mut service).await;
     }
 
     #[tokio::test]
     #[serial]
     async fn initialized() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(Backend::new);
         let _ = initialize_request(&mut service).await;
         initialized_notification(&mut service).await;
     }
@@ -825,7 +829,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn initializes_only_once() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(Backend::new);
         let initialize = initialize_request(&mut service).await;
         initialized_notification(&mut service).await;
         let response = call_request(&mut service, initialize).await;
@@ -836,7 +840,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn shutdown() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(Backend::new);
         let _ = initialize_request(&mut service).await;
         initialized_notification(&mut service).await;
         let shutdown = shutdown_request(&mut service).await;
@@ -849,7 +853,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn refuses_requests_after_shutdown() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(Backend::new);
         let _ = initialize_request(&mut service).await;
         let shutdown = shutdown_request(&mut service).await;
         let response = call_request(&mut service, shutdown).await;
@@ -860,7 +864,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn did_open() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(Backend::new);
         let _ = init_and_open(&mut service, e2e_test_dir()).await;
         shutdown_and_exit(&mut service).await;
     }
@@ -868,7 +872,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn did_close() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(Backend::new);
         let _ = init_and_open(&mut service, e2e_test_dir()).await;
         did_close_notification(&mut service).await;
         shutdown_and_exit(&mut service).await;
@@ -877,7 +881,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn did_change() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
         let _ = did_change_request(&mut service, &uri).await;
         shutdown_and_exit(&mut service).await;
@@ -886,7 +890,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn lsp_syncs_with_workspace_edits() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
         let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
         let _ = did_change_request(&mut service, &uri).await;
@@ -897,7 +901,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn show_ast() {
-        let (mut service, _) = LspService::build(|client| Backend::new(client, config()))
+        let (mut service, _) = LspService::build(Backend::new)
             .custom_method("sway/show_ast", Backend::show_ast)
             .finish();
 
@@ -909,7 +913,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn go_to_definition() {
-        let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+        let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
         let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
         shutdown_and_exit(&mut service).await;
@@ -922,7 +926,7 @@ mod tests {
     // The capability argument is an async function.
     macro_rules! test_lsp_capability {
         ($example_dir:expr, $capability:expr) => {{
-            let (mut service, _) = LspService::new(|client| Backend::new(client, config()));
+            let (mut service, _) = LspService::new(Backend::new);
             let uri = init_and_open(&mut service, $example_dir).await;
             // Call the specific LSP capability function that was passed in.
             let _ = $capability(&mut service, &uri).await;
