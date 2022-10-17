@@ -152,11 +152,21 @@ impl Mod for u8 {
     }
 }
 
+pub trait Not {
+    fn not(self) -> Self;
+}
+
+impl Not for bool {
+    fn not(self) -> Self {
+        __eq(self, false)
+    }
+}
+
 pub trait Eq {
     fn eq(self, other: Self) -> bool;
 } {
     fn neq(self, other: Self) -> bool {
-        not(self.eq(other))
+        (self.eq(other)).not()
     }
 }
 
@@ -302,12 +312,6 @@ impl Ord for b256 {
     }
 }
 
-// Should this be a trait eventually? Do we want to allow people to customize what `!` does?
-// Scala says yes, Rust says perhaps...
-pub fn not(a: bool) -> bool {
-    __eq(a, false)
-}
-
 impl b256 {
     fn neq(self, other: Self) -> bool {
         // Both self and other are addresses of the values, so we can use MEQ.
@@ -329,10 +333,6 @@ pub trait BitwiseOr {
 
 pub trait BitwiseXor {
     fn binary_xor(self, other: Self) -> Self;
-}
-
-pub trait BitwiseNot {
-    fn binary_not(self) -> Self;
 }
 
 impl BitwiseAnd for u64 {
@@ -362,8 +362,8 @@ impl BitwiseXor for u64 {
     }
 }
 
-impl BitwiseNot for u64 {
-    fn binary_not(self) -> Self {
+impl Not for u64 {
+    fn not(self) -> Self {
         asm(r1: self, r2) {
             not r2 r1;
             r2: u64
@@ -371,8 +371,8 @@ impl BitwiseNot for u64 {
     }
 }
 
-impl BitwiseNot for u32 {
-    fn binary_not(self) -> Self {
+impl Not for u32 {
+    fn not(self) -> Self {
         let u32_max = 4294967295;
         asm(r1: self, r2, r3: u32_max, r4) {
             not r2 r1;
@@ -381,8 +381,8 @@ impl BitwiseNot for u32 {
         }
     }
 }
-impl BitwiseNot for u16 {
-    fn binary_not(self) -> Self {
+impl Not for u16 {
+    fn not(self) -> Self {
         let u16_max = 65535;
         asm(r1: self, r2, r3: u16_max, r4) {
             not r2 r1;
@@ -391,8 +391,8 @@ impl BitwiseNot for u16 {
         }
     }
 }
-impl BitwiseNot for u8 {
-    fn binary_not(self) -> Self {
+impl Not for u8 {
+    fn not(self) -> Self {
         let u8_max = 255;
         asm(r1: self, r2, r3: u8_max, r4) {
             not r2 r1;
