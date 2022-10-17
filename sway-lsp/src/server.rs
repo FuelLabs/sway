@@ -414,11 +414,11 @@ impl Backend {
         &self,
         params: InlayHintParams,
     ) -> jsonrpc::Result<Option<Vec<InlayHint>>> {
-        Ok(capabilities::inlay_hints::inlay_hints(
-            &self.session,
-            &params.text_document.uri,
-            &params.range,
-        ))
+        self.session
+            .sync
+            .workspace_to_temp_url(&params.text_document.uri)
+            .map(|uri| capabilities::inlay_hints::inlay_hints(&self.session, &uri, &params.range))
+            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
     pub async fn runnables(
