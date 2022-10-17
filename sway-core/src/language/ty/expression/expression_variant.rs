@@ -366,7 +366,9 @@ impl CopyTypes for TyExpressionVariant {
                 arguments
                     .iter_mut()
                     .for_each(|(_ident, expr)| expr.copy_types(type_mapping));
-                function_decl.copy_types(type_mapping);
+
+                let new_decl_id = function_decl_id.clone().copy_and_insert_new(type_mapping);
+                function_decl_id.replace_id(*new_decl_id);
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).copy_types(type_mapping);
