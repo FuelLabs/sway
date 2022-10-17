@@ -1,6 +1,8 @@
 use crate::{
-    declaration_engine::declaration_engine::de_get_constant, language::ty,
-    metadata::MetadataManager, semantic_analysis::*,
+    declaration_engine::{de_get_function, declaration_engine::de_get_constant},
+    language::ty,
+    metadata::MetadataManager,
+    semantic_analysis::*,
 };
 
 use super::{convert::convert_literal_to_constant, types::*};
@@ -163,7 +165,7 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::Literal(l) => Some(convert_literal_to_constant(l)),
         ty::TyExpressionVariant::FunctionApplication {
             arguments,
-            function_decl,
+            function_decl_id,
             ..
         } => {
             let mut actuals_const: Vec<_> = vec![];
@@ -185,6 +187,7 @@ fn const_eval_typed_expr(
             }
 
             // TODO: Handle more than one statement in the block.
+            let function_decl = de_get_function(function_decl_id.clone(), &expr.span)?;
             if function_decl.body.contents.len() > 1 {
                 return Ok(None);
             }

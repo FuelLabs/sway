@@ -3,6 +3,7 @@ use std::fmt;
 use sway_types::Span;
 
 use crate::{
+    declaration_engine::de_get_function,
     error::*,
     language::{ty::*, Literal},
     type_system::*,
@@ -58,7 +59,7 @@ impl CollectTypesMetadata for TyExpression {
         match &self.expression {
             FunctionApplication {
                 arguments,
-                function_decl,
+                function_decl_id,
                 ..
             } => {
                 for arg in arguments.iter() {
@@ -69,6 +70,10 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
+                let function_decl = match de_get_function(function_decl_id.clone(), &self.span) {
+                    Ok(decl) => decl,
+                    Err(e) => return err(vec![], vec![e]),
+                };
                 for content in function_decl.body.contents.iter() {
                     res.append(&mut check!(
                         content.collect_types_metadata(),
@@ -354,10 +359,14 @@ impl DeterministicallyAborts for TyExpression {
         use TyExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
-                function_decl,
+                function_decl_id,
                 arguments,
                 ..
             } => {
+                let function_decl = match de_get_function(function_decl_id.clone(), &self.span) {
+                    Ok(decl) => decl,
+                    Err(_e) => panic!("failed to get function"),
+                };
                 function_decl.body.deterministically_aborts()
                     || arguments.iter().any(|(_, x)| x.deterministically_aborts())
             }
