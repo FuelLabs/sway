@@ -48,13 +48,3 @@ Alternatively, we can take the outcome of the comparison and assign it directly 
 ```
 
 The syntax above can be altered to include an `else if`.
-
-### Ternary Operator
-
-A different way to combine an `if` and `let` together is called a `ternary operator` which allows us to assign a result of some conditional directly to a variable, in this case `minimum_deposit_met`.
-
-```sway
-{{#include ../../../code/language/control_flow/src/lib.sw:compute}}
-```
-
-The function `compute()` takes a number (`deposit`) and checks to see if it is greater than the value of `10`. If the value is greater than `10` then `minimum_deposit_met` will take the value of `true` otherwise it will be set to `false`.

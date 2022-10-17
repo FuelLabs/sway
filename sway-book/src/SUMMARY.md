@@ -45,8 +45,8 @@
 - [Annotations](./documentation/language/annotations/index.md)
   - [Types](./documentation/language/annotations/type.md)
   - [Attributes](./documentation/language/annotations/attributes/index.md)
-    - [Documentation](./documentation/language/annotations/attributes/doc-comments.md)
     - [Storage](./documentation/language/annotations/attributes/storage.md)
+- [Generics]()
 - [Style Guide](./documentation/language/style-guide/index.md)
   - [Letter Casing](./documentation/language/style-guide/letter-casing.md)
   - [Type Annotations](./documentation/language/style-guide/annotations.md)
@@ -54,6 +54,7 @@
   - [Enums](./documentation/language/style-guide/enums.md)
   - [Returning](./documentation/language/style-guide/returning.md)
   - [Pattern Matching](./documentation/language/style-guide/pattern-matching.md)
+  - [Comments](./documentation/language/style-guide/comments.md)
   - [Getter Functions](./documentation/language/style-guide/getters.md)
 
 # Common Operations

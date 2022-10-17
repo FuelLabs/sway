@@ -16,13 +16,6 @@ fn conditional() {
     // ANCHOR_END: conditional
 }
 
-// ANCHOR: compute
-fn compute(deposit: u64) {
-    let minimum_deposit_met = if 10 < deposit { true } else { false };
-    // code
-}
-// ANCHOR_END: compute
-
 fn single_loop() {
     // ANCHOR: single_loop
     let mut counter = 0;

@@ -1,5 +1,5 @@
 [[package]]
-name = 'comments'
+name = 'annotations'
 source = 'root'
 dependencies = ['std']
 

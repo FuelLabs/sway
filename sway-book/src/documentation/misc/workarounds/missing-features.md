@@ -8,3 +8,5 @@
   - It is not yet allowed to use `StorageMap<K, V>` as a component of a complex type such as a struct or an enum.
 - [Issue: #2647](https://github.com/FuelLabs/sway/issues/2647)
   - Currently, it is only possible to define configuration-time constants that have primitive types and that are initialized using literals.
+
+Ternary operator does not exist because if expressions cover that functionality
