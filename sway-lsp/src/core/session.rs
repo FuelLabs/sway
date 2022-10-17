@@ -52,7 +52,7 @@ impl Session {
             documents: DashMap::new(),
             token_map: DashMap::new(),
             runnables: DashMap::new(),
-            config: parking_lot::RwLock::new(Default::default()),
+            config: RwLock::new(Default::default()),
             compiled_program: RwLock::new(Default::default()),
             sync: SyncWorkspace::new(),
         }
@@ -285,7 +285,6 @@ impl Session {
         })
     }
 
-    // Token
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
         if let Some((_, token)) = self.token_at_position(url, position) {
             let token_ranges = self
@@ -346,10 +345,8 @@ impl Session {
 
 #[cfg(test)]
 mod tests {
-
-    use crate::test_utils::{get_absolute_path, get_url};
-
     use super::*;
+    use crate::test_utils::{get_absolute_path, get_url};
 
     #[test]
     fn store_document_returns_empty_tuple() {

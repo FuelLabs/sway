@@ -25,7 +25,7 @@ pub(crate) fn inlay_hints(
     range: &Range,
 ) -> Option<Vec<lsp_types::InlayHint>> {
     // 1. Loop through all our tokens and filter out all tokens that aren't TypedVariableDeclaration tokens
-    // 2. Also filter out all tokens that have a span that fall outside of the provide range
+    // 2. Also filter out all tokens that have a span that fall outside of the provided range
     // 3. Filter out all variable tokens that have a type_ascription
     // 4. Look up the type id for the remaining tokens
     // 5. Convert the type into a string
