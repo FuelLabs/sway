@@ -51,7 +51,7 @@ pub(crate) fn instantiate_function_application(
 
             let exp = check!(
                 ty::TyExpression::type_check(ctx, arg.clone()),
-                ty::error_recovery_expr(arg.span()),
+                ty::TyExpression::error(arg.span()),
                 warnings,
                 errors
             );
@@ -87,10 +87,10 @@ pub(crate) fn instantiate_function_application(
         typed_arguments,
         function_decl,
         None,
-        IsConstant::No,
         None,
         span,
     );
+
     ok(exp, warnings, errors)
 }
 
@@ -101,7 +101,6 @@ pub(crate) fn instantiate_function_application_simple(
     arguments: VecDeque<ty::TyExpression>,
     function_decl: ty::TyFunctionDeclaration,
     selector: Option<ty::ContractCallParams>,
-    is_constant: IsConstant,
     self_state_idx: Option<StateIndex>,
     span: Span,
 ) -> CompileResult<ty::TyExpression> {
@@ -129,7 +128,6 @@ pub(crate) fn instantiate_function_application_simple(
         args_and_names,
         function_decl,
         selector,
-        is_constant,
         self_state_idx,
         span,
     );
@@ -173,7 +171,6 @@ fn instantiate_function_application_inner(
     arguments: Vec<(Ident, ty::TyExpression)>,
     function_decl: ty::TyFunctionDeclaration,
     selector: Option<ty::ContractCallParams>,
-    is_constant: IsConstant,
     self_state_idx: Option<StateIndex>,
     span: Span,
 ) -> ty::TyExpression {
@@ -182,12 +179,11 @@ fn instantiate_function_application_inner(
             call_path,
             contract_call_params,
             arguments,
-            function_decl: function_decl.clone(),
+            function_decl_id: de_insert_function(function_decl.clone()),
             self_state_idx,
             selector,
         },
         return_type: function_decl.return_type,
-        is_constant,
         span,
     }
 }

@@ -4,8 +4,6 @@ use crate::{
     semantic_analysis::*,
     type_system::*,
 };
-use sway_error::error::CompileError;
-use sway_types::Ident;
 
 impl ty::TyEnumDeclaration {
     pub fn type_check(ctx: TypeCheckContext, decl: EnumDeclaration) -> CompileResult<Self> {
@@ -59,29 +57,6 @@ impl ty::TyEnumDeclaration {
             visibility,
         };
         ok(decl, warnings, errors)
-    }
-
-    pub(crate) fn expect_variant_from_name(
-        &self,
-        variant_name: &Ident,
-    ) -> CompileResult<&ty::TyEnumVariant> {
-        let warnings = vec![];
-        let mut errors = vec![];
-        match self
-            .variants
-            .iter()
-            .find(|x| x.name.as_str() == variant_name.as_str())
-        {
-            Some(variant) => ok(variant, warnings, errors),
-            None => {
-                errors.push(CompileError::UnknownEnumVariant {
-                    enum_name: self.name.clone(),
-                    variant_name: variant_name.clone(),
-                    span: self.span.clone(),
-                });
-                err(warnings, errors)
-            }
-        }
     }
 }
 
