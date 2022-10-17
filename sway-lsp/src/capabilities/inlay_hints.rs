@@ -30,6 +30,10 @@ pub(crate) fn inlay_hints(
     // 4. Look up the type id for the remaining tokens
     // 5. Convert the type into a string
     let config = &session.config.read().inlay_hints;
+    if !config.type_hints {
+        return None;
+    }
+
     let hints: Vec<lsp_types::InlayHint> = session
         .tokens_for_file(uri)
         .iter()
