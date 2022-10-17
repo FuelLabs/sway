@@ -68,7 +68,7 @@ pub enum TypedAstToken {
     TypedReassignment(ty::TyReassignment),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SymbolKind {
     Field,
     ValueParam,

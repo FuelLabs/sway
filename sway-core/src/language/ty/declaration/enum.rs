@@ -1,14 +1,15 @@
 use std::hash::{Hash, Hasher};
 
+use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{language::Visibility, type_system::*, AttributesMap};
+use crate::{error::*, language::Visibility, transform, type_system::*};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyEnumDeclaration {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
     pub variants: Vec<TyEnumVariant>,
     pub(crate) span: Span,
     pub visibility: Visibility,
@@ -63,6 +64,31 @@ impl MonomorphizeHelper for TyEnumDeclaration {
     }
 }
 
+impl TyEnumDeclaration {
+    pub(crate) fn expect_variant_from_name(
+        &self,
+        variant_name: &Ident,
+    ) -> CompileResult<&TyEnumVariant> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self
+            .variants
+            .iter()
+            .find(|x| x.name.as_str() == variant_name.as_str())
+        {
+            Some(variant) => ok(variant, warnings, errors),
+            None => {
+                errors.push(CompileError::UnknownEnumVariant {
+                    enum_name: self.name.clone(),
+                    variant_name: variant_name.clone(),
+                    span: self.span.clone(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq)]
 pub struct TyEnumVariant {
     pub name: Ident,
@@ -71,7 +97,7 @@ pub struct TyEnumVariant {
     pub type_span: Span,
     pub(crate) tag: usize,
     pub(crate) span: Span,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

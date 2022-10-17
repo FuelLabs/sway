@@ -11,6 +11,7 @@ use sway_ast::Module;
 
 use crate::{
     formatter::{FormattedCode, Formatter},
+    parse::parse_file,
     utils::map::byte_span::{ByteSpan, LeafSpans},
     FormatterError,
 };
@@ -93,7 +94,7 @@ pub fn handle_newlines(
     // formatting the code a second time will still produce the same result.
     let newline_map = newline_map_from_src(&unformatted_input)?;
     // After the formatting existing items should be the same (type of the item) but their spans will be changed since we applied formatting to them.
-    let formatted_module = sway_parse::parse_file_standalone(formatted_input, path)?;
+    let formatted_module = parse_file(formatted_input, path)?;
     // Actually find & insert the newline sequences
     add_newlines(
         newline_map,
@@ -252,7 +253,7 @@ fn main() {
         fuel_coin.mint        {
             gas:             default_gas
         }
-        
+
         (11);"#;
 
         let newline_map = newline_map_from_src(raw_src.trim_start()).unwrap();

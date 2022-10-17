@@ -1,26 +1,9 @@
 //! Specific tests for the expression module
 
-use crate::{Format, Formatter};
 use forc_util::{println_green, println_red};
 use paste::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
-use sway_ast::Expr;
-use sway_error::handler::Handler;
-use sway_parse::*;
 
-fn format_code(input: &str) -> String {
-    let mut formatter: Formatter = Default::default();
-    let input_arc = std::sync::Arc::from(input);
-    let handler = Handler::default();
-    let token_stream = lex(&handler, &input_arc, 0, input.len(), None).unwrap();
-    let mut parser = Parser::new(&handler, &token_stream);
-    let expression: Expr = parser.parse().unwrap();
-
-    let mut buf = Default::default();
-    expression.format(&mut buf, &mut formatter).unwrap();
-
-    buf
-}
 /// convenience macro for generating test cases
 /// provide a known good, and then some named test cases that should evaluate to
 /// that known good. e.g.:
@@ -49,7 +32,7 @@ macro_rules! fmt_test_inner {
         paste! {
             #[test]
             fn [<$scope _ $name>] () {
-                let formatted_code = format_code($y);
+                let formatted_code = crate::parse::parse_format::<sway_ast::Expr>($y);
                 let changeset = diff_lines(&formatted_code, $desired_output);
                 let count_of_updates = changeset.diff().len();
                 if count_of_updates != 0 {

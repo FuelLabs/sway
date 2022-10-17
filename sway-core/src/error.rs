@@ -2,6 +2,7 @@
 
 use crate::language::parsed::VariableDeclaration;
 use sway_error::error::CompileError;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::CompileWarning;
 
 macro_rules! check {
@@ -109,7 +110,7 @@ impl<T> CompileResult<T> {
     }
 
     pub fn is_ok_no_warn(&self) -> bool {
-        self.value.is_some() && self.warnings.is_empty() && self.errors.is_empty()
+        self.is_ok() && self.warnings.is_empty()
     }
 
     pub fn new(value: Option<T>, warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> Self {
@@ -118,6 +119,16 @@ impl<T> CompileResult<T> {
             warnings,
             errors,
         }
+    }
+
+    pub fn with_handler(run: impl FnOnce(&Handler) -> Result<T, ErrorEmitted>) -> CompileResult<T> {
+        let handler = <_>::default();
+        Self::from_handler(run(&handler).ok(), handler)
+    }
+
+    pub fn from_handler(value: Option<T>, handler: Handler) -> Self {
+        let (errors, warnings) = handler.consume();
+        Self::new(value, warnings, errors)
     }
 
     pub fn ok(
