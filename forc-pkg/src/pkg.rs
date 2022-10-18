@@ -42,7 +42,21 @@ use url::Url;
 
 type GraphIx = u32;
 type Node = Pinned;
-type Edge = DependencyName;
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub struct Edge {
+    /// The name of the dependency as declared under `[dependencies]` or `[contract-dependencies]`.
+    /// This may differ from the package name as declared under the dependency package's manifest.
+    pub name: String,
+    pub kind: DepKind,
+}
+
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub enum DepKind {
+    /// The dependency is a library and declared under `[dependencies]`.
+    Library,
+    /// The dependency is a contract and declared under `[contract-dependencies]`.
+    Contract,
+}
 pub type Graph = petgraph::stable_graph::StableGraph<Node, Edge, Directed, GraphIx>;
 pub type EdgeIx = petgraph::graph::EdgeIndex<GraphIx>;
 pub type NodeIx = petgraph::graph::NodeIndex<GraphIx>;
@@ -215,6 +229,33 @@ impl GitSourceIndex {
         GitSourceIndex {
             git_reference,
             head_with_time: (commit_hash, time),
+        }
+    }
+}
+
+impl Edge {
+    pub fn new(name: String, kind: DepKind) -> Edge {
+        Edge { name, kind }
+    }
+}
+
+impl FromStr for DepKind {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "library" => Ok(DepKind::Library),
+            "contract" => Ok(DepKind::Contract),
+            _ => bail!("invalid dep kind"),
+        }
+    }
+}
+
+impl ToString for DepKind {
+    fn to_string(&self) -> String {
+        match &self {
+            DepKind::Library => "library".to_string(),
+            DepKind::Contract => "contract".to_string(),
         }
     }
 }
@@ -505,10 +546,11 @@ fn validate_deps(
 fn validate_dep(
     graph: &Graph,
     node_manifest: &PackageManifestFile,
-    dep_name: &str,
+    dep_edge: &Edge,
     dep_node: NodeIx,
     contract_dependencies: &mut HashSet<String>,
 ) -> Result<PackageManifestFile> {
+    let dep_name = &dep_edge.name;
     // Check the validity of the dependency path, including its path root.
     let dep_path = dep_path(graph, node_manifest, dep_name, dep_node).map_err(|e| {
         anyhow!(
@@ -992,7 +1034,7 @@ fn graph_to_manifest_map(proj_manifest: PackageManifestFile, graph: &Graph) -> R
             .edges_directed(dep_node, Direction::Incoming)
             .filter_map(|edge| {
                 let parent_node = edge.source();
-                let dep_name = edge.weight();
+                let dep_name = &edge.weight().name;
                 let parent = &graph[parent_node];
                 let parent_manifest = manifest_map.get(&parent.id())?;
                 Some((parent_manifest, dep_name))
@@ -1174,8 +1216,15 @@ fn fetch_deps(
                 }
             };
 
+            let dep_kind = if parent_contract_deps.contains(&dep_name) {
+                DepKind::Library
+            } else {
+                DepKind::Contract
+            };
+
+            let dep_edge = Edge::new(dep_name.to_string(), dep_kind);
             // Ensure we have an edge to the dependency.
-            graph.update_edge(node, dep_node, dep_name.to_string());
+            graph.update_edge(node, dep_node, dep_edge);
 
             // If we've visited this node during this traversal already, no need to traverse it again.
             if !visited.insert(dep_node) {
@@ -1825,7 +1874,7 @@ pub fn dependency_namespace(
     let mut core_added = false;
     for edge in graph.edges_directed(node, Direction::Outgoing) {
         let dep_node = edge.target();
-        let dep_name = kebab_to_snake_case(edge.weight());
+        let dep_name = kebab_to_snake_case(&edge.weight().name);
         let dep_namespace = namespace_map
             .get(&dep_node)
             .map(|namespace| namespace.to_owned())

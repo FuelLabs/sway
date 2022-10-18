@@ -1,4 +1,4 @@
-use crate::pkg;
+use crate::{pkg, DepKind, Edge};
 use anyhow::{anyhow, Result};
 use forc_util::{println_green, println_red};
 use petgraph::{visit::EdgeRef, Direction};
@@ -8,6 +8,7 @@ use std::{
     collections::{BTreeSet, HashMap, HashSet},
     fs,
     path::Path,
+    str::FromStr,
 };
 
 /// The graph of pinned packages represented as a toml-serialization-friendly structure.
@@ -41,7 +42,7 @@ pub struct PkgLock {
 /// dependency. It is formatted like so:
 ///
 /// ```ignore
-/// (<dep_name>) <pkg_name> <source_string>
+/// (<dep_name>) <pkg_name> <dep_type> <source_string>
 /// ```
 ///
 /// The `(<dep_name>)` segment is only included in the uncommon case that the dependency name does
@@ -64,16 +65,23 @@ impl PkgLock {
         let mut dependencies: Vec<String> = graph
             .edges_directed(node, Direction::Outgoing)
             .map(|edge| {
-                let dep_name = edge.weight();
+                let dep_edge = edge.weight();
                 let dep_node = edge.target();
                 let dep_pkg = &graph[dep_node];
-                let dep_name = if *dep_name != dep_pkg.name {
-                    Some(&dep_name[..])
+                let dep_name = if *dep_edge.name != dep_pkg.name {
+                    Some(&dep_edge.name[..])
                 } else {
                     None
                 };
+                let dep_kind = &dep_edge.kind;
                 let disambiguate = disambiguate.contains(&dep_pkg.name[..]);
-                pkg_dep_line(dep_name, &dep_pkg.name, &dep_pkg.source, disambiguate)
+                pkg_dep_line(
+                    dep_name,
+                    &dep_pkg.name,
+                    &dep_pkg.source,
+                    dep_kind,
+                    disambiguate,
+                )
             })
             .collect();
         dependencies.sort();
@@ -152,14 +160,15 @@ impl Lock {
             let key = pkg.name_disambiguated(&disambiguate);
             let node = pkg_to_node[&key[..]];
             for dep_line in &pkg.dependencies {
-                let (dep_name, dep_key) = parse_pkg_dep_line(dep_line)
+                let (dep_name, dep_kind, dep_key) = parse_pkg_dep_line(dep_line)
                     .map_err(|e| anyhow!("failed to parse dependency \"{}\": {}", dep_line, e))?;
                 let dep_node = pkg_to_node
                     .get(dep_key)
                     .cloned()
                     .ok_or_else(|| anyhow!("found dep {} without node entry in graph", dep_key))?;
                 let dep_name = dep_name.unwrap_or(&graph[dep_node].name).to_string();
-                graph.update_edge(node, dep_node, dep_name);
+                let dep_edge = Edge::new(dep_name, dep_kind);
+                graph.update_edge(node, dep_node, dep_edge);
             }
         }
 
@@ -200,6 +209,7 @@ fn pkg_dep_line(
     dep_name: Option<&str>,
     name: &str,
     source: &pkg::SourcePinned,
+    dep_kind: &DepKind,
     disambiguate: bool,
 ) -> PkgDepLine {
     // Only include the full unique string in the case that this dep requires disambiguation.
@@ -207,22 +217,29 @@ fn pkg_dep_line(
     let pkg_string = pkg_name_disambiguated(name, &source_string, disambiguate);
     // Prefix the dependency name if it differs from the package name.
     match dep_name {
-        None => pkg_string.into_owned(),
-        Some(dep_name) => format!("({}) {}", dep_name, pkg_string),
+        None => format!("{} {}", dep_kind.to_string(), pkg_string.into_owned()),
+        Some(dep_name) => format!("({}) {} {}", dep_name, dep_kind.to_string(), pkg_string),
     }
 }
 
+type ParsedPkgLine<'a> = (Option<&'a str>, DepKind, &'a str);
 // Parse the given `PkgDepLine` into its dependency name and unique string segments.
 //
 // I.e. given "(<dep_name>) <name> <source>", returns ("<dep_name>", "<name> <source>").
 //
 // Note that <source> may not appear in the case it is not required for disambiguation.
-fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<(Option<&str>, &str)> {
+fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {
     let s = pkg_dep_line.trim();
 
     // Check for the open bracket.
     if !s.starts_with('(') {
-        return Ok((None, s));
+        let dep_kind_str = s
+            .split(' ')
+            .next()
+            .ok_or_else(|| anyhow!("missing dep kind"))?;
+        let dep_kind = DepKind::from_str(dep_kind_str)?;
+        let unique_pkg_str = &s[dep_kind_str.len()..].trim_start();
+        return Ok((None, dep_kind, unique_pkg_str));
     }
 
     // If we have the open bracket, grab everything until the closing bracket.
@@ -234,8 +251,13 @@ fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<(Option<&str>, &str)
 
     // The rest is the unique package string.
     let s = &s[dep_name.len() + ")".len()..];
-    let pkg_str = s.trim_start();
-    Ok((Some(dep_name), pkg_str))
+    let dep_kind_str = s
+        .split(' ')
+        .next()
+        .ok_or_else(|| anyhow!("missing dep kind"))?;
+    let dep_kind = DepKind::from_str(dep_kind_str)?;
+    let unique_pkg_str = &s[dep_kind_str.len()..].trim_start();
+    Ok((Some(dep_name), dep_kind, unique_pkg_str))
 }
 
 pub fn print_diff(proj_name: &str, diff: &Diff) {
