@@ -14,8 +14,8 @@ use super::{
 
 use std::collections::BTreeMap;
 use sway_ast::ItemConst;
-use sway_error::error::CompileError;
 use sway_error::handler::Handler;
+use sway_error::{error::CompileError, handler::ErrorEmitted};
 use sway_parse::{lex, Parser};
 use sway_types::{span::Span, ConfigTimeConstant, Spanned};
 
@@ -45,32 +45,23 @@ impl Module {
     pub fn default_with_constants(
         constants: BTreeMap<String, ConfigTimeConstant>,
     ) -> Result<Self, vec1::Vec1<CompileError>> {
-        let res = Module::default_with_constants_inner(constants);
-        match res.value {
-            Some(x) => Ok(x),
-            None => {
-                let mut errs = res.errors;
-                // it is an invariant that if `.value` is `None` then there's at least one
-                // error
-                assert!(!errs.is_empty());
-                let first_err = errs.pop().unwrap();
-                let mut errs_1 = vec1::vec1![first_err];
-                errs_1.append(&mut errs);
-                Err(errs_1)
-            }
-        }
+        let handler = <_>::default();
+        Module::default_with_constants_inner(&handler, constants).map_err(|_| {
+            let (errors, warnings) = handler.consume();
+            assert!(warnings.is_empty());
+
+            // Invariant: `.value == None` => `!errors.is_empty()`.
+            vec1::Vec1::try_from_vec(errors).unwrap()
+        })
     }
 
     fn default_with_constants_inner(
+        handler: &Handler,
         constants: BTreeMap<String, ConfigTimeConstant>,
-    ) -> CompileResult<Self> {
+    ) -> Result<Self, ErrorEmitted> {
         // it would be nice to one day maintain a span from the manifest file, but
         // we don't keep that around so we just use the span from the generated const decl instead.
         let mut compiled_constants: SymbolMap = Default::default();
-        let mut ec: to_parsed_lang::ErrorContext = Default::default();
-        let ec = &mut ec;
-        let mut warnings = vec![];
-        let mut errors = vec![];
         // this for loop performs a miniature compilation of each const item in the config
         for (name, ConfigTimeConstant { r#type, value }) in constants.into_iter() {
             // FIXME(Centril): Stop parsing. Construct AST directly instead!
@@ -78,45 +69,27 @@ impl Module {
             let const_item = format!("const {name}: {type} = {value};");
             let const_item_len = const_item.len();
             let input_arc = std::sync::Arc::from(const_item);
-            let handler = Handler::default();
-            let token_stream = lex(&handler, &input_arc, 0, const_item_len, None).unwrap();
-            let mut parser = Parser::new(&handler, &token_stream);
+            let token_stream = lex(handler, &input_arc, 0, const_item_len, None).unwrap();
+            let mut parser = Parser::new(handler, &token_stream);
             // perform the parse
-            let const_item: ItemConst = match parser.parse() {
-                Ok(o) => o,
-                Err(_emit_signal) => {
-                    // if an error was emitted, grab errors from the error context
-                    errors.append(&mut ec.errors.clone());
-                    warnings.append(&mut ec.warnings.clone());
-
-                    return err(warnings, errors);
-                }
-            };
+            let const_item: ItemConst = parser.parse()?;
             let const_item_span = const_item.span().clone();
 
             // perform the conversions from parser code to parse tree types
             let name = const_item.name.clone();
             let attributes = Default::default();
             // convert to const decl
-            let const_decl = match to_parsed_lang::item_const_to_constant_declaration(
-                ec, const_item, attributes,
-            ) {
-                Ok(o) => o,
-                Err(_emit_signal) => {
-                    // if an error was emitted, grab errors from the error context
-                    errors.append(&mut ec.errors.clone());
-                    warnings.append(&mut ec.warnings.clone());
-
-                    return err(warnings, errors);
-                }
-            };
+            let const_decl = to_parsed_lang::item_const_to_constant_declaration(
+                handler, const_item, attributes,
+            )?;
 
             // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.
             if !matches!(const_decl.value.kind, ExpressionKind::Literal(_)) {
-                errors.push(CompileError::ConfigTimeConstantNotALiteral {
-                    span: const_item_span,
-                });
-                return err(warnings, errors);
+                return Err(
+                    handler.emit_err(CompileError::ConfigTimeConstantNotALiteral {
+                        span: const_item_span,
+                    }),
+                );
             }
 
             let ast_node = AstNode {
@@ -134,25 +107,19 @@ impl Module {
             let typed_decl = match typed_node.content {
                 ty::TyAstNodeContent::Declaration(decl) => decl,
                 _ => {
-                    errors.push(CompileError::ConfigTimeConstantNotAConstDecl {
-                        span: const_item_span,
-                    });
-                    return err(warnings, errors);
+                    return Err(
+                        handler.emit_err(CompileError::ConfigTimeConstantNotAConstDecl {
+                            span: const_item_span,
+                        }),
+                    );
                 }
             };
             compiled_constants.insert(name, typed_decl);
         }
-        ok(
-            Self {
-                items: Items {
-                    symbols: compiled_constants,
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-            warnings,
-            errors,
-        )
+
+        let mut ret = Self::default();
+        ret.items.symbols = compiled_constants;
+        Ok(ret)
     }
 
     /// Immutable access to this module's submodules.
