@@ -1,14 +1,11 @@
 library message;
 
-use ::outputs::{Output, output_amount, output_count, output_type};
+use ::alloc::alloc;
+use ::assert::assert;
+use ::option::Option;
+use ::outputs::{Output, output_count, output_type};
 use ::revert::revert;
 use ::vec::Vec;
-use ::mem::{addr_of, copy, read};
-use ::option::Option;
-use ::assert::assert;
-use ::logging::log;
-use ::intrinsics::size_of_val;
-use ::alloc::alloc;
 
 const FAILED_SEND_MESSAGE_SIGNAL = 0xffff_ffff_ffff_0002;
 

@@ -1,6 +1,10 @@
 contract;
 
-use std::{context::balance_of, message::send_message, token::*, vec::Vec};
+use std::{
+    context::balance_of,
+    message::send_message,
+    token::*,
+    vec::Vec};
 
 abi TestFuelCoin {
     fn mint_coins(mint_amount: u64);
