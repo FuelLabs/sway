@@ -175,7 +175,7 @@ Example usage:
 ```rust
 script;
 
-use foo::CONTRACT_ID as foo_contract_id;
+use foo::CONTRACT_ID as FOO_CONTRACT_ID;
 
 fn main() {
   let x = foo_contract_id;
