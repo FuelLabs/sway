@@ -384,8 +384,6 @@ async fn can_send_message_output_with_data() {
         matches!(r, Receipt::MessageOut{..})
     }).unwrap();
 
-    println!("{:#?}", message_receipt);
-
     assert_eq!(*fuelcoin_id, **message_receipt.sender().unwrap());
     assert_eq!(&recipient_addr, message_receipt.recipient().unwrap());
     assert_eq!(amount, message_receipt.amount().unwrap());
@@ -393,39 +391,42 @@ async fn can_send_message_output_with_data() {
     assert_eq!(vec![0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 75, 0, 0, 0, 0, 0, 0, 0, 50], message_receipt.data().unwrap());
 }
 
-// #[tokio::test]
-// async fn can_send_message_output_with_data() {
-//     let num_wallets = 1;
-//     let coins_per_wallet = 1;
-//     let amount_per_coin = 1_000_000;
+#[tokio::test]
+async fn can_send_message_output_without_data() {
+    let num_wallets = 1;
+    let coins_per_wallet = 1;
+    let amount_per_coin = 1_000_000;
 
-//     let config = WalletsConfig::new(
-//         Some(num_wallets),
-//         Some(coins_per_wallet),
-//         Some(amount_per_coin),
-//     );
+    let config = WalletsConfig::new(
+        Some(num_wallets),
+        Some(coins_per_wallet),
+        Some(amount_per_coin),
+    );
 
-//     let wallets = launch_custom_provider_and_get_wallets(config, None).await;
-//     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
+    let wallets = launch_custom_provider_and_get_wallets(config, None).await;
+    let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
 
-//     let amount = 33u64;
-//     let recipient_addr: Address = wallets[0].address().into();
+    let amount = 33u64;
+    let recipient_addr: Address = wallets[0].address().into();
 
-//     let call_response = fuelcoin_instance
-//         .methods()
-//         .send_message(amount, 0, Bits256(*recipient_addr))
-//         .append_message_outputs(1)
-//         .call()
-//         .await
-//         .unwrap();
+    let call_response = fuelcoin_instance
+        .methods()
+        .send_message(Bits256(*recipient_addr), vec![], amount)
+        .append_message_outputs(1)
+        .call()
+        .await
+        .unwrap();
 
-//     let message_receipt = call_response.receipts.iter().find(|&r| {
-//         matches!(r, Receipt::MessageOut{..})
-//     }).unwrap();
+    let message_receipt = call_response.receipts.iter().find(|&r| {
+        matches!(r, Receipt::MessageOut{..})
+    }).unwrap();
 
-//     assert_eq!(0, message_receipt.len().unwrap());
-//     assert_eq!(Vec::<u8>::new(), message_receipt.data().unwrap());
-// }
+    assert_eq!(*fuelcoin_id, **message_receipt.sender().unwrap());
+    assert_eq!(&recipient_addr, message_receipt.recipient().unwrap());
+    assert_eq!(amount, message_receipt.amount().unwrap());
+    assert_eq!(24, message_receipt.len().unwrap());
+    assert_eq!(Vector::new(), message_receipt.data().unwrap());
+}
 
 async fn get_fuelcoin_instance(wallet: WalletUnlocked) -> (TestFuelCoinContract, ContractId) {
     let fuelcoin_id = Contract::deploy(
