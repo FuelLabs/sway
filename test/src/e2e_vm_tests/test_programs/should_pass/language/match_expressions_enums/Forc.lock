@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'match_expressions_enums'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-9AF4E3EA6EDCE00F'
-dependencies = ['core']
+dependencies = ['library core']

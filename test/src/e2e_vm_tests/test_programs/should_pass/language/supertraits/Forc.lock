@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-6F8C00D302E9D79E'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'supertraits'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']

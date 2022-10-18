@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'generic_type_inference'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-846924BE01AC096F'
-dependencies = ['core']
+dependencies = ['library core']

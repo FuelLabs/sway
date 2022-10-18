@@ -1,7 +1,7 @@
 [[package]]
 name = 'basic_predicate'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'core'

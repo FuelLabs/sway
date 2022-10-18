@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'use_full_path_names'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

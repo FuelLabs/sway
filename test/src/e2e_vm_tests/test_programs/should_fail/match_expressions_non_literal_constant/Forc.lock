@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'match_expressions_non_literal_constant'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-71302168F25F2AFD'
-dependencies = ['core']
+dependencies = ['library core']

@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'zero_field_types'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

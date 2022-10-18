@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'repeated_storage_field'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

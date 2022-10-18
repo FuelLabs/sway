@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'simple'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

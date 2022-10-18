@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'empty_method_initializer'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-5A54E336CA715EAA'
-dependencies = ['core']
+dependencies = ['library core']

@@ -1,7 +1,7 @@
 [[package]]
 name = 'array_basics'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'core'

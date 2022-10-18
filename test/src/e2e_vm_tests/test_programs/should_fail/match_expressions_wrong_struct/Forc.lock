@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'match_expressions_wrong_struct'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

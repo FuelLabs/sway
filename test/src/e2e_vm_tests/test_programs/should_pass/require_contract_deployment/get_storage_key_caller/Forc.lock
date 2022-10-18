@@ -12,11 +12,11 @@ dependencies = []
 name = 'get_storage_key_caller'
 source = 'root'
 dependencies = [
-    'get_storage_key_abi',
-    'std',
+    'library get_storage_key_abi',
+    'library std',
 ]
 
 [[package]]
 name = 'std'
 source = 'path+from-root-B3844A485BCDB5F7'
-dependencies = ['core']
+dependencies = ['library core']

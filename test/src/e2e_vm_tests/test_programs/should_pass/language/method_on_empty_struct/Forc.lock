@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'method_on_empty_struct'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

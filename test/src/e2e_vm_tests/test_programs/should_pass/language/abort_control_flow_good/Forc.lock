@@ -1,7 +1,7 @@
 [[package]]
 name = 'abort_control_flow_good'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'core'
@@ -11,4 +11,4 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-CB060A17C0778A7E'
-dependencies = ['core']
+dependencies = ['library core']

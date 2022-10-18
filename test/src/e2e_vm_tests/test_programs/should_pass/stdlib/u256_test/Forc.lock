@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-31E9CFD36AA5AC17'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'u256_test'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']

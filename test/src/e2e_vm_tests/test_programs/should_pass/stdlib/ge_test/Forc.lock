@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'ge_test'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-601D0A0C12E350CD'
-dependencies = ['core']
+dependencies = ['library core']

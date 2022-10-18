@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'tuple_types'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

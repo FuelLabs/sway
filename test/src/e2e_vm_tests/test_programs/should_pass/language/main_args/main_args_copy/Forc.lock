@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'main_args_copy'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

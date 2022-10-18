@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'main_args_ref_ref'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

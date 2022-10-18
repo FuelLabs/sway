@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'if_implicit_unit'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

@@ -1,14 +1,14 @@
 [[package]]
 name = 'auth_testing_abi'
 source = 'path+from-root-F99221C76F6FEEFB'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'caller_auth_test'
 source = 'root'
 dependencies = [
-    'auth_testing_abi',
-    'std',
+    'library auth_testing_abi',
+    'library std',
 ]
 
 [[package]]
@@ -19,4 +19,4 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-F99221C76F6FEEFB'
-dependencies = ['core']
+dependencies = ['library core']

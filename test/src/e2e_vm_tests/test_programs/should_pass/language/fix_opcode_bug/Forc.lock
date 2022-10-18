@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'fix_opcode_bug'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

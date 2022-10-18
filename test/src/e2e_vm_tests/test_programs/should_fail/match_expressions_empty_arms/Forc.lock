@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'match_expressions_empty_arms'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-F11E2642DB254865'
-dependencies = ['core']
+dependencies = ['library core']

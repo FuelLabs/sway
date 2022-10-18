@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'excess_fn_arguments'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

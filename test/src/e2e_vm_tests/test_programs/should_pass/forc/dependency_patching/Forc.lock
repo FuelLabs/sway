@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'dependency_patching'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-B0CAE5E4D7DDF437'
-dependencies = ['core']
+dependencies = ['library core']

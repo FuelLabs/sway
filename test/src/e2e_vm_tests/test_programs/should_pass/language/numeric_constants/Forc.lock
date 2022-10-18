@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'numeric_constants'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-1D28A47FA12C061E'
-dependencies = ['core']
+dependencies = ['library core']

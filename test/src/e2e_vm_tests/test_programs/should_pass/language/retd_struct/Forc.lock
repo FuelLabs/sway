@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'retd_struct'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

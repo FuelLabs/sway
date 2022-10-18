@@ -1,7 +1,7 @@
 [[package]]
 name = 'contract_a'
 source = 'root'
-dependencies = ['contract_b']
+dependencies = ['contract contract_b']
 
 [[package]]
 name = 'contract_b'

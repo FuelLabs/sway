@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'nested_while_and_if'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-454A4726DFB746F1'
-dependencies = ['core']
+dependencies = ['library core']

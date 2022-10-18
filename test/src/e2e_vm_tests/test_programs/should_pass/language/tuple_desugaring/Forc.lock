@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'tuple_desugaring'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

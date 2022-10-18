@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-D885AAAE8A999D71'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'vec_set_index_out_of_bounds'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']

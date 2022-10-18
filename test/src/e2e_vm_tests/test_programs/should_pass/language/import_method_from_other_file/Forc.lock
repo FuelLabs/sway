@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'import_method_from_other_file'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

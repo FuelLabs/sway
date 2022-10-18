@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'nested_structs'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-CD761B243EFCCAC4'
-dependencies = ['core']
+dependencies = ['library core']

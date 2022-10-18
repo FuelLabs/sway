@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'issue_1512_repro'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

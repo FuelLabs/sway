@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-626C5D02EBFA3B6A'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'vec_swap_param2_out_of_bounds'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']

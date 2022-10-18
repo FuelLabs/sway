@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'repeated_storage_field'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-BC4E87DB22234D76'
-dependencies = ['core']
+dependencies = ['library core']

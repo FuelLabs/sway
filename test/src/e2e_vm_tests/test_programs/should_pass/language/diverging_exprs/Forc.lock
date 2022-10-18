@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'diverging_exprs'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-80950B22F23DC017'
-dependencies = ['core']
+dependencies = ['library core']

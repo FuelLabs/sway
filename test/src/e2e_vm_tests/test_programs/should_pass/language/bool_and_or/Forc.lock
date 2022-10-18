@@ -1,7 +1,7 @@
 [[package]]
 name = 'bool_and_or'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'core'

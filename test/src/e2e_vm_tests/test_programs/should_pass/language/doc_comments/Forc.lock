@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'doc_comments'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-68219769D077ACAE'
-dependencies = ['core']
+dependencies = ['library core']

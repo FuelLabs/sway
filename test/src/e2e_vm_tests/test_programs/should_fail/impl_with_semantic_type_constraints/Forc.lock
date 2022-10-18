@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'impl_with_semantic_type_constraints'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-C569FB5C26218A1B'
-dependencies = ['core']
+dependencies = ['library core']

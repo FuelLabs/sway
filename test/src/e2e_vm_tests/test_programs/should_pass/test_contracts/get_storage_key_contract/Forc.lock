@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'get_storage_key_contract'
 source = 'root'
-dependencies = ['get_storage_key_abi']
+dependencies = ['library get_storage_key_abi']

@@ -6,17 +6,17 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-7D510AAC4A67C807'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'test_fuel_coin_abi'
 source = 'path+from-root-7D510AAC4A67C807'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'token_ops_test'
 source = 'root'
 dependencies = [
-    'std',
-    'test_fuel_coin_abi',
+    'library std',
+    'library test_fuel_coin_abi',
 ]

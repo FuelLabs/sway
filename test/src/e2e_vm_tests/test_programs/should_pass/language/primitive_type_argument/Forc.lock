@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'primitive_type_argument'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-D5DDAB0633863C0B'
-dependencies = ['core']
+dependencies = ['library core']

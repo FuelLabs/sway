@@ -1,7 +1,7 @@
 [[package]]
 name = 'assert_test'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'core'
@@ -11,4 +11,4 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-000DE2BD47DE0A72'
-dependencies = ['core']
+dependencies = ['library core']

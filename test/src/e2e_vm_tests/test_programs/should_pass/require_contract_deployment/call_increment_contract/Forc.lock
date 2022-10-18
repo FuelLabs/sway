@@ -2,8 +2,8 @@
 name = 'call_increment_contract'
 source = 'root'
 dependencies = [
-    'increment_abi',
-    'std',
+    'library increment_abi',
+    'library std',
 ]
 
 [[package]]
@@ -14,9 +14,9 @@ dependencies = []
 [[package]]
 name = 'increment_abi'
 source = 'path+from-root-2711CA1D0E2938B8'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-2711CA1D0E2938B8'
-dependencies = ['core']
+dependencies = ['library core']

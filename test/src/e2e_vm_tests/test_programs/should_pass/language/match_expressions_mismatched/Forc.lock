@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'match_expressions_mismatched'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-7A1B884B71AD4E6C'
-dependencies = ['core']
+dependencies = ['library core']

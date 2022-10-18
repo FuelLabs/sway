@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'impl_with_bad_generic'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-52B9F714BAB9BDCA'
-dependencies = ['core']
+dependencies = ['library core']

@@ -1,7 +1,7 @@
 [[package]]
 name = 'b256_bad_jumps'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'core'

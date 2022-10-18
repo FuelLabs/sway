@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'inline_if_expr_const'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-D43362F14BA36B33'
-dependencies = ['core']
+dependencies = ['library core']

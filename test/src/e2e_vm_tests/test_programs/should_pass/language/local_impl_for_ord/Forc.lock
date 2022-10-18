@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'local_impl_for_ord'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

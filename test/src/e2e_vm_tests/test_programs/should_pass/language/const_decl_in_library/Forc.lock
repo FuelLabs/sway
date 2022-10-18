@@ -1,7 +1,7 @@
 [[package]]
 name = 'const_decl_in_library'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'core'

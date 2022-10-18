@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'enum_bad_type_inference'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

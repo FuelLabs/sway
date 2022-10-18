@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'reassignment_operators'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-D3718BE02F4F019A'
-dependencies = ['core']
+dependencies = ['library core']

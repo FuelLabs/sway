@@ -2,14 +2,14 @@
 name = 'bal_opcode'
 source = 'root'
 dependencies = [
-    'balance_test_abi',
-    'std',
+    'library balance_test_abi',
+    'library std',
 ]
 
 [[package]]
 name = 'balance_test_abi'
 source = 'path+from-root-22833226E3BC014E'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'core'
@@ -19,4 +19,4 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-22833226E3BC014E'
-dependencies = ['core']
+dependencies = ['library core']

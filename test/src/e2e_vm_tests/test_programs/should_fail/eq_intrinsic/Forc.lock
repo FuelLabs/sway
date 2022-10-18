@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'eq_intrinsic'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-987CA0C143EB9BCC'
-dependencies = ['core']
+dependencies = ['library core']

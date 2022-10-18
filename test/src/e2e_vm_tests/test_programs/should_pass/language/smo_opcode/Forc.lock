@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'smo_opcode'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-36670D30B34137BE'
-dependencies = ['core']
+dependencies = ['library core']

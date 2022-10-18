@@ -2,14 +2,14 @@
 name = 'caller_context_test'
 source = 'root'
 dependencies = [
-    'context_testing_abi',
-    'std',
+    'library context_testing_abi',
+    'library std',
 ]
 
 [[package]]
 name = 'context_testing_abi'
 source = 'path+from-root-D12893745757AE0B'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'core'
@@ -19,4 +19,4 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-D12893745757AE0B'
-dependencies = ['core']
+dependencies = ['library core']

@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'main_returns_unit'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

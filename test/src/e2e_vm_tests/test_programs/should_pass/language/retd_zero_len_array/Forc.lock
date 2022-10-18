@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'retd_zero_len_array'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

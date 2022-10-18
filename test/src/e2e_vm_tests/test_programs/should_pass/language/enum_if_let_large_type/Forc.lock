@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'enum_if_let_large_type'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

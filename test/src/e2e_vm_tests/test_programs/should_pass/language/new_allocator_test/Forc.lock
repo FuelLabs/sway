@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'new_alloc'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-22C1B8FFEA31F7F0'
-dependencies = ['core']
+dependencies = ['library core']

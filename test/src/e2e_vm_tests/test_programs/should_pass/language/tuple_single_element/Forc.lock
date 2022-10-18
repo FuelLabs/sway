@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-E22D083410030709'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'tuple_single_element'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']

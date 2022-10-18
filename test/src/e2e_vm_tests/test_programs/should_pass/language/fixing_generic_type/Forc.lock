@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'fixing_generic_type'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-C2C00FC9DC812272'
-dependencies = ['core']
+dependencies = ['library core']

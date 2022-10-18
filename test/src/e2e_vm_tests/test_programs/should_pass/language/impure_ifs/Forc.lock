@@ -1,7 +1,7 @@
 [[package]]
 name = 'const_inits'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'core'
@@ -11,4 +11,4 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-76FD265A93458D61'
-dependencies = ['core']
+dependencies = ['library core']

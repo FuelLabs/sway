@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'prelude_access2'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-B3B7F7F1BCA7D931'
-dependencies = ['core']
+dependencies = ['library core']

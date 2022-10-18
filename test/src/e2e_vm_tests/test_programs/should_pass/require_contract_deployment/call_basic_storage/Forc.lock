@@ -1,14 +1,14 @@
 [[package]]
 name = 'basic_storage_abi'
 source = 'path+from-root-B0443BE7AC0A62F9'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'call_basic_storage'
 source = 'root'
 dependencies = [
-    'basic_storage_abi',
-    'std',
+    'library basic_storage_abi',
+    'library std',
 ]
 
 [[package]]
@@ -19,4 +19,4 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-B0443BE7AC0A62F9'
-dependencies = ['core']
+dependencies = ['library core']

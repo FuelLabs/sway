@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'ec_recover_test'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-219CAA2B0E1853AB'
-dependencies = ['core']
+dependencies = ['library core']

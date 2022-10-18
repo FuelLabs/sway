@@ -1,14 +1,14 @@
 [[package]]
 name = 'balance_test_abi'
 source = 'path+from-root-58C52EDC3AE3855E'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'balance_test_contract'
 source = 'root'
 dependencies = [
-    'balance_test_abi',
-    'std',
+    'library balance_test_abi',
+    'library std',
 ]
 
 [[package]]
@@ -19,4 +19,4 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-58C52EDC3AE3855E'
-dependencies = ['core']
+dependencies = ['library core']

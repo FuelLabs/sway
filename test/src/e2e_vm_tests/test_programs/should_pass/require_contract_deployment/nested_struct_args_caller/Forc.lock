@@ -6,17 +6,17 @@ dependencies = []
 [[package]]
 name = 'nested_struct_args_abi'
 source = 'path+from-root-B01F6E0C439A4B28'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'nested_struct_args_caller'
 source = 'root'
 dependencies = [
-    'nested_struct_args_abi',
-    'std',
+    'library nested_struct_args_abi',
+    'library std',
 ]
 
 [[package]]
 name = 'std'
 source = 'path+from-root-B01F6E0C439A4B28'
-dependencies = ['core']
+dependencies = ['library core']

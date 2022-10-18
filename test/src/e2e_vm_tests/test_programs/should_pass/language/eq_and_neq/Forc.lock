@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'eq_and_neq'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-0AF85F21A8536CE1'
-dependencies = ['core']
+dependencies = ['library core']

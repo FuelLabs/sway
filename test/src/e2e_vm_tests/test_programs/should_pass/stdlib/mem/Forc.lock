@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-6FDA2B8841DC691E'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'std_mem_test'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']

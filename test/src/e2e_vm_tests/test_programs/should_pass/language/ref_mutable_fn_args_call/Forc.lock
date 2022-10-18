@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'ref_mutable_fn_args_struct_assign'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

@@ -7,8 +7,8 @@ dependencies = []
 name = 'array_of_structs_caller'
 source = 'root'
 dependencies = [
-    'array_of_structs_abi',
-    'std',
+    'library array_of_structs_abi',
+    'library std',
 ]
 
 [[package]]
@@ -19,4 +19,4 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-40616FC980A839AE'
-dependencies = ['core']
+dependencies = ['library core']

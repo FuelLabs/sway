@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'multi_item_import'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

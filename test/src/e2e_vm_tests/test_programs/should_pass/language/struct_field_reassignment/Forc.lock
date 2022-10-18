@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'struct_field_reassignment'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

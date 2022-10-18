@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'generic_enum'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

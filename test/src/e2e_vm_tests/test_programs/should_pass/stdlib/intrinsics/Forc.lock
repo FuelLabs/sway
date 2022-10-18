@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'intrinsics'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-89DFACC7FCC0773C'
-dependencies = ['core']
+dependencies = ['library core']

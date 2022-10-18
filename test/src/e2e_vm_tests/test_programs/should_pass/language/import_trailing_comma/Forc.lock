@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'import_trailing_comma'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-4A56ACA38DD902C5'
-dependencies = ['core']
+dependencies = ['library core']

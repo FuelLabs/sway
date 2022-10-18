@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'valid_impurity'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

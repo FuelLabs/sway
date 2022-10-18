@@ -6,4 +6,4 @@ dependencies = []
 [[package]]
 name = 'generic_inside_generic'
 source = 'root'
-dependencies = ['core']
+dependencies = ['library core']

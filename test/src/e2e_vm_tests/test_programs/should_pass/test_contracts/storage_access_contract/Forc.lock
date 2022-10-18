@@ -6,17 +6,17 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-EE5FEA38729D9DF2'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'storage_access_abi'
 source = 'path+from-root-EE5FEA38729D9DF2'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'storage_access_contract'
 source = 'root'
 dependencies = [
-    'std',
-    'storage_access_abi',
+    'library std',
+    'library storage_access_abi',
 ]
