@@ -68,6 +68,7 @@
   - [StorageMap](./documentation/operations/storage/storage-map/index.md)
     - [Insert](./documentation/operations/storage/storage-map/insert.md)
     - [Get](./documentation/operations/storage/storage-map/get.md)
+  - [StorageVec](./documentation/operations/storage/storage-map/vec.md)
 - [Address Namespace](./documentation/operations/namespace/index.md)
   - [Address](./documentation/operations/namespace/address.md)
   - [ContractId](./documentation/operations/namespace/contract-id.md)
@@ -101,5 +102,6 @@
   - [Strings](./documentation/misc/workarounds/strings.md)
   - [Predicates](./documentation/misc/workarounds/predicates.md)
   - [Pattern Matching](./documentation/misc/workarounds/pattern-matching.md)
+  - [Storage](./documentation/misc/workarounds/storage.md)
 
 # Fuel Orchestrator (Forc)

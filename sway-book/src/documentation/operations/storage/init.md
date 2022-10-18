@@ -1,27 +1,30 @@
 # Initialization
 
-When developing a [smart contract](../sway-program-types/smart_contracts.md), you will typically need some sort of persistent storage. In this case, persistent storage, often just called _storage_ in this context, is a place where you can store values that are persisted inside the contract itself. This is in contrast to a regular value in _memory_, which disappears after the contract exits.
+Storage is declared through the use of the `storage` keyword. 
 
-Put in conventional programming terms, contract storage is like saving data to a hard drive. That data is saved even after the program which saved it exits. That data is persistent. Using memory is like declaring a variable in a program: it exists for the duration of the program and is non-persistent.
-
-Some basic use cases of storage include declaring an owner address for a contract and saving balances in a wallet.
-
-## Storage Accesses Via the `storage` Keyword
-
-Declaring variables in storage requires a `storage` declaration that contains a list of all your variables, their types, and their initial values as follows:
+Inside the `storage` block each variable is named, associated with a type and a default value.
 
 ```sway
-{{#include ../../../../examples/storage_variables/src/main.sw:storage_declaration}}
+{{#include ../../../code/operations/storage/empty_storage_init/src/main.sw:initialization}}
 ```
 
-To write into a storage variable, you need to use the `storage` keyword as follows:
+## Example
+
+In the following example we will take a look at two ways of storing a struct.
+
+- Explicitly declaring the values in the `storage` block
+- Encapsulating the values in an [associated function](../../language/functions/index.md)
+
+We'll begin by defining the `Owner` & `Role` data structures and implement a `default` associated function on the `Owner`.
 
 ```sway
-{{#include ../../../../examples/storage_variables/src/main.sw:storage_write}}
+{{#include ../../../code/operations/storage/storage_init/src/main.sw:data_structures}}
 ```
 
-To read a storage variable, you also need to use the `storage` keyword as follows:
+Now that we have our data structures we'll keep track of how many `current_owners` we have and declare the owner in the two aformentioned styles.
 
 ```sway
-{{#include ../../../../examples/storage_variables/src/main.sw:storage_read}}
+{{#include ../../../code/operations/storage/storage_init/src/main.sw:initialization}}
 ```
+
+An explicit declaration is likely to be sufficient for most types however it may be preferable to encapsulate that functionality for complex types in order to keep the code concise.
