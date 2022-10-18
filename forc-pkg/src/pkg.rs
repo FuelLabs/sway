@@ -479,20 +479,9 @@ fn validate_graph(graph: &Graph, proj_manifest: &PackageManifestFile) -> BTreeSe
         Ok(node) => node,
         Err(_) => return graph.edge_indices().collect(),
     };
-    // Collect contract_dependencies
-    let mut contract_dependencies: HashSet<String> = proj_manifest
-        .contract_deps()
-        .map(|contract_dep| contract_dep.0.to_owned())
-        .collect();
     // Collect all invalid dependency nodes.
     let mut visited = HashSet::new();
-    validate_deps(
-        graph,
-        proj_node,
-        proj_manifest,
-        &mut contract_dependencies,
-        &mut visited,
-    )
+    validate_deps(graph, proj_node, proj_manifest, &mut visited)
 }
 
 /// Recursively validate all dependencies of the given `node`.
@@ -502,35 +491,19 @@ fn validate_deps(
     graph: &Graph,
     node: NodeIx,
     node_manifest: &PackageManifestFile,
-    contract_dependencies: &mut HashSet<String>,
     visited: &mut HashSet<NodeIx>,
 ) -> BTreeSet<EdgeIx> {
     let mut remove = BTreeSet::default();
     for edge in graph.edges_directed(node, Direction::Outgoing) {
         let dep_name = edge.weight();
         let dep_node = edge.target();
-        match validate_dep(
-            graph,
-            node_manifest,
-            dep_name,
-            dep_node,
-            contract_dependencies,
-        ) {
+        match validate_dep(graph, node_manifest, dep_name, dep_node) {
             Err(_) => {
                 remove.insert(edge.id());
             }
             Ok(dep_manifest) => {
                 if visited.insert(dep_node) {
-                    for contract_dependency in dep_manifest.contract_deps() {
-                        contract_dependencies.insert(contract_dependency.0.to_owned());
-                    }
-                    let rm = validate_deps(
-                        graph,
-                        dep_node,
-                        &dep_manifest,
-                        contract_dependencies,
-                        visited,
-                    );
+                    let rm = validate_deps(graph, dep_node, &dep_manifest, visited);
                     remove.extend(rm);
                 }
                 continue;
@@ -548,7 +521,6 @@ fn validate_dep(
     node_manifest: &PackageManifestFile,
     dep_edge: &Edge,
     dep_node: NodeIx,
-    contract_dependencies: &mut HashSet<String>,
 ) -> Result<PackageManifestFile> {
     let dep_name = &dep_edge.name;
     // Check the validity of the dependency path, including its path root.
@@ -573,7 +545,7 @@ fn validate_dep(
         bail!("dependency node's source does not match manifest entry");
     }
 
-    validate_dep_manifest(&graph[dep_node], &dep_manifest, contract_dependencies)?;
+    validate_dep_manifest(&graph[dep_node], &dep_manifest, dep_edge)?;
 
     Ok(dep_manifest)
 }
@@ -581,13 +553,13 @@ fn validate_dep(
 fn validate_dep_manifest(
     dep: &Pinned,
     dep_manifest: &PackageManifestFile,
-    contract_dependencies: &HashSet<String>,
+    dep_edge: &Edge,
 ) -> Result<()> {
+    let dep_program_type = dep_manifest.program_type()?;
     // If the dependency is a script or a contract (which is not a contract dependency for any of
     // the parent nodes).
-    if matches!(dep_manifest.program_type()?, TreeType::Script { .. })
-        || matches!(dep_manifest.program_type()?, TreeType::Contract)
-            && !contract_dependencies.contains(&dep.name)
+    if matches!(dep_program_type, TreeType::Script { .. })
+        || (matches!(dep_program_type, TreeType::Contract) && dep_edge.kind != DepKind::Contract)
     {
         bail!(
             "\"{}\" is not a library or a contract dependency! Depending on such a package is not supported.",
@@ -1190,16 +1162,11 @@ fn fetch_deps(
         visited: &mut HashSet<NodeIx>,
         added: &mut HashSet<NodeIx>,
         parent_id: PinnedId,
-        deps: Vec<(String, Dependency)>,
-        parent_contract_deps: &mut HashSet<String>,
+        deps: Vec<(String, Dependency, DepKind)>,
     ) -> Result<()> {
-        for (dep_name, dep) in deps {
+        for (dep_name, dep, dep_kind) in deps {
             let name = dep.package().unwrap_or(&dep_name).to_string();
             let parent_manifest = manifest_map[&parent_id].to_owned();
-            for contract_dep in parent_manifest.contract_deps() {
-                parent_contract_deps.insert(contract_dep.0.to_owned());
-            }
-
             let source = dep_to_source_patched(&parent_manifest, &name, &dep)
                 .context("Failed to source dependency")?;
 
@@ -1216,15 +1183,9 @@ fn fetch_deps(
                 }
             };
 
-            let dep_kind = if parent_contract_deps.contains(&dep_name) {
-                DepKind::Library
-            } else {
-                DepKind::Contract
-            };
-
             let dep_edge = Edge::new(dep_name.to_string(), dep_kind);
             // Ensure we have an edge to the dependency.
-            graph.update_edge(node, dep_node, dep_edge);
+            graph.update_edge(node, dep_node, dep_edge.clone());
 
             // If we've visited this node during this traversal already, no need to traverse it again.
             if !visited.insert(dep_node) {
@@ -1233,8 +1194,8 @@ fn fetch_deps(
 
             let dep_pinned = &graph[dep_node];
             let dep_pkg_id = dep_pinned.id();
-            validate_dep_manifest(dep_pinned, &manifest_map[&dep_pkg_id], parent_contract_deps)
-                .map_err(|e| {
+            validate_dep_manifest(dep_pinned, &manifest_map[&dep_pkg_id], &dep_edge).map_err(
+                |e| {
                     let parent = &graph[node];
                     anyhow!(
                         "dependency of {:?} named {:?} is invalid: {}",
@@ -1242,7 +1203,8 @@ fn fetch_deps(
                         dep_name,
                         e
                     )
-                })?;
+                },
+            )?;
 
             let path_root = match dep_pinned.source {
                 SourcePinned::Root | SourcePinned::Git(_) | SourcePinned::Registry(_) => dep_pkg_id,
@@ -1264,33 +1226,29 @@ fn fetch_deps(
         Ok(())
     }
     let mut added = HashSet::default();
-    let mut parent_contract_deps = HashSet::default();
     let parent_id = graph[node].id();
     let package_manifest = manifest_map[&parent_id].to_owned();
     // If the current package is a contract, we need to first get the deployment dependencies
     let contract_deps: Vec<_> = package_manifest
         .contract_deps()
-        .map(|(n, d)| (n.to_owned(), d.to_owned()))
+        .map(|(n, d)| (n.to_owned(), d.to_owned(), DepKind::Contract))
         .collect();
-    if !contract_deps.is_empty() {
-        fetch_deps_helper(
-            fetch_id,
-            offline,
-            node,
-            path_root,
-            graph,
-            manifest_map,
-            fetched,
-            visited,
-            &mut added,
-            parent_id,
-            contract_deps,
-            &mut parent_contract_deps,
-        )?;
-    }
+    fetch_deps_helper(
+        fetch_id,
+        offline,
+        node,
+        path_root,
+        graph,
+        manifest_map,
+        fetched,
+        visited,
+        &mut added,
+        parent_id,
+        contract_deps,
+    )?;
     let deps: Vec<_> = package_manifest
         .deps()
-        .map(|(n, d)| (n.clone(), d.clone()))
+        .map(|(n, d)| (n.clone(), d.clone(), DepKind::Library))
         .collect();
     fetch_deps_helper(
         fetch_id,
@@ -1304,7 +1262,6 @@ fn fetch_deps(
         &mut added,
         parent_id,
         deps,
-        &mut parent_contract_deps,
     )?;
     Ok(added)
 }
