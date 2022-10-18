@@ -43,39 +43,39 @@ pub(crate) fn page_from(rendered_content: Box<dyn RenderBox>) -> String {
         : rendered_content
     };
 
-    return markup.to_string();
+    markup.into_string().unwrap()
 }
 
 /// Basic HTML header component
-pub(crate) fn header(module: String, desc_ty: String, desc_name: String) -> Box<dyn RenderBox> {
+pub(crate) fn header(module: String, decl_ty: String, decl_name: String) -> Box<dyn RenderBox> {
     box_html! {
         head {
             meta(charset="utf-8");
             meta(name="viewport", content="width=device-width, initial-scale=1.0");
             meta(name="generator", content="forc-doc");
-            meta(name="description", content=format!("API documentation for the Sway `{desc_name}` {desc_ty} in crate `{module}`."));
-            meta(name="keywords", content=format!("sway, swaylang, sway-lang, {desc_name}"));
-            title: format!("{desc_name} in {module} - Sway");
+            meta(name="description", content=format!("API documentation for the Sway `{decl_name}` {decl_ty} in crate `{module}`."));
+            meta(name="keywords", content=format!("sway, swaylang, sway-lang, {decl_name}"));
+            title: format!("{decl_name} in {module} - Sway");
             // TODO: Add links for CSS & Fonts
         }
     }
 }
 /// HTML body component
-pub(crate) fn body(module: String, desc_ty: String, desc_name: String) -> Box<dyn RenderBox> {
+pub(crate) fn body(module: String, decl_ty: String, decl_name: String) -> Box<dyn RenderBox> {
     box_html! {
         // TODO: match on ty and make this dynamic
         // e.g. an enum will have variants but a trait will not
         //
         // if matching doesn't work we will have to make a separate
         // body fn for each ty
-        body(class=format!("forc-doc {desc_ty}")) {
+        body(class=format!("forc-doc {decl_ty}")) {
             // TODO: create nav sidebar
             // create main
             // create main content
 
             // this is the main code block
             div(class="docblock item-decl") {
-                pre(class=format!("sway {desc_ty}")) {
+                pre(class=format!("sway {decl_ty}")) {
                     code {
                         // code goes here
                     }
