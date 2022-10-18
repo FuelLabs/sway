@@ -1,3 +1,4 @@
+mod constant_decleration;
 mod enum_instantiation;
 mod function_application;
 mod if_expression;
@@ -7,6 +8,7 @@ mod struct_field_access;
 mod tuple_index_access;
 mod unsafe_downcast;
 
+use self::constant_decleration::instantiate_constant_decl;
 pub(crate) use self::{
     enum_instantiation::*, function_application::*, if_expression::*, lazy_operator::*,
     method_application::*, struct_field_access::*, tuple_index_access::*, unsafe_downcast::*,
@@ -1038,6 +1040,7 @@ impl ty::TyExpression {
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
                 .flat_map(|unknown_decl| unknown_decl.expect_const(&call_path_binding.span()))
                 .ok(&mut function_probe_warnings, &mut function_probe_errors)
+                .map(|const_decl| (const_decl, call_path_binding.span()))
         };
 
         // compare the results of the checks
@@ -1069,10 +1072,15 @@ impl ty::TyExpression {
                 ));
                 return err(module_probe_warnings, module_probe_errors);
             }
-            (false, None, None, Some(_constant)) => {
+            (false, None, None, Some((const_decl, span))) => {
                 warnings.append(&mut const_probe_warnings);
                 errors.append(&mut const_probe_errors);
-                todo!()
+                check!(
+                    instantiate_constant_decl(const_decl, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
             }
             (false, None, None, None) => {
                 errors.push(CompileError::SymbolNotFound {
