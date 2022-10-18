@@ -22,14 +22,16 @@ pub fn send_message(recipient: b256, msg_data: Vec<u8>, coins: u64) {
 
     // let mut data_vec = b256_to_bytes(recipient);
     let data = (recipient, msg_data);
-    // let data = asm(r1: recipient, r2: msg_data, r3: msg_data.len(), r4, r5) {
-    //     move r4 sp;
-    //     cfei i32;
-    //     mcpi r4 r1 i32;
-    //     addi r5 r4 i32;
-    //     mcp r5 r2 r3;
-    //     r5: (b256, Vec<u8>)
-    // };
+    let data = asm(r1: recipient, r2: msg_data, r3: msg_data.len(), r4, r5, r6: 32) {
+        move r4 hp;
+        aloc r6; // allocate 4 words on the heap
+        mcpi r4 r1 i32;
+        addi r5 r4 i32;
+        move r5 hp;
+        aloc r3; // allocate msg_data.len() words on the heap
+        mcp r5 r2 r3;
+        r5: (b256, Vec<u8>)
+    };
 
     // let mut idx = 0;
     // log(true);
