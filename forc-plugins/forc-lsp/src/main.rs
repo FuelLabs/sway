@@ -10,18 +10,9 @@ use clap::Parser;
     about = "Forc plugin for the Sway LSP (Language Server Protocol) implementation.",
     version
 )]
-struct App {
-    /// Instructs the client to draw squiggly lines under all of the tokens that our server managed
-    /// to parse. Expects either "typed" or "parsed".
-    #[clap(long)]
-    pub collected_tokens_as_warnings: Option<String>,
-}
+struct App {}
 
 #[tokio::main]
 async fn main() {
-    let app = App::parse();
-    let dbg = sway_lsp::utils::debug::DebugFlags {
-        collected_tokens_as_warnings: app.collected_tokens_as_warnings,
-    };
-    sway_lsp::start(dbg).await
+    sway_lsp::start().await
 }
