@@ -1,14 +1,14 @@
 [[package]]
 name = 'core'
-source = 'path+from-root-4149B5BE2923795E'
+source = 'path+from-root-69347707506DB9FA'
 dependencies = []
 
 [[package]]
-name = 'exponent_test'
+name = 'logarithmic_test'
 source = 'root'
 dependencies = ['std']
 
 [[package]]
 name = 'std'
-source = 'path+from-root-4149B5BE2923795E'
+source = 'path+from-root-69347707506DB9FA'
 dependencies = ['core']

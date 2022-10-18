@@ -6,6 +6,7 @@ use ::assert::assert;
 use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
 use ::result::Result;
 use ::math::{Exponentiate, Root, BinaryLogarithm, Logarithm};
+use ::logging::*;
 
 /// The 128-bit unsigned integer type.
 /// Represented as two 64-bit components: `(upper, lower)`, where `value = (upper << 64) + lower`.
@@ -370,6 +371,13 @@ impl BinaryLogarithm for U128 {
         while s > zero {
             res += one;
             s >>= 1;
+
+            // log(5555555555555);
+            // log(s.lower);
+            // log(66666666666666);
+        }
+        if res > zero {
+            res -= one;
         }
         res
     }
@@ -379,6 +387,13 @@ impl Logarithm for U128 {
     fn log(self, base: Self) -> Self {
         let self_log2 = self.log2();
         let base_log2 = base.log2();
+        // log(111111111111);
+        // log(self_log2.lower);
+        // log(base_log2.lower);
+        // log(222222222222);
+        // std::logging::log(self_log2.lower);
+        // std::logging::log(base_log2.lower);
+        // std::logging::log(333333333333);
         self_log2 / base_log2
     }
 }
