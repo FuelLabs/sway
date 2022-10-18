@@ -5,6 +5,7 @@ use crate::{
         runnable::{Runnable, RunnableType},
     },
     core::{
+        config::Config,
         document::TextDocument,
         token::{Token, TokenMap, TypeDefinition},
         {traverse_parse_tree, traverse_typed_tree},
@@ -14,10 +15,8 @@ use crate::{
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
-use std::{
-    path::PathBuf,
-    sync::{Arc, LockResult, RwLock},
-};
+use parking_lot::RwLock;
+use std::{path::PathBuf, sync::Arc};
 use sway_core::{
     language::{parsed::ParseProgram, ty},
     CompileResult,
@@ -42,6 +41,7 @@ pub struct Session {
     pub documents: Documents,
     pub token_map: TokenMap,
     pub runnables: DashMap<RunnableType, Runnable>,
+    pub config: RwLock<Config>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub sync: SyncWorkspace,
 }
@@ -52,6 +52,7 @@ impl Session {
             documents: DashMap::new(),
             token_map: DashMap::new(),
             runnables: DashMap::new(),
+            config: RwLock::new(Default::default()),
             compiled_program: RwLock::new(Default::default()),
             sync: SyncWorkspace::new(),
         }
@@ -207,7 +208,8 @@ impl Session {
             }
         }
 
-        if let LockResult::Ok(mut program) = self.compiled_program.write() {
+        {
+            let mut program = self.compiled_program.write();
             program.parsed = Some(parse_program);
         }
 
@@ -247,7 +249,8 @@ impl Session {
             .chain(sub_nodes)
             .for_each(|node| traverse_typed_tree::traverse_node(node, &self.token_map));
 
-        if let LockResult::Ok(mut program) = self.compiled_program.write() {
+        {
+            let mut program = self.compiled_program.write();
             program.typed = Some(typed_program);
         }
 
@@ -282,7 +285,6 @@ impl Session {
         })
     }
 
-    // Token
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
         if let Some((_, token)) = self.token_at_position(url, position) {
             let token_ranges = self
@@ -343,10 +345,8 @@ impl Session {
 
 #[cfg(test)]
 mod tests {
-
-    use crate::test_utils::{get_absolute_path, get_url};
-
     use super::*;
+    use crate::test_utils::{get_absolute_path, get_url};
 
     #[test]
     fn store_document_returns_empty_tuple() {

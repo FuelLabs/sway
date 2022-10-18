@@ -1,8 +1,8 @@
-use crate::error::CompileError;
+use crate::{error::CompileError, warning::CompileWarning};
 
 use core::cell::RefCell;
 
-/// A handler with which you can emit errors.
+/// A handler with which you can emit diagnostics.
 #[derive(Default)]
 pub struct Handler {
     /// The inner handler.
@@ -15,19 +15,27 @@ pub struct Handler {
 #[derive(Default)]
 struct HandlerInner {
     /// The sink through which errors will be emitted.
-    sink: Vec<CompileError>,
+    errors: Vec<CompileError>,
+    /// The sink through which warnings will be emitted.
+    warnings: Vec<CompileWarning>,
 }
 
 impl Handler {
     /// Emit the error `err`.
     pub fn emit_err(&self, err: CompileError) -> ErrorEmitted {
-        self.inner.borrow_mut().sink.push(err);
+        self.inner.borrow_mut().errors.push(err);
         ErrorEmitted { _priv: () }
     }
 
+    /// Emit the warning `warn`.
+    pub fn emit_warn(&self, warn: CompileWarning) {
+        self.inner.borrow_mut().warnings.push(warn);
+    }
+
     /// Extract all the errors from this handler.
-    pub fn into_errors(self) -> Vec<CompileError> {
-        self.inner.into_inner().sink
+    pub fn consume(self) -> (Vec<CompileError>, Vec<CompileWarning>) {
+        let inner = self.inner.into_inner();
+        (inner.errors, inner.warnings)
     }
 }
 

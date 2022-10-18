@@ -15,11 +15,7 @@ pub(crate) use self::{
 use crate::{
     declaration_engine::declaration_engine::*,
     error::*,
-    language::{
-        parsed::*,
-        ty::{self, TyExpression},
-        *,
-    },
+    language::{parsed::*, ty, *},
     semantic_analysis::*,
     type_system::*,
 };
@@ -79,135 +75,12 @@ impl ty::TyExpression {
         )
     }
 
-    /// recurse into `self` and get any return statements -- used to validate that all returns
-    /// do indeed return the correct type
-    /// This does _not_ extract implicit return statements as those are not control flow! This is
-    /// _only_ for explicit returns.
-    pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
-        match &self.expression {
-            ty::TyExpressionVariant::IfExp {
-                condition,
-                then,
-                r#else,
-            } => {
-                let mut buf = condition.gather_return_statements();
-                buf.append(&mut then.gather_return_statements());
-                if let Some(ref r#else) = r#else {
-                    buf.append(&mut r#else.gather_return_statements());
-                }
-                buf
-            }
-            ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock { contents, .. }) => {
-                let mut buf = vec![];
-                for node in contents {
-                    buf.append(&mut node.gather_return_statements())
-                }
-                buf
-            }
-            ty::TyExpressionVariant::WhileLoop { condition, body } => {
-                let mut buf = condition.gather_return_statements();
-                for node in &body.contents {
-                    buf.append(&mut node.gather_return_statements())
-                }
-                buf
-            }
-            ty::TyExpressionVariant::Reassignment(reassignment) => {
-                reassignment.rhs.gather_return_statements()
-            }
-            ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {
-                storage_reassignment.rhs.gather_return_statements()
-            }
-            ty::TyExpressionVariant::LazyOperator { lhs, rhs, .. } => [lhs, rhs]
-                .into_iter()
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            ty::TyExpressionVariant::Tuple { fields } => fields
-                .iter()
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            ty::TyExpressionVariant::Array { contents } => contents
-                .iter()
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            ty::TyExpressionVariant::ArrayIndex { prefix, index } => [prefix, index]
-                .into_iter()
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            ty::TyExpressionVariant::StructFieldAccess { prefix, .. } => {
-                prefix.gather_return_statements()
-            }
-            ty::TyExpressionVariant::TupleElemAccess { prefix, .. } => {
-                prefix.gather_return_statements()
-            }
-            ty::TyExpressionVariant::EnumInstantiation { contents, .. } => contents
-                .iter()
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            ty::TyExpressionVariant::AbiCast { address, .. } => address.gather_return_statements(),
-            ty::TyExpressionVariant::IntrinsicFunction(intrinsic_function_kind) => {
-                intrinsic_function_kind
-                    .arguments
-                    .iter()
-                    .flat_map(|expr| expr.gather_return_statements())
-                    .collect()
-            }
-            ty::TyExpressionVariant::StructExpression { fields, .. } => fields
-                .iter()
-                .flat_map(|field| field.value.gather_return_statements())
-                .collect(),
-            ty::TyExpressionVariant::FunctionApplication {
-                contract_call_params,
-                arguments,
-                selector,
-                ..
-            } => contract_call_params
-                .values()
-                .chain(arguments.iter().map(|(_name, expr)| expr))
-                .chain(
-                    selector
-                        .iter()
-                        .map(|contract_call_params| &*contract_call_params.contract_address),
-                )
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            ty::TyExpressionVariant::EnumTag { exp } => exp.gather_return_statements(),
-            ty::TyExpressionVariant::UnsafeDowncast { exp, .. } => exp.gather_return_statements(),
-
-            ty::TyExpressionVariant::Return(exp) => {
-                vec![exp]
-            }
-            // if it is impossible for an expression to contain a return _statement_ (not an
-            // implicit return!), put it in the pattern below.
-            ty::TyExpressionVariant::Literal(_)
-            | ty::TyExpressionVariant::FunctionParameter { .. }
-            | ty::TyExpressionVariant::AsmExpression { .. }
-            | ty::TyExpressionVariant::VariableExpression { .. }
-            | ty::TyExpressionVariant::AbiName(_)
-            | ty::TyExpressionVariant::StorageAccess { .. }
-            | ty::TyExpressionVariant::Break
-            | ty::TyExpressionVariant::Continue => vec![],
-        }
-    }
-
-    /// gathers the mutability of the expressions within
-    pub(crate) fn gather_mutability(&self) -> ty::VariableMutability {
-        match &self.expression {
-            ty::TyExpressionVariant::VariableExpression { mutability, .. } => *mutability,
-            _ => ty::VariableMutability::Immutable,
-        }
-    }
-
-    /// Returns `self` as a literal, if possible.
-    pub(crate) fn extract_literal_value(&self) -> Option<Literal> {
-        self.expression.extract_literal_value()
-    }
-
     pub(crate) fn type_check(mut ctx: TypeCheckContext, expr: Expression) -> CompileResult<Self> {
         let expr_span = expr.span();
         let span = expr_span.clone();
         let res = match expr.kind {
             // We've already emitted an error for the `::Error` case.
-            ExpressionKind::Error(_) => ok(ty::error_recovery_expr(span), vec![], vec![]),
+            ExpressionKind::Error(_) => ok(ty::TyExpression::error(span), vec![], vec![]),
             ExpressionKind::Literal(lit) => Self::type_check_literal(lit, span),
             ExpressionKind::Variable(name) => {
                 Self::type_check_variable_expression(ctx.namespace, name, span)
@@ -361,7 +234,7 @@ impl ty::TyExpression {
                 let expr_span = expr.span();
                 let expr = check!(
                     ty::TyExpression::type_check(ctx, *expr),
-                    ty::error_recovery_expr(expr_span),
+                    ty::TyExpression::error(expr_span),
                     warnings,
                     errors,
                 );
@@ -512,13 +385,13 @@ impl ty::TyExpression {
                     name: name.clone(),
                     what_it_is: a.friendly_name(),
                 });
-                ty::error_recovery_expr(name.span())
+                ty::TyExpression::error(name.span())
             }
             None => {
                 errors.push(CompileError::UnknownVariable {
                     var_name: name.clone(),
                 });
-                ty::error_recovery_expr(name.span())
+                ty::TyExpression::error(name.span())
             }
         };
         ok(exp, warnings, errors)
@@ -533,7 +406,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        // type deck the declaration
+        // type check the declaration
         let unknown_decl = check!(
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref()),
             return err(warnings, errors),
@@ -564,14 +437,14 @@ impl ty::TyExpression {
         let mut ctx = ctx.with_help_text("");
         let typed_lhs = check!(
             ty::TyExpression::type_check(ctx.by_ref(), lhs.clone()),
-            ty::error_recovery_expr(lhs.span()),
+            ty::TyExpression::error(lhs.span()),
             warnings,
             errors
         );
 
         let typed_rhs = check!(
             ty::TyExpression::type_check(ctx.by_ref(), rhs.clone()),
-            ty::error_recovery_expr(rhs.span()),
+            ty::TyExpression::error(rhs.span()),
             warnings,
             errors
         );
@@ -631,7 +504,7 @@ impl ty::TyExpression {
                 .with_type_annotation(insert_type(TypeInfo::Boolean));
             check!(
                 ty::TyExpression::type_check(ctx, condition.clone()),
-                ty::error_recovery_expr(condition.span()),
+                ty::TyExpression::error(condition.span()),
                 warnings,
                 errors
             )
@@ -643,7 +516,7 @@ impl ty::TyExpression {
                 .with_type_annotation(insert_type(TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, then.clone()),
-                ty::error_recovery_expr(then.span()),
+                ty::TyExpression::error(then.span()),
                 warnings,
                 errors
             )
@@ -655,7 +528,7 @@ impl ty::TyExpression {
                 .with_type_annotation(insert_type(TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, expr.clone()),
-                ty::error_recovery_expr(expr.span()),
+                ty::TyExpression::error(expr.span()),
                 warnings,
                 errors
             )
@@ -693,7 +566,7 @@ impl ty::TyExpression {
                 .with_type_annotation(insert_type(TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, value.clone()),
-                ty::error_recovery_expr(value.span()),
+                ty::TyExpression::error(value.span()),
                 warnings,
                 errors
             )
@@ -797,7 +670,7 @@ impl ty::TyExpression {
                             .with_type_annotation(insert_type(TypeInfo::Unknown));
                         check!(
                             ty::TyExpression::type_check(ctx, initializer.clone()),
-                            ty::error_recovery_expr(initializer.span()),
+                            ty::TyExpression::error(initializer.span()),
                             warnings,
                             errors
                         )
@@ -825,16 +698,55 @@ impl ty::TyExpression {
     #[allow(clippy::too_many_arguments)]
     fn type_check_struct_expression(
         mut ctx: TypeCheckContext,
-        call_path_binding: TypeBinding<CallPath<(TypeInfo, Span)>>,
+        call_path_binding: TypeBinding<CallPath>,
         fields: Vec<StructExpressionField>,
         span: Span,
     ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        // type check the call path
+        let TypeBinding {
+            inner: CallPath {
+                prefixes, suffix, ..
+            },
+            type_arguments,
+            span: inner_span,
+        } = call_path_binding;
+        let type_info = match (suffix.as_str(), type_arguments.is_empty()) {
+            ("Self", true) => TypeInfo::SelfType,
+            ("Self", false) => {
+                errors.push(CompileError::TypeArgumentsNotAllowed {
+                    span: suffix.span(),
+                });
+                return err(warnings, errors);
+            }
+            (_, true) => TypeInfo::Custom {
+                name: suffix,
+                type_arguments: None,
+            },
+            (_, false) => TypeInfo::Custom {
+                name: suffix,
+                type_arguments: Some(type_arguments),
+            },
+        };
+
+        // find the module that the struct decl is in
+        let type_info_prefix = ctx.namespace.find_module_path(&prefixes);
+        check!(
+            ctx.namespace.root().check_submodule(&type_info_prefix),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // resolve the type of the struct decl
         let type_id = check!(
-            call_path_binding.type_check_with_type_info(&mut ctx),
+            ctx.resolve_type_with_self(
+                insert_type(type_info),
+                &inner_span,
+                EnforceTypeArguments::No,
+                Some(&type_info_prefix)
+            ),
             insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors
@@ -908,7 +820,7 @@ impl ty::TyExpression {
             expression: ty::TyExpressionVariant::StructExpression {
                 struct_name: struct_name.clone(),
                 fields: typed_fields_buf,
-                span: call_path_binding.inner.suffix.1.clone(),
+                span: inner_span,
             },
             return_type: type_id,
             span,
@@ -970,7 +882,7 @@ impl ty::TyExpression {
                 .with_type_annotation(field_type.type_id);
             let typed_field = check!(
                 ty::TyExpression::type_check(ctx, field),
-                ty::error_recovery_expr(field_span),
+                ty::TyExpression::error(field_span),
                 warnings,
                 errors
             );
@@ -1193,7 +1105,7 @@ impl ty::TyExpression {
                 .with_type_annotation(insert_type(TypeInfo::B256));
             check!(
                 ty::TyExpression::type_check(ctx, address),
-                ty::error_recovery_expr(err_span),
+                ty::TyExpression::error(err_span),
                 warnings,
                 errors
             )
@@ -1349,7 +1261,7 @@ impl ty::TyExpression {
                     .with_type_annotation(insert_type(TypeInfo::Unknown));
                 check!(
                     Self::type_check(ctx, expr),
-                    ty::error_recovery_expr(span),
+                    ty::TyExpression::error(span),
                     warnings,
                     errors
                 )
@@ -1595,7 +1507,7 @@ impl ty::TyExpression {
                 let rhs_span = rhs.span();
                 let rhs = check!(
                     ty::TyExpression::type_check(ctx, rhs),
-                    ty::error_recovery_expr(rhs_span),
+                    ty::TyExpression::error(rhs_span),
                     warnings,
                     errors
                 );
@@ -1720,7 +1632,7 @@ impl ty::TyExpression {
             }
             Err(e) => {
                 errors.push(e);
-                let exp = ty::error_recovery_expr(span);
+                let exp = ty::TyExpression::error(span);
                 ok(exp, vec![], errors)
             }
         }
