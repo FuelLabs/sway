@@ -152,7 +152,7 @@ Note that each key after the `[patch]` is a URL of the source that is being patc
 
 ## The `[contract-dependencies]` section
 
-The [contract-dependenices] section of `Forc.toml` can be used to declare deployment dependencies for a contract. If a contract is added under [contract-dependencies], it is going to be built just like regular [dependencies] but in addition to that their contract id is automatically inserted into the namespace of the root project. This means, you can have `use` statements that imports the contract id for a contract that is declared under [contract-dependencies] to the root project. An example of this usage and `Forc.toml` can be found below.
+The `[contract-dependenices]` section of `Forc.toml` can be used to declare deployment dependencies for a contract. Contracts declared under `[contract-dependencies]` are built just like regular `[dependencies]` however rather than importing each contract dependency's entire public namespace we instead import their respective contract IDs as `CONTRACT_ID` constants available via each contract dependency's namespace root. This means you can use a contract dependency's ID as if it were declared as a `pub const` in the root of the contract dependency package as demonstrated in the example below.
 
 Note that each key after [contract-dependencies] are essentially [dependencies] and they can be declared the same way. Since we are declaring the list of contracts that needs to be deployed before the current project depends on, each dependency declared under [contract-dependencies] must be a contract.
 
