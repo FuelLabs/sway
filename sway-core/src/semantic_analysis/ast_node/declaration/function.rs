@@ -9,10 +9,7 @@ use crate::{
     semantic_analysis::*,
     type_system::*,
 };
-use sha2::{Digest, Sha256};
-use sway_types::{
-    style::is_snake_case, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned,
-};
+use sway_types::{style::is_snake_case, Spanned};
 
 impl ty::TyFunctionDeclaration {
     pub fn type_check(ctx: TypeCheckContext, fn_decl: FunctionDeclaration) -> CompileResult<Self> {
@@ -142,136 +139,12 @@ impl ty::TyFunctionDeclaration {
 
         ok(function_decl, warnings, errors)
     }
-
-    /// If there are parameters, join their spans. Otherwise, use the fn name span.
-    pub(crate) fn parameters_span(&self) -> Span {
-        if !self.parameters.is_empty() {
-            self.parameters.iter().fold(
-                self.parameters[0].name.span(),
-                |acc, ty::TyFunctionParameter { type_span, .. }| Span::join(acc, type_span.clone()),
-            )
-        } else {
-            self.name.span()
-        }
-    }
-
-    pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<Vec<u8>> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-        let mut hasher = Sha256::new();
-        let data = check!(
-            self.to_selector_name(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        hasher.update(data);
-        let hash = hasher.finalize();
-        ok(hash.to_vec(), warnings, errors)
-    }
-
-    /// Converts a [ty::TyFunctionDeclaration] into a value that is to be used in contract function
-    /// selectors.
-    /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
-    pub fn to_fn_selector_value(&self) -> CompileResult<[u8; 4]> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-        let hash = check!(
-            self.to_fn_selector_value_untruncated(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        // 4 bytes truncation via copying into a 4 byte buffer
-        let mut buf = [0u8; 4];
-        buf.copy_from_slice(&hash[..4]);
-        ok(buf, warnings, errors)
-    }
-
-    pub fn to_selector_name(&self) -> CompileResult<String> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-        let named_params = self
-            .parameters
-            .iter()
-            .map(
-                |ty::TyFunctionParameter {
-                     type_id, type_span, ..
-                 }| {
-                    to_typeinfo(*type_id, type_span)
-                        .expect("unreachable I think?")
-                        .to_selector_name(type_span)
-                },
-            )
-            .filter_map(|name| name.ok(&mut warnings, &mut errors))
-            .collect::<Vec<String>>();
-
-        ok(
-            format!("{}({})", self.name.as_str(), named_params.join(","),),
-            warnings,
-            errors,
-        )
-    }
-
-    pub(crate) fn generate_json_abi_function(
-        &self,
-        types: &mut Vec<JsonTypeDeclaration>,
-    ) -> JsonABIFunction {
-        // A list of all `JsonTypeDeclaration`s needed for inputs
-        let input_types = self
-            .parameters
-            .iter()
-            .map(|x| JsonTypeDeclaration {
-                type_id: *x.initial_type_id,
-                type_field: x.initial_type_id.get_json_type_str(x.type_id),
-                components: x.initial_type_id.get_json_type_components(types, x.type_id),
-                type_parameters: x.type_id.get_json_type_parameters(types, x.type_id),
-            })
-            .collect::<Vec<_>>();
-
-        // The single `JsonTypeDeclaration` needed for the output
-        let output_type = JsonTypeDeclaration {
-            type_id: *self.initial_return_type,
-            type_field: self.initial_return_type.get_json_type_str(self.return_type),
-            components: self
-                .return_type
-                .get_json_type_components(types, self.return_type),
-            type_parameters: self
-                .return_type
-                .get_json_type_parameters(types, self.return_type),
-        };
-
-        // Add the new types to `types`
-        types.extend(input_types);
-        types.push(output_type);
-
-        // Generate the JSON data for the function
-        JsonABIFunction {
-            name: self.name.as_str().to_string(),
-            inputs: self
-                .parameters
-                .iter()
-                .map(|x| JsonTypeApplication {
-                    name: x.name.to_string(),
-                    type_id: *x.initial_type_id,
-                    type_arguments: x.initial_type_id.get_json_type_arguments(types, x.type_id),
-                })
-                .collect(),
-            output: JsonTypeApplication {
-                name: "".to_string(),
-                type_id: *self.initial_return_type,
-                type_arguments: self
-                    .initial_return_type
-                    .get_json_type_arguments(types, self.return_type),
-            },
-        }
-    }
 }
 
 #[test]
 fn test_function_selector_behavior() {
     use crate::language::Visibility;
-    use sway_types::{integer_bits::IntegerBits, Ident};
+    use sway_types::{integer_bits::IntegerBits, Ident, Span};
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_no_span("foo"),

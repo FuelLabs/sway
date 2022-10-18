@@ -160,24 +160,17 @@ impl Parse for FnSignature {
 
 #[cfg(test)]
 mod tests {
-    use sway_error::handler::Handler;
-
     use super::*;
     use std::sync::Arc;
     use sway_ast::{AttributeDecl, CommaToken, Item, Punctuated};
     use sway_types::Ident;
 
     fn parse_item(input: &str) -> Item {
-        let handler = Handler::default();
-        let token_stream =
-            crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
-        let mut parser = Parser::new(&handler, &token_stream);
-        match Item::parse(&mut parser) {
-            Ok(item) => item,
-            Err(_) => {
-                panic!("Parse error: {:?}", handler.into_errors());
-            }
-        }
+        let handler = <_>::default();
+        let ts = crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
+        Parser::new(&handler, &ts)
+            .parse()
+            .unwrap_or_else(|_| panic!("Parse error: {:?}", handler.consume().0))
     }
 
     fn get_attribute_args(attrib: &AttributeDecl) -> &Punctuated<Ident, CommaToken> {

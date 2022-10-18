@@ -10,11 +10,7 @@ pub(crate) use mode::*;
 use crate::{
     declaration_engine::{declaration_engine::*, DeclarationId},
     error::*,
-    language::{
-        parsed::*,
-        ty::{self, TyExpression},
-        Visibility,
-    },
+    language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
     type_system::*,
     types::DeterministicallyAborts,
@@ -27,94 +23,7 @@ use sway_error::{
 };
 use sway_types::{span::Span, state::StateIndex, style::is_screaming_snake_case, Spanned};
 
-/// whether or not something is constantly evaluatable (if the result is known at compile
-/// time)
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub(crate) enum IsConstant {
-    Yes,
-    No,
-}
-
 impl ty::TyAstNode {
-    /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
-    pub(crate) fn is_public(&self) -> CompileResult<bool> {
-        use ty::TyAstNodeContent::*;
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let public = match &self.content {
-            Declaration(decl) => {
-                let visibility = check!(
-                    decl.visibility(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                visibility.is_public()
-            }
-            Expression(_) | SideEffect | ImplicitReturnExpression(_) => false,
-        };
-        ok(public, warnings, errors)
-    }
-
-    /// Naive check to see if this node is a function declaration of a function called `main` if
-    /// the [TreeType] is Script or Predicate.
-    pub(crate) fn is_main_function(&self, tree_type: TreeType) -> CompileResult<bool> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        match &self {
-            ty::TyAstNode {
-                span,
-                content:
-                    ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(decl_id)),
-                ..
-            } => {
-                let ty::TyFunctionDeclaration { name, .. } = check!(
-                    CompileResult::from(de_get_function(decl_id.clone(), span)),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                let is_main = name.as_str() == sway_types::constants::DEFAULT_ENTRY_POINT_FN_NAME
-                    && matches!(tree_type, TreeType::Script | TreeType::Predicate);
-                ok(is_main, warnings, errors)
-            }
-            _ => ok(false, warnings, errors),
-        }
-    }
-
-    /// recurse into `self` and get any return statements -- used to validate that all returns
-    /// do indeed return the correct type
-    /// This does _not_ extract implicit return statements as those are not control flow! This is
-    /// _only_ for explicit returns.
-    pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
-        match &self.content {
-            ty::TyAstNodeContent::ImplicitReturnExpression(ref exp) => {
-                exp.gather_return_statements()
-            }
-            // assignments and  reassignments can happen during control flow and can abort
-            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::VariableDeclaration(decl)) => {
-                decl.body.gather_return_statements()
-            }
-            ty::TyAstNodeContent::Expression(exp) => exp.gather_return_statements(),
-            ty::TyAstNodeContent::SideEffect | ty::TyAstNodeContent::Declaration(_) => vec![],
-        }
-    }
-
-    fn type_info(&self) -> TypeInfo {
-        // return statement should be ()
-        use ty::TyAstNodeContent::*;
-        match &self.content {
-            Declaration(_) => TypeInfo::Tuple(Vec::new()),
-            Expression(ty::TyExpression { return_type, .. }) => {
-                crate::type_system::look_up_type_id(*return_type)
-            }
-            ImplicitReturnExpression(ty::TyExpression { return_type, .. }) => {
-                crate::type_system::look_up_type_id(*return_type)
-            }
-            SideEffect => TypeInfo::Tuple(Vec::new()),
-        }
-    }
-
     pub(crate) fn type_check(mut ctx: TypeCheckContext, node: AstNode) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -185,7 +94,7 @@ impl ty::TyAstNode {
                             let result = ty::TyExpression::type_check(ctx.by_ref(), body);
                             let body = check!(
                                 result,
-                                ty::error_recovery_expr(name.span()),
+                                ty::TyExpression::error(name.span()),
                                 warnings,
                                 errors
                             );
@@ -225,7 +134,7 @@ impl ty::TyAstNode {
 
                             let value = check!(
                                 result,
-                                ty::error_recovery_expr(name.span()),
+                                ty::TyExpression::error(name.span()),
                                 warnings,
                                 errors
                             );
@@ -265,7 +174,7 @@ impl ty::TyAstNode {
                                     ctx.by_ref(),
                                     fn_decl.clone()
                                 ),
-                                error_recovery_function_declaration(fn_decl),
+                                ty::TyFunctionDeclaration::error(fn_decl),
                                 warnings,
                                 errors
                             );
@@ -428,7 +337,7 @@ impl ty::TyAstNode {
                         .with_help_text("");
                     let inner = check!(
                         ty::TyExpression::type_check(ctx, expr.clone()),
-                        ty::error_recovery_expr(expr.span()),
+                        ty::TyExpression::error(expr.span()),
                         warnings,
                         errors
                     );
@@ -439,7 +348,7 @@ impl ty::TyAstNode {
                         ctx.with_help_text("Implicit return must match up with block's type.");
                     let typed_expr = check!(
                         ty::TyExpression::type_check(ctx, expr.clone()),
-                        ty::error_recovery_expr(expr.span()),
+                        ty::TyExpression::error(expr.span()),
                         warnings,
                         errors
                     );
@@ -646,36 +555,6 @@ fn type_check_trait_methods(
     ok(methods_buf, warnings, errors)
 }
 
-/// Used to create a stubbed out function when the function fails to compile, preventing cascading
-/// namespace errors
-fn error_recovery_function_declaration(decl: FunctionDeclaration) -> ty::TyFunctionDeclaration {
-    let FunctionDeclaration {
-        name,
-        return_type,
-        span,
-        return_type_span,
-        visibility,
-        ..
-    } = decl;
-    let initial_return_type = insert_type(return_type);
-    ty::TyFunctionDeclaration {
-        purity: Default::default(),
-        name,
-        body: ty::TyCodeBlock {
-            contents: Default::default(),
-        },
-        span,
-        attributes: Default::default(),
-        is_contract_call: false,
-        return_type_span,
-        parameters: Default::default(),
-        visibility,
-        return_type: initial_return_type,
-        initial_return_type,
-        type_parameters: Default::default(),
-    }
-}
-
 pub(crate) fn reassign_storage_subfield(
     ctx: TypeCheckContext,
     fields: Vec<Ident>,
@@ -770,7 +649,7 @@ pub(crate) fn reassign_storage_subfield(
     let ctx = ctx.with_type_annotation(curr_type).with_help_text("");
     let rhs = check!(
         ty::TyExpression::type_check(ctx, rhs),
-        ty::error_recovery_expr(span),
+        ty::TyExpression::error(span),
         warnings,
         errors
     );

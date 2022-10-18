@@ -211,7 +211,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 ),
             );
 
-            for type_param in &impl_trait.type_parameters {
+            for type_param in &impl_trait.impl_type_parameters {
                 collect_type_parameter(
                     type_param,
                     tokens,
@@ -239,7 +239,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 }
             }
 
-            for type_param in &impl_self.type_parameters {
+            for type_param in &impl_self.impl_type_parameters {
                 collect_type_parameter(
                     type_param,
                     tokens,
@@ -392,23 +392,13 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 );
             }
 
-            if let (
-                TypeInfo::Custom {
-                    name,
-                    type_arguments,
-                },
-                ..,
-            ) = &call_path_binding.inner.suffix
-            {
-                let token = Token::from_parsed(
-                    AstToken::Expression(expression.clone()),
-                    SymbolKind::Struct,
-                );
-                tokens.insert(to_ident_key(name), token.clone());
-                if let Some(args) = type_arguments {
-                    collect_type_args(args, &token, tokens);
-                }
-            }
+            let name = &call_path_binding.inner.suffix;
+            let type_arguments = &call_path_binding.type_arguments;
+
+            let token =
+                Token::from_parsed(AstToken::Expression(expression.clone()), SymbolKind::Struct);
+            tokens.insert(to_ident_key(name), token.clone());
+            collect_type_args(type_arguments, &token, tokens);
 
             for field in fields {
                 tokens.insert(

@@ -1,8 +1,9 @@
 use std::hash::{Hash, Hasher};
 
+use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{language::Visibility, type_system::*, AttributesMap};
+use crate::{error::*, language::Visibility, transform, type_system::*};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyStructDeclaration {
@@ -11,7 +12,7 @@ pub struct TyStructDeclaration {
     pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
     pub(crate) span: Span,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -63,6 +64,33 @@ impl MonomorphizeHelper for TyStructDeclaration {
     }
 }
 
+impl TyStructDeclaration {
+    pub(crate) fn expect_field(&self, field_to_access: &Ident) -> CompileResult<&TyStructField> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self
+            .fields
+            .iter()
+            .find(|TyStructField { name, .. }| name.as_str() == field_to_access.as_str())
+        {
+            Some(field) => ok(field, warnings, errors),
+            None => {
+                errors.push(CompileError::FieldNotFound {
+                    available_fields: self
+                        .fields
+                        .iter()
+                        .map(|TyStructField { name, .. }| name.to_string())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                    field_name: field_to_access.clone(),
+                    struct_name: self.name.clone(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq)]
 pub struct TyStructField {
     pub name: Ident,
@@ -70,7 +98,7 @@ pub struct TyStructField {
     pub initial_type_id: TypeId,
     pub(crate) span: Span,
     pub type_span: Span,
-    pub attributes: AttributesMap,
+    pub attributes: transform::AttributesMap,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

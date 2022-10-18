@@ -7,7 +7,7 @@ use crate::{
         ast_node::expression::typed_expression::{
             instantiate_if_expression, instantiate_lazy_operator,
         },
-        IsConstant, TypeCheckContext,
+        TypeCheckContext,
     },
     type_system::insert_type,
     CompileError, CompileResult, TypeInfo,
@@ -119,7 +119,6 @@ impl ty::TyMatchExpression {
                     let conditional = ty::TyExpression {
                         expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
                         return_type: insert_type(TypeInfo::Boolean),
-                        is_constant: IsConstant::No,
                         span: result_span.clone(),
                     };
                     check!(
