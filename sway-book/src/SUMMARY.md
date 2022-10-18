@@ -2,6 +2,10 @@
 
 [Welcome!](./index.md)
 
+# Introduction
+
+- [Installation]()
+
 # The Sway Programming Language
 
 - [Program Types](./documentation/language/program-types/index.md)
@@ -88,6 +92,7 @@
 
 # Miscellaneous
 
+- [Standard Library Prelude](./documentation/misc/prelude.md)
 - [Known Issues](./documentation/misc/workarounds/index.md)
   - [General](./documentation/misc/workarounds/general.md)
   - [Missing Features](./documentation/misc/workarounds/missing-features.md)
