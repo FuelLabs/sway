@@ -1,46 +1,43 @@
-use crate::{descriptor::Descriptor, doc::Documentation};
+use crate::{descriptor::DescriptorType, doc::Documentation};
 use horrorshow::{box_html, html, prelude::*};
+use sway_core::language::ty::{
+    TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyFunctionDeclaration, TyImplTrait,
+    TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration,
+};
 
 pub(crate) struct HTMLString(pub(crate) String);
-
-pub(crate) struct RenderedDocumentation {
-    pub(crate) file_contents: HTMLString,
-    pub(crate) file_name: String,
+pub(crate) type RenderedDocumentation = Vec<RenderedDocument>;
+/// A [Document] rendered to HTML.
+pub(crate) struct RenderedDocument {
     pub(crate) module_prefix: Vec<String>,
+    pub(crate) file_name: String,
+    pub(crate) file_contents: HTMLString,
 }
-impl RenderedDocumentation {
-    pub fn render(raw: &Documentation) -> Vec<RenderedDocumentation> {
-        let mut buf: Vec<RenderedDocumentation> = Default::default();
-        for (desc, (_docs, _ty)) in raw {
-            let file_name = match desc.to_file_name() {
-                Some(x) => x,
-                None => continue,
+impl RenderedDocument {
+    /// Top level HTML rendering for all [Documentation] of a program.
+    pub fn render(raw: &Documentation) -> RenderedDocumentation {
+        let mut buf: RenderedDocumentation = Default::default();
+        for doc in raw {
+            let rendered_content = match &doc.desc_ty {
+                DescriptorType::Struct(struct_decl) => struct_decl.render(),
+                DescriptorType::Enum(enum_decl) => enum_decl.render(),
+                DescriptorType::Trait(trait_decl) => trait_decl.render(),
+                DescriptorType::Abi(abi_decl) => abi_decl.render(),
+                DescriptorType::Storage(storage_decl) => storage_decl.render(),
+                DescriptorType::ImplTraitDesc(impl_trait_decl) => impl_trait_decl.render(),
+                DescriptorType::Function(fn_decl) => fn_decl.render(),
+                DescriptorType::Const(const_decl) => const_decl.render(),
             };
-            if let Descriptor::Documentable {
-                ty,
-                name,
-                module_prefix,
-            } = desc
-            {
-                let name_str = match name {
-                    Some(name) => name.as_str(),
-                    None => ty.to_name(),
-                };
-                buf.push(Self {
-                    module_prefix: module_prefix.clone(),
-                    // proof of concept, TODO render actual HTML
-                    file_contents: HTMLString((html! { : desc.render(); }).to_string()),
-                    file_name,
-                })
-            }
+            buf.push(Self {
+                module_prefix: doc.module_prefix.clone(),
+                file_name: doc.file_name(),
+                file_contents: HTMLString((html! { rendered_content }).to_string()),
+            })
         }
         buf
     }
 }
 
-pub(crate) fn create_html_file_name(ty: &str, name: &str) -> String {
-    format!("{}.{}.html", ty, name)
-}
 /// Basic HTML header component
 pub(crate) fn header(module: String, desc_ty: String, desc_name: String) -> Box<dyn RenderBox> {
     box_html! {
@@ -94,21 +91,47 @@ pub(crate) fn body(module: String, desc_ty: String, desc_name: String) -> Box<dy
 
 // TODO: Create `fn index` and `fn all`
 
-pub trait Renderable {
+trait Renderable {
     fn render(&self) -> Box<dyn RenderBox>;
 }
 
-impl Renderable for Descriptor {
+impl Renderable for TyStructDeclaration {
     fn render(&self) -> Box<dyn RenderBox> {
-        match self {
-            Descriptor::Documentable {
-                module_prefix,
-                ty,
-                name,
-            } => {
-                todo!()
-            }
-            _ => todo!("do nothing"),
-        }
+        box_html! {}
+    }
+}
+impl Renderable for TyEnumDeclaration {
+    fn render(&self) -> Box<dyn RenderBox> {
+        box_html! {}
+    }
+}
+impl Renderable for TyTraitDeclaration {
+    fn render(&self) -> Box<dyn RenderBox> {
+        box_html! {}
+    }
+}
+impl Renderable for TyAbiDeclaration {
+    fn render(&self) -> Box<dyn RenderBox> {
+        box_html! {}
+    }
+}
+impl Renderable for TyStorageDeclaration {
+    fn render(&self) -> Box<dyn RenderBox> {
+        box_html! {}
+    }
+}
+impl Renderable for TyImplTrait {
+    fn render(&self) -> Box<dyn RenderBox> {
+        box_html! {}
+    }
+}
+impl Renderable for TyFunctionDeclaration {
+    fn render(&self) -> Box<dyn RenderBox> {
+        box_html! {}
+    }
+}
+impl Renderable for TyConstantDeclaration {
+    fn render(&self) -> Box<dyn RenderBox> {
+        box_html! {}
     }
 }

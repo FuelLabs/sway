@@ -1,112 +1,118 @@
-use crate::render::create_html_file_name;
-use sway_core::{declaration_engine::*, language::ty::TyDeclaration};
-use sway_types::{Ident, Spanned};
+//! Determine whether a [Declaration] is documentable.
+use anyhow::Result;
+use sway_core::{
+    declaration_engine::*,
+    language::ty::{
+        TyAbiDeclaration, TyConstantDeclaration, TyDeclaration, TyEnumDeclaration,
+        TyFunctionDeclaration, TyImplTrait, TyStorageDeclaration, TyStructDeclaration,
+        TyTraitDeclaration,
+    },
+};
+use sway_types::Spanned;
 
-#[derive(Eq, PartialEq, Ord, PartialOrd, Debug)]
-/// The type of [Declaration] to be documented by the [Descriptor].
+#[derive(Eq, PartialEq, Debug)]
+// TODO: See if there's a way we can use the TyDeclarations directly
+//
+/// The type of [TyDeclaration] documented by the [Descriptor].
 pub(crate) enum DescriptorType {
-    Struct,
-    Enum,
-    Trait,
-    Abi,
-    Storage,
-    ImplTraitDesc,
-    Function,
-    Const,
+    Struct(TyStructDeclaration),
+    Enum(TyEnumDeclaration),
+    Trait(TyTraitDeclaration),
+    Abi(TyAbiDeclaration),
+    Storage(TyStorageDeclaration),
+    ImplTraitDesc(TyImplTrait),
+    Function(TyFunctionDeclaration),
+    Const(Box<TyConstantDeclaration>),
 }
 impl DescriptorType {
     /// Converts the [DescriptorType] to a `&str` name for HTML file name creation.
-    pub fn to_name(&self) -> &'static str {
+    pub fn to_path_name(&self) -> &'static str {
         use DescriptorType::*;
         match self {
-            Struct => "struct",
-            Enum => "enum",
-            Trait => "trait",
-            Abi => "abi",
-            Storage => "storage",
-            ImplTraitDesc => "impl_trait",
-            Function => "function",
-            Const => "const",
+            Struct(_) => "struct",
+            Enum(_) => "enum",
+            Trait(_) => "trait",
+            Abi(_) => "abi",
+            Storage(_) => "storage",
+            ImplTraitDesc(_) => "impl_trait",
+            Function(_) => "function",
+            Const(_) => "const",
         }
     }
 }
 
-#[derive(Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Eq, PartialEq)]
 /// Used in deciding whether or not a [Declaration] is documentable.
 pub(crate) enum Descriptor {
     Documentable {
-        /// if empty, then this is the root module.
+        // If empty, this is the root.
         module_prefix: Vec<String>,
-        ty: DescriptorType,
-        name: Option<Ident>,
+        // We want _all_ of the TyDeclaration information.
+        desc_ty: Box<DescriptorType>,
     },
     NonDocumentable,
 }
 impl Descriptor {
-    /// Creates the HTML file name from the [Descriptor].
-    pub fn to_file_name(&self) -> Option<String> {
-        use Descriptor::*;
-        match self {
-            NonDocumentable => None,
-            Documentable { ty, name, .. } => {
-                let name_str = match name {
-                    Some(name) => name.as_str(),
-                    None => ty.to_name(),
-                };
-                Some(create_html_file_name(ty.to_name(), name_str))
-            }
-        }
-    }
-    pub(crate) fn from_typed_decl(d: &TyDeclaration, module_prefix: Vec<String>) -> Self {
-        use DescriptorType::*;
+    pub(crate) fn from_typed_decl(d: &TyDeclaration, module_prefix: Vec<String>) -> Result<Self> {
         use TyDeclaration::*;
         match d {
-            StructDeclaration(ref decl) => Descriptor::Documentable {
-                module_prefix,
-                ty: Struct,
-                name: Some(de_get_struct(decl.clone(), &decl.span()).unwrap().name),
-            },
-            EnumDeclaration(ref decl) => Descriptor::Documentable {
-                module_prefix,
-                ty: Enum,
-                name: Some(de_get_enum(decl.clone(), &decl.span()).unwrap().name),
-            },
-            TraitDeclaration(ref decl) => Descriptor::Documentable {
-                module_prefix,
-                ty: Trait,
-                name: Some(de_get_trait(decl.clone(), &decl.span()).unwrap().name),
-            },
-            AbiDeclaration(ref decl) => Descriptor::Documentable {
-                module_prefix,
-                ty: Abi,
-                name: Some(de_get_abi(decl.clone(), &decl.span()).unwrap().name),
-            },
-            StorageDeclaration(_) => Descriptor::Documentable {
-                module_prefix,
-                ty: Storage,
-                name: None,
-            },
-            ImplTrait(ref decl) => Descriptor::Documentable {
-                module_prefix,
-                ty: ImplTraitDesc,
-                name: Some(
-                    de_get_impl_trait(decl.clone(), &decl.span())
-                        .unwrap()
-                        .trait_name
-                        .suffix,
-                ),
-            },
-            FunctionDeclaration(ref decl) => Descriptor::Documentable {
-                module_prefix,
-                ty: Function,
-                name: Some(de_get_function(decl.clone(), &decl.span()).unwrap().name),
-            },
-            ConstantDeclaration(ref decl) => Descriptor::Documentable {
-                module_prefix,
-                ty: Const,
-                name: Some(de_get_constant(decl.clone(), &decl.span()).unwrap().name),
-            },
-            _ => Descriptor::NonDocumentable,
+            StructDeclaration(ref decl_id) => {
+                let struct_decl = de_get_struct(decl_id.clone(), &decl_id.span())?;
+                Ok(Descriptor::Documentable {
+                    module_prefix,
+                    desc_ty: Box::new(DescriptorType::Struct(struct_decl)),
+                })
+            }
+            EnumDeclaration(ref decl_id) => {
+                let enum_decl = de_get_enum(decl_id.clone(), &decl_id.span())?;
+                Ok(Descriptor::Documentable {
+                    module_prefix,
+                    desc_ty: Box::new(DescriptorType::Enum(enum_decl)),
+                })
+            }
+            TraitDeclaration(ref decl_id) => {
+                let trait_decl = de_get_trait(decl_id.clone(), &decl_id.span())?;
+                Ok(Descriptor::Documentable {
+                    module_prefix,
+                    desc_ty: Box::new(DescriptorType::Trait(trait_decl)),
+                })
+            }
+            AbiDeclaration(ref decl_id) => {
+                let abi_decl = de_get_abi(decl_id.clone(), &decl_id.span())?;
+                Ok(Descriptor::Documentable {
+                    module_prefix,
+                    desc_ty: Box::new(DescriptorType::Abi(abi_decl)),
+                })
+            }
+            StorageDeclaration(ref decl_id) => {
+                let storage_decl = de_get_storage(decl_id.clone(), &decl_id.span())?;
+                Ok(Descriptor::Documentable {
+                    module_prefix,
+                    desc_ty: Box::new(DescriptorType::Storage(storage_decl)),
+                })
+            }
+            ImplTrait(ref decl_id) => {
+                let impl_trait = de_get_impl_trait(decl_id.clone(), &decl_id.span())?;
+                Ok(Descriptor::Documentable {
+                    module_prefix,
+                    desc_ty: Box::new(DescriptorType::ImplTraitDesc(impl_trait)),
+                })
+            }
+            FunctionDeclaration(ref decl_id) => {
+                let fn_decl = de_get_function(decl_id.clone(), &decl_id.span())?;
+                Ok(Descriptor::Documentable {
+                    module_prefix,
+                    desc_ty: Box::new(DescriptorType::Function(fn_decl)),
+                })
+            }
+            ConstantDeclaration(ref decl_id) => {
+                let const_decl = de_get_constant(decl_id.clone(), &decl_id.span())?;
+                Ok(Descriptor::Documentable {
+                    module_prefix,
+                    desc_ty: Box::new(DescriptorType::Const(Box::new(const_decl))),
+                })
+            }
+            _ => Ok(Descriptor::NonDocumentable),
         }
     }
 }

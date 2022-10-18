@@ -11,7 +11,7 @@ use std::{
     {fs, path::PathBuf},
 };
 
-use crate::{doc::get_compiled_docs, render::RenderedDocumentation};
+use crate::{doc::get_compiled_docs, render::RenderedDocument};
 use forc_pkg::{self as pkg, PackageManifestFile};
 
 /// Main method for `forc doc`.
@@ -46,7 +46,7 @@ pub fn main() -> Result<()> {
     let compilation = pkg::check(&plan, silent_mode)?;
     let docs = get_compiled_docs(&compilation, no_deps)?;
     // render docs to HTML
-    let rendered = RenderedDocumentation::render(&docs);
+    let rendered = RenderedDocument::render(&docs);
 
     // write to outfile
     for entry in rendered {

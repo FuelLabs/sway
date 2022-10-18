@@ -1,20 +1,48 @@
-use crate::descriptor::Descriptor;
+use crate::descriptor::{Descriptor, DescriptorType};
 use anyhow::Result;
-use std::collections::BTreeMap;
 use sway_core::{
-    declaration_engine::{
-        de_get_abi, de_get_constant, de_get_enum, de_get_function, de_get_impl_trait,
-        de_get_storage, de_get_struct, de_get_trait,
+    language::{
+        ty::{TyAstNodeContent, TySubmodule},
+        {parsed::ParseProgram, ty::TyProgram},
     },
-    language::ty::{TyAstNode, TyAstNodeContent, TyDeclaration, TySubmodule},
-    language::{parsed::ParseProgram, ty::TyProgram},
-    transform::{Attribute, AttributeKind, AttributesMap},
     CompileResult,
 };
-use sway_types::Spanned;
 
-type TypeInformation = TyDeclaration;
-pub(crate) type Documentation = BTreeMap<Descriptor, (Vec<Attribute>, TypeInformation)>;
+pub(crate) type Documentation = Vec<Document>;
+/// A finalized Document ready to be rendered. We want to retain all
+/// information including spans, fields on structs, variants on enums etc.
+pub(crate) struct Document {
+    pub(crate) module_prefix: Vec<String>,
+    pub(crate) desc_ty: DescriptorType,
+}
+impl Document {
+    // Creates an HTML file name from the [Document].
+    pub fn file_name(&self) -> String {
+        use DescriptorType::*;
+        let name = match &self.desc_ty {
+            Struct(ty_struct_decl) => Some(ty_struct_decl.name.as_str()),
+            Enum(ty_enum_decl) => Some(ty_enum_decl.name.as_str()),
+            Trait(ty_trait_decl) => Some(ty_trait_decl.name.as_str()),
+            Abi(ty_abi_decl) => Some(ty_abi_decl.name.as_str()),
+            Storage(_) => None, // storage does not have an Ident
+            ImplTraitDesc(ty_impl_trait) => Some(ty_impl_trait.trait_name.suffix.as_str()), // TODO: check validity
+            Function(ty_fn_decl) => Some(ty_fn_decl.name.as_str()),
+            Const(ty_const_decl) => Some(ty_const_decl.name.as_str()),
+        };
+
+        Document::create_html_file_name(self.desc_ty.to_path_name(), name)
+    }
+    fn create_html_file_name(ty: &str, name: Option<&str>) -> String {
+        match name {
+            Some(name) => {
+                format!("{ty}.{name}.html")
+            }
+            None => {
+                format!("{ty}.html") // storage does not have an Ident
+            }
+        }
+    }
+}
 
 /// Gather [Documentation] from the [CompileResult].
 pub(crate) fn get_compiled_docs(
@@ -22,30 +50,25 @@ pub(crate) fn get_compiled_docs(
     no_deps: bool,
 ) -> Result<Documentation> {
     let mut docs: Documentation = Default::default();
-    if let Some((parse_program, Some(typed_program))) = &compilation.value {
+    if let Some((_, Some(typed_program))) = &compilation.value {
         for ast_node in &typed_program.root.all_nodes {
-            // first, populate the descriptors and type information (decl).
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
-                // TODO: Refactor this
-                let mut entry = docs
-                    .entry(Descriptor::from_typed_decl(decl, vec![]))
-                    .or_insert((Vec::new(), decl.clone()));
-                entry.1 = decl.clone();
+                let desc = Descriptor::from_typed_decl(decl, vec![])?;
 
-                let docstrings = doc_attributes(ast_node)?;
-                if let Some(entry) = docs.get_mut(&Descriptor::from_typed_decl(decl, vec![])) {
-                    entry.0 = docstrings;
-                } else {
-                    // this could be invalid in the case of a partial compilation. TODO audit this
-                    panic!("Invariant violated: we shouldn't have parsed stuff that isnt in the typed tree");
+                if let Descriptor::Documentable {
+                    module_prefix,
+                    desc_ty,
+                } = desc
+                {
+                    docs.push(Document {
+                        module_prefix,
+                        desc_ty: *desc_ty,
+                    })
                 }
             }
         }
 
-        if !no_deps
-            && !typed_program.root.submodules.is_empty()
-            && !parse_program.root.submodules.is_empty()
-        {
+        if !no_deps && !typed_program.root.submodules.is_empty() {
             // this is the same process as before but for dependencies
             for (_, ref typed_submodule) in &typed_program.root.submodules {
                 let module_prefix = vec![];
@@ -57,7 +80,6 @@ pub(crate) fn get_compiled_docs(
     Ok(docs)
 }
 
-// TODO: Refactor this
 fn extract_typed_submodule(
     typed_submodule: &TySubmodule,
     docs: &mut Documentation,
@@ -66,25 +88,18 @@ fn extract_typed_submodule(
     let mut new_submodule_prefix = module_prefix.to_owned();
     new_submodule_prefix.push(typed_submodule.library_name.as_str().to_string());
     for ast_node in &typed_submodule.module.all_nodes {
-        // first, populate the descriptors and type information (decl).
         if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
-            let mut entry = docs
-                .entry(Descriptor::from_typed_decl(
-                    decl,
-                    new_submodule_prefix.clone(),
-                ))
-                .or_insert((Vec::new(), decl.clone()));
-            entry.1 = decl.clone();
+            let desc = Descriptor::from_typed_decl(decl, new_submodule_prefix.clone())?;
 
-            let docstrings = doc_attributes(ast_node)?;
-            if let Some(entry) = docs.get_mut(&Descriptor::from_typed_decl(
-                decl,
-                new_submodule_prefix.clone(),
-            )) {
-                entry.0 = docstrings;
-            } else {
-                // this could be invalid in the case of a partial compilation. TODO audit this
-                panic!("Invariant violated: we shouldn't have parsed stuff that isnt in the typed tree");
+            if let Descriptor::Documentable {
+                module_prefix,
+                desc_ty,
+            } = desc
+            {
+                docs.push(Document {
+                    module_prefix,
+                    desc_ty: *desc_ty,
+                })
             }
         }
     }
@@ -94,100 +109,4 @@ fn extract_typed_submodule(
     }
 
     Ok(())
-}
-
-// Collect the AttributesMaps from a TyAstNode.
-fn attributes_map(ast_node: &TyAstNode) -> Result<Option<Vec<AttributesMap>>> {
-    match ast_node.content.clone() {
-        TyAstNodeContent::Declaration(ty_decl) => match ty_decl {
-            TyDeclaration::EnumDeclaration(decl_id) => {
-                let decl = de_get_enum(decl_id.clone(), &decl_id.span())?;
-                let mut attr_map = vec![decl.attributes];
-                for variant in decl.variants {
-                    attr_map.push(variant.attributes)
-                }
-
-                Ok(Some(attr_map))
-            }
-            TyDeclaration::FunctionDeclaration(decl_id) => {
-                let decl = de_get_function(decl_id.clone(), &decl_id.span())?;
-                let attr_map = vec![decl.attributes];
-
-                Ok(Some(attr_map))
-            }
-            TyDeclaration::StructDeclaration(decl_id) => {
-                let decl = de_get_struct(decl_id.clone(), &decl_id.span())?;
-                let mut attr_map = vec![decl.attributes];
-                // TODO: We must think about how to hanlde field docstrings since they belong
-                // to specific fields and not the struct declaration itself. Here we are
-                // just collecting them as if they are.
-                for field in decl.fields {
-                    attr_map.push(field.attributes)
-                }
-
-                Ok(Some(attr_map))
-            }
-            TyDeclaration::ConstantDeclaration(decl) => {
-                let decl = de_get_constant(decl.clone(), &decl.span())?;
-                let attr_map = vec![decl.attributes];
-
-                Ok(Some(attr_map))
-            }
-            TyDeclaration::StorageDeclaration(decl_id) => {
-                let decl = de_get_storage(decl_id.clone(), &decl_id.span())?;
-                let mut attr_map = vec![decl.attributes];
-                for field in decl.fields {
-                    attr_map.push(field.attributes)
-                }
-
-                Ok(Some(attr_map))
-            }
-            TyDeclaration::TraitDeclaration(decl_id) => {
-                let decl = de_get_trait(decl_id.clone(), &decl_id.span())?;
-                let mut attr_map = vec![decl.attributes];
-                for method in decl.methods {
-                    attr_map.push(method.attributes)
-                }
-
-                Ok(Some(attr_map))
-            }
-            TyDeclaration::ImplTrait(decl_id) => {
-                let decl = de_get_impl_trait(decl_id.clone(), &decl_id.span())?;
-                let mut attr_map = Vec::new();
-                for method in decl.methods {
-                    let method = de_get_function(method.clone(), &method.span())?;
-                    attr_map.push(method.attributes)
-                }
-
-                Ok(Some(attr_map))
-            }
-            TyDeclaration::AbiDeclaration(decl) => {
-                let decl = de_get_abi(decl.clone(), &decl.span())?;
-                let mut attr_map = Vec::new();
-                for method in decl.methods {
-                    attr_map.push(method.attributes)
-                }
-
-                Ok(Some(attr_map))
-            }
-            _ => Ok(None),
-        },
-        _ => Ok(None),
-    }
-}
-
-// Gather all Attributes from the AttributesMap.
-fn doc_attributes(ast_node: &TyAstNode) -> Result<Vec<Attribute>> {
-    let mut result = Vec::new();
-    if let Some(attributes_map) = attributes_map(ast_node)? {
-        for hashmap in attributes_map {
-            if let Some(attributes) = hashmap.get(&AttributeKind::Doc) {
-                for attribute in attributes {
-                    result.push(attribute.clone())
-                }
-            }
-        }
-    }
-
-    Ok(result)
 }
