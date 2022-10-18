@@ -1,0 +1,9 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-76AB13CEA923F433'
+dependencies = []
+
+[[package]]
+name = 'generic_traits'
+source = 'root'
+dependencies = ['core']
