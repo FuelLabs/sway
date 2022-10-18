@@ -13,9 +13,9 @@ const FAILED_SEND_MESSAGE_SIGNAL = 0xffff_ffff_ffff_0002;
 ///
 /// # Arguments
 ///
-/// * `coins` - Amount of base asset sent
-/// * `msg_data` - arbitrary length message data
 /// * `recipient` - The address of the message recipient
+/// * `msg_data` - arbitrary length message data
+/// * `coins` - Amount of base asset sent
 pub fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
     let mut recipient_heap_buffer = 0;
     let mut data_heap_buffer = 0;
