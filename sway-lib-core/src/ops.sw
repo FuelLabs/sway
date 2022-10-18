@@ -1,5 +1,7 @@
 library ops;
 
+use ::num::*;
+
 pub trait Add {
     fn add(self, other: Self) -> Self;
 }
@@ -315,11 +317,11 @@ impl Ord for b256 {
 impl b256 {
     fn neq(self, other: Self) -> bool {
         // Both self and other are addresses of the values, so we can use MEQ.
-        not(asm(r1: self, r2: other, r3, r4) {
+        asm(r1: self, r2: other, r3, r4) {
             addi r3 zero i32;
             meq r4 r1 r2 r3;
             r4: bool
-        })
+        }.not()
     }
 }
 
@@ -373,34 +375,34 @@ impl Not for u64 {
 
 impl Not for u32 {
     fn not(self) -> Self {
-        let u32_max = 4294967295;
-        asm(r1: self, r2, r3: u32_max, r4) {
+        asm(r1: self, r2, r3: ~u32::max(), r4) {
             not r2 r1;
             and r4 r2 r3;
             r4: u32
         }
     }
 }
+
 impl Not for u16 {
     fn not(self) -> Self {
-        let u16_max = 65535;
-        asm(r1: self, r2, r3: u16_max, r4) {
+        asm(r1: self, r2, r3: ~u16::max(), r4) {
             not r2 r1;
             and r4 r2 r3;
             r4: u16
         }
     }
 }
+
 impl Not for u8 {
     fn not(self) -> Self {
-        let u8_max = 255;
-        asm(r1: self, r2, r3: u8_max, r4) {
+        asm(r1: self, r2, r3: ~u8::max(), r4) {
             not r2 r1;
             and r4 r2 r3;
             r4: u8
         }
     }
 }
+
 impl BitwiseAnd for b256 {
     fn binary_and(val: self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
