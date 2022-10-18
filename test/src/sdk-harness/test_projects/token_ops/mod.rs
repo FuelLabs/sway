@@ -411,7 +411,7 @@ async fn can_send_message_output_without_data() {
 
     let call_response = fuelcoin_instance
         .methods()
-        .send_message(Bits256(*recipient_addr), vec![], amount)
+        .send_message(Bits256(*recipient_addr), Vec::<u64>::new(), amount)
         .append_message_outputs(1)
         .call()
         .await
@@ -421,11 +421,13 @@ async fn can_send_message_output_without_data() {
         matches!(r, Receipt::MessageOut{..})
     }).unwrap();
 
+    println!("Message: {:#?}", message_receipt);
+
     assert_eq!(*fuelcoin_id, **message_receipt.sender().unwrap());
     assert_eq!(&recipient_addr, message_receipt.recipient().unwrap());
     assert_eq!(amount, message_receipt.amount().unwrap());
-    assert_eq!(24, message_receipt.len().unwrap());
-    assert_eq!(Vector::new(), message_receipt.data().unwrap());
+    assert_eq!(0, message_receipt.len().unwrap());
+    assert_eq!(Vec::<u8>::new(), message_receipt.data().unwrap());
 }
 
 async fn get_fuelcoin_instance(wallet: WalletUnlocked) -> (TestFuelCoinContract, ContractId) {
