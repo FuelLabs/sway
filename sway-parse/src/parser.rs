@@ -31,13 +31,19 @@ impl<'a, 'e> Parser<'a, 'e> {
         let span = match self.token_trees {
             [token_tree, ..] => token_tree.span(),
             _ => {
-                // Create a new span that points to _just_ after the last parsed item
+                // Create a new span that points to _just_ after the last parsed item or 1
+                // character before that if the last parsed item is the last item in the full span.
                 let num_trailing_spaces =
                     self.full_span.as_str().len() - self.full_span.as_str().trim_end().len();
+                let trim_offset = if num_trailing_spaces == 0 {
+                    1
+                } else {
+                    num_trailing_spaces
+                };
                 Span::new(
                     self.full_span.src().clone(),
-                    self.full_span.end() - num_trailing_spaces,
-                    self.full_span.end() - num_trailing_spaces + 1,
+                    self.full_span.end() - trim_offset,
+                    self.full_span.end() - trim_offset + 1,
                     self.full_span.path().cloned(),
                 )
             }
