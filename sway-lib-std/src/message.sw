@@ -27,15 +27,15 @@ pub fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
     if msg_data.is_empty() {
         recipient_heap_buffer = alloc(32);
         asm(r1: recipient, first: recipient_heap_buffer) {
-                mcpi first r1 i32;
+            mcpi first r1 i32;
         };
     } else {
         size = msg_data.len() * 8;
         data_heap_buffer = alloc(size);
         recipient_heap_buffer = alloc(32);
         asm(r1: recipient, r2: msg_data.buf.ptr, msg_data_size: size, first: recipient_heap_buffer, second: data_heap_buffer) {
-                mcp second r2 msg_data_size;
-                mcpi first r1 i32;
+            mcp second r2 msg_data_size;
+            mcpi first r1 i32;
         };
     };
 

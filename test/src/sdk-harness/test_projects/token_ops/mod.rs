@@ -1,7 +1,6 @@
+use fuel_gql_client::fuel_tx::Receipt;
 use fuels::prelude::*;
 use fuels::tx::{AssetId, ContractId};
-use fuel_gql_client::fuel_tx::Receipt;
-
 
 abigen!(
     TestFuelCoinContract,
@@ -380,15 +379,20 @@ async fn can_send_message_output_with_data() {
         .await
         .unwrap();
 
-    let message_receipt = call_response.receipts.iter().find(|&r| {
-        matches!(r, Receipt::MessageOut{..})
-    }).unwrap();
+    let message_receipt = call_response
+        .receipts
+        .iter()
+        .find(|&r| matches!(r, Receipt::MessageOut { .. }))
+        .unwrap();
 
     assert_eq!(*fuelcoin_id, **message_receipt.sender().unwrap());
     assert_eq!(&recipient_addr, message_receipt.recipient().unwrap());
     assert_eq!(amount, message_receipt.amount().unwrap());
     assert_eq!(24, message_receipt.len().unwrap());
-    assert_eq!(vec![0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 75, 0, 0, 0, 0, 0, 0, 0, 50], message_receipt.data().unwrap());
+    assert_eq!(
+        vec![0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 75, 0, 0, 0, 0, 0, 0, 0, 50],
+        message_receipt.data().unwrap()
+    );
 }
 
 #[tokio::test]
@@ -417,9 +421,11 @@ async fn can_send_message_output_without_data() {
         .await
         .unwrap();
 
-    let message_receipt = call_response.receipts.iter().find(|&r| {
-        matches!(r, Receipt::MessageOut{..})
-    }).unwrap();
+    let message_receipt = call_response
+        .receipts
+        .iter()
+        .find(|&r| matches!(r, Receipt::MessageOut { .. }))
+        .unwrap();
 
     println!("Message: {:#?}", message_receipt);
 
