@@ -272,6 +272,8 @@ pub enum CompileError {
     DeclIsNotATraitFn { actually: String, span: Span },
     #[error("This is a {actually}, not storage.")]
     DeclIsNotStorage { actually: String, span: Span },
+    #[error("This is a {actually}, not a constant")]
+    DecIsNotAConstant { actually: String, span: Span },
     #[error(
         "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
          {available_fields}"
@@ -791,6 +793,7 @@ impl Spanned for CompileError {
             DeclIsNotAnImplTrait { span, .. } => span.clone(),
             DeclIsNotATraitFn { span, .. } => span.clone(),
             DeclIsNotStorage { span, .. } => span.clone(),
+            DecIsNotAConstant { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             ImpureInPureContext { span, .. } => span.clone(),
             ParameterMutabilityMismatch { span, .. } => span.clone(),
