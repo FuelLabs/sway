@@ -20,15 +20,24 @@ const FAILED_SEND_MESSAGE_SIGNAL = 0xffff_ffff_ffff_0002;
 /// * `msg_data` - arbitrary length message data
 /// * `recipient` - The address of the message recipient
 pub fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
-    let size = msg_data.len() * 8;
-    let data_heap_buffer = alloc(size);
-    let recipient_heap_buffer = alloc(32);
+    let mut recipient_heap_buffer = 0;
+    let mut data_heap_buffer = 0;
+    let mut size = 0;
 
-    asm(r1: recipient, r2: msg_data.buf.ptr, msg_data_size: size, first: recipient_heap_buffer, second: data_heap_buffer) {
-        mcp second r2 msg_data_size;
-        mcpi first r1 i32;
+    if msg_data.is_empty() {
+        recipient_heap_buffer = alloc(32);
+        asm(r1: recipient, first: recipient_heap_buffer) {
+                mcpi first r1 i32;
+        };
+    } else {
+        size = msg_data.len() * 8;
+        data_heap_buffer = alloc(size);
+        recipient_heap_buffer = alloc(32);
+        asm(r1: recipient, r2: msg_data.buf.ptr, msg_data_size: size, first: recipient_heap_buffer, second: data_heap_buffer) {
+                mcp second r2 msg_data_size;
+                mcpi first r1 i32;
+        };
     };
-
 
     let mut index = 0;
     let outputs = output_count();
