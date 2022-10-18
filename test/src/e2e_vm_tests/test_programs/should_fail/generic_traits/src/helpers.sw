@@ -1,5 +1,5 @@
 library helpers;
 
 pub trait OutOfScopeGetter<D> {
-    fn get(self) -> D;
+    fn out_of_scope_get(self) -> D;
 }

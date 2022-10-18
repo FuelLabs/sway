@@ -35,7 +35,7 @@ impl<G, H> Returner<G> for FooBarData<H> {
 
 // OutOfScopeGetter is not in this scope
 impl<I> OutOfScopeGetter<I> for FooBarData<I> {
-    fn get(self) -> I {
+    fn out_of_scope_get(self) -> I {
         self.value
     }
 }
