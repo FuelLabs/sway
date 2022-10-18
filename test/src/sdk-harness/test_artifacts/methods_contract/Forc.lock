@@ -12,11 +12,11 @@ dependencies = []
 name = 'methods_contract'
 source = 'root'
 dependencies = [
-    'methods_abi',
-    'std',
+    'library methods_abi',
+    'library std',
 ]
 
 [[package]]
 name = 'std'
 source = 'path+from-root-051EC93A63B1E039'
-dependencies = ['core']
+dependencies = ['library core']

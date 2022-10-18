@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'hashing'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-BFCC9E74738B0693'
-dependencies = ['core']
+dependencies = ['library core']

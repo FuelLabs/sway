@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'predicate_data_simple'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-88963B58C4FA8138'
-dependencies = ['core']
+dependencies = ['library core']

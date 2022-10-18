@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-37E4B1588712FA61'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'storage'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']

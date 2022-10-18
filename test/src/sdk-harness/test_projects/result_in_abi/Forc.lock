@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'result_in_abi'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-57810AA7D99333C2'
-dependencies = ['core']
+dependencies = ['library core']

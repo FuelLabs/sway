@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'script_bytecode'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-5B109F800B9B533C'
-dependencies = ['core']
+dependencies = ['library core']

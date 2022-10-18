@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-112F6FFCFCECE066'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'svec_bool'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']

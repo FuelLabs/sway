@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'ec_recover_and_match_predicate'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-C495CD5BD093FF32'
-dependencies = ['core']
+dependencies = ['library core']

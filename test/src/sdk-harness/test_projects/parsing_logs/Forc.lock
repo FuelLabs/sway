@@ -7,16 +7,16 @@ dependencies = []
 name = 'parsing_logs'
 source = 'root'
 dependencies = [
-    'parsing_logs_test_abi',
-    'std',
+    'library parsing_logs_test_abi',
+    'library std',
 ]
 
 [[package]]
 name = 'parsing_logs_test_abi'
 source = 'path+from-root-139A28EAD4E475CB'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-139A28EAD4E475CB'
-dependencies = ['core']
+dependencies = ['library core']

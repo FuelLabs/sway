@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-BA7DA646BFFC59D3'
-dependencies = ['core']
+dependencies = ['library core']
 
 [[package]]
 name = 'svec_enum'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']

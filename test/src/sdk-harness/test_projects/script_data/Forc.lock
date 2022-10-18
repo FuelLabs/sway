@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'script_data'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-239143CAFD6AF819'
-dependencies = ['core']
+dependencies = ['library core']

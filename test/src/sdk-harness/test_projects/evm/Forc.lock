@@ -7,16 +7,16 @@ dependencies = []
 name = 'evm'
 source = 'root'
 dependencies = [
-    'evm_test_abi',
-    'std',
+    'library evm_test_abi',
+    'library std',
 ]
 
 [[package]]
 name = 'evm_test_abi'
 source = 'path+from-root-4947D78C815C1154'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-4947D78C815C1154'
-dependencies = ['core']
+dependencies = ['library core']

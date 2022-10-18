@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'reentrancy_target_abi'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-838442FFC03D3788'
-dependencies = ['core']
+dependencies = ['library core']

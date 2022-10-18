@@ -6,9 +6,9 @@ dependencies = []
 [[package]]
 name = 'parsing_logs_test_abi'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'std'
 source = 'path+from-root-A009C0B7DE63F9ED'
-dependencies = ['core']
+dependencies = ['library core']

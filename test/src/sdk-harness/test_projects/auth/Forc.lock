@@ -1,7 +1,7 @@
 [[package]]
 name = 'auth'
 source = 'root'
-dependencies = ['std']
+dependencies = ['library std']
 
 [[package]]
 name = 'core'
@@ -11,4 +11,4 @@ dependencies = []
 [[package]]
 name = 'std'
 source = 'path+from-root-2DA4FC95F5834167'
-dependencies = ['core']
+dependencies = ['library core']
