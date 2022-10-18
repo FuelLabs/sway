@@ -31,14 +31,14 @@ impl RenderedDocument {
             buf.push(Self {
                 module_prefix: doc.module_prefix.clone(),
                 file_name: doc.file_name(),
-                file_contents: HTMLString(page(rendered_content)),
+                file_contents: HTMLString(page_from(rendered_content)),
             })
         }
         buf
     }
 }
 
-pub(crate) fn page(rendered_content: Box<dyn RenderBox>) -> String {
+pub(crate) fn page_from(rendered_content: Box<dyn RenderBox>) -> String {
     let markup = html! {
         : rendered_content
     };
