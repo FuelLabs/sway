@@ -475,17 +475,15 @@ fn inline_function_calls(
 
     let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
         // For now, pending improvements to ASMgen for calls, we must inline any function which has
-        // a non-copy return type or has too many args.
-        if !func.get_return_type(ctx).is_copy_type()
-            || func.args_iter(ctx).count() as u8
-                > crate::asm_generation::compiler_constants::NUM_ARG_REGISTERS
+        // too many args.
+        if func.args_iter(ctx).count() as u8
+            > crate::asm_generation::compiler_constants::NUM_ARG_REGISTERS
         {
             return true;
         }
 
         // If the function is called only once then definitely inline it.
-        let call_count = call_counts.get(func).copied().unwrap_or(0);
-        if call_count == 1 {
+        if call_counts.get(func).copied().unwrap_or(0) == 1 {
             return true;
         }
 
