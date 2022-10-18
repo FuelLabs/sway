@@ -5,7 +5,7 @@ use core::num::*;
 use ::assert::assert;
 use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
 use ::result::Result;
-use ::math::Exponentiate;
+use ::math::{Exponentiate, Root, BinaryLogarithm, Logarithm};
 
 /// The 128-bit unsigned integer type.
 /// Represented as two 64-bit components: `(upper, lower)`, where `value = (upper << 64) + lower`.

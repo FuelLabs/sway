@@ -90,3 +90,11 @@ pub trait Exponent {
     // exponential function: e ^ exponent
     fn exp(exponent: Self) -> Self;
 }
+
+pub trait BinaryLogarithm {
+    fn log2(self) -> Self;
+}
+
+pub trait Logarithm {
+    fn log(self, base: Self) -> Self;
+}
