@@ -249,7 +249,7 @@ fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {
         .next()
         .ok_or_else(|| anyhow!("missing closing parenthesis"))?;
 
-    let s = &s[dep_name.len() + ")".len()..];
+    let s = &s[dep_name.len() + ")".len()..].trim_start();
     let dep_kind_str = s
         .split(' ')
         .next()
