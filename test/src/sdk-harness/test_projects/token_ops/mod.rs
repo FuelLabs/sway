@@ -355,7 +355,7 @@ async fn can_perform_generic_transfer_to_contract() {
 }
 
 #[tokio::test]
-async fn can_send_message_output_without_data() {
+async fn can_send_message_output_without_data() -> Result<(), Error> {
     let num_wallets = 1;
     let coins_per_wallet = 1;
     let amount_per_coin = 1_000_000;
@@ -374,7 +374,7 @@ async fn can_send_message_output_without_data() {
 
     let call_response = fuelcoin_instance
         .methods()
-        .send_message(amount, vec![], Bits256(*recipient_addr))
+        .send_message(Bits256(*recipient_addr), vec![11u8, 33u8, 55u8], amount)
         .append_message_outputs(1)
         .call()
         .await
@@ -383,16 +383,20 @@ async fn can_send_message_output_without_data() {
     let message_receipt = call_response.receipts.iter().find(|&r| {
         matches!(r, Receipt::MessageOut{..})
     }).unwrap();
-    // println!("{:?}", message_receipt);
-    let logs = fuelcoin_instance.fetch_logs(&call_response.receipts);
-    println!("Logs: {:?}", logs);
+
+    println!("{:?}", message_receipt);
+
+    let log_u64 = fuelcoin_instance.logs_with_type::<u64>(&call_response.receipts)?;
+    println!("Log: {:?}", log_u64);
+    // let log_bool = fuelcoin_instance.logs_with_type::<bool>(&call_response.receipts)?;
+    // println!("Log: {:?}", log_bool);
 
     assert_eq!(*fuelcoin_id, **message_receipt.sender().unwrap());
     assert_eq!(&recipient_addr, message_receipt.recipient().unwrap());
     assert_eq!(amount, message_receipt.amount().unwrap());
-    // len should be 32 here because the stdlib function prepends the recipient address to the data vec.
-    assert_eq!(32, message_receipt.len().unwrap());
+    assert_eq!(0, message_receipt.len().unwrap());
     assert_eq!(Vec::<u8>::new(), message_receipt.data().unwrap());
+    Ok(())
 }
 
 // #[tokio::test]

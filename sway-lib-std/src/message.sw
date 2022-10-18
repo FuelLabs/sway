@@ -3,8 +3,10 @@ library message;
 use ::outputs::{Output, output_amount, output_count, output_type};
 use ::revert::revert;
 use ::vec::Vec;
+use ::mem::{addr_of, copy};
 use ::option::Option;
 use ::assert::assert;
+use ::logging::log;
 
 const FAILED_SEND_MESSAGE_SIGNAL = 0xffff_ffff_ffff_0002;
 
@@ -16,14 +18,27 @@ const FAILED_SEND_MESSAGE_SIGNAL = 0xffff_ffff_ffff_0002;
 /// * `msg_len` - Length of message data, in bytes
 /// * `recipient` - The address of the message recipient
 // TODO: decide if `msg_len` can be determined programatically rather than passed as an arg
-pub fn send_message(coins: u64, msg_data: Vec<u8>, recipient: b256) {
-    let mut data_vec = b256_to_bytes(recipient);
-    let mut idx = 0;
+pub fn send_message(recipient: b256, msg_data: Vec<u8>, coins: u64) {
 
-    while idx < msg_data.len() {
-        data_vec.push(msg_data.get(idx).unwrap());
-        idx += 1;
-    }
+    // let mut data_vec = b256_to_bytes(recipient);
+    let data = (recipient, msg_data);
+    // let data = asm(r1: recipient, r2: msg_data, r3: msg_data.len(), r4, r5) {
+    //     move r4 sp;
+    //     cfei i32;
+    //     mcpi r4 r1 i32;
+    //     addi r5 r4 i32;
+    //     mcp r5 r2 r3;
+    //     r5: (b256, Vec<u8>)
+    // };
+
+    // let mut idx = 0;
+    // log(true);
+    // log(msg_data.len() * 8);
+
+    // while idx < msg_data.len() {
+    //     data_vec.push(msg_data.get(idx).unwrap());
+    //     idx += 1;
+    // }
 
     let mut index = 0;
     let outputs = output_count();
@@ -31,7 +46,7 @@ pub fn send_message(coins: u64, msg_data: Vec<u8>, recipient: b256) {
     while index < outputs {
         let type_of_output = output_type(index);
         if let Output::Message = type_of_output {
-            asm(r1: data_vec, r2: data_vec.len(), r3: index, r4: coins) {
+            asm(r1: msg_data, r2: msg_data.len() * 8, r3: index, r4: coins) {
                 smo r1 r2 r3 r4;
             };
             return;
@@ -41,7 +56,6 @@ pub fn send_message(coins: u64, msg_data: Vec<u8>, recipient: b256) {
     revert(FAILED_SEND_MESSAGE_SIGNAL);
 }
 
-/// Get 4 64 bit words from a single b256 value.
 fn b256_to_bytes(val: b256) -> Vec<u8> {
 
     let mut new_vec = ~Vec::with_capacity(32);
