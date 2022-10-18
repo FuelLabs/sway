@@ -11,7 +11,10 @@ use std::{
     {fs, path::PathBuf},
 };
 
-use crate::{doc::get_compiled_docs, render::RenderedDocument};
+use crate::{
+    doc::{Document, Documentation},
+    render::{RenderedDocument, RenderedDocumentation},
+};
 use forc_pkg::{self as pkg, PackageManifestFile};
 
 /// Main method for `forc doc`.
@@ -44,21 +47,21 @@ pub fn main() -> Result<()> {
     // compile the program and extract the docs
     let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
     let compilation = pkg::check(&plan, silent_mode)?;
-    let docs = get_compiled_docs(&compilation, no_deps)?;
+    let raw_docs: Documentation = Document::from_ty_program(&compilation, no_deps)?;
     // render docs to HTML
-    let rendered = RenderedDocument::render(&docs);
+    let rendered_docs: RenderedDocumentation = RenderedDocument::from_raw_docs(&raw_docs);
 
     // write to outfile
-    for entry in rendered {
+    for doc in rendered_docs {
         let mut doc_path = doc_path.clone();
-        for prefix in entry.module_prefix {
+        for prefix in doc.module_prefix {
             doc_path.push(prefix);
         }
 
         fs::create_dir_all(&doc_path)?;
-        doc_path.push(entry.file_name);
+        doc_path.push(doc.file_name);
         let mut file = fs::File::create(doc_path)?;
-        file.write_all(dbg!(entry.file_contents.0).as_bytes())?;
+        file.write_all(dbg!(doc.file_contents.0).as_bytes())?;
     }
 
     // check if the user wants to open the doc in the browser

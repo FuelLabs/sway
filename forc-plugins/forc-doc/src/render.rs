@@ -15,7 +15,7 @@ pub(crate) struct RenderedDocument {
 }
 impl RenderedDocument {
     /// Top level HTML rendering for all [Documentation] of a program.
-    pub fn render(raw: &Documentation) -> RenderedDocumentation {
+    pub fn from_raw_docs(raw: &Documentation) -> RenderedDocumentation {
         let mut buf: RenderedDocumentation = Default::default();
         for doc in raw {
             let rendered_content = match &doc.desc_ty {
