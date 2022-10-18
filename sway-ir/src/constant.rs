@@ -28,28 +28,6 @@ pub enum ConstantValue {
 }
 
 impl Constant {
-    pub fn new_undef(context: &Context, ty: Type) -> Self {
-        match ty {
-            Type::Array(aggregate) => {
-                let (elem_type, count) = context.aggregates[aggregate.0].array_type();
-                let elem_init = Self::new_undef(context, *elem_type);
-                Constant::new_array(&aggregate, vec![elem_init; *count as usize])
-            }
-            Type::Struct(aggregate) => {
-                let field_types = context.aggregates[aggregate.0].field_types().clone();
-                let field_inits = field_types
-                    .into_iter()
-                    .map(|field_type| Self::new_undef(context, field_type)) // Hrmm, recursive structures would break here.
-                    .collect();
-                Constant::new_struct(&aggregate, field_inits)
-            }
-            _otherwise => Constant {
-                ty,
-                value: ConstantValue::Undef,
-            },
-        }
-    }
-
     pub fn new_unit() -> Self {
         Constant {
             ty: Type::Unit,
