@@ -374,7 +374,7 @@ async fn can_send_message_output_without_data() -> Result<(), Error> {
 
     let call_response = fuelcoin_instance
         .methods()
-        .send_message(Bits256(*recipient_addr), vec![11u8, 33u8, 55u8], amount)
+        .send_message(Bits256(*recipient_addr), vec![100, 100, 100], amount)
         .append_message_outputs(1)
         .call()
         .await
@@ -384,17 +384,17 @@ async fn can_send_message_output_without_data() -> Result<(), Error> {
         matches!(r, Receipt::MessageOut{..})
     }).unwrap();
 
-    println!("{:?}", message_receipt);
+    println!("{:#?}", call_response.receipts);
 
-    let log_u64 = fuelcoin_instance.logs_with_type::<u64>(&call_response.receipts)?;
-    println!("Log: {:?}", log_u64);
+    // let log_u64 = fuelcoin_instance.logs_with_type::<u64>(&call_response.receipts)?;
+    // println!("Log: {:?}", log_u64);
     // let log_bool = fuelcoin_instance.logs_with_type::<bool>(&call_response.receipts)?;
     // println!("Log: {:?}", log_bool);
 
     assert_eq!(*fuelcoin_id, **message_receipt.sender().unwrap());
     assert_eq!(&recipient_addr, message_receipt.recipient().unwrap());
     assert_eq!(amount, message_receipt.amount().unwrap());
-    assert_eq!(0, message_receipt.len().unwrap());
+    assert_eq!(24, message_receipt.len().unwrap());
     assert_eq!(Vec::<u8>::new(), message_receipt.data().unwrap());
     Ok(())
 }

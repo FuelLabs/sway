@@ -3,11 +3,12 @@ library message;
 use ::outputs::{Output, output_amount, output_count, output_type};
 use ::revert::revert;
 use ::vec::Vec;
-use ::mem::{addr_of, copy};
+use ::mem::{addr_of, copy, read};
 use ::option::Option;
 use ::assert::assert;
 use ::logging::log;
 use ::intrinsics::size_of_val;
+use ::alloc::alloc;
 
 const FAILED_SEND_MESSAGE_SIGNAL = 0xffff_ffff_ffff_0002;
 
@@ -16,17 +17,18 @@ const FAILED_SEND_MESSAGE_SIGNAL = 0xffff_ffff_ffff_0002;
 /// # Arguments
 ///
 /// * `coins` - Amount of base asset sent
-/// * `msg_len` - Length of message data, in bytes
+/// * `msg_data` - arbitrary length message data
 /// * `recipient` - The address of the message recipient
-pub fn send_message(recipient: b256, msg_data: Vec<u8>, coins: u64) {
-    let data = asm(r1: recipient, r2: msg_data, msg_data_size: size_of_val(msg_data), data_vec, recipient_size: 32, res) {
-        aloc recipient_size;
-        mcpi hp r1 i32;
-        aloc msg_data_size;
-        mcp hp r2 msg_data_size;
-        move res hp;
-        res: u64
+pub fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
+    let size = msg_data.len() * 8;
+    let data_heap_buffer = alloc(size);
+    let recipient_heap_buffer = alloc(32);
+
+    asm(r1: recipient, r2: msg_data.buf.ptr, msg_data_size: size, first: recipient_heap_buffer, second: data_heap_buffer) {
+        mcp second r2 msg_data_size;
+        mcpi first r1 i32;
     };
+
 
     let mut index = 0;
     let outputs = output_count();
@@ -34,7 +36,7 @@ pub fn send_message(recipient: b256, msg_data: Vec<u8>, coins: u64) {
     while index < outputs {
         let type_of_output = output_type(index);
         if let Output::Message = type_of_output {
-            asm(r1: data, r2: size_of_val(data), r3: index, r4: coins) {
+            asm(r1: recipient_heap_buffer, r2: size, r3: index, r4: coins) {
                 smo r1 r2 r3 r4;
             };
             return;
