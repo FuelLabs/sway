@@ -5,9 +5,9 @@ use core::num::*;
 
 fn main() -> bool {
     let zero = ~b256::min();
-    let gas: u64 = 1000;
+    let gas: u64 = 1100;
     let amount: u64 = 11;
-    let other_contract_id = ~ContractId::from(0x84de7dc313a1f48a59148c8ff50c2ed59514d5ea21874ad0914c246420b5ecd9);
+    let other_contract_id = ~ContractId::from(0xdb6b5908388fd8e879fcb455050420cccbaeafda6c451009ea4dd1ca97b4640f);
     let base_asset_id = BASE_ASSET_ID;
 
     let test_contract = abi(ContextTesting, other_contract_id.into());
