@@ -11,7 +11,7 @@ use sway_error::error::CompileError;
 use sway_ir::Context;
 use sway_types::span::Span;
 
-pub(crate) use purity::PurityChecker;
+pub(crate) use purity::{check_function_purity, PurityEnv};
 
 use crate::language::ty;
 
