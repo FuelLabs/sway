@@ -42,7 +42,7 @@ pub struct PkgLock {
 /// dependency. It is formatted like so:
 ///
 /// ```ignore
-/// (<dep_name>) <pkg_name> <dep_type> <source_string>
+/// (<dep_name>) <dep-kind> <pkg_name> <source_string>
 /// ```
 ///
 /// The `(<dep_name>)` segment is only included in the uncommon case that the dependency name does
@@ -225,7 +225,7 @@ fn pkg_dep_line(
 type ParsedPkgLine<'a> = (Option<&'a str>, DepKind, &'a str);
 // Parse the given `PkgDepLine` into its dependency name and unique string segments.
 //
-// I.e. given "(<dep_name>) <name> <source>", returns ("<dep_name>", "<name> <source>").
+// I.e. given "(<dep_name>) <dep-kind> <name> <source>", returns ("<dep_name>", DepKind, "<name> <source>").
 //
 // Note that <source> may not appear in the case it is not required for disambiguation.
 fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {
@@ -249,13 +249,13 @@ fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {
         .next()
         .ok_or_else(|| anyhow!("missing closing parenthesis"))?;
 
-    // The rest is the unique package string.
     let s = &s[dep_name.len() + ")".len()..];
     let dep_kind_str = s
         .split(' ')
         .next()
         .ok_or_else(|| anyhow!("missing dep kind"))?;
     let dep_kind = DepKind::from_str(dep_kind_str)?;
+    // The rest is the unique package string.
     let unique_pkg_str = &s[dep_kind_str.len()..].trim_start();
     Ok((Some(dep_name), dep_kind, unique_pkg_str))
 }
