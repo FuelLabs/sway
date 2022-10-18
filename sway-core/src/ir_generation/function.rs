@@ -15,6 +15,7 @@ use crate::{
     metadata::MetadataManager,
     type_system::{look_up_type_id, to_typeinfo, TypeId, TypeInfo},
 };
+use declaration_engine::de_get_function;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::{CompileError, Hint};
 use sway_ir::{Context, *};
@@ -209,7 +210,7 @@ impl FnCompiler {
                 call_path: name,
                 contract_call_params,
                 arguments,
-                function_decl,
+                function_decl_id,
                 self_state_idx,
                 selector,
             } => {
@@ -225,6 +226,7 @@ impl FnCompiler {
                         span_md_idx,
                     )
                 } else {
+                    let function_decl = de_get_function(function_decl_id, &ast_expr.span)?;
                     self.compile_fn_call(
                         context,
                         md_mgr,

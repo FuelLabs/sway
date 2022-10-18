@@ -2,7 +2,13 @@ use std::fmt;
 
 use sway_types::Span;
 
-use crate::{error::*, language::ty::*, type_system::*, types::DeterministicallyAborts};
+use crate::{
+    declaration_engine::de_get_function,
+    error::*,
+    language::{ty::*, Literal},
+    type_system::*,
+    types::DeterministicallyAborts,
+};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyExpression {
@@ -53,7 +59,7 @@ impl CollectTypesMetadata for TyExpression {
         match &self.expression {
             FunctionApplication {
                 arguments,
-                function_decl,
+                function_decl_id,
                 ..
             } => {
                 for arg in arguments.iter() {
@@ -64,6 +70,10 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
+                let function_decl = match de_get_function(function_decl_id.clone(), &self.span) {
+                    Ok(decl) => decl,
+                    Err(e) => return err(vec![], vec![e]),
+                };
                 for content in function_decl.body.contents.iter() {
                     res.append(&mut check!(
                         content.collect_types_metadata(),
@@ -349,10 +359,14 @@ impl DeterministicallyAborts for TyExpression {
         use TyExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
-                function_decl,
+                function_decl_id,
                 arguments,
                 ..
             } => {
+                let function_decl = match de_get_function(function_decl_id.clone(), &self.span) {
+                    Ok(decl) => decl,
+                    Err(_e) => panic!("failed to get function"),
+                };
                 function_decl.body.deterministically_aborts()
                     || arguments.iter().any(|(_, x)| x.deterministically_aborts())
             }
@@ -422,10 +436,33 @@ impl DeterministicallyAborts for TyExpression {
     }
 }
 
-pub(crate) fn error_recovery_expr(span: Span) -> TyExpression {
-    TyExpression {
-        expression: TyExpressionVariant::Tuple { fields: vec![] },
-        return_type: crate::type_system::insert_type(TypeInfo::ErrorRecovery),
-        span,
+impl TyExpression {
+    pub(crate) fn error(span: Span) -> TyExpression {
+        TyExpression {
+            expression: TyExpressionVariant::Tuple { fields: vec![] },
+            return_type: insert_type(TypeInfo::ErrorRecovery),
+            span,
+        }
+    }
+
+    /// recurse into `self` and get any return statements -- used to validate that all returns
+    /// do indeed return the correct type
+    /// This does _not_ extract implicit return statements as those are not control flow! This is
+    /// _only_ for explicit returns.
+    pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
+        self.expression.gather_return_statements()
+    }
+
+    /// gathers the mutability of the expressions within
+    pub(crate) fn gather_mutability(&self) -> VariableMutability {
+        match &self.expression {
+            TyExpressionVariant::VariableExpression { mutability, .. } => *mutability,
+            _ => VariableMutability::Immutable,
+        }
+    }
+
+    /// Returns `self` as a literal, if possible.
+    pub(crate) fn extract_literal_value(&self) -> Option<Literal> {
+        self.expression.extract_literal_value()
     }
 }
