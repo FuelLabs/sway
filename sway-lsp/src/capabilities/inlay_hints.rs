@@ -1,5 +1,5 @@
 use crate::{
-    core::{session::Session, token::TypedAstToken},
+    core::{config::InlayHintsConfig, session::Session, token::TypedAstToken},
     utils::common::get_range_from_span,
 };
 use sway_core::{language::ty::TyDeclaration, type_system::TypeInfo};
@@ -23,13 +23,13 @@ pub(crate) fn inlay_hints(
     session: &Session,
     uri: &Url,
     range: &Range,
+    config: &InlayHintsConfig,
 ) -> Option<Vec<lsp_types::InlayHint>> {
     // 1. Loop through all our tokens and filter out all tokens that aren't TypedVariableDeclaration tokens
     // 2. Also filter out all tokens that have a span that fall outside of the provided range
     // 3. Filter out all variable tokens that have a type_ascription
     // 4. Look up the type id for the remaining tokens
     // 5. Convert the type into a string
-    let config = &session.config.read().inlay_hints;
     if !config.type_hints {
         return None;
     }

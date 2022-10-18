@@ -183,7 +183,7 @@ impl SyncWorkspace {
             });
     }
 
-    fn manifest_dir(&self) -> Result<PathBuf, DirectoryError> {
+    pub(crate) fn manifest_dir(&self) -> Result<PathBuf, DirectoryError> {
         self.directories
             .get(&Directory::Manifest)
             .map(|item| item.value().clone())

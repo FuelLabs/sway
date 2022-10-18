@@ -1,11 +1,13 @@
 pub use crate::error::DocumentError;
 use crate::{
     capabilities,
-    core::{config::Warnings, document::TextDocument, session::Session},
+    core::{config::{Config, Warnings}, document::TextDocument, session::Session},
     error::LanguageServerError,
     utils::{debug, sync},
 };
+use dashmap::DashMap;
 use forc_pkg::manifest::PackageManifestFile;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
@@ -15,37 +17,34 @@ use std::{
     sync::Arc,
 };
 use sway_types::Spanned;
-use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
 
 #[derive(Debug)]
 pub struct Backend {
     pub client: Client,
+    pub config: RwLock<Config>,
+
     session: Arc<Session>,
+
+    sessions: DashMap<PathBuf, Arc<Session>>,
 }
 
 impl Backend {
     pub fn new(client: Client) -> Self {
         let session = Arc::new(Session::new());
-        Backend { client, session }
+        let sessions = DashMap::new();
+        let config = RwLock::new(Default::default());
+
+        Backend { client, config, session, sessions }
     }
 
     fn init(&self, uri: &Url) -> Result<(), LanguageServerError> {
-        let manifest_dir = PathBuf::from(uri.path());
-        // Create a new temp dir that clones the current workspace
-        // and store manifest and temp paths
-        self.session
-            .sync
-            .create_temp_dir_from_workspace(&manifest_dir)?;
+        let project_name = self.session.init(uri)?;
 
-        self.session.sync.clone_manifest_dir_to_temp()?;
-
-        // iterate over the project dir, parse all sway files
-        let _ = self.parse_and_store_sway_files();
-
-        self.session.sync.watch_and_sync_manifest();
-
+        let mut session = Arc::new(Session::new());
+        let project_name = session.init(uri)?;
+        self.sessions.insert(project_name, session);
         Ok(())
     }
 
@@ -55,24 +54,6 @@ impl Backend {
 
     async fn log_error_message(&self, message: &str) {
         self.client.log_message(MessageType::ERROR, message).await;
-    }
-
-    fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
-        if let Some(temp_dir) = self
-            .session
-            .sync
-            .directories
-            .get(&sync::Directory::Temp)
-            .map(|item| item.value().clone())
-        {
-            // Store the documents.
-            for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
-                self.session
-                    .store_document(TextDocument::build_from_path(path)?)?;
-            }
-        }
-
-        Ok(())
     }
 
     async fn parse_project(&self, uri: Url, workspace_uri: Url) {
@@ -131,7 +112,7 @@ impl Backend {
         diagnostics: Vec<Diagnostic>,
     ) {
         let diagnostics_res = {
-            let debug = &self.session.config.read().debug;
+            let debug = &self.config.read().debug;
             let token_map = self.session.tokens_for_file(uri);
             match debug.show_collected_tokens_as_warnings {
                 Warnings::Default => diagnostics,
@@ -155,12 +136,13 @@ impl Backend {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
+        eprintln!("InitializeParams = {:#?}", params);
         self.client
             .log_message(MessageType::INFO, "Initializing the Sway Language Server")
             .await;
 
         if let Some(initialization_options) = &params.initialization_options {
-            let mut config = self.session.config.write();
+            let mut config = self.config.write();
             *config = serde_json::from_value(initialization_options.clone())
                 .ok()
                 .unwrap_or_default();
@@ -198,6 +180,7 @@ impl LanguageServer for Backend {
 
     // Document Handlers
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
+        eprintln!("params.text_document.uri = {:#?}", params.text_document.uri);
         // The first time did_open gets called, we call init which sets up the temp directories
         // to allow for synchronization between the users workspace and the temp workspacace.
         // We then set InitializedState to Initialized so the function is never called again.
@@ -215,6 +198,8 @@ impl LanguageServer for Backend {
                 }
             }
         }
+
+        eprintln!("self.session.sync.manifest_dir() = {:#?}", self.session.sync.manifest_dir());
 
         // convert the client Url to the temp uri
         if let Ok(uri) = self
@@ -417,7 +402,10 @@ impl Backend {
         self.session
             .sync
             .workspace_to_temp_url(&params.text_document.uri)
-            .map(|uri| capabilities::inlay_hints::inlay_hints(&self.session, &uri, &params.range))
+            .map(|uri| {
+                let config = &self.config.read().inlay_hints;
+                capabilities::inlay_hints::inlay_hints(&self.session, &uri, &params.range, config)
+            })
             .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
     }
 
@@ -524,7 +512,7 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{doc_comments_dir, e2e_test_dir};
+    use crate::test_utils::{doc_comments_dir, e2e_test_dir, sway_example_structs};
     use serde_json::json;
     use serial_test::serial;
     use std::{borrow::Cow, fs, io::Read, path::PathBuf};
@@ -561,10 +549,15 @@ mod tests {
     }
 
     async fn initialize_request(service: &mut LspService<Backend>) -> Request {
+        dbg!();
         let params = json!({ "capabilities": capabilities() });
+        dbg!();
         let initialize = build_request_with_id("initialize", params, 1);
+        dbg!();
         let response = call_request(service, initialize.clone()).await;
+        dbg!();
         let ok = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
+        dbg!();
         assert_eq!(response, Ok(Some(ok)));
         initialize
     }
@@ -894,6 +887,26 @@ mod tests {
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
         let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
         let _ = did_change_request(&mut service, &uri).await;
+        let _ = go_to_definition_request(&mut service, &uri, 45, 20, 2).await;
+        shutdown_and_exit(&mut service).await;
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn lsp_multiple_projects_within_workspace() {
+        dbg!();
+        let (mut service, _) = LspService::new(Backend::new);
+        dbg!();
+        let uri = init_and_open(&mut service, doc_comments_dir()).await;
+        dbg!();
+        let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
+        
+        let (uri, sway_program) = load_sway_example(sway_example_structs());
+        did_open_notification(&mut service, &uri, &sway_program).await;
+
+        dbg!();
+        let _ = did_change_request(&mut service, &uri).await;
+        dbg!();
         let _ = go_to_definition_request(&mut service, &uri, 45, 20, 2).await;
         shutdown_and_exit(&mut service).await;
     }
