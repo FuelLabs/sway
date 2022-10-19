@@ -1,0 +1,4 @@
+[[package]]
+name = 'contract_c'
+source = 'root'
+dependencies = []

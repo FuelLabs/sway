@@ -1,4 +1,9 @@
 [[package]]
 name = 'contract_b'
 source = 'root'
+dependencies = ['contract contract_c']
+
+[[package]]
+name = 'contract_c'
+source = 'path+from-root-A309856C1410AE80'
 dependencies = []

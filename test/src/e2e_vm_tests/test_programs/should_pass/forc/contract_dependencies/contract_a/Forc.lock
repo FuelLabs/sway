@@ -1,9 +1,17 @@
 [[package]]
 name = 'contract_a'
 source = 'root'
-dependencies = ['contract contract_b']
+dependencies = [
+    'contract contract_b',
+    'contract contract_c',
+]
 
 [[package]]
 name = 'contract_b'
+source = 'path+from-root-C28B6153CE3E3FEB'
+dependencies = ['contract contract_c']
+
+[[package]]
+name = 'contract_c'
 source = 'path+from-root-C28B6153CE3E3FEB'
 dependencies = []

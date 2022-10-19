@@ -7,3 +7,4 @@ name = "contract_a"
 
 [contract-dependencies]
 contract_b = { path = "../contract_b" }
+contract_c = { path = "../contract_c" }
