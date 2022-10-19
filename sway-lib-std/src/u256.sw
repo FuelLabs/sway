@@ -47,12 +47,7 @@ impl From for U256 {
 
     /// Function for extracting 4 u64s from a U256.
     fn into(self) -> (u64, u64, u64, u64) {
-        (
-            self.a,
-            self.b,
-            self.c,
-            self.d,
-        )
+        (self.a, self.b, self.c, self.d, )
     }
 }
 
@@ -112,12 +107,7 @@ impl U256 {
 
     /// Get 4 64 bit words from a single U256 value.
     fn decompose(self) -> (u64, u64, u64, u64) {
-        (
-            self.a,
-            self.b,
-            self.c,
-            self.d,
-        )
+        (self.a, self.b, self.c, self.d, )
     }
 }
 

@@ -27,10 +27,7 @@ impl From for B512 {
     }
 
     fn into(self) -> (b256, b256) {
-        (
-            (self.bytes)[0],
-            (self.bytes)[1],
-        )
+        ((self.bytes)[0], (self.bytes)[1], )
     }
 }
 
@@ -39,10 +36,7 @@ impl B512 {
     /// Initializes a new, zeroed B512.
     fn new() -> B512 {
         B512 {
-            bytes: [
-                ZERO_B256,
-                ZERO_B256,
-            ],
+            bytes: [ZERO_B256, ZERO_B256, ],
         }
     }
 }

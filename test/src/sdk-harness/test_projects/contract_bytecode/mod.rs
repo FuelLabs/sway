@@ -6,7 +6,6 @@ abigen!(
     "test_projects/contract_bytecode/out/debug/contract_bytecode-abi.json"
 );
 
-
 #[tokio::test]
 async fn can_get_bytecode_root() {
     let wallet = launch_provider_and_get_wallet().await;
@@ -22,23 +21,25 @@ async fn can_get_bytecode_root() {
         .unwrap()
         .value;
 
-    let contract_bytecode = std::fs::read("test_projects/contract_bytecode/out/debug/contract_bytecode.bin").unwrap();
+    let contract_bytecode =
+        std::fs::read("test_projects/contract_bytecode/out/debug/contract_bytecode.bin").unwrap();
     let expected_bytecode_root = Bits256(*FuelsTxContract::root_from_code(&contract_bytecode));
 
-    assert_eq!(expected_bytecode_root, bytecode_root);  
-
+    assert_eq!(expected_bytecode_root, bytecode_root);
 }
 
-
-async fn get_test_contract_instance(wallet: WalletUnlocked) -> (ContractBytecodeTest, Bech32ContractId) {
+async fn get_test_contract_instance(
+    wallet: WalletUnlocked,
+) -> (ContractBytecodeTest, Bech32ContractId) {
     let id = Contract::deploy(
         "test_projects/contract_bytecode/out/debug/contract_bytecode.bin",
         &wallet,
         TxParameters::default(),
         StorageConfiguration::with_storage_path(Some(
-            "test_projects/contract_bytecode/out/debug/contract_bytecode-storage_slots.json".to_string(),
+            "test_projects/contract_bytecode/out/debug/contract_bytecode-storage_slots.json"
+                .to_string(),
         )),
-        )
+    )
     .await
     .unwrap();
 

@@ -30,10 +30,7 @@ impl From for U128 {
     }
 
     fn into(self) -> (u64, u64) {
-        (
-            self.upper,
-            self.lower,
-        )
+        (self.upper, self.lower, )
     }
 }
 
