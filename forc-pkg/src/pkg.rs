@@ -1154,7 +1154,7 @@ fn fetch_deps(
 ) -> Result<HashSet<NodeIx>> {
     let mut added = HashSet::default();
     let parent_id = graph[node].id();
-    let package_manifest = manifest_map[&parent_id].to_owned();
+    let package_manifest = &manifest_map[&parent_id];
     // If the current package is a contract, we need to first get the deployment dependencies
     let deps: Vec<(String, Dependency, DepKind)> = package_manifest
         .contract_deps()
@@ -1167,8 +1167,8 @@ fn fetch_deps(
         .collect();
     for (dep_name, dep, dep_kind) in deps {
         let name = dep.package().unwrap_or(&dep_name).to_string();
-        let parent_manifest = manifest_map[&parent_id].to_owned();
-        let source = dep_to_source_patched(&parent_manifest, &name, &dep)
+        let parent_manifest = &manifest_map[&parent_id];
+        let source = dep_to_source_patched(parent_manifest, &name, &dep)
             .context("Failed to source dependency")?;
 
         // If we haven't yet fetched this dependency, fetch it, pin it and add it to the graph.
@@ -1778,8 +1778,8 @@ pub fn sway_build_config(
 /// This function also ensures that if `std` exists in the graph,
 /// then the std prelude will also be added.
 pub fn dependency_namespace(
-    namespace_map: &HashMap<NodeIx, namespace::Module>,
-    compiled_map: &HashMap<NodeIx, Compiled>,
+    lib_namespace_map: &HashMap<NodeIx, namespace::Module>,
+    compiled_contract_deps: &HashMap<NodeIx, Compiled>,
     graph: &Graph,
     node: NodeIx,
     constants: BTreeMap<String, ConfigTimeConstant>,
@@ -1793,15 +1793,16 @@ pub fn dependency_namespace(
         let dep_name = kebab_to_snake_case(&edge.weight().name);
         let dep_edge = edge.weight();
         let dep_namespace = match dep_edge.kind {
-            DepKind::Library => namespace_map
+            DepKind::Library => lib_namespace_map
                 .get(&dep_node)
-                .map(Clone::clone)
-                .expect("no namespace module for {dep_name}"),
+                .cloned()
+                .expect("no namespace module"),
             DepKind::Contract => {
                 let mut constants = constants.clone();
-                let compiled_dep = compiled_map.get(&dep_node);
+                let compiled_dep = compiled_contract_deps.get(&dep_node);
                 let dep_contract_id = match compiled_dep {
                     Some(dep_contract_compiled) => contract_id(dep_contract_compiled),
+                    // On `check` we don't compile contracts, so we use a placeholder.
                     None => ContractId::default(),
                 };
 
@@ -1827,7 +1828,7 @@ pub fn dependency_namespace(
     // Add `core` if not already added.
     if !core_added {
         if let Some(core_node) = find_core_dep(graph, node) {
-            let core_namespace = &namespace_map[&core_node];
+            let core_namespace = &lib_namespace_map[&core_node];
             namespace.insert_submodule(CORE.to_string(), core_namespace.clone());
         }
     }
@@ -2261,7 +2262,7 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
 
-    let mut namespace_map = Default::default();
+    let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     let mut json_abi_program = JsonABIProgram {
         types: vec![],
@@ -2271,37 +2272,36 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
     let mut storage_slots = vec![];
     let mut bytecode = vec![];
     let mut tree_type = None;
-    let root_node = plan
-        .compilation_order()
-        .last()
-        .expect("Compilation order is empty!");
-    let root_node_pinned = &plan.graph()[*root_node];
-    let root_manifest = &plan.manifest_map()[&root_node_pinned.id()];
-    let mut compiled_map = HashMap::new();
+    let mut compiled_contract_deps = HashMap::new();
     for &node in &plan.compilation_order {
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
         let constants = manifest.config_time_constants();
-        let dep_namespace =
-            match dependency_namespace(&namespace_map, &compiled_map, &plan.graph, node, constants)
-            {
-                Ok(o) => o,
-                Err(errs) => {
-                    print_on_failure(profile.terse, &[], &errs);
-                    bail!("Failed to compile {}", pkg.name);
-                }
-            };
+        let dep_namespace = match dependency_namespace(
+            &lib_namespace_map,
+            &compiled_contract_deps,
+            &plan.graph,
+            node,
+            constants,
+        ) {
+            Ok(o) => o,
+            Err(errs) => {
+                print_on_failure(profile.terse, &[], &errs);
+                bail!("Failed to compile {}", pkg.name);
+            }
+        };
         let res = compile(pkg, manifest, profile, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
         // If the current node is a contract dependency, collect the contract_id
-        if root_manifest
-            .contract_deps()
-            .any(|dep| *dep.0 == manifest.project.name)
+        if plan
+            .graph()
+            .edges_directed(node, Direction::Incoming)
+            .any(|e| e.weight().kind == DepKind::Contract)
         {
-            compiled_map.insert(node, compiled.clone());
+            compiled_contract_deps.insert(node, compiled.clone());
         }
         if let Some(namespace) = maybe_namespace {
-            namespace_map.insert(node, namespace.into());
+            lib_namespace_map.insert(node, namespace.into());
         }
         json_abi_program
             .types
@@ -2459,16 +2459,22 @@ pub fn check(
 ) -> anyhow::Result<CompileResult<(ParseProgram, Option<ty::TyProgram>)>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
-    let mut namespace_map = Default::default();
+    let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
-    let compiled_map = HashMap::new();
+    // During `check`, we don't compile so this stays empty.
+    let compiled_contract_deps = HashMap::new();
     for (i, &node) in plan.compilation_order.iter().enumerate() {
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
         let constants = manifest.config_time_constants();
-        let dep_namespace =
-            dependency_namespace(&namespace_map, &compiled_map, &plan.graph, node, constants)
-                .expect("TODO");
+        let dep_namespace = dependency_namespace(
+            &lib_namespace_map,
+            &compiled_contract_deps,
+            &plan.graph,
+            node,
+            constants,
+        )
+        .expect("failed to create dependency namespace");
         let CompileResult {
             value,
             mut warnings,
@@ -2493,7 +2499,7 @@ pub fn check(
         };
 
         if let TreeType::Library { .. } = typed_program.kind.tree_type() {
-            namespace_map.insert(node, typed_program.root.namespace.clone());
+            lib_namespace_map.insert(node, typed_program.root.namespace.clone());
         }
 
         source_map.insert_dependency(manifest.dir());
