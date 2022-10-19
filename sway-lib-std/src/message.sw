@@ -20,7 +20,9 @@ pub fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
     let mut data_heap_buffer = 0;
     let mut size = 0;
 
-    // If msg_data is empty, we just ignore it and pass `smo` a pointer to the inner value of recipient. Otherwise, we allocate adjacent space on the heap for the data and the recipient and copy the data and recip[pient values there
+    // If msg_data is empty, we just ignore it and pass `smo` a pointer to the inner value of recipient. 
+    // Otherwise, we allocate adjacent space on the heap for the data and the recipient and copy the 
+    // data and recipient values there
     if msg_data.is_empty() {
         recipient_heap_buffer = addr_of(recipient);
     } else {
