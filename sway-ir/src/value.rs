@@ -12,6 +12,7 @@ use crate::{
     instruction::Instruction,
     irtype::Type,
     metadata::{combine, MetadataIndex},
+    pointer::Pointer,
     pretty::DebugWithContext,
     BlockArgument,
 };
@@ -183,6 +184,26 @@ impl Value {
             ValueDatum::Argument(BlockArgument { ty, .. }) => Some(*ty),
             ValueDatum::Constant(c) => Some(c.ty),
             ValueDatum::Instruction(ins) => ins.get_type(context),
+        }
+    }
+
+    /// Get the pointer argument for this value if there is one.  I.e., where get_ptr is
+    /// essentially a Value wrapper around a Pointer, this function unwrap it.
+    pub fn get_pointer(&self, context: &Context) -> Option<Pointer> {
+        match &context.values[self.0].value {
+            ValueDatum::Instruction(Instruction::GetPointer { base_ptr, .. }) => Some(*base_ptr),
+
+            ValueDatum::Argument(BlockArgument {
+                ty: Type::Pointer(ptr),
+                ..
+            }) => Some(*ptr),
+
+            ValueDatum::Instruction(Instruction::InsertValue { aggregate, .. })
+            | ValueDatum::Instruction(Instruction::ExtractValue { aggregate, .. }) => {
+                aggregate.get_pointer(context)
+            }
+
+            _otherwise => None,
         }
     }
 
