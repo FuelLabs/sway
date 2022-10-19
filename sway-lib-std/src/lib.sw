@@ -9,6 +9,7 @@ dep result;
 dep mem;
 dep alloc;
 dep contract_id;
+dep external;
 dep constants;
 dep context;
 dep hash;
