@@ -246,6 +246,10 @@ pub fn parsed_to_ast(
         _ => None,
     }));
 
+    // CEI pattern analysis
+    let cei_analysis_warnings = semantic_analysis::cei_pattern_analysis::program(&typed_program);
+    warnings.extend(cei_analysis_warnings);
+
     ok(
         typed_program_with_storage_slots,
         dedup_unsorted(warnings),

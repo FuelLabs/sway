@@ -91,6 +91,7 @@ pub enum Warning {
     UnrecognizedAttribute {
         attrib_name: Ident,
     },
+    StorageWriteAfterInteraction,
 }
 
 impl fmt::Display for Warning {
@@ -216,6 +217,8 @@ impl fmt::Display for Warning {
             ),
             MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
             UnrecognizedAttribute {attrib_name} => write!(f, "Unknown attribute: \"{attrib_name}\"."),
+            StorageWriteAfterInteraction => write!(f, "Storage modification after external contract interaction. \
+            Consider making all storage writes before calling another contract"),
         }
     }
 }
