@@ -264,6 +264,11 @@ impl Function {
         context.functions[self.0].return_type
     }
 
+    /// Get the number of args.
+    pub fn num_args(&self, context: &Context) -> usize {
+        context.functions[self.0].arguments.len()
+    }
+
     /// Get an arg value by name, if found.
     pub fn get_arg(&self, context: &Context, name: &str) -> Option<Value> {
         context.functions[self.0]

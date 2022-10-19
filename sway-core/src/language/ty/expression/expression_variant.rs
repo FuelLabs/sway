@@ -7,6 +7,7 @@ use derivative::Derivative;
 use sway_types::{state::StateIndex, Ident, Span};
 
 use crate::{
+    declaration_engine::{de_get_function, DeclarationId},
     language::{ty::*, *},
     type_system::*,
 };
@@ -20,7 +21,7 @@ pub enum TyExpressionVariant {
         #[derivative(Eq(bound = ""))]
         contract_call_params: HashMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
-        function_decl: TyFunctionDeclaration,
+        function_decl_id: DeclarationId,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
@@ -136,16 +137,20 @@ impl PartialEq for TyExpressionVariant {
                 Self::FunctionApplication {
                     call_path: l_name,
                     arguments: l_arguments,
-                    function_decl: l_function_decl,
+                    function_decl_id: l_function_decl_id,
                     ..
                 },
                 Self::FunctionApplication {
                     call_path: r_name,
                     arguments: r_arguments,
-                    function_decl: r_function_decl,
+                    function_decl_id: r_function_decl_id,
                     ..
                 },
             ) => {
+                let l_function_decl =
+                    de_get_function(l_function_decl_id.clone(), &Span::dummy()).unwrap();
+                let r_function_decl =
+                    de_get_function(r_function_decl_id.clone(), &Span::dummy()).unwrap();
                 l_name == r_name
                     && l_arguments == r_arguments
                     && l_function_decl.body == r_function_decl.body
@@ -360,13 +365,15 @@ impl CopyTypes for TyExpressionVariant {
             Literal(..) => (),
             FunctionApplication {
                 arguments,
-                function_decl,
+                ref mut function_decl_id,
                 ..
             } => {
                 arguments
                     .iter_mut()
                     .for_each(|(_ident, expr)| expr.copy_types(type_mapping));
-                function_decl.copy_types(type_mapping);
+
+                let new_decl_id = function_decl_id.clone().copy_and_insert_new(type_mapping);
+                function_decl_id.replace_id(*new_decl_id);
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).copy_types(type_mapping);

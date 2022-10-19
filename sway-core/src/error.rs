@@ -2,7 +2,7 @@
 
 use crate::language::parsed::VariableDeclaration;
 use sway_error::error::CompileError;
-use sway_error::handler::Handler;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::CompileWarning;
 
 macro_rules! check {
@@ -119,6 +119,11 @@ impl<T> CompileResult<T> {
             warnings,
             errors,
         }
+    }
+
+    pub fn with_handler(run: impl FnOnce(&Handler) -> Result<T, ErrorEmitted>) -> CompileResult<T> {
+        let handler = <_>::default();
+        Self::from_handler(run(&handler).ok(), handler)
     }
 
     pub fn from_handler(value: Option<T>, handler: Handler) -> Self {

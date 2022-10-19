@@ -196,14 +196,30 @@ fn compile_fn_with_args(
         ..
     } = ast_fn_decl;
 
-    let args = args
+    let mut args = args
         .into_iter()
         .map(|(name, ty, span)| (name, ty, md_mgr.span_to_md(context, &span)))
-        .collect();
+        .collect::<Vec<_>>();
+
     let ret_type = convert_resolved_typeid(context, &return_type, &return_type_span)?;
+
+    let is_entry = selector.is_some()
+        || (matches!(module.get_kind(context), Kind::Script | Kind::Predicate)
+            && name.as_str() == "main");
+    let returns_by_ref = !is_entry && !ret_type.is_copy_type();
+    if returns_by_ref {
+        // Instead of 'returning' a by-ref value we make the last argument an 'out' parameter.
+        args.push((
+            "__ret_value".to_owned(),
+            Type::Pointer(Pointer::new(context, ret_type, true, None)),
+            md_mgr.span_to_md(context, &return_type_span),
+        ));
+    }
+
     let span_md_idx = md_mgr.span_to_md(context, &span);
     let storage_md_idx = md_mgr.purity_to_md(context, purity);
     let metadata = md_combine(context, &span_md_idx, &storage_md_idx);
+
     let func = Function::new(
         context,
         module,
@@ -215,24 +231,15 @@ fn compile_fn_with_args(
         metadata,
     );
 
-    // We clone the struct symbols here, as they contain the globals; any new local declarations
-    // may remain within the function scope.
-    let mut compiler = FnCompiler::new(context, module, func);
-
+    let mut compiler = FnCompiler::new(context, module, func, returns_by_ref);
     let mut ret_val = compiler.compile_code_block(context, md_mgr, body)?;
 
     // Special case: if the return type is unit but the return value type is not, then we have an
     // implicit return from the last expression in the code block having a semi-colon.  This isn't
     // codified in the AST explicitly so we need to make a unit to return here.
     if ret_type.eq(context, &Type::Unit) && !matches!(ret_val.get_type(context), Some(Type::Unit)) {
-        // NOTE: We're replacing the ret_val and throwing away whatever it used to be, as it is
-        // never actually used anyway.
         ret_val = Constant::get_unit(context);
     }
-
-    let already_returns = compiler
-        .current_block
-        .is_terminated_by_ret_or_revert(context);
 
     // Another special case: if the last expression in a function is a return then we don't want to
     // add another implicit return instruction here, as `ret_val` will be unit regardless of the
@@ -243,11 +250,18 @@ fn compile_fn_with_args(
     // To tell if this is the case we can check that the current block is empty and has no
     // predecessors (and isn't the entry block which has none by definition), implying the most
     // recent instruction was a RET.
+    let already_returns = compiler
+        .current_block
+        .is_terminated_by_ret_or_revert(context);
     if !already_returns
         && (compiler.current_block.num_instructions(context) > 0
             || compiler.current_block == compiler.function.get_entry_block(context)
             || compiler.current_block.num_predecessors(context) > 0)
     {
+        if returns_by_ref {
+            // Need to copy ref-type return values to the 'out' parameter.
+            ret_val = compiler.compile_copy_to_last_arg(context, ret_val, None);
+        }
         if ret_type.eq(context, &Type::Unit) {
             ret_val = Constant::get_unit(context);
         }

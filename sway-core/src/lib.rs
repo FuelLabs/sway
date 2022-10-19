@@ -15,6 +15,7 @@ pub mod source_map;
 pub mod transform;
 pub mod type_system;
 
+use crate::ir_generation::check_function_purity;
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
@@ -25,6 +26,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_ast::Dependency;
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Function, Instruction, Kind, Module, Value};
 
 pub use semantic_analysis::namespace::{self, Namespace};
@@ -57,52 +59,38 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<par
     // program (similar behaviour to rust). Later, we'll add a flag for including tests on
     // invocations of `forc test` or `forc check --tests`. See #1832.
     let include_test_fns = false;
-    match config {
-        None => parse_in_memory(input, include_test_fns),
-        Some(config) => parse_files(input, config, include_test_fns),
-    }
-}
 
-/// Parse a file with contents `src` at `path`.
-fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> CompileResult<sway_ast::Module> {
-    let handler = sway_error::handler::Handler::default();
-    let res = sway_parse::parse_file(&handler, src, path);
-    CompileResult::from_handler(res.ok(), handler)
+    CompileResult::with_handler(|h| match config {
+        None => parse_in_memory(h, input, include_test_fns),
+        // When a `BuildConfig` is given,
+        // the module source may declare `dep`s that must be parsed from other files.
+        Some(config) => {
+            parse_module_tree(h, input, config.canonical_root_module(), include_test_fns)
+                .map(|(kind, root)| parsed::ParseProgram { kind, root })
+        }
+    })
 }
 
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
-fn parse_in_memory(src: Arc<str>, include_test_fns: bool) -> CompileResult<parsed::ParseProgram> {
-    parse_file(src, None).flat_map(|module| {
-        to_parsed_lang::convert_parse_tree(module, include_test_fns).flat_map(|(kind, tree)| {
-            let submodules = Default::default();
-            let root = parsed::ParseModule { tree, submodules };
-            ok(parsed::ParseProgram { kind, root }, vec![], vec![])
-        })
-    })
-}
-
-/// When a `BuildConfig` is given, the module source may declare `dep`s that must be parsed from
-/// other files.
-fn parse_files(
+fn parse_in_memory(
+    handler: &Handler,
     src: Arc<str>,
-    config: &BuildConfig,
     include_test_fns: bool,
-) -> CompileResult<parsed::ParseProgram> {
-    let root_mod_path = config.canonical_root_module();
-    parse_module_tree(src, root_mod_path, include_test_fns).flat_map(|(kind, root)| {
-        let program = parsed::ParseProgram { kind, root };
-        ok(program, vec![], vec![])
-    })
+) -> Result<parsed::ParseProgram, ErrorEmitted> {
+    let module = sway_parse::parse_file(handler, src, None)?;
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, module, include_test_fns)?;
+    let submodules = Default::default();
+    let root = parsed::ParseModule { tree, submodules };
+    Ok(parsed::ParseProgram { kind, root })
 }
 
 /// Parse all dependencies `deps` as submodules.
 fn parse_submodules(
+    handler: &Handler,
     deps: &[Dependency],
     module_dir: &Path,
     include_test_fns: bool,
-) -> CompileResult<Vec<(Ident, parsed::ParseSubmodule)>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
+) -> Vec<(Ident, parsed::ParseSubmodule)> {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut submods = Vec::with_capacity(deps.len());
 
@@ -113,7 +101,7 @@ fn parse_submodules(
         let dep_str: Arc<str> = match std::fs::read_to_string(&*dep_path) {
             Ok(s) => Arc::from(s),
             Err(e) => {
-                errors.push(CompileError::FileCouldNotBeRead {
+                handler.emit_err(CompileError::FileCouldNotBeRead {
                     span: dep.path.span(),
                     file_path: dep_path.to_string_lossy().to_string(),
                     stringified_error: e.to_string(),
@@ -122,16 +110,14 @@ fn parse_submodules(
             }
         };
 
-        let mt_res = parse_module_tree(dep_str.clone(), dep_path.clone(), include_test_fns);
-        warnings.extend(mt_res.warnings);
-        errors.extend(mt_res.errors);
-
-        if let Some((kind, module)) = mt_res.value {
+        if let Ok((kind, module)) =
+            parse_module_tree(handler, dep_str.clone(), dep_path.clone(), include_test_fns)
+        {
             let library_name = match kind {
                 parsed::TreeType::Library { name } => name,
                 _ => {
                     let span = span::Span::new(dep_str, 0, 0, Some(dep_path)).unwrap();
-                    errors.push(CompileError::ImportMustBeLibrary { span });
+                    handler.emit_err(CompileError::ImportMustBeLibrary { span });
                     return;
                 }
             };
@@ -148,31 +134,29 @@ fn parse_submodules(
         }
     });
 
-    ok(submods, warnings, errors)
+    submods
 }
 
 /// Given the source of the module along with its path,
 /// parse this module including all of its submodules.
 fn parse_module_tree(
+    handler: &Handler,
     src: Arc<str>,
     path: Arc<PathBuf>,
     include_test_fns: bool,
-) -> CompileResult<(parsed::TreeType, parsed::ParseModule)> {
+) -> Result<(parsed::TreeType, parsed::ParseModule), ErrorEmitted> {
     // Parse this module first.
-    parse_file(src, Some(path.clone())).flat_map(|module| {
-        let module_dir = path.parent().expect("module file has no parent directory");
+    let module_dir = path.parent().expect("module file has no parent directory");
+    let module = sway_parse::parse_file(handler, src, Some(path.clone()))?;
 
-        // Parse all submodules before converting to the `ParseTree`.
-        let submodules_res = parse_submodules(&module.dependencies, module_dir, include_test_fns);
+    // Parse all submodules before converting to the `ParseTree`.
+    // This always recovers on parse errors for the file itself by skipping that file.
+    let submodules = parse_submodules(handler, &module.dependencies, module_dir, include_test_fns);
 
-        // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-        to_parsed_lang::convert_parse_tree(module, include_test_fns).flat_map(
-            |(prog_kind, tree)| {
-                submodules_res
-                    .map(|submodules| (prog_kind, parsed::ParseModule { tree, submodules }))
-            },
-        )
-    })
+    // Convert from the raw parsed module to the `ParseTree` ready for type-check.
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, module, include_test_fns)?;
+
+    Ok((kind, parsed::ParseModule { tree, submodules }))
 }
 
 fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf {
@@ -404,17 +388,17 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         .collect();
 
     // Do a purity check on the _unoptimised_ IR.
-    let mut purity_checker = ir_generation::PurityChecker::default();
-    let mut md_mgr = metadata::MetadataManager::default();
-    for entry_point in &entry_point_functions {
-        purity_checker.check_function(&ir, &mut md_mgr, entry_point);
+    {
+        let handler = Handler::default();
+        let mut env = ir_generation::PurityEnv::default();
+        let mut md_mgr = metadata::MetadataManager::default();
+        for entry_point in &entry_point_functions {
+            check_function_purity(&handler, &mut env, &ir, &mut md_mgr, entry_point);
+        }
+        let (e, w) = handler.consume();
+        warnings.extend(w);
+        errors.extend(e);
     }
-    check!(
-        purity_checker.results(),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
 
     // Now we're working with all functions in the module.
     let all_functions = ir
@@ -430,48 +414,34 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors
     );
 
-    // TODO: Experiment with putting combine-constants and simplify-cfg
-    // in a loop, but per function.
-    check!(
-        combine_constants(&mut ir, &all_functions),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    check!(
-        simplify_cfg(&mut ir, &all_functions),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    // Simplify-CFG helps combine constants.
-    check!(
-        combine_constants(&mut ir, &all_functions),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    // And that in-turn enables more simplify-cfg.
-    check!(
-        simplify_cfg(&mut ir, &all_functions),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let res = CompileResult::with_handler(|handler| {
+        // TODO: Experiment with putting combine-constants and simplify-cfg
+        // in a loop, but per function.
+        combine_constants(handler, &mut ir, &all_functions)?;
+        simplify_cfg(handler, &mut ir, &all_functions)?;
+        // Simplify-CFG helps combine constants.
+        combine_constants(handler, &mut ir, &all_functions)?;
+        // And that in-turn enables more simplify-cfg.
+        simplify_cfg(handler, &mut ir, &all_functions)?;
 
-    // Remove dead definitions based on the entry points root set.
-    check!(
-        dce(&mut ir, &entry_point_functions),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+        // Remove dead definitions based on the entry points root set.
+        dce(handler, &mut ir, &entry_point_functions)?;
+        Ok(())
+    });
+    check!(res, return err(warnings, errors), warnings, errors);
 
     if build_config.print_ir {
         tracing::info!("{}", ir);
     }
 
-    compile_ir_to_asm(&ir, Some(build_config))
+    let final_asm = check!(
+        compile_ir_to_asm(&ir, Some(build_config)),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    ok(final_asm, warnings, errors)
 }
 
 // Inline function calls based on two conditions:
@@ -505,17 +475,15 @@ fn inline_function_calls(
 
     let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
         // For now, pending improvements to ASMgen for calls, we must inline any function which has
-        // a non-copy return type or has too many args.
-        if !func.get_return_type(ctx).is_copy_type()
-            || func.args_iter(ctx).count() as u8
-                > crate::asm_generation::compiler_constants::NUM_ARG_REGISTERS
+        // too many args.
+        if func.args_iter(ctx).count() as u8
+            > crate::asm_generation::compiler_constants::NUM_ARG_REGISTERS
         {
             return true;
         }
 
         // If the function is called only once then definitely inline it.
-        let call_count = call_counts.get(func).copied().unwrap_or(0);
-        if call_count == 1 {
+        if call_counts.get(func).copied().unwrap_or(0) == 1 {
             return true;
         }
 
@@ -548,22 +516,27 @@ fn inline_function_calls(
     ok((), Vec::new(), Vec::new())
 }
 
-fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+fn combine_constants(
+    handler: &Handler,
+    ir: &mut Context,
+    functions: &[Function],
+) -> Result<(), ErrorEmitted> {
     for function in functions {
         if let Err(ir_error) = sway_ir::optimize::combine_constants(ir, function) {
-            return err(
-                Vec::new(),
-                vec![CompileError::InternalOwned(
-                    ir_error.to_string(),
-                    span::Span::dummy(),
-                )],
-            );
+            return Err(handler.emit_err(CompileError::InternalOwned(
+                ir_error.to_string(),
+                span::Span::dummy(),
+            )));
         }
     }
-    ok((), Vec::new(), Vec::new())
+    Ok(())
 }
 
-fn dce(ir: &mut Context, entry_functions: &[Function]) -> CompileResult<()> {
+fn dce(
+    handler: &Handler,
+    ir: &mut Context,
+    entry_functions: &[Function],
+) -> Result<(), ErrorEmitted> {
     // Remove entire dead functions first.
     for module in ir.module_iter() {
         sway_ir::optimize::func_dce(ir, &module, entry_functions);
@@ -573,32 +546,30 @@ fn dce(ir: &mut Context, entry_functions: &[Function]) -> CompileResult<()> {
     for module in ir.module_iter() {
         for function in module.function_iter(ir) {
             if let Err(ir_error) = sway_ir::optimize::dce(ir, &function) {
-                return err(
-                    Vec::new(),
-                    vec![CompileError::InternalOwned(
-                        ir_error.to_string(),
-                        span::Span::dummy(),
-                    )],
-                );
+                return Err(handler.emit_err(CompileError::InternalOwned(
+                    ir_error.to_string(),
+                    span::Span::dummy(),
+                )));
             }
         }
     }
-    ok((), Vec::new(), Vec::new())
+    Ok(())
 }
 
-fn simplify_cfg(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+fn simplify_cfg(
+    handler: &Handler,
+    ir: &mut Context,
+    functions: &[Function],
+) -> Result<(), ErrorEmitted> {
     for function in functions {
         if let Err(ir_error) = sway_ir::optimize::simplify_cfg(ir, function) {
-            return err(
-                Vec::new(),
-                vec![CompileError::InternalOwned(
-                    ir_error.to_string(),
-                    span::Span::dummy(),
-                )],
-            );
+            return Err(handler.emit_err(CompileError::InternalOwned(
+                ir_error.to_string(),
+                span::Span::dummy(),
+            )));
         }
     }
-    ok((), Vec::new(), Vec::new())
+    Ok(())
 }
 
 /// Given input Sway source code, compile to a [BytecodeOrLib], containing the asm in bytecode form.

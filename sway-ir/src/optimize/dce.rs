@@ -89,6 +89,13 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
             Instruction::Log {
                 log_val, log_id, ..
             } => vec![*log_val, *log_id],
+            Instruction::MemCopy {
+                dst_val,
+                src_val,
+                byte_len: _,
+            } => {
+                vec![*dst_val, *src_val]
+            }
             Instruction::Nop => vec![],
             Instruction::ReadRegister(_) => vec![],
             Instruction::Ret(v, _) => vec![*v],
