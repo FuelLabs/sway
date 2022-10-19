@@ -9,6 +9,7 @@ use crate::{
 use super::{
     items::{GlobImport, Items, SymbolMap},
     root::Root,
+    trait_map::TraitMap,
     ModuleName, Path,
 };
 
@@ -293,7 +294,7 @@ impl Module {
             warnings,
             errors
         );
-        let mut impls_to_insert = vec![];
+        let mut impls_to_insert: TraitMap = TraitMap::default();
         match src_ns.symbols.get(item).cloned() {
             Some(decl) => {
                 let visibility = check!(
@@ -318,11 +319,9 @@ impl Module {
                 }
                 let a = decl.return_type(&item.span()).value;
                 //  if this is an enum or struct, import its implementations
-                let mut res = match a {
-                    Some(a) => src_ns.implemented_traits.get_call_path_and_type_info(a),
-                    None => vec![],
-                };
-                impls_to_insert.append(&mut res);
+                if let Some(a) = a {
+                    impls_to_insert.extend(src_ns.implemented_traits.filter_by_type(a));
+                }
                 // no matter what, import it this way though.
                 let dst_ns = &mut self[dst];
                 let mut add_synonym = |name| {
@@ -350,13 +349,7 @@ impl Module {
         };
 
         let dst_ns = &mut self[dst];
-        impls_to_insert
-            .into_iter()
-            .for_each(|((call_path, type_info), methods)| {
-                dst_ns
-                    .implemented_traits
-                    .insert(call_path, type_info, methods);
-            });
+        dst_ns.implemented_traits.extend(impls_to_insert);
 
         ok((), warnings, errors)
     }
