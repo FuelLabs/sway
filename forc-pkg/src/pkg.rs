@@ -55,6 +55,7 @@ pub type ManifestMap = HashMap<PinnedId, PackageManifestFile>;
 pub struct PinnedId(u64);
 
 /// The result of successfully compiling a package.
+#[derive(Debug)]
 pub struct Compiled {
     pub json_abi_program: JsonABIProgram,
     pub storage_slots: Vec<StorageSlot>,

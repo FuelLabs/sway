@@ -7,7 +7,9 @@ publish = false
 
 [dependencies]
 anyhow = "1.0.41"
-clap = "3.2.16"
+assert_matches = "1.5.0"
+clap = { version = "4", features = ["derive", "env"] }
+colored = "2.0.0"
 filecheck = "0.5"
 forc = { path = "../forc", features = ["test"], default-features = false }
 forc-client = { path = "../forc-plugins/forc-client" }
@@ -16,6 +18,7 @@ forc-util = { path = "../forc-util" }
 fuel-asm = "0.8"
 fuel-tx = { version = "0.18", features = ["builder"]}
 fuel-vm = { version = "0.15", features = ["random"] }
+futures = "0.3.24"
 gag = "1.0"
 hex = "0.4.3"
 prettydiff = "0.6"
