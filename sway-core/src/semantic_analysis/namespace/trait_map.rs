@@ -1,5 +1,7 @@
+use crate::declaration_engine::declaration_wrapper::DeclarationWrapper;
 use crate::{
-    language::{ty, CallPath},
+    declaration_engine::{de_look_up_decl_id, DeclarationId},
+    language::CallPath,
     type_system::{look_up_type_id, CopyTypes, TypeId},
     TypeInfo, TypeMapping,
 };
@@ -29,7 +31,7 @@ type TraitName = CallPath;
 // difference between 3 and 4, as in practice, 1 and 2 might not yet
 // be resolved.
 type TraitMapInner = im::Vector<((TraitName, TypeId), TraitMethods)>;
-type TraitMethods = im::HashMap<String, ty::TyFunctionDeclaration>;
+type TraitMethods = im::HashMap<String, DeclarationId>;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct TraitMap {
@@ -41,11 +43,16 @@ impl TraitMap {
         &mut self,
         trait_name: TraitName,
         incoming_type_id: TypeId,
-        methods: Vec<ty::TyFunctionDeclaration>,
+        methods: Vec<DeclarationId>,
     ) {
         let mut methods_map = im::HashMap::new();
         for method in methods.into_iter() {
-            methods_map.insert(method.name.as_str().to_string(), method);
+            let method_name = match de_look_up_decl_id(method.clone()) {
+                DeclarationWrapper::Function(f) => f.name,
+                DeclarationWrapper::TraitFn(f) => f.name,
+                _ => panic!("only expecting trait fn and function here"),
+            };
+            methods_map.insert(method_name.as_str().to_string(), method);
         }
         self.trait_map
             .push_back(((trait_name, incoming_type_id), methods_map));
@@ -64,7 +71,7 @@ impl TraitMap {
     pub(crate) fn get_call_path_and_type_info(
         &self,
         incoming_type_id: TypeId,
-    ) -> Vec<((TraitName, TypeId), Vec<ty::TyFunctionDeclaration>)> {
+    ) -> Vec<((TraitName, TypeId), Vec<DeclarationId>)> {
         let mut ret = vec![];
         for ((call_path, map_type_id), methods) in self.trait_map.iter() {
             if look_up_type_id(incoming_type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
@@ -77,10 +84,7 @@ impl TraitMap {
         ret
     }
 
-    pub(crate) fn get_methods_for_type(
-        &self,
-        incoming_type_id: TypeId,
-    ) -> Vec<ty::TyFunctionDeclaration> {
+    pub(crate) fn get_methods_for_type(&self, incoming_type_id: TypeId) -> Vec<DeclarationId> {
         let mut methods = vec![];
         // small performance gain in bad case
         if look_up_type_id(incoming_type_id) == TypeInfo::ErrorRecovery {

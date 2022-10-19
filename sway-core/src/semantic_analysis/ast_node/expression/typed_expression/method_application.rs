@@ -1,4 +1,7 @@
 use crate::{
+    declaration_engine::{
+        de_get_function, de_look_up_decl_id, declaration_wrapper::DeclarationWrapper, DeclarationId,
+    },
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -46,6 +49,8 @@ pub(crate) fn type_check_method_application(
         warnings,
         errors
     );
+
+    let method = de_get_function(method, &span).unwrap();
 
     // check the function storage purity
     if !method.is_contract_call {
@@ -315,12 +320,12 @@ pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
     method_name: &TypeBinding<MethodName>,
     arguments: VecDeque<ty::TyExpression>,
-) -> CompileResult<ty::TyFunctionDeclaration> {
+) -> CompileResult<DeclarationId> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
     // retrieve the function declaration using the components of the method name
-    let mut func_decl = match &method_name.inner {
+    let func_decl = match &method_name.inner {
         MethodName::FromType {
             call_path_binding,
             method_name,
@@ -408,18 +413,24 @@ pub(crate) fn resolve_method_name(
         }
     };
 
-    // monomorphize the function declaration
-    check!(
-        ctx.monomorphize(
-            &mut func_decl,
-            &mut method_name.type_arguments.clone(),
-            EnforceTypeArguments::No,
-            &method_name.span()
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    match de_look_up_decl_id(func_decl.clone()) {
+        DeclarationWrapper::Function(mut f) => {
+            // monomorphize the function declaration
+            check!(
+                ctx.monomorphize(
+                    &mut f,
+                    &mut method_name.type_arguments.clone(),
+                    EnforceTypeArguments::No,
+                    &method_name.span()
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+        }
+        DeclarationWrapper::TraitFn(_) => todo!(),
+        _ => todo!(),
+    }
 
     ok(func_decl, warnings, errors)
 }

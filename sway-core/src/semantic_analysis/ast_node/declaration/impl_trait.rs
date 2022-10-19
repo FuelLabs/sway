@@ -113,16 +113,12 @@ impl ty::TyImplTrait {
                     warnings,
                     errors
                 );
-                let functions_decl_id = functions_buf
-                    .iter()
-                    .map(|d| de_insert_function(d.clone()))
-                    .collect::<Vec<_>>();
                 let impl_trait = ty::TyImplTrait {
                     impl_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     trait_name,
                     trait_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     span: block_span,
-                    methods: functions_decl_id,
+                    methods: functions_buf,
                     implementing_for_type_id,
                     type_implementing_for_span: type_implementing_for_span.clone(),
                 };
@@ -174,16 +170,12 @@ impl ty::TyImplTrait {
                     warnings,
                     errors
                 );
-                let functions_decl_id = functions_buf
-                    .iter()
-                    .map(|d| de_insert_function(d.clone()))
-                    .collect::<Vec<_>>();
                 let impl_trait = ty::TyImplTrait {
                     impl_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     trait_name,
                     trait_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     span: block_span,
-                    methods: functions_decl_id,
+                    methods: functions_buf,
                     implementing_for_type_id,
                     type_implementing_for_span,
                 };
@@ -497,7 +489,7 @@ fn type_check_trait_implementation(
     self_type_span: &Span,
     block_span: &Span,
     is_contract: bool,
-) -> CompileResult<Vec<ty::TyFunctionDeclaration>> {
+) -> CompileResult<Vec<DeclarationId>> {
     use sway_error::error::InterfaceName;
     let interface_name = || -> InterfaceName {
         if is_contract {
@@ -510,7 +502,7 @@ fn type_check_trait_implementation(
     let mut errors = vec![];
     let mut warnings = vec![];
 
-    let mut functions_buf: Vec<ty::TyFunctionDeclaration> = vec![];
+    let mut functions_buf: Vec<DeclarationId> = vec![];
     let mut processed_fns = std::collections::HashSet::<Ident>::new();
 
     let mut trait_fns = vec![];
@@ -655,7 +647,7 @@ fn type_check_trait_implementation(
             continue;
         }
 
-        functions_buf.push(fn_decl);
+        functions_buf.push(de_insert_function(fn_decl));
     }
 
     // This name space is temporary! It is used only so that the below methods
@@ -706,7 +698,7 @@ fn type_check_trait_implementation(
             warnings,
             errors
         );
-        functions_buf.push(method);
+        functions_buf.push(de_insert_function(method));
     }
 
     // check that the implementation checklist is complete

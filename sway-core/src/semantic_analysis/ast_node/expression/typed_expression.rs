@@ -64,6 +64,7 @@ impl ty::TyExpression {
             warnings,
             errors
         );
+        let method = de_get_function(method, &call_path.span()).unwrap();
         instantiate_function_application_simple(
             call_path,
             HashMap::new(),
@@ -1193,7 +1194,7 @@ impl ty::TyExpression {
             }
         }
 
-        let mut functions_buf = trait_fns
+        let functions_buf = trait_fns
             .iter()
             .map(|x| x.to_dummy_func(Mode::ImplAbiFn))
             .collect::<Vec<_>>();
@@ -1213,10 +1214,18 @@ impl ty::TyExpression {
                 errors
             ));
         }
-
-        functions_buf.append(&mut type_checked_fn_buf);
+        let mut functions_ids = functions_buf
+            .iter()
+            .map(|d| de_insert_function(d.clone()))
+            .collect::<Vec<_>>();
+        functions_ids.append(
+            &mut type_checked_fn_buf
+                .iter()
+                .map(|d| de_insert_function(d.clone()))
+                .collect::<Vec<_>>(),
+        );
         ctx.namespace
-            .insert_trait_implementation(abi_name.clone(), return_type, functions_buf);
+            .insert_trait_implementation(abi_name.clone(), return_type, functions_ids);
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::AbiCast {
                 abi_name,

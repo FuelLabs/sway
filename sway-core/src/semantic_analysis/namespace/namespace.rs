@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::DeclarationId,
     language::{ty, CallPath},
     type_system::*,
     CompileResult, Ident,
@@ -143,7 +144,7 @@ impl Namespace {
         method_name: &Ident,
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
-    ) -> CompileResult<ty::TyFunctionDeclaration> {
+    ) -> CompileResult<DeclarationId> {
         self.root.find_method_for_type(
             &self.mod_path,
             r#type,

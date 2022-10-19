@@ -7,10 +7,10 @@ use sway_types::{style::is_upper_camel_case, Span, Spanned};
 use crate::{
     declaration_engine::*,
     error::*,
-    language::{parsed::*, ty, CallPath, Visibility},
+    language::{parsed::*, ty, CallPath},
     semantic_analysis::{
         ast_node::{type_check_interface_surface, type_check_trait_methods},
-        Mode, TypeCheckContext,
+        TypeCheckContext,
     },
     type_system::*,
     Namespace,
@@ -64,13 +64,6 @@ impl ty::TyTraitDeclaration {
             warnings,
             errors
         );
-        let mut trait_fns = vec![];
-        for decl_id in interface_surface.iter() {
-            match de_get_trait_fn(decl_id.clone(), &name.span()) {
-                Ok(decl) => trait_fns.push(decl),
-                Err(err) => errors.push(err),
-            }
-        }
 
         // Recursively handle supertraits: make their interfaces and methods available to this trait
         check!(
@@ -89,10 +82,7 @@ impl ty::TyTraitDeclaration {
                 is_absolute: false,
             },
             insert_type(TypeInfo::SelfType),
-            trait_fns
-                .iter()
-                .map(|x| x.to_dummy_func(Mode::NonAbi))
-                .collect(),
+            interface_surface.clone(),
         );
         // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
         let ctx = ctx.with_self_type(insert_type(TypeInfo::SelfType));
@@ -131,10 +121,9 @@ fn handle_supertraits(
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let ty::TyTraitDeclaration {
-                    ref interface_surface,
+                    interface_surface,
                     ref methods,
                     ref supertraits,
-                    ref name,
                     ..
                 } = check!(
                     CompileResult::from(de_get_trait(decl_id.clone(), &supertrait.span())),
@@ -143,22 +132,11 @@ fn handle_supertraits(
                     errors
                 );
 
-                let mut trait_fns = vec![];
-                for decl_id in interface_surface.iter() {
-                    match de_get_trait_fn(decl_id.clone(), &name.span()) {
-                        Ok(decl) => trait_fns.push(decl),
-                        Err(err) => errors.push(err),
-                    }
-                }
-
                 // insert dummy versions of the interfaces for all of the supertraits
                 trait_namespace.insert_trait_implementation(
                     supertrait.name.clone(),
                     insert_type(TypeInfo::SelfType),
-                    trait_fns
-                        .iter()
-                        .map(|x| x.to_dummy_func(Mode::NonAbi))
-                        .collect(),
+                    interface_surface,
                 );
 
                 // insert dummy versions of the methods of all of the supertraits
@@ -203,7 +181,7 @@ fn handle_supertraits(
 fn convert_trait_methods_to_dummy_funcs(
     methods: &[FunctionDeclaration],
     trait_namespace: &mut Namespace,
-) -> CompileResult<Vec<ty::TyFunctionDeclaration>> {
+) -> CompileResult<Vec<DeclarationId>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut dummy_funcs = vec![];
@@ -245,21 +223,16 @@ fn convert_trait_methods_to_dummy_funcs(
             errors,
         );
 
-        dummy_funcs.push(ty::TyFunctionDeclaration {
+        dummy_funcs.push(de_insert_trait_fn(ty::TyTraitFn {
             purity: Default::default(),
             name: name.clone(),
-            body: ty::TyCodeBlock { contents: vec![] },
             parameters: typed_parameters,
             attributes: method.attributes.clone(),
-            span: name.span(),
             return_type,
-            initial_return_type,
             return_type_span: return_type_span.clone(),
-            visibility: Visibility::Public,
-            type_parameters: vec![],
-            is_contract_call: false,
-        });
+        }));
     }
+
     if errors.is_empty() {
         ok(dummy_funcs, warnings, errors)
     } else {

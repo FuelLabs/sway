@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::{de_get_function, DeclarationId},
     error::*,
     language::{ty, CallPath},
     type_system::*,
@@ -83,7 +84,7 @@ impl Root {
         method_name: &Ident,
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
-    ) -> CompileResult<ty::TyFunctionDeclaration> {
+    ) -> CompileResult<DeclarationId> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -129,10 +130,10 @@ impl Root {
         let mut methods = local_methods;
         methods.append(&mut type_methods);
 
-        match methods
-            .into_iter()
-            .find(|ty::TyFunctionDeclaration { name, .. }| name == method_name)
-        {
+        match methods.into_iter().find(|decl_id| {
+            let method = de_get_function(decl_id.clone(), &method_name.span()).unwrap();
+            method.name == *method_name
+        }) {
             Some(o) => ok(o, warnings, errors),
             None => {
                 if args_buf.get(0).map(|x| look_up_type_id(x.return_type))
