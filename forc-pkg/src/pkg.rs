@@ -1784,7 +1784,7 @@ pub fn dependency_namespace(
     node: NodeIx,
     constants: BTreeMap<String, ConfigTimeConstant>,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
-    let mut namespace = namespace::Module::default_with_constants(constants.clone())?;
+    let mut namespace = namespace::Module::default_with_constants(constants)?;
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -1798,7 +1798,7 @@ pub fn dependency_namespace(
                 .cloned()
                 .expect("no namespace module"),
             DepKind::Contract => {
-                let mut constants = constants.clone();
+                let mut constants = BTreeMap::default();
                 let compiled_dep = compiled_contract_deps.get(&dep_node);
                 let dep_contract_id = match compiled_dep {
                     Some(dep_contract_compiled) => contract_id(dep_contract_compiled),
