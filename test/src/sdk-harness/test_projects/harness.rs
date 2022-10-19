@@ -3,6 +3,7 @@
 mod auth;
 mod block;
 mod call_frames;
+mod contract_bytecode;
 mod context;
 mod ec_recover_and_match_predicate;
 mod evm;
