@@ -129,10 +129,19 @@ impl Backend {
             .parent()
             .ok_or(LanguageServerError::ManifestDirNotFound)?
             .to_path_buf();
-
+        
         let session = match self.sessions.get(&manifest_dir) {
             Some(item) => item.value().clone(),
             None => {
+                // TODO, remove this once the type engine no longer uses global memory: https://github.com/FuelLabs/sway/issues/2063
+                // Until then, we clear the current project and init with the new project.
+                // At least allows the user to switch between projects within a workspace but only if they
+                // have one pane open.
+                let _ = self.sessions.iter().map(|item| {
+                    let session = item.value();
+                    session.shutdown();
+                });
+
                 // If no session can be found, then we need to call init and inserst a new session into the map
                 self.init(uri)?;
                 self.sessions
@@ -141,6 +150,7 @@ impl Backend {
                     .expect("no session found even though it was just inserted into the map")
             }
         };
+        
         Ok(session)
     }
 
@@ -207,16 +217,7 @@ impl LanguageServer for Backend {
 
         let _ = self.sessions.iter().map(|item| {
             let session = item.value();
-            // shutdown the thread watching the manifest file
-            {
-                let handle = session.sync.notify_join_handle.read();
-                if let Some(join_handle) = &*handle {
-                    join_handle.abort();
-                }
-            }
-
-            // Delete the temporary directory.
-            session.sync.remove_temp_dir();
+            session.shutdown();
         });
 
         Ok(())

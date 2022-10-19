@@ -76,6 +76,17 @@ impl Session {
         self.sync.manifest_dir()
     }
 
+    pub fn shutdown(&self) {
+        // shutdown the thread watching the manifest file
+        let handle = self.sync.notify_join_handle.read();
+        if let Some(join_handle) = &*handle {
+            join_handle.abort();
+        }
+        
+        // Delete the temporary directory.
+        self.sync.remove_temp_dir();
+    }
+
     /// Check if the code editor's cursor is currently over one of our collected tokens.
     pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
         let tokens = self.tokens_for_file(uri);
