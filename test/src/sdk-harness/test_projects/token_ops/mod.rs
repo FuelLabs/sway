@@ -1,6 +1,7 @@
 use fuel_gql_client::fuel_tx::Receipt;
 use fuels::prelude::*;
-use fuels::tx::{AssetId, ContractId};
+use fuels::tx::AssetId;
+use std::str::FromStr;
 
 abigen!(
     TestFuelCoinContract,
@@ -369,11 +370,13 @@ async fn can_send_message_output_with_data() {
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
 
     let amount = 33u64;
-    let recipient_addr: Address = wallets[0].address().into();
+
+    let recipient_hex = "0x000000000000000000000000b46a7a1a23f3897cc83a94521a96da5c23bc58db";
+    let recipient_address = Address::from_str(&recipient_hex).unwrap();
 
     let call_response = fuelcoin_instance
         .methods()
-        .send_message(Bits256(*recipient_addr), vec![100, 75, 50], amount)
+        .send_message(Bits256(*recipient_address), vec![100, 75, 50], amount)
         .append_message_outputs(1)
         .call()
         .await
@@ -386,7 +389,7 @@ async fn can_send_message_output_with_data() {
         .unwrap();
 
     assert_eq!(*fuelcoin_id, **message_receipt.sender().unwrap());
-    assert_eq!(&recipient_addr, message_receipt.recipient().unwrap());
+    assert_eq!(&recipient_address, message_receipt.recipient().unwrap());
     assert_eq!(amount, message_receipt.amount().unwrap());
     assert_eq!(24, message_receipt.len().unwrap());
     assert_eq!(
@@ -411,11 +414,12 @@ async fn can_send_message_output_without_data() {
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
 
     let amount = 33u64;
-    let recipient_addr: Address = wallets[0].address().into();
+    let recipient_hex = "0x000000000000000000000000b46a7a1a23f3897cc83a94521a96da5c23bc58db";
+    let recipient_address = Address::from_str(&recipient_hex).unwrap();
 
     let call_response = fuelcoin_instance
         .methods()
-        .send_message(Bits256(*recipient_addr), Vec::<u64>::new(), amount)
+        .send_message(Bits256(*recipient_address), Vec::<u64>::new(), amount)
         .append_message_outputs(1)
         .call()
         .await
@@ -428,7 +432,7 @@ async fn can_send_message_output_without_data() {
         .unwrap();
 
     assert_eq!(*fuelcoin_id, **message_receipt.sender().unwrap());
-    assert_eq!(&recipient_addr, message_receipt.recipient().unwrap());
+    assert_eq!(&recipient_address, message_receipt.recipient().unwrap());
     assert_eq!(amount, message_receipt.amount().unwrap());
     assert_eq!(0, message_receipt.len().unwrap());
     assert_eq!(Vec::<u8>::new(), message_receipt.data().unwrap());
