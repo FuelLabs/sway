@@ -2,6 +2,7 @@ use crate::{
     core::{config::InlayHintsConfig, session::Session, token::TypedAstToken},
     utils::common::get_range_from_span,
 };
+use std::sync::Arc;
 use sway_core::{language::ty::TyDeclaration, type_system::TypeInfo};
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{self, Range, Url};
@@ -20,7 +21,7 @@ pub struct InlayHint {
 }
 
 pub(crate) fn inlay_hints(
-    session: &Session,
+    session: Arc<Session>,
     uri: &Url,
     range: &Range,
     config: &InlayHintsConfig,

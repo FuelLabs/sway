@@ -1,26 +1,18 @@
-use crate::error::{DirectoryError, DocumentError, LanguageServerError};
+use crate::error::{DocumentError, LanguageServerError};
 use dashmap::DashMap;
 use forc_pkg::{manifest::Dependency, PackageManifestFile};
 use notify::RecursiveMode;
 use notify_debouncer_mini::new_debouncer;
+use parking_lot::RwLock;
 use std::{
     collections::HashMap,
     fs::{self, File},
     io::{Read, Write},
     path::{Path, PathBuf},
-    sync::{Arc, LockResult, RwLock},
+    sync::Arc,
 };
 use tempfile::Builder;
 use tower_lsp::lsp_types::Url;
-
-/// Used to track if the language server has been initialised yet.
-/// We initialize the server with the temp directories during the first
-/// lsp protocol call to did_open.
-#[derive(Debug)]
-pub enum InitializedState {
-    Uninitialized,
-    Initialized,
-}
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub enum Directory {
@@ -32,7 +24,6 @@ pub enum Directory {
 pub struct SyncWorkspace {
     pub directories: DashMap<Directory, PathBuf>,
     pub notify_join_handle: RwLock<Option<tokio::task::JoinHandle<()>>>,
-    pub init_state: RwLock<InitializedState>,
 }
 
 impl SyncWorkspace {
@@ -42,7 +33,6 @@ impl SyncWorkspace {
         Self {
             directories: DashMap::new(),
             notify_join_handle: RwLock::new(None),
-            init_state: RwLock::new(InitializedState::Uninitialized),
         }
     }
 
@@ -68,13 +58,13 @@ impl SyncWorkspace {
         let manifest_dir = manifest
             .path()
             .parent()
-            .ok_or(DirectoryError::ManifestDirNotFound)?;
+            .ok_or(LanguageServerError::ManifestDirNotFound)?;
 
         // extract the project name from the path
         let project_name = manifest_dir
             .file_name()
             .and_then(|name| name.to_str())
-            .ok_or(DirectoryError::CantExtractProjectName {
+            .ok_or(LanguageServerError::CantExtractProjectName {
                 dir: manifest_dir.to_string_lossy().to_string(),
             })?;
 
@@ -82,12 +72,12 @@ impl SyncWorkspace {
         let temp_dir = Builder::new()
             .prefix(SyncWorkspace::LSP_TEMP_PREFIX)
             .tempdir()
-            .map_err(|_| DirectoryError::TempDirFailed)?;
+            .map_err(|_| LanguageServerError::TempDirFailed)?;
 
         let temp_path = temp_dir
             .into_path()
             .canonicalize()
-            .map_err(|_| DirectoryError::CanonicalizeFailed)?
+            .map_err(|_| LanguageServerError::CanonicalizeFailed)?
             .join(project_name);
 
         self.directories
@@ -99,7 +89,7 @@ impl SyncWorkspace {
 
     pub(crate) fn clone_manifest_dir_to_temp(&self) -> Result<(), LanguageServerError> {
         copy_dir_contents(self.manifest_dir()?, self.temp_dir()?)
-            .map_err(|_| DirectoryError::CopyContentsFailed)?;
+            .map_err(|_| LanguageServerError::CopyContentsFailed)?;
 
         Ok(())
     }
@@ -111,12 +101,12 @@ impl SyncWorkspace {
     }
 
     /// Convert the Url path from the client to point to the same file in our temp folder
-    pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, DirectoryError> {
+    pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, LanguageServerError> {
         self.convert_url(uri, self.temp_dir()?, self.manifest_dir()?)
     }
 
     /// Convert the Url path from the temp folder to point to the same file in the users workspace
-    pub(crate) fn temp_to_workspace_url(&self, uri: &Url) -> Result<Url, DirectoryError> {
+    pub(crate) fn temp_to_workspace_url(&self, uri: &Url) -> Result<Url, LanguageServerError> {
         self.convert_url(uri, self.manifest_dir()?, self.temp_dir()?)
     }
 
@@ -176,38 +166,44 @@ impl SyncWorkspace {
                     });
 
                     // Store the join handle so we can clean up the thread on shutdown
-                    if let LockResult::Ok(mut join_handle) = self.notify_join_handle.write() {
+                    {
+                        let mut join_handle = self.notify_join_handle.write();
                         *join_handle = Some(handle);
                     }
                 }
             });
     }
 
-    pub(crate) fn manifest_dir(&self) -> Result<PathBuf, DirectoryError> {
+    pub(crate) fn manifest_dir(&self) -> Result<PathBuf, LanguageServerError> {
         self.directories
             .get(&Directory::Manifest)
             .map(|item| item.value().clone())
-            .ok_or(DirectoryError::ManifestDirNotFound)
+            .ok_or(LanguageServerError::ManifestDirNotFound)
     }
 
-    fn temp_dir(&self) -> Result<PathBuf, DirectoryError> {
+    fn temp_dir(&self) -> Result<PathBuf, LanguageServerError> {
         self.directories
             .get(&Directory::Temp)
             .map(|item| item.value().clone())
-            .ok_or(DirectoryError::TempDirNotFound)
+            .ok_or(LanguageServerError::TempDirNotFound)
     }
 
-    fn convert_url(&self, uri: &Url, from: PathBuf, to: PathBuf) -> Result<Url, DirectoryError> {
+    fn convert_url(
+        &self,
+        uri: &Url,
+        from: PathBuf,
+        to: PathBuf,
+    ) -> Result<Url, LanguageServerError> {
         let path = from.join(
             PathBuf::from(uri.path())
                 .strip_prefix(to)
-                .map_err(DirectoryError::StripPrefixError)?,
+                .map_err(LanguageServerError::StripPrefixError)?,
         );
         self.url_from_path(&path)
     }
 
-    fn url_from_path(&self, path: &PathBuf) -> Result<Url, DirectoryError> {
-        Url::from_file_path(&path).map_err(|_| DirectoryError::UrlFromPathFailed {
+    fn url_from_path(&self, path: &PathBuf) -> Result<Url, LanguageServerError> {
+        Url::from_file_path(&path).map_err(|_| LanguageServerError::UrlFromPathFailed {
             path: path.to_string_lossy().to_string(),
         })
     }

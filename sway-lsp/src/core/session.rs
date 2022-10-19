@@ -10,7 +10,10 @@ use crate::{
         {traverse_parse_tree, traverse_typed_tree},
     },
     error::{DocumentError, LanguageServerError},
-    utils::{self, sync::{SyncWorkspace, Directory}},
+    utils::{
+        self,
+        sync::{Directory, SyncWorkspace},
+    },
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
@@ -61,8 +64,7 @@ impl Session {
         let manifest_dir = PathBuf::from(uri.path());
         // Create a new temp dir that clones the current workspace
         // and store manifest and temp paths
-        self.sync
-            .create_temp_dir_from_workspace(&manifest_dir)?;
+        self.sync.create_temp_dir_from_workspace(&manifest_dir)?;
 
         self.sync.clone_manifest_dir_to_temp()?;
 
@@ -71,7 +73,7 @@ impl Session {
 
         self.sync.watch_and_sync_manifest();
 
-        Ok(self.sync.manifest_dir()?)
+        self.sync.manifest_dir()
     }
 
     /// Check if the code editor's cursor is currently over one of our collected tokens.
