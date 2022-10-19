@@ -414,6 +414,13 @@ fn inline_instruction(
             } => new_block
                 .ins(context)
                 .log(map_value(log_val), log_ty, map_value(log_id)),
+            Instruction::MemCopy {
+                dst_val,
+                src_val,
+                byte_len,
+            } => new_block
+                .ins(context)
+                .mem_copy(map_value(dst_val), map_value(src_val), byte_len),
             Instruction::Nop => new_block.ins(context).nop(),
             Instruction::ReadRegister(reg) => new_block.ins(context).read_register(reg),
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
