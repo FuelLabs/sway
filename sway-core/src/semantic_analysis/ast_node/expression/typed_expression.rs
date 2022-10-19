@@ -1039,7 +1039,7 @@ impl ty::TyExpression {
             let mut call_path_binding = call_path_binding.clone();
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
                 .flat_map(|unknown_decl| unknown_decl.expect_const(&call_path_binding.span()))
-                .ok(&mut function_probe_warnings, &mut function_probe_errors)
+                .ok(&mut const_probe_warnings, &mut const_probe_errors)
                 .map(|const_decl| (const_decl, call_path_binding.span()))
         };
 
