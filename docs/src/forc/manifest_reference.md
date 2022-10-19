@@ -20,7 +20,7 @@ The `Forc.toml` (the _manifest_ file) is a compulsory file for each package and 
 
 * [`[patch]`](#the-patch-section) - Defines the patches.
 
-* [`[contract-dependencies]`](#the-contract-dependencies-section) - Defines the deployment dependencies for the contract.
+* [`[contract-dependencies]`](#the-contract-dependencies-section) - Defines the contract dependencies.
 
 ## The `[project]` section
 
@@ -152,9 +152,11 @@ Note that each key after the `[patch]` is a URL of the source that is being patc
 
 ## The `[contract-dependencies]` section
 
-The `[contract-dependenices]` section of `Forc.toml` can be used to declare deployment dependencies for a contract. Contracts declared under `[contract-dependencies]` are built just like regular `[dependencies]` however rather than importing each contract dependency's entire public namespace we instead import their respective contract IDs as `CONTRACT_ID` constants available via each contract dependency's namespace root. This means you can use a contract dependency's ID as if it were declared as a `pub const` in the root of the contract dependency package as demonstrated in the example below.
+The `[contract-dependenices]` table can be used to declare contract dependencies for a Sway contract or script. Contract dependencies are the set of contracts that our contract or script may interact with. Declaring `[contract-dependencies]` makes it easier to refer to contracts in your Sway source code without having to manually update IDs each time a new version is deployed. Instead, we can use forc to pin and update contract dependencies just like we do for regular library dependencies.
 
-Note that each key after [contract-dependencies] are essentially [dependencies] and they can be declared the same way. Since we are declaring the list of contracts that needs to be deployed before the current project depends on, each dependency declared under [contract-dependencies] must be a contract.
+Contracts declared under `[contract-dependencies]` are built and pinned just like regular `[dependencies]` however rather than importing each contract dependency's entire public namespace we instead import their respective contract IDs as `CONTRACT_ID` constants available via each contract dependency's namespace root. This means you can use a contract dependency's ID as if it were declared as a `pub const` in the root of the contract dependency package as demonstrated in the example below.
+
+Entries under `[contract-dependencies]` can be declared in the same way that `[dependencies]` can be declared. That is, they can refer to the `path` or `git` source of another contract. Note that entries under `[contract-dependencies]` must refer to contracts and will otherwise produce an error.
 
 Example `Forc.toml`:
 
