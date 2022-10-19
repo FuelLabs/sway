@@ -370,9 +370,7 @@ async fn can_send_message_output_with_data() {
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
 
     let amount = 33u64;
-
-    let recipient_hex = "0x000000000000000000000000b46a7a1a23f3897cc83a94521a96da5c23bc58db";
-    let recipient_address = Address::from_str(&recipient_hex).unwrap();
+    let recipient_address: Address = wallets[0].address().into();
 
     let call_response = fuelcoin_instance
         .methods()

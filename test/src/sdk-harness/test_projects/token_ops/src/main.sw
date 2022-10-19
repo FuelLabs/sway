@@ -1,6 +1,6 @@
 contract;
 
-use std::{context::balance_of, message::send_message, token::*, vm::evm::evm_address::EvmAddress};
+use std::{context::balance_of, message::send_message, token::*};
 
 abi TestFuelCoin {
     fn mint_coins(mint_amount: u64);
@@ -53,6 +53,6 @@ impl TestFuelCoin for Contract {
     }
 
     fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
-        send_message(~EvmAddress::from(recipient), msg_data, coins);
+        send_message(recipient, msg_data, coins);
     }
 }
