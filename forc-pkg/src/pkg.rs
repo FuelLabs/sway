@@ -69,6 +69,7 @@ pub type ManifestMap = HashMap<PinnedId, PackageManifestFile>;
 pub struct PinnedId(u64);
 
 /// The result of successfully compiling a package.
+#[derive(Clone)]
 pub struct Compiled {
     pub json_abi_program: JsonABIProgram,
     pub storage_slots: Vec<StorageSlot>,
@@ -1778,21 +1779,44 @@ pub fn sway_build_config(
 /// then the std prelude will also be added.
 pub fn dependency_namespace(
     namespace_map: &HashMap<NodeIx, namespace::Module>,
+    compiled_map: &HashMap<NodeIx, Compiled>,
     graph: &Graph,
     node: NodeIx,
     constants: BTreeMap<String, ConfigTimeConstant>,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
-    let mut namespace = namespace::Module::default_with_constants(constants)?;
+    let mut namespace = namespace::Module::default_with_constants(constants.clone())?;
 
     // Add direct dependencies.
     let mut core_added = false;
     for edge in graph.edges_directed(node, Direction::Outgoing) {
         let dep_node = edge.target();
         let dep_name = kebab_to_snake_case(&edge.weight().name);
-        let dep_namespace = namespace_map
-            .get(&dep_node)
-            .map(|namespace| namespace.to_owned())
-            .unwrap_or_else(namespace::Module::default);
+        let dep_edge = edge.weight();
+        let dep_namespace = match dep_edge.kind {
+            DepKind::Library => namespace_map
+                .get(&dep_node)
+                .map(Clone::clone)
+                .expect("no namespace module for {dep_name}"),
+            DepKind::Contract => {
+                let mut constants = constants.clone();
+                let compiled_dep = compiled_map.get(&dep_node);
+                let dep_contract_id = match compiled_dep {
+                    Some(dep_contract_compiled) => contract_id(dep_contract_compiled),
+                    None => ContractId::default(),
+                };
+
+                // Construct namespace with contract id
+                let contract_dep_constant_name = "CONTRACT_ID";
+                let contract_id_value = format!("\"{dep_contract_id}\"");
+                let contract_id_constant = ConfigTimeConstant {
+                    r#type: "b256".to_string(),
+                    value: contract_id_value,
+                    public: true,
+                };
+                constants.insert(contract_dep_constant_name.to_string(), contract_id_constant);
+                namespace::Module::default_with_constants(constants)?
+            }
+        };
         namespace.insert_submodule(dep_name, dep_namespace);
         let dep = &graph[dep_node];
         if dep.name == CORE {
@@ -2218,7 +2242,7 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
 }
 
 /// Returns the ContractId of a compiled contract with specified `salt`.
-fn get_contract_id(compiled: &Compiled) -> ContractId {
+fn contract_id(compiled: &Compiled) -> ContractId {
     // Construct the contract ID
     let contract = Contract::from(compiled.bytecode.clone());
     let salt = fuel_tx::Salt::new([0; 32]);
@@ -2253,48 +2277,20 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
         .expect("Compilation order is empty!");
     let root_node_pinned = &plan.graph()[*root_node];
     let root_manifest = &plan.manifest_map()[&root_node_pinned.id()];
-    let mut contract_dependency_ids: HashMap<String, ContractId> = HashMap::new();
+    let mut compiled_map = HashMap::new();
     for &node in &plan.compilation_order {
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
         let constants = manifest.config_time_constants();
-        let mut dep_namespace =
-            match dependency_namespace(&namespace_map, &plan.graph, node, constants) {
+        let dep_namespace =
+            match dependency_namespace(&namespace_map, &compiled_map, &plan.graph, node, constants)
+            {
                 Ok(o) => o,
                 Err(errs) => {
                     print_on_failure(profile.terse, &[], &errs);
                     bail!("Failed to compile {}", pkg.name);
                 }
             };
-        if node == *root_node {
-            // Create namespaces for the contract_dependencies encountered and insert them as submodules to the
-            // root
-            for (contract_dep_name, contract_dep_id) in &contract_dependency_ids {
-                let contract_dep_constant_name = "CONTRACT_ID";
-                let contract_id_value = format!("\"{contract_dep_id}\"");
-                let config_time_constant = ConfigTimeConstant {
-                    r#type: "b256".to_string(),
-                    value: contract_id_value,
-                    public: true,
-                };
-                let mut contract_dep_constants = BTreeMap::new();
-                contract_dep_constants
-                    .insert(contract_dep_constant_name.to_string(), config_time_constant);
-                let contract_dep_namesapce =
-                    match namespace::Module::default_with_constants(contract_dep_constants) {
-                        Ok(o) => o,
-                        Err(errs) => {
-                            print_on_failure(profile.terse, &[], &errs);
-                            bail!("Failed to compile {}", contract_dep_name);
-                        }
-                    };
-                dep_namespace.insert_submodule(
-                    kebab_to_snake_case(contract_dep_name),
-                    contract_dep_namesapce,
-                );
-            }
-        }
-
         let res = compile(pkg, manifest, profile, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
         // If the current node is a contract dependency, collect the contract_id
@@ -2302,8 +2298,7 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
             .contract_deps()
             .any(|dep| *dep.0 == manifest.project.name)
         {
-            let contract_id = get_contract_id(&compiled);
-            contract_dependency_ids.insert(pkg.name.clone(), contract_id);
+            compiled_map.insert(node, compiled.clone());
         }
         if let Some(namespace) = maybe_namespace {
             namespace_map.insert(node, namespace.into());
@@ -2466,54 +2461,14 @@ pub fn check(
     sway_core::clear_lazy_statics();
     let mut namespace_map = Default::default();
     let mut source_map = SourceMap::new();
-    let root_node = plan
-        .compilation_order()
-        .last()
-        .expect("Compilation order is empty!");
-    let root_node_pinned = &plan.graph()[*root_node];
-    let root_manifest = &plan.manifest_map()[&root_node_pinned.id()];
-    let mut contract_dependency_ids: HashMap<String, ContractId> = HashMap::new();
+    let compiled_map = HashMap::new();
     for (i, &node) in plan.compilation_order.iter().enumerate() {
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
         let constants = manifest.config_time_constants();
-        // If the current node is a contract dependency, collect the contract_id
-        if root_manifest
-            .contract_deps()
-            .any(|dep| *dep.0 == manifest.project.name)
-        {
-            // Since we are not compiling we cannot get the actual `ContractID`, having the default
-            // `ContractID` is enough for `check`.
-            let contract_id = ContractId::default();
-            contract_dependency_ids.insert(pkg.name.clone(), contract_id);
-        }
-        let mut dep_namespace =
-            dependency_namespace(&namespace_map, &plan.graph, node, constants).expect("TODO");
-
-        if node == *root_node {
-            // Create namespaces for the contract_dependencies encountered and insert them as submodules to the
-            // root
-            for (contract_dep_name, contract_dep_id) in &contract_dependency_ids {
-                let contract_dep_constant_name = "CONTRACT_ID";
-                let contract_id_value = format!("\"{contract_dep_id}\"");
-                let config_time_constant = ConfigTimeConstant {
-                    r#type: "b256".to_string(),
-                    value: contract_id_value,
-                    public: true,
-                };
-                let mut contract_dep_constants = BTreeMap::new();
-                contract_dep_constants
-                    .insert(contract_dep_constant_name.to_string(), config_time_constant);
-                let contract_dep_namesapce =
-                    namespace::Module::default_with_constants(contract_dep_constants)
-                        .expect("TODO");
-                dep_namespace.insert_submodule(
-                    kebab_to_snake_case(contract_dep_name),
-                    contract_dep_namesapce,
-                );
-            }
-        }
-
+        let dep_namespace =
+            dependency_namespace(&namespace_map, &compiled_map, &plan.graph, node, constants)
+                .expect("TODO");
         let CompileResult {
             value,
             mut warnings,
