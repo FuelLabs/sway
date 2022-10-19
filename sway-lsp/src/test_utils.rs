@@ -20,10 +20,6 @@ pub(crate) fn sway_example_dir() -> PathBuf {
     sway_workspace_dir().join("examples/storage_variables")
 }
 
-pub(crate) fn sway_example_structs() -> PathBuf {
-    sway_workspace_dir().join("examples/structs")
-}
-
 pub(crate) fn doc_comments_dir() -> PathBuf {
     sway_workspace_dir()
         .join(e2e_language_dir())

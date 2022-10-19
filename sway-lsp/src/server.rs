@@ -27,21 +27,17 @@ use tower_lsp::{jsonrpc, Client, LanguageServer};
 pub struct Backend {
     pub client: Client,
     pub config: RwLock<Config>,
-
-    //session: Arc<Session>,
     sessions: DashMap<PathBuf, Arc<Session>>,
 }
 
 impl Backend {
     pub fn new(client: Client) -> Self {
-        //let session = Arc::new(Session::new());
         let sessions = DashMap::new();
         let config = RwLock::new(Default::default());
 
         Backend {
             client,
             config,
-            //session,
             sessions,
         }
     }
@@ -587,7 +583,7 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{doc_comments_dir, e2e_test_dir, sway_example_structs};
+    use crate::test_utils::{doc_comments_dir, e2e_test_dir};
     use serde_json::json;
     use serial_test::serial;
     use std::{borrow::Cow, fs, io::Read, path::PathBuf};
@@ -624,15 +620,10 @@ mod tests {
     }
 
     async fn initialize_request(service: &mut LspService<Backend>) -> Request {
-        dbg!();
         let params = json!({ "capabilities": capabilities() });
-        dbg!();
         let initialize = build_request_with_id("initialize", params, 1);
-        dbg!();
         let response = call_request(service, initialize.clone()).await;
-        dbg!();
         let ok = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
-        dbg!();
         assert_eq!(response, Ok(Some(ok)));
         initialize
     }
@@ -962,26 +953,6 @@ mod tests {
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
         let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
         let _ = did_change_request(&mut service, &uri).await;
-        let _ = go_to_definition_request(&mut service, &uri, 45, 20, 2).await;
-        shutdown_and_exit(&mut service).await;
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn lsp_multiple_projects_within_workspace() {
-        dbg!();
-        let (mut service, _) = LspService::new(Backend::new);
-        dbg!();
-        let uri = init_and_open(&mut service, doc_comments_dir()).await;
-        dbg!();
-        let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
-
-        let (uri, sway_program) = load_sway_example(sway_example_structs());
-        did_open_notification(&mut service, &uri, &sway_program).await;
-
-        dbg!();
-        let _ = did_change_request(&mut service, &uri).await;
-        dbg!();
         let _ = go_to_definition_request(&mut service, &uri, 45, 20, 2).await;
         shutdown_and_exit(&mut service).await;
     }
