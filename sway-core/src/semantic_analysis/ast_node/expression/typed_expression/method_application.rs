@@ -21,6 +21,10 @@ pub(crate) fn type_check_method_application(
     arguments: Vec<Expression>,
     span: Span,
 ) -> CompileResult<ty::TyExpression> {
+    println!(
+        "type_check_method_application: {:?}",
+        method_name_binding.inner.easy_name()
+    );
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -278,6 +282,7 @@ pub(crate) fn type_check_method_application(
 
     // unify the types of the arguments with the types of the parameters from the function declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
+        println!("unifying {:?}", param.name);
         let (mut new_warnings, new_errors) = ctx
             .by_ref()
             .with_help_text("This argument's type is not castable to the declared parameter type.")
@@ -407,6 +412,13 @@ pub(crate) fn resolve_method_name(
             )
         }
     };
+
+    //println!("{:?}", func_decl.name().as_str());
+    println!(
+        "resolve_method_name: {:?} {:?}",
+        method_name.inner.easy_name(),
+        method_name.type_arguments
+    );
 
     // monomorphize the function declaration
     check!(

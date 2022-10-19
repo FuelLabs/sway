@@ -111,6 +111,17 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_trait(span)
     }
 
+    fn add_monomorphized_trait_copy(
+        &self,
+        original_id: DeclarationId,
+        new_copy: ty::TyTraitDeclaration,
+    ) {
+        let span = new_copy.span();
+        let new_id =
+            DeclarationId::new(self.slab.insert(DeclarationWrapper::Trait(new_copy)), span);
+        self.add_monomorphized_copy(original_id, new_id)
+    }
+
     fn insert_trait_fn(&self, trait_fn: ty::TyTraitFn) -> DeclarationId {
         let span = trait_fn.name.span();
         DeclarationId::new(
@@ -295,6 +306,13 @@ pub fn de_get_trait(
     span: &Span,
 ) -> Result<ty::TyTraitDeclaration, CompileError> {
     DECLARATION_ENGINE.get_trait(index, span)
+}
+
+pub(crate) fn de_add_monomorphized_trait_copy(
+    original_id: DeclarationId,
+    new_copy: ty::TyTraitDeclaration,
+) {
+    DECLARATION_ENGINE.add_monomorphized_trait_copy(original_id, new_copy);
 }
 
 pub(crate) fn de_insert_trait_fn(trait_fn: ty::TyTraitFn) -> DeclarationId {

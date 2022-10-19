@@ -38,6 +38,8 @@ impl ty::TyFunctionDeclaration {
             })
         }
 
+        println!("type checking function: {:?}", name.as_str());
+
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut fn_namespace).with_purity(purity);

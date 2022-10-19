@@ -7,11 +7,17 @@ use std::{
 };
 
 /// An [Ident] is an _identifier_ with a corresponding `span` from which it was derived.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Ident {
     name_override_opt: Option<&'static str>,
     span: Span,
     is_raw_ident: bool,
+}
+
+impl fmt::Debug for Ident {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{}", self.as_str())
+    }
 }
 
 // custom implementation of Hash so that namespacing isn't reliant on the span itself, which will

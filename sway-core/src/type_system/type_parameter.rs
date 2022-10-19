@@ -1,6 +1,5 @@
 use crate::{error::*, language::ty, semantic_analysis::*, type_system::*};
 
-use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span::Span, JsonTypeDeclaration, Spanned};
 
 use std::{
@@ -69,16 +68,19 @@ impl TypeParameter {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        if !type_parameter.trait_constraints.is_empty() {
-            errors.push(CompileError::WhereClauseNotYetSupported {
-                span: type_parameter.name_ident.span(),
-            });
-            return err(warnings, errors);
-        }
+
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
-        let type_id = insert_type(TypeInfo::UnknownGeneric {
-            name: type_parameter.name_ident.clone(),
-        });
+        let type_id = if !type_parameter.trait_constraints.is_empty() {
+            insert_type(TypeInfo::ConstrainedGeneric {
+                name: type_parameter.name_ident.clone(),
+                trait_contraints: type_parameter.trait_constraints.clone(),
+            })
+        } else {
+            insert_type(TypeInfo::UnknownGeneric {
+                name: type_parameter.name_ident.clone(),
+            })
+        };
+
         let type_parameter_decl = ty::TyDeclaration::GenericTypeForFunctionScope {
             name: type_parameter.name_ident.clone(),
             type_id,

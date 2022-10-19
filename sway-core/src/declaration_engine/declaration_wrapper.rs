@@ -10,7 +10,7 @@ use crate::{
 
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]
 /// as a means of placing all declaration types into the same type.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) enum DeclarationWrapper {
     // no-op variant to fulfill the default trait
     Unknown,
@@ -28,6 +28,23 @@ pub(crate) enum DeclarationWrapper {
 impl Default for DeclarationWrapper {
     fn default() -> Self {
         DeclarationWrapper::Unknown
+    }
+}
+
+impl fmt::Debug for DeclarationWrapper {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DeclarationWrapper::Unknown => f.write_str("unknown"),
+            DeclarationWrapper::Function(d) => d.fmt(f),
+            DeclarationWrapper::Trait(d) => d.fmt(f),
+            DeclarationWrapper::TraitFn(d) => d.fmt(f),
+            DeclarationWrapper::ImplTrait(d) => d.fmt(f),
+            DeclarationWrapper::Struct(d) => d.fmt(f),
+            DeclarationWrapper::Storage(d) => d.fmt(f),
+            DeclarationWrapper::Abi(d) => d.fmt(f),
+            DeclarationWrapper::Constant(d) => d.fmt(f),
+            DeclarationWrapper::Enum(d) => d.fmt(f),
+        }
     }
 }
 

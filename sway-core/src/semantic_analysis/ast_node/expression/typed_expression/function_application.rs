@@ -40,6 +40,7 @@ pub(crate) fn instantiate_function_application(
         .into_iter()
         .zip(function_decl.parameters.iter())
         .map(|(arg, param)| {
+            println!("type checking {:?}", param.name);
             let ctx = ctx
                 .by_ref()
                 .with_help_text(

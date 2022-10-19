@@ -1,8 +1,11 @@
 use crate::{
-    declaration_engine::{declaration_engine::de_get_storage, declaration_id::DeclarationId},
+    declaration_engine::{
+        de_get_trait, declaration_engine::de_get_storage, declaration_id::DeclarationId,
+    },
     error::*,
     language::{ty, CallPath},
     namespace::*,
+    semantic_analysis::Mode,
     type_system::*,
 };
 
@@ -109,7 +112,8 @@ impl Items {
         if self.symbols.get(&name).is_some() {
             match item {
                 ty::TyDeclaration::EnumDeclaration { .. }
-                | ty::TyDeclaration::StructDeclaration { .. } => {
+                | ty::TyDeclaration::StructDeclaration { .. }
+                | ty::TyDeclaration::TraitDeclaration { .. } => {
                     errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
                 }
                 ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
@@ -161,8 +165,31 @@ impl Items {
         &self,
         implementing_for_type_id: TypeId,
     ) -> Vec<ty::TyFunctionDeclaration> {
-        self.implemented_traits
-            .get_methods_for_type(implementing_for_type_id)
+        let mut methods = self
+            .implemented_traits
+            .get_methods_for_type(implementing_for_type_id);
+        if let TypeInfo::ConstrainedGeneric {
+            trait_contraints, ..
+        } = look_up_type_id(implementing_for_type_id)
+        {
+            for constraint in trait_contraints {
+                if let Ok(ty::TyDeclaration::TraitDeclaration(decl_id)) =
+                    self.check_symbol(&constraint.call_path.suffix)
+                {
+                    // TODO: do not use call path resolution
+                    // TODO: unwrap
+                    let trait_decl = de_get_trait(decl_id.clone(), &Span::dummy()).unwrap();
+                    let interface_surface =
+                        ty::TyTraitDeclaration::collect_interface_surface(trait_decl);
+                    methods.extend(
+                        interface_surface
+                            .iter()
+                            .map(|x| x.to_dummy_func(Mode::NonAbi)),
+                    );
+                }
+            }
+        }
+        methods
     }
 
     pub(crate) fn get_canonical_path(&self, symbol: &Ident) -> &[Ident] {

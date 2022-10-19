@@ -336,6 +336,24 @@ impl TyDeclaration {
         }
     }
 
+    /// Retrieves the declaration as an Trait declaration.
+    ///
+    /// Returns an error if `self` is not a `TypedTraitDeclaration`.
+    pub(crate) fn expect_trait(&self, access_span: &Span) -> CompileResult<TyTraitDeclaration> {
+        match self {
+            TyDeclaration::TraitDeclaration(decl_id) => {
+                CompileResult::from(de_get_trait(decl_id.clone(), access_span))
+            }
+            decl => err(
+                vec![],
+                vec![CompileError::DeclIsNotATrait {
+                    actually: decl.friendly_name().to_string(),
+                    span: decl.span(),
+                }],
+            ),
+        }
+    }
+
     /// friendly name string used for error reporting.
     pub fn friendly_name(&self) -> &'static str {
         use TyDeclaration::*;

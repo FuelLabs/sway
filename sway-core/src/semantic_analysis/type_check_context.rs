@@ -184,7 +184,7 @@ impl<'ns> TypeCheckContext<'ns> {
         call_site_span: &Span,
     ) -> CompileResult<()>
     where
-        T: MonomorphizeHelper + CopyTypes,
+        T: MonomorphizeHelper + CopyTypes + std::fmt::Debug,
     {
         monomorphize(
             value,

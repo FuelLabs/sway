@@ -39,6 +39,10 @@ pub enum TypeInfo {
     UnknownGeneric {
         name: Ident,
     },
+    ConstrainedGeneric {
+        name: Ident,
+        trait_contraints: Vec<TraitConstraint>,
+    },
     Str(u64),
     UnsignedInteger(IntegerBits),
     Enum {
@@ -177,6 +181,14 @@ impl Hash for TypeInfo {
                 look_up_type_id(*elem_ty).hash(state);
                 count.hash(state);
             }
+            TypeInfo::ConstrainedGeneric {
+                name,
+                trait_contraints,
+            } => {
+                state.write_u8(18);
+                name.hash(state);
+                trait_contraints.hash(state);
+            }
         }
     }
 }
@@ -195,6 +207,16 @@ impl PartialEq for TypeInfo {
             (Self::Contract, Self::Contract) => true,
             (Self::ErrorRecovery, Self::ErrorRecovery) => true,
             (Self::UnknownGeneric { name: l }, Self::UnknownGeneric { name: r }) => l == r,
+            (
+                Self::ConstrainedGeneric {
+                    name: l,
+                    trait_contraints: l_tc,
+                },
+                Self::ConstrainedGeneric {
+                    name: r,
+                    trait_contraints: r_tc,
+                },
+            ) => l == r && l_tc == r_tc,
             (
                 Self::Custom {
                     name: l_name,
@@ -275,6 +297,7 @@ impl fmt::Display for TypeInfo {
         let s = match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
+            ConstrainedGeneric { name, .. } => format!("constrained {}", name),
             Str(x) => format!("str[{}]", x),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
@@ -336,6 +359,7 @@ impl TypeInfo {
         match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
+            ConstrainedGeneric { name, .. } => name.to_string(),
             Str(x) => format!("str[{}]", x),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
@@ -671,6 +695,7 @@ impl TypeInfo {
             }
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::ConstrainedGeneric { .. }
             | TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
@@ -705,6 +730,7 @@ impl TypeInfo {
             | TypeInfo::Tuple(_)
             | TypeInfo::B256
             | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::ConstrainedGeneric { .. }
             | TypeInfo::Numeric => ok((), warnings, errors),
             TypeInfo::Unknown
             | TypeInfo::ContractCaller { .. }
@@ -812,6 +838,7 @@ impl TypeInfo {
             }
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::ConstrainedGeneric { .. }
             | TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
@@ -840,11 +867,12 @@ impl TypeInfo {
             warnings,
             errors
         );
-        let generics = HashSet::from_iter(
-            nested_types
-                .into_iter()
-                .filter(|x| matches!(x, TypeInfo::UnknownGeneric { .. })),
-        );
+        let generics = HashSet::from_iter(nested_types.into_iter().filter(|x| {
+            matches!(
+                x,
+                TypeInfo::UnknownGeneric { .. } | TypeInfo::ConstrainedGeneric { .. }
+            )
+        }));
         ok(generics, warnings, errors)
     }
 
@@ -916,6 +944,7 @@ impl TypeInfo {
         match (self, other) {
             // any type is the subset of a generic
             (_, Self::UnknownGeneric { .. }) => true,
+            (_, Self::ConstrainedGeneric { .. }) => true,
             (Self::Array(l0, l1, _), Self::Array(r0, r1, _)) => {
                 look_up_type_id(*l0).is_subset_of(&look_up_type_id(*r0)) && l1 == r1
             }

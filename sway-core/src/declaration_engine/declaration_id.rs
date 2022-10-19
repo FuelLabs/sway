@@ -7,7 +7,7 @@ use crate::type_system::{CopyTypes, TypeMapping};
 use super::declaration_engine::{de_look_up_decl_id, de_replace_decl_id};
 
 /// An ID used to refer to an item in the [DeclarationEngine](super::declaration_engine::DeclarationEngine)
-#[derive(Debug, Eq)]
+#[derive(Eq)]
 pub struct DeclarationId(usize, Span);
 
 impl Clone for DeclarationId {
@@ -22,6 +22,12 @@ impl Clone for DeclarationId {
 impl PartialEq for DeclarationId {
     fn eq(&self, other: &Self) -> bool {
         de_look_up_decl_id(self.clone()) == de_look_up_decl_id(other.clone())
+    }
+}
+
+impl fmt::Debug for DeclarationId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(format!("{:#?}", de_look_up_decl_id(self.clone())).as_str())
     }
 }
 

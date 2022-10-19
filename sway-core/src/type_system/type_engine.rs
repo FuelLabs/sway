@@ -93,8 +93,15 @@ impl TypeEngine {
         mod_path: &Path,
     ) -> CompileResult<()>
     where
-        T: MonomorphizeHelper + CopyTypes,
+        T: MonomorphizeHelper + CopyTypes + std::fmt::Debug,
     {
+        println!(
+            "monomorphize: {:#?}<params: {:?}, args: {:?}>",
+            value.name(),
+            value.type_parameters(),
+            type_arguments
+        );
+
         let mut warnings = vec![];
         let mut errors = vec![];
         match (
@@ -317,6 +324,23 @@ impl TypeEngine {
                 Some(_) => self.unify(received, expected, span, help_text),
             },
 
+            (
+                ConstrainedGeneric {
+                    name: l_name,
+                    trait_contraints: l_trait_contraints,
+                },
+                ConstrainedGeneric {
+                    name: r_name,
+                    trait_contraints: r_trait_contraints,
+                },
+            ) if l_name.as_str() == r_name.as_str() && l_trait_contraints == r_trait_contraints => {
+                (vec![], vec![])
+            }
+            (r, ref e @ ConstrainedGeneric { .. }) => match self.slab.replace(expected, e, r) {
+                None => (vec![], vec![]),
+                Some(_) => self.unify(received, expected, span, help_text),
+            },
+
             // If no previous attempts to unify were successful, raise an error
             (TypeInfo::ErrorRecovery, _) => (vec![], vec![]),
             (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
@@ -460,6 +484,24 @@ impl TypeEngine {
                 None => (vec![], vec![]),
                 Some(_) => self.unify_right(received, expected, span, help_text),
             },
+
+            (
+                ConstrainedGeneric {
+                    name: l_name,
+                    trait_contraints: l_trait_contraints,
+                },
+                ConstrainedGeneric {
+                    name: r_name,
+                    trait_contraints: r_trait_contraints,
+                },
+            ) if l_name.as_str() == r_name.as_str() && l_trait_contraints == r_trait_contraints => {
+                (vec![], vec![])
+            }
+            (r, ref e @ ConstrainedGeneric { .. }) => match self.slab.replace(expected, e, r) {
+                None => (vec![], vec![]),
+                Some(_) => self.unify_right(received, expected, span, help_text),
+            },
+
             // this case is purposefully removed because it should cause an
             // error. trying to unify_right a generic with anything other an an
             // unknown or another generic is a type error
@@ -709,7 +751,7 @@ pub(crate) fn monomorphize<T>(
     module_path: &Path,
 ) -> CompileResult<()>
 where
-    T: MonomorphizeHelper + CopyTypes,
+    T: MonomorphizeHelper + CopyTypes + std::fmt::Debug,
 {
     TYPE_ENGINE.monomorphize(
         value,

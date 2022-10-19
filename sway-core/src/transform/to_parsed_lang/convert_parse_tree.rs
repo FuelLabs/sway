@@ -864,6 +864,7 @@ fn fn_args_to_function_parameters(
     ec: &mut ErrorContext,
     fn_args: FnArgs,
 ) -> Result<Vec<FunctionParameter>, ErrorEmitted> {
+    //println!("{:#?}", fn_args);
     let function_parameters = match fn_args {
         FnArgs::Static(args) => args
             .into_iter()
@@ -1974,6 +1975,8 @@ fn fn_arg_to_function_parameter(
         type_info: ty_to_type_info(ec, fn_arg.ty)?,
         type_span,
     };
+    //println!("{:#?}", function_parameter);
+    //println!("ty {:#?}", look_up_type_id_raw(function_parameter.type_id));
     Ok(function_parameter)
 }
 

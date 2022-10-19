@@ -165,6 +165,10 @@ impl TypeBinding<CallPath> {
                     errors
                 );
 
+                println!("type_check_with_ident: {:#?}", new_copy.name.as_str());
+
+                //println!("before mono: {:#?}\n", new_copy.body);
+
                 // monomorphize the copy, in place
                 check!(
                     ctx.monomorphize(
@@ -177,6 +181,8 @@ impl TypeBinding<CallPath> {
                     warnings,
                     errors
                 );
+
+                //println!("after mono {:#?}", new_copy.body);
 
                 // insert the new copy into the declaration engine
                 let new_id = de_insert_function(new_copy);

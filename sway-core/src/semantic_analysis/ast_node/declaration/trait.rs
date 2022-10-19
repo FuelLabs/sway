@@ -2,7 +2,7 @@ use sway_error::{
     error::CompileError,
     warning::{CompileWarning, Warning},
 };
-use sway_types::{style::is_upper_camel_case, Span, Spanned};
+use sway_types::{style::is_upper_camel_case, Ident, Span, Spanned};
 
 use crate::{
     declaration_engine::*,
@@ -72,7 +72,7 @@ impl ty::TyTraitDeclaration {
             }
         }
 
-        // Recursively handle supertraits: make their interfaces and methods available to this trait
+        // Insert trait symbols into the namespace
         check!(
             handle_supertraits(&supertraits, ctx.namespace),
             return err(warnings, errors),
@@ -111,6 +111,50 @@ impl ty::TyTraitDeclaration {
             attributes,
         };
         ok(typed_trait_decl, warnings, errors)
+    }
+
+    pub(crate) fn insert_namespace_symbols(
+        trait_name: Ident,
+        supertraits: &[Supertrait],
+        interface_surface: &[ty::TyTraitFn],
+        namespace: &mut Namespace,
+    ) -> CompileResult<()> {
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+
+        // Recursively handle supertraits: make their interfaces and methods available to this trait
+        check!(
+            handle_supertraits(supertraits, namespace),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // insert placeholder functions representing the interface surface
+        // to allow methods to use those functions
+        namespace.insert_trait_implementation(
+            CallPath {
+                prefixes: vec![],
+                suffix: trait_name,
+                is_absolute: false,
+            },
+            insert_type(TypeInfo::SelfType),
+            interface_surface
+                .iter()
+                .map(|x| x.to_dummy_func(Mode::NonAbi))
+                .collect(),
+        );
+
+        ok((), warnings, errors)
+    }
+
+    /// Collects all the functions from the passed trait and its supertraits.
+    pub(crate) fn collect_interface_surface(trait_decl: Self) -> Vec<ty::TyTraitFn> {
+        trait_decl
+            .interface_surface
+            .iter()
+            .map(|d| de_get_trait_fn(d.clone(), &Span::dummy()).unwrap())
+            .collect::<Vec<_>>()
     }
 }
 

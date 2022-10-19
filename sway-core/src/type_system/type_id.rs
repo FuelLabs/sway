@@ -21,7 +21,7 @@ impl fmt::Display for TypeId {
 
 impl fmt::Debug for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&look_up_type_id(*self).to_string())
+        f.write_str(&self.0.to_string())
     }
 }
 
@@ -43,6 +43,8 @@ impl CollectTypesMetadata for TypeId {
 
 impl ReplaceSelfType for TypeId {
     fn replace_self_type(&mut self, self_type: TypeId) {
+        //println!("self {:?}", look_up_type_id_raw(self_type));
+        //println!("{:?}", look_up_type_id_raw(*self));
         match look_up_type_id(*self) {
             TypeInfo::SelfType => {
                 *self = self_type;
@@ -93,6 +95,7 @@ impl ReplaceSelfType for TypeId {
             }
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::ConstrainedGeneric { .. }
             | TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean

@@ -1322,6 +1322,11 @@ impl FnCompiler {
             return Ok(None);
         }
 
+        // println!(
+        //     "compile_var_decl body ret type {:?}",
+        //     look_up_type_id_raw(body.return_type)
+        // );
+
         // Grab these before we move body into compilation.
         let return_type = convert_resolved_typeid(context, &body.return_type, &body.span)?;
 

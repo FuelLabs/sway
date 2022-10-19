@@ -145,6 +145,8 @@ pub(super) fn compile_function(
     module: Module,
     ast_fn_decl: ty::TyFunctionDeclaration,
 ) -> Result<Option<Function>, CompileError> {
+    println!("compiling {:?}", ast_fn_decl.name.as_str());
+
     // Currently monomorphisation of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
     if !ast_fn_decl.type_parameters.is_empty() {

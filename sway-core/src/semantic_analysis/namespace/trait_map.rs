@@ -81,12 +81,21 @@ impl TraitMap {
         &self,
         incoming_type_id: TypeId,
     ) -> Vec<ty::TyFunctionDeclaration> {
+        // println!(
+        //     "trait_map::get_methods_for_type: {:?}",
+        //     look_up_type_id_raw(incoming_type_id)
+        // );
         let mut methods = vec![];
         // small performance gain in bad case
         if look_up_type_id(incoming_type_id) == TypeInfo::ErrorRecovery {
             return methods;
         }
         for ((_, map_type_id), trait_methods) in self.trait_map.iter() {
+            //println!(
+            //    "incoming_type_id {:?}",
+            //    look_up_type_id_raw(incoming_type_id)
+            //);
+            //println!("map_type_id {:?}", look_up_type_id_raw(*map_type_id));
             if look_up_type_id(incoming_type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
                 let type_mapping =
                     TypeMapping::from_superset_and_subset(*map_type_id, incoming_type_id);

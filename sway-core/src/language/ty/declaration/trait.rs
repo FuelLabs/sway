@@ -1,5 +1,5 @@
 use derivative::Derivative;
-use sway_types::Ident;
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     declaration_engine::DeclarationId,
@@ -32,3 +32,28 @@ impl CopyTypes for TyTraitDeclaration {
         // we don't have to type check the methods because it hasn't been type checked yet
     }
 }
+
+impl CreateTypeId for TyTraitDeclaration {
+    fn create_type_id(&self) -> TypeId {
+        insert_type(TypeInfo::Custom {
+            name: self.name.clone(),
+            type_arguments: None,
+        })
+    }
+}
+
+impl Spanned for TyTraitDeclaration {
+    fn span(&self) -> Span {
+        self.name.span()
+    }
+}
+
+// impl MonomorphizeHelper for TyTraitDeclaration {
+//     fn type_parameters(&self) -> &[TypeParameter] {
+//         &self.type_parameters
+//     }
+
+//     fn name(&self) -> &Ident {
+//         &self.name
+//     }
+// }

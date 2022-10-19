@@ -234,7 +234,9 @@ impl TypeMapping {
         let type_info = look_up_type_id(type_id);
         match type_info {
             TypeInfo::Custom { .. } => iter_for_match(self, &type_info),
-            TypeInfo::UnknownGeneric { .. } => iter_for_match(self, &type_info),
+            TypeInfo::UnknownGeneric { .. } | TypeInfo::ConstrainedGeneric { .. } => {
+                iter_for_match(self, &type_info)
+            }
             TypeInfo::Struct {
                 mut fields,
                 name,
