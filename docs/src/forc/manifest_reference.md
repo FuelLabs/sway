@@ -178,6 +178,6 @@ script;
 use foo::CONTRACT_ID as FOO_CONTRACT_ID;
 
 fn main() {
-  let x = foo_contract_id;
+  let x = FOO_CONTRACT_ID;
 }
 ```
