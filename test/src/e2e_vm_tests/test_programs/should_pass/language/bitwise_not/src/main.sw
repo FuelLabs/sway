@@ -1,9 +1,5 @@
 script;
 
-use core::ops::*;
-use std::assert::assert;
-use std::logging::log;
-
 fn main() -> bool {
     assert(!2u8 == 253u8);
     assert(!2u16 == 65533u16);
