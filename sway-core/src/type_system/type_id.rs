@@ -113,6 +113,12 @@ impl CopyTypes for TypeId {
     }
 }
 
+impl UnconstrainedTypeParameters for TypeId {
+    fn type_parameter_is_unconstrained(&self, type_parameter: &TypeParameter) -> bool {
+        look_up_type_id(*self).type_parameter_is_unconstrained(type_parameter)
+    }
+}
+
 impl TypeId {
     pub(super) fn new(index: usize) -> TypeId {
         TypeId(index)

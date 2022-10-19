@@ -330,6 +330,83 @@ impl fmt::Display for TypeInfo {
     }
 }
 
+impl UnconstrainedTypeParameters for TypeInfo {
+    fn type_parameter_is_unconstrained(&self, type_parameter: &TypeParameter) -> bool {
+        let type_parameter_info = look_up_type_id(type_parameter.type_id);
+        match self {
+            TypeInfo::UnknownGeneric { .. } => self.clone() == type_parameter_info,
+            TypeInfo::Enum {
+                type_parameters,
+                variant_types,
+                ..
+            } => {
+                if type_parameters
+                    .iter()
+                    .map(|type_param| look_up_type_id(type_param.type_id))
+                    .any(|x| x == type_parameter_info)
+                {
+                    return false;
+                }
+                variant_types
+                    .iter()
+                    .map(|variant| {
+                        variant
+                            .type_id
+                            .type_parameter_is_unconstrained(type_parameter)
+                    })
+                    .any(|x| x)
+            }
+            TypeInfo::Struct {
+                type_parameters,
+                fields,
+                ..
+            } => {
+                if type_parameters
+                    .iter()
+                    .map(|type_param| look_up_type_id(type_param.type_id))
+                    .any(|x| x == type_parameter_info)
+                {
+                    return false;
+                }
+                fields
+                    .iter()
+                    .map(|field| {
+                        field
+                            .type_id
+                            .type_parameter_is_unconstrained(type_parameter)
+                    })
+                    .any(|x| x)
+            }
+            TypeInfo::Tuple(elems) => elems
+                .iter()
+                .map(|elem| elem.type_id.type_parameter_is_unconstrained(type_parameter))
+                .any(|x| x),
+            TypeInfo::Custom { type_arguments, .. } => type_arguments
+                .clone()
+                .unwrap_or_default()
+                .iter()
+                .map(|type_arg| {
+                    type_arg
+                        .type_id
+                        .type_parameter_is_unconstrained(type_parameter)
+                })
+                .any(|x| x),
+            TypeInfo::Array(elem, _, _) => elem.type_parameter_is_unconstrained(type_parameter),
+            TypeInfo::Unknown
+            | TypeInfo::Str(_)
+            | TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Boolean
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::B256
+            | TypeInfo::Numeric
+            | TypeInfo::Contract
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::Storage { .. } => false,
+        }
+    }
+}
+
 impl TypeInfo {
     pub fn json_abi_str(&self) -> String {
         use TypeInfo::*;

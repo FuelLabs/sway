@@ -47,6 +47,10 @@ pub(crate) fn type_check_method_application(
         errors
     );
 
+    if method.name.as_str() == "set_it" {
+        println!("before: {}", method);
+    }
+
     // check the function storage purity
     if !method.is_contract_call {
         // 'method.purity' is that of the callee, 'opts.purity' of the caller.
@@ -293,6 +297,10 @@ pub(crate) fn type_check_method_application(
                 should_be: param.type_id.to_string(),
             });
         }
+    }
+
+    if method.name.as_str() == "set_it" {
+        println!("after: {}", method);
     }
 
     // build the function application

@@ -294,7 +294,7 @@ impl Module {
             warnings,
             errors
         );
-        let mut impls_to_insert: TraitMap = TraitMap::default();
+        let mut impls_to_insert = TraitMap::default();
         match src_ns.symbols.get(item).cloned() {
             Some(decl) => {
                 let visibility = check!(

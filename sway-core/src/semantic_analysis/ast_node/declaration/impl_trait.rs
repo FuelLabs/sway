@@ -82,7 +82,7 @@ impl ty::TyImplTrait {
         );
 
         // Update the context with the new `self` type.
-        let ctx = ctx.with_self_type(implementing_for_type_id);
+        let mut ctx = ctx.with_self_type(implementing_for_type_id);
 
         let impl_trait = match ctx
             .namespace
@@ -118,6 +118,7 @@ impl ty::TyImplTrait {
                     type_check_trait_implementation(
                         ctx,
                         &new_impl_type_parameters,
+                        implementing_for_type_id,
                         &trait_decl.interface_surface,
                         &trait_decl.methods,
                         &functions,
@@ -178,7 +179,8 @@ impl ty::TyImplTrait {
                 let functions_buf = check!(
                     type_check_trait_implementation(
                         ctx,
-                        &[], // this is empty because abi definitions don't support generics
+                        &[], // this is empty because abi definitions don't support generics,
+                        implementing_for_type_id,
                         &abi.interface_surface,
                         &abi.methods,
                         &functions,
@@ -507,6 +509,7 @@ impl ty::TyImplTrait {
 fn type_check_trait_implementation(
     mut ctx: TypeCheckContext,
     parent_impl_type_parameters: &[TypeParameter],
+    type_implementing_for: TypeId,
     trait_interface_surface: &[DeclarationId],
     trait_methods: &[FunctionDeclaration],
     functions: &[FunctionDeclaration],
@@ -672,8 +675,10 @@ fn type_check_trait_implementation(
         }
 
         // if this method uses a type parameter from its parent's impl type
-        // parameters, then we need to add that type parameter to the method's
-        // type parameters.
+        // parameters that is not constrained by the type that we are
+        // implementing for, then we need to add that type parameter to the
+        // method's type parameters so that in-line monomorphization can
+        // complete.
         //
         // NOTE: this is a semi-hack that is used to force monomorphization of
         // trait methods that contain a generic defined in the parent impl...
@@ -683,13 +688,28 @@ fn type_check_trait_implementation(
         //
         // *This will change* when either https://github.com/FuelLabs/sway/issues/1267
         // or https://github.com/FuelLabs/sway/issues/2814 goes in.
-        fn_decl.type_parameters.append(
-            &mut fn_decl
-                .unconstrained_type_parameters(parent_impl_type_parameters)
-                .into_iter()
-                .cloned()
-                .collect(),
+        let unconstrained_type_parameters_function: HashSet<TypeParameter> = fn_decl
+            .unconstrained_type_parameters(parent_impl_type_parameters)
+            .into_iter()
+            .cloned()
+            .collect();
+        let unconstrained_type_parameters_type: HashSet<TypeParameter> = type_implementing_for
+            .unconstrained_type_parameters(parent_impl_type_parameters)
+            .into_iter()
+            .cloned()
+            .collect::<HashSet<_>>();
+        let mut unconstrained_type_parameters = unconstrained_type_parameters_function
+            .difference(&unconstrained_type_parameters_type)
+            .cloned()
+            .into_iter()
+            .collect::<Vec<_>>();
+        println!(
+            "{}: {:?}",
+            type_implementing_for, unconstrained_type_parameters
         );
+        fn_decl
+            .type_parameters
+            .append(&mut unconstrained_type_parameters);
 
         functions_buf.push(fn_decl);
     }

@@ -33,6 +33,27 @@ impl TraitMap {
         self.extend(trait_map);
     }
 
+    pub(crate) fn insert_for_type(&mut self, type_id: TypeId) {
+        let mut trait_impls: TraitImpls = im::HashMap::new();
+        for ((map_trait_name, map_type_id), map_trait_methods) in self.trait_impls.iter() {
+            if look_up_type_id(type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
+                let type_mapping = TypeMapping::from_superset_and_subset(*map_type_id, type_id);
+                let trait_methods: TraitMethods = map_trait_methods
+                    .values()
+                    .cloned()
+                    .into_iter()
+                    .map(|mut method| {
+                        method.copy_types(&type_mapping);
+                        (method.name.as_str().to_string(), method)
+                    })
+                    .collect();
+                trait_impls.insert((map_trait_name.clone(), type_id), trait_methods);
+            }
+        }
+        let trait_map = TraitMap { trait_impls };
+        self.extend(trait_map);
+    }
+
     pub(crate) fn extend(&mut self, other: TraitMap) {
         for (key, other_trait_methods) in other.trait_impls.into_iter() {
             match self.trait_impls.get_mut(&key) {
@@ -63,7 +84,7 @@ impl TraitMap {
             return methods;
         }
         for ((_, map_type_id), map_trait_methods) in self.trait_impls.iter() {
-            if look_up_type_id(type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
+            if look_up_type_id(type_id) == look_up_type_id(*map_type_id) {
                 let type_mapping = TypeMapping::from_superset_and_subset(*map_type_id, type_id);
                 let mut trait_methods = map_trait_methods.values().cloned().collect::<Vec<_>>();
                 trait_methods

@@ -89,7 +89,7 @@ impl TypeEngine {
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
-        namespace: &Root,
+        namespace: &mut Root,
         mod_path: &Path,
     ) -> CompileResult<()>
     where
@@ -536,7 +536,7 @@ impl TypeEngine {
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
-        namespace: &Root,
+        namespace: &mut Root,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
@@ -582,6 +582,9 @@ impl TypeEngine {
                         // add the new copy as a monomorphized copy of the original id
                         de_add_monomorphized_struct_copy(original_id, new_copy);
 
+                        // take any trait methods that apply to this type and copy them to the new type
+                        namespace.insert_trait_implementation_for_type(type_id);
+
                         // return the id
                         type_id
                     }
@@ -614,6 +617,9 @@ impl TypeEngine {
 
                         // add the new copy as a monomorphized copy of the original id
                         de_add_monomorphized_enum_copy(original_id, new_copy);
+
+                        // take any trait methods that apply to this type and copy them to the new type
+                        namespace.insert_trait_implementation_for_type(type_id);
 
                         // return the id
                         type_id
@@ -677,7 +683,7 @@ impl TypeEngine {
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
-        namespace: &Root,
+        namespace: &mut Root,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
         type_id.replace_self_type(self_type);
@@ -721,7 +727,7 @@ pub(crate) fn monomorphize<T>(
     type_arguments: &mut [TypeArgument],
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
-    namespace: &Root,
+    namespace: &mut Root,
     module_path: &Path,
 ) -> CompileResult<()>
 where
@@ -806,7 +812,7 @@ pub(crate) fn resolve_type(
     span: &Span,
     enforce_type_arguments: EnforceTypeArguments,
     type_info_prefix: Option<&Path>,
-    namespace: &Root,
+    namespace: &mut Root,
     mod_path: &Path,
 ) -> CompileResult<TypeId> {
     TYPE_ENGINE.resolve_type(
@@ -825,7 +831,7 @@ pub(crate) fn resolve_type_with_self(
     span: &Span,
     enforce_type_arguments: EnforceTypeArguments,
     type_info_prefix: Option<&Path>,
-    namespace: &Root,
+    namespace: &mut Root,
     mod_path: &Path,
 ) -> CompileResult<TypeId> {
     TYPE_ENGINE.resolve_type_with_self(

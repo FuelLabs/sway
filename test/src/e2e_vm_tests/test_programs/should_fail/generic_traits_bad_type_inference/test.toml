@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()let c = a.set_it(false);
+# nextln: $()This parameter was declared as type u64, but argument of type bool was provided.

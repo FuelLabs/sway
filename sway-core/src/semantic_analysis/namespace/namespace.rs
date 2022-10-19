@@ -113,7 +113,7 @@ impl Namespace {
             span,
             enforce_type_arguments,
             type_info_prefix,
-            &self.root,
+            &mut self.root,
             &self.mod_path,
         )
     }
@@ -130,7 +130,7 @@ impl Namespace {
             span,
             EnforceTypeArguments::Yes,
             type_info_prefix,
-            &self.root,
+            &mut self.root,
             &self.mod_path,
         )
     }
