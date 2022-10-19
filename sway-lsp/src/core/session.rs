@@ -82,7 +82,7 @@ impl Session {
         if let Some(join_handle) = &*handle {
             join_handle.abort();
         }
-        
+
         // Delete the temporary directory.
         self.sync.remove_temp_dir();
     }

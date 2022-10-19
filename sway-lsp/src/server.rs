@@ -129,7 +129,7 @@ impl Backend {
             .parent()
             .ok_or(LanguageServerError::ManifestDirNotFound)?
             .to_path_buf();
-        
+
         let session = match self.sessions.get(&manifest_dir) {
             Some(item) => item.value().clone(),
             None => {
@@ -150,7 +150,7 @@ impl Backend {
                     .expect("no session found even though it was just inserted into the map")
             }
         };
-        
+
         Ok(session)
     }
 
