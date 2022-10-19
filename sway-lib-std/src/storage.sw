@@ -1,7 +1,7 @@
 library r#storage;
 
+use ::alloc::alloc;
 use ::assert::assert;
-use ::context::registers::stack_ptr;
 use ::hash::sha256;
 use ::option::Option;
 use ::result::Result;
@@ -41,7 +41,10 @@ pub fn store<T>(key: b256, value: T) {
     };
 }
 
-/// Load a stack variable from storage.
+/// Load a variable from storage.
+///
+/// If the value size is larger than 8 bytes it is read to a heap buffer which is leaked for the
+/// duration of the program.
 #[storage(read)]
 pub fn get<T>(key: b256) -> T {
     if !__is_reference_type::<T>() {
@@ -50,23 +53,22 @@ pub fn get<T>(key: b256) -> T {
         asm(l: loaded_word) { l: T }
     } else {
         // If reference type, then it can be more than a word. Loop over every 32
-        // bytes and read sequentially.
+        // bytes and read sequentially.  NOTE: we are leaking this value on the heap.
         let mut size_left = __size_of::<T>();
         let mut local_key = key;
 
-        // Keep track of the base pointer for the final result
-        let result_ptr = stack_ptr();
+        // Allocate a buffer for the result.  It needs to be a multiple of 32 bytes so we can make
+        // 'quad' storage reads without overflowing.
+        let result_ptr = alloc((size_left + 31) & 0xffffffe0);
 
+        let mut current_pointer = result_ptr;
         while size_left > 32 {
             // Read 4 words (32 bytes) at a time
-            let current_pointer = stack_ptr();
-            asm() {
-                cfei i32;
-            };
             __state_load_quad(local_key, current_pointer);
 
             // Move by 32 bytes
             size_left -= 32;
+            current_pointer += 32;
 
             // Generate a new key for each 32 byte chunk TODO Should eventually
             // replace this with `local_key = local_key + 1
@@ -74,10 +76,6 @@ pub fn get<T>(key: b256) -> T {
         }
 
         // Read the leftover bytes using a single `srwq`
-        let current_pointer = stack_ptr();
-        asm() {
-            cfei i32;
-        }
         __state_load_quad(local_key, current_pointer);
 
         // Return the final result as type T
