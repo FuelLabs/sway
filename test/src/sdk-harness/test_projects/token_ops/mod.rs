@@ -427,8 +427,6 @@ async fn can_send_message_output_without_data() {
         .find(|&r| matches!(r, Receipt::MessageOut { .. }))
         .unwrap();
 
-    println!("Message: {:#?}", message_receipt);
-
     assert_eq!(*fuelcoin_id, **message_receipt.sender().unwrap());
     assert_eq!(&recipient_addr, message_receipt.recipient().unwrap());
     assert_eq!(amount, message_receipt.amount().unwrap());
