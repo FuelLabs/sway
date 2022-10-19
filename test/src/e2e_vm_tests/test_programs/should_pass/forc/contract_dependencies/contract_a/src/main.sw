@@ -1,6 +1,6 @@
 contract;
 
-use contract_b::CONTRACT_ID as contract_b_id;
+use contract_b::CONTRACT_ID as CONTRACT_B_ID;
 
 abi MyContract {
       fn test_function();
@@ -8,7 +8,7 @@ abi MyContract {
   
   impl MyContract for Contract {
       fn test_function() {
-    	  let contract_b_id = contract_b_id;
+    	  let CONTRACT_B_ID = CONTRACT_B_ID;
       }
   }
 
