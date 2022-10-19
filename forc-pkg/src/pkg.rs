@@ -1151,118 +1151,75 @@ fn fetch_deps(
     fetched: &mut HashMap<Pkg, NodeIx>,
     visited: &mut HashSet<NodeIx>,
 ) -> Result<HashSet<NodeIx>> {
-    fn fetch_deps_helper(
-        fetch_id: u64,
-        offline: bool,
-        node: NodeIx,
-        path_root: PinnedId,
-        graph: &mut Graph,
-        manifest_map: &mut ManifestMap,
-        fetched: &mut HashMap<Pkg, NodeIx>,
-        visited: &mut HashSet<NodeIx>,
-        added: &mut HashSet<NodeIx>,
-        parent_id: PinnedId,
-        deps: Vec<(String, Dependency, DepKind)>,
-    ) -> Result<()> {
-        for (dep_name, dep, dep_kind) in deps {
-            let name = dep.package().unwrap_or(&dep_name).to_string();
-            let parent_manifest = manifest_map[&parent_id].to_owned();
-            let source = dep_to_source_patched(&parent_manifest, &name, &dep)
-                .context("Failed to source dependency")?;
-
-            // If we haven't yet fetched this dependency, fetch it, pin it and add it to the graph.
-            let dep_pkg = Pkg { name, source };
-            let dep_node = match fetched.entry(dep_pkg) {
-                hash_map::Entry::Occupied(entry) => *entry.get(),
-                hash_map::Entry::Vacant(entry) => {
-                    let dep_pinned =
-                        pin_pkg(fetch_id, path_root, entry.key(), manifest_map, offline)?;
-                    let dep_node = graph.add_node(dep_pinned);
-                    added.insert(dep_node);
-                    *entry.insert(dep_node)
-                }
-            };
-
-            let dep_edge = Edge::new(dep_name.to_string(), dep_kind);
-            // Ensure we have an edge to the dependency.
-            graph.update_edge(node, dep_node, dep_edge.clone());
-
-            // If we've visited this node during this traversal already, no need to traverse it again.
-            if !visited.insert(dep_node) {
-                continue;
-            }
-
-            let dep_pinned = &graph[dep_node];
-            let dep_pkg_id = dep_pinned.id();
-            validate_dep_manifest(dep_pinned, &manifest_map[&dep_pkg_id], &dep_edge).map_err(
-                |e| {
-                    let parent = &graph[node];
-                    anyhow!(
-                        "dependency of {:?} named {:?} is invalid: {}",
-                        parent.name,
-                        dep_name,
-                        e
-                    )
-                },
-            )?;
-
-            let path_root = match dep_pinned.source {
-                SourcePinned::Root | SourcePinned::Git(_) | SourcePinned::Registry(_) => dep_pkg_id,
-                SourcePinned::Path(_) => path_root,
-            };
-
-            // Fetch the children.
-            added.extend(fetch_deps(
-                fetch_id,
-                offline,
-                dep_node,
-                path_root,
-                graph,
-                manifest_map,
-                fetched,
-                visited,
-            )?);
-        }
-        Ok(())
-    }
     let mut added = HashSet::default();
     let parent_id = graph[node].id();
     let package_manifest = manifest_map[&parent_id].to_owned();
     // If the current package is a contract, we need to first get the deployment dependencies
-    let contract_deps: Vec<_> = package_manifest
+    let deps: Vec<(String, Dependency, DepKind)> = package_manifest
         .contract_deps()
-        .map(|(n, d)| (n.to_owned(), d.to_owned(), DepKind::Contract))
+        .map(|(n, d)| (n.clone(), d.clone(), DepKind::Contract))
+        .chain(
+            package_manifest
+                .deps()
+                .map(|(n, d)| (n.clone(), d.clone(), DepKind::Library)),
+        )
         .collect();
-    fetch_deps_helper(
-        fetch_id,
-        offline,
-        node,
-        path_root,
-        graph,
-        manifest_map,
-        fetched,
-        visited,
-        &mut added,
-        parent_id,
-        contract_deps,
-    )?;
-    let deps: Vec<_> = package_manifest
-        .deps()
-        .map(|(n, d)| (n.clone(), d.clone(), DepKind::Library))
-        .collect();
-    fetch_deps_helper(
-        fetch_id,
-        offline,
-        node,
-        path_root,
-        graph,
-        manifest_map,
-        fetched,
-        visited,
-        &mut added,
-        parent_id,
-        deps,
-    )?;
+    for (dep_name, dep, dep_kind) in deps {
+        let name = dep.package().unwrap_or(&dep_name).to_string();
+        let parent_manifest = manifest_map[&parent_id].to_owned();
+        let source = dep_to_source_patched(&parent_manifest, &name, &dep)
+            .context("Failed to source dependency")?;
+
+        // If we haven't yet fetched this dependency, fetch it, pin it and add it to the graph.
+        let dep_pkg = Pkg { name, source };
+        let dep_node = match fetched.entry(dep_pkg) {
+            hash_map::Entry::Occupied(entry) => *entry.get(),
+            hash_map::Entry::Vacant(entry) => {
+                let dep_pinned = pin_pkg(fetch_id, path_root, entry.key(), manifest_map, offline)?;
+                let dep_node = graph.add_node(dep_pinned);
+                added.insert(dep_node);
+                *entry.insert(dep_node)
+            }
+        };
+
+        let dep_edge = Edge::new(dep_name.to_string(), dep_kind);
+        // Ensure we have an edge to the dependency.
+        graph.update_edge(node, dep_node, dep_edge.clone());
+
+        // If we've visited this node during this traversal already, no need to traverse it again.
+        if !visited.insert(dep_node) {
+            continue;
+        }
+
+        let dep_pinned = &graph[dep_node];
+        let dep_pkg_id = dep_pinned.id();
+        validate_dep_manifest(dep_pinned, &manifest_map[&dep_pkg_id], &dep_edge).map_err(|e| {
+            let parent = &graph[node];
+            anyhow!(
+                "dependency of {:?} named {:?} is invalid: {}",
+                parent.name,
+                dep_name,
+                e
+            )
+        })?;
+
+        let path_root = match dep_pinned.source {
+            SourcePinned::Root | SourcePinned::Git(_) | SourcePinned::Registry(_) => dep_pkg_id,
+            SourcePinned::Path(_) => path_root,
+        };
+
+        // Fetch the children.
+        added.extend(fetch_deps(
+            fetch_id,
+            offline,
+            dep_node,
+            path_root,
+            graph,
+            manifest_map,
+            fetched,
+            visited,
+        )?);
+    }
     Ok(added)
 }
 
