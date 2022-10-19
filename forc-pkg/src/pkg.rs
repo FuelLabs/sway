@@ -557,15 +557,15 @@ fn validate_dep_manifest(
     dep_edge: &Edge,
 ) -> Result<()> {
     let dep_program_type = dep_manifest.program_type()?;
-    // If the dependency is a script or a contract (which is not a contract dependency for any of
-    // the parent nodes).
-    if matches!(dep_program_type, TreeType::Script { .. })
-        || (matches!(dep_program_type, TreeType::Contract) && dep_edge.kind != DepKind::Contract)
-    {
-        bail!(
-            "\"{}\" is not a library or a contract dependency! Depending on such a package is not supported.",
-            dep.name
-        );
+    // Check if the dependency is either a library or a contract declared as a contract dependency
+    match (&dep_program_type, &dep_edge.kind) {
+        (TreeType::Contract, DepKind::Contract) | (TreeType::Library { .. }, DepKind::Library) => {}
+        _ => bail!(
+            "\"{}\" is declared as a {} dependency, but is actually a {}",
+            dep.name,
+            dep_edge.kind,
+            dep_program_type
+        ),
     }
     // Ensure the name matches the manifest project name.
     if dep.name != dep_manifest.project.name {
