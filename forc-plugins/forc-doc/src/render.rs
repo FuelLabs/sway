@@ -105,41 +105,106 @@ trait Renderable {
 
 impl Renderable for TyStructDeclaration {
     fn render(&self) -> Box<dyn RenderBox> {
+        let TyStructDeclaration {
+            name,
+            fields,
+            type_parameters,
+            visibility,
+            attributes,
+            span,
+        } = &self;
         box_html! {}
     }
 }
 impl Renderable for TyEnumDeclaration {
     fn render(&self) -> Box<dyn RenderBox> {
+        let TyEnumDeclaration {
+            name,
+            type_parameters,
+            attributes,
+            variants,
+            visibility,
+            span,
+        } = &self;
         box_html! {}
     }
 }
 impl Renderable for TyTraitDeclaration {
     fn render(&self) -> Box<dyn RenderBox> {
+        let TyTraitDeclaration {
+            name,
+            interface_surface,
+            methods,
+            visibility,
+            attributes,
+            supertraits,
+        } = &self;
         box_html! {}
     }
 }
 impl Renderable for TyAbiDeclaration {
     fn render(&self) -> Box<dyn RenderBox> {
+        let TyAbiDeclaration {
+            name,
+            interface_surface,
+            methods,
+            attributes,
+            span,
+        } = &self;
         box_html! {}
     }
 }
 impl Renderable for TyStorageDeclaration {
     fn render(&self) -> Box<dyn RenderBox> {
+        let TyStorageDeclaration {
+            fields,
+            span,
+            attributes,
+        } = &self;
         box_html! {}
     }
 }
 impl Renderable for TyImplTrait {
     fn render(&self) -> Box<dyn RenderBox> {
+        let TyImplTrait {
+            impl_type_parameters,
+            trait_name,
+            trait_type_parameters,
+            methods,
+            implementing_for_type_id,
+            type_implementing_for_span,
+            span,
+        } = &self;
         box_html! {}
     }
 }
 impl Renderable for TyFunctionDeclaration {
     fn render(&self) -> Box<dyn RenderBox> {
+        let TyFunctionDeclaration {
+            name,
+            body,
+            parameters,
+            span,
+            attributes,
+            return_type,
+            initial_return_type,
+            type_parameters,
+            return_type_span,
+            purity,
+            is_contract_call,
+            visibility,
+        } = &self;
         box_html! {}
     }
 }
 impl Renderable for TyConstantDeclaration {
     fn render(&self) -> Box<dyn RenderBox> {
+        let TyConstantDeclaration {
+            name,
+            value,
+            attributes,
+            visibility,
+        } = &self;
         box_html! {}
     }
 }

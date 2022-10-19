@@ -10,7 +10,7 @@ pub struct TyImplTrait {
     pub methods: Vec<DeclarationId>,
     pub implementing_for_type_id: TypeId,
     pub type_implementing_for_span: Span,
-    pub(crate) span: Span,
+    pub span: Span,
 }
 
 impl CopyTypes for TyImplTrait {

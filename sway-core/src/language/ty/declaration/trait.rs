@@ -19,7 +19,7 @@ pub struct TyTraitDeclaration {
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
     pub methods: Vec<parsed::FunctionDeclaration>,
-    pub(crate) supertraits: Vec<parsed::Supertrait>,
+    pub supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
     pub attributes: transform::AttributesMap,
 }

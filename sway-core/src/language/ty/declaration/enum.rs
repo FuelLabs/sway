@@ -11,7 +11,7 @@ pub struct TyEnumDeclaration {
     pub type_parameters: Vec<TypeParameter>,
     pub attributes: transform::AttributesMap,
     pub variants: Vec<TyEnumVariant>,
-    pub(crate) span: Span,
+    pub span: Span,
     pub visibility: Visibility,
 }
 

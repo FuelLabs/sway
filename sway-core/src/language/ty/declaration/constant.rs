@@ -9,6 +9,6 @@ use crate::{
 pub struct TyConstantDeclaration {
     pub name: Ident,
     pub value: TyExpression,
-    pub(crate) visibility: Visibility,
+    pub visibility: Visibility,
     pub attributes: transform::AttributesMap,
 }
