@@ -217,8 +217,8 @@ fn pkg_dep_line(
     let pkg_string = pkg_name_disambiguated(name, &source_string, disambiguate);
     // Prefix the dependency name if it differs from the package name.
     match dep_name {
-        None => format!("{} {}", dep_kind.to_string(), pkg_string.into_owned()),
-        Some(dep_name) => format!("({}) {} {}", dep_name, dep_kind.to_string(), pkg_string),
+        None => format!("{} {}", dep_kind, pkg_string.into_owned()),
+        Some(dep_name) => format!("({}) {} {}", dep_name, dep_kind, pkg_string),
     }
 }
 
@@ -231,33 +231,30 @@ type ParsedPkgLine<'a> = (Option<&'a str>, DepKind, &'a str);
 fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {
     let s = pkg_dep_line.trim();
 
-    // Check for the open bracket.
-    if !s.starts_with('(') {
-        let dep_kind_str = s
-            .split(' ')
+    // Parse the dep name.
+    let (dep_name, s) = if !s.starts_with('(') {
+        (None, s)
+    } else {
+        // If we have the open bracket, grab everything until the closing bracket.
+        let s = &s["(".len()..];
+        let dep_name = s
+            .split(')')
             .next()
-            .ok_or_else(|| anyhow!("missing dep kind"))?;
-        let dep_kind = DepKind::from_str(dep_kind_str)?;
-        let unique_pkg_str = &s[dep_kind_str.len()..].trim_start();
-        return Ok((None, dep_kind, unique_pkg_str));
-    }
-
-    // If we have the open bracket, grab everything until the closing bracket.
-    let s = &s["(".len()..];
-    let mut iter = s.split(')');
-    let dep_name = iter
-        .next()
-        .ok_or_else(|| anyhow!("missing closing parenthesis"))?;
-
-    let s = &s[dep_name.len() + ")".len()..].trim_start();
+            .ok_or_else(|| anyhow!("missing closing parenthesis"))?;
+        let s = s[dep_name.len() + ")".len()..].trim_start();
+        (Some(dep_name), s)
+    };
+    // Parse the dep kind.
     let dep_kind_str = s
         .split(' ')
         .next()
         .ok_or_else(|| anyhow!("missing dep kind"))?;
     let dep_kind = DepKind::from_str(dep_kind_str)?;
+    let s = &s[dep_kind_str.len()..];
+
     // The rest is the unique package string.
-    let unique_pkg_str = &s[dep_kind_str.len()..].trim_start();
-    Ok((Some(dep_name), dep_kind, unique_pkg_str))
+    let unique_pkg_str = s.trim_start();
+    Ok((dep_name, dep_kind, unique_pkg_str))
 }
 
 pub fn print_diff(proj_name: &str, diff: &Diff) {

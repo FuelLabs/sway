@@ -251,11 +251,11 @@ impl FromStr for DepKind {
     }
 }
 
-impl ToString for DepKind {
-    fn to_string(&self) -> String {
-        match &self {
-            DepKind::Library => "library".to_string(),
-            DepKind::Contract => "contract".to_string(),
+impl fmt::Display for DepKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            DepKind::Library => write!(f, "library"),
+            DepKind::Contract => write!(f, "contract"),
         }
     }
 }
