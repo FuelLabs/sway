@@ -7,7 +7,6 @@ use crate::{
         namespace::{self, Namespace},
         TypeCheckContext,
     },
-    type_engine_size,
 };
 use sway_ir::{Context, Module};
 use sway_types::Spanned;
