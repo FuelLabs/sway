@@ -4,4 +4,4 @@ The [standard library](https://github.com/FuelLabs/sway/tree/master/sway-lib-std
 
 - [Mapping](storage-map.md): Tracking key-value pairs
 - [Vectors](storage-vec.md): Using a persistent (not heap-allocated) vector
-- [Get & Insert](get-insert.md): Manually manipulating storage slots
+- [Store & Get](store-get.md): Manually manipulating storage slots

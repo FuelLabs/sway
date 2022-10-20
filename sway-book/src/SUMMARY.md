@@ -69,7 +69,7 @@
   - [Libraries](./documentation/operations/storage/libraries/index.md)
     - [StorageMap](./documentation/operations/storage/libraries/storage-map.md)
     - [StorageVec](./documentation/operations/storage/libraries/storage-vec.md)
-    - [Get & Insert](./documentation/operations/storage/libraries/get-insert.md)
+    - [Store & Get](./documentation/operations/storage/libraries/store-get.md)
 - [Address Namespace](./documentation/operations/namespace/index.md)
   - [Address](./documentation/operations/namespace/address.md)
   - [ContractId](./documentation/operations/namespace/contract-id.md)
