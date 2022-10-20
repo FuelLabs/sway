@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
 
@@ -6,7 +7,7 @@ use crate::core::{session::Session, token::AstToken};
 use crate::utils::common::get_range_from_span;
 
 pub fn rename(
-    session: &Session,
+    session: Arc<Session>,
     new_name: String,
     url: Url,
     position: Position,
@@ -31,7 +32,7 @@ pub fn rename(
 }
 
 pub fn prepare_rename(
-    session: &Session,
+    session: Arc<Session>,
     url: Url,
     position: Position,
 ) -> Option<PrepareRenameResponse> {
