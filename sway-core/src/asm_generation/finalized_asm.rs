@@ -1,4 +1,4 @@
-use super::{DataSection, InstructionSet};
+use super::{DataSection, InstructionSet, ProgramKind};
 use crate::asm_lang::allocated_ops::AllocatedOpcode;
 use crate::error::*;
 use crate::source_map::SourceMap;
@@ -13,63 +13,21 @@ use std::io::Read;
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
 /// applied to it
 #[derive(Clone)]
-pub enum FinalizedAsm {
-    ContractAbi {
-        data_section: DataSection,
-        program_section: InstructionSet,
-    },
-    ScriptMain {
-        data_section: DataSection,
-        program_section: InstructionSet,
-    },
-    PredicateMain {
-        data_section: DataSection,
-        program_section: InstructionSet,
-    },
-    // Libraries do not generate any asm.
-    Library,
+pub struct FinalizedAsm {
+    pub data_section: DataSection,
+    pub program_section: InstructionSet,
+    pub program_kind: ProgramKind,
 }
 
 impl FinalizedAsm {
     pub(crate) fn to_bytecode_mut(&mut self, source_map: &mut SourceMap) -> CompileResult<Vec<u8>> {
-        use FinalizedAsm::*;
-        match self {
-            ContractAbi {
-                program_section,
-                ref mut data_section,
-            } => to_bytecode_mut(program_section, data_section, source_map),
-            // libraries are not compiled to asm
-            Library => ok(vec![], vec![], vec![]),
-            ScriptMain {
-                program_section,
-                ref mut data_section,
-            } => to_bytecode_mut(program_section, data_section, source_map),
-            PredicateMain {
-                program_section,
-                ref mut data_section,
-            } => to_bytecode_mut(program_section, data_section, source_map),
-        }
+        to_bytecode_mut(&self.program_section, &mut self.data_section, source_map)
     }
 }
 
 impl fmt::Display for FinalizedAsm {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FinalizedAsm::ScriptMain {
-                program_section,
-                data_section,
-            } => write!(f, "{}\n{}", program_section, data_section),
-            FinalizedAsm::PredicateMain {
-                program_section,
-                data_section,
-            } => write!(f, "{}\n{}", program_section, data_section),
-            FinalizedAsm::ContractAbi {
-                program_section,
-                data_section,
-            } => write!(f, "{}\n{}", program_section, data_section),
-            // Libraries do not directly generate any asm.
-            FinalizedAsm::Library => write!(f, ""),
-        }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}\n{}", self.program_section, self.data_section)
     }
 }
 

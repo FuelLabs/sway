@@ -9,7 +9,7 @@ use crate::{
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
-    print_on_failure, print_on_success, print_on_success_library,
+    print_on_failure, print_on_success,
 };
 use petgraph::{
     self,
@@ -2009,7 +2009,7 @@ pub fn compile(
     build_profile: &BuildProfile,
     namespace: namespace::Module,
     source_map: &mut SourceMap,
-) -> Result<(BuiltPackage, Option<namespace::Root>)> {
+) -> Result<(BuiltPackage, namespace::Root)> {
     // Time the given expression and print the result if `build_config.time_phases` is true.
     macro_rules! time_expr {
         ($description:expr, $expression:expr) => {{
@@ -2061,27 +2061,11 @@ pub fn compile(
 
     let storage_slots = typed_program.storage_slots.clone();
     let tree_type = typed_program.kind.tree_type();
-    match tree_type {
-        // On errors, do not proceed to compiling bytecode, as semantic analysis did not pass.
-        _ if !ast_res.errors.is_empty() => {
-            return fail(&ast_res.warnings, &ast_res.errors);
-        }
-        // If we're compiling a library, we don't need to compile any further.
-        // Instead, we update the namespace with the library's top-level module.
-        TreeType::Library { .. } => {
-            print_on_success_library(terse_mode, &pkg.name, &ast_res.warnings);
-            let bytecode = vec![];
-            let lib_namespace = typed_program.root.namespace.clone();
-            let built_package = BuiltPackage {
-                json_abi_program,
-                storage_slots,
-                bytecode,
-                tree_type,
-            };
-            return Ok((built_package, Some(lib_namespace.into())));
-        }
-        // For all other program types, we'll compile the bytecode.
-        TreeType::Contract | TreeType::Predicate | TreeType::Script => {}
+
+    let namespace = typed_program.root.namespace.clone().into();
+
+    if !ast_res.errors.is_empty() {
+        return fail(&ast_res.warnings, &ast_res.errors);
     }
 
     let asm_res = time_expr!(
@@ -2103,7 +2087,7 @@ pub fn compile(
                 bytecode,
                 tree_type,
             };
-            Ok((built_package, None))
+            Ok((built_package, namespace))
         }
         _ => fail(&bc_res.warnings, &bc_res.errors),
     }
@@ -2330,7 +2314,7 @@ pub fn build(
             }
         };
         let res = compile(pkg, manifest, profile, dep_namespace, &mut source_map)?;
-        let (built_package, maybe_namespace) = res;
+        let (built_package, namespace) = res;
         // If the current node is a contract dependency, collect the contract_id
         if plan
             .graph()
@@ -2339,7 +2323,7 @@ pub fn build(
         {
             compiled_contract_deps.insert(node, built_package.clone());
         }
-        if let Some(namespace) = maybe_namespace {
+        if let TreeType::Library { .. } = built_package.tree_type {
             lib_namespace_map.insert(node, namespace.into());
         }
         json_abi_program

@@ -114,9 +114,9 @@ fn compile_module_to_asm(
         .collect();
     let kind = match module.get_kind(context) {
         Kind::Contract => ProgramKind::Contract,
-        Kind::Script => ProgramKind::Script,
+        Kind::Library => ProgramKind::Library,
         Kind::Predicate => ProgramKind::Predicate,
-        Kind::Library => todo!("libraries coming soon!"),
+        Kind::Script => ProgramKind::Script,
     };
 
     ok(
