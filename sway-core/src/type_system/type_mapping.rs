@@ -326,6 +326,24 @@ impl TypeMapping {
                     None
                 }
             }
+            TypeInfo::Storage { fields } => {
+                let mut need_to_create_new = false;
+                let fields = fields
+                    .into_iter()
+                    .map(|mut field| {
+                        if let Some(type_id) = self.find_match(field.type_id) {
+                            need_to_create_new = true;
+                            field.type_id = type_id;
+                        }
+                        field
+                    })
+                    .collect::<Vec<_>>();
+                if need_to_create_new {
+                    Some(insert_type(TypeInfo::Storage { fields }))
+                } else {
+                    None
+                }
+            }
             TypeInfo::Unknown
             | TypeInfo::Str(..)
             | TypeInfo::UnsignedInteger(..)
@@ -335,7 +353,6 @@ impl TypeMapping {
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::Contract
-            | TypeInfo::Storage { .. }
             | TypeInfo::ErrorRecovery => None,
         }
     }

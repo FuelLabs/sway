@@ -799,7 +799,7 @@ impl ty::TyExpression {
                 errors
             );
             append!(
-                unify_right(
+                unify_adt(
                     typed_field.return_type,
                     def_field.type_id,
                     &typed_field.span,

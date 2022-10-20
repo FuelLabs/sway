@@ -61,7 +61,7 @@ pub(crate) fn instantiate_enum(
                 errors
             );
             append!(
-                unify_right(
+                unify_adt(
                     typed_expr.return_type,
                     enum_variant.type_id,
                     &typed_expr.span,

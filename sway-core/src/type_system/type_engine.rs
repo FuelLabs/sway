@@ -179,6 +179,22 @@ impl TypeEngine {
         }
     }
 
+    /// Replace any instances of the [TypeInfo::SelfType] variant with
+    /// `self_type` in both `received` and `expected`, then unify `received` and
+    /// `expected`.
+    fn unify_with_self(
+        &self,
+        mut received: TypeId,
+        mut expected: TypeId,
+        self_type: TypeId,
+        span: &Span,
+        help_text: &str,
+    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
+        received.replace_self_type(self_type);
+        expected.replace_self_type(self_type);
+        self.unify(received, expected, span, help_text)
+    }
+
     /// Make the types of `received` and `expected` equivalent (or produce an
     /// error if there is a conflict between them).
     ///
@@ -343,7 +359,60 @@ impl TypeEngine {
         }
     }
 
+    /// Replace any instances of the [TypeInfo::SelfType] variant with
+    /// `self_type` in both `received` and `expected`, then unify_right
+    /// `received` and `expected`.
+    fn unify_right_with_self(
+        &self,
+        mut received: TypeId,
+        mut expected: TypeId,
+        self_type: TypeId,
+        span: &Span,
+        help_text: &str,
+    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
+        received.replace_self_type(self_type);
+        expected.replace_self_type(self_type);
+        self.unify_right(received, expected, span, help_text)
+    }
+
     /// Make the type of `expected` equivalent to `received`.
+    ///
+    /// This is different than the `unify` method because it _only allows
+    /// changes to `expected`_. It also rejects the case where `received` is a
+    /// generic type and `expected` is not a generic type.
+    ///
+    /// Here is an example for why this method is necessary. Take this Sway
+    /// code:
+    ///
+    /// ```ignore
+    /// fn test_function<T>(input: T) -> T {
+    ///     input
+    /// }
+    ///
+    /// fn call_it() -> bool {
+    ///     test_function(true)
+    /// }
+    /// ```
+    ///
+    /// This is valid Sway code and we should expect it to compile because the
+    /// type `bool` is valid under the generic type `T`.
+    ///
+    /// Now, look at this Sway code:
+    ///
+    /// ```ignore
+    /// fn test_function(input: bool) -> bool {
+    ///     input
+    /// }
+    ///
+    /// fn call_it<T>(input: T) -> T {
+    ///     test_function(input)
+    /// }
+    /// ```
+    ///
+    /// We should expect this Sway to fail to compile because the generic type
+    /// `T` is not valid under the type `bool`.
+    ///
+    /// This is the function that makes that distinction for us!
     pub(crate) fn unify_right(
         &self,
         received: TypeId,
@@ -475,6 +544,9 @@ impl TypeEngine {
             // error. trying to unify_right a generic with anything other an an
             // unknown or another generic is a type error
             //(UnknownGeneric { .. }, _) => (vec![], vec![]),
+            (UnknownGeneric { .. }, _) => {
+                panic!();
+            }
 
             // If no previous attempts to unify were successful, raise an error
             (TypeInfo::ErrorRecovery, _) => (vec![], vec![]),
@@ -491,20 +563,58 @@ impl TypeEngine {
         }
     }
 
-    /// Replace any instances of the [TypeInfo::SelfType] variant with
-    /// `self_type` in both `received` and `expected`, then unify `received` and
-    /// `expected`.
-    fn unify_with_self(
+    /// Helper function for making the type of `expected` equivalent to
+    /// `received` for instantiating algebraic data types.
+    ///
+    /// This method simply switches the arguments of `received` and `expected`
+    /// and calls the `unify` method---the main purpose of this method is reduce
+    /// developer overhead during implementation, as it is a little non-intuitive
+    /// why `received` and `expected` should be switched.
+    ///
+    /// Let me explain, take this Sway code:
+    ///
+    /// ```ignore
+    /// enum Option<T> {
+    ///     Some(T),
+    ///     None
+    /// }
+    ///
+    /// struct Wrapper {
+    ///     option: Option<bool>,
+    /// }
+    ///
+    /// fn create_it<T>() -> Wrapper {
+    ///     Wrapper {
+    ///         option: Option::None
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// This is valid Sway code and we should expect it to compile. Here is the
+    /// pseudo-code of roughly what we can expect from type inference:
+    /// 1. `Option::None` is originally found to be of type `Option<T>` (because
+    ///     it is not possible to know what `T` is just from the `None` case)
+    /// 2. we call `unify_adt` with arguments `received` of type `Option<T>` and
+    ///     `expected` of type `Option<bool>`
+    /// 3. we switch `received` and `expected` and call the `unify` method
+    /// 4. we perform type inference with a `received` type of `Option<bool>`
+    ///     and an `expected` type of `Option<T>`
+    /// 5. we perform type inference with a `received` type of `bool` and an
+    ///     `expected` type of `T`
+    /// 6. because we have called the `unify` method (and not the `unify_right`
+    ///     method), we can replace `T` with `bool`
+    ///
+    /// What's important about this is flipping the arguments prioritizes
+    /// unifying `expected`, meaning if both `received` and `expected` are
+    /// generic types, then `expected` will be replaced with `received`.
+    pub(crate) fn unify_adt(
         &self,
-        mut received: TypeId,
-        mut expected: TypeId,
-        self_type: TypeId,
+        received: TypeId,
+        expected: TypeId,
         span: &Span,
         help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        received.replace_self_type(self_type);
-        expected.replace_self_type(self_type);
-        self.unify(received, expected, span, help_text)
+        self.unify(expected, received, span, help_text)
     }
 
     pub fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
@@ -760,6 +870,21 @@ pub(crate) fn unify(
     )
 }
 
+pub fn unify_right_with_self(
+    received: TypeId,
+    expected: TypeId,
+    self_type: TypeId,
+    span: &Span,
+    help_text: &str,
+) -> (Vec<CompileWarning>, Vec<CompileError>) {
+    let (warnings, errors) =
+        TYPE_ENGINE.unify_right_with_self(received, expected, self_type, span, help_text);
+    (
+        warnings,
+        errors.into_iter().map(|error| error.into()).collect(),
+    )
+}
+
 pub(crate) fn unify_right(
     received: TypeId,
     expected: TypeId,
@@ -767,6 +892,19 @@ pub(crate) fn unify_right(
     help_text: &str,
 ) -> (Vec<CompileWarning>, Vec<CompileError>) {
     let (warnings, errors) = TYPE_ENGINE.unify_right(received, expected, span, help_text);
+    (
+        warnings,
+        errors.into_iter().map(|error| error.into()).collect(),
+    )
+}
+
+pub(crate) fn unify_adt(
+    received: TypeId,
+    expected: TypeId,
+    span: &Span,
+    help_text: &str,
+) -> (Vec<CompileWarning>, Vec<CompileError>) {
+    let (warnings, errors) = TYPE_ENGINE.unify_adt(received, expected, span, help_text);
     (
         warnings,
         errors.into_iter().map(|error| error.into()).collect(),
