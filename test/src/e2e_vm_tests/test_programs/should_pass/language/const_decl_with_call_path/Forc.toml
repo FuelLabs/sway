@@ -1,0 +1,5 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "const_decl_with_call_path"
+entry = "main.sw"

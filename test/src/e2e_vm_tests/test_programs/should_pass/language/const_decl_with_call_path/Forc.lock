@@ -1,0 +1,14 @@
+[[package]]
+name = 'const_decl_with_call_path'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-2F6DBEF6F2B7B5D1'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'git+https://github.com/fuellabs/sway?tag=v0.26.0#e7674f704f2706e22f77c0ed32df9c89302e5e7e'
+dependencies = ['core']
