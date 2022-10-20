@@ -8,7 +8,6 @@ use std::{
     collections::{BTreeSet, HashMap, HashSet},
     fs,
     path::Path,
-    str::FromStr,
 };
 
 /// The graph of pinned packages represented as a toml-serialization-friendly structure.
@@ -36,6 +35,7 @@ pub struct PkgLock {
     // Short-hand string describing where this package is sourced from.
     source: String,
     dependencies: Vec<PkgDepLine>,
+    contract_dependencies: Vec<PkgDepLine>,
 }
 
 /// `PkgDepLine` is a terse, single-line, git-diff-friendly description of a package's
@@ -62,7 +62,9 @@ impl PkgLock {
             _ => None,
         };
         let source = pinned.source.to_string();
-        let mut dependencies: Vec<String> = graph
+        // Collection of all dependencies, so this includes both contract-dependencies and
+        // lib-dependencies
+        let all_dependencies: Vec<(String, DepKind)> = graph
             .edges_directed(node, Direction::Outgoing)
             .map(|edge| {
                 let dep_edge = edge.weight();
@@ -75,21 +77,35 @@ impl PkgLock {
                 };
                 let dep_kind = &dep_edge.kind;
                 let disambiguate = disambiguate.contains(&dep_pkg.name[..]);
-                pkg_dep_line(
-                    dep_name,
-                    &dep_pkg.name,
-                    &dep_pkg.source,
-                    dep_kind,
-                    disambiguate,
+                (
+                    pkg_dep_line(
+                        dep_name,
+                        &dep_pkg.name,
+                        &dep_pkg.source,
+                        disambiguate,
+                    ),
+                    dep_kind.clone(),
                 )
             })
             .collect();
+        let mut dependencies: Vec<String> = all_dependencies
+            .iter()
+            .filter(|(_, dep_kind)| *dep_kind == DepKind::Library)
+            .map(|(dep_pkg, _)| dep_pkg.clone())
+            .collect();
+        let mut contract_dependencies: Vec<String> = all_dependencies
+            .iter()
+            .filter(|(_, dep_kind)| *dep_kind == DepKind::Contract)
+            .map(|(dep_pkg, _)| dep_pkg.clone())
+            .collect();
         dependencies.sort();
+        contract_dependencies.sort();
         Self {
             name,
             version,
             source,
             dependencies,
+            contract_dependencies,
         }
     }
 
@@ -159,8 +175,17 @@ impl Lock {
         for pkg in &self.package {
             let key = pkg.name_disambiguated(&disambiguate);
             let node = pkg_to_node[&key[..]];
-            for dep_line in &pkg.dependencies {
-                let (dep_name, dep_kind, dep_key) = parse_pkg_dep_line(dep_line)
+            let dependencies_with_type = pkg
+                .dependencies
+                .iter()
+                .map(|lib_dep| (lib_dep, DepKind::Library))
+                .chain(
+                    pkg.contract_dependencies
+                        .iter()
+                        .map(|contract_dep| (contract_dep, DepKind::Contract)),
+                );
+            for (dep_line, dep_kind) in dependencies_with_type {
+                let (dep_name, dep_key) = parse_pkg_dep_line(dep_line)
                     .map_err(|e| anyhow!("failed to parse dependency \"{}\": {}", dep_line, e))?;
                 let dep_node = pkg_to_node
                     .get(dep_key)
@@ -209,7 +234,6 @@ fn pkg_dep_line(
     dep_name: Option<&str>,
     name: &str,
     source: &pkg::SourcePinned,
-    dep_kind: &DepKind,
     disambiguate: bool,
 ) -> PkgDepLine {
     // Only include the full unique string in the case that this dep requires disambiguation.
@@ -217,12 +241,12 @@ fn pkg_dep_line(
     let pkg_string = pkg_name_disambiguated(name, &source_string, disambiguate);
     // Prefix the dependency name if it differs from the package name.
     match dep_name {
-        None => format!("{} {}", dep_kind, pkg_string.into_owned()),
-        Some(dep_name) => format!("({}) {} {}", dep_name, dep_kind, pkg_string),
+        None => format!("{}", pkg_string.into_owned()),
+        Some(dep_name) => format!("({}) {}", dep_name, pkg_string),
     }
 }
 
-type ParsedPkgLine<'a> = (Option<&'a str>, DepKind, &'a str);
+type ParsedPkgLine<'a> = (Option<&'a str>, &'a str);
 // Parse the given `PkgDepLine` into its dependency name and unique string segments.
 //
 // I.e. given "(<dep_name>) <dep-kind> <name> <source>", returns ("<dep_name>", DepKind, "<name> <source>").
@@ -231,30 +255,22 @@ type ParsedPkgLine<'a> = (Option<&'a str>, DepKind, &'a str);
 fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {
     let s = pkg_dep_line.trim();
 
-    // Parse the dep name.
-    let (dep_name, s) = if !s.starts_with('(') {
-        (None, s)
-    } else {
-        // If we have the open bracket, grab everything until the closing bracket.
-        let s = &s["(".len()..];
-        let dep_name = s
-            .split(')')
-            .next()
-            .ok_or_else(|| anyhow!("missing closing parenthesis"))?;
-        let s = s[dep_name.len() + ")".len()..].trim_start();
-        (Some(dep_name), s)
-    };
-    // Parse the dep kind.
-    let dep_kind_str = s
-        .split(' ')
+    // Check for the open bracket.
+    if !s.starts_with('(') {
+        return Ok((None, s));
+    }
+
+    // If we have the open bracket, grab everything until the closing bracket.
+    let s = &s["(".len()..];
+    let mut iter = s.split(')');
+    let dep_name = iter
         .next()
-        .ok_or_else(|| anyhow!("missing dep kind"))?;
-    let dep_kind = DepKind::from_str(dep_kind_str)?;
-    let s = &s[dep_kind_str.len()..];
+        .ok_or_else(|| anyhow!("missing closing parenthesis"))?;
 
     // The rest is the unique package string.
-    let unique_pkg_str = s.trim_start();
-    Ok((dep_name, dep_kind, unique_pkg_str))
+    let s = &s[dep_name.len() + ")".len()..];
+    let pkg_str = s.trim_start();
+    Ok((Some(dep_name), pkg_str))
 }
 
 pub fn print_diff(proj_name: &str, diff: &Diff) {
