@@ -311,10 +311,10 @@ pub struct TyFunctionParameter {
 
 impl fmt::Display for TyFunctionParameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ref_str = if self.is_reference { "" } else { "ref " };
-        let mut_str = if self.is_mutable { "" } else { "mut " };
+        let ref_str = if self.is_reference { "ref " } else { "" };
+        let mut_str = if self.is_mutable { "mut " } else { "" };
         if self.is_self() {
-            write!(f, "{}{}self", ref_str, mut_str,)
+            write!(f, "{}{}self: {}", ref_str, mut_str, self.type_id)
         } else {
             write!(f, "{}: {}{}{}", self.name, ref_str, mut_str, self.type_id)
         }

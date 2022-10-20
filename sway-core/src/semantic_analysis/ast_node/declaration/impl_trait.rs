@@ -474,6 +474,9 @@ impl ty::TyImplTrait {
                 warnings,
                 errors
             );
+            if trait_name.suffix.as_str() == "E" {
+                println!("{}", method);
+            }
             methods.push(method);
         }
 
