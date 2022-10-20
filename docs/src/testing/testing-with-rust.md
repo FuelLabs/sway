@@ -208,6 +208,7 @@ async fn initialize_and_increment() {
     // Now you have an instance of your contract you can use to test each function
 
     let result = contract_instance
+        .methods()
         .initialize_counter(42)
         .call()
         .await
@@ -217,6 +218,7 @@ async fn initialize_and_increment() {
 
     // Call `increment_counter()` method in our deployed contract.
     let result = contract_instance
+        .methods()
         .increment_counter(10)
         .call()
         .await
