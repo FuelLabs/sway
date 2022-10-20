@@ -23,6 +23,8 @@ impl RenderedDocument {
             let module = if module_prefix.last().is_some() {
                 module_prefix.last().unwrap().to_string()
             } else {
+                // TODO: maybe there is a way to get the name of the root
+                // in doc.rs during module_prefix gathering
                 "root".to_string()
             };
             let decl_ty = doc.desc_ty.as_str().to_string();
@@ -77,7 +79,12 @@ pub(crate) fn html_head(module: String, decl_ty: String, decl_name: String) -> B
     }
 }
 /// HTML body component
-pub(crate) fn html_body(module: String, decl_ty: String, decl_name: String) -> Box<dyn RenderBox> {
+pub(crate) fn html_body(
+    module: String,
+    decl_ty: String,
+    decl_name: String,
+    code_span: String,
+) -> Box<dyn RenderBox> {
     box_html! {
         // TODO: match on ty and make this dynamic
         // e.g. an enum will have variants but a trait will not
@@ -93,7 +100,7 @@ pub(crate) fn html_body(module: String, decl_ty: String, decl_name: String) -> B
             div(class="docblock item-decl") {
                 pre(class=format!("sway {decl_ty}")) {
                     code {
-                        // code goes here
+                       : code_span
                     }
                 }
             }
@@ -143,10 +150,11 @@ impl Renderable for TyStructDeclaration {
             span,
         } = &self;
         let name = name.as_str().to_string();
+        let code_span = span.as_str().to_string();
         let struct_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone(), code_span.clone());
         }
     }
 }
@@ -161,10 +169,11 @@ impl Renderable for TyEnumDeclaration {
             span,
         } = &self;
         let name = name.as_str().to_string();
+        let code_span = span.as_str().to_string();
         let enum_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone(), code_span.clone());
         }
     }
 }
