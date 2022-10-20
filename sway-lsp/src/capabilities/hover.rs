@@ -17,21 +17,6 @@ use sway_core::{
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{self, Position, Url};
 
-#[allow(dead_code)]
-fn format_doc_attributes(token: &Token) -> String {
-    let mut doc_comment = String::new();
-    if let Some(attributes) = doc_attributes(token) {
-        doc_comment = attributes
-            .iter()
-            .map(|attribute| {
-                let comment = attribute.args.first().unwrap().as_str();
-                format!("{}\n", comment)
-            })
-            .collect()
-    }
-    doc_comment
-}
-
 pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option<lsp_types::Hover> {
     if let Some((ident, token)) = session.token_at_position(&url, position) {
         let range = get_range_from_span(&ident.span());
@@ -65,7 +50,21 @@ fn extract_fn_signature(span: &Span) -> String {
     value.split('{').take(1).map(|v| v.trim()).collect()
 }
 
-fn hover_format(token: &Token, ident: &Ident) -> lsp_types::Hover {
+fn format_doc_attributes(token: &Token) -> String {
+    let mut doc_comment = String::new();
+    if let Some(attributes) = doc_attributes(token) {
+        doc_comment = attributes
+            .iter()
+            .map(|attribute| {
+                let comment = attribute.args.first().unwrap().as_str();
+                format!("{}\n", comment)
+            })
+            .collect()
+    }
+    doc_comment
+}
+
+fn hover_format(token: &Token, ident: &Ident) -> lsp_types::HoverContents {
     let token_name: String = ident.as_str().into();
     let doc_comment = format_doc_attributes(token);
 
@@ -86,7 +85,7 @@ fn hover_format(token: &Token, ident: &Ident) -> lsp_types::Hover {
         format!("let{} {}: {}", mutability, token_name, type_name,)
     };
 
-    let value = match &token.typed {
+    let _value = match &token.typed {
         Some(typed_token) => match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {
                 ty::TyDeclaration::VariableDeclaration(var_decl) => {
