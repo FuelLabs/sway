@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-7A1B884B71AD4E6C'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'match_expressions_mismatched'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-7A1B884B71AD4E6C'
 dependencies = ['core']
-contract_dependencies = []

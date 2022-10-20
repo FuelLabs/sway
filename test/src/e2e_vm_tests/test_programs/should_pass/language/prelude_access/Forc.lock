@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-24E795B40E4736EB'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'prelude_access'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-24E795B40E4736EB'
 dependencies = ['core']
-contract_dependencies = []

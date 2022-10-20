@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-C52D55288A4557F3'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'match_expressions_inside_generic_functions'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-C52D55288A4557F3'
 dependencies = ['core']
-contract_dependencies = []

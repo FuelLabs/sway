@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-31E9CFD36AA5AC17'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-31E9CFD36AA5AC17'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'u256_test'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []

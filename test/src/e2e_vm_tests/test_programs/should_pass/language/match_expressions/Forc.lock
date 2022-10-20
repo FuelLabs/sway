@@ -1,11 +1,8 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-C27B2C742213E5AD'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'match_expressions'
 source = 'root'
 dependencies = ['core']
-contract_dependencies = []

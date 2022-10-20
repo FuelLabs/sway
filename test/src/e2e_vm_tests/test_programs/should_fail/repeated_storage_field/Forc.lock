@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-BC4E87DB22234D76'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'repeated_storage_field'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-BC4E87DB22234D76'
 dependencies = ['core']
-contract_dependencies = []

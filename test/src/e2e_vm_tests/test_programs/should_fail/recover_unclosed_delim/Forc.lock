@@ -1,5 +1,3 @@
 [[package]]
 name = 'recover_unclosed_delim'
 source = 'root'
-dependencies = []
-contract_dependencies = []

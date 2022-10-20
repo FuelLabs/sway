@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-CD2E393B1D6B5576'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'pow'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-CD2E393B1D6B5576'
 dependencies = ['core']
-contract_dependencies = []

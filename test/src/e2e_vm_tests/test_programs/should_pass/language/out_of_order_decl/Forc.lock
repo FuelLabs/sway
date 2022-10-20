@@ -1,11 +1,8 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-02BB6BAC50786DCA'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'out_of_order_decl'
 source = 'root'
 dependencies = ['core']
-contract_dependencies = []

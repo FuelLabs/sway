@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-979F3DC775724FBC'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-979F3DC775724FBC'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'token_ops'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []

@@ -1,11 +1,8 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-C382FF45EDC7C1B7'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'main_args_ref_copy'
 source = 'root'
 dependencies = ['core']
-contract_dependencies = []

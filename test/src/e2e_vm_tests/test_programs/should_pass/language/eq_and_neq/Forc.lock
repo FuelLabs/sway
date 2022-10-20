@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-0AF85F21A8536CE1'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'eq_and_neq'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-0AF85F21A8536CE1'
 dependencies = ['core']
-contract_dependencies = []

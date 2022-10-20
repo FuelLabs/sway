@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-6FDA2B8841DC691E'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-6FDA2B8841DC691E'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'std_mem_test'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []

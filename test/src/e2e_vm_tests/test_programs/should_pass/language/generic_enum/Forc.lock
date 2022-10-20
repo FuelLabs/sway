@@ -1,11 +1,8 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-A3D1AEE50B42FAC3'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'generic_enum'
 source = 'root'
 dependencies = ['core']
-contract_dependencies = []

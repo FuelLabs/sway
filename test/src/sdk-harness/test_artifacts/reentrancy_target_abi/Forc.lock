@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-838442FFC03D3788'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'reentrancy_target_abi'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-838442FFC03D3788'
 dependencies = ['core']
-contract_dependencies = []

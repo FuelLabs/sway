@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-219CAA2B0E1853AB'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'ec_recover_test'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-219CAA2B0E1853AB'
 dependencies = ['core']
-contract_dependencies = []

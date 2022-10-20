@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-BFCC9E74738B0693'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'hashing'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-BFCC9E74738B0693'
 dependencies = ['core']
-contract_dependencies = []

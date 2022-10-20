@@ -1,8 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-E1D1F5F82094B853'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'match_expressions_rest'
@@ -11,10 +9,8 @@ dependencies = [
     'core',
     'std',
 ]
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-E1D1F5F82094B853'
 dependencies = ['core']
-contract_dependencies = []

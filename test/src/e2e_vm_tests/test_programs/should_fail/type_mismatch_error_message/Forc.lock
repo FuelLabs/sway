@@ -1,5 +1,3 @@
 [[package]]
 name = 'type_mismatch_error_message'
 source = 'root'
-dependencies = []
-contract_dependencies = []

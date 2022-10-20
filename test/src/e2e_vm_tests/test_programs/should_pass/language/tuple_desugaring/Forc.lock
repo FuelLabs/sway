@@ -1,11 +1,8 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-7056B8159EB7375D'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'tuple_desugaring'
 source = 'root'
 dependencies = ['core']
-contract_dependencies = []

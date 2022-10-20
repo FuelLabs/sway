@@ -2,16 +2,12 @@
 name = 'block_height'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-F04660A5553D7A09'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-F04660A5553D7A09'
 dependencies = ['core']
-contract_dependencies = []

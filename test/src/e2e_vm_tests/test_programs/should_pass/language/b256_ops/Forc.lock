@@ -2,16 +2,12 @@
 name = 'b256_ops'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-963ABD293AAA1DE4'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-963ABD293AAA1DE4'
 dependencies = ['core']
-contract_dependencies = []

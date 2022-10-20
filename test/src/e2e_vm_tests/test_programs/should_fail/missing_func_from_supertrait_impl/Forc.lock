@@ -1,5 +1,3 @@
 [[package]]
 name = 'missing_func_from_supertrait_impl'
 source = 'root'
-dependencies = []
-contract_dependencies = []

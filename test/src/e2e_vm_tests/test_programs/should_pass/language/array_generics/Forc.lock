@@ -2,10 +2,7 @@
 name = 'array_generics'
 source = 'root'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-9063F6813E94C772'
-dependencies = []
-contract_dependencies = []

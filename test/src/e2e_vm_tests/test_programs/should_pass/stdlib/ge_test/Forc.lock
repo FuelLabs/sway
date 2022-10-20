@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-601D0A0C12E350CD'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'ge_test'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-601D0A0C12E350CD'
 dependencies = ['core']
-contract_dependencies = []

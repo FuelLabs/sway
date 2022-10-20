@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-0A9A4F1E1D370290'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-0A9A4F1E1D370290'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'svec_u8'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []

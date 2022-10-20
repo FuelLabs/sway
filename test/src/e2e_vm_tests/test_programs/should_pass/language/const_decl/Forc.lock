@@ -2,10 +2,7 @@
 name = 'const_decl'
 source = 'root'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-FBEF090568E90A96'
-dependencies = []
-contract_dependencies = []

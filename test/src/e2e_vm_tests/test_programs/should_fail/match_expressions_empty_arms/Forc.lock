@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-F11E2642DB254865'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'match_expressions_empty_arms'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-F11E2642DB254865'
 dependencies = ['core']
-contract_dependencies = []

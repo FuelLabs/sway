@@ -2,16 +2,12 @@
 name = 'chained_if_let_missing_branch'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-1D19A81536866BDD'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-1D19A81536866BDD'
 dependencies = ['core']
-contract_dependencies = []

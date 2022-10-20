@@ -1,5 +1,3 @@
 [[package]]
 name = 'self_impl_contract'
 source = 'root'
-dependencies = []
-contract_dependencies = []

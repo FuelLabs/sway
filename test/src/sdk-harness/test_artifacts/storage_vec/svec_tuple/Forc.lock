@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-ADD23FE8604712AD'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-ADD23FE8604712AD'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'svec_tuple'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []

@@ -1,11 +1,8 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-E679204875B87008'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'struct_field_access'
 source = 'root'
 dependencies = ['core']
-contract_dependencies = []

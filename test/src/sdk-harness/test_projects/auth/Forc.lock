@@ -2,16 +2,12 @@
 name = 'auth'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-2DA4FC95F5834167'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-2DA4FC95F5834167'
 dependencies = ['core']
-contract_dependencies = []

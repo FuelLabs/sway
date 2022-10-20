@@ -1,5 +1,3 @@
 [[package]]
 name = 'pub_storage'
 source = 'root'
-dependencies = []
-contract_dependencies = []

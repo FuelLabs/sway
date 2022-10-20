@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-68219769D077ACAE'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'doc_comments'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-68219769D077ACAE'
 dependencies = ['core']
-contract_dependencies = []

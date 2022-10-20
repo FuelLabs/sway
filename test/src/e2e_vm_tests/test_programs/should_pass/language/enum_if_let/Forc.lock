@@ -1,8 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-70323834FF9E0867'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'enum_if_let'
@@ -11,10 +9,8 @@ dependencies = [
     'core',
     'std',
 ]
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-70323834FF9E0867'
 dependencies = ['core']
-contract_dependencies = []

@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-B427A21A0EB5F683'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-B427A21A0EB5F683'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'storage_types'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []

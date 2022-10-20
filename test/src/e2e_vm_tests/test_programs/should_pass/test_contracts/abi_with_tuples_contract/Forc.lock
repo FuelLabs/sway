@@ -2,7 +2,6 @@
 name = 'abi_with_tuples'
 source = 'path+from-root-382FED6391B53E08'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'abi_with_tuples_contract'
@@ -11,10 +10,7 @@ dependencies = [
     'abi_with_tuples',
     'core',
 ]
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-382FED6391B53E08'
-dependencies = []
-contract_dependencies = []

@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-9ED436919AA602B8'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'enum_init_fn_call'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-9ED436919AA602B8'
 dependencies = ['core']
-contract_dependencies = []

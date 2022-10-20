@@ -1,11 +1,8 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-C086F5BB5B0BA300'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'issue_1512_repro'
 source = 'root'
 dependencies = ['core']
-contract_dependencies = []

@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-6F8C00D302E9D79E'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-6F8C00D302E9D79E'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'supertraits'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []

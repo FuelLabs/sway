@@ -2,16 +2,12 @@
 name = 'contract_id_type'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-042F076988000CAA'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-042F076988000CAA'
 dependencies = ['core']
-contract_dependencies = []

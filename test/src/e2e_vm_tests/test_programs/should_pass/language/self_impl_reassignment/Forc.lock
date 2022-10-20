@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-5305FB95C746F4C1'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'self_impl_reassignment'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-5305FB95C746F4C1'
 dependencies = ['core']
-contract_dependencies = []

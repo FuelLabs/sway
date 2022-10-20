@@ -2,16 +2,12 @@
 name = 'context_testing_abi'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-BE6A0D2FFDF9E2AB'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-BE6A0D2FFDF9E2AB'
 dependencies = ['core']
-contract_dependencies = []

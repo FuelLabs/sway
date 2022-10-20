@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-DF52F43C9B324936'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'option_in_abi'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-DF52F43C9B324936'
 dependencies = ['core']
-contract_dependencies = []

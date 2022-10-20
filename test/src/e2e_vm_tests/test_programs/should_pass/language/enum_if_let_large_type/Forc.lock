@@ -1,11 +1,8 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-D69404CFF5CF10E1'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'enum_if_let_large_type'
 source = 'root'
 dependencies = ['core']
-contract_dependencies = []

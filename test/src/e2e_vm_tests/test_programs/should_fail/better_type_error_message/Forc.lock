@@ -2,16 +2,12 @@
 name = 'better_type_error_message'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-935B8AC4AE1B30EB'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-935B8AC4AE1B30EB'
 dependencies = ['core']
-contract_dependencies = []

@@ -1,5 +1,3 @@
 [[package]]
 name = 'config_time_constants_non_literal'
 source = 'root'
-dependencies = []
-contract_dependencies = []

@@ -2,16 +2,12 @@
 name = 'auth_testing_abi'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-5781B31F5E4458CC'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-5781B31F5E4458CC'
 dependencies = ['core']
-contract_dependencies = []

@@ -2,16 +2,12 @@
 name = 'block_test_abi'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-C0259B895CF50289'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-C0259B895CF50289'
 dependencies = ['core']
-contract_dependencies = []

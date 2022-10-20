@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-71DB3AC72E68AF59'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'missing_type_parameteres'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-71DB3AC72E68AF59'
 dependencies = ['core']
-contract_dependencies = []

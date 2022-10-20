@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-239143CAFD6AF819'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'script_data'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-239143CAFD6AF819'
 dependencies = ['core']
-contract_dependencies = []

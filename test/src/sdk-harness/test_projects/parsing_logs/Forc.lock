@@ -1,8 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-139A28EAD4E475CB'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'parsing_logs'
@@ -11,16 +9,13 @@ dependencies = [
     'parsing_logs_test_abi',
     'std',
 ]
-contract_dependencies = []
 
 [[package]]
 name = 'parsing_logs_test_abi'
 source = 'path+from-root-139A28EAD4E475CB'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-139A28EAD4E475CB'
 dependencies = ['core']
-contract_dependencies = []

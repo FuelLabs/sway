@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-0F8B93B33FD67819'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'evm_ecr'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-0F8B93B33FD67819'
 dependencies = ['core']
-contract_dependencies = []

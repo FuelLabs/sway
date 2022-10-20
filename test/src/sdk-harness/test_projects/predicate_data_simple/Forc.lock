@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-88963B58C4FA8138'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'predicate_data_simple'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-88963B58C4FA8138'
 dependencies = ['core']
-contract_dependencies = []

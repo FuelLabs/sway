@@ -1,5 +1,3 @@
 [[package]]
 name = 'storage_in_predicate'
 source = 'root'
-dependencies = []
-contract_dependencies = []

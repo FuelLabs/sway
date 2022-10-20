@@ -2,16 +2,12 @@
 name = 'b512_panic_test'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-668AEDF20AD093DA'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-668AEDF20AD093DA'
 dependencies = ['core']
-contract_dependencies = []

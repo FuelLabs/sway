@@ -2,10 +2,7 @@
 name = 'bool_and_or'
 source = 'root'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-50A99C5EBA1BDE7E'
-dependencies = []
-contract_dependencies = []

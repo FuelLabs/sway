@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-36670D30B34137BE'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'smo_opcode'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-36670D30B34137BE'
 dependencies = ['core']
-contract_dependencies = []

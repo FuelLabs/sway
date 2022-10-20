@@ -1,5 +1,3 @@
 [[package]]
 name = 'recursive_struct'
 source = 'root'
-dependencies = []
-contract_dependencies = []

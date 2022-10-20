@@ -1,5 +1,3 @@
 [[package]]
 name = 'multi_impl_self'
 source = 'root'
-dependencies = []
-contract_dependencies = []

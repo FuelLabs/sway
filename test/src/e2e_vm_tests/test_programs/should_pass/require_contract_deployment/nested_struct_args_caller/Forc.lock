@@ -1,14 +1,11 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-B01F6E0C439A4B28'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'nested_struct_args_abi'
 source = 'path+from-root-B01F6E0C439A4B28'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'nested_struct_args_caller'
@@ -17,10 +14,8 @@ dependencies = [
     'nested_struct_args_abi',
     'std',
 ]
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-B01F6E0C439A4B28'
 dependencies = ['core']
-contract_dependencies = []

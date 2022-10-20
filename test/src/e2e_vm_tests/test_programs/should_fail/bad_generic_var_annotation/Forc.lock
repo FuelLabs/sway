@@ -1,5 +1,3 @@
 [[package]]
 name = 'bad_generic_var_annotation'
 source = 'root'
-dependencies = []
-contract_dependencies = []

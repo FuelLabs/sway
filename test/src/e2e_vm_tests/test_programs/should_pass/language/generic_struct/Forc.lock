@@ -1,11 +1,8 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-B83AF983C6574F96'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'generic_struct'
 source = 'root'
 dependencies = ['core']
-contract_dependencies = []

@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-D84378A37D7A2DA6'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-D84378A37D7A2DA6'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'tuple_in_struct'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []

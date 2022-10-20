@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-DD6C78AF57ACC141'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'evm_test_abi'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-DD6C78AF57ACC141'
 dependencies = ['core']
-contract_dependencies = []

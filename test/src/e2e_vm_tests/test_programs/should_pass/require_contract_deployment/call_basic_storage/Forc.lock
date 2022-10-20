@@ -2,7 +2,6 @@
 name = 'basic_storage_abi'
 source = 'path+from-root-B0443BE7AC0A62F9'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'call_basic_storage'
@@ -11,16 +10,12 @@ dependencies = [
     'basic_storage_abi',
     'std',
 ]
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-B0443BE7AC0A62F9'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-B0443BE7AC0A62F9'
 dependencies = ['core']
-contract_dependencies = []

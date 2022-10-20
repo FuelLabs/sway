@@ -2,16 +2,12 @@
 name = 'binop_intrinsics'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-FFF9D021FD8E57E3'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-FFF9D021FD8E57E3'
 dependencies = ['core']
-contract_dependencies = []

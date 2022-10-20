@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-D43362F14BA36B33'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'inline_if_expr_const'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-D43362F14BA36B33'
 dependencies = ['core']
-contract_dependencies = []

@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-69C0D5A249F24B1D'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-69C0D5A249F24B1D'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'u128_test_pass'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []

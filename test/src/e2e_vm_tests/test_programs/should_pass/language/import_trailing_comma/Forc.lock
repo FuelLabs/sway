@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-4A56ACA38DD902C5'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'import_trailing_comma'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-4A56ACA38DD902C5'
 dependencies = ['core']
-contract_dependencies = []

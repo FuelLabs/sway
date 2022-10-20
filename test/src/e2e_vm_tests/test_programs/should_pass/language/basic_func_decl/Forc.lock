@@ -2,10 +2,7 @@
 name = 'basic_func_decl'
 source = 'root'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-F183EF8FCF238B3D'
-dependencies = []
-contract_dependencies = []

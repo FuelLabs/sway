@@ -2,16 +2,12 @@
 name = 'address_test'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-E4CD281CB63A3D38'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-E4CD281CB63A3D38'
 dependencies = ['core']
-contract_dependencies = []

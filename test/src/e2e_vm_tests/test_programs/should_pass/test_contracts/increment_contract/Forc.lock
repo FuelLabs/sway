@@ -1,14 +1,11 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-A6DC921B8A5962D5'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'increment_abi'
 source = 'path+from-root-A6DC921B8A5962D5'
 dependencies = ['core']
-contract_dependencies = []
 
 [[package]]
 name = 'increment_contract'
@@ -17,10 +14,8 @@ dependencies = [
     'increment_abi',
     'std',
 ]
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-A6DC921B8A5962D5'
 dependencies = ['core']
-contract_dependencies = []

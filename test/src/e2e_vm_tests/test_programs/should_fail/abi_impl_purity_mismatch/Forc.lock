@@ -1,5 +1,3 @@
 [[package]]
 name = 'abi_impl_purity_mismatch'
 source = 'root'
-dependencies = []
-contract_dependencies = []

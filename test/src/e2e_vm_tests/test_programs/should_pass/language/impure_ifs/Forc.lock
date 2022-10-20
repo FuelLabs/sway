@@ -2,16 +2,12 @@
 name = 'const_inits'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-76FD265A93458D61'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-76FD265A93458D61'
 dependencies = ['core']
-contract_dependencies = []

@@ -1,11 +1,8 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-FE72F77802732C1A'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'local_impl_for_ord'
 source = 'root'
 dependencies = ['core']
-contract_dependencies = []

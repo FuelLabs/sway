@@ -5,16 +5,12 @@ dependencies = [
     'core',
     'std',
 ]
-contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-277F468596DF2097'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-277F468596DF2097'
 dependencies = ['core']
-contract_dependencies = []

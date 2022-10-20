@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-6679AAF5443CF293'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'match_expressions_constants'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-6679AAF5443CF293'
 dependencies = ['core']
-contract_dependencies = []

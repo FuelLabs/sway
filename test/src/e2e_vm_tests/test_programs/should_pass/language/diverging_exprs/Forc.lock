@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-80950B22F23DC017'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'diverging_exprs'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-80950B22F23DC017'
 dependencies = ['core']
-contract_dependencies = []

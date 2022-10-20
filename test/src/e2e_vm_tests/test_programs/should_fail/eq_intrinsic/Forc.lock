@@ -1,17 +1,13 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-987CA0C143EB9BCC'
-dependencies = []
-contract_dependencies = []
 
 [[package]]
 name = 'eq_intrinsic'
 source = 'root'
 dependencies = ['std']
-contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-987CA0C143EB9BCC'
 dependencies = ['core']
-contract_dependencies = []
