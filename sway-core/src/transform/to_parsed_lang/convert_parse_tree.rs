@@ -413,7 +413,7 @@ fn item_trait_to_trait_declaration(
     item_trait: ItemTrait,
     attributes: AttributesMap,
 ) -> Result<TraitDeclaration, ErrorEmitted> {
-    let name = item_trait.name;
+    let span = item_trait.span();
     let type_parameters = generic_params_opt_to_type_parameters(
         handler,
         item_trait.generics,
@@ -445,13 +445,14 @@ fn item_trait_to_trait_declaration(
     };
     let visibility = pub_token_opt_to_visibility(item_trait.visibility);
     Ok(TraitDeclaration {
-        name,
+        name: item_trait.name,
         type_parameters,
         interface_surface,
         methods,
         supertraits,
         visibility,
         attributes,
+        span,
     })
 }
 
