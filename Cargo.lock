@@ -4406,7 +4406,6 @@ dependencies = [
  "itertools",
  "lazy_static",
  "petgraph",
- "prettydiff 0.5.1",
  "serde",
  "sha2 0.9.9",
  "smallvec",
