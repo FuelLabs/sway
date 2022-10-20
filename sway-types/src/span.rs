@@ -174,7 +174,7 @@ impl Span {
         }
     }
 
-    pub fn join_all(spans: Vec<Span>) -> Span {
+    pub fn join_all(spans: impl IntoIterator<Item = Span>) -> Span {
         spans
             .into_iter()
             .reduce(Span::join)
