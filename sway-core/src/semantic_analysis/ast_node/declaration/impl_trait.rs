@@ -33,9 +33,7 @@ impl ty::TyImplTrait {
         let mut impl_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut impl_namespace);
 
-        // type check the type parameters
-        // insert them into the namespace
-        // TODO: eventually when we support generic traits, we will want to use this
+        // type check the type parameters which also inserts them into the namespace
         let mut new_impl_type_parameters = vec![];
         for type_parameter in impl_type_parameters.into_iter() {
             new_impl_type_parameters.push(check!(
@@ -470,12 +468,13 @@ impl ty::TyImplTrait {
         // type check the methods inside of the impl block
         let mut methods = vec![];
         for fn_decl in functions.into_iter() {
-            methods.push(check!(
+            let method = check!(
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl),
                 continue,
                 warnings,
                 errors
-            ));
+            );
+            methods.push(method);
         }
 
         check!(
@@ -688,28 +687,43 @@ fn type_check_trait_implementation(
         //
         // *This will change* when either https://github.com/FuelLabs/sway/issues/1267
         // or https://github.com/FuelLabs/sway/issues/2814 goes in.
-        let unconstrained_type_parameters_function: HashSet<TypeParameter> = fn_decl
+        let unconstrained_type_parameters_in_this_function: HashSet<TypeParameter> = fn_decl
             .unconstrained_type_parameters(parent_impl_type_parameters)
             .into_iter()
             .cloned()
             .collect();
-        let unconstrained_type_parameters_type: HashSet<TypeParameter> = type_implementing_for
-            .unconstrained_type_parameters(parent_impl_type_parameters)
-            .into_iter()
-            .cloned()
-            .collect::<HashSet<_>>();
-        let mut unconstrained_type_parameters = unconstrained_type_parameters_function
-            .difference(&unconstrained_type_parameters_type)
-            .cloned()
-            .into_iter()
-            .collect::<Vec<_>>();
-        println!(
-            "{}: {:?}",
-            type_implementing_for, unconstrained_type_parameters
-        );
+        let unconstrained_type_parameters_in_the_type: HashSet<TypeParameter> =
+            type_implementing_for
+                .unconstrained_type_parameters(parent_impl_type_parameters)
+                .into_iter()
+                .cloned()
+                .collect::<HashSet<_>>();
+        let mut unconstrained_type_parameters_to_be_added =
+            unconstrained_type_parameters_in_this_function
+                .difference(&unconstrained_type_parameters_in_the_type)
+                .cloned()
+                .into_iter()
+                .collect::<Vec<_>>();
+        // if trait_name.suffix.as_str() == "Setter" {
+        //     println!(
+        //         "{}:\n\tfunction: [{}]\n\ttype: [{}]\n\t{:?}",
+        //         type_implementing_for,
+        //         unconstrained_type_parameters_in_this_function
+        //             .iter()
+        //             .map(|x| x.type_id.to_string())
+        //             .collect::<Vec<_>>()
+        //             .join(", "),
+        //         unconstrained_type_parameters_in_the_type
+        //             .iter()
+        //             .map(|x| x.type_id.to_string())
+        //             .collect::<Vec<_>>()
+        //             .join(", "),
+        //         unconstrained_type_parameters_to_be_added
+        //     );
+        // }
         fn_decl
             .type_parameters
-            .append(&mut unconstrained_type_parameters);
+            .append(&mut unconstrained_type_parameters_to_be_added);
 
         functions_buf.push(fn_decl);
     }

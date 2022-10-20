@@ -186,13 +186,14 @@ impl<'ns> TypeCheckContext<'ns> {
     where
         T: MonomorphizeHelper + CopyTypes,
     {
+        let mod_path = self.namespace.mod_path.clone();
         monomorphize(
             value,
             type_arguments,
             enforce_type_arguments,
             call_site_span,
-            &mut self.namespace.root,
-            &self.namespace.mod_path,
+            self.namespace,
+            &mod_path,
         )
     }
 

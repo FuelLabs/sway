@@ -1,9 +1,6 @@
 use crate::{
-    concurrent_slab::ConcurrentSlab,
-    declaration_engine::*,
-    language::ty,
-    namespace::{Path, Root},
-    type_system::*,
+    concurrent_slab::ConcurrentSlab, declaration_engine::*, language::ty, namespace::Path,
+    type_system::*, Namespace,
 };
 
 use lazy_static::lazy_static;
@@ -89,7 +86,7 @@ impl TypeEngine {
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
-        namespace: &mut Root,
+        namespace: &mut Namespace,
         mod_path: &Path,
     ) -> CompileResult<()>
     where
@@ -324,6 +321,14 @@ impl TypeEngine {
             {
                 (vec![], vec![])
             }
+            // (ref r @ UnknownGeneric { .. }, e) => {
+            //     self.slab.replace(received, r, e);
+            //     (vec![], vec![])
+            // },
+            // (r, ref e @ UnknownGeneric { .. }) => {
+            //     self.slab.replace(expected, e, r);
+            //     (vec![], vec![])
+            // },
             (ref r @ UnknownGeneric { .. }, e) => match self.slab.replace(received, r, e) {
                 None => (vec![], vec![]),
                 Some(_) => self.unify(received, expected, span, help_text),
@@ -488,6 +493,10 @@ impl TypeEngine {
             {
                 (vec![], vec![])
             }
+            // (r, ref e @ UnknownGeneric { .. }) => {
+            //     self.slab.replace(expected, e, r);
+            //     (vec![], vec![])
+            // },
             (r, ref e @ UnknownGeneric { .. }) => match self.slab.replace(expected, e, r) {
                 None => (vec![], vec![]),
                 Some(_) => self.unify_right(received, expected, span, help_text),
@@ -536,7 +545,7 @@ impl TypeEngine {
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
-        namespace: &mut Root,
+        namespace: &mut Namespace,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
@@ -548,6 +557,7 @@ impl TypeEngine {
                 type_arguments,
             } => {
                 match namespace
+                    .root
                     .resolve_symbol(module_path, &name)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
@@ -683,7 +693,7 @@ impl TypeEngine {
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
-        namespace: &mut Root,
+        namespace: &mut Namespace,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
         type_id.replace_self_type(self_type);
@@ -727,7 +737,7 @@ pub(crate) fn monomorphize<T>(
     type_arguments: &mut [TypeArgument],
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
-    namespace: &mut Root,
+    namespace: &mut Namespace,
     module_path: &Path,
 ) -> CompileResult<()>
 where
@@ -812,7 +822,7 @@ pub(crate) fn resolve_type(
     span: &Span,
     enforce_type_arguments: EnforceTypeArguments,
     type_info_prefix: Option<&Path>,
-    namespace: &mut Root,
+    namespace: &mut Namespace,
     mod_path: &Path,
 ) -> CompileResult<TypeId> {
     TYPE_ENGINE.resolve_type(
@@ -831,7 +841,7 @@ pub(crate) fn resolve_type_with_self(
     span: &Span,
     enforce_type_arguments: EnforceTypeArguments,
     type_info_prefix: Option<&Path>,
-    namespace: &mut Root,
+    namespace: &mut Namespace,
     mod_path: &Path,
 ) -> CompileResult<TypeId> {
     TYPE_ENGINE.resolve_type_with_self(

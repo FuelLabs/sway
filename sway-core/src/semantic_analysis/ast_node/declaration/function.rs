@@ -12,7 +12,10 @@ use crate::{
 use sway_types::{style::is_snake_case, Spanned};
 
 impl ty::TyFunctionDeclaration {
-    pub fn type_check(ctx: TypeCheckContext, fn_decl: FunctionDeclaration) -> CompileResult<Self> {
+    pub fn type_check(
+        mut ctx: TypeCheckContext,
+        fn_decl: FunctionDeclaration,
+    ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -40,26 +43,28 @@ impl ty::TyFunctionDeclaration {
 
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut fn_namespace).with_purity(purity);
+        let mut fn_ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
 
-        // type check the type parameters
-        // insert them into the namespace
+        // if name.as_str() == "ec_recover" {
+        //     println!("before: {}", fn_ctx.namespace.implemented_traits);
+        // }
+
+        // type check the type parameters, which will also insert them into the namespace
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
             new_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
+                TypeParameter::type_check(fn_ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
                 warnings,
                 errors
             ));
         }
 
-        // type check the function parameters
-        // insert them into the namespace
+        // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
         for parameter in parameters.into_iter() {
             new_parameters.push(check!(
-                ty::TyFunctionParameter::type_check(ctx.by_ref(), parameter),
+                ty::TyFunctionParameter::type_check(fn_ctx.by_ref(), parameter),
                 continue,
                 warnings,
                 errors
@@ -69,7 +74,7 @@ impl ty::TyFunctionDeclaration {
         // type check the return type
         let initial_return_type = insert_type(return_type);
         let return_type = check!(
-            ctx.resolve_type_with_self(
+            fn_ctx.resolve_type_with_self(
                 initial_return_type,
                 &return_type_span,
                 EnforceTypeArguments::Yes,
@@ -80,12 +85,17 @@ impl ty::TyFunctionDeclaration {
             errors,
         );
 
+        // if name.as_str() == "ec_recover" {
+        //     println!("return_type: {}", return_type);
+        //     println!("after: {}", fn_ctx.namespace.implemented_traits);
+        // }
+
         // type check the function body
         //
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
         let (body, _implicit_block_return) = {
-            let ctx = ctx
+            let ctx = fn_ctx
                 .by_ref()
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
                 .with_type_annotation(return_type);
@@ -110,7 +120,8 @@ impl ty::TyFunctionDeclaration {
         // unify the types of the return statements with the function return type
         for stmt in return_statements {
             append!(
-                ctx.by_ref()
+                fn_ctx
+                    .by_ref()
                     .with_type_annotation(return_type)
                     .with_help_text(
                         "Return statement must return the declared function return type."
@@ -133,9 +144,21 @@ impl ty::TyFunctionDeclaration {
             return_type_span,
             visibility,
             // if this is for a contract, then it is a contract call
-            is_contract_call: ctx.mode() == Mode::ImplAbiFn,
+            is_contract_call: fn_ctx.mode() == Mode::ImplAbiFn,
             purity,
         };
+
+        let return_type_trait_map = fn_ctx
+            .namespace
+            .implemented_traits
+            .filter_by_type(function_decl.return_type);
+        ctx.namespace
+            .implemented_traits
+            .extend(return_type_trait_map);
+
+        // if function_decl.name.as_str() == "ec_recover" {
+        //     println!("last: {}", ctx.namespace.implemented_traits);
+        // }
 
         ok(function_decl, warnings, errors)
     }

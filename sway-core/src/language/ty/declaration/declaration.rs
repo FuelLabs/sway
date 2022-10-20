@@ -359,12 +359,14 @@ impl TyDeclaration {
         let mut errors = vec![];
         let type_id = match self {
             TyDeclaration::VariableDeclaration(decl) => decl.body.return_type,
-            TyDeclaration::FunctionDeclaration { .. } => {
-                errors.push(CompileError::Unimplemented(
-                    "Function pointers have not yet been implemented.",
-                    self.span(),
-                ));
-                return err(warnings, errors);
+            TyDeclaration::FunctionDeclaration(decl_id) => {
+                let decl = check!(
+                    CompileResult::from(de_get_function(decl_id.clone(), &self.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                decl.return_type
             }
             TyDeclaration::StructDeclaration(decl_id) => {
                 let decl = check!(

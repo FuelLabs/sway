@@ -317,10 +317,10 @@ impl Module {
                         return ok((), warnings, errors);
                     }
                 }
-                let a = decl.return_type(&item.span()).value;
-                //  if this is an enum or struct, import its implementations
-                if let Some(a) = a {
-                    impls_to_insert.extend(src_ns.implemented_traits.filter_by_type(a));
+                let type_id = decl.return_type(&item.span()).value;
+                //  if this is an enum or struct or function, import its implementations
+                if let Some(type_id) = type_id {
+                    impls_to_insert.extend(src_ns.implemented_traits.filter_by_type(type_id));
                 }
                 // no matter what, import it this way though.
                 let dst_ns = &mut self[dst];

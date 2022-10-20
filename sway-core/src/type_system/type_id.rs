@@ -15,13 +15,13 @@ impl std::ops::Deref for TypeId {
 
 impl fmt::Display for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&look_up_type_id(*self).to_string())
+        write!(f, "{}", look_up_type_id(*self))
     }
 }
 
 impl fmt::Debug for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&look_up_type_id(*self).to_string())
+        write!(f, "{:?}", look_up_type_id(*self))
     }
 }
 

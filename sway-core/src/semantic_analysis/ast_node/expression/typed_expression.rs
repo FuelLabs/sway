@@ -791,10 +791,20 @@ impl ty::TyExpression {
                 .with_help_text(
                     "Struct field's type must match up with the type specified in its declaration.",
                 )
-                .with_type_annotation(def_field.type_id);
+                .with_type_annotation(insert_type(TypeInfo::Unknown));
             let typed_field = check!(
                 ty::TyExpression::type_check(ctx, expr_field.value),
                 continue,
+                warnings,
+                errors
+            );
+            append!(
+                unify_right(
+                    typed_field.return_type,
+                    def_field.type_id,
+                    &typed_field.span,
+                    "Struct field's type must match up with the type specified in its declaration."
+                ),
                 warnings,
                 errors
             );
@@ -1206,12 +1216,13 @@ impl ty::TyExpression {
                 .with_help_text("")
                 .with_type_annotation(insert_type(TypeInfo::Unknown))
                 .with_mode(Mode::ImplAbiFn);
-            type_checked_fn_buf.push(check!(
+            let func = check!(
                 ty::TyFunctionDeclaration::type_check(ctx, method.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
-            ));
+            );
+            type_checked_fn_buf.push(func);
         }
 
         functions_buf.append(&mut type_checked_fn_buf);

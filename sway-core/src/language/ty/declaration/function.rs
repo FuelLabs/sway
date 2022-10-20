@@ -34,7 +34,7 @@ impl fmt::Display for TyFunctionDeclaration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "fn {}{}({}) -> {} {{ .. }}",
+            "fn {}{}({}) -> {} {{ \n\t{}\n }}",
             self.name,
             if self.type_parameters.is_empty() {
                 String::new()
@@ -53,7 +53,13 @@ impl fmt::Display for TyFunctionDeclaration {
                 .map(|x| x.to_string())
                 .collect::<Vec<_>>()
                 .join(", "),
-            self.return_type
+            self.return_type,
+            self.body
+                .contents
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(";\n\t")
         )
     }
 }

@@ -20,6 +20,6 @@ fn main() {
     let a = FooBarData {
         value: 1u8
     };
-    let b = a.set_it(42);
+    let b = a.set_it(42u8);
     let c = a.set_it(false);
 }

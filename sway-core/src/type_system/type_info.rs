@@ -340,42 +340,46 @@ impl UnconstrainedTypeParameters for TypeInfo {
                 variant_types,
                 ..
             } => {
-                if type_parameters
+                let unconstrained_in_type_parameters = type_parameters
                     .iter()
-                    .map(|type_param| look_up_type_id(type_param.type_id))
-                    .any(|x| x == type_parameter_info)
-                {
-                    return false;
-                }
-                variant_types
+                    .map(|type_param| {
+                        type_param
+                            .type_id
+                            .type_parameter_is_unconstrained(type_parameter)
+                    })
+                    .any(|x| x);
+                let unconstrained_in_variants = variant_types
                     .iter()
                     .map(|variant| {
                         variant
                             .type_id
                             .type_parameter_is_unconstrained(type_parameter)
                     })
-                    .any(|x| x)
+                    .any(|x| x);
+                unconstrained_in_type_parameters || unconstrained_in_variants
             }
             TypeInfo::Struct {
                 type_parameters,
                 fields,
                 ..
             } => {
-                if type_parameters
+                let unconstrained_in_type_parameters = type_parameters
                     .iter()
-                    .map(|type_param| look_up_type_id(type_param.type_id))
-                    .any(|x| x == type_parameter_info)
-                {
-                    return false;
-                }
-                fields
+                    .map(|type_param| {
+                        type_param
+                            .type_id
+                            .type_parameter_is_unconstrained(type_parameter)
+                    })
+                    .any(|x| x);
+                let unconstrained_in_fields = fields
                     .iter()
                     .map(|field| {
                         field
                             .type_id
                             .type_parameter_is_unconstrained(type_parameter)
                     })
-                    .any(|x| x)
+                    .any(|x| x);
+                unconstrained_in_type_parameters || unconstrained_in_fields
             }
             TypeInfo::Tuple(elems) => elems
                 .iter()
@@ -982,6 +986,8 @@ impl TypeInfo {
     /// }
     /// ```
     ///
+    /// then:
+    ///
     /// | type:             | is subset of:                                | is not a subset of: |
     /// |-------------------|----------------------------------------------|---------------------|
     /// | `Data<T, T>`      | `Data<T, F>`, any generic type               |                     |
@@ -1315,7 +1321,7 @@ fn types_are_subset_of(left: &[TypeInfo], right: &[TypeInfo]) -> bool {
         }
     }
 
-    // invariant 3. The elements of `left` satisfy the trait constraints of `right`
+    // invariant 3. The elements of `left` satisfy the constraints of `right`
     let mut constraints = vec![];
     for i in 0..(right.len() - 1) {
         for j in (i + 1)..right.len() {
