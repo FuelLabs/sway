@@ -10,6 +10,9 @@ pub struct TyStructExpressionField {
 
 impl CopyTypes for TyStructExpressionField {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        if type_mapping.is_empty() {
+            return;
+        }
         self.value.copy_types(type_mapping);
     }
 }

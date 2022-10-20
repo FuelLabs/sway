@@ -7,6 +7,9 @@ pub struct TyCodeBlock {
 
 impl CopyTypes for TyCodeBlock {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        if type_mapping.is_empty() {
+            return;
+        }
         self.contents
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));

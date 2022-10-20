@@ -28,10 +28,11 @@ pub enum TyDeclaration {
 }
 
 impl CopyTypes for TyDeclaration {
-    /// The entry point to monomorphizing typed declarations. Instantiates all new type ids,
-    /// assuming `self` has already been copied.
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
         use TyDeclaration::*;
+        if type_mapping.is_empty() {
+            return;
+        }
         match self {
             VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
             FunctionDeclaration(ref mut fn_decl) => fn_decl.copy_types(type_mapping),

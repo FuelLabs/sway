@@ -56,6 +56,9 @@ impl Spanned for DeclarationId {
 
 impl CopyTypes for DeclarationId {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        if type_mapping.is_empty() {
+            return;
+        }
         let mut decl = de_look_up_decl_id(self.clone());
         decl.copy_types(type_mapping);
         de_replace_decl_id(self.clone(), decl);

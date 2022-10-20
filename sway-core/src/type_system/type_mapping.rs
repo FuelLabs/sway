@@ -10,6 +10,11 @@ pub(crate) struct TypeMapping {
 }
 
 impl TypeMapping {
+    /// Returns `true` if the [TypeMapping] is empty.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.mapping.is_empty()
+    }
+
     /// Constructs a new [TypeMapping] from a list of [TypeParameter]s
     /// `type_parameters`. The [SourceType]s of the resulting [TypeMapping] are
     /// the [TypeId]s from `type_parameters` and the [DestinationType]s are the

@@ -24,6 +24,9 @@ impl PartialEq for TyAsmRegisterDeclaration {
 
 impl CopyTypes for TyAsmRegisterDeclaration {
     fn copy_types(&mut self, type_mapping: &TypeMapping) {
+        if type_mapping.is_empty() {
+            return;
+        }
         if let Some(ref mut initializer) = self.initializer {
             initializer.copy_types(type_mapping)
         }
