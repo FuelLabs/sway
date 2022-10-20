@@ -2,3 +2,4 @@
 name = 'generic_shadows_generic'
 source = 'root'
 dependencies = []
+contract_dependencies = []

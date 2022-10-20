@@ -2,13 +2,16 @@
 name = 'core'
 source = 'path+from-root-112F6FFCFCECE066'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-112F6FFCFCECE066'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []
 
 [[package]]
 name = 'svec_bool'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []

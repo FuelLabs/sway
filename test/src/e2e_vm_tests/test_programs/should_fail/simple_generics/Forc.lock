@@ -2,3 +2,4 @@
 name = 'simple_generics'
 source = 'root'
 dependencies = []
+contract_dependencies = []

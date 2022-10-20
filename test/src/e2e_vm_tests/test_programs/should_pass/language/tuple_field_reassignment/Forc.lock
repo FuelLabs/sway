@@ -2,8 +2,10 @@
 name = 'core'
 source = 'path+from-root-2F4123B4F8C8D13B'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'tuple_field_reassignment'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

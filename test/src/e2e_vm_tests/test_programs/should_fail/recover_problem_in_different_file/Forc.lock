@@ -2,3 +2,4 @@
 name = 'recover_problem_in_different_file'
 source = 'root'
 dependencies = []
+contract_dependencies = []

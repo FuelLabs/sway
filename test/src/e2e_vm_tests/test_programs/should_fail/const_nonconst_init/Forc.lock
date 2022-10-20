@@ -1,9 +1,11 @@
 [[package]]
 name = 'const_nonconst_init'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-E57A3612ABF8CF11'
 dependencies = []
+contract_dependencies = []

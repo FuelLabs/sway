@@ -2,8 +2,10 @@
 name = 'core'
 source = 'path+from-root-77B89972CE8D8BC6'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'tuple_indexing'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

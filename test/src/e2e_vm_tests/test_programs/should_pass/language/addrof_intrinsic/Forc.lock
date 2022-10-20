@@ -1,14 +1,17 @@
 [[package]]
 name = 'addrof_intrinsic'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-B3EAB3022B5FAD04'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-B3EAB3022B5FAD04'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

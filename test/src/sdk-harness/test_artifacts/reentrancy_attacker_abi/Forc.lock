@@ -2,13 +2,16 @@
 name = 'core'
 source = 'path+from-root-01ECD3B6EBEB3EFB'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'reentrancy_attacker_abi'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-01ECD3B6EBEB3EFB'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

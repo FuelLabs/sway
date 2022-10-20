@@ -1,14 +1,17 @@
 [[package]]
 name = 'b256_bitwise_ops'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-EA508AA5D7F81EEF'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-EA508AA5D7F81EEF'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

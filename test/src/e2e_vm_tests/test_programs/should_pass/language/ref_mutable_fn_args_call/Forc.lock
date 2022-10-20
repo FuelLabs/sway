@@ -2,8 +2,10 @@
 name = 'core'
 source = 'path+from-root-1823A1D461605CE8'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'ref_mutable_fn_args_struct_assign'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

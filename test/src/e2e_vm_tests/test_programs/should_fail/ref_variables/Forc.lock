@@ -2,3 +2,4 @@
 name = 'ref_variables'
 source = 'root'
 dependencies = []
+contract_dependencies = []

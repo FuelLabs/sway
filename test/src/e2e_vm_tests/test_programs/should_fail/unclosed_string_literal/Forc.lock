@@ -2,3 +2,4 @@
 name = 'unclosed_string_literal'
 source = 'root'
 dependencies = []
+contract_dependencies = []

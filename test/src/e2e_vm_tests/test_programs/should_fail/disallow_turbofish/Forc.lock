@@ -2,3 +2,4 @@
 name = 'disallow_turbofish'
 source = 'root'
 dependencies = []
+contract_dependencies = []

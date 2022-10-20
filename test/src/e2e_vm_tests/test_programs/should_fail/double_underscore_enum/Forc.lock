@@ -2,3 +2,4 @@
 name = 'double_underscore_enum'
 source = 'root'
 dependencies = []
+contract_dependencies = []

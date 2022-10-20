@@ -2,3 +2,4 @@
 name = 'valid_impurity'
 source = 'root'
 dependencies = []
+contract_dependencies = []

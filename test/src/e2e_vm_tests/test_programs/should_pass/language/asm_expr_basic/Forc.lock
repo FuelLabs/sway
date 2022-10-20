@@ -1,14 +1,17 @@
 [[package]]
 name = 'asm_expr_basic'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-C1BABCC798F19F0B'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-C1BABCC798F19F0B'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

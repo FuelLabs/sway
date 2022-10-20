@@ -2,3 +2,4 @@
 name = 'match_expressions_struct_missing_fields'
 source = 'root'
 dependencies = []
+contract_dependencies = []

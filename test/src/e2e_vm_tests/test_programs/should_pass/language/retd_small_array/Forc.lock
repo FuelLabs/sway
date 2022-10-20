@@ -2,8 +2,10 @@
 name = 'core'
 source = 'path+from-root-D892E29A6FC98019'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'retd_small_array'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

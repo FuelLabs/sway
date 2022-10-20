@@ -2,3 +2,4 @@
 name = 'contract_c'
 source = 'root'
 dependencies = []
+contract_dependencies = []

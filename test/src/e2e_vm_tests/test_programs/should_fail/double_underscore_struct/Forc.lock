@@ -2,3 +2,4 @@
 name = 'double_underscore_struct'
 source = 'root'
 dependencies = []
+contract_dependencies = []

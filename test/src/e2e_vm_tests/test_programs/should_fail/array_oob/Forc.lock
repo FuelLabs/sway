@@ -2,3 +2,4 @@
 name = 'array_oob'
 source = 'root'
 dependencies = []
+contract_dependencies = []

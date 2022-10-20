@@ -2,13 +2,16 @@
 name = 'core'
 source = 'path+from-root-5A54E336CA715EAA'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'empty_method_initializer'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-5A54E336CA715EAA'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

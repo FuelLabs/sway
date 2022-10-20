@@ -2,3 +2,4 @@
 name = 'generics_unhelpful_error'
 source = 'root'
 dependencies = []
+contract_dependencies = []

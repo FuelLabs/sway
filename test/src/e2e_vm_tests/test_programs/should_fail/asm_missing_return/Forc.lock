@@ -2,3 +2,4 @@
 name = 'asm_missing_return'
 source = 'root'
 dependencies = []
+contract_dependencies = []

@@ -2,13 +2,16 @@
 name = 'core'
 source = 'path+from-root-0FAC91CD97E3941F'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'match_expressions_nested'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-0FAC91CD97E3941F'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

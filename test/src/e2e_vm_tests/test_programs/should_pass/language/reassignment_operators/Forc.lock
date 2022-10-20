@@ -2,13 +2,16 @@
 name = 'core'
 source = 'path+from-root-D3718BE02F4F019A'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'reassignment_operators'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-D3718BE02F4F019A'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

@@ -2,3 +2,4 @@
 name = 'fn_params_trait'
 source = 'root'
 dependencies = []
+contract_dependencies = []

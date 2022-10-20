@@ -2,21 +2,25 @@
 name = 'core'
 source = 'path+from-root-7D510AAC4A67C807'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-7D510AAC4A67C807'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []
 
 [[package]]
 name = 'test_fuel_coin_abi'
 source = 'path+from-root-7D510AAC4A67C807'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'token_ops_test'
 source = 'root'
 dependencies = [
-    'library std',
-    'library test_fuel_coin_abi',
+    'std',
+    'test_fuel_coin_abi',
 ]
+contract_dependencies = []

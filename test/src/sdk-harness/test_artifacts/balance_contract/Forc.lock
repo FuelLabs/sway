@@ -1,14 +1,17 @@
 [[package]]
 name = 'balance_contract'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-448CB6CD985B149D'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-448CB6CD985B149D'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

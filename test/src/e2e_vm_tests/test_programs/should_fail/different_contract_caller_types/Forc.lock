@@ -2,3 +2,4 @@
 name = 'different_contract_caller_types'
 source = 'root'
 dependencies = []
+contract_dependencies = []

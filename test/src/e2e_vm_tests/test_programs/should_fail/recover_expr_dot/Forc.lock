@@ -2,3 +2,4 @@
 name = 'recover_expr_dot'
 source = 'root'
 dependencies = []
+contract_dependencies = []

@@ -2,8 +2,10 @@
 name = 'core'
 source = 'path+from-root-BAB60FDDAFE6CA68'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'match_expressions_non_exhaustive'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

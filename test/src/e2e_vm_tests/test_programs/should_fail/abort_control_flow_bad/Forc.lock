@@ -1,14 +1,17 @@
 [[package]]
 name = 'abort_control_flow_bad'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-B1D8665D445379A4'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-B1D8665D445379A4'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

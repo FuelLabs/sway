@@ -2,3 +2,4 @@
 name = 'missing_supertrait_impl'
 source = 'root'
 dependencies = []
+contract_dependencies = []

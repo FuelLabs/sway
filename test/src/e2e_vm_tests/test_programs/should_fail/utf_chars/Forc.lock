@@ -2,3 +2,4 @@
 name = 'utf_chars'
 source = 'root'
 dependencies = []
+contract_dependencies = []

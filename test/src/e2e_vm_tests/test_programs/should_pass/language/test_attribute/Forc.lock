@@ -2,3 +2,4 @@
 name = 'test_attribute'
 source = 'root'
 dependencies = []
+contract_dependencies = []

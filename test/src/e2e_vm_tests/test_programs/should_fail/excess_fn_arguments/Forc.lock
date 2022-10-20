@@ -2,8 +2,10 @@
 name = 'core'
 source = 'path+from-root-8EECC8A749908BB3'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'excess_fn_arguments'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

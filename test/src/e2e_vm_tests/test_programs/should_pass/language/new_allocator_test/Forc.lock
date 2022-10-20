@@ -2,13 +2,16 @@
 name = 'core'
 source = 'path+from-root-22C1B8FFEA31F7F0'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'new_alloc'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-22C1B8FFEA31F7F0'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

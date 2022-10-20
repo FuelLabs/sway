@@ -2,27 +2,32 @@
 name = 'core'
 source = 'path+from-root-6EFBB843E0F64456'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'reentrancy_attacker_abi'
 source = 'path+from-root-6EFBB843E0F64456'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'reentrancy_attacker_contract'
 source = 'root'
 dependencies = [
-    'library reentrancy_attacker_abi',
-    'library reentrancy_target_abi',
-    'library std',
+    'reentrancy_attacker_abi',
+    'reentrancy_target_abi',
+    'std',
 ]
+contract_dependencies = []
 
 [[package]]
 name = 'reentrancy_target_abi'
 source = 'path+from-root-6EFBB843E0F64456'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-6EFBB843E0F64456'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

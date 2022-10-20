@@ -2,3 +2,4 @@
 name = 'free_fn_self'
 source = 'root'
 dependencies = []
+contract_dependencies = []

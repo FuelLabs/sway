@@ -2,13 +2,16 @@
 name = 'core'
 source = 'path+from-root-89DFACC7FCC0773C'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'intrinsics'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-89DFACC7FCC0773C'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

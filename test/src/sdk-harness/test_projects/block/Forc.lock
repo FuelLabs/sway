@@ -2,21 +2,25 @@
 name = 'block'
 source = 'root'
 dependencies = [
-    'library block_test_abi',
-    'library std',
+    'block_test_abi',
+    'std',
 ]
+contract_dependencies = []
 
 [[package]]
 name = 'block_test_abi'
 source = 'path+from-root-9A6BFB98DBD0352C'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-9A6BFB98DBD0352C'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-9A6BFB98DBD0352C'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

@@ -2,21 +2,25 @@
 name = 'core'
 source = 'path+from-root-B3844A485BCDB5F7'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'get_storage_key_abi'
 source = 'path+from-root-B3844A485BCDB5F7'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'get_storage_key_caller'
 source = 'root'
 dependencies = [
-    'library get_storage_key_abi',
-    'library std',
+    'get_storage_key_abi',
+    'std',
 ]
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-B3844A485BCDB5F7'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

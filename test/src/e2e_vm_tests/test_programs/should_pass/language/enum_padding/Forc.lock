@@ -2,3 +2,4 @@
 name = 'enum_padding'
 source = 'root'
 dependencies = []
+contract_dependencies = []

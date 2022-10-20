@@ -2,3 +2,4 @@
 name = 'uninitialized_storage_field'
 source = 'root'
 dependencies = []
+contract_dependencies = []

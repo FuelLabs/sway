@@ -2,3 +2,4 @@
 name = 'generic_traits'
 source = 'root'
 dependencies = []
+contract_dependencies = []

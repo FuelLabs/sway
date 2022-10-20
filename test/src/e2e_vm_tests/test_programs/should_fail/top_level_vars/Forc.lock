@@ -2,3 +2,4 @@
 name = 'top_level_vars'
 source = 'root'
 dependencies = []
+contract_dependencies = []

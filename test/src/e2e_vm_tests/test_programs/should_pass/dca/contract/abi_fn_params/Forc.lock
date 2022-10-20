@@ -2,3 +2,4 @@
 name = 'abi_fn_params'
 source = 'root'
 dependencies = []
+contract_dependencies = []

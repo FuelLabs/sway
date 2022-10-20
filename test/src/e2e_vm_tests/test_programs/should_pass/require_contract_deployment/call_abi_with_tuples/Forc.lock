@@ -1,22 +1,26 @@
 [[package]]
 name = 'abi_with_tuples'
 source = 'path+from-root-A94357F7D125B65F'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []
 
 [[package]]
 name = 'call_abi_with_tuples'
 source = 'root'
 dependencies = [
-    'library abi_with_tuples',
-    'library std',
+    'abi_with_tuples',
+    'std',
 ]
+contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-A94357F7D125B65F'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-A94357F7D125B65F'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

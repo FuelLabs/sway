@@ -2,3 +2,4 @@
 name = 'binary_and_hex_literals'
 source = 'root'
 dependencies = []
+contract_dependencies = []

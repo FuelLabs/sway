@@ -2,8 +2,10 @@
 name = 'core'
 source = 'path+from-root-818C6EA3A80B47C0'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'fix_opcode_bug'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

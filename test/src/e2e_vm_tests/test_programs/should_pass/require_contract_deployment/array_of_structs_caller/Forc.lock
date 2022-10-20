@@ -2,21 +2,25 @@
 name = 'array_of_structs_abi'
 source = 'path+from-root-40616FC980A839AE'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'array_of_structs_caller'
 source = 'root'
 dependencies = [
-    'library array_of_structs_abi',
-    'library std',
+    'array_of_structs_abi',
+    'std',
 ]
+contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-40616FC980A839AE'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-40616FC980A839AE'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

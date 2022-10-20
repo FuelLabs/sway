@@ -2,3 +2,4 @@
 name = 'recover_unexpected_character'
 source = 'root'
 dependencies = []
+contract_dependencies = []

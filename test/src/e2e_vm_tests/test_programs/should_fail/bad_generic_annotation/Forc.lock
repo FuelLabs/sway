@@ -2,3 +2,4 @@
 name = 'bad_generic_annotation'
 source = 'root'
 dependencies = []
+contract_dependencies = []

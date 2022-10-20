@@ -2,3 +2,4 @@
 name = 'fn_params_free'
 source = 'root'
 dependencies = []
+contract_dependencies = []

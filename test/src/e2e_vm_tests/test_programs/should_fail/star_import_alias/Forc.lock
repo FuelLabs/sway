@@ -2,3 +2,4 @@
 name = 'star_import_alias'
 source = 'root'
 dependencies = []
+contract_dependencies = []

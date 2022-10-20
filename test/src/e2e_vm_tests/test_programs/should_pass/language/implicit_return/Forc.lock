@@ -2,3 +2,4 @@
 name = 'implicit_return'
 source = 'root'
 dependencies = []
+contract_dependencies = []

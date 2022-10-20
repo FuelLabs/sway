@@ -2,13 +2,16 @@
 name = 'core'
 source = 'path+from-root-D885AAAE8A999D71'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-D885AAAE8A999D71'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []
 
 [[package]]
 name = 'vec_set_index_out_of_bounds'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []

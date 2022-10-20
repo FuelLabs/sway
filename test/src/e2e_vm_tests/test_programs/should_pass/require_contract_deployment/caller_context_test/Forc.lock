@@ -2,21 +2,25 @@
 name = 'caller_context_test'
 source = 'root'
 dependencies = [
-    'library context_testing_abi',
-    'library std',
+    'context_testing_abi',
+    'std',
 ]
+contract_dependencies = []
 
 [[package]]
 name = 'context_testing_abi'
 source = 'path+from-root-D12893745757AE0B'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-D12893745757AE0B'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-D12893745757AE0B'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

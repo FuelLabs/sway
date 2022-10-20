@@ -2,8 +2,10 @@
 name = 'core'
 source = 'path+from-root-E081FBDDEF62D471'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'match_expressions_structs'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

@@ -2,3 +2,4 @@
 name = 'pub_impl'
 source = 'root'
 dependencies = []
+contract_dependencies = []

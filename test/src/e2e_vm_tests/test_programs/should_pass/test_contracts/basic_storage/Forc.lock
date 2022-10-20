@@ -2,21 +2,25 @@
 name = 'basic_storage'
 source = 'root'
 dependencies = [
-    'library basic_storage_abi',
-    'library std',
+    'basic_storage_abi',
+    'std',
 ]
+contract_dependencies = []
 
 [[package]]
 name = 'basic_storage_abi'
 source = 'path+from-root-E723F3A4C3992EF1'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-E723F3A4C3992EF1'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-E723F3A4C3992EF1'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

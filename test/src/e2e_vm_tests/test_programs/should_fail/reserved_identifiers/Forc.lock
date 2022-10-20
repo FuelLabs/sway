@@ -2,3 +2,4 @@
 name = 'reserved_identifiers'
 source = 'root'
 dependencies = []
+contract_dependencies = []

@@ -2,3 +2,4 @@
 name = 'unused_generic'
 source = 'root'
 dependencies = []
+contract_dependencies = []

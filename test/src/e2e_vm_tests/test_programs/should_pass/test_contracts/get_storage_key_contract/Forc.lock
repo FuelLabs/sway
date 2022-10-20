@@ -2,8 +2,10 @@
 name = 'get_storage_key_abi'
 source = 'path+from-root-35549077EBF4FDB5'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'get_storage_key_contract'
 source = 'root'
-dependencies = ['library get_storage_key_abi']
+dependencies = ['get_storage_key_abi']
+contract_dependencies = []

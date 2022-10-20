@@ -2,13 +2,16 @@
 name = 'core'
 source = 'path+from-root-1C8151ABD9941A97'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'diagnose_unknown_annotations'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-1C8151ABD9941A97'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

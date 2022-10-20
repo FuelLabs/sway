@@ -2,3 +2,4 @@
 name = 'abi_pub_fn_interface'
 source = 'root'
 dependencies = []
+contract_dependencies = []

@@ -2,13 +2,16 @@
 name = 'core'
 source = 'path+from-root-A009C0B7DE63F9ED'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'parsing_logs_test_abi'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-A009C0B7DE63F9ED'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

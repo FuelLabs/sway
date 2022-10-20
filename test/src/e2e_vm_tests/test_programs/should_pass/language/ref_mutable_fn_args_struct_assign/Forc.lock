@@ -2,3 +2,4 @@
 name = 'ref_mutable_fn_args_struct_assign'
 source = 'root'
 dependencies = []
+contract_dependencies = []

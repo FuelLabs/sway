@@ -2,13 +2,16 @@
 name = 'core'
 source = 'path+from-root-71302168F25F2AFD'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'match_expressions_non_literal_constant'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-71302168F25F2AFD'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

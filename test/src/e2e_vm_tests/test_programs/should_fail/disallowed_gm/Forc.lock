@@ -2,3 +2,4 @@
 name = 'disallowed_opcodes'
 source = 'root'
 dependencies = []
+contract_dependencies = []

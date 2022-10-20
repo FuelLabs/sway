@@ -2,13 +2,16 @@
 name = 'core'
 source = 'path+from-root-9CF9D5A3681400C0'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'option_field_order'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-9CF9D5A3681400C0'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

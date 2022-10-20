@@ -2,3 +2,4 @@
 name = 'nested_impure'
 source = 'root'
 dependencies = []
+contract_dependencies = []

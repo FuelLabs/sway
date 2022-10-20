@@ -2,3 +2,4 @@
 name = 'constant_decl_expr'
 source = 'root'
 dependencies = []
+contract_dependencies = []

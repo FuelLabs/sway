@@ -1,9 +1,11 @@
 [[package]]
 name = 'b256_bad_jumps'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-652305F040D8F1D1'
 dependencies = []
+contract_dependencies = []

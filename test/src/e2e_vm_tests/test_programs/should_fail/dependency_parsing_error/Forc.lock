@@ -2,3 +2,4 @@
 name = 'dependencies_parsing_error'
 source = 'root'
 dependencies = []
+contract_dependencies = []

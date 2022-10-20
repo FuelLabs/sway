@@ -2,13 +2,16 @@
 name = 'core'
 source = 'path+from-root-57810AA7D99333C2'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'result_in_abi'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-57810AA7D99333C2'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

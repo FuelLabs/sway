@@ -2,3 +2,4 @@
 name = 'shadow_import'
 source = 'root'
 dependencies = []
+contract_dependencies = []

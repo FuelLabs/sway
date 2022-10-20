@@ -2,3 +2,4 @@
 name = 'asm_should_not_have_return'
 source = 'root'
 dependencies = []
+contract_dependencies = []

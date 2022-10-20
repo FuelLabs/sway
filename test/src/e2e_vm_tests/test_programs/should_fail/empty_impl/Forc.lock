@@ -2,3 +2,4 @@
 name = 'empty_impl'
 source = 'root'
 dependencies = []
+contract_dependencies = []

@@ -1,9 +1,11 @@
 [[package]]
 name = 'asm_without_return'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-8F74D3135E693ACB'
 dependencies = []
+contract_dependencies = []

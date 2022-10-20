@@ -2,8 +2,10 @@
 name = 'core'
 source = 'path+from-root-D01E1B7A46372E9A'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'if_elseif_enum'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

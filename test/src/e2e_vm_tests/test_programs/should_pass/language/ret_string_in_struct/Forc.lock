@@ -2,3 +2,4 @@
 name = 'ret_string_in_struct'
 source = 'root'
 dependencies = []
+contract_dependencies = []

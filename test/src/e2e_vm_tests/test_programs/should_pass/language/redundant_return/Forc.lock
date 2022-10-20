@@ -2,3 +2,4 @@
 name = 'redundant_return'
 source = 'root'
 dependencies = []
+contract_dependencies = []

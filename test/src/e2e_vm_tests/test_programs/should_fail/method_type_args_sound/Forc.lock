@@ -2,3 +2,4 @@
 name = 'method_type_args_sound'
 source = 'root'
 dependencies = []
+contract_dependencies = []

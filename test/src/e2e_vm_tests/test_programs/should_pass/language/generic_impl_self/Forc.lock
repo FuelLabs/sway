@@ -2,8 +2,10 @@
 name = 'core'
 source = 'path+from-root-DA3FEDB2AB26E552'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'generic_impl_self'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

@@ -2,21 +2,25 @@
 name = 'core'
 source = 'path+from-root-4947D78C815C1154'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'evm'
 source = 'root'
 dependencies = [
-    'library evm_test_abi',
-    'library std',
+    'evm_test_abi',
+    'std',
 ]
+contract_dependencies = []
 
 [[package]]
 name = 'evm_test_abi'
 source = 'path+from-root-4947D78C815C1154'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-4947D78C815C1154'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

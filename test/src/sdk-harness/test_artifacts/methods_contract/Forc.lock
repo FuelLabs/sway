@@ -2,21 +2,25 @@
 name = 'core'
 source = 'path+from-root-051EC93A63B1E039'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'methods_abi'
 source = 'path+from-root-051EC93A63B1E039'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'methods_contract'
 source = 'root'
 dependencies = [
-    'library methods_abi',
-    'library std',
+    'methods_abi',
+    'std',
 ]
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-051EC93A63B1E039'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

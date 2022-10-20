@@ -2,3 +2,4 @@
 name = 'unused_free_fn'
 source = 'root'
 dependencies = []
+contract_dependencies = []

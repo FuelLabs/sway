@@ -1,14 +1,17 @@
 [[package]]
 name = 'assert_test'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-000DE2BD47DE0A72'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-000DE2BD47DE0A72'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

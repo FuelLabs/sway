@@ -2,3 +2,4 @@
 name = 'mutable_fn_args_u32'
 source = 'root'
 dependencies = []
+contract_dependencies = []

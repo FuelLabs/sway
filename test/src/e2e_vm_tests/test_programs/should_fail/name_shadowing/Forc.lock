@@ -2,3 +2,4 @@
 name = 'name_shadowing'
 source = 'root'
 dependencies = []
+contract_dependencies = []

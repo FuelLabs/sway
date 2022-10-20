@@ -2,13 +2,16 @@
 name = 'core'
 source = 'path+from-root-5A0A8AEC06508E21'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'many_stack_variables'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-5A0A8AEC06508E21'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

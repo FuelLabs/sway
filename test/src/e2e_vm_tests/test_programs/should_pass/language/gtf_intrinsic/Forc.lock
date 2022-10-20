@@ -2,3 +2,4 @@
 name = 'gtf_intrinsic'
 source = 'root'
 dependencies = []
+contract_dependencies = []

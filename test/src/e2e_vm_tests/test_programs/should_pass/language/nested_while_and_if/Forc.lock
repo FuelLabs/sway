@@ -2,13 +2,16 @@
 name = 'core'
 source = 'path+from-root-454A4726DFB746F1'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'nested_while_and_if'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-454A4726DFB746F1'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

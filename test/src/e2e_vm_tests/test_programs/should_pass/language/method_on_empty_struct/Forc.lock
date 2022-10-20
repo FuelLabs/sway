@@ -2,8 +2,10 @@
 name = 'core'
 source = 'path+from-root-81DEAB773E69E2BF'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'method_on_empty_struct'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

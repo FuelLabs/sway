@@ -2,8 +2,10 @@
 name = 'core'
 source = 'path+from-root-0840D11631A9C24C'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'multi_item_import'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

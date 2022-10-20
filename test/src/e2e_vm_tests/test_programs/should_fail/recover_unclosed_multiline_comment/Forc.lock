@@ -2,3 +2,4 @@
 name = 'recover_unclosed_multiline_comment'
 source = 'root'
 dependencies = []
+contract_dependencies = []

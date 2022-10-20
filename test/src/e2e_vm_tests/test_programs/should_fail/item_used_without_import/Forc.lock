@@ -2,3 +2,4 @@
 name = 'item_used_without_import'
 source = 'root'
 dependencies = []
+contract_dependencies = []

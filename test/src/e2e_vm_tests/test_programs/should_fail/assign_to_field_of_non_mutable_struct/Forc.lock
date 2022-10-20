@@ -2,3 +2,4 @@
 name = 'assign_to_field_of_non_mutable_struct'
 source = 'root'
 dependencies = []
+contract_dependencies = []

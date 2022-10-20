@@ -2,3 +2,4 @@
 name = 'config_time_constants'
 source = 'root'
 dependencies = []
+contract_dependencies = []

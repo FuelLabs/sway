@@ -2,3 +2,4 @@
 name = 'method_requires_mut_var'
 source = 'root'
 dependencies = []
+contract_dependencies = []

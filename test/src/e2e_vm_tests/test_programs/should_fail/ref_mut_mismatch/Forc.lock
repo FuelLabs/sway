@@ -2,3 +2,4 @@
 name = 'ref_mut_mismatch'
 source = 'root'
 dependencies = []
+contract_dependencies = []

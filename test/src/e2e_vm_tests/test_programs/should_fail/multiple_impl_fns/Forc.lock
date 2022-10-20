@@ -2,3 +2,4 @@
 name = 'multiple_impl_fns'
 source = 'root'
 dependencies = []
+contract_dependencies = []

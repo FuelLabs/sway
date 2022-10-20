@@ -1,9 +1,11 @@
 [[package]]
 name = 'chained_if_let'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-152613234D2C9EC5'
 dependencies = []
+contract_dependencies = []

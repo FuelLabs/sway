@@ -2,3 +2,4 @@
 name = 'recover_class_as_struct'
 source = 'root'
 dependencies = []
+contract_dependencies = []

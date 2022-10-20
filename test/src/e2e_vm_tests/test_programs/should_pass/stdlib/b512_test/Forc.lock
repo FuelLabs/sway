@@ -1,14 +1,17 @@
 [[package]]
 name = 'b512_test'
 source = 'root'
-dependencies = ['library std']
+dependencies = ['std']
+contract_dependencies = []
 
 [[package]]
 name = 'core'
 source = 'path+from-root-036C2C548FDF30D8'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'std'
 source = 'path+from-root-036C2C548FDF30D8'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

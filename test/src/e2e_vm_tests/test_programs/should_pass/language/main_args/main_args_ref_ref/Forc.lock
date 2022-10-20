@@ -2,8 +2,10 @@
 name = 'core'
 source = 'path+from-root-A2B48E1DBD89A4D7'
 dependencies = []
+contract_dependencies = []
 
 [[package]]
 name = 'main_args_ref_ref'
 source = 'root'
-dependencies = ['library core']
+dependencies = ['core']
+contract_dependencies = []

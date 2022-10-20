@@ -2,3 +2,4 @@
 name = 'illegal_break'
 source = 'root'
 dependencies = []
+contract_dependencies = []
