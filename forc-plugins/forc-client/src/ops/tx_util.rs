@@ -79,7 +79,11 @@ impl TransactionBuilderExt for TransactionBuilder {
         self.gas_limit(params.gas_limit).gas_price(params.gas_price)
     }
     fn add_contract(&mut self, contract_id: ContractId) -> &mut Self {
-        let input_index = self.inputs().len() as u8; // probably safe unless a user inputs > u8::MAX inputs
+        let input_index = self
+            .inputs()
+            .len()
+            .try_into()
+            .expect("limit of 256 inputs exceeded");
         self.add_input(fuel_tx::Input::Contract {
             contract_id,
             utxo_id: fuel_tx::UtxoId::new(fuel_tx::Bytes32::zeroed(), 0),
@@ -173,7 +177,7 @@ pub trait TransactionExt {
 impl TransactionExt for Transaction {
     fn replace_witness(&mut self, index: u8, witness: Witness) -> &mut Self {
         let mut witnesses: Vec<Witness> = self.witnesses().to_vec();
-        witnesses.insert(index as usize, witness);
+        witnesses[index as usize] = witness;
         self.set_witnesses(witnesses);
 
         self
