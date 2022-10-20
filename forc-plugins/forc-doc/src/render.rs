@@ -60,7 +60,7 @@ pub(crate) fn page_from(rendered_content: Box<dyn RenderBox>) -> String {
 }
 
 /// Basic HTML header component
-pub(crate) fn head(module: String, decl_ty: String, decl_name: String) -> Box<dyn RenderBox> {
+pub(crate) fn html_head(module: String, decl_ty: String, decl_name: String) -> Box<dyn RenderBox> {
     box_html! {
         head {
             meta(charset="utf-8");
@@ -77,7 +77,7 @@ pub(crate) fn head(module: String, decl_ty: String, decl_name: String) -> Box<dy
     }
 }
 /// HTML body component
-pub(crate) fn body(module: String, decl_ty: String, decl_name: String) -> Box<dyn RenderBox> {
+pub(crate) fn html_body(module: String, decl_ty: String, decl_name: String) -> Box<dyn RenderBox> {
     box_html! {
         // TODO: match on ty and make this dynamic
         // e.g. an enum will have variants but a trait will not
@@ -145,8 +145,8 @@ impl Renderable for TyStructDeclaration {
         let name = name.as_str().to_string();
         let struct_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
-            : head(module.clone(), decl_ty.clone(), name.clone());
-            : body(module.clone(), decl_ty.clone(), name.clone());
+            : html_head(module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone());
         }
     }
 }
@@ -160,7 +160,12 @@ impl Renderable for TyEnumDeclaration {
             visibility,
             span,
         } = &self;
-        box_html! {}
+        let name = name.as_str().to_string();
+        let enum_attributes = doc_attributes_to_string_vec(attributes);
+        box_html! {
+            : html_head(module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone());
+        }
     }
 }
 impl Renderable for TyTraitDeclaration {
@@ -173,7 +178,12 @@ impl Renderable for TyTraitDeclaration {
             attributes,
             supertraits,
         } = &self;
-        box_html! {}
+        let name = name.as_str().to_string();
+        let trait_attributes = doc_attributes_to_string_vec(attributes);
+        box_html! {
+            : html_head(module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone());
+        }
     }
 }
 impl Renderable for TyAbiDeclaration {
@@ -185,7 +195,12 @@ impl Renderable for TyAbiDeclaration {
             attributes,
             span,
         } = &self;
-        box_html! {}
+        let name = name.as_str().to_string();
+        let abi_attributes = doc_attributes_to_string_vec(attributes);
+        box_html! {
+            : html_head(module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone());
+        }
     }
 }
 impl Renderable for TyStorageDeclaration {
@@ -195,7 +210,12 @@ impl Renderable for TyStorageDeclaration {
             span,
             attributes,
         } = &self;
-        box_html! {}
+        let name = "Contract Storage".to_string();
+        let storage_attributes = doc_attributes_to_string_vec(attributes);
+        box_html! {
+            : html_head(module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone());
+        }
     }
 }
 impl Renderable for TyImplTrait {
@@ -209,7 +229,12 @@ impl Renderable for TyImplTrait {
             type_implementing_for_span,
             span,
         } = &self;
-        box_html! {}
+        let name = trait_name.suffix.as_str().to_string();
+        // let impl_trait_attributes = doc_attributes_to_string_vec(attributes);
+        box_html! {
+            : html_head(module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone());
+        }
     }
 }
 impl Renderable for TyFunctionDeclaration {
@@ -228,7 +253,12 @@ impl Renderable for TyFunctionDeclaration {
             is_contract_call,
             visibility,
         } = &self;
-        box_html! {}
+        let name = name.as_str().to_string();
+        let function_attributes = doc_attributes_to_string_vec(attributes);
+        box_html! {
+            : html_head(module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone());
+        }
     }
 }
 impl Renderable for TyConstantDeclaration {
@@ -239,6 +269,11 @@ impl Renderable for TyConstantDeclaration {
             attributes,
             visibility,
         } = &self;
-        box_html! {}
+        let name = name.as_str().to_string();
+        let const_attributes = doc_attributes_to_string_vec(attributes);
+        box_html! {
+            : html_head(module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone());
+        }
     }
 }
