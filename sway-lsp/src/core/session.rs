@@ -5,13 +5,15 @@ use crate::{
         runnable::{Runnable, RunnableType},
     },
     core::{
-        config::Config,
         document::TextDocument,
         token::{Token, TokenMap, TypeDefinition},
         {traverse_parse_tree, traverse_typed_tree},
     },
     error::{DocumentError, LanguageServerError},
-    utils::{self, sync::SyncWorkspace},
+    utils::{
+        self,
+        sync::{Directory, SyncWorkspace},
+    },
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
@@ -22,6 +24,7 @@ use sway_core::{
     CompileResult,
 };
 use sway_types::{Ident, Spanned};
+use sway_utils::helpers::get_sway_files;
 use swayfmt::Formatter;
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionResponse, Location, Position, Range,
@@ -29,6 +32,7 @@ use tower_lsp::lsp_types::{
 };
 
 pub type Documents = DashMap<String, TextDocument>;
+pub type ProjectDirectory = PathBuf;
 
 #[derive(Default, Debug)]
 pub struct CompiledProgram {
@@ -41,7 +45,6 @@ pub struct Session {
     pub documents: Documents,
     pub token_map: TokenMap,
     pub runnables: DashMap<RunnableType, Runnable>,
-    pub config: RwLock<Config>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub sync: SyncWorkspace,
 }
@@ -52,10 +55,36 @@ impl Session {
             documents: DashMap::new(),
             token_map: DashMap::new(),
             runnables: DashMap::new(),
-            config: RwLock::new(Default::default()),
             compiled_program: RwLock::new(Default::default()),
             sync: SyncWorkspace::new(),
         }
+    }
+
+    pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
+        let manifest_dir = PathBuf::from(uri.path());
+        // Create a new temp dir that clones the current workspace
+        // and store manifest and temp paths
+        self.sync.create_temp_dir_from_workspace(&manifest_dir)?;
+
+        self.sync.clone_manifest_dir_to_temp()?;
+
+        // iterate over the project dir, parse all sway files
+        let _ = self.parse_and_store_sway_files();
+
+        self.sync.watch_and_sync_manifest();
+
+        self.sync.manifest_dir()
+    }
+
+    pub fn shutdown(&self) {
+        // shutdown the thread watching the manifest file
+        let handle = self.sync.notify_join_handle.read();
+        if let Some(join_handle) = &*handle {
+            join_handle.abort();
+        }
+
+        // Delete the temporary directory.
+        self.sync.remove_temp_dir();
     }
 
     /// Check if the code editor's cursor is currently over one of our collected tokens.
@@ -340,6 +369,22 @@ impl Session {
         } else {
             None
         }
+    }
+
+    pub fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
+        if let Some(temp_dir) = self
+            .sync
+            .directories
+            .get(&Directory::Temp)
+            .map(|item| item.value().clone())
+        {
+            // Store the documents.
+            for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
+                self.store_document(TextDocument::build_from_path(path)?)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
