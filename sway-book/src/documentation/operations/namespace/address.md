@@ -1,19 +1,22 @@
 # Address
 
-The `Address` type is a type-safe wrapper around the primitive `b256` type. Unlike the EVM, an address **never** refers to a deployed smart contract (see the `ContractId` type below). An `Address` can be either the hash of a public key (effectively an [externally owned account](https://ethereum.org/en/whitepaper/#ethereum-accounts) if you're coming from the EVM) or the hash of a [predicate](../sway-program-types/predicates.md). Addresses own UTXOs.
+In the UTXO model each output has an address.
 
-An `Address` is implemented as follows.
+The `Address` type is a struct containing a value of a `b256` type. 
 
 ```sway
-pub struct Address {
-    value: b256,
-}
+{{#include ../../../code/operations/namespace/src/lib.sw:address}}
 ```
 
-Casting between the `b256` and `Address` types must be done explicitly:
+The value of an `Address` is a hash of either:
+
+- A public key
+- [Predicate](../../language/program-types/predicate.md)
+
+The `Address` type is completely separate from a [`ContractId`](contract-id.md) and thus it should not be used when dealing with an address of a deployed contract.
+
+Casting between an `Address` and `b256` can be done in the following way:
 
 ```sway
-let my_number: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
-let my_address: Address = ~Address::from(my_number);
-let forty_two: b256 = my_address.into();
+{{#include ../../../code/operations/namespace/src/lib.sw:address_cast}}
 ```

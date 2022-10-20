@@ -1,19 +1,15 @@
 # ContractId
 
-The `ContractId` type is a type-safe wrapper around the primitive `b256` type. A contract's ID is a unique, deterministic identifier analogous to a contract's address in the EVM. Contracts cannot own UTXOs but can own assets.
+A contract's ID is a unique, deterministic identifier analogous to a contract's address in the EVM. Contracts cannot own UTXOs but they can own assets.
 
-A `ContractId` is implemented as follows.
+The `ContractId` type is a struct containing a value of a `b256` type. 
 
 ```sway
-pub struct ContractId {
-    value: b256,
-}
+{{#include ../../../code/operations/namespace/src/lib.sw:contract_id}}
 ```
 
-Casting between the `b256` and `ContractId` types must be done explicitly:
+Casting between an `ContractId` and `b256` can be done in the following way:
 
 ```sway
-let my_number: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
-let my_contract_id: ContractId = ~ContractId::from(my_number);
-let forty_two: b256 = my_contract_id.into();
+{{#include ../../../code/operations/namespace/src/lib.sw:contract_id_cast}}
 ```
