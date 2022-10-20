@@ -493,6 +493,18 @@ fn inline_function_calls(
             return true;
         }
 
+        // As per https://github.com/FuelLabs/sway/issues/2819 we can hit problems if a function
+        // argument is used as a pointer (probably because it has a ref type) although it actually
+        // isn't one.  Ref type args which aren't pointers need to be inlined.
+        if func.args_iter(ctx).any(|(_name, arg_val)| {
+            arg_val
+                .get_type(ctx)
+                .map(|ty| !ty.is_copy_type())
+                .unwrap_or(false)
+        }) {
+            return true;
+        }
+
         false
     };
 
