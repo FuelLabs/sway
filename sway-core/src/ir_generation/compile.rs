@@ -30,7 +30,13 @@ pub(super) fn compile_script(
 
     compile_constants(context, &mut md_mgr, module, namespace)?;
     compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
-    compile_function(context, &mut md_mgr, module, main_function, logged_types_map)?;
+    compile_function(
+        context,
+        &mut md_mgr,
+        module,
+        main_function,
+        logged_types_map,
+    )?;
 
     Ok(module)
 }
