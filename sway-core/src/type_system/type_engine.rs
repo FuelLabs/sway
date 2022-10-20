@@ -536,10 +536,7 @@ impl TypeEngine {
             // this case is purposefully removed because it should cause an
             // error. trying to unify_right a generic with anything other an an
             // unknown or another generic is a type error
-            //(UnknownGeneric { .. }, _) => (vec![], vec![]),
-            (UnknownGeneric { .. }, _) => {
-                panic!();
-            }
+            // (UnknownGeneric { .. }, _) => (vec![], vec![]),
 
             // If no previous attempts to unify were successful, raise an error
             (TypeInfo::ErrorRecovery, _) => (vec![], vec![]),
