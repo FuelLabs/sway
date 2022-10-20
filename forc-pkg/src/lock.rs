@@ -42,7 +42,7 @@ pub struct PkgLock {
 /// dependency. It is formatted like so:
 ///
 /// ```ignore
-/// (<dep_name>) <dep-kind> <pkg_name> <source_string>
+/// (<dep_name>) <pkg_name> <source_string>
 /// ```
 ///
 /// The `(<dep_name>)` segment is only included in the uncommon case that the dependency name does
@@ -266,7 +266,7 @@ fn pkg_dep_line(
 type ParsedPkgLine<'a> = (Option<&'a str>, &'a str);
 // Parse the given `PkgDepLine` into its dependency name and unique string segments.
 //
-// I.e. given "(<dep_name>) <dep-kind> <name> <source>", returns ("<dep_name>", DepKind, "<name> <source>").
+// I.e. given "(<dep_name>) <name> <source>", returns ("<dep_name>", "<name> <source>").
 //
 // Note that <source> may not appear in the case it is not required for disambiguation.
 fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {
