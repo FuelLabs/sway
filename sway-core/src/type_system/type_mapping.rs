@@ -232,19 +232,10 @@ impl TypeMapping {
             TypeInfo::Custom { .. } => iter_for_match(self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(self, &type_info),
             TypeInfo::Struct {
-                mut fields,
+                fields,
                 name,
-                mut type_parameters,
+                type_parameters,
             } => {
-                // fields.iter_mut().for_each(|field| field.copy_types(self));
-                // type_parameters
-                //     .iter_mut()
-                //     .for_each(|type_param| type_param.copy_types(self));
-                // Some(insert_type(TypeInfo::Struct {
-                //     fields,
-                //     name,
-                //     type_parameters,
-                // }))
                 let mut need_to_create_new = false;
                 let fields = fields
                     .into_iter()
@@ -277,21 +268,10 @@ impl TypeMapping {
                 }
             }
             TypeInfo::Enum {
-                mut variant_types,
+                variant_types,
                 name,
-                mut type_parameters,
+                type_parameters,
             } => {
-                // variant_types
-                //     .iter_mut()
-                //     .for_each(|variant_type| variant_type.copy_types(self));
-                // type_parameters
-                //     .iter_mut()
-                //     .for_each(|type_param| type_param.copy_types(self));
-                // Some(insert_type(TypeInfo::Enum {
-                //     variant_types,
-                //     type_parameters,
-                //     name,
-                // }))
                 let mut need_to_create_new = false;
                 let variant_types = variant_types
                     .into_iter()
@@ -324,22 +304,11 @@ impl TypeMapping {
                 }
             }
             TypeInfo::Array(ary_ty_id, count, initial_elem_ty) => {
-                // let ary_ty_id = match self.find_match(ary_ty_id) {
-                //     Some(matching_id) => matching_id,
-                //     None => ary_ty_id,
-                // };
-                // Some(insert_type(TypeInfo::Array(
-                //     ary_ty_id,
-                //     count,
-                //     initial_elem_ty,
-                // )))
                 self.find_match(ary_ty_id).map(|matching_id| {
                     insert_type(TypeInfo::Array(matching_id, count, initial_elem_ty))
                 })
             }
-            TypeInfo::Tuple(mut fields) => {
-                // fields.iter_mut().for_each(|field| field.copy_types(self));
-                // Some(insert_type(TypeInfo::Tuple(fields)))
+            TypeInfo::Tuple(fields) => {
                 let mut need_to_create_new = false;
                 let fields = fields
                     .into_iter()
@@ -369,29 +338,6 @@ impl TypeMapping {
             | TypeInfo::Storage { .. }
             | TypeInfo::ErrorRecovery => None,
         }
-    }
-
-    /// Unifies the given `type_arguments` with the [DestinationType]s of the
-    /// [TypeMapping]
-    pub(crate) fn unify_with_type_arguments(
-        &self,
-        type_arguments: &[TypeArgument],
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        for ((_, destination_type), type_arg) in self.mapping.iter().zip(type_arguments.iter()) {
-            append!(
-                unify_right(
-                    type_arg.type_id,
-                    *destination_type,
-                    &type_arg.span,
-                    "Type argument is not assignable to generic type parameter.",
-                ),
-                warnings,
-                errors
-            );
-        }
-        ok((), warnings, errors)
     }
 }
 
