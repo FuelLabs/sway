@@ -84,6 +84,7 @@ pub(crate) fn html_body(
     decl_ty: String,
     decl_name: String,
     code_span: String,
+    item_attrs: String,
 ) -> Box<dyn RenderBox> {
     box_html! {
         // TODO: match on ty and make this dynamic
@@ -99,9 +100,7 @@ pub(crate) fn html_body(
             // this is the main code block
             div(class="docblock item-decl") {
                 pre(class=format!("sway {decl_ty}")) {
-                    code {
-                       : code_span
-                    }
+                    code { : code_span; }
                 }
             }
             // expand or hide description of main code block
@@ -111,9 +110,7 @@ pub(crate) fn html_body(
                 }
                 // this is the description
                 div(class="docblock") {
-                    p {
-                        // description goes here
-                    }
+                    p { : item_attrs; }
                 }
             }
         }
@@ -122,13 +119,13 @@ pub(crate) fn html_body(
 
 // TODO: Create `fn index` and `fn all`
 
-fn doc_attributes_to_string_vec(attributes: &AttributesMap) -> Vec<String> {
+fn doc_attributes_to_string_vec(attributes: &AttributesMap) -> String {
     let attributes = attributes.get(&AttributeKind::Doc);
-    let mut attr_strings = Vec::new();
+    let mut attr_strings = String::new();
     if let Some(vec_attrs) = attributes {
         for attribute in vec_attrs {
             for ident in &attribute.args {
-                attr_strings.push(ident.as_str().to_string())
+                attr_strings.push_str(ident.as_str())
             }
         }
     }
@@ -154,7 +151,7 @@ impl Renderable for TyStructDeclaration {
         let struct_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module.clone(), decl_ty.clone(), name.clone(), code_span.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone(), code_span, struct_attributes);
         }
     }
 }
@@ -173,7 +170,7 @@ impl Renderable for TyEnumDeclaration {
         let enum_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module.clone(), decl_ty.clone(), name.clone(), code_span.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone(), code_span, enum_attributes);
         }
     }
 }
@@ -191,7 +188,7 @@ impl Renderable for TyTraitDeclaration {
         let trait_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone(), "".to_string(), trait_attributes);
         }
     }
 }
@@ -205,10 +202,11 @@ impl Renderable for TyAbiDeclaration {
             span,
         } = &self;
         let name = name.as_str().to_string();
+        let code_span = span.as_str().to_string();
         let abi_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone(), code_span, abi_attributes);
         }
     }
 }
@@ -220,10 +218,11 @@ impl Renderable for TyStorageDeclaration {
             attributes,
         } = &self;
         let name = "Contract Storage".to_string();
+        let code_span = span.as_str().to_string();
         let storage_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone(), code_span, storage_attributes);
         }
     }
 }
@@ -239,10 +238,11 @@ impl Renderable for TyImplTrait {
             span,
         } = &self;
         let name = trait_name.suffix.as_str().to_string();
+        let code_span = span.as_str().to_string();
         // let impl_trait_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone(), code_span, "".to_string());
         }
     }
 }
@@ -263,10 +263,11 @@ impl Renderable for TyFunctionDeclaration {
             visibility,
         } = &self;
         let name = name.as_str().to_string();
+        let code_span = span.as_str().to_string();
         let function_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone(), code_span, function_attributes);
         }
     }
 }
@@ -282,7 +283,7 @@ impl Renderable for TyConstantDeclaration {
         let const_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module.clone(), decl_ty.clone(), name.clone(), "".to_string(), const_attributes);
         }
     }
 }
