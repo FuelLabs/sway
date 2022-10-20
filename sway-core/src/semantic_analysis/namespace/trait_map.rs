@@ -35,14 +35,10 @@ impl TraitMap {
 
     pub(crate) fn extend(&mut self, other: TraitMap) {
         for (key, other_trait_methods) in other.trait_impls.into_iter() {
-            match self.trait_impls.get_mut(&key) {
-                Some(trait_methods) => {
-                    trait_methods.extend(other_trait_methods.into_iter());
-                }
-                None => {
-                    self.trait_impls.insert(key, other_trait_methods);
-                }
-            }
+            self.trait_impls
+                .entry(key)
+                .or_insert(other_trait_methods.clone())
+                .extend(other_trait_methods.into_iter());
         }
     }
 
