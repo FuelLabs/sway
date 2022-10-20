@@ -3,7 +3,7 @@ use crate::{
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
-    type_system::look_up_type_id,
+    type_system::{look_up_type_id, TypeId},
 };
 
 use super::{
@@ -16,18 +16,21 @@ use sway_error::error::CompileError;
 use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::{span::Span, Spanned};
 
+use std::collections::HashMap;
+
 pub(super) fn compile_script(
     context: &mut Context,
     main_function: ty::TyFunctionDeclaration,
     namespace: &namespace::Module,
     declarations: Vec<ty::TyDeclaration>,
+    logged_types: &HashMap<TypeId, usize>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(context, &mut md_mgr, module, namespace)?;
     compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
-    compile_function(context, &mut md_mgr, module, main_function)?;
+    compile_function(context, &mut md_mgr, module, main_function, logged_types)?;
 
     Ok(module)
 }
@@ -37,6 +40,7 @@ pub(super) fn compile_contract(
     abi_entries: Vec<ty::TyFunctionDeclaration>,
     namespace: &namespace::Module,
     declarations: Vec<ty::TyDeclaration>,
+    logged_types: &HashMap<TypeId, usize>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
@@ -44,7 +48,7 @@ pub(super) fn compile_contract(
     compile_constants(context, &mut md_mgr, module, namespace)?;
     compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
     for decl in abi_entries {
-        compile_abi_method(context, &mut md_mgr, module, decl)?;
+        compile_abi_method(context, &mut md_mgr, module, decl, logged_types)?;
     }
 
     Ok(module)
@@ -144,6 +148,7 @@ pub(super) fn compile_function(
     md_mgr: &mut MetadataManager,
     module: Module,
     ast_fn_decl: ty::TyFunctionDeclaration,
+    logged_types: &HashMap<TypeId, usize>,
 ) -> Result<Option<Function>, CompileError> {
     // Currently monomorphisation of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
@@ -156,7 +161,16 @@ pub(super) fn compile_function(
             .map(|param| convert_fn_param(context, param))
             .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
-        compile_fn_with_args(context, md_mgr, module, ast_fn_decl, args, None).map(&Some)
+        compile_fn_with_args(
+            context,
+            md_mgr,
+            module,
+            ast_fn_decl,
+            args,
+            None,
+            logged_types,
+        )
+        .map(&Some)
     }
 }
 
@@ -184,6 +198,7 @@ fn compile_fn_with_args(
     ast_fn_decl: ty::TyFunctionDeclaration,
     args: Vec<(String, Type, Span)>,
     selector: Option<[u8; 4]>,
+    logged_types: &HashMap<TypeId, usize>,
 ) -> Result<Function, CompileError> {
     let ty::TyFunctionDeclaration {
         name,
@@ -231,7 +246,7 @@ fn compile_fn_with_args(
         metadata,
     );
 
-    let mut compiler = FnCompiler::new(context, module, func, returns_by_ref);
+    let mut compiler = FnCompiler::new(context, module, func, returns_by_ref, logged_types);
     let mut ret_val = compiler.compile_code_block(context, md_mgr, body)?;
 
     // Special case: if the return type is unit but the return value type is not, then we have an
@@ -303,6 +318,7 @@ fn compile_abi_method(
     md_mgr: &mut MetadataManager,
     module: Module,
     ast_fn_decl: ty::TyFunctionDeclaration,
+    logged_types: &HashMap<TypeId, usize>,
 ) -> Result<Function, CompileError> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let get_selector_result = ast_fn_decl.to_fn_selector_value();
@@ -334,5 +350,13 @@ fn compile_abi_method(
         })
         .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
-    compile_fn_with_args(context, md_mgr, module, ast_fn_decl, args, Some(selector))
+    compile_fn_with_args(
+        context,
+        md_mgr,
+        module,
+        ast_fn_decl,
+        args,
+        Some(selector),
+        logged_types,
+    )
 }

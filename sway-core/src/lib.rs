@@ -202,7 +202,7 @@ pub fn parsed_to_ast(
         value: types_metadata_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = typed_program.collect_types_metadata();
+    } = typed_program.collect_types_metadata(&mut CollectTypesMetadataContext::new());
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let types_metadata = match types_metadata_result {
@@ -213,7 +213,7 @@ pub fn parsed_to_ast(
     typed_program
         .logged_types
         .extend(types_metadata.iter().filter_map(|m| match m {
-            TypeMetadata::LoggedType(type_id) => Some(*type_id),
+            TypeMetadata::LoggedType(type_id, log_id) => Some((*type_id, *log_id)),
             _ => None,
         }));
 

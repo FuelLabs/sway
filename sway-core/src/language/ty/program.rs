@@ -15,7 +15,7 @@ pub struct TyProgram {
     pub kind: TyProgramKind,
     pub root: TyModule,
     pub storage_slots: Vec<StorageSlot>,
-    pub logged_types: Vec<TypeId>,
+    pub logged_types: Vec<(TypeId, usize)>,
 }
 
 impl TyProgram {
@@ -204,7 +204,10 @@ impl TyProgram {
     }
 
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.
-    pub(crate) fn collect_types_metadata(&mut self) -> CompileResult<Vec<TypeMetadata>> {
+    pub(crate) fn collect_types_metadata(
+        &mut self,
+        ctx: &mut CollectTypesMetadataContext,
+    ) -> CompileResult<Vec<TypeMetadata>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         // Get all of the entry points for this tree type. For libraries, that's everything
@@ -221,7 +224,7 @@ impl TyProgram {
                     );
                     if public {
                         ret.append(&mut check!(
-                            node.collect_types_metadata(),
+                            node.collect_types_metadata(ctx),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -241,7 +244,7 @@ impl TyProgram {
                     );
                     if is_main {
                         data.append(&mut check!(
-                            node.collect_types_metadata(),
+                            node.collect_types_metadata(ctx),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -261,7 +264,7 @@ impl TyProgram {
                     );
                     if is_main {
                         data.append(&mut check!(
-                            node.collect_types_metadata(),
+                            node.collect_types_metadata(ctx),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -274,7 +277,7 @@ impl TyProgram {
                 let mut data = vec![];
                 for entry in abi_entries.iter() {
                     data.append(&mut check!(
-                        TyAstNode::from(entry).collect_types_metadata(),
+                        TyAstNode::from(entry).collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -333,11 +336,11 @@ impl TyProgram {
         let logged_types = self
             .logged_types
             .iter()
-            .map(|x| JsonTypeDeclaration {
-                type_id: **x,
-                type_field: x.get_json_type_str(*x),
-                components: x.get_json_type_components(types, *x),
-                type_parameters: x.get_json_type_parameters(types, *x),
+            .map(|(type_id, _)| JsonTypeDeclaration {
+                type_id: **type_id,
+                type_field: type_id.get_json_type_str(*type_id),
+                components: type_id.get_json_type_components(types, *type_id),
+                type_parameters: type_id.get_json_type_parameters(types, *type_id),
             })
             .collect::<Vec<_>>();
 
@@ -347,12 +350,12 @@ impl TyProgram {
         // Generate the JSON data for the logged types
         self.logged_types
             .iter()
-            .map(|x| JsonLoggedType {
-                log_id: **x,
+            .map(|(type_id, log_id)| JsonLoggedType {
+                log_id: *log_id,
                 logged_type: JsonTypeApplication {
                     name: "".to_string(),
-                    type_id: **x,
-                    type_arguments: x.get_json_type_arguments(types, *x),
+                    type_id: **type_id,
+                    type_arguments: type_id.get_json_type_arguments(types, *type_id),
                 },
             })
             .collect()

@@ -11,9 +11,30 @@ use sway_types::Ident;
 
 pub enum TypeMetadata {
     UnresolvedType(Ident),
-    LoggedType(TypeId),
+    LoggedType(TypeId, usize),
+}
+
+pub struct CollectTypesMetadataContext {
+    log_id: usize,
+}
+
+impl CollectTypesMetadataContext {
+    pub fn log_id(&self) -> usize {
+        self.log_id
+    }
+
+    pub fn log_id_mut(&mut self) -> &mut usize {
+        &mut self.log_id
+    }
+
+    pub fn new() -> Self {
+        Self { log_id: 0 }
+    }
 }
 
 pub(crate) trait CollectTypesMetadata {
-    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>>;
+    fn collect_types_metadata(
+        &self,
+        ctx: &mut CollectTypesMetadataContext,
+    ) -> CompileResult<Vec<TypeMetadata>>;
 }
