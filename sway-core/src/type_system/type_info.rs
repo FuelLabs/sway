@@ -186,6 +186,11 @@ impl Hash for TypeInfo {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for TypeInfo {
     fn eq(&self, other: &Self) -> bool {
+        // println!(
+        //     "comparing {} and {}",
+        //     self,
+        //     other,
+        // );
         match (self, other) {
             (Self::Unknown, Self::Unknown) => true,
             (Self::Boolean, Self::Boolean) => true,
@@ -234,7 +239,43 @@ impl PartialEq for TypeInfo {
                     fields: r_fields,
                     type_parameters: r_type_parameters,
                 },
-            ) => l_name == r_name && l_fields == r_fields && l_type_parameters == r_type_parameters,
+            ) => {
+                // if l_name.as_str() == "Vec" && r_name.as_str() == "Vec" {
+                //     println!(
+                //         "l_type_parameters: [{}]",
+                //         l_type_parameters
+                //             .iter()
+                //             .map(|x| format!("{}", x))
+                //             .collect::<Vec<_>>()
+                //             .join(", ")
+                //     );
+                //     println!(
+                //         "r_type_parameters: [{}]",
+                //         r_type_parameters
+                //             .iter()
+                //             .map(|x| format!("{}", x))
+                //             .collect::<Vec<_>>()
+                //             .join(", ")
+                //     );
+                //     println!(
+                //         "l_fields: [{}]",
+                //         l_fields
+                //             .iter()
+                //             .map(|x| format!("{}", x))
+                //             .collect::<Vec<_>>()
+                //             .join(", ")
+                //     );
+                //     println!(
+                //         "r_fields: [{}]",
+                //         r_fields
+                //             .iter()
+                //             .map(|x| format!("{}", x))
+                //             .collect::<Vec<_>>()
+                //             .join(", ")
+                //     );
+                // }
+                l_name == r_name && l_fields == r_fields && l_type_parameters == r_type_parameters
+            }
             (Self::Tuple(l), Self::Tuple(r)) => l
                 .iter()
                 .zip(r.iter())

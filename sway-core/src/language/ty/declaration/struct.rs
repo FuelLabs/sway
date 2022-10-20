@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -91,7 +94,7 @@ impl TyStructDeclaration {
     }
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Clone, Eq)]
 pub struct TyStructField {
     pub name: Ident,
     pub type_id: TypeId,
@@ -99,6 +102,18 @@ pub struct TyStructField {
     pub(crate) span: Span,
     pub type_span: Span,
     pub attributes: transform::AttributesMap,
+}
+
+impl fmt::Display for TyStructField {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.name, self.type_id)
+    }
+}
+
+impl fmt::Debug for TyStructField {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {:?}", self.name, self.type_id)
+    }
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

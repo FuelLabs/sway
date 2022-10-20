@@ -21,7 +21,32 @@ impl fmt::Display for TypeId {
 
 impl fmt::Debug for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", look_up_type_id(*self))
+        match look_up_type_id(*self) {
+            TypeInfo::Struct {
+                name,
+                type_parameters,
+                fields,
+            } => {
+                write!(
+                    f,
+                    "{}{}",
+                    name,
+                    if type_parameters.is_empty() {
+                        "".into()
+                    } else {
+                        format!(
+                            "<{}>",
+                            type_parameters
+                                .iter()
+                                .map(|x| format!("{:?}", x))
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )
+                    }
+                )
+            }
+            _ => write!(f, "{}", **self),
+        }
     }
 }
 

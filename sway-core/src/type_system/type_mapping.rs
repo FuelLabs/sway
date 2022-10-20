@@ -25,6 +25,20 @@ impl fmt::Display for TypeMapping {
     }
 }
 
+impl fmt::Debug for TypeMapping {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "TypeMapping {{ {} }}",
+            self.mapping
+                .iter()
+                .map(|(source_type, dest_type)| { format!("{:?} -> {:?}", source_type, dest_type) })
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+}
+
 impl TypeMapping {
     /// Constructs a new [TypeMapping] from a list of [TypeParameter]s
     /// `type_parameters`. The [SourceType]s of the resulting [TypeMapping] are
@@ -209,7 +223,7 @@ impl TypeMapping {
     /// and a list of [TypeId]s `type_arguments`. The [SourceType]s of the
     /// resulting [TypeMapping] are the [TypeId]s from `type_parameters` and the
     /// [DestinationType]s are the [TypeId]s from `type_arguments`.
-    fn from_type_parameters_and_type_arguments(
+    pub(crate) fn from_type_parameters_and_type_arguments(
         type_parameters: Vec<SourceType>,
         type_arguments: Vec<DestinationType>,
     ) -> TypeMapping {
@@ -244,7 +258,7 @@ impl TypeMapping {
     ///     a new match, that no new match needs to be created, because there
     ///     were no nested matches
     ///
-    /// A match cannot be found in any other circumstance
+    /// A match cannot be found in any other circumstance.
     ///
     pub(crate) fn find_match(&self, type_id: TypeId) -> Option<TypeId> {
         let type_info = look_up_type_id(type_id);

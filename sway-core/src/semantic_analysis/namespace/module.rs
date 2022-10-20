@@ -318,9 +318,11 @@ impl Module {
                     }
                 }
                 let type_id = decl.return_type(&item.span()).value;
+                // println!("found item import: {:?}", type_id);
                 //  if this is an enum or struct or function, import its implementations
                 if let Some(type_id) = type_id {
                     impls_to_insert.extend(src_ns.implemented_traits.filter_by_type(type_id));
+                    // println!("current state: {}", impls_to_insert);
                 }
                 // no matter what, import it this way though.
                 let dst_ns = &mut self[dst];

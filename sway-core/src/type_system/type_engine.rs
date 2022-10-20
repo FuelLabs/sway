@@ -152,13 +152,26 @@ impl TypeEngine {
                         errors
                     );
                 }
-                let type_mapping = TypeMapping::from_type_parameters(value.type_parameters());
-                check!(
-                    type_mapping.unify_with_type_arguments(type_arguments),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
+                let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
+                    value
+                        .type_parameters()
+                        .iter()
+                        .map(|type_param| type_param.type_id)
+                        .collect(),
+                    type_arguments
+                        .iter()
+                        .map(|type_arg| type_arg.type_id)
+                        .collect(),
                 );
+                // let type_mapping = TypeMapping::from_type_parameters(value.type_parameters());
+                // println!("before: {:?}", type_mapping);
+                // check!(
+                //     type_mapping.unify_with_type_arguments(type_arguments),
+                //     return err(warnings, errors),
+                //     warnings,
+                //     errors
+                // );
+                // println!("after: {:?}", type_mapping);
                 value.copy_types(&type_mapping);
                 ok((), warnings, errors)
             }
