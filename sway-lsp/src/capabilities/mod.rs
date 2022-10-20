@@ -5,6 +5,8 @@ pub mod formatting;
 pub mod highlight;
 pub mod hover;
 pub mod inlay_hints;
+pub mod markdown;
+pub mod markup;
 pub mod rename;
 pub mod runnable;
 pub mod semantic_tokens;

@@ -15,7 +15,7 @@ use sway_core::{
     language::{parsed::Declaration, ty, Visibility},
 };
 use sway_types::{Ident, Span, Spanned};
-use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position, Url};
+use tower_lsp::lsp_types::{self, Position, Url};
 
 #[allow(dead_code)]
 fn format_doc_attributes(token: &Token) -> String {
@@ -32,16 +32,20 @@ fn format_doc_attributes(token: &Token) -> String {
     doc_comment
 }
 
-pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option<Hover> {
-    if let Some((_, token)) = session.token_at_position(&url, position) {
+pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option<lsp_types::Hover> {
+    if let Some((ident, token)) = session.token_at_position(&url, position) {
+        let range = get_range_from_span(&ident.span());
         if let Some(decl_ident) = session.declared_token_ident(&token) {
             if let Some(decl_token) = session
                 .token_map()
                 .get(&to_ident_key(&decl_ident))
                 .map(|item| item.value().clone())
             {
-                let hover = hover_format(&decl_token, &decl_ident);
-                return Some(hover);
+                let contents = hover_format(&decl_token, &decl_ident);
+                return Some(lsp_types::Hover {
+                    contents,
+                    range: Some(range),
+                });
             }
         }
     }
@@ -61,9 +65,8 @@ fn extract_fn_signature(span: &Span) -> String {
     value.split('{').take(1).map(|v| v.trim()).collect()
 }
 
-fn hover_format(token: &Token, ident: &Ident) -> Hover {
+fn hover_format(token: &Token, ident: &Ident) -> lsp_types::Hover {
     let token_name: String = ident.as_str().into();
-    let range = get_range_from_span(&ident.span());
     let doc_comment = format_doc_attributes(token);
 
     let format_visibility_hover = |visibility: Visibility, decl_name: &str| -> String {
@@ -138,11 +141,23 @@ fn hover_format(token: &Token, ident: &Ident) -> Hover {
         },
     };
 
-    Hover {
-        contents: HoverContents::Markup(MarkupContent {
-            value: doc_comment, // format!("```sway\n{}\n```", value),
-            kind: MarkupKind::Markdown,
-        }),
-        range: Some(range),
-    }
+    let res = HoverResult {
+        markup: Markup::from(doc_comment),
+    };
+
+    lsp_types::HoverContents::Markup(markup_content(res.markup))
+}
+
+pub(crate) fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
+    let kind = lsp_types::MarkupKind::Markdown;
+    let value = markdown::format_docs(markup.as_str());
+    lsp_types::MarkupContent { kind, value }
+}
+
+use crate::capabilities::{markdown, markup::Markup};
+
+/// Contains the results when hovering over an item
+#[derive(Debug, Default)]
+pub struct HoverResult {
+    pub markup: Markup,
 }
