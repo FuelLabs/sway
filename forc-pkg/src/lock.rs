@@ -34,8 +34,8 @@ pub struct PkgLock {
     version: Option<semver::Version>,
     // Short-hand string describing where this package is sourced from.
     source: String,
-    dependencies: Vec<PkgDepLine>,
-    contract_dependencies: Vec<PkgDepLine>,
+    dependencies: Option<Vec<PkgDepLine>>,
+    contract_dependencies: Option<Vec<PkgDepLine>>,
 }
 
 /// `PkgDepLine` is a terse, single-line, git-diff-friendly description of a package's
@@ -78,12 +78,7 @@ impl PkgLock {
                 let dep_kind = &dep_edge.kind;
                 let disambiguate = disambiguate.contains(&dep_pkg.name[..]);
                 (
-                    pkg_dep_line(
-                        dep_name,
-                        &dep_pkg.name,
-                        &dep_pkg.source,
-                        disambiguate,
-                    ),
+                    pkg_dep_line(dep_name, &dep_pkg.name, &dep_pkg.source, disambiguate),
                     dep_kind.clone(),
                 )
             })
@@ -100,6 +95,19 @@ impl PkgLock {
             .collect();
         dependencies.sort();
         contract_dependencies.sort();
+
+        let dependencies = if !dependencies.is_empty() {
+            Some(dependencies)
+        } else {
+            None
+        };
+
+        let contract_dependencies = if !contract_dependencies.is_empty() {
+            Some(contract_dependencies)
+        } else {
+            None
+        };
+
         Self {
             name,
             version,
@@ -175,16 +183,25 @@ impl Lock {
         for pkg in &self.package {
             let key = pkg.name_disambiguated(&disambiguate);
             let node = pkg_to_node[&key[..]];
-            let dependencies_with_type = pkg
-                .dependencies
+            // If `pkg.contract_dependencies` is None, we will be collecting an empty list of
+            // contract_deps so that we will omit them during edge adding phase
+            let contract_deps: Vec<(String, DepKind)> = pkg
+                .contract_dependencies
+                .clone()
+                .unwrap_or_default()
                 .iter()
-                .map(|lib_dep| (lib_dep, DepKind::Library))
-                .chain(
-                    pkg.contract_dependencies
-                        .iter()
-                        .map(|contract_dep| (contract_dep, DepKind::Contract)),
-                );
-            for (dep_line, dep_kind) in dependencies_with_type {
+                .map(|contract_dep| (contract_dep.clone(), DepKind::Contract))
+                .collect();
+            // If `pkg.dependencies` is None, we will be collecting an empty list of
+            // lib_deps so that we will omit them during edge adding phase
+            let lib_deps: Vec<(String, DepKind)> = pkg
+                .dependencies
+                .clone()
+                .unwrap_or_default()
+                .iter()
+                .map(|lib_dep| (lib_dep.clone(), DepKind::Library))
+                .collect();
+            for (dep_line, dep_kind) in lib_deps.iter().chain(contract_deps.iter()) {
                 let (dep_name, dep_key) = parse_pkg_dep_line(dep_line)
                     .map_err(|e| anyhow!("failed to parse dependency \"{}\": {}", dep_line, e))?;
                 let dep_node = pkg_to_node
@@ -192,7 +209,7 @@ impl Lock {
                     .cloned()
                     .ok_or_else(|| anyhow!("found dep {} without node entry in graph", dep_key))?;
                 let dep_name = dep_name.unwrap_or(&graph[dep_node].name).to_string();
-                let dep_edge = Edge::new(dep_name, dep_kind);
+                let dep_edge = Edge::new(dep_name, dep_kind.to_owned());
                 graph.update_edge(node, dep_node, dep_edge);
             }
         }
@@ -241,7 +258,7 @@ fn pkg_dep_line(
     let pkg_string = pkg_name_disambiguated(name, &source_string, disambiguate);
     // Prefix the dependency name if it differs from the package name.
     match dep_name {
-        None => format!("{}", pkg_string.into_owned()),
+        None => pkg_string.into_owned(),
         Some(dep_name) => format!("({}) {}", dep_name, pkg_string),
     }
 }
