@@ -26,7 +26,7 @@ pub(crate) enum DescriptorType {
 }
 impl DescriptorType {
     /// Converts the [DescriptorType] to a `&str` name for HTML file name creation.
-    pub fn to_path_name(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         use DescriptorType::*;
         match self {
             Struct(_) => "struct",

@@ -96,7 +96,7 @@ pub struct TyEnumVariant {
     pub initial_type_id: TypeId,
     pub type_span: Span,
     pub(crate) tag: usize,
-    pub(crate) span: Span,
+    pub span: Span,
     pub attributes: transform::AttributesMap,
 }
 

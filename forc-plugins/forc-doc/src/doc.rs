@@ -30,7 +30,7 @@ impl Document {
             Const(ty_const_decl) => Some(ty_const_decl.name.as_str()),
         };
 
-        Document::create_html_file_name(self.desc_ty.to_path_name(), name)
+        Document::create_html_file_name(self.desc_ty.as_str(), name)
     }
     fn create_html_file_name(ty: &str, name: Option<&str>) -> String {
         match name {

@@ -96,7 +96,7 @@ pub struct TyStructField {
     pub name: Ident,
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
-    pub(crate) span: Span,
+    pub span: Span,
     pub type_span: Span,
     pub attributes: transform::AttributesMap,
 }
