@@ -3,11 +3,12 @@ mod descriptor;
 mod doc;
 mod render;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::Parser;
 use cli::Command;
 use std::{
     io::prelude::*,
+    process::Command as Process,
     {fs, path::PathBuf},
 };
 
@@ -65,8 +66,27 @@ pub fn main() -> Result<()> {
     }
 
     // check if the user wants to open the doc in the browser
+    // if opening in the browser fails, attempt to open using a file explorer
     if open_result {
-        todo!("open in browser");
+        let path = doc_path.join("index.html");
+        let default_browser_opt = std::env::var_os("BROWSER");
+        match default_browser_opt {
+            Some(def_browser) => {
+                let browser = PathBuf::from(def_browser);
+                if let Err(e) = Process::new(&browser).arg(path).status() {
+                    bail!(
+                        "Couldn't open docs with {}: {}",
+                        browser.to_string_lossy(),
+                        e
+                    );
+                }
+            }
+            None => {
+                if let Err(e) = opener::open(&path) {
+                    bail!("Couldn't open docs: {}", e);
+                }
+            }
+        }
     }
 
     Ok(())

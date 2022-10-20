@@ -1581,6 +1581,7 @@ dependencies = [
  "clap 4.0.10",
  "forc-pkg",
  "horrorshow",
+ "opener",
  "sway-core",
  "sway-types",
 ]
