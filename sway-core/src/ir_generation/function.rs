@@ -39,7 +39,8 @@ pub(super) struct FnCompiler {
     returns_by_ref: bool,
     lexical_map: LexicalMap,
     recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
-    logged_types: HashMap<TypeId, LogId>,
+    // This is a map from the type IDs of a logged type and the ID of the corresponding log
+    logged_types_map: HashMap<TypeId, LogId>,
 }
 
 impl FnCompiler {
@@ -48,7 +49,7 @@ impl FnCompiler {
         module: Module,
         function: Function,
         returns_by_ref: bool,
-        logged_types: &HashMap<TypeId, LogId>,
+        logged_types_map: &HashMap<TypeId, LogId>,
     ) -> Self {
         let lexical_map = LexicalMap::from_iter(
             function
@@ -65,7 +66,7 @@ impl FnCompiler {
             returns_by_ref,
             recreated_fns: HashMap::new(),
             current_fn_param: None,
-            logged_types: logged_types.clone(),
+            logged_types_map: logged_types_map.clone(),
         }
     }
 
@@ -617,7 +618,7 @@ impl FnCompiler {
             Intrinsic::Log => {
                 // The log value and the log ID are just Value.
                 let log_val = self.compile_expression(context, md_mgr, arguments[0].clone())?;
-                let log_id = match self.logged_types.get(&arguments[0].return_type) {
+                let log_id = match self.logged_types_map.get(&arguments[0].return_type) {
                     None => {
                         return Err(CompileError::Internal(
                             "Unable to determine ID for log instance.",
@@ -1065,7 +1066,7 @@ impl FnCompiler {
                     md_mgr,
                     self.module,
                     callee_fn_decl,
-                    &self.logged_types,
+                    &self.logged_types_map,
                 )?
                 .unwrap();
                 self.recreated_fns.insert(fn_key, new_func);

@@ -27,10 +27,14 @@ impl LogId {
 
 pub enum TypeMetadata {
     UnresolvedType(Ident),
+    // A log with a unique log ID and the type ID of the type of the value being logged
     LoggedType(LogId, TypeId),
 }
 
+// A simple context that only contains a single counter for now but may expand in the future.
 pub struct CollectTypesMetadataContext {
+    // Consume this and update it via the methods implemented for CollectTypesMetadataContext to
+    // obtain a unique ID for a given log instance.
     log_id_counter: usize,
 }
 

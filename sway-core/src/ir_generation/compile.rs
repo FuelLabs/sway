@@ -23,14 +23,14 @@ pub(super) fn compile_script(
     main_function: ty::TyFunctionDeclaration,
     namespace: &namespace::Module,
     declarations: Vec<ty::TyDeclaration>,
-    logged_types: &HashMap<TypeId, LogId>,
+    logged_types_map: &HashMap<TypeId, LogId>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(context, &mut md_mgr, module, namespace)?;
     compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
-    compile_function(context, &mut md_mgr, module, main_function, logged_types)?;
+    compile_function(context, &mut md_mgr, module, main_function, logged_types_map)?;
 
     Ok(module)
 }
@@ -40,7 +40,7 @@ pub(super) fn compile_contract(
     abi_entries: Vec<ty::TyFunctionDeclaration>,
     namespace: &namespace::Module,
     declarations: Vec<ty::TyDeclaration>,
-    logged_types: &HashMap<TypeId, LogId>,
+    logged_types_map: &HashMap<TypeId, LogId>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
@@ -48,7 +48,7 @@ pub(super) fn compile_contract(
     compile_constants(context, &mut md_mgr, module, namespace)?;
     compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
     for decl in abi_entries {
-        compile_abi_method(context, &mut md_mgr, module, decl, logged_types)?;
+        compile_abi_method(context, &mut md_mgr, module, decl, logged_types_map)?;
     }
 
     Ok(module)
@@ -148,7 +148,7 @@ pub(super) fn compile_function(
     md_mgr: &mut MetadataManager,
     module: Module,
     ast_fn_decl: ty::TyFunctionDeclaration,
-    logged_types: &HashMap<TypeId, LogId>,
+    logged_types_map: &HashMap<TypeId, LogId>,
 ) -> Result<Option<Function>, CompileError> {
     // Currently monomorphisation of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
@@ -168,7 +168,7 @@ pub(super) fn compile_function(
             ast_fn_decl,
             args,
             None,
-            logged_types,
+            logged_types_map,
         )
         .map(&Some)
     }
@@ -198,7 +198,7 @@ fn compile_fn_with_args(
     ast_fn_decl: ty::TyFunctionDeclaration,
     args: Vec<(String, Type, Span)>,
     selector: Option<[u8; 4]>,
-    logged_types: &HashMap<TypeId, LogId>,
+    logged_types_map: &HashMap<TypeId, LogId>,
 ) -> Result<Function, CompileError> {
     let ty::TyFunctionDeclaration {
         name,
@@ -246,7 +246,7 @@ fn compile_fn_with_args(
         metadata,
     );
 
-    let mut compiler = FnCompiler::new(context, module, func, returns_by_ref, logged_types);
+    let mut compiler = FnCompiler::new(context, module, func, returns_by_ref, logged_types_map);
     let mut ret_val = compiler.compile_code_block(context, md_mgr, body)?;
 
     // Special case: if the return type is unit but the return value type is not, then we have an
@@ -318,7 +318,7 @@ fn compile_abi_method(
     md_mgr: &mut MetadataManager,
     module: Module,
     ast_fn_decl: ty::TyFunctionDeclaration,
-    logged_types: &HashMap<TypeId, LogId>,
+    logged_types_map: &HashMap<TypeId, LogId>,
 ) -> Result<Function, CompileError> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let get_selector_result = ast_fn_decl.to_fn_selector_value();
@@ -357,6 +357,6 @@ fn compile_abi_method(
         ast_fn_decl,
         args,
         Some(selector),
-        logged_types,
+        logged_types_map,
     )
 }
