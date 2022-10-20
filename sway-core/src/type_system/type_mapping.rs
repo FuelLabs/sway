@@ -198,7 +198,7 @@ impl TypeMapping {
     /// and a list of [TypeId]s `type_arguments`. The [SourceType]s of the
     /// resulting [TypeMapping] are the [TypeId]s from `type_parameters` and the
     /// [DestinationType]s are the [TypeId]s from `type_arguments`.
-    fn from_type_parameters_and_type_arguments(
+    pub(crate) fn from_type_parameters_and_type_arguments(
         type_parameters: Vec<SourceType>,
         type_arguments: Vec<DestinationType>,
     ) -> TypeMapping {
@@ -219,22 +219,13 @@ impl TypeMapping {
     /// A match can be found in two different circumstances:
     /// - `type_id` is a [TypeInfo::Custom] or [TypeInfo::UnknownGeneric]
     ///
-    /// A match is created (i.e. a new `TypeId` is created) in these
+    /// A match is potentially created (i.e. a new `TypeId` is created) in these
     /// circumstances:
     /// - `type_id` is a [TypeInfo::Struct], [TypeInfo::Enum],
-    ///     [TypeInfo::Array], or [TypeInfo::Tuple]
-    /// - a new [TypeId] is created in these circumstances because `find_match`
-    ///     descends recursively, and you can't be sure that it hasn't found a
-    ///     match somewhere nested deeper in the type
-    /// - TODO: there is a performance gain to be made here by having
-    ///     `find_match` (or some `find_match_inner` return a `bool`). If that
-    ///     `bool` is false, you know that there is no match found, and you can
-    ///     be confident that even in the cases that otherwise would be creating
-    ///     a new match, that no new match needs to be created, because there
-    ///     were no nested matches
+    ///     [TypeInfo::Array], or [TypeInfo::Tuple] and one of the sub-types
+    ///     finds a match in a recursive call to `find_match`
     ///
-    /// A match cannot be found in any other circumstance
-    ///
+    /// A match cannot be found in any other circumstance.
     pub(crate) fn find_match(&self, type_id: TypeId) -> Option<TypeId> {
         let type_info = look_up_type_id(type_id);
         match type_info {
@@ -245,47 +236,126 @@ impl TypeMapping {
                 name,
                 mut type_parameters,
             } => {
-                fields.iter_mut().for_each(|field| field.copy_types(self));
-                type_parameters
-                    .iter_mut()
-                    .for_each(|type_param| type_param.copy_types(self));
-                Some(insert_type(TypeInfo::Struct {
-                    fields,
-                    name,
-                    type_parameters,
-                }))
+                // fields.iter_mut().for_each(|field| field.copy_types(self));
+                // type_parameters
+                //     .iter_mut()
+                //     .for_each(|type_param| type_param.copy_types(self));
+                // Some(insert_type(TypeInfo::Struct {
+                //     fields,
+                //     name,
+                //     type_parameters,
+                // }))
+                let mut need_to_create_new = false;
+                let fields = fields
+                    .into_iter()
+                    .map(|mut field| {
+                        if let Some(type_id) = self.find_match(field.type_id) {
+                            need_to_create_new = true;
+                            field.type_id = type_id;
+                        }
+                        field
+                    })
+                    .collect::<Vec<_>>();
+                let type_parameters = type_parameters
+                    .into_iter()
+                    .map(|mut type_param| {
+                        if let Some(type_id) = self.find_match(type_param.type_id) {
+                            need_to_create_new = true;
+                            type_param.type_id = type_id;
+                        }
+                        type_param
+                    })
+                    .collect::<Vec<_>>();
+                if need_to_create_new {
+                    Some(insert_type(TypeInfo::Struct {
+                        fields,
+                        name,
+                        type_parameters,
+                    }))
+                } else {
+                    None
+                }
             }
             TypeInfo::Enum {
                 mut variant_types,
                 name,
                 mut type_parameters,
             } => {
-                variant_types
-                    .iter_mut()
-                    .for_each(|variant_type| variant_type.copy_types(self));
-                type_parameters
-                    .iter_mut()
-                    .for_each(|type_param| type_param.copy_types(self));
-                Some(insert_type(TypeInfo::Enum {
-                    variant_types,
-                    type_parameters,
-                    name,
-                }))
+                // variant_types
+                //     .iter_mut()
+                //     .for_each(|variant_type| variant_type.copy_types(self));
+                // type_parameters
+                //     .iter_mut()
+                //     .for_each(|type_param| type_param.copy_types(self));
+                // Some(insert_type(TypeInfo::Enum {
+                //     variant_types,
+                //     type_parameters,
+                //     name,
+                // }))
+                let mut need_to_create_new = false;
+                let variant_types = variant_types
+                    .into_iter()
+                    .map(|mut variant| {
+                        if let Some(type_id) = self.find_match(variant.type_id) {
+                            need_to_create_new = true;
+                            variant.type_id = type_id;
+                        }
+                        variant
+                    })
+                    .collect::<Vec<_>>();
+                let type_parameters = type_parameters
+                    .into_iter()
+                    .map(|mut type_param| {
+                        if let Some(type_id) = self.find_match(type_param.type_id) {
+                            need_to_create_new = true;
+                            type_param.type_id = type_id;
+                        }
+                        type_param
+                    })
+                    .collect::<Vec<_>>();
+                if need_to_create_new {
+                    Some(insert_type(TypeInfo::Enum {
+                        variant_types,
+                        type_parameters,
+                        name,
+                    }))
+                } else {
+                    None
+                }
             }
             TypeInfo::Array(ary_ty_id, count, initial_elem_ty) => {
-                let ary_ty_id = match self.find_match(ary_ty_id) {
-                    Some(matching_id) => matching_id,
-                    None => ary_ty_id,
-                };
-                Some(insert_type(TypeInfo::Array(
-                    ary_ty_id,
-                    count,
-                    initial_elem_ty,
-                )))
+                // let ary_ty_id = match self.find_match(ary_ty_id) {
+                //     Some(matching_id) => matching_id,
+                //     None => ary_ty_id,
+                // };
+                // Some(insert_type(TypeInfo::Array(
+                //     ary_ty_id,
+                //     count,
+                //     initial_elem_ty,
+                // )))
+                self.find_match(ary_ty_id).map(|matching_id| {
+                    insert_type(TypeInfo::Array(matching_id, count, initial_elem_ty))
+                })
             }
             TypeInfo::Tuple(mut fields) => {
-                fields.iter_mut().for_each(|field| field.copy_types(self));
-                Some(insert_type(TypeInfo::Tuple(fields)))
+                // fields.iter_mut().for_each(|field| field.copy_types(self));
+                // Some(insert_type(TypeInfo::Tuple(fields)))
+                let mut need_to_create_new = false;
+                let fields = fields
+                    .into_iter()
+                    .map(|mut field| {
+                        if let Some(type_id) = self.find_match(field.type_id) {
+                            need_to_create_new = true;
+                            field.type_id = type_id;
+                        }
+                        field
+                    })
+                    .collect::<Vec<_>>();
+                if need_to_create_new {
+                    Some(insert_type(TypeInfo::Tuple(fields)))
+                } else {
+                    None
+                }
             }
             TypeInfo::Unknown
             | TypeInfo::Str(..)
