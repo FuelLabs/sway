@@ -213,7 +213,7 @@ pub fn parsed_to_ast(
     typed_program
         .logged_types
         .extend(types_metadata.iter().filter_map(|m| match m {
-            TypeMetadata::LoggedType(type_id, log_id) => Some((*type_id, *log_id)),
+            TypeMetadata::LoggedType(log_id, type_id) => Some((*log_id, *type_id)),
             _ => None,
         }));
 

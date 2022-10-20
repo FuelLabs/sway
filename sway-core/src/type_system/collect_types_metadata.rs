@@ -9,26 +9,42 @@ use sway_types::Ident;
 /// If any types contained by this node are unresolved or have yet to be inferred, throw an
 /// error to signal to the user that more type information is needed.
 
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
+pub struct LogId(usize);
+
+impl std::ops::Deref for LogId {
+    type Target = usize;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl LogId {
+    pub fn new(index: usize) -> LogId {
+        LogId(index)
+    }
+}
+
 pub enum TypeMetadata {
     UnresolvedType(Ident),
-    LoggedType(TypeId, usize),
+    LoggedType(LogId, TypeId),
 }
 
 pub struct CollectTypesMetadataContext {
-    log_id: usize,
+    log_id_counter: usize,
 }
 
 impl CollectTypesMetadataContext {
-    pub fn log_id(&self) -> usize {
-        self.log_id
+    pub fn log_id_counter(&self) -> usize {
+        self.log_id_counter
     }
 
-    pub fn log_id_mut(&mut self) -> &mut usize {
-        &mut self.log_id
+    pub fn log_id_counter_mut(&mut self) -> &mut usize {
+        &mut self.log_id_counter
     }
 
     pub fn new() -> Self {
-        Self { log_id: 0 }
+        Self { log_id_counter: 0 }
     }
 }
 

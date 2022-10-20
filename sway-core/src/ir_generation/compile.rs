@@ -3,7 +3,7 @@ use crate::{
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
-    type_system::{look_up_type_id, TypeId},
+    type_system::{look_up_type_id, LogId, TypeId},
 };
 
 use super::{
@@ -23,7 +23,7 @@ pub(super) fn compile_script(
     main_function: ty::TyFunctionDeclaration,
     namespace: &namespace::Module,
     declarations: Vec<ty::TyDeclaration>,
-    logged_types: &HashMap<TypeId, usize>,
+    logged_types: &HashMap<TypeId, LogId>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
@@ -40,7 +40,7 @@ pub(super) fn compile_contract(
     abi_entries: Vec<ty::TyFunctionDeclaration>,
     namespace: &namespace::Module,
     declarations: Vec<ty::TyDeclaration>,
-    logged_types: &HashMap<TypeId, usize>,
+    logged_types: &HashMap<TypeId, LogId>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
@@ -148,7 +148,7 @@ pub(super) fn compile_function(
     md_mgr: &mut MetadataManager,
     module: Module,
     ast_fn_decl: ty::TyFunctionDeclaration,
-    logged_types: &HashMap<TypeId, usize>,
+    logged_types: &HashMap<TypeId, LogId>,
 ) -> Result<Option<Function>, CompileError> {
     // Currently monomorphisation of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
@@ -198,7 +198,7 @@ fn compile_fn_with_args(
     ast_fn_decl: ty::TyFunctionDeclaration,
     args: Vec<(String, Type, Span)>,
     selector: Option<[u8; 4]>,
-    logged_types: &HashMap<TypeId, usize>,
+    logged_types: &HashMap<TypeId, LogId>,
 ) -> Result<Function, CompileError> {
     let ty::TyFunctionDeclaration {
         name,
@@ -318,7 +318,7 @@ fn compile_abi_method(
     md_mgr: &mut MetadataManager,
     module: Module,
     ast_fn_decl: ty::TyFunctionDeclaration,
-    logged_types: &HashMap<TypeId, usize>,
+    logged_types: &HashMap<TypeId, LogId>,
 ) -> Result<Function, CompileError> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let get_selector_result = ast_fn_decl.to_fn_selector_value();

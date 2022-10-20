@@ -71,10 +71,10 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
 
         if matches!(self.kind, Intrinsic::Log) {
             types_metadata.push(TypeMetadata::LoggedType(
+                LogId::new(ctx.log_id_counter()),
                 self.arguments[0].return_type,
-                ctx.log_id(),
             ));
-            *ctx.log_id_mut() += 1;
+            *ctx.log_id_counter_mut() += 1;
         }
 
         ok(types_metadata, warnings, errors)

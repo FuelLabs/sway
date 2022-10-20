@@ -34,12 +34,16 @@ pub fn compile_program(program: ty::TyProgram) -> Result<Context, CompileError> 
             declarations,
             // predicates and scripts have the same codegen, their only difference is static
             // type-check time checks.
+            // Predicates are not allowed to use logs so no need to pass in `logged_types` here
         } => compile::compile_script(
             &mut ctx,
             main_function,
             &root.namespace,
             declarations,
-            &logged_types.into_iter().collect(),
+            &logged_types
+                .into_iter()
+                .map(|(log_id, type_id)| (type_id, log_id))
+                .collect(),
         ),
         ty::TyProgramKind::Contract {
             abi_entries,
@@ -49,7 +53,10 @@ pub fn compile_program(program: ty::TyProgram) -> Result<Context, CompileError> 
             abi_entries,
             &root.namespace,
             declarations,
-            &logged_types.into_iter().collect(),
+            &logged_types
+                .into_iter()
+                .map(|(log_id, type_id)| (type_id, log_id))
+                .collect(),
         ),
         ty::TyProgramKind::Library { .. } => unimplemented!("compile library to ir"),
     }?;

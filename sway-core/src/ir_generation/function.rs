@@ -13,7 +13,7 @@ use crate::{
     },
     language::{ty, *},
     metadata::MetadataManager,
-    type_system::{look_up_type_id, to_typeinfo, TypeId, TypeInfo},
+    type_system::{look_up_type_id, to_typeinfo, LogId, TypeId, TypeInfo},
 };
 use declaration_engine::de_get_function;
 use sway_ast::intrinsics::Intrinsic;
@@ -39,7 +39,7 @@ pub(super) struct FnCompiler {
     returns_by_ref: bool,
     lexical_map: LexicalMap,
     recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
-    logged_types: HashMap<TypeId, usize>,
+    logged_types: HashMap<TypeId, LogId>,
 }
 
 impl FnCompiler {
@@ -48,7 +48,7 @@ impl FnCompiler {
         module: Module,
         function: Function,
         returns_by_ref: bool,
-        logged_types: &HashMap<TypeId, usize>,
+        logged_types: &HashMap<TypeId, LogId>,
     ) -> Self {
         let lexical_map = LexicalMap::from_iter(
             function
@@ -625,7 +625,7 @@ impl FnCompiler {
                         ))
                     }
                     Some(log_id) => {
-                        convert_literal_to_value(context, &Literal::U64(*log_id as u64))
+                        convert_literal_to_value(context, &Literal::U64(**log_id as u64))
                     }
                 };
 
