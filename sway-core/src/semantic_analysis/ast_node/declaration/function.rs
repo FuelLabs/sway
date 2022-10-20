@@ -151,7 +151,7 @@ impl ty::TyFunctionDeclaration {
         let return_type_trait_map = fn_ctx
             .namespace
             .implemented_traits
-            .filter_by_type(function_decl.return_type);
+            .filter_by_type_recursively(function_decl.return_type);
         ctx.namespace
             .implemented_traits
             .extend(return_type_trait_map);

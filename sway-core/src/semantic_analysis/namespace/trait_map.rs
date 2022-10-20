@@ -64,9 +64,12 @@ impl TraitMap {
     pub(crate) fn insert_for_type(&mut self, type_id: TypeId) {
         // println!("insert_for_type: {}", type_id);
         // println!("during: {}", self);
-        let trait_map = self.filter_by_type(type_id);
-        // println!("during: {}", trait_map);
-        self.extend(trait_map);
+        // let trait_map = self.filter_by_type(type_id);
+        // self.extend(trait_map);
+        self.extend(self.filter_by_type_recursively(type_id));
+        // for type_id in look_up_type_id(type_id).extract_inner_types().into_iter() {
+        //     self.extend(self.filter_by_type(type_id));
+        // }
     }
 
     pub(crate) fn extend(&mut self, other: TraitMap) {
@@ -83,43 +86,103 @@ impl TraitMap {
         }
     }
 
-    pub(crate) fn filter_by_type(&self, type_id: TypeId) -> TraitMap {
-        // let mut trait_impls: TraitImpls = im::HashMap::new();
-        // for ((map_trait_name, map_type_id), map_trait_impls) in self.trait_impls.iter() {
-        //     if look_up_type_id(type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
-        //         trait_impls.insert((map_trait_name.clone(), type_id), map_trait_impls.clone());
-        //     }
-        // }
-        let mut trait_impls: TraitImpls = im::HashMap::new();
-        for ((map_trait_name, map_type_id), map_trait_methods) in self.trait_impls.iter() {
-            if look_up_type_id(type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
-                // println!("\tfound subsets:\n\t\t{}\n\t\t{}", type_id, map_type_id);
-                let type_mapping = TypeMapping::from_superset_and_subset(*map_type_id, type_id);
-                let trait_methods: TraitMethods = map_trait_methods
-                    .values()
-                    .cloned()
-                    .into_iter()
-                    .map(|mut method| {
-                        // println!("before copy types: {} with {}", method, type_mapping);
-                        method.copy_types(&type_mapping);
-                        // println!("after copy types: {} with {}", method, type_mapping);
-                        (method.name.as_str().to_string(), method)
-                    })
-                    .collect();
-                trait_impls.insert((map_trait_name.clone(), type_id), trait_methods);
+    // pub(crate) fn filter_by_type_recursively(&self, type_id: TypeId) -> TraitMap {
+    //     // let mut trait_impls: TraitImpls = im::HashMap::new();
+    //     // for ((map_trait_name, map_type_id), map_trait_impls) in self.trait_impls.iter() {
+    //     //     if look_up_type_id(type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
+    //     //         trait_impls.insert((map_trait_name.clone(), type_id), map_trait_impls.clone());
+    //     //     }
+    //     // }
+    //     let mut all_types = im::HashSet::new();
+    //     all_types.insert(type_id);
+    //     all_types.extend(look_up_type_id(type_id).extract_inner_types());
+    //     let all_types = all_types.into_iter().collect::<Vec<_>>();
+
+    //     let mut trait_map = TraitMap { trait_impls: Default::default() };
+    //     for ((map_trait_name, map_type_id), map_trait_methods) in self.trait_impls.iter() {
+    //         for type_id in all_types.iter() {
+    //             if look_up_type_id(*type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
+    //                 // println!("\tfound subsets:\n\t\t{}\n\t\t{}", type_id, map_type_id);
+    //                 let type_mapping = TypeMapping::from_superset_and_subset(*map_type_id, *type_id);
+    //                 let mut trait_methods = map_trait_methods.values().cloned().into_iter().collect::<Vec<_>>();
+    //                 trait_methods.iter_mut().for_each(|trait_method| {
+    //                     // println!("before copy types: {} with {}", method, type_mapping);
+    //                     trait_method.copy_types(&type_mapping);
+    //                     trait_map.extend(self.filter_by_type_recursively(trait_method.return_type));
+    //                     // println!("after copy types: {} with {}", method, type_mapping);
+    //                 });
+    //                 trait_map.insert(map_trait_name.clone(), *type_id, trait_methods);
+    //             }
+    //         }
+    //     }
+    //     println!(
+    //         "filter_by_type: {} -------\n{}",
+    //         type_id,
+    //         trait_map
+    //     );
+    //     trait_map
+    // }
+
+    pub(crate) fn filter_by_type_recursively(&self, type_id: TypeId) -> TraitMap {
+        fn helper(
+            trait_map_self: &TraitMap,
+            type_id: TypeId,
+            seen: &mut im::HashSet<TypeId>,
+        ) -> TraitMap {
+            println!("helper for {}, {}", *type_id, type_id);
+            seen.insert(type_id);
+            let all_types = TraitMap::calculate_all_types(type_id);
+            let mut trait_map = TraitMap {
+                trait_impls: Default::default(),
+            };
+
+            for ((map_trait_name, map_type_id), map_trait_methods) in
+                trait_map_self.trait_impls.iter()
+            {
+                for type_id in all_types.iter() {
+                    if look_up_type_id(*type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
+                        let type_mapping =
+                            TypeMapping::from_superset_and_subset(*map_type_id, *type_id);
+                        let mut trait_methods = map_trait_methods
+                            .values()
+                            .cloned()
+                            .into_iter()
+                            .collect::<Vec<_>>();
+                        trait_methods.iter_mut().for_each(|trait_method| {
+                            let seen_it = seen.contains(&trait_method.return_type);
+                            seen.insert(trait_method.return_type);
+                            trait_method.copy_types(&type_mapping);
+                            if !seen_it {
+                                seen.insert(trait_method.return_type);
+                                trait_map.extend(helper(
+                                    trait_map_self,
+                                    trait_method.return_type,
+                                    seen,
+                                ));
+                            }
+                        });
+                        trait_map.insert(map_trait_name.clone(), *type_id, trait_methods);
+                    }
+                }
             }
+
+            trait_map
         }
-        // println!(
-        //     "filter_by_type: {} ------- {} traits",
-        //     type_id,
-        //     trait_impls.len()
-        // );
-        TraitMap { trait_impls }
+
+        let mut seen = im::HashSet::new();
+        helper(self, type_id, &mut seen)
+    }
+
+    fn calculate_all_types(type_id: TypeId) -> Vec<TypeId> {
+        let mut all_types = im::HashSet::new();
+        all_types.insert(type_id);
+        all_types.extend(look_up_type_id(type_id).extract_inner_types());
+        all_types.into_iter().collect::<Vec<_>>()
     }
 
     pub(crate) fn get_methods_for_type(&self, type_id: TypeId) -> Vec<ty::TyFunctionDeclaration> {
-        // println!("get_methods_for_type: {}", type_id);
-        // println!("during: {}", self);
+        println!("get_methods_for_type: {}", type_id);
+        println!("during: {}", self);
         let mut methods = vec![];
         // small performance gain in bad case
         if look_up_type_id(type_id) == TypeInfo::ErrorRecovery {

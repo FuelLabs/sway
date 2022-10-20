@@ -395,7 +395,7 @@ impl ty::TyImplTrait {
     }
 
     pub(crate) fn type_check_impl_self(
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         impl_self: ImplSelf,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
@@ -411,7 +411,7 @@ impl ty::TyImplTrait {
 
         // create the namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut impl_namespace);
+        let mut impl_ctx = ctx.by_ref().scoped(&mut impl_namespace);
 
         // create the trait name
         let trait_name = CallPath {
@@ -428,7 +428,7 @@ impl ty::TyImplTrait {
         let mut new_impl_type_parameters = vec![];
         for type_parameter in impl_type_parameters.into_iter() {
             new_impl_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
+                TypeParameter::type_check(impl_ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -437,7 +437,7 @@ impl ty::TyImplTrait {
 
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
-            ctx.resolve_type_without_self(
+            impl_ctx.resolve_type_without_self(
                 insert_type(type_implementing_for),
                 &type_implementing_for_span,
                 None
@@ -460,7 +460,7 @@ impl ty::TyImplTrait {
             errors
         );
 
-        let mut ctx = ctx
+        let mut impl_inner_ctx = impl_ctx
             .with_self_type(implementing_for_type_id)
             .with_help_text("")
             .with_type_annotation(insert_type(TypeInfo::Unknown));
@@ -469,14 +469,21 @@ impl ty::TyImplTrait {
         let mut methods = vec![];
         for fn_decl in functions.into_iter() {
             let method = check!(
-                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl),
+                ty::TyFunctionDeclaration::type_check(impl_inner_ctx.by_ref(), fn_decl),
                 continue,
                 warnings,
                 errors
             );
-            if trait_name.suffix.as_str() == "E" {
-                println!("{}", method);
-            }
+            // let return_type_trait_map = impl_inner_ctx
+            //     .namespace
+            //     .implemented_traits
+            //     .filter_by_type_recursively(method.return_type);
+            // if trait_name.suffix.as_str() == "Vec" && method.name.as_str() == "get" {
+            //     println!("return_type_trait_map: {}", return_type_trait_map);
+            // }
+            // ctx.namespace
+            //     .implemented_traits
+            //     .extend(return_type_trait_map);
             methods.push(method);
         }
 
