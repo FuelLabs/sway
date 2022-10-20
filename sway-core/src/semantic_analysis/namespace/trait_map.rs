@@ -16,6 +16,14 @@ pub(crate) struct TraitMap {
 }
 
 impl TraitMap {
+    /// Given a [TraitName] `trait_name`, [TypeId] `type_id`, and list of
+    /// [TyFunctionDeclaration](ty::TyFunctionDeclaration) `methods`, inserts
+    /// `methods` into the [TraitMap] with the key `(trait_name, type_id)`.
+    ///
+    /// This method is as conscious as possible of existing entries in the
+    /// [TraitMap], and tries to append `methods` to an existing list of
+    /// [TyFunctionDeclaration](ty::TyFunctionDeclaration) for the key
+    /// `(trait_name, type_id)` whenever possible.
     pub(crate) fn insert(
         &mut self,
         trait_name: TraitName,
@@ -33,6 +41,10 @@ impl TraitMap {
         self.extend(trait_map);
     }
 
+    pub(crate) fn insert_for_type(&mut self, type_id: TypeId) {
+        self.extend(self.filter_by_type(type_id));
+    }
+
     pub(crate) fn extend(&mut self, other: TraitMap) {
         for (key, other_trait_methods) in other.trait_impls.into_iter() {
             self.trait_impls
@@ -43,14 +55,35 @@ impl TraitMap {
     }
 
     pub(crate) fn filter_by_type(&self, type_id: TypeId) -> TraitMap {
-        let mut trait_impls: TraitImpls = im::HashMap::new();
-        for ((map_trait_name, map_type_id), map_trait_impls) in self.trait_impls.iter() {
+        let mut trait_map = TraitMap {
+            trait_impls: Default::default(),
+        };
+        for ((map_trait_name, map_type_id), map_trait_methods) in self.trait_impls.iter() {
             if look_up_type_id(type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
-                trait_impls.insert((map_trait_name.clone(), type_id), map_trait_impls.clone());
+                let type_mapping = TypeMapping::from_superset_and_subset(*map_type_id, type_id);
+                let mut trait_methods = map_trait_methods
+                    .values()
+                    .cloned()
+                    .into_iter()
+                    .collect::<Vec<_>>();
+                trait_methods.iter_mut().for_each(|trait_method| {
+                    trait_method.copy_types(&type_mapping);
+                });
+                trait_map.insert(map_trait_name.clone(), type_id, trait_methods);
             }
         }
-        TraitMap { trait_impls }
+        trait_map
     }
+
+    // pub(crate) fn filter_by_type(&self, type_id: TypeId) -> TraitMap {
+    //     let mut trait_impls: TraitImpls = im::HashMap::new();
+    //     for ((map_trait_name, map_type_id), map_trait_impls) in self.trait_impls.iter() {
+    //         if look_up_type_id(type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
+    //             trait_impls.insert((map_trait_name.clone(), type_id), map_trait_impls.clone());
+    //         }
+    //     }
+    //     TraitMap { trait_impls }
+    // }
 
     pub(crate) fn get_methods_for_type(&self, type_id: TypeId) -> Vec<ty::TyFunctionDeclaration> {
         let mut methods = vec![];
