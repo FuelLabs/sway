@@ -630,6 +630,7 @@ pub(crate) fn item_const_to_constant_declaration(
     item_const: ItemConst,
     attributes: AttributesMap,
 ) -> Result<ConstantDeclaration, ErrorEmitted> {
+    let span = item_const.span();
     let (type_ascription, type_ascription_span) = match item_const.ty_opt {
         Some((_colon_token, ty)) => {
             let type_ascription = ty_to_type_info(handler, ty.clone())?;
@@ -650,6 +651,7 @@ pub(crate) fn item_const_to_constant_declaration(
         value: expr_to_expression(handler, item_const.expr)?,
         visibility: pub_token_opt_to_visibility(item_const.visibility),
         attributes,
+        span,
     })
 }
 
