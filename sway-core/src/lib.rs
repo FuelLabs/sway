@@ -165,20 +165,10 @@ fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf 
         .with_extension(sway_types::constants::DEFAULT_FILE_EXTENSION)
 }
 
-/// Either finalized ASM or a library.
-pub enum AsmOrLib {
-    Asm(FinalizedAsm),
-    Library {
-        name: Ident,
-        namespace: Box<namespace::Root>,
-    },
-}
+pub struct CompiledAsm(pub FinalizedAsm);
 
-/// Either compiled bytecode in byte form or a library.
-pub enum BytecodeOrLib {
-    Bytecode(Vec<u8>),
-    Library,
-}
+/// The bytecode for a sway program.
+pub struct CompiledBytecode(pub Vec<u8>);
 
 pub fn parsed_to_ast(
     parse_program: &parsed::ParseProgram,
@@ -296,49 +286,36 @@ pub fn compile_to_ast(
 }
 
 /// Given input Sway source code,
-/// try compiling to a `AsmOrLib`,
+/// try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn compile_to_asm(
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
-) -> CompileResult<AsmOrLib> {
+) -> CompileResult<CompiledAsm> {
     let ast_res = compile_to_ast(input, initial_namespace, Some(&build_config));
     ast_to_asm(ast_res, &build_config)
 }
 
 /// Given an AST compilation result,
-/// try compiling to a `AsmOrLib`,
+/// try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn ast_to_asm(
     ast_res: CompileResult<ty::TyProgram>,
     build_config: &BuildConfig,
-) -> CompileResult<AsmOrLib> {
+) -> CompileResult<CompiledAsm> {
     match ast_res.value {
         None => err(ast_res.warnings, ast_res.errors),
         Some(typed_program) => {
             let mut errors = ast_res.errors;
             let mut warnings = ast_res.warnings;
-
-            let tree_type = typed_program.kind.tree_type();
-            match tree_type {
-                parsed::TreeType::Contract
-                | parsed::TreeType::Script
-                | parsed::TreeType::Predicate => {
-                    let asm = check!(
-                        compile_ast_to_ir_to_asm(typed_program, build_config),
-                        return deduped_err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    ok(AsmOrLib::Asm(asm), warnings, errors)
-                }
-                parsed::TreeType::Library { name } => {
-                    let namespace = Box::new(typed_program.root.namespace.into());
-                    let lib = AsmOrLib::Library { name, namespace };
-                    ok(lib, warnings, errors)
-                }
-            }
+            let asm = check!(
+                compile_ast_to_ir_to_asm(typed_program, build_config),
+                return deduped_err(warnings, errors),
+                warnings,
+                errors
+            );
+            ok(CompiledAsm(asm), warnings, errors)
         }
     }
 }
@@ -582,39 +559,38 @@ fn simplify_cfg(
     Ok(())
 }
 
-/// Given input Sway source code, compile to a [BytecodeOrLib], containing the asm in bytecode form.
+/// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn compile_to_bytecode(
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
-) -> CompileResult<BytecodeOrLib> {
+) -> CompileResult<CompiledBytecode> {
     let asm_res = compile_to_asm(input, initial_namespace, build_config);
     let result = asm_to_bytecode(asm_res, source_map);
     clear_lazy_statics();
     result
 }
 
-/// Given the assembly (opcodes), compile to a [BytecodeOrLib], containing the asm in bytecode form.
+/// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn asm_to_bytecode(
     CompileResult {
         value,
         mut warnings,
         mut errors,
-    }: CompileResult<AsmOrLib>,
+    }: CompileResult<CompiledAsm>,
     source_map: &mut SourceMap,
-) -> CompileResult<BytecodeOrLib> {
+) -> CompileResult<CompiledBytecode> {
     match value {
-        Some(AsmOrLib::Asm(mut asm)) => {
+        Some(CompiledAsm(mut asm)) => {
             let bytes = check!(
                 asm.to_bytecode_mut(source_map),
                 return err(warnings, errors),
                 warnings,
                 errors,
             );
-            ok(BytecodeOrLib::Bytecode(bytes), warnings, errors)
+            ok(CompiledBytecode(bytes), warnings, errors)
         }
-        Some(AsmOrLib::Library { .. }) => ok(BytecodeOrLib::Library, warnings, errors),
         None => err(warnings, errors),
     }
 }
