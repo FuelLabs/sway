@@ -61,7 +61,7 @@ impl Format for ItemStorage {
                             }
                         });
 
-                        let mut value_pairs_iter = value_pairs.iter().enumerate().peekable();
+                        let value_pairs_iter = value_pairs.iter().enumerate();
                         for (field_index, (storage_field, comma_token)) in value_pairs_iter.clone()
                         {
                             write!(
@@ -99,11 +99,10 @@ impl Format for ItemStorage {
                             storage_field
                                 .initializer
                                 .format(formatted_code, formatter)?;
-                            if value_pairs_iter.peek().is_some() {
-                                writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
-                            } else if let Some(final_value) = &fields.final_value_opt {
-                                final_value.format(formatted_code, formatter)?;
-                            }
+                            writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
+                        }
+                        if let Some(final_value) = &fields.final_value_opt {
+                            final_value.format(formatted_code, formatter)?;
                         }
                     }
                     FieldAlignment::Off => fields.format(formatted_code, formatter)?,

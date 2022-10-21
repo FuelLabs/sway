@@ -1,0 +1,7 @@
+category = "fail"
+
+# check: $()const MY_CONST_STRUCT: MyConstStruct = MyConstStruct {};
+# check: $()Initialization of struct "MyConstStruct" is missing field "x".
+
+# check: $()my_struct: MyStruct = MyStruct {},
+# check: $()Initialization of struct "MyStruct" is missing field "x".

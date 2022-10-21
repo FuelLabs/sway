@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use forc_pkg::{BuildOptions, Compiled, ManifestFile};
+use forc_pkg::{BuildOptions, Compiled, PackageManifestFile};
 use fuel_crypto::Signature;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, StorageSlot, Transaction};
@@ -8,7 +8,7 @@ use fuels_core::constants::BASE_ASSET_ID;
 use fuels_signers::{provider::Provider, wallet::Wallet};
 use fuels_types::bech32::Bech32Address;
 use std::{io::Write, path::PathBuf, str::FromStr};
-use sway_core::TreeType;
+use sway_core::language::parsed::TreeType;
 use sway_utils::constants::DEFAULT_NODE_URL;
 use tracing::info;
 
@@ -20,7 +20,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     } else {
         std::env::current_dir()?
     };
-    let manifest = ManifestFile::from_dir(&curr_dir)?;
+    let manifest = PackageManifestFile::from_dir(&curr_dir)?;
     manifest.check_program_type(vec![TreeType::Contract])?;
 
     let DeployCommand {
@@ -41,7 +41,6 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         build_profile,
         release,
         time_phases,
-        generate_logged_types,
         unsigned,
         gas_limit,
         gas_price,
@@ -64,7 +63,6 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         build_profile,
         release,
         time_phases,
-        generate_logged_types,
     };
 
     let compiled = forc_pkg::build_with_options(build_options)?;

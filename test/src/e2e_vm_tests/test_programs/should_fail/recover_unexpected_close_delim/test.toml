@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()unexpected close delimiter
+# check: $()Mismatched types.

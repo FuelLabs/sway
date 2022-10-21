@@ -1,18 +1,12 @@
 #![allow(dead_code)]
 use crate::core::token::{AstToken, Token, TokenMap, TypedAstToken};
 use crate::utils::{common::get_range_from_span, token};
-use sway_core::{Expression, ExpressionKind, Literal};
+use sway_core::language::{
+    parsed::{Expression, ExpressionKind},
+    Literal,
+};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
-
-// Flags for debugging various parts of the server
-#[derive(Debug, Default)]
-pub struct DebugFlags {
-    /// Instructs the client to draw squiggly lines
-    /// under all of the tokens that our server managed to parse.
-    /// String can be either "typed" or "parsed".
-    pub collected_tokens_as_warnings: Option<String>,
-}
 
 pub(crate) fn generate_warnings_non_typed_tokens(tokens: &TokenMap) -> Vec<Diagnostic> {
     let warnings = tokens
@@ -115,7 +109,6 @@ fn literal_to_string(literal: &Literal) -> String {
         Literal::Numeric(_) => "u64".into(),
         Literal::String(len) => format!("str[{}]", len.as_str().len()),
         Literal::Boolean(_) => "bool".into(),
-        Literal::Byte(_) => "u8".into(),
         Literal::B256(_) => "b256".into(),
     }
 }

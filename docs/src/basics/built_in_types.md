@@ -20,7 +20,7 @@ All other types in Sway are built up of these primitive types, or references to 
 
 ## Numeric Types
 
-All of the unsigned integer types are numeric types, and the `byte` type can also be viewed as an 8-bit unsigned integer.
+All of the unsigned integer types are numeric types.
 
 Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, and underscores for delineation. Let's take a look at the following valid numeric primitives:
 

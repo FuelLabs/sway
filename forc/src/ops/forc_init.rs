@@ -89,9 +89,6 @@ pub fn init(command: InitCommand) -> Result<()> {
     // Make a new directory for the project
     fs::create_dir_all(Path::new(&project_dir).join("src"))?;
 
-    // Make directory for tests
-    fs::create_dir_all(Path::new(&project_dir).join("tests"))?;
-
     // Insert default manifest file
     match program_type {
         Library => fs::write(
@@ -103,12 +100,6 @@ pub fn init(command: InitCommand) -> Result<()> {
             defaults::default_manifest(&project_name, constants::MAIN_ENTRY),
         )?,
     }
-
-    // Insert default test manifest file
-    fs::write(
-        Path::new(&project_dir).join(constants::TEST_MANIFEST_FILE_NAME),
-        defaults::default_tests_manifest(&project_name),
-    )?;
 
     match program_type {
         Contract => fs::write(
@@ -136,15 +127,6 @@ pub fn init(command: InitCommand) -> Result<()> {
             defaults::default_predicate(),
         )?,
     }
-
-    // Insert default test function
-    let harness_path = Path::new(&project_dir).join("tests").join("harness.rs");
-    fs::write(&harness_path, defaults::default_test_program(&project_name))?;
-
-    debug!(
-        "\nCreated test harness at {}",
-        harness_path.canonicalize()?.display()
-    );
 
     // Ignore default `out` and `target` directories created by forc and cargo.
     let gitignore_path = Path::new(&project_dir).join(".gitignore");

@@ -1,14 +1,17 @@
 use std::{io, path::PathBuf};
+use sway_error::error::CompileError;
 use thiserror::Error;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Error)]
+#[error("Unable to parse: {}", self.0.iter().map(|x| x.to_string()).collect::<Vec<String>>().join("\n"))]
+pub struct ParseFileError(pub Vec<CompileError>);
 
 #[derive(Debug, Error)]
 pub enum FormatterError {
     #[error("Error parsing file: {0}")]
-    ParseFileError(#[from] sway_parse::ParseFileErrorStandalone),
+    ParseFileError(#[from] ParseFileError),
     #[error("Error formatting a message into a stream: {0}")]
     FormatError(#[from] std::fmt::Error),
-    #[error("Error while lexing file: {0}")]
-    LexError(#[from] sway_parse::LexError),
     #[error("Error while adding comments")]
     CommentError,
     #[error("Error while formatting newline sequences")]

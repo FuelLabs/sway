@@ -1,17 +1,17 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use sway_types::Spanned;
-use tower_lsp::lsp_types::{
-    PrepareRenameResponse, RenameParams, TextDocumentPositionParams, TextEdit, WorkspaceEdit,
-};
+use tower_lsp::lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
 
 use crate::core::{session::Session, token::AstToken};
 use crate::utils::common::get_range_from_span;
 
-pub fn rename(session: &Session, params: RenameParams) -> Option<WorkspaceEdit> {
-    let new_name = params.new_name;
-    let url = params.text_document_position.text_document.uri;
-    let position = params.text_document_position.position;
-
+pub fn rename(
+    session: Arc<Session>,
+    new_name: String,
+    url: Url,
+    position: Position,
+) -> Option<WorkspaceEdit> {
     if let Some((_, token)) = session.token_at_position(&url, position) {
         let mut edits = Vec::new();
 
@@ -22,20 +22,21 @@ pub fn rename(session: &Session, params: RenameParams) -> Option<WorkspaceEdit> 
         }
 
         let mut map_of_changes = HashMap::new();
-        map_of_changes.insert(url.clone(), edits);
-
-        Some(WorkspaceEdit::new(map_of_changes))
+        session.sync.to_workspace_url(url).map(|url| {
+            map_of_changes.insert(url, edits);
+            WorkspaceEdit::new(map_of_changes)
+        })
     } else {
         None
     }
 }
 
 pub fn prepare_rename(
-    session: &Session,
-    params: TextDocumentPositionParams,
+    session: Arc<Session>,
+    url: Url,
+    position: Position,
 ) -> Option<PrepareRenameResponse> {
-    let url = params.text_document.uri;
-    if let Some((ident, token)) = session.token_at_position(&url, params.position) {
+    if let Some((ident, token)) = session.token_at_position(&url, position) {
         match token.parsed {
             AstToken::Reassignment(_) => None,
             _ => Some(PrepareRenameResponse::RangeWithPlaceholder {

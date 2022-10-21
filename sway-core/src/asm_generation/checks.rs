@@ -6,6 +6,8 @@ use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
 use crate::asm_lang::*;
 use crate::error::*;
 
+use sway_error::error::CompileError;
+
 /// Checks for disallowed opcodes in non-contract code.
 /// i.e., if this is a script or predicate, we can't use certain contract opcodes.
 /// See https://github.com/FuelLabs/sway/issues/350 for details.

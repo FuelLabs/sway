@@ -1,12 +1,11 @@
 //! Instructions for data manipulation, but mostly control flow.
 //!
 //! Since Sway abstracts most low level operations behind traits they are translated into function
-//! calls which contain ASM blocks.  Therefore _at this stage_ Sway-IR doesn't need low level
-//! operations such as binary arithmetic and logic operators.
+//! calls which contain ASM blocks.
 //!
 //! Unfortuntely, using opaque ASM blocks limits the effectiveness of certain optimizations and
 //! this should be addressed in the future, perhaps by using compiler intrinsic calls instead of
-//! the ASM blocks where possible.
+//! the ASM blocks where possible. See: https://github.com/FuelLabs/sway/issues/855,
 
 use sway_types::ident::Ident;
 
@@ -20,6 +19,12 @@ use crate::{
     pretty::DebugWithContext,
     value::{Value, ValueDatum},
 };
+
+#[derive(Debug, Clone, DebugWithContext)]
+pub struct BranchToWithArgs {
+    pub block: Block,
+    pub args: Vec<Value>,
+}
 
 #[derive(Debug, Clone, DebugWithContext)]
 pub enum Instruction {
@@ -36,7 +41,7 @@ pub enum Instruction {
     /// Cast the type of a value without changing its actual content.
     BitCast(Value, Type),
     /// An unconditional jump.
-    Branch(Block),
+    Branch(BranchToWithArgs),
     /// A function call with a list of arguments.
     Call(Function, Vec<Value>),
     /// Comparison between two values using various comparators and returning a boolean.
@@ -44,8 +49,8 @@ pub enum Instruction {
     /// A conditional jump with the boolean condition value and true or false destinations.
     ConditionalBranch {
         cond_value: Value,
-        true_block: Block,
-        false_block: Block,
+        true_block: BranchToWithArgs,
+        false_block: BranchToWithArgs,
     },
     /// A contract call with a list of arguments
     ContractCall {
@@ -104,14 +109,20 @@ pub enum Instruction {
         log_ty: Type,
         log_id: Value,
     },
+    /// Copy a specified number of bytes between pointers.
+    MemCopy {
+        dst_val: Value,
+        src_val: Value,
+        byte_len: u64,
+    },
     /// No-op, handy as a placeholder instruction.
     Nop,
-    /// Choose a value from a list depending on the preceding block.
-    Phi(Vec<(Block, Value)>),
     /// Reads a special register in the VM.
     ReadRegister(Register),
     /// Return from a function.
     Ret(Value, Type),
+    /// Revert VM execution.
+    Revert(Value),
     /// Read a quad word from a storage slot. Type of `load_val` must be a B256 ptr.
     StateLoadQuadWord {
         load_val: Value,
@@ -207,7 +218,7 @@ impl Instruction {
             Instruction::InsertElement { array, .. } => array.get_type(context),
             Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
             Instruction::Load(ptr_val) => match &context.values[ptr_val.0].value {
-                ValueDatum::Argument(ty) => Some(ty.strip_ptr_type(context)),
+                ValueDatum::Argument(arg) => Some(arg.ty.strip_ptr_type(context)),
                 ValueDatum::Constant(cons) => Some(cons.ty.strip_ptr_type(context)),
                 ValueDatum::Instruction(ins) => {
                     ins.get_type(context).map(|f| f.strip_ptr_type(context))
@@ -216,11 +227,6 @@ impl Instruction {
             Instruction::Log { .. } => Some(Type::Unit),
             Instruction::ReadRegister(_) => Some(Type::Uint(64)),
             Instruction::StateLoadWord(_) => Some(Type::Uint(64)),
-            Instruction::Phi(alts) => {
-                // Assuming each alt has the same type, we can take the first one. Note: `verify()`
-                // confirms the types are all the same.
-                alts.get(0).and_then(|(_, val)| val.get_type(context))
-            }
 
             // These can be recursed to via Load, so we return the pointer type.
             Instruction::GetPointer { ptr_ty, .. } => Some(Type::Pointer(*ptr_ty)),
@@ -232,7 +238,9 @@ impl Instruction {
             Instruction::Branch(_) => None,
             Instruction::ConditionalBranch { .. } => None,
             Instruction::Ret(..) => None,
+            Instruction::Revert(..) => None,
 
+            Instruction::MemCopy { .. } => Some(Type::Unit),
             Instruction::StateLoadQuadWord { .. } => Some(Type::Unit),
             Instruction::StateStoreQuadWord { .. } => Some(Type::Unit),
             Instruction::StateStoreWord { .. } => Some(Type::Unit),
@@ -297,13 +305,23 @@ impl Instruction {
                 replace(arg1);
                 replace(arg2);
             }
-            Instruction::Branch(_) => (),
+            Instruction::Branch(block) => {
+                block.args.iter_mut().for_each(replace);
+            }
             Instruction::Call(_, args) => args.iter_mut().for_each(replace),
             Instruction::Cmp(_, lhs_val, rhs_val) => {
                 replace(lhs_val);
                 replace(rhs_val);
             }
-            Instruction::ConditionalBranch { cond_value, .. } => replace(cond_value),
+            Instruction::ConditionalBranch {
+                cond_value,
+                true_block,
+                false_block,
+            } => {
+                replace(cond_value);
+                true_block.args.iter_mut().for_each(replace);
+                false_block.args.iter_mut().for_each(replace);
+            }
             Instruction::ContractCall {
                 params,
                 coins,
@@ -350,10 +368,16 @@ impl Instruction {
                 replace(log_val);
                 replace(log_id);
             }
+            Instruction::MemCopy {
+                dst_val, src_val, ..
+            } => {
+                replace(dst_val);
+                replace(src_val);
+            }
             Instruction::Nop => (),
-            Instruction::Phi(pairs) => pairs.iter_mut().for_each(|(_, val)| replace(val)),
             Instruction::ReadRegister { .. } => (),
             Instruction::Ret(ret_val, _) => replace(ret_val),
+            Instruction::Revert(revert_val) => replace(revert_val),
             Instruction::StateLoadQuadWord { load_val, key } => {
                 replace(load_val);
                 replace(key);
@@ -381,6 +405,7 @@ impl Instruction {
                 | Instruction::Call(..)
                 | Instruction::ContractCall { .. }
                 | Instruction::Log { .. }
+                | Instruction::MemCopy { .. }
                 | Instruction::StateLoadQuadWord { .. }
                 | Instruction::StateStoreQuadWord { .. }
                 | Instruction::StateStoreWord { .. }
@@ -400,12 +425,12 @@ impl Instruction {
                 | Instruction::Load(_)
                 | Instruction::ReadRegister(_)
                 | Instruction::StateLoadWord(_)
-                | Instruction::Phi(_)
                 | Instruction::GetPointer { .. }
                 | Instruction::IntToPtr(..)
                 | Instruction::Branch(_)
                 | Instruction::ConditionalBranch { .. }
                 | Instruction::Ret(..)
+                | Instruction::Revert(..)
                 | Instruction::Nop => false,
         }
     }
@@ -413,7 +438,10 @@ impl Instruction {
     pub fn is_terminator(&self) -> bool {
         matches!(
             self,
-            Instruction::Branch(_) | Instruction::ConditionalBranch { .. } | Instruction::Ret(..)
+            Instruction::Branch(_)
+                | Instruction::ConditionalBranch { .. }
+                | Instruction::Ret(..)
+                | Instruction::Revert(..)
         )
     }
 }
@@ -459,6 +487,16 @@ pub struct InstructionInserter<'a> {
     block: Block,
 }
 
+macro_rules! make_instruction {
+    ($self: ident, $ctor: expr) => {{
+        let instruction_val = Value::new_instruction($self.context, $ctor);
+        $self.context.blocks[$self.block.0]
+            .instructions
+            .push(instruction_val);
+        instruction_val
+    }};
+}
+
 impl<'a> InstructionInserter<'a> {
     /// Return a new [`InstructionInserter`] context for `block`.
     pub fn new(context: &'a mut Context, block: Block) -> InstructionInserter<'a> {
@@ -467,8 +505,6 @@ impl<'a> InstructionInserter<'a> {
 
     //
     // XXX Maybe these should return result, in case they get bad args?
-    //
-    // XXX Also, these are all the same and could probably be created with a local macro.
     //
 
     /// Append a new [`Instruction::AsmBlock`] from `args` and a `body`.
@@ -490,67 +526,44 @@ impl<'a> InstructionInserter<'a> {
     }
 
     pub fn asm_block_from_asm(self, asm: AsmBlock, args: Vec<AsmArg>) -> Value {
-        let asm_val = Value::new_instruction(self.context, Instruction::AsmBlock(asm, args));
-        self.context.blocks[self.block.0].instructions.push(asm_val);
-        asm_val
+        make_instruction!(self, Instruction::AsmBlock(asm, args))
     }
 
     pub fn addr_of(self, value: Value) -> Value {
-        let addrof_val = Value::new_instruction(self.context, Instruction::AddrOf(value));
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(addrof_val);
-        addrof_val
+        make_instruction!(self, Instruction::AddrOf(value))
     }
 
     pub fn bitcast(self, value: Value, ty: Type) -> Value {
-        let bitcast_val = Value::new_instruction(self.context, Instruction::BitCast(value, ty));
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(bitcast_val);
-        bitcast_val
+        make_instruction!(self, Instruction::BitCast(value, ty))
     }
 
     pub fn binary_op(self, op: BinaryOpKind, arg1: Value, arg2: Value) -> Value {
-        let binop_val =
-            Value::new_instruction(self.context, Instruction::BinaryOp { op, arg1, arg2 });
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(binop_val);
-        binop_val
+        make_instruction!(self, Instruction::BinaryOp { op, arg1, arg2 })
     }
 
     pub fn int_to_ptr(self, value: Value, ty: Type) -> Value {
-        let int_to_ptr_val = Value::new_instruction(self.context, Instruction::IntToPtr(value, ty));
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(int_to_ptr_val);
-        int_to_ptr_val
+        make_instruction!(self, Instruction::IntToPtr(value, ty))
     }
 
-    pub fn branch(self, to_block: Block, phi_value: Option<Value>) -> Value {
-        let br_val = Value::new_instruction(self.context, Instruction::Branch(to_block));
-        phi_value
-            .into_iter()
-            .for_each(|pv| to_block.add_phi(self.context, self.block, pv));
+    pub fn branch(self, to_block: Block, dest_params: Vec<Value>) -> Value {
+        let br_val = Value::new_instruction(
+            self.context,
+            Instruction::Branch(BranchToWithArgs {
+                block: to_block,
+                args: dest_params,
+            }),
+        );
+        to_block.add_pred(self.context, &self.block);
         self.context.blocks[self.block.0].instructions.push(br_val);
         br_val
     }
 
     pub fn call(self, function: Function, args: &[Value]) -> Value {
-        let call_val =
-            Value::new_instruction(self.context, Instruction::Call(function, args.to_vec()));
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(call_val);
-        call_val
+        make_instruction!(self, Instruction::Call(function, args.to_vec()))
     }
 
     pub fn cmp(self, pred: Predicate, lhs_value: Value, rhs_value: Value) -> Value {
-        let cmp_val =
-            Value::new_instruction(self.context, Instruction::Cmp(pred, lhs_value, rhs_value));
-        self.context.blocks[self.block.0].instructions.push(cmp_val);
-        cmp_val
+        make_instruction!(self, Instruction::Cmp(pred, lhs_value, rhs_value))
     }
 
     pub fn conditional_branch(
@@ -558,20 +571,25 @@ impl<'a> InstructionInserter<'a> {
         cond_value: Value,
         true_block: Block,
         false_block: Block,
-        phi_value: Option<Value>,
+        true_dest_params: Vec<Value>,
+        false_dest_params: Vec<Value>,
     ) -> Value {
         let cbr_val = Value::new_instruction(
             self.context,
             Instruction::ConditionalBranch {
                 cond_value,
-                true_block,
-                false_block,
+                true_block: BranchToWithArgs {
+                    block: true_block,
+                    args: true_dest_params,
+                },
+                false_block: BranchToWithArgs {
+                    block: false_block,
+                    args: false_dest_params,
+                },
             },
         );
-        phi_value.into_iter().for_each(|pv| {
-            true_block.add_phi(self.context, self.block, pv);
-            false_block.add_phi(self.context, self.block, pv);
-        });
+        true_block.add_pred(self.context, &self.block);
+        false_block.add_pred(self.context, &self.block);
         self.context.blocks[self.block.0].instructions.push(cbr_val);
         cbr_val
     }
@@ -585,8 +603,8 @@ impl<'a> InstructionInserter<'a> {
         asset_id: Value, // b256 asset ID of the coint being forwarded
         gas: Value,      // amount of gas to forward
     ) -> Value {
-        let contract_call_val = Value::new_instruction(
-            self.context,
+        make_instruction!(
+            self,
             Instruction::ContractCall {
                 return_type,
                 name,
@@ -594,72 +612,50 @@ impl<'a> InstructionInserter<'a> {
                 coins,
                 asset_id,
                 gas,
-            },
-        );
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(contract_call_val);
-        contract_call_val
+            }
+        )
     }
 
     pub fn extract_element(self, array: Value, ty: Aggregate, index_val: Value) -> Value {
-        let extract_element_val = Value::new_instruction(
-            self.context,
+        make_instruction!(
+            self,
             Instruction::ExtractElement {
                 array,
                 ty,
                 index_val,
-            },
-        );
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(extract_element_val);
-        extract_element_val
+            }
+        )
     }
 
     pub fn extract_value(self, aggregate: Value, ty: Aggregate, indices: Vec<u64>) -> Value {
-        let extract_value_val = Value::new_instruction(
-            self.context,
+        make_instruction!(
+            self,
             Instruction::ExtractValue {
                 aggregate,
                 ty,
                 indices,
-            },
-        );
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(extract_value_val);
-        extract_value_val
+            }
+        )
     }
 
     pub fn get_storage_key(self) -> Value {
-        let get_storage_key_val = Value::new_instruction(self.context, Instruction::GetStorageKey);
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(get_storage_key_val);
-        get_storage_key_val
+        make_instruction!(self, Instruction::GetStorageKey)
     }
 
     pub fn gtf(self, index: Value, tx_field_id: u64) -> Value {
-        let gtf_val = Value::new_instruction(self.context, Instruction::Gtf { index, tx_field_id });
-        self.context.blocks[self.block.0].instructions.push(gtf_val);
-        gtf_val
+        make_instruction!(self, Instruction::Gtf { index, tx_field_id })
     }
 
     pub fn get_ptr(self, base_ptr: Pointer, ptr_ty: Type, offset: u64) -> Value {
         let ptr = Pointer::new(self.context, ptr_ty, false, None);
-        let get_ptr_val = Value::new_instruction(
-            self.context,
+        make_instruction!(
+            self,
             Instruction::GetPointer {
                 base_ptr,
                 ptr_ty: ptr,
                 offset,
-            },
-        );
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(get_ptr_val);
-        get_ptr_val
+            }
+        )
     }
 
     pub fn insert_element(
@@ -669,19 +665,15 @@ impl<'a> InstructionInserter<'a> {
         value: Value,
         index_val: Value,
     ) -> Value {
-        let insert_val = Value::new_instruction(
-            self.context,
+        make_instruction!(
+            self,
             Instruction::InsertElement {
                 array,
                 ty,
                 value,
                 index_val,
-            },
-        );
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(insert_val);
-        insert_val
+            }
+        )
     }
 
     pub fn insert_value(
@@ -691,117 +683,86 @@ impl<'a> InstructionInserter<'a> {
         value: Value,
         indices: Vec<u64>,
     ) -> Value {
-        let insert_val = Value::new_instruction(
-            self.context,
+        make_instruction!(
+            self,
             Instruction::InsertValue {
                 aggregate,
                 ty,
                 value,
                 indices,
-            },
-        );
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(insert_val);
-        insert_val
+            }
+        )
     }
 
     pub fn load(self, src_val: Value) -> Value {
-        let load_val = Value::new_instruction(self.context, Instruction::Load(src_val));
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(load_val);
-        load_val
+        make_instruction!(self, Instruction::Load(src_val))
     }
 
     pub fn log(self, log_val: Value, log_ty: Type, log_id: Value) -> Value {
-        let log_instr_val = Value::new_instruction(
-            self.context,
+        make_instruction!(
+            self,
             Instruction::Log {
                 log_val,
                 log_ty,
-                log_id,
-            },
-        );
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(log_instr_val);
-        log_instr_val
+                log_id
+            }
+        )
+    }
+
+    pub fn mem_copy(self, dst_val: Value, src_val: Value, byte_len: u64) -> Value {
+        make_instruction!(
+            self,
+            Instruction::MemCopy {
+                dst_val,
+                src_val,
+                byte_len
+            }
+        )
     }
 
     pub fn nop(self) -> Value {
-        let nop_val = Value::new_instruction(self.context, Instruction::Nop);
-        self.context.blocks[self.block.0].instructions.push(nop_val);
-        nop_val
+        make_instruction!(self, Instruction::Nop)
     }
 
     pub fn read_register(self, reg: Register) -> Value {
-        let read_register_val =
-            Value::new_instruction(self.context, Instruction::ReadRegister(reg));
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(read_register_val);
-        read_register_val
+        make_instruction!(self, Instruction::ReadRegister(reg))
     }
 
     pub fn ret(self, value: Value, ty: Type) -> Value {
-        let ret_val = Value::new_instruction(self.context, Instruction::Ret(value, ty));
-        self.context.blocks[self.block.0].instructions.push(ret_val);
-        ret_val
+        make_instruction!(self, Instruction::Ret(value, ty))
+    }
+
+    pub fn revert(self, value: Value) -> Value {
+        let revert_val = Value::new_instruction(self.context, Instruction::Revert(value));
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(revert_val);
+        revert_val
     }
 
     pub fn state_load_quad_word(self, load_val: Value, key: Value) -> Value {
-        let state_load_val = Value::new_instruction(
-            self.context,
-            Instruction::StateLoadQuadWord { load_val, key },
-        );
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(state_load_val);
-        state_load_val
+        make_instruction!(self, Instruction::StateLoadQuadWord { load_val, key })
     }
 
     pub fn state_load_word(self, key: Value) -> Value {
-        let state_load_val = Value::new_instruction(self.context, Instruction::StateLoadWord(key));
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(state_load_val);
-        state_load_val
+        make_instruction!(self, Instruction::StateLoadWord(key))
     }
 
     pub fn state_store_quad_word(self, stored_val: Value, key: Value) -> Value {
-        let state_store_val = Value::new_instruction(
-            self.context,
-            Instruction::StateStoreQuadWord { stored_val, key },
-        );
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(state_store_val);
-        state_store_val
+        make_instruction!(self, Instruction::StateStoreQuadWord { stored_val, key })
     }
 
     pub fn state_store_word(self, stored_val: Value, key: Value) -> Value {
-        let state_store_val = Value::new_instruction(
-            self.context,
-            Instruction::StateStoreWord { stored_val, key },
-        );
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(state_store_val);
-        state_store_val
+        make_instruction!(self, Instruction::StateStoreWord { stored_val, key })
     }
 
     pub fn store(self, dst_val: Value, stored_val: Value) -> Value {
-        let store_val = Value::new_instruction(
-            self.context,
+        make_instruction!(
+            self,
             Instruction::Store {
                 dst_val,
                 stored_val,
-            },
-        );
-        self.context.blocks[self.block.0]
-            .instructions
-            .push(store_val);
-        store_val
+            }
+        )
     }
 }

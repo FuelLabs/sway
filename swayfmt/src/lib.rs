@@ -10,6 +10,7 @@ mod error;
 mod formatter;
 mod items;
 mod module;
+mod parse;
 mod utils;
 
 pub use crate::formatter::{Format, Formatter};

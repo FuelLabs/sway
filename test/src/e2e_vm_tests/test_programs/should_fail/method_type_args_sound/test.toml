@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()This parameter was declared as type u8, but argument of type bool was provided.
+# check: $()Mismatched types.

@@ -1,7 +1,8 @@
-use crate::{Parse, ParseErrorKind, ParseResult, Parser};
+use crate::{Parse, ParseResult, Parser};
 
 use sway_ast::keywords::{ClassToken, Keyword, OpenAngleBracketToken, StructToken, WhereToken};
 use sway_ast::ItemStruct;
+use sway_error::parser_error::ParseErrorKind;
 use sway_types::Spanned;
 
 impl Parse for ItemStruct {

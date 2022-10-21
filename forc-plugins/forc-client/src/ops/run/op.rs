@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, Result};
-use forc_pkg::{fuel_core_not_running, BuildOptions, ManifestFile};
+use forc_pkg::{fuel_core_not_running, BuildOptions, PackageManifestFile};
 use fuel_crypto::Signature;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{AssetId, Output, Transaction, Witness};
@@ -8,7 +8,7 @@ use fuels_signers::{provider::Provider, Wallet};
 use fuels_types::bech32::Bech32Address;
 use futures::TryFutureExt;
 use std::{io::Write, path::PathBuf, str::FromStr};
-use sway_core::TreeType;
+use sway_core::language::parsed::TreeType;
 use tracing::info;
 
 use crate::ops::{parameters::TxParameters, run::cmd::RunCommand};
@@ -21,7 +21,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     } else {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
-    let manifest = ManifestFile::from_dir(&path_dir)?;
+    let manifest = PackageManifestFile::from_dir(&path_dir)?;
     manifest.check_program_type(vec![TreeType::Script])?;
 
     let input_data = &command.data.unwrap_or_else(|| "".into());
@@ -45,7 +45,6 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         build_profile: None,
         release: false,
         time_phases: command.time_phases,
-        generate_logged_types: command.generate_logged_types,
     };
 
     let compiled = forc_pkg::build_with_options(build_options)?;

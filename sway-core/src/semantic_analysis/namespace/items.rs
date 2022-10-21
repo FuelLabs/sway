@@ -1,14 +1,17 @@
 use crate::{
     declaration_engine::{declaration_engine::de_get_storage, declaration_id::DeclarationId},
     error::*,
+    language::{ty, CallPath},
     namespace::*,
-    parse_tree::*,
-    semantic_analysis::*,
     type_system::*,
 };
 
 use super::TraitMap;
 
+use sway_error::{
+    error::CompileError,
+    warning::{CompileWarning, Warning},
+};
 use sway_types::{span::Span, Spanned};
 
 use std::sync::Arc;
@@ -20,7 +23,7 @@ pub(crate) enum GlobImport {
     No,
 }
 
-pub(super) type SymbolMap = im::OrdMap<Ident, TypedDeclaration>;
+pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDeclaration>;
 pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 
@@ -53,9 +56,9 @@ impl Items {
     pub fn apply_storage_load(
         &self,
         fields: Vec<Ident>,
-        storage_fields: &[TypedStorageField],
+        storage_fields: &[ty::TyStorageField],
         access_span: &Span,
-    ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
+    ) -> CompileResult<(ty::TyStorageAccess, TypeId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match self.declared_storage {
@@ -97,7 +100,7 @@ impl Items {
     pub(crate) fn insert_symbol(
         &mut self,
         name: Ident,
-        item: TypedDeclaration,
+        item: ty::TyDeclaration,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -105,11 +108,11 @@ impl Items {
         // new definition allows later usages to compile
         if self.symbols.get(&name).is_some() {
             match item {
-                TypedDeclaration::EnumDeclaration { .. }
-                | TypedDeclaration::StructDeclaration { .. } => {
+                ty::TyDeclaration::EnumDeclaration { .. }
+                | ty::TyDeclaration::StructDeclaration { .. } => {
                     errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
                 }
-                TypedDeclaration::GenericTypeForFunctionScope { .. } => {
+                ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
                     errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
                 }
                 _ => {
@@ -124,7 +127,7 @@ impl Items {
         ok((), warnings, errors)
     }
 
-    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&TypedDeclaration, CompileError> {
+    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDeclaration, CompileError> {
         self.symbols
             .get(name)
             .ok_or_else(|| CompileError::SymbolNotFound { name: name.clone() })
@@ -134,7 +137,7 @@ impl Items {
         &mut self,
         trait_name: CallPath,
         implementing_for_type_id: TypeId,
-        functions_buf: Vec<TypedFunctionDeclaration>,
+        functions_buf: Vec<ty::TyFunctionDeclaration>,
     ) {
         let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
@@ -157,7 +160,7 @@ impl Items {
     pub(crate) fn get_methods_for_type(
         &self,
         implementing_for_type_id: TypeId,
-    ) -> Vec<TypedFunctionDeclaration> {
+    ) -> Vec<ty::TyFunctionDeclaration> {
         self.implemented_traits
             .get_methods_for_type(implementing_for_type_id)
     }
@@ -176,7 +179,7 @@ impl Items {
     pub(crate) fn get_storage_field_descriptors(
         &self,
         access_span: &Span,
-    ) -> CompileResult<Vec<TypedStorageField>> {
+    ) -> CompileResult<Vec<ty::TyStorageField>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match self.declared_storage {
@@ -203,7 +206,7 @@ impl Items {
     pub(crate) fn find_subfield_type(
         &self,
         base_name: &Ident,
-        projections: &[ProjectionKind],
+        projections: &[ty::ProjectionKind],
     ) -> CompileResult<(TypeId, TypeId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -241,11 +244,11 @@ impl Items {
                         fields,
                         ..
                     },
-                    ProjectionKind::StructField { name: field_name },
+                    ty::ProjectionKind::StructField { name: field_name },
                 ) => {
                     let field_type_opt = {
                         fields.iter().find_map(
-                            |TypedStructField {
+                            |ty::TyStructField {
                                  type_id: r#type,
                                  name,
                                  ..
@@ -282,7 +285,7 @@ impl Items {
                     full_span_for_error =
                         Span::join(full_span_for_error, field_name.span().clone());
                 }
-                (TypeInfo::Tuple(fields), ProjectionKind::TupleField { index, index_span }) => {
+                (TypeInfo::Tuple(fields), ty::ProjectionKind::TupleField { index, index_span }) => {
                     let field_type_opt = {
                         fields
                             .get(*index)
@@ -305,14 +308,14 @@ impl Items {
                     full_name_for_error.push_str(&index.to_string());
                     full_span_for_error = Span::join(full_span_for_error, index_span.clone());
                 }
-                (actually, ProjectionKind::StructField { .. }) => {
+                (actually, ty::ProjectionKind::StructField { .. }) => {
                     errors.push(CompileError::FieldAccessOnNonStruct {
                         span: full_span_for_error,
                         actually: actually.to_string(),
                     });
                     return err(warnings, errors);
                 }
-                (actually, ProjectionKind::TupleField { .. }) => {
+                (actually, ty::ProjectionKind::TupleField { .. }) => {
                     errors.push(CompileError::NotATuple {
                         name: full_name_for_error,
                         span: full_span_for_error,

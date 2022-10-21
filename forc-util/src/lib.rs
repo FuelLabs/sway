@@ -9,9 +9,11 @@ use anyhow::{bail, Result};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::str;
-use std::{env, ffi::OsStr};
+use std::{env, io};
 use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
-use sway_types::Spanned;
+use sway_error::error::CompileError;
+use sway_error::warning::CompileWarning;
+use sway_types::{LineCol, Spanned};
 use sway_utils::constants;
 use tracing::{Level, Metadata};
 use tracing_subscriber::{filter::LevelFilter, fmt::MakeWriter, EnvFilter};
@@ -40,10 +42,6 @@ pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option
 /// Continually go up in the file tree until a Forc manifest file is found.
 pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
     find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
-}
-/// Continually go up in the file tree until a Cargo manifest file is found.
-pub fn find_cargo_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
-    find_parent_dir_with_file(starter_path, constants::TEST_MANIFEST_FILE_NAME)
 }
 
 pub fn is_sway_file(file: &Path) -> bool {
@@ -228,7 +226,7 @@ fn println_std_err(txt: &str, color: Colour) {
     tracing::error!("{}", color.paint(txt));
 }
 
-fn format_err(err: &sway_core::CompileError) {
+fn format_err(err: &CompileError) {
     let span = err.span();
     let input = span.input();
     let path = err.path();
@@ -244,7 +242,7 @@ fn format_err(err: &sway_core::CompileError) {
             annotation_type: AnnotationType::Error,
         });
 
-        let (mut start, end) = err.line_col();
+        let (mut start, end) = err.span().line_col();
         let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
         let slices = vec![Slice {
             source: input,
@@ -282,7 +280,7 @@ fn format_err(err: &sway_core::CompileError) {
     tracing::error!("{}\n____\n", DisplayList::from(snippet))
 }
 
-fn format_warning(err: &sway_core::CompileWarning) {
+fn format_warning(err: &CompileWarning) {
     let span = err.span();
     let input = span.input();
     let path = err.path();
@@ -296,7 +294,7 @@ fn format_warning(err: &sway_core::CompileWarning) {
         end_pos += 1;
     }
 
-    let (mut start, end) = err.line_col();
+    let (mut start, end) = err.span.line_col();
     let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
     let snippet = Snippet {
         title: Some(Annotation {

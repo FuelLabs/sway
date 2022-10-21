@@ -1,42 +1,17 @@
 use std::collections::{HashMap, HashSet};
 
+use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    declaration_engine::declaration_engine::*,
-    error::{err, ok},
-    semantic_analysis::{
-        Mode, TypeCheckContext, TypedAstNodeContent, TypedConstantDeclaration, TypedExpression,
-        TypedExpressionVariant, TypedIntrinsicFunctionKind,
-    },
-    type_system::{
-        insert_type, look_up_type_id, set_type_as_storage_only, to_typeinfo, unify_with_self,
-        CopyTypes, TypeId, TypeMapping, TypeParameter,
-    },
-    CallPath, CompileError, CompileResult, FunctionDeclaration, ImplSelf, ImplTrait, Purity,
-    TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    declaration_engine::{declaration_engine::*, DeclarationId},
+    error::*,
+    language::{parsed::*, ty, *},
+    semantic_analysis::{Mode, TypeCheckContext},
+    type_system::*,
 };
 
-use super::TypedTraitFn;
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TypedImplTrait {
-    pub trait_name: CallPath,
-    pub(crate) span: Span,
-    pub methods: Vec<TypedFunctionDeclaration>,
-    pub implementing_for_type_id: TypeId,
-    pub type_implementing_for_span: Span,
-}
-
-impl CopyTypes for TypedImplTrait {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.methods
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-    }
-}
-
-impl TypedImplTrait {
+impl ty::TyImplTrait {
     pub(crate) fn type_check_impl_trait(
         ctx: TypeCheckContext,
         impl_trait: ImplTrait,
@@ -45,13 +20,22 @@ impl TypedImplTrait {
         let mut warnings = vec![];
 
         let ImplTrait {
+            impl_type_parameters,
             trait_name,
-            type_parameters,
-            functions,
+            trait_type_arguments,
             type_implementing_for,
             type_implementing_for_span,
+            functions,
             block_span,
         } = impl_trait;
+
+        if !trait_type_arguments.is_empty() {
+            errors.push(CompileError::Unimplemented(
+                "Generic traits are not yet implemented.",
+                Span::join_all(trait_type_arguments.into_iter().map(|x| x.span())),
+            ));
+            return err(warnings, errors);
+        }
 
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
@@ -60,9 +44,9 @@ impl TypedImplTrait {
         // type check the type parameters
         // insert them into the namespace
         // TODO: eventually when we support generic traits, we will want to use this
-        let mut new_type_parameters = vec![];
-        for type_parameter in type_parameters.into_iter() {
-            new_type_parameters.push(check!(
+        let mut new_impl_type_parameters = vec![];
+        for type_parameter in impl_type_parameters.into_iter() {
+            new_impl_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
                 warnings,
@@ -85,7 +69,7 @@ impl TypedImplTrait {
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
-                &new_type_parameters,
+                &new_impl_type_parameters,
                 implementing_for_type_id,
                 &type_implementing_for_span
             ),
@@ -103,7 +87,7 @@ impl TypedImplTrait {
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(TypedDeclaration::TraitDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let tr = check!(
                     CompileResult::from(de_get_trait(decl_id, &trait_name.span())),
                     return err(warnings, errors),
@@ -125,10 +109,16 @@ impl TypedImplTrait {
                     warnings,
                     errors
                 );
-                let impl_trait = TypedImplTrait {
+                let functions_decl_id = functions_buf
+                    .iter()
+                    .map(|d| de_insert_function(d.clone()))
+                    .collect::<Vec<_>>();
+                let impl_trait = ty::TyImplTrait {
+                    impl_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     trait_name,
+                    trait_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     span: block_span,
-                    methods: functions_buf,
+                    methods: functions_decl_id,
                     implementing_for_type_id,
                     type_implementing_for_span: type_implementing_for_span.clone(),
                 };
@@ -143,7 +133,7 @@ impl TypedImplTrait {
                 );
                 (impl_trait, implementing_for_type_id)
             }
-            Some(TypedDeclaration::AbiDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::AbiDeclaration(decl_id)) => {
                 // if you are comparing this with the `impl_trait` branch above, note that
                 // there are no type arguments here because we don't support generic types
                 // in contract ABIs yet (or ever?) due to the complexity of communicating
@@ -180,10 +170,16 @@ impl TypedImplTrait {
                     warnings,
                     errors
                 );
-                let impl_trait = TypedImplTrait {
+                let functions_decl_id = functions_buf
+                    .iter()
+                    .map(|d| de_insert_function(d.clone()))
+                    .collect::<Vec<_>>();
+                let impl_trait = ty::TyImplTrait {
+                    impl_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     trait_name,
+                    trait_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
                     span: block_span,
-                    methods: functions_buf,
+                    methods: functions_decl_id,
                     implementing_for_type_id,
                     type_implementing_for_span,
                 };
@@ -205,40 +201,39 @@ impl TypedImplTrait {
     // This is noted down in the type engine.
     fn gather_storage_only_types(
         impl_typ: TypeId,
-        methods: &[TypedFunctionDeclaration],
+        methods: &[ty::TyFunctionDeclaration],
         access_span: &Span,
     ) -> Result<(), CompileError> {
-        use crate::semantic_analysis;
         fn ast_node_contains_get_storage_index(
-            x: &TypedAstNodeContent,
+            x: &ty::TyAstNodeContent,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             match x {
-                TypedAstNodeContent::Expression(expr)
-                | TypedAstNodeContent::ImplicitReturnExpression(expr) => {
+                ty::TyAstNodeContent::Expression(expr)
+                | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
                     expr_contains_get_storage_index(expr, access_span)
                 }
-                TypedAstNodeContent::Declaration(decl) => {
+                ty::TyAstNodeContent::Declaration(decl) => {
                     decl_contains_get_storage_index(decl, access_span)
                 }
-                TypedAstNodeContent::SideEffect => Ok(false),
+                ty::TyAstNodeContent::SideEffect => Ok(false),
             }
         }
 
         fn expr_contains_get_storage_index(
-            expr: &TypedExpression,
+            expr: &ty::TyExpression,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             let res = match &expr.expression {
-                TypedExpressionVariant::Literal(_)
-                | TypedExpressionVariant::VariableExpression { .. }
-                | TypedExpressionVariant::FunctionParameter
-                | TypedExpressionVariant::AsmExpression { .. }
-                | TypedExpressionVariant::Break
-                | TypedExpressionVariant::Continue
-                | TypedExpressionVariant::StorageAccess(_)
-                | TypedExpressionVariant::AbiName(_) => false,
-                TypedExpressionVariant::FunctionApplication { arguments, .. } => {
+                ty::TyExpressionVariant::Literal(_)
+                | ty::TyExpressionVariant::VariableExpression { .. }
+                | ty::TyExpressionVariant::FunctionParameter
+                | ty::TyExpressionVariant::AsmExpression { .. }
+                | ty::TyExpressionVariant::Break
+                | ty::TyExpressionVariant::Continue
+                | ty::TyExpressionVariant::StorageAccess(_)
+                | ty::TyExpressionVariant::AbiName(_) => false,
+                ty::TyExpressionVariant::FunctionApplication { arguments, .. } => {
                     for f in arguments.iter() {
                         let b = expr_contains_get_storage_index(&f.1, access_span)?;
                         if b {
@@ -247,20 +242,20 @@ impl TypedImplTrait {
                     }
                     false
                 }
-                TypedExpressionVariant::LazyOperator {
+                ty::TyExpressionVariant::LazyOperator {
                     lhs: expr1,
                     rhs: expr2,
                     ..
                 }
-                | TypedExpressionVariant::ArrayIndex {
+                | ty::TyExpressionVariant::ArrayIndex {
                     prefix: expr1,
                     index: expr2,
                 } => {
                     expr_contains_get_storage_index(expr1, access_span)?
                         || expr_contains_get_storage_index(expr2, access_span)?
                 }
-                TypedExpressionVariant::Tuple { fields: exprvec }
-                | TypedExpressionVariant::Array { contents: exprvec } => {
+                ty::TyExpressionVariant::Tuple { fields: exprvec }
+                | ty::TyExpressionVariant::Array { contents: exprvec } => {
                     for f in exprvec.iter() {
                         let b = expr_contains_get_storage_index(f, access_span)?;
                         if b {
@@ -270,7 +265,7 @@ impl TypedImplTrait {
                     false
                 }
 
-                TypedExpressionVariant::StructExpression { fields, .. } => {
+                ty::TyExpressionVariant::StructExpression { fields, .. } => {
                     for f in fields.iter() {
                         let b = expr_contains_get_storage_index(&f.value, access_span)?;
                         if b {
@@ -279,10 +274,10 @@ impl TypedImplTrait {
                     }
                     false
                 }
-                TypedExpressionVariant::CodeBlock(cb) => {
+                ty::TyExpressionVariant::CodeBlock(cb) => {
                     codeblock_contains_get_storage_index(cb, access_span)?
                 }
-                TypedExpressionVariant::IfExp {
+                ty::TyExpressionVariant::IfExp {
                     condition,
                     then,
                     r#else,
@@ -293,69 +288,69 @@ impl TypedImplTrait {
                             expr_contains_get_storage_index(r#else, access_span)
                         })?
                 }
-                TypedExpressionVariant::StructFieldAccess { prefix: exp, .. }
-                | TypedExpressionVariant::TupleElemAccess { prefix: exp, .. }
-                | TypedExpressionVariant::AbiCast { address: exp, .. }
-                | TypedExpressionVariant::EnumTag { exp }
-                | TypedExpressionVariant::UnsafeDowncast { exp, .. } => {
+                ty::TyExpressionVariant::StructFieldAccess { prefix: exp, .. }
+                | ty::TyExpressionVariant::TupleElemAccess { prefix: exp, .. }
+                | ty::TyExpressionVariant::AbiCast { address: exp, .. }
+                | ty::TyExpressionVariant::EnumTag { exp }
+                | ty::TyExpressionVariant::UnsafeDowncast { exp, .. } => {
                     expr_contains_get_storage_index(exp, access_span)?
                 }
-                TypedExpressionVariant::EnumInstantiation { contents, .. } => {
+                ty::TyExpressionVariant::EnumInstantiation { contents, .. } => {
                     contents.as_ref().map_or(Ok(false), |f| {
                         expr_contains_get_storage_index(f, access_span)
                     })?
                 }
 
-                TypedExpressionVariant::IntrinsicFunction(TypedIntrinsicFunctionKind {
+                ty::TyExpressionVariant::IntrinsicFunction(ty::TyIntrinsicFunctionKind {
                     kind,
                     ..
                 }) => matches!(kind, sway_ast::intrinsics::Intrinsic::GetStorageKey),
-                TypedExpressionVariant::WhileLoop { condition, body } => {
+                ty::TyExpressionVariant::WhileLoop { condition, body } => {
                     expr_contains_get_storage_index(condition, access_span)?
                         || codeblock_contains_get_storage_index(body, access_span)?
                 }
-                TypedExpressionVariant::Reassignment(reassignment) => {
+                ty::TyExpressionVariant::Reassignment(reassignment) => {
                     expr_contains_get_storage_index(&reassignment.rhs, access_span)?
                 }
-                TypedExpressionVariant::StorageReassignment(storage_reassignment) => {
+                ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {
                     expr_contains_get_storage_index(&storage_reassignment.rhs, access_span)?
                 }
-                TypedExpressionVariant::Return(stmt) => {
-                    expr_contains_get_storage_index(&stmt.expr, access_span)?
+                ty::TyExpressionVariant::Return(exp) => {
+                    expr_contains_get_storage_index(exp, access_span)?
                 }
             };
             Ok(res)
         }
 
         fn decl_contains_get_storage_index(
-            decl: &TypedDeclaration,
+            decl: &ty::TyDeclaration,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             match decl {
-                TypedDeclaration::VariableDeclaration(decl) => {
+                ty::TyDeclaration::VariableDeclaration(decl) => {
                     expr_contains_get_storage_index(&decl.body, access_span)
                 }
-                TypedDeclaration::ConstantDeclaration(decl_id) => {
-                    let TypedConstantDeclaration { value: expr, .. } =
+                ty::TyDeclaration::ConstantDeclaration(decl_id) => {
+                    let ty::TyConstantDeclaration { value: expr, .. } =
                         de_get_constant(decl_id.clone(), access_span)?;
                     expr_contains_get_storage_index(&expr, access_span)
                 }
                 // We're already inside a type's impl. So we can't have these
                 // nested functions etc. We just ignore them.
-                TypedDeclaration::FunctionDeclaration(_)
-                | TypedDeclaration::TraitDeclaration(_)
-                | TypedDeclaration::StructDeclaration(_)
-                | TypedDeclaration::EnumDeclaration(_)
-                | TypedDeclaration::ImplTrait(_)
-                | TypedDeclaration::AbiDeclaration(_)
-                | TypedDeclaration::GenericTypeForFunctionScope { .. }
-                | TypedDeclaration::ErrorRecovery
-                | TypedDeclaration::StorageDeclaration(_) => Ok(false),
+                ty::TyDeclaration::FunctionDeclaration(_)
+                | ty::TyDeclaration::TraitDeclaration(_)
+                | ty::TyDeclaration::StructDeclaration(_)
+                | ty::TyDeclaration::EnumDeclaration(_)
+                | ty::TyDeclaration::ImplTrait(_)
+                | ty::TyDeclaration::AbiDeclaration(_)
+                | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
+                | ty::TyDeclaration::ErrorRecovery
+                | ty::TyDeclaration::StorageDeclaration(_) => Ok(false),
             }
         }
 
         fn codeblock_contains_get_storage_index(
-            cb: &semantic_analysis::TypedCodeBlock,
+            cb: &ty::TyCodeBlock,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             for content in cb.contents.iter() {
@@ -387,9 +382,9 @@ impl TypedImplTrait {
         let mut errors = vec![];
 
         let ImplSelf {
+            impl_type_parameters,
             type_implementing_for,
             type_implementing_for_span,
-            type_parameters,
             functions,
             block_span,
         } = impl_self;
@@ -411,7 +406,7 @@ impl TypedImplTrait {
         // type check the type parameters
         // insert them into the namespace
         let mut new_type_parameters = vec![];
-        for type_parameter in type_parameters.into_iter() {
+        for type_parameter in impl_type_parameters.into_iter() {
             new_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
@@ -453,7 +448,7 @@ impl TypedImplTrait {
         let mut methods = vec![];
         for fn_decl in functions.into_iter() {
             methods.push(check!(
-                TypedFunctionDeclaration::type_check(ctx.by_ref(), fn_decl),
+                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl),
                 continue,
                 warnings,
                 errors
@@ -471,10 +466,16 @@ impl TypedImplTrait {
             errors
         );
 
-        let impl_trait = TypedImplTrait {
+        let methods_ids = methods
+            .iter()
+            .map(|d| de_insert_function(d.clone()))
+            .collect::<Vec<_>>();
+        let impl_trait = ty::TyImplTrait {
+            impl_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
             trait_name,
+            trait_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
             span: block_span,
-            methods,
+            methods: methods_ids,
             implementing_for_type_id,
             type_implementing_for_span,
         };
@@ -485,27 +486,42 @@ impl TypedImplTrait {
 #[allow(clippy::too_many_arguments)]
 fn type_check_trait_implementation(
     mut ctx: TypeCheckContext,
-    trait_interface_surface: &[TypedTraitFn],
+    trait_interface_surface: &[DeclarationId],
     trait_methods: &[FunctionDeclaration],
     functions: &[FunctionDeclaration],
     trait_name: &CallPath,
     self_type_span: &Span,
     block_span: &Span,
     is_contract: bool,
-) -> CompileResult<Vec<TypedFunctionDeclaration>> {
+) -> CompileResult<Vec<ty::TyFunctionDeclaration>> {
+    use sway_error::error::InterfaceName;
+    let interface_name = || -> InterfaceName {
+        if is_contract {
+            InterfaceName::Abi(trait_name.suffix.clone())
+        } else {
+            InterfaceName::Trait(trait_name.suffix.clone())
+        }
+    };
+
     let mut errors = vec![];
     let mut warnings = vec![];
 
-    let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
+    let mut functions_buf: Vec<ty::TyFunctionDeclaration> = vec![];
     let mut processed_fns = std::collections::HashSet::<Ident>::new();
+
+    let mut trait_fns = vec![];
+    for decl_id in trait_interface_surface {
+        match de_get_trait_fn(decl_id.clone(), block_span) {
+            Ok(decl) => trait_fns.push(decl),
+            Err(err) => errors.push(err),
+        }
+    }
 
     // this map keeps track of the remaining functions in the
     // interface surface that still need to be implemented for the
     // trait to be fully implemented
-    let mut function_checklist: std::collections::BTreeMap<&Ident, _> = trait_interface_surface
-        .iter()
-        .map(|decl| (&decl.name, decl))
-        .collect();
+    let mut function_checklist: std::collections::BTreeMap<&Ident, _> =
+        trait_fns.iter().map(|decl| (&decl.name, decl)).collect();
     for fn_decl in functions {
         let mut ctx = ctx
             .by_ref()
@@ -514,7 +530,7 @@ fn type_check_trait_implementation(
 
         // type check the function declaration
         let fn_decl = check!(
-            TypedFunctionDeclaration::type_check(ctx.by_ref(), fn_decl.clone()),
+            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl.clone()),
             continue,
             warnings,
             errors
@@ -534,7 +550,7 @@ fn type_check_trait_implementation(
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
                     name: fn_decl.name.clone(),
-                    trait_name: trait_name.suffix.clone(),
+                    interface_name: interface_name(),
                     span: fn_decl.name.span(),
                 });
                 return err(warnings, errors);
@@ -548,7 +564,7 @@ fn type_check_trait_implementation(
                 CompileError::IncorrectNumberOfInterfaceSurfaceFunctionParameters {
                     span: fn_decl.parameters_span(),
                     fn_name: fn_decl.name.clone(),
-                    trait_name: trait_name.suffix.clone(),
+                    interface_name: interface_name(),
                     num_parameters: fn_signature.parameters.len(),
                     provided_parameters: fn_decl.parameters.len(),
                 },
@@ -588,7 +604,8 @@ fn type_check_trait_implementation(
             );
             warnings.append(&mut new_warnings);
             if !new_errors.is_empty() {
-                errors.push(CompileError::MismatchedTypeInTrait {
+                errors.push(CompileError::MismatchedTypeInInterfaceSurface {
+                    interface_name: interface_name(),
                     span: fn_decl_param.type_span.clone(),
                     given: fn_decl_param_type.to_string(),
                     expected: fn_signature_param_type.to_string(),
@@ -603,32 +620,30 @@ fn type_check_trait_implementation(
             errors.push(if fn_signature.purity == Purity::Pure {
                 CompileError::TraitDeclPureImplImpure {
                     fn_name: fn_decl.name.clone(),
-                    trait_name: trait_name.suffix.clone(),
+                    interface_name: interface_name(),
                     attrs: fn_decl.purity.to_attribute_syntax(),
                     span: fn_decl.span.clone(),
                 }
             } else {
                 CompileError::TraitImplPurityMismatch {
                     fn_name: fn_decl.name.clone(),
-                    trait_name: trait_name.suffix.clone(),
+                    interface_name: interface_name(),
                     attrs: fn_signature.purity.to_attribute_syntax(),
                     span: fn_decl.span.clone(),
                 }
             });
         }
 
-        // unify the return type of the function declaration
-        // with the return type of the function signature
-        let (mut new_warnings, new_errors) = unify_with_self(
-            fn_decl.return_type,
-            fn_signature.return_type,
-            ctx.self_type(),
-            &fn_decl.return_type_span,
-            ctx.help_text(),
-        );
-        warnings.append(&mut new_warnings);
-        if !new_errors.is_empty() {
-            errors.push(CompileError::MismatchedTypeInTrait {
+        // the return type of the function declaration must be the same
+        // as the return type of the function signature
+        let self_type = ctx.self_type();
+        let mut fn_decl_ret_type = fn_decl.return_type;
+        fn_decl_ret_type.replace_self_type(self_type);
+        let mut fn_sign_ret_type = fn_signature.return_type;
+        fn_sign_ret_type.replace_self_type(self_type);
+        if look_up_type_id(fn_decl_ret_type) != look_up_type_id(fn_sign_ret_type) {
+            errors.push(CompileError::MismatchedTypeInInterfaceSurface {
+                interface_name: interface_name(),
                 span: fn_decl.return_type_span.clone(),
                 expected: fn_signature.return_type.to_string(),
                 given: fn_decl.return_type.to_string(),
@@ -682,7 +697,7 @@ fn type_check_trait_implementation(
     // into it as a trait implementation for this
     for method in trait_methods {
         let method = check!(
-            TypedFunctionDeclaration::type_check(ctx.by_ref(), method.clone()),
+            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone()),
             continue,
             warnings,
             errors
