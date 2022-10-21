@@ -10,7 +10,10 @@ use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
-use std::{fmt::Write, fs};
+use std::{fmt::Write, fs, str::FromStr};
+
+pub const NODE_URL: &str = "http://127.0.0.1:4000";
+pub const SECRET_KEY: &str = "de97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
 
 pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
     // build the contract
@@ -29,7 +32,7 @@ pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
             )),
             terse_mode: !verbose,
             locked,
-            unsigned: true,
+            signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
             ..Default::default()
         }))
         .unwrap()
@@ -57,11 +60,11 @@ pub(crate) fn runs_on_node(
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
         )),
-        node_url: Some("http://127.0.0.1:4000".into()),
+        node_url: Some(NODE_URL.to_string()),
         terse_mode: !verbose,
         contract: Some(contracts),
         locked,
-        unsigned: true,
+        signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
         ..Default::default()
     };
     tokio::runtime::Runtime::new()
