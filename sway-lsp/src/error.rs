@@ -19,8 +19,6 @@ pub enum LanguageServerError {
     FailedToParse { diagnostics: Vec<Diagnostic> },
     #[error("Error formatting document: {0}")]
     FormatError(FormatterError),
-    #[error("Token is missing ident: {:?}", token)]
-    TokenMissingIdentError { token: String },
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
