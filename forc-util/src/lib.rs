@@ -6,17 +6,20 @@ use annotate_snippets::{
 };
 use ansi_term::Colour;
 use anyhow::{bail, Result};
-use std::io;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::str;
 use std::{env, io};
-use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
+use sway_core::language::parsed::TreeType;
 use sway_error::error::CompileError;
 use sway_error::warning::CompileWarning;
 use sway_types::{LineCol, Spanned};
 use sway_utils::constants;
 use tracing::{Level, Metadata};
-use tracing_subscriber::{filter::LevelFilter, fmt::MakeWriter, EnvFilter};
+use tracing_subscriber::{
+    filter::{EnvFilter, LevelFilter},
+    fmt::MakeWriter,
+};
 
 pub mod restricted;
 

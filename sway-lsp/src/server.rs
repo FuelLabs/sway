@@ -63,7 +63,7 @@ impl Backend {
         let diagnostics = match session.parse_project(&uri) {
             Ok(diagnostics) => diagnostics,
             Err(err) => {
-                tracing::error!(err.to_string().as_str()).await;
+                tracing::error!("{}", err.to_string().as_str());
                 if let LanguageServerError::FailedToParse { diagnostics } = err {
                     diagnostics
                 } else {

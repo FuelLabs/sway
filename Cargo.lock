@@ -4464,6 +4464,7 @@ dependencies = [
  "async-trait",
  "dashmap",
  "forc-pkg",
+ "forc-util",
  "futures",
  "notify",
  "notify-debouncer-mini",

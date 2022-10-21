@@ -12,7 +12,6 @@ pub mod test_utils;
 pub mod utils;
 use server::Backend;
 use tracing::metadata::LevelFilter;
-use utils::debug::DebugFlags;
 
 pub async fn start() {
     let tracing_options = TracingSubscriberOptions {
