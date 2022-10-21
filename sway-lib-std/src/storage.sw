@@ -88,13 +88,13 @@ pub struct StorageMap<K, V> {}
 impl<K, V> StorageMap<K, V> {
     #[storage(write)]
     fn insert(self, key: K, value: V) {
-        let key = sha256((key, __get_storage_key(), ));
+        let key = sha256((key, __get_storage_key()));
         store::<V>(key, value);
     }
 
     #[storage(read)]
     fn get(self, key: K) -> V {
-        let key = sha256((key, __get_storage_key(), ));
+        let key = sha256((key, __get_storage_key()));
         get::<V>(key)
     }
 }
@@ -114,7 +114,7 @@ impl<V> StorageVec<V> {
         let len = get::<u64>(__get_storage_key());
 
         // Storing the value at the current length index (if this is the first item, starts off at 0)
-        let key = sha256((len, __get_storage_key(), ));
+        let key = sha256((len, __get_storage_key()));
         store::<V>(key, value);
 
         // Incrementing the length
@@ -133,7 +133,7 @@ impl<V> StorageVec<V> {
         // reduces len by 1, effectively removing the last item in the vec
         store(__get_storage_key(), len - 1);
 
-        let key = sha256((len - 1, __get_storage_key(), ));
+        let key = sha256((len - 1, __get_storage_key()));
         Option::Some::<V>(get::<V>(key))
     }
 
@@ -150,7 +150,7 @@ impl<V> StorageVec<V> {
             return Option::None;
         }
 
-        let key = sha256((index, __get_storage_key(), ));
+        let key = sha256((index, __get_storage_key()));
         Option::Some::<V>(get::<V>(key))
     }
 
@@ -175,16 +175,16 @@ impl<V> StorageVec<V> {
         assert(index < len);
 
         // gets the element before removing it, so it can be returned
-        let removed_element = get::<V>(sha256((index, __get_storage_key(), )));
+        let removed_element = get::<V>(sha256((index, __get_storage_key())));
 
         // for every element in the vec with an index greater than the input index,
         // shifts the index for that element down one
         let mut count = index + 1;
         while count < len {
             // gets the storage location for the previous index
-            let key = sha256((count - 1, __get_storage_key(), ));
+            let key = sha256((count - 1, __get_storage_key()));
             // moves the element of the current index into the previous index
-            store::<V>(key, get::<V>(sha256((count, __get_storage_key(), ))));
+            store::<V>(key, get::<V>(sha256((count, __get_storage_key()))));
 
             count += 1;
         }
@@ -211,11 +211,11 @@ impl<V> StorageVec<V> {
         // if the index is larger or equal to len, there is no item to remove
         assert(index < len);
 
-        let hash_of_to_be_removed = sha256((index, __get_storage_key(), ));
+        let hash_of_to_be_removed = sha256((index, __get_storage_key()));
         // gets the element before removing it, so it can be returned
         let element_to_be_removed = get::<V>(hash_of_to_be_removed);
 
-        let last_element = get::<V>(sha256((len - 1, __get_storage_key(), )));
+        let last_element = get::<V>(sha256((len - 1, __get_storage_key())));
         store::<V>(hash_of_to_be_removed, last_element);
 
         // decrements len by 1
@@ -239,7 +239,7 @@ impl<V> StorageVec<V> {
         // if the index is higher than or equal len, there is no element to set
         assert(index < len);
 
-        let key = sha256((index, __get_storage_key(), ));
+        let key = sha256((index, __get_storage_key()));
         store::<V>(key, value);
     }
 
@@ -266,7 +266,7 @@ impl<V> StorageVec<V> {
 
         // if len is 0, index must also be 0 due to above check
         if len == index {
-            let key = sha256((index, __get_storage_key(), ));
+            let key = sha256((index, __get_storage_key()));
             store::<V>(key, value);
 
             // increments len by 1
@@ -280,15 +280,15 @@ impl<V> StorageVec<V> {
         // performed in reverse to prevent data overwriting
         let mut count = len - 1;
         while count >= index {
-            let key = sha256((count + 1, __get_storage_key(), ));
+            let key = sha256((count + 1, __get_storage_key()));
             // shifts all the values up one index
-            store::<V>(key, get::<V>(sha256((count, __get_storage_key(), ))));
+            store::<V>(key, get::<V>(sha256((count, __get_storage_key()))));
 
             count -= 1
         }
 
         // inserts the value into the now unused index
-        let key = sha256((index, __get_storage_key(), ));
+        let key = sha256((index, __get_storage_key()));
         store::<V>(key, value);
 
         // increments len by 1
