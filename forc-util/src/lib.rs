@@ -415,7 +415,7 @@ impl<'a> MakeWriter<'a> for StdioTracingWriter {
         if self.writer_mode == TracingWriterMode::Stderr
             || (self.writer_mode == TracingWriterMode::Stdio && meta.level() <= &Level::WARN)
         {
-            Box::new(io::stderr())
+            return Box::new(io::stderr());
         }
 
         // Otherwise, we'll return stdout.
