@@ -31,6 +31,7 @@ dep flags;
 dep u128;
 dep u256;
 dep vec;
+dep message;
 dep prelude;
 
 use core::*;

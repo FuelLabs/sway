@@ -32,6 +32,7 @@ impl ty::TyTraitDeclaration {
             methods,
             supertraits,
             visibility,
+            span,
         } = trait_decl;
 
         if !is_upper_camel_case(name.as_str()) {
@@ -42,13 +43,9 @@ impl ty::TyTraitDeclaration {
         }
 
         if !type_parameters.is_empty() {
-            let spans = type_parameters
-                .into_iter()
-                .map(|type_param| type_param.span())
-                .collect();
             errors.push(CompileError::Unimplemented(
                 "Generic traits are not yet implemented.",
-                Span::join_all(spans),
+                Span::join_all(type_parameters.into_iter().map(|x| x.span())),
             ));
             return err(warnings, errors);
         }
@@ -109,6 +106,7 @@ impl ty::TyTraitDeclaration {
             supertraits,
             visibility,
             attributes,
+            span,
         };
         ok(typed_trait_decl, warnings, errors)
     }
