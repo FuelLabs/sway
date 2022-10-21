@@ -11,8 +11,7 @@ pub fn get_page_text_edit(
     // we only format if code is correct
     let formatted_code = formatter
         .format(text.clone(), None)
-        .map_err(LanguageServerError::FormatError)
-        .unwrap();
+        .map_err(LanguageServerError::FormatError)?;
 
     let text_lines_count = text.split('\n').count();
     let num_of_lines = formatted_code.split('\n').count();
