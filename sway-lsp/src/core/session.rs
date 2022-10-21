@@ -143,7 +143,7 @@ impl Session {
 
     pub fn declared_token_ident(&self, token: &Token) -> Option<Ident> {
         token.type_def.as_ref().and_then(|type_def| match type_def {
-            TypeDefinition::TypeId(type_id) => utils::token::ident_of_type_id(&type_id),
+            TypeDefinition::TypeId(type_id) => utils::token::ident_of_type_id(type_id),
             TypeDefinition::Ident(ident) => Some(ident.clone()),
         })
     }
