@@ -39,10 +39,7 @@ impl PartialEq for TypeParameter {
 }
 
 impl CopyTypes for TypeParameter {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        if type_mapping.is_empty() {
-            return;
-        }
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.type_id.copy_types(type_mapping);
     }
 }

@@ -359,11 +359,8 @@ impl PartialEq for TyExpressionVariant {
 }
 
 impl CopyTypes for TyExpressionVariant {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         use TyExpressionVariant::*;
-        if type_mapping.is_empty() {
-            return;
-        }
         match self {
             Literal(..) => (),
             FunctionApplication {

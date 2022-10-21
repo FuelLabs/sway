@@ -21,10 +21,7 @@ pub struct TyTraitFn {
 }
 
 impl CopyTypes for TyTraitFn {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        if type_mapping.is_empty() {
-            return;
-        }
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.return_type.copy_types(type_mapping);
     }
 }

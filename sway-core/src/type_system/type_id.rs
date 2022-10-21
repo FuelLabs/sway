@@ -106,10 +106,7 @@ impl ReplaceSelfType for TypeId {
 }
 
 impl CopyTypes for TypeId {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        if type_mapping.is_empty() {
-            return;
-        }
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         if let Some(matching_id) = type_mapping.find_match(*self) {
             *self = matching_id;
         }

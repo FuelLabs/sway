@@ -15,10 +15,7 @@ pub struct TyIntrinsicFunctionKind {
 }
 
 impl CopyTypes for TyIntrinsicFunctionKind {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        if type_mapping.is_empty() {
-            return;
-        }
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         for arg in &mut self.arguments {
             arg.copy_types(type_mapping);
         }

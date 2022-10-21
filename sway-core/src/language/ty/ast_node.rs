@@ -33,10 +33,7 @@ impl fmt::Display for TyAstNode {
 }
 
 impl CopyTypes for TyAstNode {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        if type_mapping.is_empty() {
-            return;
-        }
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => exp.copy_types(type_mapping),
             TyAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),

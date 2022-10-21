@@ -28,11 +28,8 @@ pub enum TyDeclaration {
 }
 
 impl CopyTypes for TyDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         use TyDeclaration::*;
-        if type_mapping.is_empty() {
-            return;
-        }
         match self {
             VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
             FunctionDeclaration(ref mut fn_decl) => fn_decl.copy_types(type_mapping),
