@@ -435,27 +435,6 @@ fn type_check_interface_surface(
     ok(typed_surface, warnings, errors)
 }
 
-fn type_check_trait_methods(
-    mut ctx: TypeCheckContext,
-    methods: Vec<FunctionDeclaration>,
-) -> CompileResult<Vec<ty::TyFunctionDeclaration>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let mut methods_buf = Vec::new();
-    for method in methods.into_iter() {
-        let mut method = check!(
-            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true),
-            ty::TyFunctionDeclaration::error(method),
-            warnings,
-            errors
-        );
-        method.visibility = Visibility::Public;
-        method.is_contract_call = false;
-        methods_buf.push(method);
-    }
-    ok(methods_buf, warnings, errors)
-}
-
 pub(crate) fn reassign_storage_subfield(
     ctx: TypeCheckContext,
     fields: Vec<Ident>,
