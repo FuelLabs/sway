@@ -10,7 +10,7 @@ pub(crate) use mode::*;
 use crate::{
     declaration_engine::{declaration_engine::*, DeclarationId},
     error::*,
-    language::{parsed::*, ty, Visibility},
+    language::{parsed::*, ty},
     semantic_analysis::*,
     type_system::*,
     types::DeterministicallyAborts,

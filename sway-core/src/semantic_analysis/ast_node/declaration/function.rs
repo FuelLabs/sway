@@ -31,7 +31,6 @@ impl ty::TyFunctionDeclaration {
             return_type_span,
             visibility,
             purity,
-            ..
         } = fn_decl;
 
         // Warn against non-snake case function names.
@@ -91,6 +90,7 @@ impl ty::TyFunctionDeclaration {
         let (body, _implicit_block_return) = {
             let ctx = ctx
                 .by_ref()
+                .with_purity(purity)
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
                 .with_type_annotation(return_type);
             check!(
@@ -125,15 +125,10 @@ impl ty::TyFunctionDeclaration {
             );
         }
 
-        let visibility = if is_method {
-            Visibility::Public
+        let (visibility, is_contract_call) = if is_method {
+            (Visibility::Public, false)
         } else {
-            visibility
-        };
-        let is_contract_call = if is_method {
-            false
-        } else {
-            ctx.mode() == Mode::ImplAbiFn
+            (visibility, ctx.mode() == Mode::ImplAbiFn)
         };
 
         let function_decl = ty::TyFunctionDeclaration {
@@ -147,7 +142,6 @@ impl ty::TyFunctionDeclaration {
             type_parameters: new_type_parameters,
             return_type_span,
             visibility,
-            // if this is for a contract, then it is a contract call
             is_contract_call,
             purity,
         };
