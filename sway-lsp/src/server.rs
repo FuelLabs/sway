@@ -1,11 +1,16 @@
 pub use crate::error::DocumentError;
 use crate::{
     capabilities,
-    core::{config::Warnings, document::TextDocument, session::Session},
+    core::{
+        config::{Config, Warnings},
+        session::Session,
+    },
     error::LanguageServerError,
     utils::{debug, sync},
 };
+use dashmap::DashMap;
 use forc_pkg::manifest::PackageManifestFile;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
@@ -15,38 +20,42 @@ use std::{
     sync::Arc,
 };
 use sway_types::Spanned;
-use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
 
 #[derive(Debug)]
 pub struct Backend {
     pub client: Client,
-    session: Arc<Session>,
+    pub config: RwLock<Config>,
+    sessions: DashMap<PathBuf, Arc<Session>>,
 }
 
 impl Backend {
     pub fn new(client: Client) -> Self {
-        let session = Arc::new(Session::new());
-        Backend { client, session }
+        let sessions = DashMap::new();
+        let config = RwLock::new(Default::default());
+
+        Backend {
+            client,
+            config,
+            sessions,
+        }
     }
 
     fn init(&self, uri: &Url) -> Result<(), LanguageServerError> {
-        let manifest_dir = PathBuf::from(uri.path());
-        // Create a new temp dir that clones the current workspace
-        // and store manifest and temp paths
-        self.session
-            .sync
-            .create_temp_dir_from_workspace(&manifest_dir)?;
-
-        self.session.sync.clone_manifest_dir_to_temp()?;
-
-        // iterate over the project dir, parse all sway files
-        let _ = self.parse_and_store_sway_files();
-
-        self.session.sync.watch_and_sync_manifest();
-
+        let session = Arc::new(Session::new());
+        let project_name = session.init(uri)?;
+        self.sessions.insert(project_name, session);
         Ok(())
+    }
+
+    fn get_uri_and_session(
+        &self,
+        workspace_uri: &Url,
+    ) -> Result<(Url, Arc<Session>), LanguageServerError> {
+        let session = self.url_to_session(workspace_uri)?;
+        let uri = session.sync.workspace_to_temp_url(workspace_uri)?;
+        Ok((uri, session))
     }
 
     async fn log_info_message(&self, message: &str) {
@@ -57,27 +66,9 @@ impl Backend {
         self.client.log_message(MessageType::ERROR, message).await;
     }
 
-    fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
-        if let Some(temp_dir) = self
-            .session
-            .sync
-            .directories
-            .get(&sync::Directory::Temp)
-            .map(|item| item.value().clone())
-        {
-            // Store the documents.
-            for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
-                self.session
-                    .store_document(TextDocument::build_from_path(path)?)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    async fn parse_project(&self, uri: Url, workspace_uri: Url) {
+    async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
         // pass in the temp Url into parse_project, we can now get the updated AST's back.
-        let diagnostics = match self.session.parse_project(&uri) {
+        let diagnostics = match session.parse_project(&uri) {
             Ok(diagnostics) => diagnostics,
             Err(err) => {
                 self.log_error_message(err.to_string().as_str()).await;
@@ -88,7 +79,7 @@ impl Backend {
                 }
             }
         };
-        self.publish_diagnostics(&uri, &workspace_uri, diagnostics)
+        self.publish_diagnostics(&uri, &workspace_uri, session, diagnostics)
             .await;
     }
 }
@@ -124,15 +115,55 @@ fn capabilities() -> ServerCapabilities {
 }
 
 impl Backend {
+    fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {
+        let path = PathBuf::from(uri.path());
+        let manifest = PackageManifestFile::from_dir(&path).map_err(|_| {
+            DocumentError::ManifestFileNotFound {
+                dir: path.to_string_lossy().to_string(),
+            }
+        })?;
+
+        // strip Forc.toml from the path to get the manifest directory
+        let manifest_dir = manifest
+            .path()
+            .parent()
+            .ok_or(LanguageServerError::ManifestDirNotFound)?
+            .to_path_buf();
+
+        let session = match self.sessions.get(&manifest_dir) {
+            Some(item) => item.value().clone(),
+            None => {
+                // TODO, remove this once the type engine no longer uses global memory: https://github.com/FuelLabs/sway/issues/2063
+                // Until then, we clear the current project and init with the new project.
+                // At least allows the user to switch between projects within a workspace but only if they
+                // have one pane open.
+                let _ = self.sessions.iter().map(|item| {
+                    let session = item.value();
+                    session.shutdown();
+                });
+
+                // If no session can be found, then we need to call init and inserst a new session into the map
+                self.init(uri)?;
+                self.sessions
+                    .get(&manifest_dir) //
+                    .map(|item| item.value().clone())
+                    .expect("no session found even though it was just inserted into the map")
+            }
+        };
+
+        Ok(session)
+    }
+
     async fn publish_diagnostics(
         &self,
         uri: &Url,
         workspace_uri: &Url,
+        session: Arc<Session>,
         diagnostics: Vec<Diagnostic>,
     ) {
         let diagnostics_res = {
-            let debug = &self.session.config.read().debug;
-            let token_map = self.session.tokens_for_file(uri);
+            let debug = &self.config.read().debug;
+            let token_map = session.tokens_for_file(uri);
             match debug.show_collected_tokens_as_warnings {
                 Warnings::Default => diagnostics,
                 // If collected_tokens_as_warnings is Parsed or Typed,
@@ -155,12 +186,13 @@ impl Backend {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
+        eprintln!("InitializeParams = {:#?}", params);
         self.client
             .log_message(MessageType::INFO, "Initializing the Sway Language Server")
             .await;
 
         if let Some(initialization_options) = &params.initialization_options {
-            let mut config = self.session.config.write();
+            let mut config = self.config.write();
             *config = serde_json::from_value(initialization_options.clone())
                 .ok()
                 .unwrap_or_default();
@@ -183,223 +215,225 @@ impl LanguageServer for Backend {
         self.log_info_message("Shutting Down the Sway Language Server")
             .await;
 
-        // shutdown the thread watching the manifest file
-        if let std::sync::LockResult::Ok(handle) = self.session.sync.notify_join_handle.read() {
-            if let Some(join_handle) = &*handle {
-                join_handle.abort();
-            }
-        }
-
-        // Delete the temporary directory.
-        self.session.sync.remove_temp_dir();
+        let _ = self.sessions.iter().map(|item| {
+            let session = item.value();
+            session.shutdown();
+        });
 
         Ok(())
     }
 
     // Document Handlers
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        // The first time did_open gets called, we call init which sets up the temp directories
-        // to allow for synchronization between the users workspace and the temp workspacace.
-        // We then set InitializedState to Initialized so the function is never called again.
-        // Ideally we would call this in the `initialize` LSP function but we don't have access
-        // to the correct path of the project until this function.
-        if let std::sync::LockResult::Ok(mut init_state) = self.session.sync.init_state.write() {
-            if let sync::InitializedState::Uninitialized = *init_state {
-                match self.init(&params.text_document.uri) {
-                    Ok(()) => {
-                        *init_state = sync::InitializedState::Initialized;
-                    }
-                    Err(err) => {
-                        tracing::error!("{}", err.to_string().as_str());
-                    }
-                }
+        match self.get_uri_and_session(&params.text_document.uri) {
+            Ok((uri, session)) => {
+                session.handle_open_file(&uri);
+                self.parse_project(uri, params.text_document.uri, session.clone())
+                    .await;
             }
-        }
-
-        // convert the client Url to the temp uri
-        if let Ok(uri) = self
-            .session
-            .sync
-            .workspace_to_temp_url(&params.text_document.uri)
-        {
-            self.session.handle_open_file(&uri);
-            self.parse_project(uri, params.text_document.uri).await;
+            Err(err) => tracing::error!("{}", err.to_string()),
         }
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        if let Ok(uri) = self
-            .session
-            .sync
-            .workspace_to_temp_url(&params.text_document.uri)
-        {
-            // update this file with the new changes and write to disk
-            if let Some(src) = self
-                .session
-                .update_text_document(&uri, params.content_changes)
-            {
-                if let Ok(mut file) = File::create(uri.path()) {
-                    let _ = writeln!(&mut file, "{}", src);
+        match self.get_uri_and_session(&params.text_document.uri) {
+            Ok((uri, session)) => {
+                // update this file with the new changes and write to disk
+                if let Some(src) = session.update_text_document(&uri, params.content_changes) {
+                    if let Ok(mut file) = File::create(uri.path()) {
+                        let _ = writeln!(&mut file, "{}", src);
+                    }
                 }
+                self.parse_project(uri, params.text_document.uri, session.clone())
+                    .await;
             }
-            self.parse_project(uri, params.text_document.uri).await;
+            Err(err) => tracing::error!("{}", err.to_string()),
         }
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        // overwrite the contents of the tmp/folder with everything in
-        // the current workspace. (resync)
-        if let Err(err) = self.session.sync.clone_manifest_dir_to_temp() {
-            tracing::error!("{}", err.to_string().as_str());
-        }
-
-        let _ = self
-            .session
-            .sync
-            .manifest_path()
-            .and_then(|manifest_path| PackageManifestFile::from_dir(&manifest_path).ok())
-            .map(|manifest| {
-                if let Some(temp_manifest_path) = &self.session.sync.temp_manifest_path() {
-                    sync::edit_manifest_dependency_paths(&manifest, temp_manifest_path)
+        match self.get_uri_and_session(&params.text_document.uri) {
+            Ok((uri, session)) => {
+                // overwrite the contents of the tmp/folder with everything in
+                // the current workspace. (resync)
+                if let Err(err) = session.sync.clone_manifest_dir_to_temp() {
+                    tracing::error!("{}", err.to_string().as_str());
                 }
-            });
 
-        if let Ok(uri) = self
-            .session
-            .sync
-            .workspace_to_temp_url(&params.text_document.uri)
-        {
-            self.parse_project(uri, params.text_document.uri).await;
+                let _ = session
+                    .sync
+                    .manifest_path()
+                    .and_then(|manifest_path| PackageManifestFile::from_dir(&manifest_path).ok())
+                    .map(|manifest| {
+                        if let Some(temp_manifest_path) = &session.sync.temp_manifest_path() {
+                            sync::edit_manifest_dependency_paths(&manifest, temp_manifest_path)
+                        }
+                    });
+                self.parse_project(uri, params.text_document.uri, session.clone())
+                    .await;
+            }
+            Err(err) => tracing::error!("{}", err.to_string()),
         }
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         for event in params.changes {
             if event.typ == FileChangeType::DELETED {
-                if let Ok(uri) = self.session.sync.workspace_to_temp_url(&event.uri) {
-                    let _ = self.session.remove_document(&uri);
+                match self.get_uri_and_session(&event.uri) {
+                    Ok((uri, session)) => {
+                        let _ = session.remove_document(&uri);
+                    }
+                    Err(err) => tracing::error!("{}", err.to_string()),
                 }
             }
         }
     }
 
     async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
-        self.session
-            .sync
-            .workspace_to_temp_url(&params.text_document_position_params.text_document.uri)
-            .map(|uri| {
+        match self.get_uri_and_session(&params.text_document_position_params.text_document.uri) {
+            Ok((uri, session)) => {
                 let position = params.text_document_position_params.position;
-                capabilities::hover::hover_data(&self.session, uri, position)
-            })
-            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
+                Ok(capabilities::hover::hover_data(session, uri, position))
+            }
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
     }
 
     async fn completion(
         &self,
-        _params: CompletionParams,
+        params: CompletionParams,
     ) -> jsonrpc::Result<Option<CompletionResponse>> {
-        // TODO
-        // here we would also need to provide a list of builtin methods not just the ones from the document
-        Ok(self
-            .session
-            .completion_items()
-            .map(CompletionResponse::Array))
+        match self.get_uri_and_session(&params.text_document_position.text_document.uri) {
+            Ok((_, session)) => {
+                // TODO
+                // here we would also need to provide a list of builtin methods not just the ones from the document
+                Ok(session.completion_items().map(CompletionResponse::Array))
+            }
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
     }
 
     async fn document_symbol(
         &self,
         params: DocumentSymbolParams,
     ) -> jsonrpc::Result<Option<DocumentSymbolResponse>> {
-        self.session
-            .sync
-            .workspace_to_temp_url(&params.text_document.uri)
-            .map(|uri| {
-                self.session
-                    .symbol_information(&uri)
-                    .map(DocumentSymbolResponse::Flat)
-            })
-            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
+        match self.get_uri_and_session(&params.text_document.uri) {
+            Ok((uri, session)) => Ok(session
+                .symbol_information(&uri)
+                .map(DocumentSymbolResponse::Flat)),
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
     }
 
     async fn semantic_tokens_full(
         &self,
         params: SemanticTokensParams,
     ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
-        self.session
-            .sync
-            .workspace_to_temp_url(&params.text_document.uri)
-            .map(|uri| capabilities::semantic_tokens::semantic_tokens_full(&self.session, &uri))
-            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
+        match self.get_uri_and_session(&params.text_document.uri) {
+            Ok((uri, session)) => Ok(capabilities::semantic_tokens::semantic_tokens_full(
+                session, &uri,
+            )),
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
     }
 
     async fn document_highlight(
         &self,
         params: DocumentHighlightParams,
     ) -> jsonrpc::Result<Option<Vec<DocumentHighlight>>> {
-        self.session
-            .sync
-            .workspace_to_temp_url(&params.text_document_position_params.text_document.uri)
-            .map(|uri| {
+        match self.get_uri_and_session(&params.text_document_position_params.text_document.uri) {
+            Ok((uri, session)) => {
                 let position = params.text_document_position_params.position;
-                capabilities::highlight::get_highlights(&self.session, uri, position)
-            })
-            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
+                Ok(capabilities::highlight::get_highlights(
+                    session, uri, position,
+                ))
+            }
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
     }
 
     async fn goto_definition(
         &self,
         params: GotoDefinitionParams,
     ) -> jsonrpc::Result<Option<GotoDefinitionResponse>> {
-        self.session
-            .sync
-            .workspace_to_temp_url(&params.text_document_position_params.text_document.uri)
-            .map(|uri| {
+        match self.get_uri_and_session(&params.text_document_position_params.text_document.uri) {
+            Ok((uri, session)) => {
                 let position = params.text_document_position_params.position;
-                self.session.token_definition_response(uri, position)
-            })
-            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
+                Ok(session.token_definition_response(uri, position))
+            }
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
     }
 
     async fn formatting(
         &self,
         params: DocumentFormattingParams,
     ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
-        self.session
-            .sync
-            .workspace_to_temp_url(&params.text_document.uri)
-            .map(|uri| self.session.format_text(&uri))
-            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
+        match self.get_uri_and_session(&params.text_document.uri) {
+            Ok((uri, session)) => Ok(session.format_text(&uri)),
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
     }
 
     async fn rename(&self, params: RenameParams) -> jsonrpc::Result<Option<WorkspaceEdit>> {
-        self.session
-            .sync
-            .workspace_to_temp_url(&params.text_document_position.text_document.uri)
-            .map(|uri| {
+        match self.get_uri_and_session(&params.text_document_position.text_document.uri) {
+            Ok((uri, session)) => {
                 let new_name = params.new_name;
                 let position = params.text_document_position.position;
-                capabilities::rename::rename(&self.session, new_name, uri, position)
-            })
-            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
+                Ok(capabilities::rename::rename(
+                    session, new_name, uri, position,
+                ))
+            }
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
     }
 
     async fn prepare_rename(
         &self,
         params: TextDocumentPositionParams,
     ) -> jsonrpc::Result<Option<PrepareRenameResponse>> {
-        self.session
-            .sync
-            .workspace_to_temp_url(&params.text_document.uri)
-            .map(|uri| {
+        match self.get_uri_and_session(&params.text_document.uri) {
+            Ok((uri, session)) => {
                 let position = params.position;
-                capabilities::rename::prepare_rename(&self.session, uri, position)
-            })
-            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
+                Ok(capabilities::rename::prepare_rename(session, uri, position))
+            }
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
     }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct RunnableParams {}
+#[serde(rename_all = "camelCase")]
+pub struct RunnableParams {
+    pub text_document: TextDocumentIdentifier,
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -414,27 +448,44 @@ impl Backend {
         &self,
         params: InlayHintParams,
     ) -> jsonrpc::Result<Option<Vec<InlayHint>>> {
-        self.session
-            .sync
-            .workspace_to_temp_url(&params.text_document.uri)
-            .map(|uri| capabilities::inlay_hints::inlay_hints(&self.session, &uri, &params.range))
-            .map_err(|_| jsonrpc::Error::invalid_params("invalid path"))
+        match self.get_uri_and_session(&params.text_document.uri) {
+            Ok((uri, session)) => {
+                let config = &self.config.read().inlay_hints;
+                Ok(capabilities::inlay_hints::inlay_hints(
+                    session,
+                    &uri,
+                    &params.range,
+                    config,
+                ))
+            }
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
     }
 
     pub async fn runnables(
         &self,
-        _params: RunnableParams,
+        params: RunnableParams,
     ) -> jsonrpc::Result<Option<Vec<(Range, String)>>> {
-        let ranges = self
-            .session
-            .runnables
-            .get(&capabilities::runnable::RunnableType::MainFn)
-            .map(|item| {
-                let runnable = item.value();
-                vec![(runnable.range, format!("{}", runnable.tree_type))]
-            });
+        match self.get_uri_and_session(&params.text_document.uri) {
+            Ok((_, session)) => {
+                let ranges = session
+                    .runnables
+                    .get(&capabilities::runnable::RunnableType::MainFn)
+                    .map(|item| {
+                        let runnable = item.value();
+                        vec![(runnable.range, format!("{}", runnable.tree_type))]
+                    });
 
-        Ok(ranges)
+                Ok(ranges)
+            }
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
     }
 
     /// This method is triggered by a command palette request in VScode
@@ -453,69 +504,78 @@ impl Backend {
         &self,
         params: ShowAstParams,
     ) -> jsonrpc::Result<Option<TextDocumentIdentifier>> {
-        let current_open_file = params.text_document.uri;
-        // Convert the Uri to a PathBuf
-        let path = current_open_file.to_file_path().ok();
+        match self.get_uri_and_session(&params.text_document.uri) {
+            Ok((_, session)) => {
+                let current_open_file = params.text_document.uri;
+                // Convert the Uri to a PathBuf
+                let path = current_open_file.to_file_path().ok();
 
-        let write_ast_to_file =
-            |path: &Path, ast_string: &String| -> Option<TextDocumentIdentifier> {
-                if let Ok(mut file) = File::create(path) {
-                    let _ = writeln!(&mut file, "{}", ast_string);
-                    if let Ok(uri) = Url::from_file_path(path) {
-                        // Return the tmp file path where the AST has been written to.
-                        return Some(TextDocumentIdentifier::new(uri));
-                    }
-                }
-                None
-            };
-
-        {
-            let program = self.session.compiled_program.read();
-            match params.ast_kind.as_str() {
-                "parsed" => {
-                    match program.parsed {
-                        Some(ref parsed_program) => {
-                            // Initialize the string with the AST from the root
-                            let mut formatted_ast: String =
-                                format!("{:#?}", parsed_program.root.tree.root_nodes);
-
-                            for (ident, submodule) in &parsed_program.root.submodules {
-                                // if the current path matches the path of a submodule
-                                // overwrite the root AST with the submodule AST
-                                if ident.span().path().map(|a| a.deref()) == path.as_ref() {
-                                    formatted_ast =
-                                        format!("{:#?}", submodule.module.tree.root_nodes);
-                                }
+                let write_ast_to_file =
+                    |path: &Path, ast_string: &String| -> Option<TextDocumentIdentifier> {
+                        if let Ok(mut file) = File::create(path) {
+                            let _ = writeln!(&mut file, "{}", ast_string);
+                            if let Ok(uri) = Url::from_file_path(path) {
+                                // Return the tmp file path where the AST has been written to.
+                                return Some(TextDocumentIdentifier::new(uri));
                             }
+                        }
+                        None
+                    };
 
-                            let tmp_ast_path = Path::new("/tmp/parsed_ast.rs");
-                            Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
+                {
+                    let program = session.compiled_program.read();
+                    match params.ast_kind.as_str() {
+                        "parsed" => {
+                            match program.parsed {
+                                Some(ref parsed_program) => {
+                                    // Initialize the string with the AST from the root
+                                    let mut formatted_ast: String =
+                                        format!("{:#?}", parsed_program.root.tree.root_nodes);
+
+                                    for (ident, submodule) in &parsed_program.root.submodules {
+                                        // if the current path matches the path of a submodule
+                                        // overwrite the root AST with the submodule AST
+                                        if ident.span().path().map(|a| a.deref()) == path.as_ref() {
+                                            formatted_ast =
+                                                format!("{:#?}", submodule.module.tree.root_nodes);
+                                        }
+                                    }
+
+                                    let tmp_ast_path = Path::new("/tmp/parsed_ast.rs");
+                                    Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
+                                }
+                                _ => Ok(None),
+                            }
+                        }
+                        "typed" => {
+                            match program.typed {
+                                Some(ref typed_program) => {
+                                    // Initialize the string with the AST from the root
+                                    let mut formatted_ast: String =
+                                        format!("{:#?}", typed_program.root.all_nodes);
+
+                                    for (ident, submodule) in &typed_program.root.submodules {
+                                        // if the current path matches the path of a submodule
+                                        // overwrite the root AST with the submodule AST
+                                        if ident.span().path().map(|a| a.deref()) == path.as_ref() {
+                                            formatted_ast =
+                                                format!("{:#?}", submodule.module.all_nodes);
+                                        }
+                                    }
+
+                                    let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
+                                    Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
+                                }
+                                _ => Ok(None),
+                            }
                         }
                         _ => Ok(None),
                     }
                 }
-                "typed" => {
-                    match program.typed {
-                        Some(ref typed_program) => {
-                            // Initialize the string with the AST from the root
-                            let mut formatted_ast: String =
-                                format!("{:#?}", typed_program.root.all_nodes);
-
-                            for (ident, submodule) in &typed_program.root.submodules {
-                                // if the current path matches the path of a submodule
-                                // overwrite the root AST with the submodule AST
-                                if ident.span().path().map(|a| a.deref()) == path.as_ref() {
-                                    formatted_ast = format!("{:#?}", submodule.module.all_nodes);
-                                }
-                            }
-
-                            let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
-                            Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
-                        }
-                        _ => Ok(None),
-                    }
-                }
-                _ => Ok(None),
+            }
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
             }
         }
     }
