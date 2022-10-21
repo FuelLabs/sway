@@ -32,6 +32,7 @@ impl ty::TyTraitDeclaration {
             methods,
             supertraits,
             visibility,
+            span,
         } = trait_decl;
 
         if !is_upper_camel_case(name.as_str()) {
@@ -105,6 +106,7 @@ impl ty::TyTraitDeclaration {
             supertraits,
             visibility,
             attributes,
+            span,
         };
         ok(typed_trait_decl, warnings, errors)
     }
