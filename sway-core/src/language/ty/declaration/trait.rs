@@ -1,5 +1,5 @@
 use derivative::Derivative;
-use sway_types::Ident;
+use sway_types::{Ident, Span};
 
 use crate::{
     declaration_engine::DeclarationId,
@@ -22,6 +22,7 @@ pub struct TyTraitDeclaration {
     pub(crate) supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
     pub attributes: transform::AttributesMap,
+    pub span: Span,
 }
 
 impl CopyTypes for TyTraitDeclaration {
