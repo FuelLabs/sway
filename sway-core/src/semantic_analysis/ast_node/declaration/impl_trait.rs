@@ -30,13 +30,9 @@ impl ty::TyImplTrait {
         } = impl_trait;
 
         if !trait_type_arguments.is_empty() {
-            let spans = trait_type_arguments
-                .into_iter()
-                .map(|type_arg| type_arg.span())
-                .collect();
             errors.push(CompileError::Unimplemented(
                 "Generic traits are not yet implemented.",
-                Span::join_all(spans),
+                Span::join_all(trait_type_arguments.into_iter().map(|x| x.span())),
             ));
             return err(warnings, errors);
         }

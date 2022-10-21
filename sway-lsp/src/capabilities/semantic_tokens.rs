@@ -3,7 +3,10 @@ use crate::core::{
     token::{SymbolKind, Token},
 };
 use crate::utils::common::get_range_from_span;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{
+    atomic::{AtomicU32, Ordering},
+    Arc,
+};
 use sway_types::Span;
 use tower_lsp::lsp_types::{
     Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
@@ -11,7 +14,7 @@ use tower_lsp::lsp_types::{
 };
 
 // https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L71
-pub fn semantic_tokens_full(session: &Session, url: &Url) -> Option<SemanticTokensResult> {
+pub fn semantic_tokens_full(session: Arc<Session>, url: &Url) -> Option<SemanticTokensResult> {
     let tokens = session.tokens_for_file(url);
 
     // The tokens need sorting by thier span so each token is sequential
