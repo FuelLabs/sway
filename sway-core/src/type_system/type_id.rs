@@ -32,7 +32,10 @@ impl From<usize> for TypeId {
 }
 
 impl CollectTypesMetadata for TypeId {
-    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
+    fn collect_types_metadata(
+        &self,
+        _ctx: &mut CollectTypesMetadataContext,
+    ) -> CompileResult<Vec<TypeMetadata>> {
         let res = match look_up_type_id(*self) {
             TypeInfo::UnknownGeneric { name } => vec![TypeMetadata::UnresolvedType(name)],
             _ => vec![],
