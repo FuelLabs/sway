@@ -5,7 +5,7 @@ use crate::{
         config::{Config, Warnings},
         session::Session,
     },
-    error::LanguageServerError,
+    error::{DirectoryError, LanguageServerError},
     utils::{debug, sync},
 };
 use dashmap::DashMap;
@@ -127,7 +127,7 @@ impl Backend {
         let manifest_dir = manifest
             .path()
             .parent()
-            .ok_or(LanguageServerError::ManifestDirNotFound)?
+            .ok_or(DirectoryError::ManifestDirNotFound)?
             .to_path_buf();
 
         let session = match self.sessions.get(&manifest_dir) {
@@ -387,13 +387,12 @@ impl LanguageServer for Backend {
         &self,
         params: DocumentFormattingParams,
     ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
-        match self.get_uri_and_session(&params.text_document.uri) {
-            Ok((uri, session)) => Ok(session.format_text(&uri)),
-            Err(err) => {
+        self.get_uri_and_session(&params.text_document.uri)
+            .and_then(|(uri, session)| session.format_text(&uri).map(Some))
+            .or_else(|err| {
                 tracing::error!("{}", err.to_string());
                 Ok(None)
-            }
-        }
+            })
     }
 
     async fn rename(&self, params: RenameParams) -> jsonrpc::Result<Option<WorkspaceEdit>> {

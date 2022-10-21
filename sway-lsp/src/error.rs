@@ -1,3 +1,4 @@
+use swayfmt::FormatterError;
 use thiserror::Error;
 use tower_lsp::lsp_types::Diagnostic;
 

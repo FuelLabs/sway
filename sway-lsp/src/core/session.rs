@@ -73,7 +73,7 @@ impl Session {
 
         self.sync.watch_and_sync_manifest();
 
-        self.sync.manifest_dir()
+        self.sync.manifest_dir().map_err(Into::into)
     }
 
     pub fn shutdown(&self) {
@@ -355,13 +355,17 @@ impl Session {
             .map(|url| capabilities::document_symbol::to_symbol_information(&tokens, url))
     }
 
-    pub fn format_text(&self, url: &Url) -> Option<Vec<TextEdit>> {
-        self.documents.get(url.path()).and_then(|document| {
-            let mut formatter = Formatter::default();
-            let page_text_edit =
-                get_page_text_edit(Arc::from(document.get_text()), &mut formatter).unwrap();
-            Some(vec![page_text_edit])
-        })
+    pub fn format_text(&self, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
+        let document = self
+            .documents
+            .get(url.path())
+            .ok_or(DocumentError::DocumentNotFound {
+                path: url.path().to_string(),
+            })?;
+
+        let mut formatter = Formatter::default();
+        get_page_text_edit(Arc::from(document.get_text()), &mut formatter)
+            .map(|page_text_edit| vec![page_text_edit])
     }
 
     pub fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {

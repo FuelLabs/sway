@@ -3,7 +3,6 @@ use crate::{
         session::Session,
         token::{AstToken, Token, TypedAstToken},
     },
-    error::LanguageServerError,
     utils::{
         common::{extract_visibility, get_range_from_span},
         function::extract_fn_signature,

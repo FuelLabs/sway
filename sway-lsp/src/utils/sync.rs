@@ -47,7 +47,7 @@ impl SyncWorkspace {
     pub(crate) fn create_temp_dir_from_workspace(
         &self,
         manifest_dir: &Path,
-    ) -> Result<(), DirectoryError> {
+    ) -> Result<(), LanguageServerError> {
         let manifest = PackageManifestFile::from_dir(manifest_dir).map_err(|_| {
             DocumentError::ManifestFileNotFound {
                 dir: manifest_dir.to_string_lossy().to_string(),
@@ -58,7 +58,7 @@ impl SyncWorkspace {
         let manifest_dir = manifest
             .path()
             .parent()
-            .ok_or(LanguageServerError::ManifestDirNotFound)?;
+            .ok_or(DirectoryError::ManifestDirNotFound)?;
 
         // extract the project name from the path
         let project_name = manifest_dir
