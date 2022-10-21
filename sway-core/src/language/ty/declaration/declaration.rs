@@ -346,7 +346,7 @@ impl TyDeclaration {
             }
             decl => {
                 let errors = vec![
-                    (CompileError::DecIsNotAConstant {
+                    (CompileError::DeclIsNotAConstant {
                         actually: decl.friendly_name().to_string(),
                         span: decl.span(),
                     }),
