@@ -190,7 +190,6 @@ impl RealizedAbstractInstructionSet {
                      opcode,
                      comment,
                      owning_span,
-                     offset: _,
                  }| {
                     AllocatedOp {
                         opcode,
