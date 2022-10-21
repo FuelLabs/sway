@@ -333,6 +333,7 @@ impl Session {
             .and_then(|decl_ident| {
                 let range = utils::common::get_range_from_span(&decl_ident.span());
                 decl_ident.span().path().and_then(|path| {
+                    // We use ok() here because we don't care about propagating the error from from_file_path
                     Url::from_file_path(path.as_ref()).ok().and_then(|url| {
                         self.sync
                             .to_workspace_url(url)
