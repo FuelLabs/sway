@@ -40,21 +40,13 @@ where
     }
 }
 
-impl<T> Spanned for CallPath<T>
-where
-    T: Spanned,
-{
+impl<T: Spanned> Spanned for CallPath<T> {
     fn span(&self) -> Span {
         if self.prefixes.is_empty() {
             self.suffix.span()
         } else {
-            let prefixes_span = self
-                .prefixes
-                .iter()
-                .fold(self.prefixes[0].span(), |acc, sp| {
-                    Span::join(acc, sp.span())
-                });
-            Span::join(prefixes_span, self.suffix.span())
+            let prefixes_spans = self.prefixes.iter().map(|x| x.span());
+            Span::join(Span::join_all(prefixes_spans), self.suffix.span())
         }
     }
 }
