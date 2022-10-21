@@ -399,12 +399,12 @@ impl<'a> MakeWriter<'a> for StdioTracingWriter {
 
     fn make_writer(&'a self) -> Self::Writer {
         if self.writer_mode == TracingWriterMode::Stderr {
-            return Box::new(io::stderr());
+            Box::new(io::stderr())
         } else {
             // We must have an implementation of `make_writer` that makes
             // a "default" writer without any configuring metadata. Let's
             // just return stdout in that case.
-            return Box::new(io::stdout());
+            Box::new(io::stdout())
         }
     }
 
@@ -415,7 +415,7 @@ impl<'a> MakeWriter<'a> for StdioTracingWriter {
         if self.writer_mode == TracingWriterMode::Stderr
             || (self.writer_mode == TracingWriterMode::Stdio && meta.level() <= &Level::WARN)
         {
-            return Box::new(io::stderr());
+            Box::new(io::stderr())
         }
 
         // Otherwise, we'll return stdout.
@@ -423,7 +423,7 @@ impl<'a> MakeWriter<'a> for StdioTracingWriter {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum TracingWriterMode {
     /// Write ERROR and WARN to stderr and everything else to stdout.
     Stdio,
