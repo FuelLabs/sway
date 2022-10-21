@@ -28,7 +28,7 @@ impl PartialEq for TyExpression {
 }
 
 impl CopyTypes for TyExpression {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.return_type.copy_types(type_mapping);
         self.expression.copy_types(type_mapping);
     }

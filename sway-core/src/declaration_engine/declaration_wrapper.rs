@@ -59,7 +59,7 @@ impl fmt::Display for DeclarationWrapper {
 }
 
 impl CopyTypes for DeclarationWrapper {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         match self {
             DeclarationWrapper::Unknown => {}
             DeclarationWrapper::Function(decl) => decl.copy_types(type_mapping),
