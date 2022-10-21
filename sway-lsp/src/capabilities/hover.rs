@@ -9,6 +9,7 @@ use crate::{
         token::to_ident_key,
     },
 };
+use std::sync::Arc;
 use sway_core::{
     declaration_engine,
     language::{parsed::Declaration, ty, Visibility},
@@ -16,7 +17,7 @@ use sway_core::{
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position, Url};
 
-pub fn hover_data(session: &Session, url: Url, position: Position) -> Option<Hover> {
+pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option<Hover> {
     if let Some((_, token)) = session.token_at_position(&url, position) {
         if let Some(decl_ident) = session.declared_token_ident(&token) {
             if let Some(decl_token) = session

@@ -1,8 +1,9 @@
 use crate::core::session::Session;
+use std::sync::Arc;
 use tower_lsp::lsp_types::{DocumentHighlight, Position, Url};
 
 pub fn get_highlights(
-    session: &Session,
+    session: Arc<Session>,
     url: Url,
     position: Position,
 ) -> Option<Vec<DocumentHighlight>> {

@@ -13,4 +13,5 @@ pub struct ConstantDeclaration {
     pub type_ascription_span: Option<Span>,
     pub value: Expression,
     pub visibility: Visibility,
+    pub span: Span,
 }

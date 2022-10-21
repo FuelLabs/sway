@@ -1,8 +1,0 @@
-contract {
-    fn something<495d4a23>(input1: { { u64 } }) -> u64 {
-        entry(input1: { { u64 } }):
-        v0 = extract_value input1, { { u64 } }, 0
-        v1 = extract_value v0, { u64 }, 0
-        ret u64 v1
-    }
-}
