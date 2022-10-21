@@ -752,8 +752,6 @@ fn test_basic_prog() {
 
     pub fn prints_number_five() -> u8 {
         let x: u8 = 5;
-        let reference_to_x = ref x;
-        let second_value_of_x = deref x; // u8 is `Copy` so this clones
         println(x);
          x.to_string();
          let some_list = [
