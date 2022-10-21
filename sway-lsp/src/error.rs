@@ -1,3 +1,4 @@
+use swayfmt::FormatterError;
 use thiserror::Error;
 use tower_lsp::lsp_types::Diagnostic;
 
@@ -14,6 +15,10 @@ pub enum LanguageServerError {
     FailedToCompile(anyhow::Error),
     #[error("Failed to parse document")]
     FailedToParse { diagnostics: Vec<Diagnostic> },
+    #[error("Error formatting document: {0}")]
+    FormatError(FormatterError),
+    #[error("Token is missing ident: {:?}", token)]
+    TokenMissingIdentError { token: String },
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
