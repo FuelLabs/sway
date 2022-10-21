@@ -174,7 +174,8 @@ impl ty::TyAstNode {
                             let fn_decl = check!(
                                 ty::TyFunctionDeclaration::type_check(
                                     ctx.by_ref(),
-                                    fn_decl.clone()
+                                    fn_decl.clone(),
+                                    false
                                 ),
                                 ty::TyFunctionDeclaration::error(fn_decl),
                                 warnings,
@@ -443,7 +444,7 @@ fn type_check_trait_methods(
     let mut methods_buf = Vec::new();
     for method in methods.into_iter() {
         let mut method = check!(
-            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone()),
+            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true),
             ty::TyFunctionDeclaration::error(method),
             warnings,
             errors

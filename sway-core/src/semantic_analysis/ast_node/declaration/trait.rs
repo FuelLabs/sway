@@ -8,10 +8,7 @@ use crate::{
     declaration_engine::*,
     error::*,
     language::{parsed::*, ty, CallPath, Visibility},
-    semantic_analysis::{
-        ast_node::{type_check_interface_surface, type_check_trait_methods},
-        Mode, TypeCheckContext,
-    },
+    semantic_analysis::{ast_node::type_check_interface_surface, Mode, TypeCheckContext},
     type_system::*,
     Namespace,
 };
@@ -92,13 +89,15 @@ impl ty::TyTraitDeclaration {
                 .collect(),
         );
         // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
-        let ctx = ctx.with_self_type(insert_type(TypeInfo::SelfType));
-        let _methods = check!(
-            type_check_trait_methods(ctx, methods.clone()),
-            vec![],
-            warnings,
-            errors
-        );
+        let mut ctx = ctx.with_self_type(insert_type(TypeInfo::SelfType));
+        let _methods = methods.iter().map(|method| {
+            check!(
+                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true),
+                ty::TyFunctionDeclaration::error(method.clone()),
+                warnings,
+                errors
+            )
+        });
         let typed_trait_decl = ty::TyTraitDeclaration {
             name,
             interface_surface,
