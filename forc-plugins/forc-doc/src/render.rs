@@ -183,6 +183,7 @@ impl Renderable for TyTraitDeclaration {
             visibility,
             attributes,
             supertraits,
+            span,
         } = &self;
         let name = name.as_str().to_string();
         let trait_attributes = doc_attributes_to_string_vec(attributes);
@@ -278,6 +279,7 @@ impl Renderable for TyConstantDeclaration {
             value,
             attributes,
             visibility,
+            span,
         } = &self;
         let name = name.as_str().to_string();
         let const_attributes = doc_attributes_to_string_vec(attributes);
