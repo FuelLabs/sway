@@ -118,6 +118,7 @@ impl ty::TyAstNode {
                             value,
                             visibility,
                             attributes,
+                            span,
                             ..
                         }) => {
                             let result =
@@ -143,6 +144,7 @@ impl ty::TyAstNode {
                                 value,
                                 visibility,
                                 attributes,
+                                span,
                             };
                             let typed_const_decl =
                                 ty::TyDeclaration::ConstantDeclaration(de_insert_constant(decl));
