@@ -160,12 +160,14 @@ fn diverge_in_array_index_index() -> u64 {
     123
 }
 
-fn diverge_in_op_not() -> u64 {
+
+// Disabled due to https://github.com/FuelLabs/sway/issues/3061
+/*fn diverge_in_op_not() -> u64 {
     let b: bool = ! {
         return 5;
     };
     123
-}
+}*/
 
 fn diverge_in_op_add_lhs() -> u64 {
     let x: u32 = ( {
@@ -242,7 +244,10 @@ fn main() -> u64 {
     assert(5 == diverge_in_func_arg());
     assert(5 == diverge_in_array_index_array());
     assert(5 == diverge_in_array_index_index());
-    assert(5 == diverge_in_op_not());
+
+    // Disabled due to https://github.com/FuelLabs/sway/issues/3061
+    // assert(5 == diverge_in_op_not());
+
     assert(5 == diverge_in_op_add_lhs());
     assert(5 == diverge_in_op_add_rhs());
     assert(5 == diverge_in_logical_and_lhs());
