@@ -340,18 +340,18 @@ impl TyDeclaration {
     ///
     /// Returns an error if `self` is not a [TyConstantDeclaration].
     pub(crate) fn expect_const(&self, access_span: &Span) -> CompileResult<TyConstantDeclaration> {
-        let warnings = vec![];
-        let mut errors = vec![];
         match self {
             TyDeclaration::ConstantDeclaration(decl) => {
                 CompileResult::from(de_get_constant(decl.clone(), access_span))
             }
             decl => {
-                errors.push(CompileError::DecIsNotAConstant {
-                    actually: decl.friendly_name().to_string(),
-                    span: decl.span(),
-                });
-                err(warnings, errors)
+                let errors = vec![
+                    (CompileError::DecIsNotAConstant {
+                        actually: decl.friendly_name().to_string(),
+                        span: decl.span(),
+                    }),
+                ];
+                err(vec![], errors)
             }
         }
     }
