@@ -1,6 +1,6 @@
 [package]
 name = "forc-util"
-version = "0.27.0"
+version = "0.26.1"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -13,10 +13,10 @@ annotate-snippets = { version = "0.9", features = ["color"] }
 ansi_term = "0.12"
 anyhow = "1"
 dirs = "3.0.2"
-sway-core = { version = "0.27.0", path = "../sway-core" }
-sway-error = { version = "0.27.0", path = "../sway-error" }
-sway-types = { version = "0.27.0", path = "../sway-types" }
-sway-utils = { version = "0.27.0", path = "../sway-utils" }
+sway-core = { version = "0.26.1", path = "../sway-core" }
+sway-error = { version = "0.26.1", path = "../sway-error" }
+sway-types = { version = "0.26.1", path = "../sway-types" }
+sway-utils = { version = "0.26.1", path = "../sway-utils" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["ansi", "env-filter", "json"] }
 unicode-xid = "0.2.2"
