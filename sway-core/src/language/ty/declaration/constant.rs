@@ -1,4 +1,4 @@
-use sway_types::Ident;
+use sway_types::{Ident, Span};
 
 use crate::{
     language::{ty::*, Visibility},
@@ -11,4 +11,5 @@ pub struct TyConstantDeclaration {
     pub value: TyExpression,
     pub visibility: Visibility,
     pub attributes: transform::AttributesMap,
+    pub span: Span,
 }

@@ -12,6 +12,7 @@ pub struct TraitDeclaration {
     pub methods: Vec<FunctionDeclaration>,
     pub(crate) supertraits: Vec<Supertrait>,
     pub visibility: Visibility,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]

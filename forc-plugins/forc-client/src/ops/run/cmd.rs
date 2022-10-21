@@ -1,4 +1,5 @@
 use clap::Parser;
+use fuel_crypto::SecretKey;
 
 /// Run script project.
 /// Crafts a script transaction then sends it to a running node.
@@ -113,4 +114,7 @@ pub struct RunCommand {
     /// Do not sign the transaction
     #[clap(long)]
     pub unsigned: bool,
+
+    /// Set the key to be used for signing.
+    pub signing_key: Option<SecretKey>,
 }
