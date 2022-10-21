@@ -178,7 +178,6 @@ impl Backend {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
-        tracing::error!("InitializeParams = {:#?}", params);
         tracing::info!("Initializing the Sway Language Server");
 
         if let Some(initialization_options) = &params.initialization_options {
