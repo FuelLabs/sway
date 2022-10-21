@@ -1,10 +1,9 @@
 use std::fmt;
 
+use crate::{error::*, language::ty::*, type_system::*, types::DeterministicallyAborts};
 use itertools::Itertools;
 use sway_ast::Intrinsic;
 use sway_types::Span;
-
-use crate::{error::*, language::ty::*, type_system::*, types::DeterministicallyAborts};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TyIntrinsicFunctionKind {
@@ -46,13 +45,16 @@ impl DeterministicallyAborts for TyIntrinsicFunctionKind {
 }
 
 impl CollectTypesMetadata for TyIntrinsicFunctionKind {
-    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
+    fn collect_types_metadata(
+        &self,
+        ctx: &mut CollectTypesMetadataContext,
+    ) -> CompileResult<Vec<TypeMetadata>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut types_metadata = vec![];
         for type_arg in self.type_arguments.iter() {
             types_metadata.append(&mut check!(
-                type_arg.type_id.collect_types_metadata(),
+                type_arg.type_id.collect_types_metadata(ctx),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -60,7 +62,7 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
         }
         for arg in self.arguments.iter() {
             types_metadata.append(&mut check!(
-                arg.collect_types_metadata(),
+                arg.collect_types_metadata(ctx),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -68,7 +70,11 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
         }
 
         if matches!(self.kind, Intrinsic::Log) {
-            types_metadata.push(TypeMetadata::LoggedType(self.arguments[0].return_type));
+            types_metadata.push(TypeMetadata::LoggedType(
+                LogId::new(ctx.log_id_counter()),
+                self.arguments[0].return_type,
+            ));
+            *ctx.log_id_counter_mut() += 1;
         }
 
         ok(types_metadata, warnings, errors)

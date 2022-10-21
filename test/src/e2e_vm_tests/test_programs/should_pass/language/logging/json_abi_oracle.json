@@ -12,7 +12,7 @@
   ],
   "loggedTypes": [
     {
-      "logId": 9336,
+      "logId": 0,
       "loggedType": {
         "name": "",
         "type": 2,
@@ -20,7 +20,7 @@
       }
     },
     {
-      "logId": 9340,
+      "logId": 1,
       "loggedType": {
         "name": "",
         "type": 11,
@@ -28,7 +28,7 @@
       }
     },
     {
-      "logId": 9346,
+      "logId": 2,
       "loggedType": {
         "name": "",
         "type": 10,
@@ -36,7 +36,7 @@
       }
     },
     {
-      "logId": 9351,
+      "logId": 3,
       "loggedType": {
         "name": "",
         "type": 9,
@@ -44,7 +44,7 @@
       }
     },
     {
-      "logId": 9356,
+      "logId": 4,
       "loggedType": {
         "name": "",
         "type": 12,
@@ -52,7 +52,7 @@
       }
     },
     {
-      "logId": 9312,
+      "logId": 5,
       "loggedType": {
         "name": "",
         "type": 7,
@@ -60,7 +60,7 @@
       }
     },
     {
-      "logId": 9366,
+      "logId": 6,
       "loggedType": {
         "name": "",
         "type": 1,
@@ -68,7 +68,7 @@
       }
     },
     {
-      "logId": 9326,
+      "logId": 7,
       "loggedType": {
         "name": "",
         "type": 8,
@@ -82,7 +82,7 @@
       }
     },
     {
-      "logId": 9334,
+      "logId": 8,
       "loggedType": {
         "name": "",
         "type": 5,
@@ -90,7 +90,7 @@
       }
     },
     {
-      "logId": 9392,
+      "logId": 9,
       "loggedType": {
         "name": "",
         "type": 4,
