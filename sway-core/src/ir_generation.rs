@@ -16,7 +16,12 @@ pub(crate) use purity::{check_function_purity, PurityEnv};
 use crate::language::ty;
 
 pub fn compile_program(program: ty::TyProgram) -> Result<Context, CompileError> {
-    let ty::TyProgram { kind, root, .. } = program;
+    let ty::TyProgram {
+        kind,
+        root,
+        logged_types,
+        ..
+    } = program;
 
     let mut ctx = Context::default();
     match kind {
@@ -29,11 +34,30 @@ pub fn compile_program(program: ty::TyProgram) -> Result<Context, CompileError> 
             declarations,
             // predicates and scripts have the same codegen, their only difference is static
             // type-check time checks.
-        } => compile::compile_script(&mut ctx, main_function, &root.namespace, declarations),
+            // Predicates are not allowed to use logs so no need to pass in `logged_types` here
+        } => compile::compile_script(
+            &mut ctx,
+            main_function,
+            &root.namespace,
+            declarations,
+            &logged_types
+                .into_iter()
+                .map(|(log_id, type_id)| (type_id, log_id))
+                .collect(),
+        ),
         ty::TyProgramKind::Contract {
             abi_entries,
             declarations,
-        } => compile::compile_contract(&mut ctx, abi_entries, &root.namespace, declarations),
+        } => compile::compile_contract(
+            &mut ctx,
+            abi_entries,
+            &root.namespace,
+            declarations,
+            &logged_types
+                .into_iter()
+                .map(|(log_id, type_id)| (type_id, log_id))
+                .collect(),
+        ),
         ty::TyProgramKind::Library { .. } => unimplemented!("compile library to ir"),
     }?;
     ctx.verify()
