@@ -67,7 +67,7 @@ pub(crate) fn html_head(module: String, decl_ty: String, decl_name: String) -> B
         head {
             meta(charset="utf-8");
             meta(name="viewport", content="width=device-width, initial-scale=1.0");
-            meta(name="generator", content="forc-doc");
+            meta(name="generator", content="forcdoc");
             meta(
                 name="description",
                 content=format!("API documentation for the Sway `{decl_name}` {decl_ty} in crate `{module}`.")
@@ -87,12 +87,7 @@ pub(crate) fn html_body(
     item_attrs: String,
 ) -> Box<dyn RenderBox> {
     box_html! {
-        // TODO: match on ty and make this dynamic
-        // e.g. an enum will have variants but a trait will not
-        //
-        // if matching doesn't work we will have to make a separate
-        // body fn for each ty
-        body(class=format!("forc-doc {decl_ty}")) {
+        body(class=format!("forcdoc {decl_ty}")) {
             // TODO: create nav sidebar
             // create main
             // create main content
@@ -116,8 +111,45 @@ pub(crate) fn html_body(
         }
     }
 }
-
-// TODO: Create `fn index` and `fn all`
+// crate level index.html
+fn crate_index() -> Box<dyn RenderBox> {
+    box_html! {}
+}
+// crate level, all items belonging to a crate
+fn all_items(crate_name: String) -> Box<dyn RenderBox> {
+    box_html! {
+        head {
+            meta(charset="utf-8");
+            meta(name="viewport", content="width=device-width, initial-scale=1.0");
+            meta(name="generator", content="forcdoc");
+            meta(
+                name="description",
+                content="List of all items in this crate"
+            );
+            meta(name="keywords", content="sway, swaylang, sway-lang");
+            title: "List of all items in this crate";
+        }
+        body(class="forcdoc mod") {
+            : sidebar(format!("Crate {crate_name}"));
+        }
+    }
+}
+// module level index.html
+fn module_index() -> Box<dyn RenderBox> {
+    box_html! {}
+}
+fn sidebar(location: String /* sidebar_items: Option<Vec<String>>, */) -> Box<dyn RenderBox> {
+    box_html! {
+        nav(class="sidebar") {
+            a(class="sidebar-logo", href="../index.html") {
+                div(class="logo-container") {
+                    img(class="sway-logo", src="../sway-logo.svg", alt="logo");
+                }
+            }
+            h2(class="location") { : location; }
+        }
+    }
+}
 
 fn doc_attributes_to_string_vec(attributes: &AttributesMap) -> String {
     let attributes = attributes.get(&AttributeKind::Doc);
@@ -186,10 +218,11 @@ impl Renderable for TyTraitDeclaration {
             span,
         } = &self;
         let name = name.as_str().to_string();
+        let code_span = span.as_str().to_string();
         let trait_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module.clone(), decl_ty.clone(), name.clone(), "".to_string(), trait_attributes);
+            : html_body(module.clone(), decl_ty.clone(), name.clone(), code_span, trait_attributes);
         }
     }
 }
@@ -282,10 +315,11 @@ impl Renderable for TyConstantDeclaration {
             span,
         } = &self;
         let name = name.as_str().to_string();
+        let code_span = span.as_str().to_string();
         let const_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module.clone(), decl_ty.clone(), name.clone(), "".to_string(), const_attributes);
+            : html_body(module.clone(), decl_ty.clone(), name.clone(), code_span, const_attributes);
         }
     }
 }
