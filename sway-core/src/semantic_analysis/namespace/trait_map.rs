@@ -162,12 +162,10 @@ impl TraitMap {
     /// impl block of `Data<T, F>`
     pub(crate) fn insert_for_type(&mut self, type_id: TypeId) {
         self.extend(self.filter_by_type(type_id));
-        for type_id in look_up_type_id(type_id).extract_inner_types().into_iter() {
-            self.extend(self.filter_by_type(type_id));
-        }
-        // println!("{}", self);
     }
 
+    /// Given [TraitMap]s `self` and `other`, extend `self` with `other`,
+    /// extending existing entries when possible.
     pub(crate) fn extend(&mut self, other: TraitMap) {
         for (key, other_trait_methods) in other.trait_impls.into_iter() {
             self.trait_impls
@@ -177,31 +175,40 @@ impl TraitMap {
         }
     }
 
-    pub(crate) fn filter_by_type(&self, mut type_id: TypeId) -> TraitMap {
+    /// Filter the entries in `self` with the given [TypeId] `type_id` and
+    /// return a new [TraitMap] with all of the entries from `self` for which
+    /// `type_id` was a subtype.
+    pub(crate) fn filter_by_type(&self, type_id: TypeId) -> TraitMap {
+        let mut all_types = look_up_type_id(type_id).extract_inner_types();
+        all_types.insert(type_id);
+        let mut all_types = all_types.into_iter().collect::<Vec<_>>();
         let mut trait_map = TraitMap::default();
         for ((map_trait_name, map_type_id), map_trait_methods) in self.trait_impls.iter() {
-            let type_info = look_up_type_id(type_id);
-            if !type_info.can_change() && type_id == *map_type_id {
-                let trait_methods = map_trait_methods
-                    .values()
-                    .cloned()
-                    .into_iter()
-                    .collect::<Vec<_>>();
-                trait_map.insert(map_trait_name.clone(), type_id, trait_methods);
-            } else if type_info.is_subset_of(&look_up_type_id(*map_type_id)) {
-                let type_mapping = TypeMapping::from_superset_and_subset(*map_type_id, type_id);
-                let mut trait_methods = map_trait_methods
-                    .values()
-                    .cloned()
-                    .into_iter()
-                    .collect::<Vec<_>>();
-                trait_methods.iter_mut().for_each(|trait_method| {
-                    trait_method.copy_types(&type_mapping);
-                    let new_self_type = insert_type(TypeInfo::SelfType);
-                    type_id.replace_self_type(new_self_type);
-                    trait_method.replace_self_type(new_self_type);
-                });
-                trait_map.insert(map_trait_name.clone(), type_id, trait_methods);
+            for type_id in all_types.iter_mut() {
+                let type_info = look_up_type_id(*type_id);
+                if !type_info.can_change() && *type_id == *map_type_id {
+                    let trait_methods = map_trait_methods
+                        .values()
+                        .cloned()
+                        .into_iter()
+                        .collect::<Vec<_>>();
+                    trait_map.insert(map_trait_name.clone(), *type_id, trait_methods);
+                } else if type_info.is_subset_of(&look_up_type_id(*map_type_id)) {
+                    let type_mapping =
+                        TypeMapping::from_superset_and_subset(*map_type_id, *type_id);
+                    let mut trait_methods = map_trait_methods
+                        .values()
+                        .cloned()
+                        .into_iter()
+                        .collect::<Vec<_>>();
+                    trait_methods.iter_mut().for_each(|trait_method| {
+                        trait_method.copy_types(&type_mapping);
+                        let new_self_type = insert_type(TypeInfo::SelfType);
+                        type_id.replace_self_type(new_self_type);
+                        trait_method.replace_self_type(new_self_type);
+                    });
+                    trait_map.insert(map_trait_name.clone(), *type_id, trait_methods);
+                }
             }
         }
         trait_map
@@ -239,11 +246,12 @@ fn are_equal_minus_dynamic_types(left: TypeId, right: TypeId) -> bool {
         (TypeInfo::SelfType, TypeInfo::SelfType) => false,
         (TypeInfo::Numeric, TypeInfo::Numeric) => false,
         (TypeInfo::UnknownGeneric { .. }, TypeInfo::UnknownGeneric { .. }) => false,
+        (TypeInfo::Contract, TypeInfo::Contract) => false,
+        (TypeInfo::Storage { .. }, TypeInfo::Storage { .. }) => false,
 
         // these cases are able to be directly compared
         (TypeInfo::Boolean, TypeInfo::Boolean) => true,
         (TypeInfo::B256, TypeInfo::B256) => true,
-        (TypeInfo::Contract, TypeInfo::Contract) => true,
         (TypeInfo::ErrorRecovery, TypeInfo::ErrorRecovery) => true,
         (TypeInfo::Str(l), TypeInfo::Str(r)) => l == r,
         (TypeInfo::UnsignedInteger(l), TypeInfo::UnsignedInteger(r)) => l == r,
@@ -348,15 +356,6 @@ fn are_equal_minus_dynamic_types(left: TypeId, right: TypeId) -> bool {
         }
         (TypeInfo::Array(l0, l1, _), TypeInfo::Array(r0, r1, _)) => {
             l1 == r1 && are_equal_minus_dynamic_types(l0, r0)
-        }
-        (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
-            l_fields
-                .iter()
-                .zip(r_fields.iter())
-                .fold(true, |acc, (left, right)| {
-                    acc && left.name == right.name
-                        && are_equal_minus_dynamic_types(left.type_id, right.type_id)
-                })
         }
         _ => false,
     }

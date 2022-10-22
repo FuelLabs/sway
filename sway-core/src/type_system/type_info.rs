@@ -1227,8 +1227,7 @@ impl TypeInfo {
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
             | TypeInfo::B256
-            | TypeInfo::ErrorRecovery
-            | TypeInfo::Storage { .. } => false,
+            | TypeInfo::ErrorRecovery => false,
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
@@ -1237,6 +1236,7 @@ impl TypeInfo {
             | TypeInfo::Tuple(_)
             | TypeInfo::Array(_, _, _)
             | TypeInfo::Contract
+            | TypeInfo::Storage { .. }
             | TypeInfo::Numeric => true,
         }
     }
