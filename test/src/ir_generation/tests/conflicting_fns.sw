@@ -40,5 +40,5 @@ fn main() -> u64 {
 // Reference: https://github.com/FuelLabs/sway/pull/2330#discussion_r921809763
 
 // ::check-ir::
-// check: $(=^\s*)pub fn foo_0(
-// check: $(=^\s*)pub fn foo_1(
+// check: fn foo_0(
+// check: fn foo_1(

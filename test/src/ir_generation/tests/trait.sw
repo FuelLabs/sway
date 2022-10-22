@@ -39,7 +39,7 @@ fn main() -> bool {
 // check: $(res=$VAL) = call $(pred_or=$ID)($foo_ptr, $bar_ptr)
 // check: ret bool $res
 
-// check: $(=^\s*)pub fn $pred_or(self $MD: { bool }, other $MD: { bool }) -> bool
+// check: fn $pred_or(self $MD: { bool }, other $MD: { bool }) -> bool
 // check: $(self_pred=$VAL) = call $ID(self)
 // check: cbr $self_pred, $(block1=$ID)($self_pred), $(block0=$ID)()
 

@@ -20,7 +20,7 @@ impl StorageAccess for Contract {
     }
 }
 
-// check: $(=^\s*)pub fn set_s
+// check: fn set_s
 // check: local mut ptr b256 $(key=$ID)
 // check: local mut ptr [b256; 2] $(val_ary=$ID)
 
@@ -44,7 +44,7 @@ impl StorageAccess for Contract {
 // check: state_store_quad_word ptr $val_ary_1_as_b256, key ptr $key_ptr
 
 
-// check: $(=^\s*)pub fn get_s
+// check: fn get_s
 // check: local mut ptr b256 $(key=$ID)
 // check: local mut ptr [b256; 2] $(val_ary=$ID)
 

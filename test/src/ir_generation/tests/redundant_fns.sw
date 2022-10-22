@@ -53,9 +53,9 @@ fn main() -> bool {
 
 // check: fn main
 
-// check: $(=^\s*)pub fn id_
+// check: fn id_
 // sameln: u64
-// check: $(=^\s*)pub fn id_
+// check: fn id_
 // sameln: bool
 
 // check: fn $C_FN
