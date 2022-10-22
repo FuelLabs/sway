@@ -47,6 +47,19 @@ pub(crate) fn type_check_method_application(
         errors
     );
 
+    // if method.name.as_str() == "eq" || method.name.as_str() == "not" {
+    //     println!("about to type check application of: {}, {}", method.name.as_str(), method);
+    //     println!(
+    //         "\t[{}]",
+    //         method
+    //             .parameters
+    //             .iter()
+    //             .map(|x| format!("{}: {}", *x.type_id, x.type_id))
+    //             .collect::<Vec<_>>()
+    //             .join(", ")
+    //     );
+    // }
+
     // check the function storage purity
     if !method.is_contract_call {
         // 'method.purity' is that of the callee, 'opts.purity' of the caller.
@@ -292,6 +305,19 @@ pub(crate) fn type_check_method_application(
             });
         }
     }
+
+    // if method.name.as_str() == "eq" || method.name.as_str() == "not" {
+    //     println!("just type checked: {}, {}", method.name.as_str(), method);
+    //     println!(
+    //         "\t[{}]",
+    //         method
+    //             .parameters
+    //             .iter()
+    //             .map(|x| format!("{}: {}", *x.type_id, x.type_id))
+    //             .collect::<Vec<_>>()
+    //             .join(", ")
+    //     );
+    // }
 
     // build the function application
     let exp = check!(
