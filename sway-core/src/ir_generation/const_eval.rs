@@ -18,8 +18,7 @@ use sway_ir::{
     value::Value,
 };
 use sway_types::{ident::Ident, span::Spanned};
-
-use std::collections::HashMap;
+use sway_utils::mapped_stack::MappedStack;
 
 pub(crate) struct LookupEnv<'a> {
     pub(crate) context: &'a mut Context,
@@ -113,48 +112,6 @@ pub(crate) fn compile_constant_expression_to_constant(
     let mut known_consts = MappedStack::<Ident, Constant>::new();
 
     const_eval_typed_expr(lookup, &mut known_consts, const_expr).map_or(err, Ok)
-}
-
-// A HashMap that can hold multiple values and
-// fetch values in a LIFO manner. Rust's MultiMap
-// handles values in a FIFO manner.
-struct MappedStack<K: std::cmp::Eq + std::hash::Hash, V> {
-    container: HashMap<K, Vec<V>>,
-}
-
-impl<K: std::cmp::Eq + std::hash::Hash, V> MappedStack<K, V> {
-    fn new() -> MappedStack<K, V> {
-        MappedStack {
-            container: HashMap::<K, Vec<V>>::new(),
-        }
-    }
-    fn push(&mut self, k: K, v: V) {
-        match self.container.get_mut(&k) {
-            Some(val_vec) => {
-                val_vec.push(v);
-            }
-            None => {
-                self.container.insert(k, vec![v]);
-            }
-        }
-    }
-    fn get(&self, k: &K) -> Option<&V> {
-        self.container.get(k).and_then(|val_vec| val_vec.last())
-    }
-    fn pop(&mut self, k: &K) {
-        if let Some(val_vec) = self.container.get_mut(k) {
-            val_vec.pop();
-            if val_vec.is_empty() {
-                self.container.remove(k);
-            }
-        }
-    }
-}
-
-impl<K: std::cmp::Eq + std::hash::Hash, V> Default for MappedStack<K, V> {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 /// Given an environment mapping names to constants,

@@ -7,6 +7,7 @@
 //! this should be addressed in the future, perhaps by using compiler intrinsic calls instead of
 //! the ASM blocks where possible. See: https://github.com/FuelLabs/sway/issues/855,
 
+use rustc_hash::FxHashMap;
 use sway_types::ident::Ident;
 
 use crate::{
@@ -279,10 +280,10 @@ impl Instruction {
     }
 
     /// Replace `old_val` with `new_val` if it is referenced by this instruction's arguments.
-    pub fn replace_value(&mut self, old_val: Value, new_val: Value) {
+    pub fn replace_values(&mut self, replace_map: &FxHashMap<Value, Value>) {
         let replace = |val: &mut Value| {
-            if val == &old_val {
-                *val = new_val
+            while let Some(new_val) = replace_map.get(val) {
+                *val = *new_val;
             }
         };
         match self {

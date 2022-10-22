@@ -8,7 +8,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     block::{Block, BlockIterator, Label},
@@ -419,15 +419,14 @@ impl Function {
     /// Replace a value with another within this function.
     ///
     /// This is a convenience method which iterates over this function's blocks and calls
-    /// [`Block::replace_value`] in turn.
+    /// [`Block::replace_values`] in turn.
     ///
     /// `starting_block` is an optimisation for when the first possible reference to `old_val` is
     /// known.
-    pub fn replace_value(
+    pub fn replace_values(
         &self,
         context: &mut Context,
-        old_val: Value,
-        new_val: Value,
+        replace_map: &FxHashMap<Value, Value>,
         starting_block: Option<Block>,
     ) {
         let mut block_iter = self.block_iter(context).peekable();
@@ -441,8 +440,20 @@ impl Function {
         }
 
         for block in block_iter {
-            block.replace_value(context, old_val, new_val);
+            block.replace_values(context, replace_map);
         }
+    }
+
+    pub fn replace_value(
+        &self,
+        context: &mut Context,
+        old_val: Value,
+        new_val: Value,
+        starting_block: Option<Block>,
+    ) {
+        let mut map = FxHashMap::<Value, Value>::default();
+        map.insert(old_val, new_val);
+        self.replace_values(context, &map, starting_block);
     }
 
     /// A graphviz dot graph of the control-flow-graph.

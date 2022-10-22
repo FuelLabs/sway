@@ -96,12 +96,9 @@ pub fn compute_dom_tree(context: &Context, function: &Function) -> DomTree {
             let picked_pred = new_idom;
             // for all other predecessors, p, of b:
             for p in b.pred_iter(context).filter(|p| **p != picked_pred) {
-                match dom_tree[p].parent {
-                    Some(_) => {
-                        // if doms[p] already calculated
-                        new_idom = intersect(&po, &mut dom_tree, *p, new_idom);
-                    }
-                    None => (),
+                if matches!(dom_tree[p].parent, Some(_)) {
+                    // if doms[p] already calculated
+                    new_idom = intersect(&po, &mut dom_tree, *p, new_idom);
                 }
             }
             let b_node = dom_tree.get_mut(b).unwrap();
@@ -135,8 +132,12 @@ pub fn compute_dom_tree(context: &Context, function: &Function) -> DomTree {
     // Fix the root.
     dom_tree.get_mut(&entry).unwrap().parent = None;
     // Build the children.
-    for (b, idom) in dom_tree.iter_mut() {
-        idom.children.push(*b);
+    let child_parent: Vec<_> = dom_tree
+        .iter()
+        .filter_map(|(n, n_node)| n_node.parent.map(|n_parent| (*n, n_parent)))
+        .collect();
+    for (child, parent) in child_parent {
+        dom_tree.get_mut(&parent).unwrap().children.push(child);
     }
 
     dom_tree
@@ -173,15 +174,12 @@ pub fn compute_dom_fronts(context: &Context, function: &Function, dom_tree: &Dom
 pub fn print_dot(context: &Context, func_name: &str, dom_tree: &DomTree) -> String {
     let mut res = format!("digraph {} {{\n", func_name);
     for (b, idom) in dom_tree.iter() {
-        match idom.parent {
-            Some(idom) => {
-                res += &(format!(
-                    "\t{} -> {}\n",
-                    idom.get_label(context),
-                    b.get_label(context)
-                ))
-            }
-            None => (),
+        if let Some(idom) = idom.parent {
+            res += &(format!(
+                "\t{} -> {}\n",
+                idom.get_label(context),
+                b.get_label(context)
+            ))
         }
     }
     res += "}\n";

@@ -4271,6 +4271,7 @@ dependencies = [
  "rustc-hash",
  "sway-ir-macros",
  "sway-types",
+ "sway-utils",
 ]
 
 [[package]]
