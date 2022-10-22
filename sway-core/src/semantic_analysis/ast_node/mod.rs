@@ -382,8 +382,8 @@ impl ty::TyAstNode {
 }
 
 fn type_check_interface_surface(
+    mut ctx: TypeCheckContext,
     interface_surface: Vec<TraitFn>,
-    namespace: &mut Namespace,
 ) -> CompileResult<Vec<DeclarationId>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -402,7 +402,7 @@ fn type_check_interface_surface(
         let mut typed_parameters = vec![];
         for param in parameters.into_iter() {
             typed_parameters.push(check!(
-                ty::TyFunctionParameter::type_check_interface_parameter(namespace, param),
+                ty::TyFunctionParameter::type_check_interface_parameter(ctx.by_ref(), param),
                 continue,
                 warnings,
                 errors
@@ -411,7 +411,7 @@ fn type_check_interface_surface(
 
         // type check the return type
         let return_type = check!(
-            namespace.resolve_type_with_self(
+            ctx.namespace.resolve_type_with_self(
                 insert_type(return_type),
                 insert_type(TypeInfo::SelfType),
                 &return_type_span,

@@ -3,7 +3,7 @@ use crate::{
     language::{parsed::FunctionParameter, ty},
     semantic_analysis::TypeCheckContext,
     type_system::*,
-    CompileResult, Namespace,
+    CompileResult,
 };
 
 use sway_error::error::CompileError;
@@ -65,7 +65,7 @@ impl ty::TyFunctionParameter {
     }
 
     pub(crate) fn type_check_interface_parameter(
-        namespace: &mut Namespace,
+        ctx: TypeCheckContext,
         parameter: FunctionParameter,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
@@ -83,7 +83,7 @@ impl ty::TyFunctionParameter {
         let initial_type_id = insert_type(type_info);
 
         let type_id = check!(
-            namespace.resolve_type_with_self(
+            ctx.namespace.resolve_type_with_self(
                 initial_type_id,
                 insert_type(TypeInfo::SelfType),
                 &type_span,

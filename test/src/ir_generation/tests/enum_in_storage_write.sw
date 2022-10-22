@@ -29,7 +29,7 @@ impl StorageAccess for Contract {
     }
 }
 
-// check: fn set_e<c1c7877c>(s $MD: { u64, u64, u64, u64, u64 }, u $MD: u64) -> ()
+// check: $(=^\s*)pub fn set_e<c1c7877c>(s $MD: { u64, u64, u64, u64, u64 }, u $MD: u64) -> ()
 
 // check: local mut ptr b256 key_for_0_0
 // check: local mut ptr b256 key_for_0_1

@@ -30,7 +30,7 @@ impl ty::TyAbiDeclaration {
         // so we don't support the case of calling a contract's own interface
         // from itself. This is by design.
         let interface_surface = check!(
-            type_check_interface_surface(interface_surface, ctx.namespace),
+            type_check_interface_surface(ctx.by_ref(), interface_surface),
             return err(warnings, errors),
             warnings,
             errors

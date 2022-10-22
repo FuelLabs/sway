@@ -52,16 +52,34 @@ mod ir_builder {
                 }
 
             rule fn_decl() -> IrAstFnDecl
-                = "fn" _ name:id() _ selector:selector_id()? _ "(" _
-                      args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
-                          metadata:comma_metadata_idx()? "{" _
-                      locals:fn_local()*
-                      blocks:block_decl()*
-                  "}" _ {
+                = "pub fn" _ name:id() _ selector:selector_id()? _ "(" _
+                        args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
+                            metadata:comma_metadata_idx()? "{" _
+                        locals:fn_local()*
+                        blocks:block_decl()*
+                    "}" _ {
                     IrAstFnDecl {
                         name,
                         args,
                         ret_type,
+                        is_public: true,
+                        metadata,
+                        locals,
+                        blocks,
+                        selector
+                    }
+                }
+                / "fn" _ name:id() _ selector:selector_id()? _ "(" _
+                        args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
+                            metadata:comma_metadata_idx()? "{" _
+                        locals:fn_local()*
+                        blocks:block_decl()*
+                    "}" _ {
+                    IrAstFnDecl {
+                        name,
+                        args,
+                        ret_type,
+                        is_public: false,
                         metadata,
                         locals,
                         blocks,
@@ -597,6 +615,7 @@ mod ir_builder {
         name: String,
         args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
         ret_type: IrAstTy,
+        is_public: bool,
         metadata: Option<MdIdxRef>,
         locals: Vec<(IrAstTy, String, bool, Option<IrAstOperation>)>,
         blocks: Vec<IrAstBlock>,
@@ -859,7 +878,7 @@ mod ir_builder {
                 args,
                 ret_type,
                 fn_decl.selector,
-                false,
+                fn_decl.is_public,
                 convert_md_idx(&fn_decl.metadata),
             );
 

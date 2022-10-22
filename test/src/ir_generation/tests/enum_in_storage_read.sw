@@ -28,7 +28,7 @@ impl StorageAccess for Contract {
     }
 }
 
-// check: fn get_e<01665bf4>() -> { { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } }
+// check: $(=^\s*)pub fn get_e<01665bf4>() -> { { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } }
 
 // check: local mut ptr b256 key_for_0_0
 // check: local mut ptr b256 key_for_0_1
