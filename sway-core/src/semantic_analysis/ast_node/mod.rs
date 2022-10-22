@@ -398,11 +398,15 @@ fn type_check_interface_surface(
             ..
         } = trait_fn;
 
+        // create a namespace for the trait function
+        let mut fn_namespace = ctx.namespace.clone();
+        let mut fn_ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
+
         // type check the parameters
         let mut typed_parameters = vec![];
         for param in parameters.into_iter() {
             typed_parameters.push(check!(
-                ty::TyFunctionParameter::type_check_interface_parameter(ctx.by_ref(), param),
+                ty::TyFunctionParameter::type_check_interface_parameter(fn_ctx.by_ref(), param),
                 continue,
                 warnings,
                 errors
@@ -411,7 +415,7 @@ fn type_check_interface_surface(
 
         // type check the return type
         let return_type = check!(
-            ctx.namespace.resolve_type_with_self(
+            fn_ctx.namespace.resolve_type_with_self(
                 insert_type(return_type),
                 insert_type(TypeInfo::SelfType),
                 &return_type_span,
