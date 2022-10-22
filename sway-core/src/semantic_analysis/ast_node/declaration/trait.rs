@@ -90,17 +90,14 @@ impl ty::TyTraitDeclaration {
         );
 
         // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
-        let _methods = methods
-            .iter()
-            .map(|method| {
-                check!(
-                    ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true),
-                    ty::TyFunctionDeclaration::error(method.clone()),
-                    warnings,
-                    errors
-                )
-            })
-            .collect::<Vec<_>>();
+        methods.iter().for_each(|method| {
+            let _ = check!(
+                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true),
+                ty::TyFunctionDeclaration::error(method.clone()),
+                warnings,
+                errors
+            );
+        });
 
         let typed_trait_decl = ty::TyTraitDeclaration {
             name,
