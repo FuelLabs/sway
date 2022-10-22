@@ -57,7 +57,7 @@ impl PartialEq for TyFunctionDeclaration {
 }
 
 impl CopyTypes for TyFunctionDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
@@ -265,7 +265,7 @@ impl PartialEq for TyFunctionParameter {
 }
 
 impl CopyTypes for TyFunctionParameter {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.type_id.copy_types(type_mapping);
     }
 }
