@@ -791,10 +791,20 @@ impl ty::TyExpression {
                 .with_help_text(
                     "Struct field's type must match up with the type specified in its declaration.",
                 )
-                .with_type_annotation(def_field.type_id);
+                .with_type_annotation(insert_type(TypeInfo::Unknown));
             let typed_field = check!(
                 ty::TyExpression::type_check(ctx, expr_field.value),
                 continue,
+                warnings,
+                errors
+            );
+            append!(
+                unify_adt(
+                    typed_field.return_type,
+                    def_field.type_id,
+                    &typed_field.span,
+                    "Struct field's type must match up with the type specified in its declaration.",
+                ),
                 warnings,
                 errors
             );
