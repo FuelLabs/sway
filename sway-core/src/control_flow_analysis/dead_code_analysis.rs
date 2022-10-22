@@ -421,8 +421,7 @@ fn connect_impl_trait(
     entry_node: NodeIndex,
     tree_type: &TreeType,
 ) -> Result<(), CompileError> {
-    let graph_c = graph.clone();
-    let trait_decl_node = graph_c.namespace.find_trait(trait_name);
+    let trait_decl_node = graph.namespace.find_trait(trait_name).cloned();
     match trait_decl_node {
         None => {
             let node_ix = graph.add_node("External trait".into());
@@ -430,7 +429,7 @@ fn connect_impl_trait(
         }
         Some(trait_decl_node) => {
             graph.add_edge_from_entry(entry_node, "".into());
-            graph.add_edge(entry_node, *trait_decl_node, "".into());
+            graph.add_edge(entry_node, trait_decl_node, "".into());
         }
     };
     let mut methods_and_indexes = vec![];

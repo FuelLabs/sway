@@ -14,7 +14,7 @@ pub struct TyImplTrait {
 }
 
 impl CopyTypes for TyImplTrait {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.impl_type_parameters
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
