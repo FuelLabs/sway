@@ -180,14 +180,15 @@ impl TraitMap {
     pub(crate) fn filter_by_type(&self, mut type_id: TypeId) -> TraitMap {
         let mut trait_map = TraitMap::default();
         for ((map_trait_name, map_type_id), map_trait_methods) in self.trait_impls.iter() {
-            if !is_dynamic(type_id) && type_id == *map_type_id {
+            let type_info = look_up_type_id(type_id);
+            if !type_info.can_change() && type_id == *map_type_id {
                 let trait_methods = map_trait_methods
                     .values()
                     .cloned()
                     .into_iter()
                     .collect::<Vec<_>>();
                 trait_map.insert(map_trait_name.clone(), type_id, trait_methods);
-            } else if look_up_type_id(type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
+            } else if type_info.is_subset_of(&look_up_type_id(*map_type_id)) {
                 let type_mapping = TypeMapping::from_superset_and_subset(*map_type_id, type_id);
                 let mut trait_methods = map_trait_methods
                     .values()
@@ -206,67 +207,13 @@ impl TraitMap {
         trait_map
     }
 
-    // pub(crate) fn filter_by_type(&self, type_id: TypeId) -> TraitMap {
-    //     fn helper(
-    //         trait_map: &TraitMap,
-    //         type_id: TypeId,
-    //         seen: &mut im::HashSet<TypeId>,
-    //     ) -> TraitMap {
-    //         seen.insert(type_id);
-
-    //         let mut all_types = look_up_type_id(type_id).extract_inner_types();
-    //         all_types.insert(type_id);
-    //         let mut all_types = all_types.into_iter().collect::<Vec<_>>();
-
-    //         let mut new_trait_map = TraitMap::default();
-
-    //         for ((map_trait_name, map_type_id), map_trait_methods) in trait_map.trait_impls.iter() {
-    //             for type_id in all_types.iter_mut() {
-    //                 if look_up_type_id(*type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
-    //                     let type_mapping =
-    //                         TypeMapping::from_superset_and_subset(*map_type_id, *type_id);
-    //                     let mut trait_methods = map_trait_methods
-    //                         .values()
-    //                         .cloned()
-    //                         .into_iter()
-    //                         .collect::<Vec<_>>();
-    //                     trait_methods.iter_mut().for_each(|trait_method| {
-    //                         trait_method.copy_types(&type_mapping);
-    //                         let new_self_type = insert_type(TypeInfo::SelfType);
-    //                         type_id.replace_self_type(new_self_type);
-    //                         trait_method.replace_self_type(new_self_type);
-    //                         if !seen.contains(&trait_method.return_type) {
-    //                             new_trait_map.extend(helper(
-    //                                 trait_map,
-    //                                 trait_method.return_type,
-    //                                 seen,
-    //                             ));
-    //                         }
-    //                     });
-    //                     new_trait_map.insert(map_trait_name.clone(), *type_id, trait_methods);
-    //                 }
-    //             }
-    //         }
-
-    //         // println!("{}", new_trait_map);
-    //         new_trait_map
-    //     }
-
-    //     let mut seen = im::HashSet::new();
-    //     helper(self, type_id, &mut seen)
-    // }
-
     pub(crate) fn get_methods_for_type(&self, type_id: TypeId) -> Vec<ty::TyFunctionDeclaration> {
-        // println!("get_methods_for_type: {}", type_id);
-        // println!("{}", self);
         let mut methods = vec![];
         // small performance gain in bad case
         if look_up_type_id(type_id) == TypeInfo::ErrorRecovery {
             return methods;
         }
         for ((_, map_type_id), map_trait_methods) in self.trait_impls.iter() {
-            // if type_id == *map_type_id {
-            // if look_up_type_id(type_id) == look_up_type_id(*map_type_id) {
             if are_equal_minus_dynamic_types(type_id, *map_type_id) {
                 let mut trait_methods = map_trait_methods
                     .values()
@@ -277,34 +224,6 @@ impl TraitMap {
             }
         }
         methods
-    }
-}
-
-fn is_dynamic(type_id: TypeId) -> bool {
-    // TODO: there might be an optimization here that if the type params hold
-    // only non-dynamic types, then it doesn't matter that there are type params
-    match look_up_type_id(type_id) {
-        TypeInfo::Enum {
-            type_parameters, ..
-        } => !type_parameters.is_empty(),
-        TypeInfo::Struct {
-            type_parameters, ..
-        } => !type_parameters.is_empty(),
-        TypeInfo::Str(_)
-        | TypeInfo::UnsignedInteger(_)
-        | TypeInfo::Boolean
-        | TypeInfo::B256
-        | TypeInfo::Contract
-        | TypeInfo::ErrorRecovery
-        | TypeInfo::Storage { .. } => false,
-        TypeInfo::Unknown
-        | TypeInfo::UnknownGeneric { .. }
-        | TypeInfo::ContractCaller { .. }
-        | TypeInfo::Custom { .. }
-        | TypeInfo::SelfType
-        | TypeInfo::Tuple(_)
-        | TypeInfo::Array(_, _, _)
-        | TypeInfo::Numeric => true,
     }
 }
 

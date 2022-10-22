@@ -77,72 +77,12 @@ impl TypeEngine {
         if let Some(type_id) = id_map.get(&ty) {
             return *type_id;
         }
-        // if ty.can_change() {
-        //     TypeId::new(self.slab.insert(ty))
-        // } else {
-        //     let type_id = TypeId::new(self.slab.insert(ty.clone()));
-        //     id_map.insert(ty, type_id);
-        //     type_id
-        // }
-        match &ty {
-            // these are added before type checking starts
-            // TypeInfo::UnsignedInteger(_) => todo!(),
-            // TypeInfo::Boolean => todo!(),
-            // TypeInfo::B256 => todo!(),
-            // TypeInfo::Contract => todo!(),
-            // TypeInfo::ErrorRecovery => todo!(),
-            TypeInfo::Str(_) => {
-                let type_id = TypeId::new(self.slab.insert(ty.clone()));
-                id_map.insert(ty, type_id);
-                type_id
-            }
-            TypeInfo::Enum {
-                ref type_parameters,
-                ..
-            } => {
-                if type_parameters.is_empty() {
-                    let type_id = TypeId::new(self.slab.insert(ty.clone()));
-                    id_map.insert(ty, type_id);
-                    type_id
-                } else {
-                    TypeId::new(self.slab.insert(ty))
-                }
-            }
-            TypeInfo::Struct {
-                ref type_parameters,
-                ..
-            } => {
-                if type_parameters.is_empty() {
-                    let type_id = TypeId::new(self.slab.insert(ty.clone()));
-                    id_map.insert(ty, type_id);
-                    type_id
-                } else {
-                    TypeId::new(self.slab.insert(ty))
-                }
-            }
-            TypeInfo::Storage { .. } => {
-                let type_id = TypeId::new(self.slab.insert(ty.clone()));
-                id_map.insert(ty, type_id);
-                type_id
-            }
-
-            // these are not added to the id_map because the value in the pair
-            // `TypeId` -> `TypeInfo` will/can change
-            // TypeInfo::Unknown => todo!(),
-            // TypeInfo::UnknownGeneric { name } => todo!(),
-            // TypeInfo::SelfType => todo!(),
-            // TypeInfo::Custom { name, type_arguments } => todo!(),
-            // TypeInfo::Numeric => todo!(),
-
-            // these are not added to the id_map because, although they are not
-            // parameterized over a type_parameters, they can hold generic
-            // types, etc
-            // TypeInfo::Tuple(_) => todo!(),
-            // TypeInfo::Array(_, _, _) => todo!(),
-
-            // TODO: I'm not sure if this one could be added
-            // TypeInfo::ContractCaller { abi_name, address } => todo!(),
-            _ => TypeId::new(self.slab.insert(ty)),
+        if ty.can_change() {
+            TypeId::new(self.slab.insert(ty))
+        } else {
+            let type_id = TypeId::new(self.slab.insert(ty.clone()));
+            id_map.insert(ty, type_id);
+            type_id
         }
     }
 
