@@ -8,7 +8,7 @@ use crate::{
 
 use lazy_static::lazy_static;
 use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
-use sway_types::{integer_bits::IntegerBits, span::Span, Ident, Spanned};
+use sway_types::{span::Span, Ident, Spanned};
 
 lazy_static! {
     static ref TYPE_ENGINE: TypeEngine = TypeEngine::default();
