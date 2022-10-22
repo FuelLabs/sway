@@ -47,8 +47,9 @@ impl ty::TyTraitDeclaration {
         }
 
         // A temporary namespace for checking within the trait's scope.
+        let self_type = insert_type(TypeInfo::SelfType);
         let mut trait_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut trait_namespace);
+        let mut ctx = ctx.scoped(&mut trait_namespace).with_self_type(self_type);
 
         // type check the interface surface
         let interface_surface = check!(
@@ -81,7 +82,7 @@ impl ty::TyTraitDeclaration {
                 suffix: name.clone(),
                 is_absolute: false,
             },
-            insert_type(TypeInfo::SelfType),
+            self_type,
             trait_fns
                 .iter()
                 .map(|x| x.to_dummy_func(Mode::NonAbi))
@@ -89,7 +90,6 @@ impl ty::TyTraitDeclaration {
         );
 
         // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
-        let mut ctx = ctx.with_self_type(insert_type(TypeInfo::SelfType));
         let _methods = methods
             .iter()
             .map(|method| {
@@ -120,6 +120,8 @@ impl ty::TyTraitDeclaration {
 fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> CompileResult<()> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
+
+    let self_type = ctx.self_type();
 
     for supertrait in supertraits.iter() {
         match ctx
@@ -153,7 +155,7 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                 // insert dummy versions of the interfaces for all of the supertraits
                 ctx.namespace.insert_trait_implementation(
                     supertrait.name.clone(),
-                    insert_type(TypeInfo::SelfType),
+                    self_type,
                     trait_fns
                         .iter()
                         .map(|x| x.to_dummy_func(Mode::NonAbi))
@@ -169,7 +171,7 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                 );
                 ctx.namespace.insert_trait_implementation(
                     supertrait.name.clone(),
-                    insert_type(TypeInfo::SelfType),
+                    self_type,
                     dummy_funcs,
                 );
 
@@ -232,9 +234,8 @@ fn convert_trait_methods_to_dummy_funcs(
         // type check the return type
         let initial_return_type = insert_type(return_type.clone());
         let return_type = check!(
-            ctx.namespace.resolve_type_with_self(
+            ctx.resolve_type_with_self(
                 initial_return_type,
-                insert_type(TypeInfo::SelfType),
                 return_type_span,
                 EnforceTypeArguments::Yes,
                 None

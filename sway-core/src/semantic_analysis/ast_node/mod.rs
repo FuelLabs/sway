@@ -415,9 +415,8 @@ fn type_check_interface_surface(
 
         // type check the return type
         let return_type = check!(
-            fn_ctx.namespace.resolve_type_with_self(
+            fn_ctx.resolve_type_with_self(
                 insert_type(return_type),
-                insert_type(TypeInfo::SelfType),
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None
