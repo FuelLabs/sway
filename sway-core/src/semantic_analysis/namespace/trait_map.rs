@@ -14,6 +14,9 @@ type TraitMethods = im::HashMap<String, ty::TyFunctionDeclaration>;
 type TraitImpls = im::HashMap<(TraitName, TypeId), TraitMethods>;
 
 /// Map holding trait implementations for types.
+///
+/// Note: "impl self" blocks are considered traits and are stored in the
+/// [TraitMap].
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct TraitMap {
     trait_impls: TraitImpls,
@@ -71,12 +74,98 @@ impl TraitMap {
         self.extend(trait_map);
     }
 
+    /// Given a [TypeId] `type_id`, retrieve entries in the [TraitMap] `self`
+    /// for which `type_id` is a subset and re-insert them under `type_id`.
+    ///
+    /// Here is an example of what this means. Imagine we have this Sway code:
+    ///
+    /// ```ignore
+    /// struct Data<T, F> {
+    ///     first: T,
+    ///     second: F,
+    /// }
+    ///
+    /// impl<T, F> Data<T, F> {
+    ///     fn get_first(self) -> T {
+    ///         self.first
+    ///     }
+    ///
+    ///     fn get_second(self) -> F {
+    ///         self.second
+    ///     }
+    /// }
+    ///
+    /// impl<T> Data<T, T> {
+    ///     fn switch(ref mut self) {
+    ///         let first = self.first;
+    ///         self.first = self.second;
+    ///         self.second = first;
+    ///     }
+    /// }
+    ///
+    /// impl Data<u8, u8> {
+    ///     fn add_u8(ref mut self, input: u8) {
+    ///         self.first += input;
+    ///         self.second += input;
+    ///     }
+    /// }
+    ///
+    /// impl Data<bool, bool> {
+    ///     fn inner_and(self) -> bool {
+    ///         self.first && self.second
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let mut foo = Data {
+    ///         first: 1u8,
+    ///         second: 2u8,
+    ///     };
+    ///
+    ///     let a = foo.get_first();
+    ///     let b = foo.get_second();
+    ///     foo.switch();
+    ///     let c = foo.add_u8(3u8);
+    ///     let d = foo.inner_and();    // fails to compile
+    ///
+    ///     let mut bar = Data {
+    ///         first: true,
+    ///         second: false,
+    ///     };
+    ///
+    ///     let e = bar.get_first();
+    ///     let f = bar.get_second();
+    ///     bar.switch();
+    ///     let g = bar.add_u8(3u8);    // fails to compile
+    ///     let h = bar.inner_and();
+    ///
+    ///     let mut baz = Data {
+    ///         first: 1u8,
+    ///         second: false,
+    ///     };
+    ///
+    ///     let i = baz.get_first();
+    ///     let j = baz.get_second();
+    ///     baz.switch();               // fails to compile
+    ///     let k = baz.add_u8(3u8);    // fails to compile
+    ///     let l = baz.inner_and();    // fails to compile
+    /// }
+    /// ```
+    ///
+    /// When we first create the type of `Data<u8, u8>` when we declare the
+    /// variable `foo`, we need some way of gathering all of the applicable
+    /// traits that have been implemented for `Data<u8, u8>`, even if they were
+    /// not implemented for `Data<u8, u8>` directly. That's why we look for
+    /// entries in the [TraitMap] `self` for which `type_id` is a subset and
+    /// re-insert them under `type_id`. Moreover, the impl block for
+    /// `Data<T, T>` needs to be able to call methods that are defined in the
+    /// impl block of `Data<T, F>`
     pub(crate) fn insert_for_type(&mut self, type_id: TypeId) {
-        // self.extend(self.filter_by_type(type_id));
         self.extend(self.filter_by_type(type_id));
         for type_id in look_up_type_id(type_id).extract_inner_types().into_iter() {
             self.extend(self.filter_by_type(type_id));
         }
+        // println!("{}", self);
     }
 
     pub(crate) fn extend(&mut self, other: TraitMap) {
@@ -89,11 +178,16 @@ impl TraitMap {
     }
 
     pub(crate) fn filter_by_type(&self, mut type_id: TypeId) -> TraitMap {
-        let mut trait_map = TraitMap {
-            trait_impls: Default::default(),
-        };
+        let mut trait_map = TraitMap::default();
         for ((map_trait_name, map_type_id), map_trait_methods) in self.trait_impls.iter() {
-            if look_up_type_id(type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
+            if !is_dynamic(type_id) && type_id == *map_type_id {
+                let trait_methods = map_trait_methods
+                    .values()
+                    .cloned()
+                    .into_iter()
+                    .collect::<Vec<_>>();
+                trait_map.insert(map_trait_name.clone(), type_id, trait_methods);
+            } else if look_up_type_id(type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
                 let type_mapping = TypeMapping::from_superset_and_subset(*map_type_id, type_id);
                 let mut trait_methods = map_trait_methods
                     .values()
@@ -111,6 +205,56 @@ impl TraitMap {
         }
         trait_map
     }
+
+    // pub(crate) fn filter_by_type(&self, type_id: TypeId) -> TraitMap {
+    //     fn helper(
+    //         trait_map: &TraitMap,
+    //         type_id: TypeId,
+    //         seen: &mut im::HashSet<TypeId>,
+    //     ) -> TraitMap {
+    //         seen.insert(type_id);
+
+    //         let mut all_types = look_up_type_id(type_id).extract_inner_types();
+    //         all_types.insert(type_id);
+    //         let mut all_types = all_types.into_iter().collect::<Vec<_>>();
+
+    //         let mut new_trait_map = TraitMap::default();
+
+    //         for ((map_trait_name, map_type_id), map_trait_methods) in trait_map.trait_impls.iter() {
+    //             for type_id in all_types.iter_mut() {
+    //                 if look_up_type_id(*type_id).is_subset_of(&look_up_type_id(*map_type_id)) {
+    //                     let type_mapping =
+    //                         TypeMapping::from_superset_and_subset(*map_type_id, *type_id);
+    //                     let mut trait_methods = map_trait_methods
+    //                         .values()
+    //                         .cloned()
+    //                         .into_iter()
+    //                         .collect::<Vec<_>>();
+    //                     trait_methods.iter_mut().for_each(|trait_method| {
+    //                         trait_method.copy_types(&type_mapping);
+    //                         let new_self_type = insert_type(TypeInfo::SelfType);
+    //                         type_id.replace_self_type(new_self_type);
+    //                         trait_method.replace_self_type(new_self_type);
+    //                         if !seen.contains(&trait_method.return_type) {
+    //                             new_trait_map.extend(helper(
+    //                                 trait_map,
+    //                                 trait_method.return_type,
+    //                                 seen,
+    //                             ));
+    //                         }
+    //                     });
+    //                     new_trait_map.insert(map_trait_name.clone(), *type_id, trait_methods);
+    //                 }
+    //             }
+    //         }
+
+    //         // println!("{}", new_trait_map);
+    //         new_trait_map
+    //     }
+
+    //     let mut seen = im::HashSet::new();
+    //     helper(self, type_id, &mut seen)
+    // }
 
     pub(crate) fn get_methods_for_type(&self, type_id: TypeId) -> Vec<ty::TyFunctionDeclaration> {
         // println!("get_methods_for_type: {}", type_id);
@@ -133,6 +277,34 @@ impl TraitMap {
             }
         }
         methods
+    }
+}
+
+fn is_dynamic(type_id: TypeId) -> bool {
+    // TODO: there might be an optimization here that if the type params hold
+    // only non-dynamic types, then it doesn't matter that there are type params
+    match look_up_type_id(type_id) {
+        TypeInfo::Enum {
+            type_parameters, ..
+        } => !type_parameters.is_empty(),
+        TypeInfo::Struct {
+            type_parameters, ..
+        } => !type_parameters.is_empty(),
+        TypeInfo::Str(_)
+        | TypeInfo::UnsignedInteger(_)
+        | TypeInfo::Boolean
+        | TypeInfo::B256
+        | TypeInfo::Contract
+        | TypeInfo::ErrorRecovery
+        | TypeInfo::Storage { .. } => false,
+        TypeInfo::Unknown
+        | TypeInfo::UnknownGeneric { .. }
+        | TypeInfo::ContractCaller { .. }
+        | TypeInfo::Custom { .. }
+        | TypeInfo::SelfType
+        | TypeInfo::Tuple(_)
+        | TypeInfo::Array(_, _, _)
+        | TypeInfo::Numeric => true,
     }
 }
 

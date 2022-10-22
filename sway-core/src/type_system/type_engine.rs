@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::sync::RwLock;
+
 use crate::{
     concurrent_slab::ConcurrentSlab, declaration_engine::*, language::ty, namespace::Path,
     type_system::*, Namespace,
@@ -5,7 +8,7 @@ use crate::{
 
 use lazy_static::lazy_static;
 use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
-use sway_types::{span::Span, Ident, Spanned};
+use sway_types::{integer_bits::IntegerBits, span::Span, Ident, Spanned};
 
 lazy_static! {
     static ref TYPE_ENGINE: TypeEngine = TypeEngine::default();
@@ -15,13 +18,132 @@ lazy_static! {
 pub(crate) struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
     storage_only_types: ConcurrentSlab<TypeInfo>,
+    id_map: RwLock<HashMap<TypeInfo, TypeId>>,
 }
 
 impl TypeEngine {
+    fn pre_fill(&self) {
+        let mut id_map = self.id_map.write().unwrap();
+        id_map.insert(
+            TypeInfo::Boolean,
+            TypeId::new(self.slab.insert(TypeInfo::Boolean)),
+        );
+        id_map.insert(
+            TypeInfo::B256,
+            TypeId::new(self.slab.insert(TypeInfo::B256)),
+        );
+        id_map.insert(
+            TypeInfo::Contract,
+            TypeId::new(self.slab.insert(TypeInfo::Contract)),
+        );
+        id_map.insert(
+            TypeInfo::UnsignedInteger(IntegerBits::Eight),
+            TypeId::new(
+                self.slab
+                    .insert(TypeInfo::UnsignedInteger(IntegerBits::Eight)),
+            ),
+        );
+        id_map.insert(
+            TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
+            TypeId::new(
+                self.slab
+                    .insert(TypeInfo::UnsignedInteger(IntegerBits::Sixteen)),
+            ),
+        );
+        id_map.insert(
+            TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+            TypeId::new(
+                self.slab
+                    .insert(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
+            ),
+        );
+        id_map.insert(
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            TypeId::new(
+                self.slab
+                    .insert(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+            ),
+        );
+        id_map.insert(
+            TypeInfo::ErrorRecovery,
+            TypeId::new(self.slab.insert(TypeInfo::ErrorRecovery)),
+        );
+    }
+
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
     pub(crate) fn insert_type(&self, ty: TypeInfo) -> TypeId {
-        TypeId::new(self.slab.insert(ty))
+        let mut id_map = self.id_map.write().unwrap();
+        if let Some(type_id) = id_map.get(&ty) {
+            return *type_id;
+        }
+        // if ty.can_change() {
+        //     TypeId::new(self.slab.insert(ty))
+        // } else {
+        //     let type_id = TypeId::new(self.slab.insert(ty.clone()));
+        //     id_map.insert(ty, type_id);
+        //     type_id
+        // }
+        match &ty {
+            // these are added before type checking starts
+            // TypeInfo::UnsignedInteger(_) => todo!(),
+            // TypeInfo::Boolean => todo!(),
+            // TypeInfo::B256 => todo!(),
+            // TypeInfo::Contract => todo!(),
+            // TypeInfo::ErrorRecovery => todo!(),
+            TypeInfo::Str(_) => {
+                let type_id = TypeId::new(self.slab.insert(ty.clone()));
+                id_map.insert(ty, type_id);
+                type_id
+            }
+            TypeInfo::Enum {
+                ref type_parameters,
+                ..
+            } => {
+                if type_parameters.is_empty() {
+                    let type_id = TypeId::new(self.slab.insert(ty.clone()));
+                    id_map.insert(ty, type_id);
+                    type_id
+                } else {
+                    TypeId::new(self.slab.insert(ty))
+                }
+            }
+            TypeInfo::Struct {
+                ref type_parameters,
+                ..
+            } => {
+                if type_parameters.is_empty() {
+                    let type_id = TypeId::new(self.slab.insert(ty.clone()));
+                    id_map.insert(ty, type_id);
+                    type_id
+                } else {
+                    TypeId::new(self.slab.insert(ty))
+                }
+            }
+            TypeInfo::Storage { .. } => {
+                let type_id = TypeId::new(self.slab.insert(ty.clone()));
+                id_map.insert(ty, type_id);
+                type_id
+            }
+
+            // these are not added to the id_map because the value in the pair
+            // `TypeId` -> `TypeInfo` will/can change
+            // TypeInfo::Unknown => todo!(),
+            // TypeInfo::UnknownGeneric { name } => todo!(),
+            // TypeInfo::SelfType => todo!(),
+            // TypeInfo::Custom { name, type_arguments } => todo!(),
+            // TypeInfo::Numeric => todo!(),
+
+            // these are not added to the id_map because, although they are not
+            // parameterized over a type_parameters, they can hold generic
+            // types, etc
+            // TypeInfo::Tuple(_) => todo!(),
+            // TypeInfo::Array(_, _, _) => todo!(),
+
+            // TODO: I'm not sure if this one could be added
+            // TypeInfo::ContractCaller { abi_name, address } => todo!(),
+            _ => TypeId::new(self.slab.insert(ty)),
+        }
     }
 
     /// Gets the size of the [TypeEngine].
@@ -333,6 +455,11 @@ impl TypeEngine {
     fn clear(&self) {
         self.slab.clear();
         self.storage_only_types.clear();
+        {
+            let mut id_map = self.id_map.write().unwrap();
+            id_map.clear();
+        }
+        self.pre_fill();
     }
 
     /// Resolve the type of the given [TypeId], replacing any instances of
