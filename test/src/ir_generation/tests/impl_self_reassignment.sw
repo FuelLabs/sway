@@ -22,7 +22,7 @@ fn main() {
 // check: $(a_ptr=$VAL) = get_ptr mut ptr { u64 } a, ptr { u64 }, 0
 // check: call $(f_method=$ID)($a_ptr)
 
-// check: fn $f_method(self $MD: { u64 }) -> ()
+// check: $(=^\s*)pub fn $f_method(self $MD: { u64 }) -> ()
 // nextln: entry(self: { u64 }):
 // nextln: $(zero_val=$VAL) = const u64 0
 // nextln: $VAL = insert_value self, { u64 }, $zero_val, 0
