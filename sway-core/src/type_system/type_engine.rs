@@ -22,54 +22,6 @@ pub(crate) struct TypeEngine {
 }
 
 impl TypeEngine {
-    fn pre_fill(&self) {
-        let mut id_map = self.id_map.write().unwrap();
-        id_map.insert(
-            TypeInfo::Boolean,
-            TypeId::new(self.slab.insert(TypeInfo::Boolean)),
-        );
-        id_map.insert(
-            TypeInfo::B256,
-            TypeId::new(self.slab.insert(TypeInfo::B256)),
-        );
-        id_map.insert(
-            TypeInfo::Contract,
-            TypeId::new(self.slab.insert(TypeInfo::Contract)),
-        );
-        id_map.insert(
-            TypeInfo::UnsignedInteger(IntegerBits::Eight),
-            TypeId::new(
-                self.slab
-                    .insert(TypeInfo::UnsignedInteger(IntegerBits::Eight)),
-            ),
-        );
-        id_map.insert(
-            TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-            TypeId::new(
-                self.slab
-                    .insert(TypeInfo::UnsignedInteger(IntegerBits::Sixteen)),
-            ),
-        );
-        id_map.insert(
-            TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-            TypeId::new(
-                self.slab
-                    .insert(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
-            ),
-        );
-        id_map.insert(
-            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-            TypeId::new(
-                self.slab
-                    .insert(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-            ),
-        );
-        id_map.insert(
-            TypeInfo::ErrorRecovery,
-            TypeId::new(self.slab.insert(TypeInfo::ErrorRecovery)),
-        );
-    }
-
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
     pub(crate) fn insert_type(&self, ty: TypeInfo) -> TypeId {
@@ -395,11 +347,8 @@ impl TypeEngine {
     fn clear(&self) {
         self.slab.clear();
         self.storage_only_types.clear();
-        {
-            let mut id_map = self.id_map.write().unwrap();
-            id_map.clear();
-        }
-        self.pre_fill();
+        let mut id_map = self.id_map.write().unwrap();
+        id_map.clear();
     }
 
     /// Resolve the type of the given [TypeId], replacing any instances of
