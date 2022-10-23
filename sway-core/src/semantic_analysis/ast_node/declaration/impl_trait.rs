@@ -448,7 +448,7 @@ impl ty::TyImplTrait {
         let mut methods = vec![];
         for fn_decl in functions.into_iter() {
             methods.push(check!(
-                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl),
+                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, true),
                 continue,
                 warnings,
                 errors
@@ -530,7 +530,7 @@ fn type_check_trait_implementation(
 
         // type check the function declaration
         let fn_decl = check!(
-            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl.clone()),
+            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl.clone(), true),
             continue,
             warnings,
             errors
@@ -595,15 +595,14 @@ fn type_check_trait_implementation(
                 });
             }
 
-            let (mut new_warnings, new_errors) = unify_with_self(
+            let (new_warnings, new_errors) = unify_right_with_self(
                 fn_decl_param_type,
                 fn_signature_param_type,
                 ctx.self_type(),
                 &fn_signature_param.type_span,
                 ctx.help_text(),
             );
-            warnings.append(&mut new_warnings);
-            if !new_errors.is_empty() {
+            if !new_warnings.is_empty() || !new_errors.is_empty() {
                 errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
                     span: fn_decl_param.type_span.clone(),
@@ -634,14 +633,16 @@ fn type_check_trait_implementation(
             });
         }
 
-        // the return type of the function declaration must be the same
-        // as the return type of the function signature
-        let self_type = ctx.self_type();
-        let mut fn_decl_ret_type = fn_decl.return_type;
-        fn_decl_ret_type.replace_self_type(self_type);
-        let mut fn_sign_ret_type = fn_signature.return_type;
-        fn_sign_ret_type.replace_self_type(self_type);
-        if look_up_type_id(fn_decl_ret_type) != look_up_type_id(fn_sign_ret_type) {
+        // unify the return type of the implemented function and the return
+        // type of the signature
+        let (new_warnings, new_errors) = unify_right_with_self(
+            fn_decl.return_type,
+            fn_signature.return_type,
+            ctx.self_type(),
+            &fn_decl.return_type_span,
+            ctx.help_text(),
+        );
+        if !new_warnings.is_empty() || !new_errors.is_empty() {
             errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                 interface_name: interface_name(),
                 span: fn_decl.return_type_span.clone(),
@@ -697,7 +698,7 @@ fn type_check_trait_implementation(
     // into it as a trait implementation for this
     for method in trait_methods {
         let method = check!(
-            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone()),
+            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true),
             continue,
             warnings,
             errors

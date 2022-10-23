@@ -1534,14 +1534,11 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
             }),
             span,
         },
-        Expr::Ref { ref_token, expr } => {
-            unary_op_call(handler, "ref", ref_token.span(), span, *expr)?
-        }
-        Expr::Deref { deref_token, expr } => {
-            unary_op_call(handler, "deref", deref_token.span(), span, *expr)?
-        }
+        Expr::Ref { .. } => unimplemented!(),
+        Expr::Deref { .. } => unimplemented!(),
         Expr::Not { bang_token, expr } => {
-            unary_op_call(handler, "not", bang_token.span(), span, *expr)?
+            let expr = expr_to_expression(handler, *expr)?;
+            op_call("not", bang_token.span(), span, &[expr])?
         }
         Expr::Mul {
             lhs,
@@ -1550,7 +1547,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => {
             let lhs = expr_to_expression(handler, *lhs)?;
             let rhs = expr_to_expression(handler, *rhs)?;
-            binary_op_call("multiply", star_token.span(), span, lhs, rhs)?
+            op_call("multiply", star_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Div {
             lhs,
@@ -1559,7 +1556,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => {
             let lhs = expr_to_expression(handler, *lhs)?;
             let rhs = expr_to_expression(handler, *rhs)?;
-            binary_op_call("divide", forward_slash_token.span(), span, lhs, rhs)?
+            op_call("divide", forward_slash_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Modulo {
             lhs,
@@ -1568,7 +1565,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => {
             let lhs = expr_to_expression(handler, *lhs)?;
             let rhs = expr_to_expression(handler, *rhs)?;
-            binary_op_call("modulo", percent_token.span(), span, lhs, rhs)?
+            op_call("modulo", percent_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Add {
             lhs,
@@ -1577,7 +1574,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => {
             let lhs = expr_to_expression(handler, *lhs)?;
             let rhs = expr_to_expression(handler, *rhs)?;
-            binary_op_call("add", add_token.span(), span, lhs, rhs)?
+            op_call("add", add_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Sub {
             lhs,
@@ -1586,7 +1583,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => {
             let lhs = expr_to_expression(handler, *lhs)?;
             let rhs = expr_to_expression(handler, *rhs)?;
-            binary_op_call("subtract", sub_token.span(), span, lhs, rhs)?
+            op_call("subtract", sub_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Shl {
             lhs,
@@ -1595,7 +1592,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => {
             let lhs = expr_to_expression(handler, *lhs)?;
             let rhs = expr_to_expression(handler, *rhs)?;
-            binary_op_call("lsh", shl_token.span(), span, lhs, rhs)?
+            op_call("lsh", shl_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Shr {
             lhs,
@@ -1604,7 +1601,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => {
             let lhs = expr_to_expression(handler, *lhs)?;
             let rhs = expr_to_expression(handler, *rhs)?;
-            binary_op_call("rsh", shr_token.span(), span, lhs, rhs)?
+            op_call("rsh", shr_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::BitAnd {
             lhs,
@@ -1613,7 +1610,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => {
             let lhs = expr_to_expression(handler, *lhs)?;
             let rhs = expr_to_expression(handler, *rhs)?;
-            binary_op_call("binary_and", ampersand_token.span(), span, lhs, rhs)?
+            op_call("binary_and", ampersand_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::BitXor {
             lhs,
@@ -1622,7 +1619,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => {
             let lhs = expr_to_expression(handler, *lhs)?;
             let rhs = expr_to_expression(handler, *rhs)?;
-            binary_op_call("binary_xor", caret_token.span(), span, lhs, rhs)?
+            op_call("binary_xor", caret_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::BitOr {
             lhs,
@@ -1631,7 +1628,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => {
             let lhs = expr_to_expression(handler, *lhs)?;
             let rhs = expr_to_expression(handler, *rhs)?;
-            binary_op_call("binary_or", pipe_token.span(), span, lhs, rhs)?
+            op_call("binary_or", pipe_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Equal {
             lhs,
@@ -1640,7 +1637,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => {
             let lhs = expr_to_expression(handler, *lhs)?;
             let rhs = expr_to_expression(handler, *rhs)?;
-            binary_op_call("eq", double_eq_token.span(), span, lhs, rhs)?
+            op_call("eq", double_eq_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::NotEqual {
             lhs,
@@ -1649,7 +1646,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => {
             let lhs = expr_to_expression(handler, *lhs)?;
             let rhs = expr_to_expression(handler, *rhs)?;
-            binary_op_call("neq", bang_eq_token.span(), span, lhs, rhs)?
+            op_call("neq", bang_eq_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::LessThan {
             lhs,
@@ -1658,7 +1655,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => {
             let lhs = expr_to_expression(handler, *lhs)?;
             let rhs = expr_to_expression(handler, *rhs)?;
-            binary_op_call("lt", less_than_token.span(), span, lhs, rhs)?
+            op_call("lt", less_than_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::GreaterThan {
             lhs,
@@ -1667,7 +1664,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => {
             let lhs = expr_to_expression(handler, *lhs)?;
             let rhs = expr_to_expression(handler, *rhs)?;
-            binary_op_call("gt", greater_than_token.span(), span, lhs, rhs)?
+            op_call("gt", greater_than_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::LessThanEq {
             lhs,
@@ -1676,7 +1673,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => {
             let lhs = expr_to_expression(handler, *lhs)?;
             let rhs = expr_to_expression(handler, *rhs)?;
-            binary_op_call("le", less_than_eq_token.span(), span, lhs, rhs)?
+            op_call("le", less_than_eq_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::GreaterThanEq {
             lhs,
@@ -1685,7 +1682,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => {
             let lhs = expr_to_expression(handler, *lhs)?;
             let rhs = expr_to_expression(handler, *rhs)?;
-            binary_op_call("ge", greater_than_eq_token.span(), span, lhs, rhs)?
+            op_call("ge", greater_than_eq_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::LogicalAnd { lhs, rhs, .. } => Expression {
             kind: ExpressionKind::LazyOperator(LazyOperatorExpression {
@@ -1721,12 +1718,14 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
             },
             op_variant => {
                 let lhs = assignable_to_reassignment_target(handler, assignable.clone())?;
-                let rhs = Box::new(binary_op_call(
+                let rhs = Box::new(op_call(
                     op_variant.core_name(),
                     op_span,
                     span.clone(),
-                    assignable_to_expression(handler, assignable)?,
-                    expr_to_expression(handler, *expr)?,
+                    &vec![
+                        assignable_to_expression(handler, assignable)?,
+                        expr_to_expression(handler, *expr)?,
+                    ],
                 )?);
                 Expression {
                     kind: ExpressionKind::Reassignment(ReassignmentExpression { lhs, rhs }),
@@ -1746,40 +1745,11 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
     Ok(expression)
 }
 
-fn unary_op_call(
-    handler: &Handler,
+fn op_call(
     name: &'static str,
     op_span: Span,
     span: Span,
-    arg: Expr,
-) -> Result<Expression, ErrorEmitted> {
-    let call_path_binding = TypeBinding {
-        inner: CallPath {
-            prefixes: vec![
-                Ident::new_with_override("core", op_span.clone()),
-                Ident::new_with_override("ops", op_span.clone()),
-            ],
-            suffix: Ident::new_with_override(name, op_span.clone()),
-            is_absolute: false,
-        },
-        type_arguments: vec![],
-        span: op_span,
-    };
-    Ok(Expression {
-        kind: ExpressionKind::FunctionApplication(Box::new(FunctionApplicationExpression {
-            call_path_binding,
-            arguments: vec![expr_to_expression(handler, arg)?],
-        })),
-        span,
-    })
-}
-
-fn binary_op_call(
-    name: &'static str,
-    op_span: Span,
-    span: Span,
-    lhs: Expression,
-    rhs: Expression,
+    args: &[Expression],
 ) -> Result<Expression, ErrorEmitted> {
     let method_name_binding = TypeBinding {
         inner: MethodName::FromTrait {
@@ -1799,7 +1769,7 @@ fn binary_op_call(
         kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
             method_name_binding,
             contract_call_params: Vec::new(),
-            arguments: vec![lhs, rhs],
+            arguments: args.to_vec(),
         })),
         span,
     })
