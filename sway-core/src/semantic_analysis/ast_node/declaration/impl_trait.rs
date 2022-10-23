@@ -31,13 +31,13 @@ impl ty::TyImplTrait {
 
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut impl_ctx = ctx.by_ref().scoped(&mut impl_namespace);
+        let mut ctx = ctx.by_ref().scoped(&mut impl_namespace);
 
         // type check the type parameters which also inserts them into the namespace
         let mut new_impl_type_parameters = vec![];
         for type_parameter in impl_type_parameters.into_iter() {
             new_impl_type_parameters.push(check!(
-                TypeParameter::type_check(impl_ctx.by_ref(), type_parameter),
+                TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -56,7 +56,7 @@ impl ty::TyImplTrait {
 
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
-            impl_ctx.resolve_type_without_self(
+            ctx.resolve_type_without_self(
                 insert_type(type_implementing_for),
                 &type_implementing_for_span,
                 None
@@ -80,9 +80,10 @@ impl ty::TyImplTrait {
         );
 
         // Update the context with the new `self` type.
-        let impl_ctx = impl_ctx.with_self_type(implementing_for_type_id);
+        let mut ctx = ctx.with_self_type(implementing_for_type_id);
+        println!("implementing_for_type_id: {}", implementing_for_type_id);
 
-        let impl_trait = match impl_ctx
+        let impl_trait = match ctx
             .namespace
             .resolve_call_path(&trait_name)
             .ok(&mut warnings, &mut errors)
@@ -111,7 +112,7 @@ impl ty::TyImplTrait {
 
                 let functions_buf = check!(
                     type_check_trait_implementation(
-                        impl_ctx,
+                        ctx,
                         &new_impl_type_parameters,
                         implementing_for_type_id,
                         &type_implementing_for_span,
@@ -160,11 +161,11 @@ impl ty::TyImplTrait {
                     });
                 }
 
-                let ctx = impl_ctx.with_mode(Mode::ImplAbiFn);
+                let impl_ctx = ctx.with_mode(Mode::ImplAbiFn);
 
                 let functions_buf = check!(
                     type_check_trait_implementation(
-                        ctx,
+                        impl_ctx,
                         &[], // this is empty because abi definitions don't support generics,
                         implementing_for_type_id,
                         &type_implementing_for_span,
@@ -411,8 +412,7 @@ impl ty::TyImplTrait {
             is_absolute: false,
         };
 
-        // type check the type parameters
-        // insert them into the namespace
+        // type check the type parameters which also inserts them into the namespace
         let mut new_impl_type_parameters = vec![];
         for type_parameter in impl_type_parameters.into_iter() {
             new_impl_type_parameters.push(check!(
@@ -452,7 +452,7 @@ impl ty::TyImplTrait {
         let mut methods = vec![];
         for fn_decl in functions.into_iter() {
             methods.push(check!(
-                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, true),
+                ty::TyFunctionDeclaration::type_check(impl_ctx.by_ref(), fn_decl, true),
                 continue,
                 warnings,
                 errors
