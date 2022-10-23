@@ -60,10 +60,6 @@ impl ty::TyStructDeclaration {
             attributes,
         };
 
-        // if decl.name.as_str() == "Vec" {
-        //     println!("made struct: {:?}", decl);
-        // }
-
         ok(decl, warnings, errors)
     }
 }
