@@ -239,43 +239,7 @@ impl PartialEq for TypeInfo {
                     fields: r_fields,
                     type_parameters: r_type_parameters,
                 },
-            ) => {
-                // if l_name.as_str() == "Vec" && r_name.as_str() == "Vec" {
-                //     println!(
-                //         "l_type_parameters: [{}]",
-                //         l_type_parameters
-                //             .iter()
-                //             .map(|x| format!("{}", x))
-                //             .collect::<Vec<_>>()
-                //             .join(", ")
-                //     );
-                //     println!(
-                //         "r_type_parameters: [{}]",
-                //         r_type_parameters
-                //             .iter()
-                //             .map(|x| format!("{}", x))
-                //             .collect::<Vec<_>>()
-                //             .join(", ")
-                //     );
-                //     println!(
-                //         "l_fields: [{}]",
-                //         l_fields
-                //             .iter()
-                //             .map(|x| format!("{}", x))
-                //             .collect::<Vec<_>>()
-                //             .join(", ")
-                //     );
-                //     println!(
-                //         "r_fields: [{}]",
-                //         r_fields
-                //             .iter()
-                //             .map(|x| format!("{}", x))
-                //             .collect::<Vec<_>>()
-                //             .join(", ")
-                //     );
-                // }
-                l_name == r_name && l_fields == r_fields && l_type_parameters == r_type_parameters
-            }
+            ) => l_name == r_name && l_fields == r_fields && l_type_parameters == r_type_parameters,
             (Self::Tuple(l), Self::Tuple(r)) => l
                 .iter()
                 .zip(r.iter())
@@ -812,41 +776,6 @@ impl TypeInfo {
         }
     }
 
-    /// Given a `TypeInfo` `self`, check to see if `self` is currently
-    /// supported in match expressions, and return an error if it is not.
-    pub(crate) fn expect_is_supported_in_match_expressions(
-        &self,
-        span: &Span,
-    ) -> CompileResult<()> {
-        let warnings = vec![];
-        let mut errors = vec![];
-        match self {
-            TypeInfo::UnsignedInteger(_)
-            | TypeInfo::Enum { .. }
-            | TypeInfo::Struct { .. }
-            | TypeInfo::Boolean
-            | TypeInfo::Tuple(_)
-            | TypeInfo::B256
-            | TypeInfo::UnknownGeneric { .. }
-            | TypeInfo::Numeric => ok((), warnings, errors),
-            TypeInfo::Unknown
-            | TypeInfo::ContractCaller { .. }
-            | TypeInfo::Custom { .. }
-            | TypeInfo::SelfType
-            | TypeInfo::Str(_)
-            | TypeInfo::Contract
-            | TypeInfo::ErrorRecovery
-            | TypeInfo::Array(_, _, _)
-            | TypeInfo::Storage { .. } => {
-                errors.push(CompileError::Unimplemented(
-                    "matching on this type is unsupported right now",
-                    span.clone(),
-                ));
-                err(warnings, errors)
-            }
-        }
-    }
-
     /// Given a `TypeInfo` `self`, analyze `self` and return all inner
     /// `TypeId`'s of `self`, not including `self`.
     pub(crate) fn extract_inner_types(&self) -> HashSet<TypeId> {
@@ -982,6 +911,41 @@ impl TypeInfo {
             | TypeInfo::ErrorRecovery => {}
         }
         inner_types
+    }
+
+    /// Given a `TypeInfo` `self`, check to see if `self` is currently
+    /// supported in match expressions, and return an error if it is not.
+    pub(crate) fn expect_is_supported_in_match_expressions(
+        &self,
+        span: &Span,
+    ) -> CompileResult<()> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Enum { .. }
+            | TypeInfo::Struct { .. }
+            | TypeInfo::Boolean
+            | TypeInfo::Tuple(_)
+            | TypeInfo::B256
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::Numeric => ok((), warnings, errors),
+            TypeInfo::Unknown
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::Custom { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::Str(_)
+            | TypeInfo::Contract
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::Array(_, _, _)
+            | TypeInfo::Storage { .. } => {
+                errors.push(CompileError::Unimplemented(
+                    "matching on this type is unsupported right now",
+                    span.clone(),
+                ));
+                err(warnings, errors)
+            }
+        }
     }
 
     /// Given a `TypeInfo` `self`, analyze `self` and return all nested

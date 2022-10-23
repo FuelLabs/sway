@@ -419,9 +419,6 @@ impl TypeEngine {
                         // add the new copy as a monomorphized copy of the original id
                         de_add_monomorphized_struct_copy(original_id, new_copy);
 
-                        // take any trait methods that apply to this type and copy them to the new type
-                        namespace.insert_trait_implementation_for_type(type_id);
-
                         // return the id
                         type_id
                     }
@@ -457,9 +454,6 @@ impl TypeEngine {
 
                         // add the new copy as a monomorphized copy of the original id
                         de_add_monomorphized_enum_copy(original_id, new_copy);
-
-                        // take any trait methods that apply to this type and copy them to the new type
-                        namespace.insert_trait_implementation_for_type(type_id);
 
                         // return the id
                         type_id
