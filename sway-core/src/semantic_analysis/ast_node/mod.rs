@@ -10,7 +10,7 @@ pub(crate) use mode::*;
 use crate::{
     declaration_engine::{declaration_engine::*, DeclarationId},
     error::*,
-    language::{parsed::*, ty, Visibility},
+    language::{parsed::*, ty},
     semantic_analysis::*,
     type_system::*,
     types::DeterministicallyAborts,
@@ -174,7 +174,8 @@ impl ty::TyAstNode {
                             let fn_decl = check!(
                                 ty::TyFunctionDeclaration::type_check(
                                     ctx.by_ref(),
-                                    fn_decl.clone()
+                                    fn_decl.clone(),
+                                    false
                                 ),
                                 ty::TyFunctionDeclaration::error(fn_decl),
                                 warnings,
@@ -381,8 +382,8 @@ impl ty::TyAstNode {
 }
 
 fn type_check_interface_surface(
+    mut ctx: TypeCheckContext,
     interface_surface: Vec<TraitFn>,
-    namespace: &mut Namespace,
 ) -> CompileResult<Vec<DeclarationId>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -397,11 +398,15 @@ fn type_check_interface_surface(
             ..
         } = trait_fn;
 
+        // create a namespace for the trait function
+        let mut fn_namespace = ctx.namespace.clone();
+        let mut fn_ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
+
         // type check the parameters
         let mut typed_parameters = vec![];
         for param in parameters.into_iter() {
             typed_parameters.push(check!(
-                ty::TyFunctionParameter::type_check_interface_parameter(namespace, param),
+                ty::TyFunctionParameter::type_check_interface_parameter(fn_ctx.by_ref(), param),
                 continue,
                 warnings,
                 errors
@@ -410,9 +415,8 @@ fn type_check_interface_surface(
 
         // type check the return type
         let return_type = check!(
-            namespace.resolve_type_with_self(
+            fn_ctx.resolve_type_with_self(
                 insert_type(return_type),
-                insert_type(TypeInfo::SelfType),
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None
@@ -432,129 +436,6 @@ fn type_check_interface_surface(
         }));
     }
     ok(typed_surface, warnings, errors)
-}
-
-fn type_check_trait_methods(
-    mut ctx: TypeCheckContext,
-    methods: Vec<FunctionDeclaration>,
-) -> CompileResult<Vec<ty::TyFunctionDeclaration>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let mut methods_buf = Vec::new();
-    for method in methods.into_iter() {
-        let FunctionDeclaration {
-            body,
-            name: fn_name,
-            parameters,
-            span,
-            return_type,
-            type_parameters,
-            return_type_span,
-            purity,
-            ..
-        } = method;
-
-        // A context while checking the signature where `self_type` refers to `SelfType`.
-        let mut sig_ctx = ctx.by_ref().with_self_type(insert_type(TypeInfo::SelfType));
-
-        // type check the function parameters
-        // which will also insert them into the namespace
-        let mut typed_parameters = vec![];
-        for parameter in parameters.into_iter() {
-            typed_parameters.push(check!(
-                ty::TyFunctionParameter::type_check_method_parameter(sig_ctx.by_ref(), parameter),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-
-        // check the generic types in the arguments, make sure they are in
-        // the type scope
-        let mut generic_params_buf_for_error_message = Vec::new();
-        for param in typed_parameters.iter() {
-            if let TypeInfo::Custom { ref name, .. } = look_up_type_id(param.type_id) {
-                generic_params_buf_for_error_message.push(name.to_string());
-            }
-        }
-        let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
-        for param in typed_parameters.iter() {
-            let span = param.name.span().clone();
-            if let TypeInfo::Custom { name, .. } = look_up_type_id(param.type_id) {
-                let args_span = typed_parameters.iter().fold(
-                    typed_parameters[0].name.span().clone(),
-                    |acc, ty::TyFunctionParameter { name, .. }| Span::join(acc, name.span()),
-                );
-                if type_parameters.iter().any(|TypeParameter { type_id, .. }| {
-                    if let TypeInfo::Custom {
-                        name: this_name, ..
-                    } = look_up_type_id(*type_id)
-                    {
-                        this_name == name.clone()
-                    } else {
-                        false
-                    }
-                }) {
-                    errors.push(CompileError::TypeParameterNotInTypeScope {
-                        name: name.clone(),
-                        span: span.clone(),
-                        comma_separated_generic_params: comma_separated_generic_params.clone(),
-                        fn_name: fn_name.clone(),
-                        args: args_span.as_str().to_string(),
-                    });
-                }
-            }
-        }
-
-        // type check the return type
-        // TODO check code block implicit return
-        let initial_return_type = insert_type(return_type);
-        let return_type = check!(
-            ctx.resolve_type_with_self(
-                initial_return_type,
-                &return_type_span,
-                EnforceTypeArguments::Yes,
-                None
-            ),
-            insert_type(TypeInfo::ErrorRecovery),
-            warnings,
-            errors,
-        );
-
-        // type check the body
-        let ctx = ctx
-            .by_ref()
-            .with_purity(purity)
-            .with_type_annotation(return_type)
-            .with_help_text(
-                "Trait method body's return type does not match up with its return type \
-                annotation.",
-            );
-        let (body, _code_block_implicit_return) = check!(
-            ty::TyCodeBlock::type_check(ctx, body),
-            continue,
-            warnings,
-            errors
-        );
-
-        methods_buf.push(ty::TyFunctionDeclaration {
-            name: fn_name,
-            body,
-            parameters: typed_parameters,
-            span,
-            attributes: method.attributes,
-            return_type,
-            initial_return_type,
-            type_parameters,
-            // For now, any method declared is automatically public.
-            // We can tweak that later if we want.
-            visibility: Visibility::Public,
-            return_type_span,
-            is_contract_call: false,
-            purity,
-        });
-    }
-    ok(methods_buf, warnings, errors)
 }
 
 pub(crate) fn reassign_storage_subfield(
