@@ -185,23 +185,21 @@ impl Lock {
             let node = pkg_to_node[&key[..]];
             // If `pkg.contract_dependencies` is None, we will be collecting an empty list of
             // contract_deps so that we will omit them during edge adding phase
-            let contract_deps: Vec<(String, DepKind)> = pkg
+            let contract_deps = pkg
                 .contract_dependencies
-                .clone()
-                .unwrap_or_default()
-                .iter()
-                .map(|contract_dep| (contract_dep.clone(), DepKind::Contract))
-                .collect();
+                .as_ref()
+                .into_iter()
+                .flatten()
+                .map(|contract_dep| (contract_dep, DepKind::Contract));
             // If `pkg.dependencies` is None, we will be collecting an empty list of
             // lib_deps so that we will omit them during edge adding phase
-            let lib_deps: Vec<(String, DepKind)> = pkg
+            let lib_deps = pkg
                 .dependencies
-                .clone()
-                .unwrap_or_default()
-                .iter()
-                .map(|lib_dep| (lib_dep.clone(), DepKind::Library))
-                .collect();
-            for (dep_line, dep_kind) in lib_deps.iter().chain(contract_deps.iter()) {
+                .as_ref()
+                .into_iter()
+                .flatten()
+                .map(|lib_dep| (lib_dep, DepKind::Library));
+            for (dep_line, dep_kind) in lib_deps.chain(contract_deps) {
                 let (dep_name, dep_key) = parse_pkg_dep_line(dep_line)
                     .map_err(|e| anyhow!("failed to parse dependency \"{}\": {}", dep_line, e))?;
                 let dep_node = pkg_to_node
