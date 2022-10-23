@@ -33,7 +33,7 @@ impl fmt::Display for TyAstNode {
 }
 
 impl CopyTypes for TyAstNode {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => exp.copy_types(type_mapping),
             TyAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
@@ -44,8 +44,11 @@ impl CopyTypes for TyAstNode {
 }
 
 impl CollectTypesMetadata for TyAstNode {
-    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
-        self.content.collect_types_metadata()
+    fn collect_types_metadata(
+        &self,
+        ctx: &mut CollectTypesMetadataContext,
+    ) -> CompileResult<Vec<TypeMetadata>> {
+        self.content.collect_types_metadata(ctx)
     }
 }
 
@@ -151,12 +154,15 @@ pub enum TyAstNodeContent {
 }
 
 impl CollectTypesMetadata for TyAstNodeContent {
-    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
+    fn collect_types_metadata(
+        &self,
+        ctx: &mut CollectTypesMetadataContext,
+    ) -> CompileResult<Vec<TypeMetadata>> {
         use TyAstNodeContent::*;
         match self {
-            Declaration(decl) => decl.collect_types_metadata(),
-            Expression(expr) => expr.collect_types_metadata(),
-            ImplicitReturnExpression(expr) => expr.collect_types_metadata(),
+            Declaration(decl) => decl.collect_types_metadata(ctx),
+            Expression(expr) => expr.collect_types_metadata(ctx),
+            ImplicitReturnExpression(expr) => expr.collect_types_metadata(ctx),
             SideEffect => ok(vec![], vec![], vec![]),
         }
     }
