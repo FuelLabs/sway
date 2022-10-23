@@ -57,7 +57,7 @@ impl PartialEq for TyFunctionDeclaration {
 }
 
 impl CopyTypes for TyFunctionDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
@@ -95,11 +95,12 @@ impl TyFunctionDeclaration {
             span,
             return_type_span,
             visibility,
+            purity,
             ..
         } = decl;
         let initial_return_type = insert_type(return_type);
         TyFunctionDeclaration {
-            purity: Default::default(),
+            purity,
             name,
             body: TyCodeBlock {
                 contents: Default::default(),
@@ -264,7 +265,7 @@ impl PartialEq for TyFunctionParameter {
 }
 
 impl CopyTypes for TyFunctionParameter {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.type_id.copy_types(type_mapping);
     }
 }

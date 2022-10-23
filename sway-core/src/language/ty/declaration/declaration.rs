@@ -28,9 +28,7 @@ pub enum TyDeclaration {
 }
 
 impl CopyTypes for TyDeclaration {
-    /// The entry point to monomorphizing typed declarations. Instantiates all new type ids,
-    /// assuming `self` has already been copied.
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         use TyDeclaration::*;
         match self {
             VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
@@ -336,6 +334,26 @@ impl TyDeclaration {
                     span: decl.span(),
                 }],
             ),
+        }
+    }
+
+    /// Retrieves the declaration as an Constant declaration.
+    ///
+    /// Returns an error if `self` is not a [TyConstantDeclaration].
+    pub(crate) fn expect_const(&self, access_span: &Span) -> CompileResult<TyConstantDeclaration> {
+        match self {
+            TyDeclaration::ConstantDeclaration(decl) => {
+                CompileResult::from(de_get_constant(decl.clone(), access_span))
+            }
+            decl => {
+                let errors = vec![
+                    (CompileError::DeclIsNotAConstant {
+                        actually: decl.friendly_name().to_string(),
+                        span: decl.span(),
+                    }),
+                ];
+                err(vec![], errors)
+            }
         }
     }
 
