@@ -1338,6 +1338,34 @@ impl TypeInfo {
         }
     }
 
+    pub(crate) fn can_change(&self) -> bool {
+        // TODO: there might be an optimization here that if the type params hold
+        // only non-dynamic types, then it doesn't matter that there are type params
+        match self {
+            TypeInfo::Enum {
+                type_parameters, ..
+            } => !type_parameters.is_empty(),
+            TypeInfo::Struct {
+                type_parameters, ..
+            } => !type_parameters.is_empty(),
+            TypeInfo::Str(_)
+            | TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Boolean
+            | TypeInfo::B256
+            | TypeInfo::ErrorRecovery => false,
+            TypeInfo::Unknown
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::Custom { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::Tuple(_)
+            | TypeInfo::Array(_, _, _)
+            | TypeInfo::Contract
+            | TypeInfo::Storage { .. }
+            | TypeInfo::Numeric => true,
+        }
+    }
+
     /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Tuple`,
     /// and return its contents.
     ///

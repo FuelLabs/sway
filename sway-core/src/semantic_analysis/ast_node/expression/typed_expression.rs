@@ -1,3 +1,4 @@
+mod constant_decleration;
 mod enum_instantiation;
 mod function_application;
 mod if_expression;
@@ -7,6 +8,7 @@ mod struct_field_access;
 mod tuple_index_access;
 mod unsafe_downcast;
 
+use self::constant_decleration::instantiate_constant_decl;
 pub(crate) use self::{
     enum_instantiation::*, function_application::*, if_expression::*, lazy_operator::*,
     method_application::*, struct_field_access::*, tuple_index_access::*, unsafe_downcast::*,
@@ -799,11 +801,11 @@ impl ty::TyExpression {
                 errors
             );
             append!(
-                unify_right(
+                unify_adt(
                     typed_field.return_type,
                     def_field.type_id,
                     &typed_field.span,
-                    "Struct field's type must match up with the type specified in its declaration."
+                    "Struct field's type must match up with the type specified in its declaration.",
                 ),
                 warnings,
                 errors
@@ -1040,9 +1042,20 @@ impl ty::TyExpression {
                 .map(|enum_decl| (enum_decl, enum_name, variant_name))
         };
 
+        // Check if this could be a constant
+        let mut const_probe_warnings = vec![];
+        let mut const_probe_errors = vec![];
+        let maybe_const = {
+            let mut call_path_binding = call_path_binding.clone();
+            TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
+                .flat_map(|unknown_decl| unknown_decl.expect_const(&call_path_binding.span()))
+                .ok(&mut const_probe_warnings, &mut const_probe_errors)
+                .map(|const_decl| (const_decl, call_path_binding.span()))
+        };
+
         // compare the results of the checks
-        let exp = match (is_module, maybe_function, maybe_enum) {
-            (false, None, Some((enum_decl, enum_name, variant_name))) => {
+        let exp = match (is_module, maybe_function, maybe_enum, maybe_const) {
+            (false, None, Some((enum_decl, enum_name, variant_name)), None) => {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
@@ -1052,7 +1065,7 @@ impl ty::TyExpression {
                     errors
                 )
             }
-            (false, Some(func_decl), None) => {
+            (false, Some(func_decl), None, None) => {
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
                 check!(
@@ -1062,33 +1075,31 @@ impl ty::TyExpression {
                     errors
                 )
             }
-            (true, None, None) => {
+            (true, None, None, None) => {
                 module_probe_errors.push(CompileError::Unimplemented(
                     "this case is not yet implemented",
                     span,
                 ));
                 return err(module_probe_warnings, module_probe_errors);
             }
-            (true, None, Some(_)) => {
-                errors.push(CompileError::AmbiguousPath { span });
-                return err(warnings, errors);
+            (false, None, None, Some((const_decl, span))) => {
+                warnings.append(&mut const_probe_warnings);
+                errors.append(&mut const_probe_errors);
+                check!(
+                    instantiate_constant_decl(const_decl, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
             }
-            (true, Some(_), None) => {
-                errors.push(CompileError::AmbiguousPath { span });
-                return err(warnings, errors);
-            }
-            (true, Some(_), Some(_)) => {
-                errors.push(CompileError::AmbiguousPath { span });
-                return err(warnings, errors);
-            }
-            (false, Some(_), Some(_)) => {
-                errors.push(CompileError::AmbiguousPath { span });
-                return err(warnings, errors);
-            }
-            (false, None, None) => {
+            (false, None, None, None) => {
                 errors.push(CompileError::SymbolNotFound {
                     name: call_path_binding.inner.suffix,
                 });
+                return err(warnings, errors);
+            }
+            _ => {
+                errors.push(CompileError::AmbiguousPath { span });
                 return err(warnings, errors);
             }
         };
@@ -1216,13 +1227,12 @@ impl ty::TyExpression {
                 .with_help_text("")
                 .with_type_annotation(insert_type(TypeInfo::Unknown))
                 .with_mode(Mode::ImplAbiFn);
-            let func = check!(
-                ty::TyFunctionDeclaration::type_check(ctx, method.clone()),
+            type_checked_fn_buf.push(check!(
+                ty::TyFunctionDeclaration::type_check(ctx, method.clone(), true),
                 return err(warnings, errors),
                 warnings,
                 errors
-            );
-            type_checked_fn_buf.push(func);
+            ));
         }
 
         functions_buf.append(&mut type_checked_fn_buf);

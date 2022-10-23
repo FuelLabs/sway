@@ -24,8 +24,15 @@ impl PartialEq for TyVariableDeclaration {
 }
 
 impl CopyTypes for TyVariableDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.type_ascription.copy_types(type_mapping);
         self.body.copy_types(type_mapping)
+    }
+}
+
+impl ReplaceSelfType for TyVariableDeclaration {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.type_ascription.replace_self_type(self_type);
+        self.body.replace_self_type(self_type)
     }
 }

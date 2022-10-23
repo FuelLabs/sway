@@ -31,13 +31,24 @@ impl PartialEq for TyStructDeclaration {
 }
 
 impl CopyTypes for TyStructDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.fields
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
+    }
+}
+
+impl ReplaceSelfType for TyStructDeclaration {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.fields
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+        self.type_parameters
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
     }
 }
 
@@ -136,7 +147,7 @@ impl PartialEq for TyStructField {
 }
 
 impl CopyTypes for TyStructField {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.type_id.copy_types(type_mapping);
     }
 }

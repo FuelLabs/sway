@@ -138,7 +138,7 @@ pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {
                 if contract_paths.is_empty() {
                     panic!(
                         "For {name}\n\
-                        One or more ontract paths are required for 'run_on_node' tests."
+                        One or more contract paths are required for 'run_on_node' tests."
                     );
                 }
 

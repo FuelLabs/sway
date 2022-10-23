@@ -13,7 +13,7 @@ use crate::{
 
 impl ty::TyImplTrait {
     pub(crate) fn type_check_impl_trait(
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         impl_trait: ImplTrait,
     ) -> CompileResult<(Self, TypeId)> {
         let mut errors = vec![];
@@ -31,13 +31,13 @@ impl ty::TyImplTrait {
 
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut impl_namespace);
+        let mut impl_ctx = ctx.by_ref().scoped(&mut impl_namespace);
 
         // type check the type parameters which also inserts them into the namespace
         let mut new_impl_type_parameters = vec![];
         for type_parameter in impl_type_parameters.into_iter() {
             new_impl_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
+                TypeParameter::type_check(impl_ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -56,7 +56,7 @@ impl ty::TyImplTrait {
 
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
-            ctx.resolve_type_without_self(
+            impl_ctx.resolve_type_without_self(
                 insert_type(type_implementing_for),
                 &type_implementing_for_span,
                 None
@@ -80,9 +80,9 @@ impl ty::TyImplTrait {
         );
 
         // Update the context with the new `self` type.
-        let mut ctx = ctx.with_self_type(implementing_for_type_id);
+        let impl_ctx = impl_ctx.with_self_type(implementing_for_type_id);
 
-        let impl_trait = match ctx
+        let impl_trait = match impl_ctx
             .namespace
             .resolve_call_path(&trait_name)
             .ok(&mut warnings, &mut errors)
@@ -109,19 +109,16 @@ impl ty::TyImplTrait {
                     errors
                 );
 
-                // Update the context with the new `self` type.
-                let ctx = ctx.with_self_type(implementing_for_type_id);
-
                 let functions_buf = check!(
                     type_check_trait_implementation(
-                        ctx,
+                        impl_ctx,
                         &new_impl_type_parameters,
                         implementing_for_type_id,
+                        &type_implementing_for_span,
                         &trait_decl.interface_surface,
                         &trait_decl.methods,
                         &functions,
                         &trait_name,
-                        &type_implementing_for_span,
                         &block_span,
                         false,
                     ),
@@ -141,15 +138,6 @@ impl ty::TyImplTrait {
                     implementing_for_type_id,
                     type_implementing_for_span: type_implementing_for_span.clone(),
                 };
-                let implementing_for_type_id = insert_type(
-                    match to_typeinfo(implementing_for_type_id, &type_implementing_for_span) {
-                        Ok(o) => o,
-                        Err(e) => {
-                            errors.push(e.into());
-                            return err(warnings, errors);
-                        }
-                    },
-                );
                 (impl_trait, implementing_for_type_id)
             }
             Some(ty::TyDeclaration::AbiDeclaration(decl_id)) => {
@@ -172,18 +160,18 @@ impl ty::TyImplTrait {
                     });
                 }
 
-                let ctx = ctx.with_mode(Mode::ImplAbiFn);
+                let ctx = impl_ctx.with_mode(Mode::ImplAbiFn);
 
                 let functions_buf = check!(
                     type_check_trait_implementation(
                         ctx,
                         &[], // this is empty because abi definitions don't support generics,
                         implementing_for_type_id,
+                        &type_implementing_for_span,
                         &abi.interface_surface,
                         &abi.methods,
                         &functions,
                         &trait_name,
-                        &type_implementing_for_span,
                         &block_span,
                         true
                     ),
@@ -460,31 +448,15 @@ impl ty::TyImplTrait {
             errors
         );
 
-        let mut impl_inner_ctx = impl_ctx
-            .with_self_type(implementing_for_type_id)
-            .with_help_text("")
-            .with_type_annotation(insert_type(TypeInfo::Unknown));
-
         // type check the methods inside of the impl block
         let mut methods = vec![];
         for fn_decl in functions.into_iter() {
-            let method = check!(
-                ty::TyFunctionDeclaration::type_check(impl_inner_ctx.by_ref(), fn_decl),
+            methods.push(check!(
+                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, true),
                 continue,
                 warnings,
                 errors
-            );
-            // let return_type_trait_map = impl_inner_ctx
-            //     .namespace
-            //     .implemented_traits
-            //     .filter_by_type_recursively(method.return_type);
-            // if trait_name.suffix.as_str() == "Vec" && method.name.as_str() == "get" {
-            //     println!("return_type_trait_map: {}", return_type_trait_map);
-            // }
-            // ctx.namespace
-            //     .implemented_traits
-            //     .extend(return_type_trait_map);
-            methods.push(method);
+            ));
         }
 
         check!(
@@ -519,11 +491,11 @@ fn type_check_trait_implementation(
     mut ctx: TypeCheckContext,
     parent_impl_type_parameters: &[TypeParameter],
     type_implementing_for: TypeId,
+    type_implementing_for_span: &Span,
     trait_interface_surface: &[DeclarationId],
     trait_methods: &[FunctionDeclaration],
     functions: &[FunctionDeclaration],
     trait_name: &CallPath,
-    self_type_span: &Span,
     block_span: &Span,
     is_contract: bool,
 ) -> CompileResult<Vec<ty::TyFunctionDeclaration>> {
@@ -553,9 +525,10 @@ fn type_check_trait_implementation(
     // this map keeps track of the remaining functions in the
     // interface surface that still need to be implemented for the
     // trait to be fully implemented
-    let mut function_checklist: std::collections::BTreeMap<&Ident, _> =
-        trait_fns.iter().map(|decl| (&decl.name, decl)).collect();
-
+    let mut function_checklist: std::collections::BTreeMap<Ident, _> = trait_fns
+        .into_iter()
+        .map(|decl| (decl.name.clone(), decl))
+        .collect();
     for fn_decl in functions {
         let mut ctx = ctx
             .by_ref()
@@ -564,7 +537,7 @@ fn type_check_trait_implementation(
 
         // type check the function declaration
         let mut fn_decl = check!(
-            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl.clone()),
+            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl.clone(), true),
             continue,
             warnings,
             errors
@@ -579,7 +552,7 @@ fn type_check_trait_implementation(
         }
 
         // remove this function from the "checklist"
-        let fn_signature = match function_checklist.remove(&fn_decl.name) {
+        let mut fn_signature = match function_checklist.remove(&fn_decl.name) {
             Some(trait_fn) => trait_fn,
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
@@ -590,6 +563,11 @@ fn type_check_trait_implementation(
                 return err(warnings, errors);
             }
         };
+
+        // replace instances of `TypeInfo::SelfType` with a fresh
+        // `TypeInfo::SelfType` to avoid replacing types in the original trait
+        // declaration
+        fn_signature.replace_self_type(ctx.self_type());
 
         // ensure this fn decl's parameters and signature lines up with the one
         // in the trait
@@ -714,23 +692,6 @@ fn type_check_trait_implementation(
                 .cloned()
                 .into_iter()
                 .collect::<Vec<_>>();
-        // if trait_name.suffix.as_str() == "Setter" {
-        //     println!(
-        //         "{}:\n\tfunction: [{}]\n\ttype: [{}]\n\t{:?}",
-        //         type_implementing_for,
-        //         unconstrained_type_parameters_in_this_function
-        //             .iter()
-        //             .map(|x| x.type_id.to_string())
-        //             .collect::<Vec<_>>()
-        //             .join(", "),
-        //         unconstrained_type_parameters_in_the_type
-        //             .iter()
-        //             .map(|x| x.type_id.to_string())
-        //             .collect::<Vec<_>>()
-        //             .join(", "),
-        //         unconstrained_type_parameters_to_be_added
-        //     );
-        // }
         fn_decl
             .type_parameters
             .append(&mut unconstrained_type_parameters_to_be_added);
@@ -753,14 +714,26 @@ fn type_check_trait_implementation(
     ]
     .concat();
     ctx.namespace.star_import(&trait_path);
+    // let self_type = ctx.self_type();
+    // ctx.namespace.insert_trait_implementation(
+    //     CallPath {
+    //         prefixes: vec![],
+    //         suffix: trait_name.suffix.clone(),
+    //         is_absolute: false,
+    //     },
+    //     self_type,
+    //     functions_buf.clone(),
+    // );
 
-    let self_type_id = insert_type(match to_typeinfo(ctx.self_type(), self_type_span) {
-        Ok(o) => o,
-        Err(e) => {
-            errors.push(e.into());
-            return err(warnings, errors);
-        }
-    });
+    let self_type_id = insert_type(
+        match to_typeinfo(ctx.self_type(), type_implementing_for_span) {
+            Ok(o) => o,
+            Err(e) => {
+                errors.push(e.into());
+                return err(warnings, errors);
+            }
+        },
+    );
     ctx.namespace.insert_trait_implementation(
         CallPath {
             prefixes: vec![],
@@ -781,7 +754,7 @@ fn type_check_trait_implementation(
     // into it as a trait implementation for this
     for method in trait_methods {
         let method = check!(
-            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone()),
+            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true),
             continue,
             warnings,
             errors

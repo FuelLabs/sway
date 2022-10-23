@@ -28,9 +28,16 @@ impl PartialEq for TyExpression {
 }
 
 impl CopyTypes for TyExpression {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.return_type.copy_types(type_mapping);
         self.expression.copy_types(type_mapping);
+    }
+}
+
+impl ReplaceSelfType for TyExpression {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.return_type.replace_self_type(self_type);
+        self.expression.replace_self_type(self_type);
     }
 }
 
@@ -46,12 +53,15 @@ impl fmt::Display for TyExpression {
 }
 
 impl CollectTypesMetadata for TyExpression {
-    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
+    fn collect_types_metadata(
+        &self,
+        ctx: &mut CollectTypesMetadataContext,
+    ) -> CompileResult<Vec<TypeMetadata>> {
         use TyExpressionVariant::*;
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut res = check!(
-            self.return_type.collect_types_metadata(),
+            self.return_type.collect_types_metadata(ctx),
             return err(warnings, errors),
             warnings,
             errors
@@ -64,7 +74,7 @@ impl CollectTypesMetadata for TyExpression {
             } => {
                 for arg in arguments.iter() {
                     res.append(&mut check!(
-                        arg.1.collect_types_metadata(),
+                        arg.1.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -76,7 +86,7 @@ impl CollectTypesMetadata for TyExpression {
                 };
                 for content in function_decl.body.contents.iter() {
                     res.append(&mut check!(
-                        content.collect_types_metadata(),
+                        content.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -86,7 +96,7 @@ impl CollectTypesMetadata for TyExpression {
             Tuple { fields } => {
                 for field in fields.iter() {
                     res.append(&mut check!(
-                        field.collect_types_metadata(),
+                        field.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -97,7 +107,7 @@ impl CollectTypesMetadata for TyExpression {
                 for register in registers.iter() {
                     if let Some(init) = register.initializer.as_ref() {
                         res.append(&mut check!(
-                            init.collect_types_metadata(),
+                            init.collect_types_metadata(ctx),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -108,7 +118,7 @@ impl CollectTypesMetadata for TyExpression {
             StructExpression { fields, .. } => {
                 for field in fields.iter() {
                     res.append(&mut check!(
-                        field.value.collect_types_metadata(),
+                        field.value.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -117,13 +127,13 @@ impl CollectTypesMetadata for TyExpression {
             }
             LazyOperator { lhs, rhs, .. } => {
                 res.append(&mut check!(
-                    lhs.collect_types_metadata(),
+                    lhs.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ));
                 res.append(&mut check!(
-                    rhs.collect_types_metadata(),
+                    rhs.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -132,7 +142,7 @@ impl CollectTypesMetadata for TyExpression {
             Array { contents } => {
                 for content in contents.iter() {
                     res.append(&mut check!(
-                        content.collect_types_metadata(),
+                        content.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -141,13 +151,13 @@ impl CollectTypesMetadata for TyExpression {
             }
             ArrayIndex { prefix, index } => {
                 res.append(&mut check!(
-                    (**prefix).collect_types_metadata(),
+                    (**prefix).collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ));
                 res.append(&mut check!(
-                    (**index).collect_types_metadata(),
+                    (**index).collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -156,7 +166,7 @@ impl CollectTypesMetadata for TyExpression {
             CodeBlock(block) => {
                 for content in block.contents.iter() {
                     res.append(&mut check!(
-                        content.collect_types_metadata(),
+                        content.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -169,20 +179,20 @@ impl CollectTypesMetadata for TyExpression {
                 r#else,
             } => {
                 res.append(&mut check!(
-                    condition.collect_types_metadata(),
+                    condition.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ));
                 res.append(&mut check!(
-                    then.collect_types_metadata(),
+                    then.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ));
                 if let Some(r#else) = r#else {
                     res.append(&mut check!(
-                        r#else.collect_types_metadata(),
+                        r#else.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -195,13 +205,13 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 res.append(&mut check!(
-                    prefix.collect_types_metadata(),
+                    prefix.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ));
                 res.append(&mut check!(
-                    resolved_type_of_parent.collect_types_metadata(),
+                    resolved_type_of_parent.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -213,13 +223,13 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 res.append(&mut check!(
-                    prefix.collect_types_metadata(),
+                    prefix.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ));
                 res.append(&mut check!(
-                    resolved_type_of_parent.collect_types_metadata(),
+                    resolved_type_of_parent.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -232,7 +242,7 @@ impl CollectTypesMetadata for TyExpression {
             } => {
                 if let Some(contents) = contents {
                     res.append(&mut check!(
-                        contents.collect_types_metadata(),
+                        contents.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -240,7 +250,7 @@ impl CollectTypesMetadata for TyExpression {
                 }
                 for variant in enum_decl.variants.iter() {
                     res.append(&mut check!(
-                        variant.type_id.collect_types_metadata(),
+                        variant.type_id.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -248,7 +258,7 @@ impl CollectTypesMetadata for TyExpression {
                 }
                 for type_param in enum_decl.type_parameters.iter() {
                     res.append(&mut check!(
-                        type_param.type_id.collect_types_metadata(),
+                        type_param.type_id.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -257,7 +267,7 @@ impl CollectTypesMetadata for TyExpression {
             }
             AbiCast { address, .. } => {
                 res.append(&mut check!(
-                    address.collect_types_metadata(),
+                    address.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -265,7 +275,7 @@ impl CollectTypesMetadata for TyExpression {
             }
             IntrinsicFunction(kind) => {
                 res.append(&mut check!(
-                    kind.collect_types_metadata(),
+                    kind.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -273,7 +283,7 @@ impl CollectTypesMetadata for TyExpression {
             }
             EnumTag { exp } => {
                 res.append(&mut check!(
-                    exp.collect_types_metadata(),
+                    exp.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -281,13 +291,13 @@ impl CollectTypesMetadata for TyExpression {
             }
             UnsafeDowncast { exp, variant } => {
                 res.append(&mut check!(
-                    exp.collect_types_metadata(),
+                    exp.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ));
                 res.append(&mut check!(
-                    variant.type_id.collect_types_metadata(),
+                    variant.type_id.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -295,14 +305,14 @@ impl CollectTypesMetadata for TyExpression {
             }
             WhileLoop { condition, body } => {
                 res.append(&mut check!(
-                    condition.collect_types_metadata(),
+                    condition.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ));
                 for content in body.contents.iter() {
                     res.append(&mut check!(
-                        content.collect_types_metadata(),
+                        content.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -310,7 +320,7 @@ impl CollectTypesMetadata for TyExpression {
                 }
             }
             Return(exp) => res.append(&mut check!(
-                exp.collect_types_metadata(),
+                exp.collect_types_metadata(ctx),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -327,7 +337,7 @@ impl CollectTypesMetadata for TyExpression {
             | FunctionParameter => {}
             Reassignment(reassignment) => {
                 res.append(&mut check!(
-                    reassignment.rhs.collect_types_metadata(),
+                    reassignment.rhs.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -336,14 +346,14 @@ impl CollectTypesMetadata for TyExpression {
             StorageReassignment(storage_reassignment) => {
                 for field in storage_reassignment.fields.iter() {
                     res.append(&mut check!(
-                        field.type_id.collect_types_metadata(),
+                        field.type_id.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
                     ));
                 }
                 res.append(&mut check!(
-                    storage_reassignment.rhs.collect_types_metadata(),
+                    storage_reassignment.rhs.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors

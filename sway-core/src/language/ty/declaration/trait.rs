@@ -1,5 +1,5 @@
 use derivative::Derivative;
-use sway_types::Ident;
+use sway_types::{Ident, Span};
 
 use crate::{
     declaration_engine::DeclarationId,
@@ -23,10 +23,11 @@ pub struct TyTraitDeclaration {
     pub(crate) supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
     pub attributes: transform::AttributesMap,
+    pub span: Span,
 }
 
 impl CopyTypes for TyTraitDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
@@ -44,5 +45,17 @@ impl MonomorphizeHelper for TyTraitDeclaration {
 
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters
+    }
+}
+
+impl ReplaceSelfType for TyTraitDeclaration {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.type_parameters
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+        self.interface_surface
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+        // we don't have to type check the methods because it hasn't been type checked yet
     }
 }

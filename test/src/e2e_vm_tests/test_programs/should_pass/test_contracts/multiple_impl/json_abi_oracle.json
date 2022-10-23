@@ -12,7 +12,11 @@
   ],
   "loggedTypes": [
     {
+<<<<<<< HEAD
       "logId": 222878,
+=======
+      "logId": 0,
+>>>>>>> origin/emilyaherbert/trait-map
       "loggedType": {
         "name": "",
         "type": 1,
@@ -20,7 +24,11 @@
       }
     },
     {
+<<<<<<< HEAD
       "logId": 222892,
+=======
+      "logId": 1,
+>>>>>>> origin/emilyaherbert/trait-map
       "loggedType": {
         "name": "",
         "type": 1,
