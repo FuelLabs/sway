@@ -1518,7 +1518,7 @@ dependencies = [
  "async-trait",
  "clap 3.2.22",
  "forc-pkg",
- "forc-util",
+ "forc-tracing",
  "fuel-crypto",
  "fuel-gql-client",
  "fuel-tx 0.18.0",
@@ -1543,7 +1543,8 @@ version = "0.26.0"
 dependencies = [
  "anyhow",
  "clap 3.2.22",
- "forc-util",
+ "dirs 3.0.2",
+ "forc-tracing",
  "reqwest",
  "serde",
  "tar",
@@ -1601,6 +1602,15 @@ dependencies = [
  "url",
  "vec1",
  "walkdir",
+]
+
+[[package]]
+name = "forc-tracing"
+version = "0.26.0"
+dependencies = [
+ "ansi_term",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -4638,7 +4648,7 @@ dependencies = [
  "forc",
  "forc-client",
  "forc-pkg",
- "forc-util",
+ "forc-tracing",
  "fuel-asm 0.8.0",
  "fuel-tx 0.18.0",
  "fuel-vm 0.15.0",

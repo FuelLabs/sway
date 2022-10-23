@@ -1,5 +1,5 @@
 use forc_client::ops::run::{cmd::RunCommand, op::run};
-use forc_util::init_tracing_subscriber;
+use forc_tracing::init_tracing_subscriber;
 use std::process;
 
 use clap::Parser;

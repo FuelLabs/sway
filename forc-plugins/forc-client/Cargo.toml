@@ -13,7 +13,7 @@ anyhow = "1"
 async-trait = "0.1.58"
 clap = { version = "3", features = ["derive", "env"] }
 forc-pkg = { version = "0.26.0", path = "../../forc-pkg" }
-forc-util = { version = "0.26.0", path = "../../forc-util" }
+forc-tracing = { version = "0.26.0", path = "../../forc-tracing" }
 fuel-crypto = "0.6"
 fuel-gql-client = { version = "0.10", default-features = false }
 fuel-tx = { version = "0.18", features = ["builder"] }
