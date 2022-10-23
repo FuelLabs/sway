@@ -10,6 +10,7 @@ dep mem;
 dep alloc;
 dep contract_id;
 dep constants;
+dep external;
 dep context;
 dep hash;
 dep r#storage;
