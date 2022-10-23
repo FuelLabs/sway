@@ -782,16 +782,16 @@ mod tests {
             json!({
                 "contents": {
                     "kind": "markdown",
-                    "value": "```sway\nstruct Data\n```"
+                    "value": " Struct holding:\n\n 1. A `value` of type `NumberOrString`\n 2. An `address` of type `u64`"
                 },
                 "range": {
                     "end": {
-                        "character": 11,
-                        "line": 19
+                        "character": 27,
+                        "line": 44
                     },
                     "start": {
-                        "character": 7,
-                        "line": 19
+                        "character": 23,
+                        "line": 44
                     }
                 }
             }),
