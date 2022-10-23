@@ -45,10 +45,6 @@ impl ty::TyFunctionDeclaration {
         let mut fn_namespace = ctx.namespace.clone();
         let mut fn_ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
 
-        // if name.as_str() == "ec_recover" {
-        //     println!("before: {}", fn_ctx.namespace.implemented_traits);
-        // }
-
         // type check the type parameters, which will also insert them into the namespace
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
@@ -84,11 +80,6 @@ impl ty::TyFunctionDeclaration {
             warnings,
             errors,
         );
-
-        // if name.as_str() == "ec_recover" {
-        //     println!("return_type: {}", return_type);
-        //     println!("after: {}", fn_ctx.namespace.implemented_traits);
-        // }
 
         // type check the function body
         //

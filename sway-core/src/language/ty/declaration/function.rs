@@ -1,5 +1,3 @@
-use std::fmt;
-
 use sha2::{Digest, Sha256};
 use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
 
@@ -28,34 +26,6 @@ pub struct TyFunctionDeclaration {
     /// whether this function exists in another contract and requires a call to it or not
     pub(crate) is_contract_call: bool,
     pub(crate) purity: Purity,
-}
-
-impl fmt::Display for TyFunctionDeclaration {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "fn {}{}({}) -> {} {{ .. }}",
-            self.name,
-            if self.type_parameters.is_empty() {
-                String::new()
-            } else {
-                format!(
-                    "<{}>",
-                    self.type_parameters
-                        .iter()
-                        .map(|x| x.to_string())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-            },
-            self.parameters
-                .iter()
-                .map(|x| x.to_string())
-                .collect::<Vec<_>>()
-                .join(", "),
-            self.return_type,
-        )
-    }
 }
 
 impl From<&TyFunctionDeclaration> for TyAstNode {
@@ -321,18 +291,6 @@ pub struct TyFunctionParameter {
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
     pub type_span: Span,
-}
-
-impl fmt::Display for TyFunctionParameter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ref_str = if self.is_reference { "ref " } else { "" };
-        let mut_str = if self.is_mutable { "mut " } else { "" };
-        if self.is_self() {
-            write!(f, "{}{}self: {}", ref_str, mut_str, self.type_id)
-        } else {
-            write!(f, "{}: {}{}{}", self.name, ref_str, mut_str, self.type_id)
-        }
-    }
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

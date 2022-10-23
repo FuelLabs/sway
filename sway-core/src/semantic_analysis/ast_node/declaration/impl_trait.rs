@@ -13,7 +13,7 @@ use crate::{
 
 impl ty::TyImplTrait {
     pub(crate) fn type_check_impl_trait(
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         impl_trait: ImplTrait,
     ) -> CompileResult<(Self, TypeId)> {
         let mut errors = vec![];
@@ -31,7 +31,7 @@ impl ty::TyImplTrait {
 
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.by_ref().scoped(&mut impl_namespace);
+        let mut ctx = ctx.scoped(&mut impl_namespace);
 
         // type check the type parameters which also inserts them into the namespace
         let mut new_impl_type_parameters = vec![];
@@ -80,8 +80,10 @@ impl ty::TyImplTrait {
         );
 
         // Update the context with the new `self` type.
-        let mut ctx = ctx.with_self_type(implementing_for_type_id);
-        println!("implementing_for_type_id: {}", implementing_for_type_id);
+        let mut ctx = ctx
+            .with_self_type(implementing_for_type_id)
+            .with_help_text("")
+            .with_type_annotation(insert_type(TypeInfo::Unknown));
 
         let impl_trait = match ctx
             .namespace
@@ -384,7 +386,7 @@ impl ty::TyImplTrait {
     }
 
     pub(crate) fn type_check_impl_self(
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         impl_self: ImplSelf,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
@@ -400,7 +402,7 @@ impl ty::TyImplTrait {
 
         // create the namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut impl_ctx = ctx.by_ref().scoped(&mut impl_namespace);
+        let mut ctx = ctx.scoped(&mut impl_namespace);
 
         // create the trait name
         let trait_name = CallPath {
@@ -416,7 +418,7 @@ impl ty::TyImplTrait {
         let mut new_impl_type_parameters = vec![];
         for type_parameter in impl_type_parameters.into_iter() {
             new_impl_type_parameters.push(check!(
-                TypeParameter::type_check(impl_ctx.by_ref(), type_parameter),
+                TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -425,7 +427,7 @@ impl ty::TyImplTrait {
 
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
-            impl_ctx.resolve_type_without_self(
+            ctx.resolve_type_without_self(
                 insert_type(type_implementing_for),
                 &type_implementing_for_span,
                 None
@@ -448,11 +450,16 @@ impl ty::TyImplTrait {
             errors
         );
 
+        let mut ctx = ctx
+            .with_self_type(implementing_for_type_id)
+            .with_help_text("")
+            .with_type_annotation(insert_type(TypeInfo::Unknown));
+
         // type check the methods inside of the impl block
         let mut methods = vec![];
         for fn_decl in functions.into_iter() {
             methods.push(check!(
-                ty::TyFunctionDeclaration::type_check(impl_ctx.by_ref(), fn_decl, true),
+                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, true),
                 continue,
                 warnings,
                 errors
@@ -511,6 +518,9 @@ fn type_check_trait_implementation(
     let mut errors = vec![];
     let mut warnings = vec![];
 
+    let mut functions_buf: Vec<ty::TyFunctionDeclaration> = vec![];
+    let mut processed_fns = std::collections::HashSet::<Ident>::new();
+
     let mut trait_fns = vec![];
     for decl_id in trait_interface_surface {
         match de_get_trait_fn(decl_id.clone(), block_span) {
@@ -518,9 +528,6 @@ fn type_check_trait_implementation(
             Err(err) => errors.push(err),
         }
     }
-
-    let mut functions_buf: Vec<ty::TyFunctionDeclaration> = vec![];
-    let mut processed_fns = std::collections::HashSet::<Ident>::new();
 
     // this map keeps track of the remaining functions in the
     // interface surface that still need to be implemented for the

@@ -612,15 +612,7 @@ impl fmt::Display for TyExpressionVariant {
             TyExpressionVariant::StructExpression { struct_name, .. } => {
                 format!("\"{}\" struct init", struct_name.as_str())
             }
-            TyExpressionVariant::CodeBlock(block) => format!(
-                "{{\n\t{}\n}}",
-                block
-                    .contents
-                    .iter()
-                    .map(|x| x.to_string())
-                    .collect::<Vec<_>>()
-                    .join(";\n\t")
-            ),
+            TyExpressionVariant::CodeBlock(_) => "code block entry".into(),
             TyExpressionVariant::FunctionParameter => "fn param access".into(),
             TyExpressionVariant::IfExp { .. } => "if exp".into(),
             TyExpressionVariant::AsmExpression { .. } => "inline asm".into(),
