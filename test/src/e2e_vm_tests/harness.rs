@@ -1,16 +1,15 @@
 use anyhow::{bail, Result};
-use forc::test::{forc_build, BuildCommand};
 use forc_client::ops::{
     deploy::{cmd::DeployCommand, op::deploy},
     run::{cmd::RunCommand, op::run},
 };
-use forc_pkg::Compiled;
+use forc_pkg::{Compiled, PackageManifestFile};
 use fuel_tx::TransactionBuilder;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
-use std::{fmt::Write, fs, str::FromStr};
+use std::{fmt::Write, fs, path::PathBuf, str::FromStr};
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
 pub const SECRET_KEY: &str = "de97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
@@ -147,15 +146,23 @@ pub(crate) fn compile_to_bytes_verbose(
     }
 
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let compiled = forc_build::build(BuildCommand {
-        path: Some(format!(
-            "{}/src/e2e_vm_tests/test_programs/{}",
-            manifest_dir, file_name
-        )),
-        locked,
-        terse_mode: !verbose,
-        ..Default::default()
-    });
+    let path = format!(
+        "{}/src/e2e_vm_tests/test_programs/{}",
+        manifest_dir, file_name
+    );
+    let manifest = PackageManifestFile::from_dir(&PathBuf::from(path)).unwrap();
+    let compiled = forc_pkg::build_package_with_options(
+        &manifest,
+        forc_pkg::BuildOptions {
+            path: Some(format!(
+                "{}/src/e2e_vm_tests/test_programs/{}",
+                manifest_dir, file_name
+            )),
+            locked,
+            terse_mode: !verbose,
+            ..Default::default()
+        },
+    );
 
     let mut output = String::new();
     if capture_output {

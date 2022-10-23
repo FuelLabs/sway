@@ -3,7 +3,7 @@ use crate::{
     manifest::{
         BuildProfile, ConfigTimeConstant, Dependency, PackageManifest, PackageManifestFile,
     },
-    CORE, PRELUDE, STD,
+    WorkspaceManifestFile, CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
@@ -2031,7 +2031,7 @@ pub fn compile(
         Some(BytecodeOrLib::Bytecode(_)) | None => fail(&bc_res.warnings, &bc_res.errors),
     }
 }
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct BuildOptions {
     /// Path to the project, if not specified, current working directory will be used.
     pub path: Option<String>,
@@ -2090,12 +2090,47 @@ pub const SWAY_BIN_HASH_SUFFIX: &str = "-bin-hash";
 pub const SWAY_BIN_ROOT_SUFFIX: &str = "-bin-root";
 
 /// Builds a project with given BuildOptions
-pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
+pub fn build_with_options(build_options: BuildOptions) -> Result<()> {
+    let path = &build_options.path;
+
+    let this_dir = if let Some(ref path) = path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir()?
+    };
+
+    // Decide the type of the ManifestFile at this_dir
+    if let Ok(package_manifest) = PackageManifestFile::from_dir(&this_dir) {
+        build_package_with_options(&package_manifest, build_options)?;
+    } else if let Ok(workspace_manifest) = WorkspaceManifestFile::from_dir(&this_dir) {
+        build_workspace_with_options(&workspace_manifest, build_options)?;
+    } else {
+        bail!(format!(
+            "Cannot find {} {:?}",
+            sway_utils::MANIFEST_FILE_NAME,
+            this_dir
+        ))
+    }
+    Ok(())
+}
+
+fn build_workspace_with_options(
+    _manifest: &WorkspaceManifestFile,
+    _build_options: BuildOptions,
+) -> Result<()> {
+    // Find root member of the workspace and build it.
+    Ok(())
+}
+
+pub fn build_package_with_options(
+    manifest: &PackageManifestFile,
+    build_options: BuildOptions,
+) -> Result<Compiled> {
     let key_debug: String = "debug".to_string();
     let key_release: String = "release".to_string();
 
     let BuildOptions {
-        path,
+        path: _,
         binary_outfile,
         debug_outfile,
         print_ast,
@@ -2132,17 +2167,6 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
             }
         }
     }
-
-    let this_dir = if let Some(ref path) = path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir()?
-    };
-
-    let manifest = PackageManifestFile::from_dir(&this_dir)?;
-
-    let plan = BuildPlan::from_lock_and_manifest(&manifest, locked, offline_mode)?;
-
     // Retrieve the specified build profile
     let mut profile = manifest
         .build_profile(&selected_build_profile)
@@ -2161,6 +2185,8 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
     profile.print_intermediate_asm |= print_intermediate_asm;
     profile.terse |= terse_mode;
     profile.time_phases |= time_phases;
+
+    let plan = BuildPlan::from_lock_and_manifest(manifest, locked, offline_mode)?;
 
     // Build it!
     let (compiled, source_map) = build(&plan, &profile)?;

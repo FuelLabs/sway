@@ -46,7 +46,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         release: command.release,
         time_phases: command.time_phases,
     };
-    let compiled = forc_pkg::build_with_options(build_options)?;
+    let compiled = forc_pkg::build_package_with_options(&manifest, build_options)?;
 
     let bytecode = compiled.bytecode.clone().into();
     let salt = Salt::new([0; 32]);

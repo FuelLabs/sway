@@ -2,7 +2,7 @@ use crate::cli::BuildCommand;
 use anyhow::Result;
 use forc_pkg::{self as pkg};
 
-pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
+pub fn build(command: BuildCommand) -> Result<()> {
     let build_options = pkg::BuildOptions {
         path: command.path,
         print_ast: command.print_ast,
@@ -21,6 +21,6 @@ pub fn build(command: BuildCommand) -> Result<pkg::Compiled> {
         time_phases: command.time_phases,
         print_intermediate_asm: command.print_intermediate_asm,
     };
-    let compiled = pkg::build_with_options(build_options)?;
-    Ok(compiled)
+    pkg::build_with_options(build_options)?;
+    Ok(())
 }
