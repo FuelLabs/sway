@@ -1,8 +1,7 @@
 //! Markdown formatting.
 //!
 //! Sometimes, we want to display a "rich text" in the UI. At the moment, we use
-//! markdown for this purpose. It doesn't feel like a right option, but that's
-//! what is used by LSP, so let's keep it simple.
+//! markdown for this purpose.
 //! Modified from rust-analyzer.
 use std::fmt;
 
