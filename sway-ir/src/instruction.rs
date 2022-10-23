@@ -437,6 +437,7 @@ impl Instruction {
 pub struct InstructionIterator {
     instructions: Vec<generational_arena::Index>,
     next: usize,
+    next_back: isize,
 }
 
 impl InstructionIterator {
@@ -450,6 +451,7 @@ impl InstructionIterator {
                 .map(|val| val.0)
                 .collect(),
             next: 0,
+            next_back: context.blocks[block.0].instructions.len() as isize - 1,
         }
     }
 }
@@ -462,6 +464,18 @@ impl Iterator for InstructionIterator {
             let idx = self.next;
             self.next += 1;
             Some(Value(self.instructions[idx]))
+        } else {
+            None
+        }
+    }
+}
+
+impl DoubleEndedIterator for InstructionIterator {
+    fn next_back(&mut self) -> Option<Value> {
+        if self.next_back >= 0 {
+            let idx = self.next_back;
+            self.next_back -= 1;
+            Some(Value(self.instructions[idx as usize]))
         } else {
             None
         }

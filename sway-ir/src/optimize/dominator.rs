@@ -69,7 +69,7 @@ pub fn compute_post_order(context: &Context, function: &Function) -> PostOrder {
 }
 
 /// Compute the dominator tree for the CFG.
-pub fn compute_dom_tree(context: &Context, function: &Function) -> DomTree {
+pub fn compute_dom_tree(context: &Context, function: &Function) -> (DomTree, PostOrder) {
     let po = compute_post_order(context, function);
     let mut dom_tree = DomTree::default();
     let entry = function.get_entry_block(context);
@@ -140,7 +140,7 @@ pub fn compute_dom_tree(context: &Context, function: &Function) -> DomTree {
         dom_tree.get_mut(&parent).unwrap().children.push(child);
     }
 
-    dom_tree
+    (dom_tree, po)
 }
 
 /// Compute dominance frontiers set for each block.

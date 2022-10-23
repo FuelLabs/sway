@@ -9,7 +9,7 @@ use sway_utils::mapped_stack::MappedStack;
 
 use crate::{
     compute_dom_fronts, dominator::compute_dom_tree, Block, BranchToWithArgs, Context, DomTree,
-    Function, Instruction, IrError, Pointer, Type, Value, ValueDatum,
+    Function, Instruction, IrError, Pointer, PostOrder, Type, Value, ValueDatum,
 };
 
 // Check if a value is a valid (for our optimization) local pointer
@@ -53,14 +53,63 @@ fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<S
     locals
 }
 
+// For each block, compute the set of locals that are live-in.
+pub fn compute_livein(
+    context: &mut Context,
+    function: &Function,
+    po: &PostOrder,
+    locals: &HashSet<String>,
+) -> FxHashMap<Block, HashSet<String>> {
+    let mut result = FxHashMap::<Block, HashSet<String>>::default();
+    for block in &po.po_to_block {
+        result.insert(*block, HashSet::<String>::default());
+    }
+
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for block in &po.po_to_block {
+            // we begin by unioning the liveins at successor blocks.
+            let mut cur_live = HashSet::<String>::default();
+            for BranchToWithArgs { block: succ, .. } in block.successors(context) {
+                let succ_livein = &result[&succ];
+                cur_live.extend(succ_livein.iter().cloned());
+            }
+            // Scan the instructions, in reverse.
+            for inst in block.instruction_iter(context).rev() {
+                match context.values[inst.0].value {
+                    ValueDatum::Instruction(Instruction::Load(ptr)) => {
+                        let local_ptr = get_validate_local_pointer(context, function, &ptr);
+                        match local_ptr {
+                            Some((local, ..)) if locals.contains(&local) => {
+                                cur_live.insert(local);
+                            }
+                            _ => {}
+                        }
+                    }
+                    ValueDatum::Instruction(Instruction::Store { dst_val, .. }) => {
+                        let local_ptr = get_validate_local_pointer(context, function, &dst_val);
+                        match local_ptr {
+                            Some((local, _, _)) if locals.contains(&local) => {
+                                cur_live.remove(&local);
+                            }
+                            _ => (),
+                        }
+                    }
+                    _ => (),
+                }
+            }
+            // Whatever's live now, is the live-in for the block.
+            result.get_mut(block).unwrap().extend(cur_live);
+        }
+    }
+    result
+}
+
 /// Promote local values that are accessed via load/store to SSA registers.
 /// We promote only locals of non-copy type, whose every use is in a `get_ptr`
 /// without offsets, and the result of such a `get_ptr` is used only in a load
 /// or a store.
-/// Unlike in LLVM, we don't generate Pruned SSA yet.
-/// (i.e., there may be PHIs introduced that are dead).
-/// DCE will take care of pruning.
-/// We could in the future introduce liveness here and generate pruned SSA.
 pub fn promote_to_registers(context: &mut Context, function: &Function) -> Result<bool, IrError> {
     let safe_locals = filter_usable_locals(context, function);
 
@@ -68,7 +117,7 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
         return Ok(false);
     }
 
-    let dom_tree = compute_dom_tree(context, function);
+    let (dom_tree, po) = compute_dom_tree(context, function);
     let dom_fronts = compute_dom_fronts(context, function, &dom_tree);
     // print!(
     //     "{}\n{}\n{}",
@@ -76,6 +125,7 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
     //     print_dot(context, function.get_name(context), &dom_tree),
     //     print_dom_fronts(context, function.get_name(context), &dom_fronts),
     // );
+    let liveins = compute_livein(context, function, &po, &safe_locals);
 
     // A list of the PHIs we insert in this transform.
     let mut new_phi_tracker = HashSet::<(String, Block)>::new();
@@ -100,7 +150,7 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
     while !worklist.is_empty() {
         let (local, ty, known_def) = worklist.pop().unwrap();
         for df in dom_fronts[&known_def].iter() {
-            if !new_phi_tracker.contains(&(local.clone(), *df)) {
+            if !new_phi_tracker.contains(&(local.clone(), *df)) && liveins[df].contains(&local) {
                 // print!(
                 //     "Adding PHI for {} in block {}\n",
                 //     local,
