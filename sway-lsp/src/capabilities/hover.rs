@@ -5,7 +5,9 @@ use crate::{
     },
     utils::{
         attributes::doc_attributes,
-        common::get_range_from_span, 
+        common::get_range_from_span,
+        markdown,
+        markup::Markup, 
         token::to_ident_key,
     },
 };
@@ -64,6 +66,12 @@ fn format_doc_attributes(token: &Token) -> String {
     doc_comment
 }
 
+fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
+    let kind = lsp_types::MarkupKind::Markdown;
+    let value = markdown::format_docs(markup.as_str());
+    lsp_types::MarkupContent { kind, value }
+}
+
 fn hover_format(token: &Token, ident: &Ident) -> lsp_types::HoverContents {
     let token_name: String = ident.as_str().into();
     let doc_comment = format_doc_attributes(token);
@@ -85,6 +93,7 @@ fn hover_format(token: &Token, ident: &Ident) -> lsp_types::HoverContents {
         format!("let{} {}: {}", mutability, token_name, type_name,)
     };
 
+    // TODO implement this properly in a future PR
     let _value = match &token.typed {
         Some(typed_token) => match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {
@@ -140,23 +149,5 @@ fn hover_format(token: &Token, ident: &Ident) -> lsp_types::HoverContents {
         },
     };
 
-    let res = HoverResult {
-        markup: Markup::from(doc_comment),
-    };
-
-    lsp_types::HoverContents::Markup(markup_content(res.markup))
-}
-
-pub(crate) fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
-    let kind = lsp_types::MarkupKind::Markdown;
-    let value = markdown::format_docs(markup.as_str());
-    lsp_types::MarkupContent { kind, value }
-}
-
-use crate::capabilities::{markdown, markup::Markup};
-
-/// Contains the results when hovering over an item
-#[derive(Debug, Default)]
-pub struct HoverResult {
-    pub markup: Markup,
+    lsp_types::HoverContents::Markup(markup_content(Markup::from(doc_comment)))
 }
