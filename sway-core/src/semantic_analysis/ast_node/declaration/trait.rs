@@ -8,12 +8,8 @@ use crate::{
     declaration_engine::*,
     error::*,
     language::{parsed::*, ty, CallPath, Visibility},
-    semantic_analysis::{
-        ast_node::{type_check_interface_surface, type_check_trait_methods},
-        Mode, TypeCheckContext,
-    },
+    semantic_analysis::{ast_node::type_check_interface_surface, Mode, TypeCheckContext},
     type_system::*,
-    Namespace,
 };
 
 impl ty::TyTraitDeclaration {
@@ -51,12 +47,13 @@ impl ty::TyTraitDeclaration {
         }
 
         // A temporary namespace for checking within the trait's scope.
+        let self_type = insert_type(TypeInfo::SelfType);
         let mut trait_namespace = ctx.namespace.clone();
-        let ctx = ctx.scoped(&mut trait_namespace);
+        let mut ctx = ctx.scoped(&mut trait_namespace).with_self_type(self_type);
 
         // type check the interface surface
         let interface_surface = check!(
-            type_check_interface_surface(interface_surface, ctx.namespace),
+            type_check_interface_surface(ctx.by_ref(), interface_surface),
             return err(warnings, errors),
             warnings,
             errors
@@ -71,7 +68,7 @@ impl ty::TyTraitDeclaration {
 
         // Recursively handle supertraits: make their interfaces and methods available to this trait
         check!(
-            handle_supertraits(&supertraits, ctx.namespace),
+            handle_supertraits(ctx.by_ref(), &supertraits),
             return err(warnings, errors),
             warnings,
             errors
@@ -85,20 +82,23 @@ impl ty::TyTraitDeclaration {
                 suffix: name.clone(),
                 is_absolute: false,
             },
-            insert_type(TypeInfo::SelfType),
+            self_type,
             trait_fns
                 .iter()
                 .map(|x| x.to_dummy_func(Mode::NonAbi))
                 .collect(),
         );
+
         // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
-        let ctx = ctx.with_self_type(insert_type(TypeInfo::SelfType));
-        let _methods = check!(
-            type_check_trait_methods(ctx, methods.clone()),
-            vec![],
-            warnings,
-            errors
-        );
+        methods.iter().for_each(|method| {
+            let _ = check!(
+                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true),
+                ty::TyFunctionDeclaration::error(method.clone()),
+                warnings,
+                errors
+            );
+        });
+
         let typed_trait_decl = ty::TyTraitDeclaration {
             name,
             interface_surface,
@@ -114,15 +114,15 @@ impl ty::TyTraitDeclaration {
 
 /// Recursively handle supertraits by adding all their interfaces and methods to some namespace
 /// which is meant to be the namespace of the subtrait in question
-fn handle_supertraits(
-    supertraits: &[Supertrait],
-    trait_namespace: &mut Namespace,
-) -> CompileResult<()> {
+fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> CompileResult<()> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
+    let self_type = ctx.self_type();
+
     for supertrait in supertraits.iter() {
-        match trait_namespace
+        match ctx
+            .namespace
             .resolve_call_path(&supertrait.name)
             .ok(&mut warnings, &mut errors)
             .cloned()
@@ -150,9 +150,9 @@ fn handle_supertraits(
                 }
 
                 // insert dummy versions of the interfaces for all of the supertraits
-                trait_namespace.insert_trait_implementation(
+                ctx.namespace.insert_trait_implementation(
                     supertrait.name.clone(),
-                    insert_type(TypeInfo::SelfType),
+                    self_type,
                     trait_fns
                         .iter()
                         .map(|x| x.to_dummy_func(Mode::NonAbi))
@@ -161,21 +161,21 @@ fn handle_supertraits(
 
                 // insert dummy versions of the methods of all of the supertraits
                 let dummy_funcs = check!(
-                    convert_trait_methods_to_dummy_funcs(methods, trait_namespace),
+                    convert_trait_methods_to_dummy_funcs(ctx.by_ref(), methods),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                trait_namespace.insert_trait_implementation(
+                ctx.namespace.insert_trait_implementation(
                     supertrait.name.clone(),
-                    insert_type(TypeInfo::SelfType),
+                    self_type,
                     dummy_funcs,
                 );
 
                 // Recurse to insert dummy versions of interfaces and methods of the *super*
                 // supertraits
                 check!(
-                    handle_supertraits(supertraits, trait_namespace),
+                    handle_supertraits(ctx.by_ref(), supertraits),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -199,8 +199,8 @@ fn handle_supertraits(
 /// Convert a vector of FunctionDeclarations into a vector of [ty::TyFunctionDeclaration]'s where only
 /// the parameters and the return types are type checked.
 fn convert_trait_methods_to_dummy_funcs(
+    mut ctx: TypeCheckContext,
     methods: &[FunctionDeclaration],
-    trait_namespace: &mut Namespace,
 ) -> CompileResult<Vec<ty::TyFunctionDeclaration>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -219,7 +219,7 @@ fn convert_trait_methods_to_dummy_funcs(
         for param in parameters.iter() {
             typed_parameters.push(check!(
                 ty::TyFunctionParameter::type_check_interface_parameter(
-                    trait_namespace,
+                    ctx.by_ref(),
                     param.clone()
                 ),
                 continue,
@@ -231,9 +231,8 @@ fn convert_trait_methods_to_dummy_funcs(
         // type check the return type
         let initial_return_type = insert_type(return_type.clone());
         let return_type = check!(
-            trait_namespace.resolve_type_with_self(
+            ctx.resolve_type_with_self(
                 initial_return_type,
-                insert_type(TypeInfo::SelfType),
                 return_type_span,
                 EnforceTypeArguments::Yes,
                 None

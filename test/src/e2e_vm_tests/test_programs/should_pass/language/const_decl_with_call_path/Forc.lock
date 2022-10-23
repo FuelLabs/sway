@@ -1,0 +1,14 @@
+[[package]]
+name = 'const_decl_with_call_path'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-8403A6B918C3B0C1'
+dependencies = []
+
+[[package]]
+name = 'std'
+source = 'path+from-root-8403A6B918C3B0C1'
+dependencies = ['core']
