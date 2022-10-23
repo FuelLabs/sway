@@ -11,6 +11,7 @@ description = "A `forc` plugin for running the Sway code formatter."
 [dependencies]
 anyhow = "1"
 clap = { version = "3", features = ["derive"] }
+forc-tracing = { version = "0.26.0", path = "../../forc-tracing" }
 forc-util = { version = "0.26.0", path = "../../forc-util" }
 prettydiff = "0.5"
 sway-core = { version = "0.26.0", path = "../../sway-core" }
