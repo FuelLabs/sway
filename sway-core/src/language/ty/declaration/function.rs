@@ -95,11 +95,12 @@ impl TyFunctionDeclaration {
             span,
             return_type_span,
             visibility,
+            purity,
             ..
         } = decl;
         let initial_return_type = insert_type(return_type);
         TyFunctionDeclaration {
-            purity: Default::default(),
+            purity,
             name,
             body: TyCodeBlock {
                 contents: Default::default(),
