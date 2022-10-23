@@ -54,6 +54,8 @@ fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<S
 }
 
 // For each block, compute the set of locals that are live-in.
+// TODO: Use rustc_index::bit_set::ChunkedBitSet by mapping local names to indices.
+//       This will allow more efficient set operations.
 pub fn compute_livein(
     context: &mut Context,
     function: &Function,
@@ -99,8 +101,11 @@ pub fn compute_livein(
                     _ => (),
                 }
             }
-            // Whatever's live now, is the live-in for the block.
-            result.get_mut(block).unwrap().extend(cur_live);
+            if result[block] != cur_live {
+                // Whatever's live now, is the live-in for the block.
+                result.get_mut(block).unwrap().extend(cur_live);
+                changed = true;
+            }
         }
     }
     result
