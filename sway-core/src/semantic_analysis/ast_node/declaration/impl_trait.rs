@@ -122,15 +122,6 @@ impl ty::TyImplTrait {
                     implementing_for_type_id,
                     type_implementing_for_span: type_implementing_for_span.clone(),
                 };
-                // let implementing_for_type_id = insert_type(
-                //     match to_typeinfo(implementing_for_type_id, &type_implementing_for_span) {
-                //         Ok(o) => o,
-                //         Err(e) => {
-                //             errors.push(e.into());
-                //             return err(warnings, errors);
-                //         }
-                //     },
-                // );
                 (impl_trait, implementing_for_type_id)
             }
             Some(ty::TyDeclaration::AbiDeclaration(decl_id)) => {
@@ -486,7 +477,6 @@ impl ty::TyImplTrait {
 #[allow(clippy::too_many_arguments)]
 fn type_check_trait_implementation(
     mut ctx: TypeCheckContext,
-    //type_implementing_for: TypeId,
     trait_interface_surface: &[DeclarationId],
     trait_methods: &[FunctionDeclaration],
     functions: &[FunctionDeclaration],
@@ -530,7 +520,6 @@ fn type_check_trait_implementation(
             .by_ref()
             .with_help_text("")
             .with_type_annotation(insert_type(TypeInfo::Unknown));
-        //.with_self_type(type_implementing_for);
 
         // type check the function declaration
         let fn_decl = check!(

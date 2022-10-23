@@ -1,5 +1,3 @@
-use std::fmt;
-
 use crate::{
     insert_type,
     language::{ty, CallPath},
@@ -22,32 +20,6 @@ pub(crate) struct TraitMap {
     trait_impls: TraitImpls,
 }
 
-impl fmt::Display for TraitMap {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "TraitMap [\n\t{}\n]",
-            self.trait_impls
-                .iter()
-                .map(|trait_impl| {
-                    let ((trait_name, type_id), trait_methods) = trait_impl;
-                    format!(
-                        "impl {} for {} {{\n\t\t{}\n\t}}",
-                        trait_name,
-                        type_id,
-                        trait_methods
-                            .iter()
-                            .map(|(_, method)| method.to_string())
-                            .collect::<Vec<_>>()
-                            .join("\n\t\t")
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join("\n\t")
-        )
-    }
-}
-
 impl TraitMap {
     /// Given a [TraitName] `trait_name`, [TypeId] `type_id`, and list of
     /// [TyFunctionDeclaration](ty::TyFunctionDeclaration) `methods`, inserts
@@ -67,9 +39,8 @@ impl TraitMap {
             .into_iter()
             .map(|method| (method.name.as_str().to_string(), method))
             .collect();
-        let trait_impls: TraitImpls = vec![((trait_name, type_id), trait_methods)]
-            .into_iter()
-            .collect();
+        let trait_impls: TraitImpls =
+            std::iter::once(((trait_name, type_id), trait_methods)).collect();
         let trait_map = TraitMap { trait_impls };
         self.extend(trait_map);
     }
@@ -177,7 +148,111 @@ impl TraitMap {
 
     /// Filter the entries in `self` with the given [TypeId] `type_id` and
     /// return a new [TraitMap] with all of the entries from `self` for which
-    /// `type_id` was a subtype.
+    /// `type_id` is a subtype. Additionally, the new [TraitMap] contains the
+    /// entries for the inner types of `self`.
+    ///
+    /// An "inner type" of `self` is one that is contained within `self`, but
+    /// not including `self`. So the types of the fields of a struct would be
+    /// inner types, for instance.
+    ///
+    /// The new [TraitMap] must contain entries for the inner types of `self`
+    /// because users will want to chain field access's and method calls.
+    /// Here is some example Sway code to demonstrate this:
+    ///
+    /// `data.sw`:
+    /// ```ignore
+    /// library data;
+    ///
+    /// enum MyResult<T, E> {
+    ///     Ok: T,
+    ///     Err: E,
+    /// }
+    ///
+    /// impl<T, E> MyResult<T, E> {
+    ///     fn is_ok(self) -> bool {
+    ///         match self {
+    ///             MyResult::Ok(_) => true,
+    ///             _ => false,
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// pub struct Data<T> {
+    ///     value: MyResult<T, str[10]>,
+    /// }
+    ///
+    /// impl<T> Data<T> {
+    ///     fn new(value: T) -> Data<T> {
+    ///         Data {
+    ///             value: MyResult::Ok(value)
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// `main.sw`:
+    /// ```ignore
+    /// script;
+    ///
+    /// dep data;
+    ///
+    /// use data::Data;
+    ///
+    /// fn main() {
+    ///     let foo = Data::new(true);
+    ///     let bar = foo.value.is_ok();
+    /// }
+    /// ```
+    ///
+    /// In this example, we need to be able to find the definition of the
+    /// `is_ok` method for the correct type, but we need to do that without
+    /// requiring the user to import the whole `MyResult<T, E>` enum. Because if
+    /// this was required, this would make users make large portions of their
+    /// libraries public with `pub`. Moreover, we wouldn't need to import the
+    /// whole `MyResult<T, E>` enum anyway, because the only type that we are
+    /// seeing in `main.sw` is `MyResult<bool, str[10]>`!
+    ///
+    /// When an entry is found from `self` with type `type_id'` for which
+    /// `type_id` is a subtype, we take the methods defined upon `type_id'` and
+    /// translate them to be defined upon `type_id`.
+    ///
+    /// Here is an example of what this looks like. Take this Sway code:
+    ///
+    /// ```ignore
+    /// impl<T, F> Data<T, F> {
+    ///     fn get_first(self) -> T {
+    ///         self.first
+    ///     }
+    ///
+    ///     fn get_second(self) -> F {
+    ///         self.second
+    ///     }
+    /// }
+    ///
+    /// impl<T> Data<T, T> {
+    ///     fn switch(ref mut self) {
+    ///         let first = self.first;
+    ///         self.first = self.second;
+    ///         self.second = first;
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// If we were to list all of the methods by hand defined for `Data<T, T>`,
+    /// these would be `get_first()`, `get_second()`, and `switch()`. But if we
+    /// were to list all of the methods by hand for `Data<T, F>`, these would
+    /// just include `get_first()` and `get_second()`. So, for any given
+    /// [TraitMap], in order to find all of the methods defined for a `type_id`,
+    /// we must iterate through the [TraitMap] and extract all methods that are
+    /// defined upon any type for which `type_id` is a subset.
+    ///
+    /// Once those methods are identified, we need to translate them to be
+    /// defined upon `type_id`. Imagine that `type_id` is `Data<T, T>`, when
+    /// we iterate on `self` we find `Data<T, F>: get_first(self) -> T`,
+    /// `Data<T, F>: get_second(self) -> F`. Once we translate these methods, we
+    /// have `Data<T, T>: get_first(self) -> T` and
+    /// `Data<T, T>: get_second(self) -> T`, and we can create a new [TraitMap]
+    /// with those entries for `Data<T, T>`.
     pub(crate) fn filter_by_type(&self, type_id: TypeId) -> TraitMap {
         let mut all_types = look_up_type_id(type_id).extract_inner_types();
         all_types.insert(type_id);
@@ -214,6 +289,15 @@ impl TraitMap {
         trait_map
     }
 
+    /// Find the entries in `self` that are equivalent to `type_id`.
+    ///
+    /// Notes:
+    /// - equivalency is defined (1) based on whether the types contains types
+    ///     that are dynamic and can change and (2) whether the types hold
+    ///     equivalency after (1) is fulfilled
+    /// - this method does not translate types from the found entries to the
+    ///     `type_id` (like in `filter_by_type()`). This is because the only
+    ///     entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_methods_for_type(&self, type_id: TypeId) -> Vec<ty::TyFunctionDeclaration> {
         let mut methods = vec![];
         // small performance gain in bad case

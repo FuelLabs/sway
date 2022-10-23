@@ -139,14 +139,13 @@ impl Namespace {
         )
     }
 
-    /// Given a method and a type (plus a `self_type` to potentially resolve it), find that method
-    /// in the namespace. Requires `args_buf` because of some special casing for the standard
-    /// library where we pull the type from the arguments buffer.
+    /// Given a method and a type (plus a `self_type` to potentially
+    /// resolve it), find that method in the namespace. Requires `args_buf`
+    /// because of some special casing for the standard library where we pull
+    /// the type from the arguments buffer.
     ///
-    /// This function will generate a missing method error if the method is not found.
-    ///
-    /// This method should only be called on the root namespace. `mod_path` is the current module,
-    /// `method_path` is assumed to be absolute.
+    /// This function will generate a missing method error if the method is not
+    /// found.
     pub(crate) fn find_method_for_type(
         &mut self,
         mut type_id: TypeId,
