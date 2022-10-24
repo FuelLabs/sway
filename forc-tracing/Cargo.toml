@@ -6,7 +6,7 @@ edition = "2021"
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
-description = "Utility items shared between forc crates."
+description = "Tracing utility shared between forc crates."
 
 [dependencies]
 ansi_term = "0.12"
