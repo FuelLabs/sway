@@ -25,7 +25,6 @@ use sway_core::{
 };
 use sway_types::{Ident, Spanned};
 use sway_utils::helpers::get_sway_files;
-use swayfmt::Formatter;
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionResponse, Location, Position, Range,
     SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
@@ -165,7 +164,7 @@ impl Session {
     pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
         self.documents
             .remove(url.path())
-            .ok_or(DocumentError::DocumentNotFound {
+            .ok_or_else(|| DocumentError::DocumentNotFound {
                 path: url.path().to_string(),
             })
             .map(|(_, text_document)| text_document)
@@ -357,15 +356,14 @@ impl Session {
     }
 
     pub fn format_text(&self, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
-        let document = self
-            .documents
-            .get(url.path())
-            .ok_or(DocumentError::DocumentNotFound {
-                path: url.path().to_string(),
-            })?;
+        let document =
+            self.documents
+                .get(url.path())
+                .ok_or_else(|| DocumentError::DocumentNotFound {
+                    path: url.path().to_string(),
+                })?;
 
-        let mut formatter = Formatter::default();
-        get_page_text_edit(Arc::from(document.get_text()), &mut formatter)
+        get_page_text_edit(Arc::from(document.get_text()), &mut <_>::default())
             .map(|page_text_edit| vec![page_text_edit])
     }
 
