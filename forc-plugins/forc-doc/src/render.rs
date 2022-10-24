@@ -36,7 +36,7 @@ impl RenderedDocument {
             let rendered_content = match &doc.desc_ty {
                 DescriptorType::Struct(struct_decl) => {
                     all_doc.push((
-                        "Struct".to_string(),
+                        "Structs".to_string(),
                         (
                             format!("{}::{}", &module, &struct_decl.name),
                             file_name.clone(),
@@ -44,15 +44,63 @@ impl RenderedDocument {
                     ));
                     struct_decl.render(module, decl_ty)
                 }
-                DescriptorType::Enum(enum_decl) => enum_decl.render(module, decl_ty),
-                DescriptorType::Trait(trait_decl) => trait_decl.render(module, decl_ty),
-                DescriptorType::Abi(abi_decl) => abi_decl.render(module, decl_ty),
-                DescriptorType::Storage(storage_decl) => storage_decl.render(module, decl_ty),
+                DescriptorType::Enum(enum_decl) => {
+                    all_doc.push((
+                        "Enums".to_string(),
+                        (
+                            format!("{}::{}", &module, &enum_decl.name),
+                            file_name.clone(),
+                        ),
+                    ));
+                    enum_decl.render(module, decl_ty)
+                }
+                DescriptorType::Trait(trait_decl) => {
+                    all_doc.push((
+                        "Traits".to_string(),
+                        (
+                            format!("{}::{}", &module, &trait_decl.name),
+                            file_name.clone(),
+                        ),
+                    ));
+                    trait_decl.render(module, decl_ty)
+                }
+                DescriptorType::Abi(abi_decl) => {
+                    all_doc.push((
+                        "Abi".to_string(),
+                        (
+                            format!("{}::{}", &module, &abi_decl.name),
+                            file_name.clone(),
+                        ),
+                    ));
+                    abi_decl.render(module, decl_ty)
+                }
+                DescriptorType::Storage(storage_decl) => {
+                    all_doc.push((
+                        "Storage".to_string(),
+                        (format!("{}::ContractStorage", &module), file_name.clone()),
+                    ));
+                    storage_decl.render(module, decl_ty)
+                }
                 DescriptorType::ImplTraitDesc(impl_trait_decl) => {
                     impl_trait_decl.render(module, decl_ty)
                 }
-                DescriptorType::Function(fn_decl) => fn_decl.render(module, decl_ty),
-                DescriptorType::Const(const_decl) => const_decl.render(module, decl_ty),
+                DescriptorType::Function(fn_decl) => {
+                    all_doc.push((
+                        "Functions".to_string(),
+                        (format!("{}::{}", &module, &fn_decl.name), file_name.clone()),
+                    ));
+                    fn_decl.render(module, decl_ty)
+                }
+                DescriptorType::Const(const_decl) => {
+                    all_doc.push((
+                        "Constants".to_string(),
+                        (
+                            format!("{}::{}", &module, &const_decl.name),
+                            file_name.clone(),
+                        ),
+                    ));
+                    const_decl.render(module, decl_ty)
+                }
             };
             rendered_docs.push(Self {
                 module_prefix,
