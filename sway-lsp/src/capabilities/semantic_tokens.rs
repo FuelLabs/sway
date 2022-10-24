@@ -17,7 +17,7 @@ use tower_lsp::lsp_types::{
 pub fn semantic_tokens_full(session: Arc<Session>, url: &Url) -> Option<SemanticTokensResult> {
     let tokens = session.tokens_for_file(url);
 
-    // The tokens need sorting by thier span so each token is sequential
+    // The tokens need sorting by their span so each token is sequential
     // If this step isn't done, then the bit offsets used for the lsp_types::SemanticToken are incorrect.
     let mut tokens_sorted: Vec<_> = tokens
         .iter()

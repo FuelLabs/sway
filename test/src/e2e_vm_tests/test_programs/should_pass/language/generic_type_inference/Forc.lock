@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-846924BE01AC096F'
-dependencies = []
 
 [[package]]
 name = 'generic_type_inference'

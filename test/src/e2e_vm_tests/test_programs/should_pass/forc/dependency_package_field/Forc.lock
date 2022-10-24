@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-0CE46803927952E6'
-dependencies = []
 
 [[package]]
 name = 'dependency_package_field'

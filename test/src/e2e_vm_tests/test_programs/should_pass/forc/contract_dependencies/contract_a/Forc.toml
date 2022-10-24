@@ -1,0 +1,10 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+implicit-std = false
+license = "Apache-2.0"
+name = "contract_a"
+
+[contract-dependencies]
+contract_b = { path = "../contract_b" }
+contract_c = { path = "../contract_c" }

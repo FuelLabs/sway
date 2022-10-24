@@ -78,7 +78,11 @@ pub(crate) fn runs_in_vm(
     let maturity = 1;
     let script_data = script_data.unwrap_or_default();
     let block_height = (u32::MAX >> 1) as u64;
-    let params = &ConsensusParameters::DEFAULT;
+    let params = &ConsensusParameters {
+        // The default max length is 1MB which isn't enough for the bigger tests.
+        max_script_length: 64 * 1024 * 1024,
+        ..ConsensusParameters::DEFAULT
+    };
 
     let tx = TransactionBuilder::script(script.bytecode.clone(), script_data)
         .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)

@@ -5,7 +5,7 @@ use crate::{
         config::{Config, Warnings},
         session::Session,
     },
-    error::LanguageServerError,
+    error::{DirectoryError, LanguageServerError},
     utils::{debug, sync},
 };
 use dashmap::DashMap;
@@ -58,20 +58,12 @@ impl Backend {
         Ok((uri, session))
     }
 
-    async fn log_info_message(&self, message: &str) {
-        self.client.log_message(MessageType::INFO, message).await;
-    }
-
-    async fn log_error_message(&self, message: &str) {
-        self.client.log_message(MessageType::ERROR, message).await;
-    }
-
     async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
         // pass in the temp Url into parse_project, we can now get the updated AST's back.
         let diagnostics = match session.parse_project(&uri) {
             Ok(diagnostics) => diagnostics,
             Err(err) => {
-                self.log_error_message(err.to_string().as_str()).await;
+                tracing::error!("{}", err.to_string().as_str());
                 if let LanguageServerError::FailedToParse { diagnostics } = err {
                     diagnostics
                 } else {
@@ -127,7 +119,7 @@ impl Backend {
         let manifest_dir = manifest
             .path()
             .parent()
-            .ok_or(LanguageServerError::ManifestDirNotFound)?
+            .ok_or(DirectoryError::ManifestDirNotFound)?
             .to_path_buf();
 
         let session = match self.sessions.get(&manifest_dir) {
@@ -186,10 +178,7 @@ impl Backend {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
-        eprintln!("InitializeParams = {:#?}", params);
-        self.client
-            .log_message(MessageType::INFO, "Initializing the Sway Language Server")
-            .await;
+        tracing::info!("Initializing the Sway Language Server");
 
         if let Some(initialization_options) = &params.initialization_options {
             let mut config = self.config.write();
@@ -207,13 +196,11 @@ impl LanguageServer for Backend {
 
     // LSP-Server Lifecycle
     async fn initialized(&self, _: InitializedParams) {
-        self.log_info_message("Sway Language Server Initialized")
-            .await;
+        tracing::info!("Sway Language Server Initialized");
     }
 
     async fn shutdown(&self) -> jsonrpc::Result<()> {
-        self.log_info_message("Shutting Down the Sway Language Server")
-            .await;
+        tracing::info!("Shutting Down the Sway Language Server");
 
         let _ = self.sessions.iter().map(|item| {
             let session = item.value();
@@ -387,13 +374,12 @@ impl LanguageServer for Backend {
         &self,
         params: DocumentFormattingParams,
     ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
-        match self.get_uri_and_session(&params.text_document.uri) {
-            Ok((uri, session)) => Ok(session.format_text(&uri)),
-            Err(err) => {
+        self.get_uri_and_session(&params.text_document.uri)
+            .and_then(|(uri, session)| session.format_text(&uri).map(Some))
+            .or_else(|err| {
                 tracing::error!("{}", err.to_string());
                 Ok(None)
-            }
-        }
+            })
     }
 
     async fn rename(&self, params: RenameParams) -> jsonrpc::Result<Option<WorkspaceEdit>> {

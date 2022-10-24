@@ -10,7 +10,7 @@ use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
     print_on_failure, print_on_success, print_on_success_library,
 };
-use fuel_tx::{Contract, StorageSlot};
+use fuel_tx::{Contract, ContractId, StorageSlot};
 use petgraph::{
     self,
     visit::{Bfs, Dfs, EdgeRef, Walker},
@@ -42,7 +42,21 @@ use url::Url;
 
 type GraphIx = u32;
 type Node = Pinned;
-type Edge = DependencyName;
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub struct Edge {
+    /// The name of the dependency as declared under `[dependencies]` or `[contract-dependencies]`.
+    /// This may differ from the package name as declared under the dependency package's manifest.
+    pub name: String,
+    pub kind: DepKind,
+}
+
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub enum DepKind {
+    /// The dependency is a library and declared under `[dependencies]`.
+    Library,
+    /// The dependency is a contract and declared under `[contract-dependencies]`.
+    Contract,
+}
 pub type Graph = petgraph::stable_graph::StableGraph<Node, Edge, Directed, GraphIx>;
 pub type EdgeIx = petgraph::graph::EdgeIndex<GraphIx>;
 pub type NodeIx = petgraph::graph::NodeIndex<GraphIx>;
@@ -55,7 +69,7 @@ pub type ManifestMap = HashMap<PinnedId, PackageManifestFile>;
 pub struct PinnedId(u64);
 
 /// The result of successfully compiling a package.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Compiled {
     pub json_abi_program: JsonABIProgram,
     pub storage_slots: Vec<StorageSlot>,
@@ -216,6 +230,33 @@ impl GitSourceIndex {
         GitSourceIndex {
             git_reference,
             head_with_time: (commit_hash, time),
+        }
+    }
+}
+
+impl Edge {
+    pub fn new(name: String, kind: DepKind) -> Edge {
+        Edge { name, kind }
+    }
+}
+
+impl FromStr for DepKind {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "library" => Ok(DepKind::Library),
+            "contract" => Ok(DepKind::Contract),
+            _ => bail!("invalid dep kind"),
+        }
+    }
+}
+
+impl fmt::Display for DepKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            DepKind::Library => write!(f, "library"),
+            DepKind::Contract => write!(f, "contract"),
         }
     }
 }
@@ -479,9 +520,10 @@ fn validate_deps(
 fn validate_dep(
     graph: &Graph,
     node_manifest: &PackageManifestFile,
-    dep_name: &str,
+    dep_edge: &Edge,
     dep_node: NodeIx,
 ) -> Result<PackageManifestFile> {
+    let dep_name = &dep_edge.name;
     // Check the validity of the dependency path, including its path root.
     let dep_path = dep_path(graph, node_manifest, dep_name, dep_node).map_err(|e| {
         anyhow!(
@@ -504,20 +546,27 @@ fn validate_dep(
         bail!("dependency node's source does not match manifest entry");
     }
 
-    validate_dep_manifest(&graph[dep_node], &dep_manifest)?;
+    validate_dep_manifest(&graph[dep_node], &dep_manifest, dep_edge)?;
 
     Ok(dep_manifest)
 }
 /// Part of dependency validation, any checks related to the depenency's manifest content.
-fn validate_dep_manifest(dep: &Pinned, dep_manifest: &PackageManifestFile) -> Result<()> {
-    // Ensure that the dependency is a library.
-    if !matches!(dep_manifest.program_type()?, TreeType::Library { .. }) {
-        bail!(
-            "\"{}\" is not a library! Depending on a non-library package is not supported.",
-            dep.name
-        );
+fn validate_dep_manifest(
+    dep: &Pinned,
+    dep_manifest: &PackageManifestFile,
+    dep_edge: &Edge,
+) -> Result<()> {
+    let dep_program_type = dep_manifest.program_type()?;
+    // Check if the dependency is either a library or a contract declared as a contract dependency
+    match (&dep_program_type, &dep_edge.kind) {
+        (TreeType::Contract, DepKind::Contract) | (TreeType::Library { .. }, DepKind::Library) => {}
+        _ => bail!(
+            "\"{}\" is declared as a {} dependency, but is actually a {}",
+            dep.name,
+            dep_edge.kind,
+            dep_program_type
+        ),
     }
-
     // Ensure the name matches the manifest project name.
     if dep.name != dep_manifest.project.name {
         bail!(
@@ -958,7 +1007,7 @@ fn graph_to_manifest_map(proj_manifest: PackageManifestFile, graph: &Graph) -> R
             .edges_directed(dep_node, Direction::Incoming)
             .filter_map(|edge| {
                 let parent_node = edge.source();
-                let dep_name = edge.weight();
+                let dep_name = &edge.weight().name;
                 let parent = &graph[parent_node];
                 let parent_manifest = manifest_map.get(&parent.id())?;
                 Some((parent_manifest, dep_name))
@@ -1105,13 +1154,21 @@ fn fetch_deps(
 ) -> Result<HashSet<NodeIx>> {
     let mut added = HashSet::default();
     let parent_id = graph[node].id();
-    let deps: Vec<_> = manifest_map[&parent_id]
-        .deps()
-        .map(|(n, d)| (n.clone(), d.clone()))
+    let package_manifest = &manifest_map[&parent_id];
+    // If the current package is a contract, we need to first get the deployment dependencies
+    let deps: Vec<(String, Dependency, DepKind)> = package_manifest
+        .contract_deps()
+        .map(|(n, d)| (n.clone(), d.clone(), DepKind::Contract))
+        .chain(
+            package_manifest
+                .deps()
+                .map(|(n, d)| (n.clone(), d.clone(), DepKind::Library)),
+        )
         .collect();
-    for (dep_name, dep) in deps {
+    for (dep_name, dep, dep_kind) in deps {
         let name = dep.package().unwrap_or(&dep_name).to_string();
-        let source = dep_to_source_patched(&manifest_map[&parent_id], &name, &dep)
+        let parent_manifest = &manifest_map[&parent_id];
+        let source = dep_to_source_patched(parent_manifest, &name, &dep)
             .context("Failed to source dependency")?;
 
         // If we haven't yet fetched this dependency, fetch it, pin it and add it to the graph.
@@ -1126,8 +1183,9 @@ fn fetch_deps(
             }
         };
 
+        let dep_edge = Edge::new(dep_name.to_string(), dep_kind);
         // Ensure we have an edge to the dependency.
-        graph.update_edge(node, dep_node, dep_name.to_string());
+        graph.update_edge(node, dep_node, dep_edge.clone());
 
         // If we've visited this node during this traversal already, no need to traverse it again.
         if !visited.insert(dep_node) {
@@ -1136,7 +1194,7 @@ fn fetch_deps(
 
         let dep_pinned = &graph[dep_node];
         let dep_pkg_id = dep_pinned.id();
-        validate_dep_manifest(dep_pinned, &manifest_map[&dep_pkg_id]).map_err(|e| {
+        validate_dep_manifest(dep_pinned, &manifest_map[&dep_pkg_id], &dep_edge).map_err(|e| {
             let parent = &graph[node];
             anyhow!(
                 "dependency of {:?} named {:?} is invalid: {}",
@@ -1720,7 +1778,8 @@ pub fn sway_build_config(
 /// This function also ensures that if `std` exists in the graph,
 /// then the std prelude will also be added.
 pub fn dependency_namespace(
-    namespace_map: &HashMap<NodeIx, namespace::Module>,
+    lib_namespace_map: &HashMap<NodeIx, namespace::Module>,
+    compiled_contract_deps: &HashMap<NodeIx, Compiled>,
     graph: &Graph,
     node: NodeIx,
     constants: BTreeMap<String, ConfigTimeConstant>,
@@ -1731,9 +1790,35 @@ pub fn dependency_namespace(
     let mut core_added = false;
     for edge in graph.edges_directed(node, Direction::Outgoing) {
         let dep_node = edge.target();
-        let dep_namespace = &namespace_map[&dep_node];
-        let dep_name = kebab_to_snake_case(edge.weight());
-        namespace.insert_submodule(dep_name, dep_namespace.clone());
+        let dep_name = kebab_to_snake_case(&edge.weight().name);
+        let dep_edge = edge.weight();
+        let dep_namespace = match dep_edge.kind {
+            DepKind::Library => lib_namespace_map
+                .get(&dep_node)
+                .cloned()
+                .expect("no namespace module"),
+            DepKind::Contract => {
+                let mut constants = BTreeMap::default();
+                let compiled_dep = compiled_contract_deps.get(&dep_node);
+                let dep_contract_id = match compiled_dep {
+                    Some(dep_contract_compiled) => contract_id(dep_contract_compiled),
+                    // On `check` we don't compile contracts, so we use a placeholder.
+                    None => ContractId::default(),
+                };
+
+                // Construct namespace with contract id
+                let contract_dep_constant_name = "CONTRACT_ID";
+                let contract_id_value = format!("\"{dep_contract_id}\"");
+                let contract_id_constant = ConfigTimeConstant {
+                    r#type: "b256".to_string(),
+                    value: contract_id_value,
+                    public: true,
+                };
+                constants.insert(contract_dep_constant_name.to_string(), contract_id_constant);
+                namespace::Module::default_with_constants(constants)?
+            }
+        };
+        namespace.insert_submodule(dep_name, dep_namespace);
         let dep = &graph[dep_node];
         if dep.name == CORE {
             core_added = true;
@@ -1743,7 +1828,7 @@ pub fn dependency_namespace(
     // Add `core` if not already added.
     if !core_added {
         if let Some(core_node) = find_core_dep(graph, node) {
-            let core_namespace = &namespace_map[&core_node];
+            let core_namespace = &lib_namespace_map[&core_node];
             namespace.insert_submodule(CORE.to_string(), core_namespace.clone());
         }
     }
@@ -2132,18 +2217,6 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
             } else {
                 serde_json::to_writer_pretty(&storage_slots_file, &compiled.storage_slots)
             };
-            // Construct the contract ID
-            let contract = Contract::from(compiled.bytecode.clone());
-            let salt = fuel_tx::Salt::new([0; 32]);
-            let mut storage_slots = compiled.storage_slots.clone();
-            storage_slots.sort();
-            let state_root = Contract::initial_state_root(storage_slots.iter());
-            let contract_id = contract.id(&salt, &contract.root(), &state_root);
-
-            // Output the contract id to `.out/build_profile/<project-name>-contract-id`
-            let deployment_info_filename = format!("{}-contract-id", &manifest.project.name);
-            let deployment_info_path = output_dir.join(&deployment_info_filename);
-            fs::write(deployment_info_path, hex::encode(contract_id))?;
 
             res?;
         }
@@ -2169,6 +2242,17 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
     Ok(compiled)
 }
 
+/// Returns the ContractId of a compiled contract with specified `salt`.
+fn contract_id(compiled: &Compiled) -> ContractId {
+    // Construct the contract ID
+    let contract = Contract::from(compiled.bytecode.clone());
+    let salt = fuel_tx::Salt::new([0; 32]);
+    let mut storage_slots = compiled.storage_slots.clone();
+    storage_slots.sort();
+    let state_root = Contract::initial_state_root(storage_slots.iter());
+    contract.id(&salt, &contract.root(), &state_root)
+}
+
 /// Build an entire forc package and return the compiled output.
 ///
 /// This compiles all packages (including dependencies) in the order specified by the `BuildPlan`.
@@ -2178,7 +2262,7 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
 
-    let mut namespace_map = Default::default();
+    let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     let mut json_abi_program = JsonABIProgram {
         types: vec![],
@@ -2188,23 +2272,36 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
     let mut storage_slots = vec![];
     let mut bytecode = vec![];
     let mut tree_type = None;
+    let mut compiled_contract_deps = HashMap::new();
     for &node in &plan.compilation_order {
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
         let constants = manifest.config_time_constants();
-        let dep_namespace = match dependency_namespace(&namespace_map, &plan.graph, node, constants)
-        {
+        let dep_namespace = match dependency_namespace(
+            &lib_namespace_map,
+            &compiled_contract_deps,
+            &plan.graph,
+            node,
+            constants,
+        ) {
             Ok(o) => o,
             Err(errs) => {
                 print_on_failure(profile.terse, &[], &errs);
                 bail!("Failed to compile {}", pkg.name);
             }
         };
-
         let res = compile(pkg, manifest, profile, dep_namespace, &mut source_map)?;
         let (compiled, maybe_namespace) = res;
+        // If the current node is a contract dependency, collect the contract_id
+        if plan
+            .graph()
+            .edges_directed(node, Direction::Incoming)
+            .any(|e| e.weight().kind == DepKind::Contract)
+        {
+            compiled_contract_deps.insert(node, compiled.clone());
+        }
         if let Some(namespace) = maybe_namespace {
-            namespace_map.insert(node, namespace.into());
+            lib_namespace_map.insert(node, namespace.into());
         }
         json_abi_program
             .types
@@ -2362,14 +2459,22 @@ pub fn check(
 ) -> anyhow::Result<CompileResult<(ParseProgram, Option<ty::TyProgram>)>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
-    let mut namespace_map = Default::default();
+    let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
+    // During `check`, we don't compile so this stays empty.
+    let compiled_contract_deps = HashMap::new();
     for (i, &node) in plan.compilation_order.iter().enumerate() {
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
         let constants = manifest.config_time_constants();
-        let dep_namespace =
-            dependency_namespace(&namespace_map, &plan.graph, node, constants).expect("TODO");
+        let dep_namespace = dependency_namespace(
+            &lib_namespace_map,
+            &compiled_contract_deps,
+            &plan.graph,
+            node,
+            constants,
+        )
+        .expect("failed to create dependency namespace");
         let CompileResult {
             value,
             mut warnings,
@@ -2394,7 +2499,7 @@ pub fn check(
         };
 
         if let TreeType::Library { .. } = typed_program.kind.tree_type() {
-            namespace_map.insert(node, typed_program.root.namespace.clone());
+            lib_namespace_map.insert(node, typed_program.root.namespace.clone());
         }
 
         source_map.insert_dependency(manifest.dir());
@@ -2408,7 +2513,7 @@ pub fn check(
     bail!("unable to check sway program: build plan contains no packages")
 }
 
-/// Returns a parsed AST from the supplied [ManifestFile]
+/// Returns a parsed AST from the supplied [PackageManifestFile]
 pub fn parse(
     manifest: &PackageManifestFile,
     terse_mode: bool,

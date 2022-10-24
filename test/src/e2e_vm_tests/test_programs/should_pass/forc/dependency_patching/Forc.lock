@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-B0CAE5E4D7DDF437'
-dependencies = []
 
 [[package]]
 name = 'dependency_patching'

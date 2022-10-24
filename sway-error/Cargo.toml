@@ -1,6 +1,6 @@
 [package]
 name = "sway-error"
-version = "0.26.0"
+version = "0.27.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -12,6 +12,6 @@ description = "Sway's error handling"
 extension-trait = "1.0.1"
 num-bigint = "0.4.3"
 num-traits = "0.2.14"
-sway-ast = { version = "0.26.0", path = "../sway-ast" }
-sway-types = { version = "0.26.0", path = "../sway-types" }
+sway-ast = { version = "0.27.0", path = "../sway-ast" }
+sway-types = { version = "0.27.0", path = "../sway-types" }
 thiserror = "1.0"

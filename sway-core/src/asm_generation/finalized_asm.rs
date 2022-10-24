@@ -105,6 +105,7 @@ fn to_bytecode_mut(
                 {
                     acc + 8
                 }
+                AllocatedOpcode::BLOB(count) => acc + count.value as u64 * 4,
                 _ => acc + 4,
             })
             + 4;

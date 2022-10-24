@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-52B9F714BAB9BDCA'
-dependencies = []
 
 [[package]]
 name = 'impl_with_bad_generic'

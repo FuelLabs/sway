@@ -1,4 +1,3 @@
 [[package]]
 name = 'simple_generics'
 source = 'root'
-dependencies = []
