@@ -15,25 +15,6 @@ abigen!(
 async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
     let mut wallet = WalletUnlocked::new_random(None);
 
-    // let asset_base = AssetConfig {
-    //     id: BASE_ASSET_ID,
-    //     num_coins: 10,
-    //     coin_amount: 1_000_000,
-    // };
-    // let assets = vec![asset_base];
-    // let coins = setup_custom_assets_coins(wallet.address(), &assets);
-
-    // let num_wallets = Some(2);
-    // let coins_per_wallet = Some(10);
-    // let coin_amount = Some(1_000_000);
-
-    // let wallets = launch_custom_provider_and_get_wallets(
-    //     WalletsConfig::new(num_wallets, coins_per_wallet, coin_amount),
-    //     None,
-    // )
-    // .await;
-    // let mut wallet = wallets[0].clone();
-
     let messages = setup_single_message(
         &Bech32Address {
             hrp: "".to_string(),
@@ -623,6 +604,8 @@ mod inputs {
                     .unwrap();
                 let messages = wallet.get_messages().await?;
                 println!("data: {:?}", messages[0].data);
+                println!("result data: {:?}", result.value);
+                println!("MESSAGE_DATA: {:?}", MESSAGE_DATA);
                 assert_eq!(result.value, MESSAGE_DATA);
                 Ok(())
             }
