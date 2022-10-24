@@ -58,20 +58,12 @@ impl Backend {
         Ok((uri, session))
     }
 
-    async fn log_info_message(&self, message: &str) {
-        self.client.log_message(MessageType::INFO, message).await;
-    }
-
-    async fn log_error_message(&self, message: &str) {
-        self.client.log_message(MessageType::ERROR, message).await;
-    }
-
     async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
         // pass in the temp Url into parse_project, we can now get the updated AST's back.
         let diagnostics = match session.parse_project(&uri) {
             Ok(diagnostics) => diagnostics,
             Err(err) => {
-                self.log_error_message(err.to_string().as_str()).await;
+                tracing::error!("{}", err.to_string().as_str());
                 if let LanguageServerError::FailedToParse { diagnostics } = err {
                     diagnostics
                 } else {
@@ -186,10 +178,7 @@ impl Backend {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
-        eprintln!("InitializeParams = {:#?}", params);
-        self.client
-            .log_message(MessageType::INFO, "Initializing the Sway Language Server")
-            .await;
+        tracing::info!("Initializing the Sway Language Server");
 
         if let Some(initialization_options) = &params.initialization_options {
             let mut config = self.config.write();
@@ -207,13 +196,11 @@ impl LanguageServer for Backend {
 
     // LSP-Server Lifecycle
     async fn initialized(&self, _: InitializedParams) {
-        self.log_info_message("Sway Language Server Initialized")
-            .await;
+        tracing::info!("Sway Language Server Initialized");
     }
 
     async fn shutdown(&self) -> jsonrpc::Result<()> {
-        self.log_info_message("Shutting Down the Sway Language Server")
-            .await;
+        tracing::info!("Shutting Down the Sway Language Server");
 
         let _ = self.sessions.iter().map(|item| {
             let session = item.value();
