@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-71DB3AC72E68AF59'
-dependencies = []
 
 [[package]]
 name = 'missing_type_parameteres'

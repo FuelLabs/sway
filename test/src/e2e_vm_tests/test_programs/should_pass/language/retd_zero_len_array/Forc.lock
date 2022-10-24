@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-50944FCCF39703ED'
-dependencies = []
 
 [[package]]
 name = 'retd_zero_len_array'

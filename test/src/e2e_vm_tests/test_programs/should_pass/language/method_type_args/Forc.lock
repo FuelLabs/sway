@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-1C4B691D300E54B2'
-dependencies = []
 
 [[package]]
 name = 'method_type_args'
