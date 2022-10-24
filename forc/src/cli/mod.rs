@@ -79,6 +79,7 @@ pub async fn run_cli() -> Result<()> {
         verbosity: Some(opt.verbose),
         silent: Some(opt.silent),
         log_level: opt.log_level,
+        ..Default::default()
     };
 
     init_tracing_subscriber(tracing_options);
