@@ -87,7 +87,7 @@ pub(super) fn compile_library(
     context: &mut Context,
     namespace: &namespace::Module,
     declarations: Vec<ty::TyDeclaration>,
-    logged_types: &HashMap<TypeId, LogId>,
+    logged_types_map: &HashMap<TypeId, LogId>,
     test_fns: Vec<ty::TyFunctionDeclaration>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Library);
@@ -95,7 +95,7 @@ pub(super) fn compile_library(
 
     compile_constants(context, &mut md_mgr, module, namespace)?;
     compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
-    compile_tests(context, &mut md_mgr, module, logged_types, test_fns)?;
+    compile_tests(context, &mut md_mgr, module, logged_types_map, test_fns)?;
 
     Ok(module)
 }
@@ -227,23 +227,32 @@ pub(super) fn compile_entry_function(
     md_mgr: &mut MetadataManager,
     module: Module,
     ast_fn_decl: ty::TyFunctionDeclaration,
-    logged_types: &HashMap<TypeId, LogId>,
+    logged_types_map: &HashMap<TypeId, LogId>,
 ) -> Result<Function, CompileError> {
     let is_entry = true;
-    compile_function(context, md_mgr, module, ast_fn_decl, logged_types, is_entry)
-        .map(|f| f.expect("entry point should never contain generics"))
+    compile_function(
+        context,
+        md_mgr,
+        module,
+        ast_fn_decl,
+        logged_types_map,
+        is_entry,
+    )
+    .map(|f| f.expect("entry point should never contain generics"))
 }
 
 pub(super) fn compile_tests(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    logged_types: &HashMap<TypeId, LogId>,
+    logged_types_map: &HashMap<TypeId, LogId>,
     test_fns: Vec<ty::TyFunctionDeclaration>,
 ) -> Result<Vec<Function>, CompileError> {
     test_fns
         .into_iter()
-        .map(|ast_fn_decl| compile_entry_function(context, md_mgr, module, ast_fn_decl, logged_types))
+        .map(|ast_fn_decl| {
+            compile_entry_function(context, md_mgr, module, ast_fn_decl, logged_types_map)
+        })
         .collect()
 }
 
@@ -264,6 +273,7 @@ fn convert_fn_param(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn compile_fn_with_args(
     context: &mut Context,
     md_mgr: &mut MetadataManager,

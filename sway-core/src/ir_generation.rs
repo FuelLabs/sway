@@ -59,9 +59,13 @@ pub fn compile_program(program: ty::TyProgram) -> Result<Context, CompileError> 
             &logged_types,
             test_fns,
         ),
-        ty::TyProgramKind::Library { .. } => {
-            compile::compile_library(&mut ctx, &root.namespace, declarations, &logged_types, test_fns)
-        }
+        ty::TyProgramKind::Library { .. } => compile::compile_library(
+            &mut ctx,
+            &root.namespace,
+            declarations,
+            &logged_types,
+            test_fns,
+        ),
     }?;
     ctx.verify()
         .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))
