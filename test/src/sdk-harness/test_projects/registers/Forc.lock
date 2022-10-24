@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-A46277EC5F63F4E2'
-dependencies = []
 
 [[package]]
 name = 'registers'

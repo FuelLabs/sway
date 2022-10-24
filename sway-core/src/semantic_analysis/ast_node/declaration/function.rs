@@ -5,14 +5,18 @@ use sway_error::warning::{CompileWarning, Warning};
 
 use crate::{
     error::*,
-    language::{parsed::*, ty},
+    language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
     type_system::*,
 };
 use sway_types::{style::is_snake_case, Spanned};
 
 impl ty::TyFunctionDeclaration {
-    pub fn type_check(ctx: TypeCheckContext, fn_decl: FunctionDeclaration) -> CompileResult<Self> {
+    pub fn type_check(
+        ctx: TypeCheckContext,
+        fn_decl: FunctionDeclaration,
+        is_method: bool,
+    ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -27,7 +31,6 @@ impl ty::TyFunctionDeclaration {
             return_type_span,
             visibility,
             purity,
-            ..
         } = fn_decl;
 
         // Warn against non-snake case function names.
@@ -59,7 +62,7 @@ impl ty::TyFunctionDeclaration {
         let mut new_parameters = vec![];
         for parameter in parameters.into_iter() {
             new_parameters.push(check!(
-                ty::TyFunctionParameter::type_check(ctx.by_ref(), parameter),
+                ty::TyFunctionParameter::type_check(ctx.by_ref(), parameter, is_method),
                 continue,
                 warnings,
                 errors
@@ -87,6 +90,7 @@ impl ty::TyFunctionDeclaration {
         let (body, _implicit_block_return) = {
             let ctx = ctx
                 .by_ref()
+                .with_purity(purity)
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
                 .with_type_annotation(return_type);
             check!(
@@ -121,6 +125,12 @@ impl ty::TyFunctionDeclaration {
             );
         }
 
+        let (visibility, is_contract_call) = if is_method {
+            (Visibility::Public, false)
+        } else {
+            (visibility, ctx.mode() == Mode::ImplAbiFn)
+        };
+
         let function_decl = ty::TyFunctionDeclaration {
             name,
             body,
@@ -132,8 +142,7 @@ impl ty::TyFunctionDeclaration {
             type_parameters: new_type_parameters,
             return_type_span,
             visibility,
-            // if this is for a contract, then it is a contract call
-            is_contract_call: ctx.mode() == Mode::ImplAbiFn,
+            is_contract_call,
             purity,
         };
 

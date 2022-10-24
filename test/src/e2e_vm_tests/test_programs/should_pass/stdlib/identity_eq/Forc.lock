@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-E7BBED1900347958'
-dependencies = []
 
 [[package]]
 name = 'identity_eq'

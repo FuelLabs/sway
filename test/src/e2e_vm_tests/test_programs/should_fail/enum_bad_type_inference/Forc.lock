@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-00DDFF012B1D3F04'
-dependencies = []
 
 [[package]]
 name = 'enum_bad_type_inference'

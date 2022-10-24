@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-34C7BC23940E55C7'
-dependencies = []
 
 [[package]]
 name = 'enum_if_let_invalid_variable'

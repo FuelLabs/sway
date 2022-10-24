@@ -1,7 +1,7 @@
 use crate::{
     capabilities::{
         self,
-        formatting::get_format_text_edits,
+        formatting::get_page_text_edit,
         runnable::{Runnable, RunnableType},
     },
     core::{
@@ -25,7 +25,6 @@ use sway_core::{
 };
 use sway_types::{Ident, Spanned};
 use sway_utils::helpers::get_sway_files;
-use swayfmt::Formatter;
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionResponse, Location, Position, Range,
     SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
@@ -73,7 +72,7 @@ impl Session {
 
         self.sync.watch_and_sync_manifest();
 
-        self.sync.manifest_dir()
+        self.sync.manifest_dir().map_err(Into::into)
     }
 
     pub fn shutdown(&self) {
@@ -142,14 +141,10 @@ impl Session {
     }
 
     pub fn declared_token_ident(&self, token: &Token) -> Option<Ident> {
-        // Look up the tokens TypeId
-        match &token.type_def {
-            Some(type_def) => match type_def {
-                TypeDefinition::TypeId(type_id) => utils::token::ident_of_type_id(type_id),
-                TypeDefinition::Ident(ident) => Some(ident.clone()),
-            },
-            None => None,
-        }
+        token.type_def.as_ref().and_then(|type_def| match type_def {
+            TypeDefinition::TypeId(type_id) => utils::token::ident_of_type_id(type_id),
+            TypeDefinition::Ident(ident) => Some(ident.clone()),
+        })
     }
 
     pub fn token_map(&self) -> &TokenMap {
@@ -169,7 +164,7 @@ impl Session {
     pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
         self.documents
             .remove(url.path())
-            .ok_or(DocumentError::DocumentNotFound {
+            .ok_or_else(|| DocumentError::DocumentNotFound {
                 path: url.path().to_string(),
             })
             .map(|(_, text_document)| text_document)
@@ -336,16 +331,14 @@ impl Session {
             .and_then(|(_, token)| self.declared_token_ident(&token))
             .and_then(|decl_ident| {
                 let range = utils::common::get_range_from_span(&decl_ident.span());
-                match decl_ident.span().path() {
-                    Some(path) => match Url::from_file_path(path.as_ref()) {
-                        Ok(url) => self
-                            .sync
+                decl_ident.span().path().and_then(|path| {
+                    // We use ok() here because we don't care about propagating the error from from_file_path
+                    Url::from_file_path(path.as_ref()).ok().and_then(|url| {
+                        self.sync
                             .to_workspace_url(url)
-                            .map(|url| GotoDefinitionResponse::Scalar(Location::new(url, range))),
-                        Err(_) => None,
-                    },
-                    None => None,
-                }
+                            .map(|url| GotoDefinitionResponse::Scalar(Location::new(url, range)))
+                    })
+                })
             })
     }
 
@@ -362,13 +355,16 @@ impl Session {
             .map(|url| capabilities::document_symbol::to_symbol_information(&tokens, url))
     }
 
-    pub fn format_text(&self, url: &Url) -> Option<Vec<TextEdit>> {
-        if let Some(document) = self.documents.get(url.path()) {
-            let mut formatter = Formatter::default();
-            get_format_text_edits(Arc::from(document.get_text()), &mut formatter)
-        } else {
-            None
-        }
+    pub fn format_text(&self, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
+        let document =
+            self.documents
+                .get(url.path())
+                .ok_or_else(|| DocumentError::DocumentNotFound {
+                    path: url.path().to_string(),
+                })?;
+
+        get_page_text_edit(Arc::from(document.get_text()), &mut <_>::default())
+            .map(|page_text_edit| vec![page_text_edit])
     }
 
     pub fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {

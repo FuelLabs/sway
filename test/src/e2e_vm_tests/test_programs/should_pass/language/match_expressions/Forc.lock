@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-C27B2C742213E5AD'
-dependencies = []
 
 [[package]]
 name = 'match_expressions'

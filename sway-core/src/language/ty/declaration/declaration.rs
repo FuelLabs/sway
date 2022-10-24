@@ -337,6 +337,26 @@ impl TyDeclaration {
         }
     }
 
+    /// Retrieves the declaration as an Constant declaration.
+    ///
+    /// Returns an error if `self` is not a [TyConstantDeclaration].
+    pub(crate) fn expect_const(&self, access_span: &Span) -> CompileResult<TyConstantDeclaration> {
+        match self {
+            TyDeclaration::ConstantDeclaration(decl) => {
+                CompileResult::from(de_get_constant(decl.clone(), access_span))
+            }
+            decl => {
+                let errors = vec![
+                    (CompileError::DeclIsNotAConstant {
+                        actually: decl.friendly_name().to_string(),
+                        span: decl.span(),
+                    }),
+                ];
+                err(vec![], errors)
+            }
+        }
+    }
+
     /// friendly name string used for error reporting.
     pub fn friendly_name(&self) -> &'static str {
         use TyDeclaration::*;

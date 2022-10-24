@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-66C7F3C6EA70992E'
-dependencies = []
 
 [[package]]
 name = 'main_args_empty'
