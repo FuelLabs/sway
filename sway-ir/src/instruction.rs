@@ -279,6 +279,91 @@ impl Instruction {
         }
     }
 
+    pub fn get_operands(&self) -> Vec<Value> {
+        match self {
+            Instruction::AddrOf(v) => vec![*v],
+            Instruction::AsmBlock(_, args) => args.iter().filter_map(|aa| aa.initializer).collect(),
+            Instruction::BitCast(v, _) => vec![*v],
+            Instruction::BinaryOp { op: _, arg1, arg2 } => vec![*arg1, *arg2],
+            Instruction::Branch(BranchToWithArgs { args, .. }) => args.clone(),
+            Instruction::Call(_, vs) => vs.clone(),
+            Instruction::Cmp(_, lhs, rhs) => vec![*lhs, *rhs],
+            Instruction::ConditionalBranch {
+                cond_value,
+                true_block,
+                false_block,
+            } => {
+                let mut v = vec![*cond_value];
+                v.extend_from_slice(&true_block.args);
+                v.extend_from_slice(&false_block.args);
+                v
+            }
+            Instruction::ContractCall {
+                return_type: _,
+                name: _,
+                params,
+                coins,
+                asset_id,
+                gas,
+            } => vec![*params, *coins, *asset_id, *gas],
+            Instruction::ExtractElement {
+                array,
+                ty: _,
+                index_val,
+            } => vec![*array, *index_val],
+            Instruction::ExtractValue {
+                aggregate,
+                ty: _,
+                indices: _,
+            } => vec![*aggregate],
+            Instruction::GetStorageKey => vec![],
+            Instruction::Gtf {
+                index,
+                tx_field_id: _,
+            } => vec![*index],
+            Instruction::GetPointer {
+                base_ptr: _,
+                ptr_ty: _,
+                offset: _,
+            } =>
+            // TODO: Not sure.
+            {
+                vec![]
+            }
+            Instruction::InsertElement {
+                array,
+                ty: _,
+                value,
+                index_val,
+            } => vec![*array, *value, *index_val],
+            Instruction::InsertValue {
+                aggregate,
+                ty: _,
+                value,
+                indices: _,
+            } => vec![*aggregate, *value],
+            Instruction::IntToPtr(v, _) => vec![*v],
+            Instruction::Load(v) => vec![*v],
+            Instruction::Log {
+                log_val, log_id, ..
+            } => vec![*log_val, *log_id],
+            Instruction::Nop => vec![],
+            Instruction::ReadRegister(_) => vec![],
+            Instruction::Ret(v, _) => vec![*v],
+            Instruction::Revert(v) => vec![*v],
+            Instruction::StateLoadQuadWord { load_val, key } => vec![*load_val, *key],
+            Instruction::StateLoadWord(key) => vec![*key],
+            Instruction::StateStoreQuadWord { stored_val, key } => vec![*stored_val, *key],
+            Instruction::StateStoreWord { stored_val, key } => vec![*stored_val, *key],
+            Instruction::Store {
+                dst_val,
+                stored_val,
+            } => {
+                vec![*dst_val, *stored_val]
+            }
+        }
+    }
+
     /// Replace `old_val` with `new_val` if it is referenced by this instruction's arguments.
     pub fn replace_values(&mut self, replace_map: &FxHashMap<Value, Value>) {
         let replace = |val: &mut Value| {

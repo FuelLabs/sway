@@ -49,6 +49,21 @@ fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<S
                 locals.remove(&local);
             }
         }
+        match context.values[inst.0].value {
+            ValueDatum::Instruction(Instruction::Load(_))
+            | ValueDatum::Instruction(Instruction::Store { .. }) => {
+                // We understand load and store, so no problem.
+            }
+            _ => {
+                // Make sure that no local escapes into instructions we don't understand.
+                let operands = inst.get_instruction(context).unwrap().get_operands();
+                for opd in operands {
+                    if let Some((local, ..)) = get_validate_local_pointer(context, function, &opd) {
+                        locals.remove(&local);
+                    }
+                }
+            }
+        }
     }
     locals
 }
