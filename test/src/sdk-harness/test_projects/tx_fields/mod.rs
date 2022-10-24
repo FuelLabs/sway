@@ -2,7 +2,7 @@ use fuel_vm::fuel_tx::ConsensusParameters;
 use fuel_vm::fuel_tx::Transaction as FuelTransaction;
 use fuel_vm::{consts::REG_ONE, fuel_asm::Opcode, fuel_crypto::Hasher};
 use fuels::prelude::*;
-use fuels::tx::{Bytes32, Contract as TxContract, ContractId, Input as TxInput, TxPointer, UtxoId};
+use fuels::tx::{Bytes32, Contract as TxContract, ContractId, Input as TxInput, TxPointer, UtxoId, Output as TxOutput};
 use std::str::FromStr;
 
 const MESSAGE_DATA: [u8; 3] = [1u8, 2u8, 3u8];
@@ -14,6 +14,25 @@ abigen!(
 
 async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
     let mut wallet = WalletUnlocked::new_random(None);
+
+    // let asset_base = AssetConfig {
+    //     id: BASE_ASSET_ID,
+    //     num_coins: 10,
+    //     coin_amount: 1_000_000,
+    // };
+    // let assets = vec![asset_base];
+    // let coins = setup_custom_assets_coins(wallet.address(), &assets);
+
+    // let num_wallets = Some(2);
+    // let coins_per_wallet = Some(10);
+    // let coin_amount = Some(1_000_000);
+
+    // let wallets = launch_custom_provider_and_get_wallets(
+    //     WalletsConfig::new(num_wallets, coins_per_wallet, coin_amount),
+    //     None,
+    // )
+    // .await;
+    // let mut wallet = wallets[0].clone();
 
     let messages = setup_single_message(
         &Bech32Address {
@@ -107,6 +126,12 @@ async fn generate_predicate_inputs(
     (predicate_bytecode, predicate_coin, predicate_message)
 }
 
+fn generate_outputs() -> Vec<TxOutput> {
+    let mut v = vec![TxOutput::variable(Address::zeroed(), 0, AssetId::default())];
+    v.push(TxOutput::message(Address::zeroed(), 0));
+    v
+}
+
 mod tx {
     use super::*;
 
@@ -165,7 +190,7 @@ mod tx {
         // TODO set this to a non-zero value once SDK supports setting maturity.
         let maturity = 0;
 
-        let result = contract_instance.get_tx_maturity().call().await.unwrap();
+        let result = contract_instance.methods().get_tx_maturity().call().await.unwrap();
         assert_eq!(result.value, maturity);
     }
 
@@ -176,6 +201,7 @@ mod tx {
         let script_length = 32;
 
         let result = contract_instance
+            .methods()
             .get_tx_script_length()
             .call()
             .await
@@ -190,6 +216,7 @@ mod tx {
         let script_data_length = 88;
 
         let result = contract_instance
+            .methods()
             .get_tx_script_data_length()
             .call()
             .await
@@ -203,6 +230,7 @@ mod tx {
         let inputs_count = 3;
 
         let result = contract_instance
+            .methods()
             .get_tx_inputs_count()
             .call()
             .await
@@ -216,6 +244,7 @@ mod tx {
         let outputs_count = 1;
 
         let result = contract_instance
+            .methods()
             .get_tx_outputs_count()
             .call()
             .await
@@ -229,6 +258,7 @@ mod tx {
         let witnesses_count = 1;
 
         let result = contract_instance
+            .methods()
             .get_tx_witnesses_count()
             .call()
             .await
@@ -266,11 +296,12 @@ mod tx {
     async fn can_get_witness_data() {
         let (contract_instance, _, _) = get_contracts().await;
 
-        let call_handler = contract_instance.get_tx_witness_data(0);
+        let call_handler = contract_instance.methods().get_tx_witness_data(0);
         let script = call_handler.get_call_execution_script().await.unwrap();
         let witnesses = script.tx.witnesses();
 
         let result = contract_instance
+            .methods()
             .get_tx_witness_data(0)
             .call()
             .await
@@ -324,6 +355,7 @@ mod tx {
         let (contract_instance, _, _) = get_contracts().await;
 
         let tx = contract_instance
+            .methods()
             .get_tx_script_bytecode_hash()
             .get_call_execution_script()
             .await
@@ -339,6 +371,7 @@ mod tx {
         };
 
         let result = contract_instance
+            .methods()
             .get_tx_script_bytecode_hash()
             .call()
             .await
@@ -350,7 +383,7 @@ mod tx {
     async fn can_get_tx_id() {
         let (contract_instance, _, _) = get_contracts().await;
 
-        let call_handler = contract_instance.get_tx_id();
+        let call_handler = contract_instance.methods().get_tx_id();
         let script = call_handler.get_call_execution_script().await.unwrap();
         let tx_id = script.tx.id();
 
@@ -435,16 +468,23 @@ mod inputs {
         async fn can_get_input_predicate() {
             let (contract_instance, _, wallet) = get_contracts().await;
             let provider = wallet.get_provider().unwrap();
-            let (predicate_bytecode, predicate_coin, _) =
+            let (predicate_bytecode, predicate_coin, predicate_message) =
                 generate_predicate_inputs(100, vec![], &wallet).await;
             let predicate_bytes: [u8; 32] = predicate_bytecode.try_into().unwrap();
 
             // Add predicate coin to inputs and call contract
             let call_handler = contract_instance.methods().get_input_predicate(2);
             let mut script = call_handler.get_call_execution_script().await.unwrap();
-            if let FuelTransaction::Script { inputs, .. } = &mut script.tx {
-                inputs.push(predicate_coin)
-            }
+
+            let new_outputs = generate_outputs();
+
+            if let FuelTransaction::Script { inputs, outputs, .. } = &mut script.tx {
+                inputs.push(predicate_coin);
+                inputs.push(predicate_message);
+                for output in new_outputs {
+                    outputs.push(output);
+                }
+            };
             let result = call_handler
                 .get_response(script.call(provider).await.unwrap())
                 .unwrap();
@@ -552,6 +592,8 @@ mod inputs {
                 let result = contract_instance
                     .methods()
                     .get_input_predicate_length(1)
+                    .append_variable_outputs(2)
+                    .append_message_outputs(2)
                     .call()
                     .await
                     .unwrap();
@@ -600,8 +642,9 @@ mod inputs {
                     .get_input_predicate(1);
                 let mut script = call_handler.get_call_execution_script().await.unwrap();
                 if let FuelTransaction::Script { inputs, .. } = &mut script.tx {
-                    inputs.push(predicate_coin)
-                }
+                    inputs.push(predicate_coin);
+                    inputs.push(predicate_message);
+                };
                 let result = call_handler
                     .get_response(script.call(provider).await.unwrap())
                     .unwrap();
