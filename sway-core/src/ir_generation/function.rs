@@ -13,7 +13,7 @@ use crate::{
     },
     language::{ty, *},
     metadata::MetadataManager,
-    type_system::{look_up_type_id, to_typeinfo, TypeId, TypeInfo},
+    type_system::{look_up_type_id, to_typeinfo, LogId, TypeId, TypeInfo},
 };
 use declaration_engine::de_get_function;
 use sway_ast::intrinsics::Intrinsic;
@@ -39,6 +39,8 @@ pub(super) struct FnCompiler {
     returns_by_ref: bool,
     lexical_map: LexicalMap,
     recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
+    // This is a map from the type IDs of a logged type and the ID of the corresponding log
+    logged_types_map: HashMap<TypeId, LogId>,
 }
 
 impl FnCompiler {
@@ -47,6 +49,7 @@ impl FnCompiler {
         module: Module,
         function: Function,
         returns_by_ref: bool,
+        logged_types_map: &HashMap<TypeId, LogId>,
     ) -> Self {
         let lexical_map = LexicalMap::from_iter(
             function
@@ -63,6 +66,7 @@ impl FnCompiler {
             returns_by_ref,
             recreated_fns: HashMap::new(),
             current_fn_param: None,
+            logged_types_map: logged_types_map.clone(),
         }
     }
 
@@ -614,10 +618,17 @@ impl FnCompiler {
             Intrinsic::Log => {
                 // The log value and the log ID are just Value.
                 let log_val = self.compile_expression(context, md_mgr, arguments[0].clone())?;
-                let log_id = convert_literal_to_value(
-                    context,
-                    &Literal::U64(*arguments[0].return_type as u64),
-                );
+                let log_id = match self.logged_types_map.get(&arguments[0].return_type) {
+                    None => {
+                        return Err(CompileError::Internal(
+                            "Unable to determine ID for log instance.",
+                            span,
+                        ))
+                    }
+                    Some(log_id) => {
+                        convert_literal_to_value(context, &Literal::U64(**log_id as u64))
+                    }
+                };
 
                 match log_val.get_stripped_ptr_type(context) {
                     None => Err(CompileError::Internal(
@@ -1050,8 +1061,14 @@ impl FnCompiler {
                     parameters: callee.parameters.clone(),
                     ..callee
                 };
-                let new_func =
-                    compile_function(context, md_mgr, self.module, callee_fn_decl)?.unwrap();
+                let new_func = compile_function(
+                    context,
+                    md_mgr,
+                    self.module,
+                    callee_fn_decl,
+                    &self.logged_types_map,
+                )?
+                .unwrap();
                 self.recreated_fns.insert(fn_key, new_func);
                 new_func
             }

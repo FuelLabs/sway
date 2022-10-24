@@ -48,14 +48,12 @@ pub(crate) fn instantiate_function_application(
                     declaration.",
                 )
                 .with_type_annotation(insert_type(TypeInfo::Unknown));
-
             let exp = check!(
                 ty::TyExpression::type_check(ctx, arg.clone()),
                 ty::TyExpression::error(arg.span()),
                 warnings,
                 errors
             );
-
             append!(
                 unify_right(
                     exp.return_type,

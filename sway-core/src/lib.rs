@@ -202,7 +202,7 @@ pub fn parsed_to_ast(
         value: types_metadata_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = typed_program.collect_types_metadata();
+    } = typed_program.collect_types_metadata(&mut CollectTypesMetadataContext::new());
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let types_metadata = match types_metadata_result {
@@ -213,7 +213,7 @@ pub fn parsed_to_ast(
     typed_program
         .logged_types
         .extend(types_metadata.iter().filter_map(|m| match m {
-            TypeMetadata::LoggedType(type_id) => Some(*type_id),
+            TypeMetadata::LoggedType(log_id, type_id) => Some((*log_id, *type_id)),
             _ => None,
         }));
 
@@ -493,6 +493,18 @@ fn inline_function_calls(
             return true;
         }
 
+        // As per https://github.com/FuelLabs/sway/issues/2819 we can hit problems if a function
+        // argument is used as a pointer (probably because it has a ref type) although it actually
+        // isn't one.  Ref type args which aren't pointers need to be inlined.
+        if func.args_iter(ctx).any(|(_name, arg_val)| {
+            arg_val
+                .get_type(ctx)
+                .map(|ty| !ty.is_copy_type())
+                .unwrap_or(false)
+        }) {
+            return true;
+        }
+
         false
     };
 
@@ -752,8 +764,6 @@ fn test_basic_prog() {
 
     pub fn prints_number_five() -> u8 {
         let x: u8 = 5;
-        let reference_to_x = ref x;
-        let second_value_of_x = deref x; // u8 is `Copy` so this clones
         println(x);
          x.to_string();
          let some_list = [

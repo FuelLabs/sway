@@ -1,4 +1,5 @@
 use clap::Parser;
+use fuel_crypto::SecretKey;
 
 #[derive(Debug, Default, Parser)]
 #[clap(bin_name = "forc deploy", version)]
@@ -78,4 +79,6 @@ pub struct DeployCommand {
     /// Set the transaction gas price. Defaults to 0.
     #[clap(long)]
     pub gas_price: Option<u64>,
+    /// Set the key to be used for signing.
+    pub signing_key: Option<SecretKey>,
 }

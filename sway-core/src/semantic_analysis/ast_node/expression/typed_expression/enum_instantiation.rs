@@ -53,10 +53,20 @@ pub(crate) fn instantiate_enum(
         ([single_expr], _) => {
             let ctx = ctx
                 .with_help_text("Enum instantiator must match its declared variant type.")
-                .with_type_annotation(enum_variant.type_id);
+                .with_type_annotation(insert_type(TypeInfo::Unknown));
             let typed_expr = check!(
                 ty::TyExpression::type_check(ctx, single_expr.clone()),
                 return err(warnings, errors),
+                warnings,
+                errors
+            );
+            append!(
+                unify_adt(
+                    typed_expr.return_type,
+                    enum_variant.type_id,
+                    &typed_expr.span,
+                    "Enum instantiator must match its declared variant type."
+                ),
                 warnings,
                 errors
             );

@@ -1,6 +1,6 @@
 [package]
 name = "sway-ir-macros"
-version = "0.26.0"
+version = "0.27.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
