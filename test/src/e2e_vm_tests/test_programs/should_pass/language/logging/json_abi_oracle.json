@@ -12,7 +12,7 @@
   ],
   "loggedTypes": [
     {
-      "logId": 166728,
+      "logId": 0,
       "loggedType": {
         "name": "",
         "type": 2,
@@ -20,7 +20,7 @@
       }
     },
     {
-      "logId": 166734,
+      "logId": 1,
       "loggedType": {
         "name": "",
         "type": 11,
@@ -28,7 +28,7 @@
       }
     },
     {
-      "logId": 166742,
+      "logId": 2,
       "loggedType": {
         "name": "",
         "type": 10,
@@ -36,7 +36,7 @@
       }
     },
     {
-      "logId": 166749,
+      "logId": 3,
       "loggedType": {
         "name": "",
         "type": 9,
@@ -44,7 +44,7 @@
       }
     },
     {
-      "logId": 166756,
+      "logId": 4,
       "loggedType": {
         "name": "",
         "type": 12,
@@ -52,7 +52,7 @@
       }
     },
     {
-      "logId": 166708,
+      "logId": 5,
       "loggedType": {
         "name": "",
         "type": 7,
@@ -60,7 +60,7 @@
       }
     },
     {
-      "logId": 166768,
+      "logId": 6,
       "loggedType": {
         "name": "",
         "type": 1,
@@ -68,7 +68,7 @@
       }
     },
     {
-      "logId": 166722,
+      "logId": 7,
       "loggedType": {
         "name": "",
         "type": 8,
@@ -82,7 +82,7 @@
       }
     },
     {
-      "logId": 166726,
+      "logId": 8,
       "loggedType": {
         "name": "",
         "type": 5,
@@ -90,7 +90,7 @@
       }
     },
     {
-      "logId": 166790,
+      "logId": 9,
       "loggedType": {
         "name": "",
         "type": 4,
@@ -156,9 +156,7 @@
       ],
       "type": "enum Option",
       "typeId": 4,
-      "typeParameters": [
-        6
-      ]
+      "typeParameters": [6]
     },
     {
       "components": [
@@ -209,9 +207,7 @@
       ],
       "type": "struct TestStruct",
       "typeId": 8,
-      "typeParameters": [
-        6
-      ]
+      "typeParameters": [6]
     },
     {
       "components": null,

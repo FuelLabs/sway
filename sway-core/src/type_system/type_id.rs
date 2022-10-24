@@ -21,7 +21,7 @@ impl fmt::Display for TypeId {
 
 impl fmt::Debug for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        f.write_str(&look_up_type_id(*self).to_string())
     }
 }
 
@@ -32,7 +32,10 @@ impl From<usize> for TypeId {
 }
 
 impl CollectTypesMetadata for TypeId {
-    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
+    fn collect_types_metadata(
+        &self,
+        _ctx: &mut CollectTypesMetadataContext,
+    ) -> CompileResult<Vec<TypeMetadata>> {
         let res = match look_up_type_id(*self) {
             TypeInfo::UnknownGeneric { name } => vec![TypeMetadata::UnresolvedType(name)],
             _ => vec![],
@@ -107,7 +110,7 @@ impl ReplaceSelfType for TypeId {
 }
 
 impl CopyTypes for TypeId {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         if let Some(matching_id) = type_mapping.find_match(*self) {
             *self = matching_id;
         }

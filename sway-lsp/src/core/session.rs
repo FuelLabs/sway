@@ -1,7 +1,7 @@
 use crate::{
     capabilities::{
         self,
-        formatting::get_format_text_edits,
+        formatting::get_page_text_edit,
         runnable::{Runnable, RunnableType},
     },
     core::{
@@ -10,26 +10,28 @@ use crate::{
         {traverse_parse_tree, traverse_typed_tree},
     },
     error::{DocumentError, LanguageServerError},
-    utils::{self, sync::SyncWorkspace},
+    utils::{
+        self,
+        sync::{Directory, SyncWorkspace},
+    },
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
-use std::{
-    path::PathBuf,
-    sync::{Arc, LockResult, RwLock},
-};
+use parking_lot::RwLock;
+use std::{path::PathBuf, sync::Arc};
 use sway_core::{
     language::{parsed::ParseProgram, ty},
     CompileResult,
 };
 use sway_types::{Ident, Spanned};
-use swayfmt::Formatter;
+use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionResponse, Location, Position, Range,
     SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
 };
 
 pub type Documents = DashMap<String, TextDocument>;
+pub type ProjectDirectory = PathBuf;
 
 #[derive(Default, Debug)]
 pub struct CompiledProgram {
@@ -55,6 +57,33 @@ impl Session {
             compiled_program: RwLock::new(Default::default()),
             sync: SyncWorkspace::new(),
         }
+    }
+
+    pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
+        let manifest_dir = PathBuf::from(uri.path());
+        // Create a new temp dir that clones the current workspace
+        // and store manifest and temp paths
+        self.sync.create_temp_dir_from_workspace(&manifest_dir)?;
+
+        self.sync.clone_manifest_dir_to_temp()?;
+
+        // iterate over the project dir, parse all sway files
+        let _ = self.parse_and_store_sway_files();
+
+        self.sync.watch_and_sync_manifest();
+
+        self.sync.manifest_dir().map_err(Into::into)
+    }
+
+    pub fn shutdown(&self) {
+        // shutdown the thread watching the manifest file
+        let handle = self.sync.notify_join_handle.read();
+        if let Some(join_handle) = &*handle {
+            join_handle.abort();
+        }
+
+        // Delete the temporary directory.
+        self.sync.remove_temp_dir();
     }
 
     /// Check if the code editor's cursor is currently over one of our collected tokens.
@@ -112,14 +141,10 @@ impl Session {
     }
 
     pub fn declared_token_ident(&self, token: &Token) -> Option<Ident> {
-        // Look up the tokens TypeId
-        match &token.type_def {
-            Some(type_def) => match type_def {
-                TypeDefinition::TypeId(type_id) => utils::token::ident_of_type_id(type_id),
-                TypeDefinition::Ident(ident) => Some(ident.clone()),
-            },
-            None => None,
-        }
+        token.type_def.as_ref().and_then(|type_def| match type_def {
+            TypeDefinition::TypeId(type_id) => utils::token::ident_of_type_id(type_id),
+            TypeDefinition::Ident(ident) => Some(ident.clone()),
+        })
     }
 
     pub fn token_map(&self) -> &TokenMap {
@@ -139,7 +164,7 @@ impl Session {
     pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
         self.documents
             .remove(url.path())
-            .ok_or(DocumentError::DocumentNotFound {
+            .ok_or_else(|| DocumentError::DocumentNotFound {
                 path: url.path().to_string(),
             })
             .map(|(_, text_document)| text_document)
@@ -207,7 +232,8 @@ impl Session {
             }
         }
 
-        if let LockResult::Ok(mut program) = self.compiled_program.write() {
+        {
+            let mut program = self.compiled_program.write();
             program.parsed = Some(parse_program);
         }
 
@@ -247,7 +273,8 @@ impl Session {
             .chain(sub_nodes)
             .for_each(|node| traverse_typed_tree::traverse_node(node, &self.token_map));
 
-        if let LockResult::Ok(mut program) = self.compiled_program.write() {
+        {
+            let mut program = self.compiled_program.write();
             program.typed = Some(typed_program);
         }
 
@@ -282,7 +309,6 @@ impl Session {
         })
     }
 
-    // Token
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
         if let Some((_, token)) = self.token_at_position(url, position) {
             let token_ranges = self
@@ -305,16 +331,14 @@ impl Session {
             .and_then(|(_, token)| self.declared_token_ident(&token))
             .and_then(|decl_ident| {
                 let range = utils::common::get_range_from_span(&decl_ident.span());
-                match decl_ident.span().path() {
-                    Some(path) => match Url::from_file_path(path.as_ref()) {
-                        Ok(url) => self
-                            .sync
+                decl_ident.span().path().and_then(|path| {
+                    // We use ok() here because we don't care about propagating the error from from_file_path
+                    Url::from_file_path(path.as_ref()).ok().and_then(|url| {
+                        self.sync
                             .to_workspace_url(url)
-                            .map(|url| GotoDefinitionResponse::Scalar(Location::new(url, range))),
-                        Err(_) => None,
-                    },
-                    None => None,
-                }
+                            .map(|url| GotoDefinitionResponse::Scalar(Location::new(url, range)))
+                    })
+                })
             })
     }
 
@@ -331,22 +355,39 @@ impl Session {
             .map(|url| capabilities::document_symbol::to_symbol_information(&tokens, url))
     }
 
-    pub fn format_text(&self, url: &Url) -> Option<Vec<TextEdit>> {
-        if let Some(document) = self.documents.get(url.path()) {
-            let mut formatter = Formatter::default();
-            get_format_text_edits(Arc::from(document.get_text()), &mut formatter)
-        } else {
-            None
+    pub fn format_text(&self, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
+        let document =
+            self.documents
+                .get(url.path())
+                .ok_or_else(|| DocumentError::DocumentNotFound {
+                    path: url.path().to_string(),
+                })?;
+
+        get_page_text_edit(Arc::from(document.get_text()), &mut <_>::default())
+            .map(|page_text_edit| vec![page_text_edit])
+    }
+
+    pub fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
+        if let Some(temp_dir) = self
+            .sync
+            .directories
+            .get(&Directory::Temp)
+            .map(|item| item.value().clone())
+        {
+            // Store the documents.
+            for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
+                self.store_document(TextDocument::build_from_path(path)?)?;
+            }
         }
+
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-
-    use crate::test_utils::{get_absolute_path, get_url};
-
     use super::*;
+    use crate::test_utils::{get_absolute_path, get_url};
 
     #[test]
     fn store_document_returns_empty_tuple() {

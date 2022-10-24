@@ -1159,6 +1159,7 @@ impl TypeInfo {
     /// and return its contents.
     ///
     /// Returns an error if `self` is not a `TypeInfo::Struct`.
+    #[allow(dead_code)]
     pub(crate) fn expect_struct(
         &self,
         debug_span: &Span,

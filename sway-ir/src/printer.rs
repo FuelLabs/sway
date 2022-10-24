@@ -141,50 +141,47 @@ fn function_to_doc<'a>(
     function: &'a FunctionContent,
 ) -> Doc {
     Doc::line(
-        Doc::text(format!(
-            "{}fn {}",
-            if function.is_public { "pub " } else { "" },
-            function.name,
-        ))
-        .append(
-            function
-                .selector
-                .map(|bytes| {
-                    Doc::text(format!(
-                        "<{:02x}{:02x}{:02x}{:02x}>",
-                        bytes[0], bytes[1], bytes[2], bytes[3]
-                    ))
-                })
-                .unwrap_or(Doc::Empty),
-        )
-        .append(Doc::in_parens_comma_sep(
-            function
-                .arguments
-                .iter()
-                .map(|(name, arg_val)| {
-                    if let ValueContent {
-                        value: ValueDatum::Argument(BlockArgument { ty, .. }),
-                        metadata,
-                        ..
-                    } = &context.values[arg_val.0]
-                    {
-                        Doc::text(name)
-                            .append(
-                                Doc::Space.and(md_namer.md_idx_to_doc_no_comma(context, metadata)),
-                            )
-                            .append(Doc::text(format!(": {}", ty.as_string(context))))
-                    } else {
-                        unreachable!("Unexpected non argument value for function arguments.")
-                    }
-                })
-                .collect(),
-        ))
-        .append(Doc::text(format!(
-            " -> {}",
-            function.return_type.as_string(context)
-        )))
-        .append(md_namer.md_idx_to_doc(context, &function.metadata))
-        .append(Doc::text(" {")),
+        Doc::text(format!("fn {}", function.name,))
+            .append(
+                function
+                    .selector
+                    .map(|bytes| {
+                        Doc::text(format!(
+                            "<{:02x}{:02x}{:02x}{:02x}>",
+                            bytes[0], bytes[1], bytes[2], bytes[3]
+                        ))
+                    })
+                    .unwrap_or(Doc::Empty),
+            )
+            .append(Doc::in_parens_comma_sep(
+                function
+                    .arguments
+                    .iter()
+                    .map(|(name, arg_val)| {
+                        if let ValueContent {
+                            value: ValueDatum::Argument(BlockArgument { ty, .. }),
+                            metadata,
+                            ..
+                        } = &context.values[arg_val.0]
+                        {
+                            Doc::text(name)
+                                .append(
+                                    Doc::Space
+                                        .and(md_namer.md_idx_to_doc_no_comma(context, metadata)),
+                                )
+                                .append(Doc::text(format!(": {}", ty.as_string(context))))
+                        } else {
+                            unreachable!("Unexpected non argument value for function arguments.")
+                        }
+                    })
+                    .collect(),
+            ))
+            .append(Doc::text(format!(
+                " -> {}",
+                function.return_type.as_string(context)
+            )))
+            .append(md_namer.md_idx_to_doc(context, &function.metadata))
+            .append(Doc::text(" {")),
     )
     .append(Doc::indent(
         4,
@@ -620,6 +617,19 @@ fn instruction_to_doc<'a>(
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )),
+            Instruction::MemCopy {
+                dst_val,
+                src_val,
+                byte_len,
+            } => maybe_constant_to_doc(context, md_namer, namer, src_val).append(Doc::line(
+                Doc::text(format!(
+                    "mem_copy {}, {}, {}",
+                    namer.name(context, dst_val),
+                    namer.name(context, src_val),
+                    byte_len,
+                ))
+                .append(md_namer.md_idx_to_doc(context, metadata)),
+            )),
             Instruction::Nop => Doc::line(
                 Doc::text(format!("{} = nop", namer.name(context, ins_value)))
                     .append(md_namer.md_idx_to_doc(context, metadata)),

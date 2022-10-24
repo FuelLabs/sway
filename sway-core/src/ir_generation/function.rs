@@ -13,8 +13,9 @@ use crate::{
     },
     language::{ty, *},
     metadata::MetadataManager,
-    type_system::{look_up_type_id, to_typeinfo, TypeId, TypeInfo},
+    type_system::{look_up_type_id, to_typeinfo, LogId, TypeId, TypeInfo},
 };
+use declaration_engine::de_get_function;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::{CompileError, Hint};
 use sway_ir::{Context, *};
@@ -31,15 +32,24 @@ pub(super) struct FnCompiler {
     module: Module,
     pub(super) function: Function,
     pub(super) current_block: Block,
-    pub(super) block_to_break_to: Option<Block>,
-    pub(super) block_to_continue_to: Option<Block>,
-    pub(super) current_fn_param: Option<ty::TyFunctionParameter>,
+    block_to_break_to: Option<Block>,
+    block_to_continue_to: Option<Block>,
+    current_fn_param: Option<ty::TyFunctionParameter>,
+    returns_by_ref: bool,
     lexical_map: LexicalMap,
     recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
+    // This is a map from the type IDs of a logged type and the ID of the corresponding log
+    logged_types_map: HashMap<TypeId, LogId>,
 }
 
 impl FnCompiler {
-    pub(super) fn new(context: &mut Context, module: Module, function: Function) -> Self {
+    pub(super) fn new(
+        context: &mut Context,
+        module: Module,
+        function: Function,
+        returns_by_ref: bool,
+        logged_types_map: &HashMap<TypeId, LogId>,
+    ) -> Self {
         let lexical_map = LexicalMap::from_iter(
             function
                 .args_iter(context)
@@ -52,8 +62,10 @@ impl FnCompiler {
             block_to_break_to: None,
             block_to_continue_to: None,
             lexical_map,
+            returns_by_ref,
             recreated_fns: HashMap::new(),
             current_fn_param: None,
+            logged_types_map: logged_types_map.clone(),
         }
     }
 
@@ -184,8 +196,7 @@ impl FnCompiler {
                 }
             }
             ty::TyAstNodeContent::ImplicitReturnExpression(te) => {
-                let value = self.compile_expression(context, md_mgr, te)?;
-                Ok(Some(value))
+                self.compile_expression(context, md_mgr, te).map(Some)
             }
             // a side effect can be () because it just impacts the type system/namespacing.
             // There should be no new IR generated.
@@ -208,7 +219,7 @@ impl FnCompiler {
                 call_path: name,
                 contract_call_params,
                 arguments,
-                function_decl,
+                function_decl_id,
                 self_state_idx,
                 selector,
             } => {
@@ -224,6 +235,7 @@ impl FnCompiler {
                         span_md_idx,
                     )
                 } else {
+                    let function_decl = de_get_function(function_decl_id, &ast_expr.span)?;
                     self.compile_fn_call(
                         context,
                         md_mgr,
@@ -605,10 +617,17 @@ impl FnCompiler {
             Intrinsic::Log => {
                 // The log value and the log ID are just Value.
                 let log_val = self.compile_expression(context, md_mgr, arguments[0].clone())?;
-                let log_id = convert_literal_to_value(
-                    context,
-                    &Literal::U64(*arguments[0].return_type as u64),
-                );
+                let log_id = match self.logged_types_map.get(&arguments[0].return_type) {
+                    None => {
+                        return Err(CompileError::Internal(
+                            "Unable to determine ID for log instance.",
+                            span,
+                        ))
+                    }
+                    Some(log_id) => {
+                        convert_literal_to_value(context, &Literal::U64(**log_id as u64))
+                    }
+                };
 
                 match log_val.get_stripped_ptr_type(context) {
                     None => Err(CompileError::Internal(
@@ -671,23 +690,48 @@ impl FnCompiler {
         }
 
         let ret_value = self.compile_expression(context, md_mgr, ast_expr.clone())?;
+
         if ret_value.is_diverging(context) {
             return Ok(ret_value);
         }
+
+        let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
+
+        if self.returns_by_ref {
+            // We need to copy the actual return value to the out parameter.
+            self.compile_copy_to_last_arg(context, ret_value, span_md_idx);
+        }
+
         match ret_value.get_stripped_ptr_type(context) {
             None => Err(CompileError::Internal(
                 "Unable to determine type for return statement expression.",
                 ast_expr.span,
             )),
-            Some(ret_ty) => {
-                let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
-                Ok(self
-                    .current_block
-                    .ins(context)
-                    .ret(ret_value, ret_ty)
-                    .add_metadatum(context, span_md_idx))
-            }
+            Some(ret_ty) => Ok(self
+                .current_block
+                .ins(context)
+                .ret(ret_value, ret_ty)
+                .add_metadatum(context, span_md_idx)),
         }
+    }
+
+    pub(super) fn compile_copy_to_last_arg(
+        &mut self,
+        context: &mut Context,
+        ret_val: Value,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let dst_val = self.function.args_iter(context).last().unwrap().1;
+        let src_val = ret_val;
+        let byte_len =
+            ir_type_size_in_bytes(context, &src_val.get_stripped_ptr_type(context).unwrap());
+
+        self.current_block
+            .ins(context)
+            .mem_copy(dst_val, src_val, byte_len)
+            .add_metadatum(context, span_md_idx);
+
+        dst_val
     }
 
     fn compile_lazy_op(
@@ -1016,15 +1060,21 @@ impl FnCompiler {
                     parameters: callee.parameters.clone(),
                     ..callee
                 };
-                let new_func =
-                    compile_function(context, md_mgr, self.module, callee_fn_decl)?.unwrap();
+                let new_func = compile_function(
+                    context,
+                    md_mgr,
+                    self.module,
+                    callee_fn_decl,
+                    &self.logged_types_map,
+                )?
+                .unwrap();
                 self.recreated_fns.insert(fn_key, new_func);
                 new_func
             }
         };
 
         // Now actually call the new function.
-        let args = {
+        let mut args = {
             let mut args = Vec::with_capacity(ast_args.len());
             for ((_, expr), param) in ast_args.into_iter().zip(callee.parameters.into_iter()) {
                 self.current_fn_param = Some(param);
@@ -1037,12 +1087,37 @@ impl FnCompiler {
             }
             args
         };
-        let state_idx_md_idx = match self_state_idx {
-            Some(self_state_idx) => {
-                md_mgr.storage_key_to_md(context, self_state_idx.to_usize() as u64)
+
+        // If there is an 'unexpected' extra arg in the callee and it's a pointer then we need to
+        // set up returning by reference.
+        if args.len() + 1 == new_callee.num_args(context) {
+            if let Some(Type::Pointer(ptr)) = new_callee
+                .args_iter(context)
+                .last()
+                .unwrap()
+                .1
+                .get_argument_type(context)
+            {
+                // Create a local to pass in as the 'out' parameter.
+                let ptr_type = *ptr.get_type(context);
+                let local_name = format!("__ret_val_{}", new_callee.get_name(context));
+                let local_ptr = self
+                    .function
+                    .new_unique_local_ptr(context, local_name, ptr_type, true, None);
+
+                // Pass it as the final arg.
+                args.push(
+                    self.current_block
+                        .ins(context)
+                        .get_ptr(local_ptr, ptr_type, 0),
+                );
             }
-            None => None,
-        };
+        }
+
+        let state_idx_md_idx = self_state_idx.and_then(|self_state_idx| {
+            md_mgr.storage_key_to_md(context, self_state_idx.to_usize() as u64)
+        });
+
         Ok(self
             .current_block
             .ins(context)

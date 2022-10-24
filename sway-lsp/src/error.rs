@@ -1,19 +1,24 @@
+use swayfmt::FormatterError;
 use thiserror::Error;
 use tower_lsp::lsp_types::Diagnostic;
 
 #[derive(Debug, Error)]
 pub enum LanguageServerError {
+    // Inherited errors
     #[error(transparent)]
     DocumentError(#[from] DocumentError),
     #[error(transparent)]
     DirectoryError(#[from] DirectoryError),
 
+    // Top level errors
     #[error("Failed to create build plan. {0}")]
     BuildPlanFailed(anyhow::Error),
     #[error("Failed to compile. {0}")]
     FailedToCompile(anyhow::Error),
     #[error("Failed to parse document")]
     FailedToParse { diagnostics: Vec<Diagnostic> },
+    #[error("Error formatting document: {0}")]
+    FormatError(FormatterError),
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]

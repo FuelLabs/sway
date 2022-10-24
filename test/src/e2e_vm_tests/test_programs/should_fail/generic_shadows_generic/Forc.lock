@@ -1,4 +1,3 @@
 [[package]]
 name = 'generic_shadows_generic'
 source = 'root'
-dependencies = []

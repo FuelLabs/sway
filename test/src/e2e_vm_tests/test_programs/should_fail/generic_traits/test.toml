@@ -1,0 +1,10 @@
+category = "fail"
+
+# check: $()trait Setter<A> {
+# nextln: $()Unimplemented feature: Generic traits are not yet implemented.
+
+# check: $()impl<C> Setter<C> for FooBarData<C> {
+# nextln: $()Unimplemented feature: Generic traits are not yet implemented.
+
+# check: $()let bar = foo.set(42);
+# nextln: $()No method named "set" found for type "FooBarData<u8>".

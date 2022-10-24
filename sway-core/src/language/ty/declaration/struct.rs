@@ -1,8 +1,9 @@
 use std::hash::{Hash, Hasher};
 
+use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{language::Visibility, transform, type_system::*};
+use crate::{error::*, language::Visibility, transform, type_system::*};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyStructDeclaration {
@@ -27,7 +28,7 @@ impl PartialEq for TyStructDeclaration {
 }
 
 impl CopyTypes for TyStructDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.fields
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
@@ -63,6 +64,33 @@ impl MonomorphizeHelper for TyStructDeclaration {
     }
 }
 
+impl TyStructDeclaration {
+    pub(crate) fn expect_field(&self, field_to_access: &Ident) -> CompileResult<&TyStructField> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self
+            .fields
+            .iter()
+            .find(|TyStructField { name, .. }| name.as_str() == field_to_access.as_str())
+        {
+            Some(field) => ok(field, warnings, errors),
+            None => {
+                errors.push(CompileError::FieldNotFound {
+                    available_fields: self
+                        .fields
+                        .iter()
+                        .map(|TyStructField { name, .. }| name.to_string())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                    field_name: field_to_access.clone(),
+                    struct_name: self.name.clone(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq)]
 pub struct TyStructField {
     pub name: Ident,
@@ -93,7 +121,7 @@ impl PartialEq for TyStructField {
 }
 
 impl CopyTypes for TyStructField {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.type_id.copy_types(type_mapping);
     }
 }

@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-239143CAFD6AF819'
-dependencies = []
 
 [[package]]
 name = 'script_data'

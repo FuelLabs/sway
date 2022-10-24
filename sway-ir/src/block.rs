@@ -296,7 +296,8 @@ impl Block {
     /// For every instruction within the block, any reference to `old_val` is replaced with
     /// `new_val`.
     pub fn replace_value(&self, context: &mut Context, old_val: Value, new_val: Value) {
-        for ins in context.blocks[self.0].instructions.clone() {
+        for ins_idx in 0..context.blocks[self.0].instructions.len() {
+            let ins = context.blocks[self.0].instructions[ins_idx];
             ins.replace_instruction_value(context, old_val, new_val);
         }
     }

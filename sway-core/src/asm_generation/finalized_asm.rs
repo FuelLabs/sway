@@ -131,7 +131,9 @@ fn to_bytecode_mut(
                     if let Some(span) = &span {
                         source_map.insert(half_word_ix, span);
                     }
-                    op.read_exact(&mut buf[half_word_ix * 4..])
+                    let read_range_upper_bound =
+                        core::cmp::min(half_word_ix * 4 + std::mem::size_of_val(&op), buf.len());
+                    op.read_exact(&mut buf[half_word_ix * 4..read_range_upper_bound])
                         .expect("Failed to write to in-memory buffer.");
                     half_word_ix += 1;
                 }
