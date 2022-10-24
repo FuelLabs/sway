@@ -7,6 +7,11 @@ impl raw_ptr {
         __eq(addr, 0)
     }
 
+    /// Gets the address of the pointer.
+    pub fn addr(self) -> u64 {
+        asm(ptr: self) { ptr: u64 }
+    }
+
     /// Calculates the offset from the pointer.
     pub fn add(self, count: u64) -> raw_ptr {
         let addr = asm(ptr: self) { ptr: u64 };
