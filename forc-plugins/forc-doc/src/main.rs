@@ -41,10 +41,7 @@ pub fn main() -> Result<()> {
     let project_name = &manifest.project.name;
     let out_path = PathBuf::from(&manifest.dir()).join("out");
     let doc_path = out_path.join("doc");
-    if !out_path.try_exists().unwrap_or(false) {
-        // create the out path
-        fs::create_dir_all(&doc_path)?;
-    }
+    fs::create_dir_all(&doc_path)?;
 
     // compile the program and extract the docs
     let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
@@ -63,8 +60,7 @@ pub fn main() -> Result<()> {
 
         fs::create_dir_all(&doc_path)?;
         doc_path.push(doc.file_name);
-        let mut file = fs::File::create(doc_path)?;
-        file.write_all(doc.file_contents.0.as_bytes())?;
+        fs::write(&doc_path, doc.file_contents.0.as_bytes())?;
     }
 
     // check if the user wants to open the doc in the browser
