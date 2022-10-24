@@ -2115,11 +2115,53 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<()> {
 }
 
 fn build_workspace_with_options(
-    _manifest: &WorkspaceManifestFile,
-    _build_options: BuildOptions,
+    manifest: &WorkspaceManifestFile,
+    build_options: BuildOptions,
 ) -> Result<()> {
     // Find root member of the workspace and build it.
+    let workspace_root = find_root_workspace_member(manifest, build_options)?;
+    println!("workspace root is {workspace_root}");
     Ok(())
+}
+
+fn find_root_workspace_member(
+    manifest: &WorkspaceManifestFile,
+    build_options: BuildOptions,
+) -> Result<String> {
+    let locked = build_options.locked;
+    let offline = build_options.offline_mode;
+    let members: HashSet<_> = manifest.members().cloned().collect();
+    for (member, member_path) in manifest.members().zip(manifest.member_paths()?) {
+        info!("Checking {member}");
+        let member_pkg_manifest = PackageManifestFile::from_dir(member_path.as_path())?;
+        let build_plan = BuildPlan::from_lock_and_manifest(&member_pkg_manifest, locked, offline)?;
+        let graph = build_plan.graph();
+        let discovered_deps = discover_contract_dependencies(graph, &members, member.clone())?;
+        // If we can find all members of the workspace from this member, this member is the root of the workspace.
+        // Meaning that building/deploying this member will ensure whole workspace will be handled in the
+        // correct order.
+        if discovered_deps.len() == members.len() {
+            return Ok(member.clone());
+        }
+    }
+    bail!("Cannot find workspace root member")
+}
+
+fn discover_contract_dependencies(
+    graph: &Graph,
+    members: &HashSet<String>,
+    curr_member: String,
+) -> Result<Vec<String>> {
+    let proj_node = find_proj_node(graph, &curr_member)?;
+    let mut discovered_nodes = Vec::new();
+    let mut bfs = Bfs::new(graph, proj_node);
+    while let Some(node) = bfs.next(graph) {
+        let node_name = &graph[node].name;
+        if members.contains(node_name) {
+            discovered_nodes.push(node_name.clone());
+        }
+    }
+    Ok(discovered_nodes)
 }
 
 pub fn build_package_with_options(
