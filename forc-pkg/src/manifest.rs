@@ -1,6 +1,7 @@
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Result};
-use forc_util::{find_manifest_dir, println_yellow_err, validate_name};
+use forc_tracing::println_yellow_err;
+use forc_util::{find_manifest_dir, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,

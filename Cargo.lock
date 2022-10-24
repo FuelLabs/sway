@@ -1490,6 +1490,7 @@ dependencies = [
  "clap 3.2.21",
  "clap_complete",
  "forc-pkg",
+ "forc-tracing",
  "forc-util",
  "fs_extra",
  "fuel-asm 0.8.0",
@@ -1518,6 +1519,7 @@ dependencies = [
  "async-trait",
  "clap 3.2.21",
  "forc-pkg",
+ "forc-tracing",
  "forc-util",
  "fuel-crypto",
  "fuel-gql-client",
@@ -1543,7 +1545,8 @@ version = "0.27.0"
 dependencies = [
  "anyhow",
  "clap 3.2.21",
- "forc-util",
+ "dirs 3.0.2",
+ "forc-tracing",
  "reqwest",
  "serde",
  "tar",
@@ -1558,6 +1561,7 @@ version = "0.27.0"
 dependencies = [
  "anyhow",
  "clap 3.2.21",
+ "forc-tracing",
  "forc-util",
  "prettydiff 0.5.1",
  "sway-core",
@@ -1582,6 +1586,7 @@ name = "forc-pkg"
 version = "0.27.0"
 dependencies = [
  "anyhow",
+ "forc-tracing",
  "forc-util",
  "fuel-crypto",
  "fuel-tx 0.18.0",
@@ -1604,6 +1609,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-tracing"
+version = "0.27.0"
+dependencies = [
+ "ansi_term",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "forc-util"
 version = "0.27.0"
 dependencies = [
@@ -1611,6 +1625,7 @@ dependencies = [
  "ansi_term",
  "anyhow",
  "dirs 3.0.2",
+ "forc-tracing",
  "sway-core",
  "sway-error",
  "sway-types",
@@ -4465,7 +4480,7 @@ dependencies = [
  "async-trait",
  "dashmap",
  "forc-pkg",
- "forc-util",
+ "forc-tracing",
  "futures",
  "notify",
  "notify-debouncer-mini",
@@ -4524,6 +4539,7 @@ name = "swayfmt"
 version = "0.27.0"
 dependencies = [
  "anyhow",
+ "forc-tracing",
  "forc-util",
  "paste",
  "prettydiff 0.6.1",
@@ -4639,7 +4655,7 @@ dependencies = [
  "forc",
  "forc-client",
  "forc-pkg",
- "forc-util",
+ "forc-tracing",
  "fuel-asm 0.8.0",
  "fuel-tx 0.18.0",
  "fuel-vm 0.15.0",

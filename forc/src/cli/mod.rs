@@ -11,7 +11,7 @@ pub use check::Command as CheckCommand;
 use clap::{Parser, Subcommand};
 pub use clean::Command as CleanCommand;
 pub use completions::Command as CompletionsCommand;
-use forc_util::{init_tracing_subscriber, TracingSubscriberOptions};
+use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions};
 pub use init::Command as InitCommand;
 pub use new::Command as NewCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
