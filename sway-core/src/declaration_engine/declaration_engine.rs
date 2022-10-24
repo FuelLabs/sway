@@ -58,12 +58,13 @@ impl DeclarationEngine {
         }
     }
 
+    fn insert(&self, declaration_wrapper: DeclarationWrapper, span: Span) -> DeclarationId {
+        DeclarationId::new(self.slab.insert(declaration_wrapper), span)
+    }
+
     fn insert_function(&self, function: ty::TyFunctionDeclaration) -> DeclarationId {
         let span = function.span();
-        DeclarationId::new(
-            self.slab.insert(DeclarationWrapper::Function(function)),
-            span,
-        )
+        self.insert(DeclarationWrapper::Function(function), span)
     }
 
     fn get_function(
@@ -100,7 +101,7 @@ impl DeclarationEngine {
 
     fn insert_trait(&self, r#trait: ty::TyTraitDeclaration) -> DeclarationId {
         let span = r#trait.name.span();
-        DeclarationId::new(self.slab.insert(DeclarationWrapper::Trait(r#trait)), span)
+        self.insert(DeclarationWrapper::Trait(r#trait), span)
     }
 
     fn get_trait(
@@ -113,10 +114,7 @@ impl DeclarationEngine {
 
     fn insert_trait_fn(&self, trait_fn: ty::TyTraitFn) -> DeclarationId {
         let span = trait_fn.name.span();
-        DeclarationId::new(
-            self.slab.insert(DeclarationWrapper::TraitFn(trait_fn)),
-            span,
-        )
+        self.insert(DeclarationWrapper::TraitFn(trait_fn), span)
     }
 
     fn get_trait_fn(
@@ -129,10 +127,7 @@ impl DeclarationEngine {
 
     fn insert_impl_trait(&self, impl_trait: ty::TyImplTrait) -> DeclarationId {
         let span = impl_trait.span.clone();
-        DeclarationId::new(
-            self.slab.insert(DeclarationWrapper::ImplTrait(impl_trait)),
-            span,
-        )
+        self.insert(DeclarationWrapper::ImplTrait(impl_trait), span)
     }
 
     fn get_impl_trait(
@@ -145,7 +140,7 @@ impl DeclarationEngine {
 
     fn insert_struct(&self, r#struct: ty::TyStructDeclaration) -> DeclarationId {
         let span = r#struct.span();
-        DeclarationId::new(self.slab.insert(DeclarationWrapper::Struct(r#struct)), span)
+        self.insert(DeclarationWrapper::Struct(r#struct), span)
     }
 
     fn get_struct(
@@ -162,8 +157,7 @@ impl DeclarationEngine {
         new_copy: ty::TyStructDeclaration,
     ) {
         let span = new_copy.span();
-        let new_id =
-            DeclarationId::new(self.slab.insert(DeclarationWrapper::Struct(new_copy)), span);
+        let new_id = self.insert(DeclarationWrapper::Struct(new_copy), span);
         self.add_monomorphized_copy(original_id, new_id)
     }
 
@@ -180,7 +174,7 @@ impl DeclarationEngine {
 
     fn insert_storage(&self, storage: ty::TyStorageDeclaration) -> DeclarationId {
         let span = storage.span();
-        DeclarationId::new(self.slab.insert(DeclarationWrapper::Storage(storage)), span)
+        self.insert(DeclarationWrapper::Storage(storage), span)
     }
 
     fn get_storage(
@@ -193,7 +187,7 @@ impl DeclarationEngine {
 
     fn insert_abi(&self, abi: ty::TyAbiDeclaration) -> DeclarationId {
         let span = abi.span.clone();
-        DeclarationId::new(self.slab.insert(DeclarationWrapper::Abi(abi)), span)
+        self.insert(DeclarationWrapper::Abi(abi), span)
     }
 
     fn get_abi(
@@ -223,7 +217,7 @@ impl DeclarationEngine {
 
     fn insert_enum(&self, enum_decl: ty::TyEnumDeclaration) -> DeclarationId {
         let span = enum_decl.span();
-        DeclarationId::new(self.slab.insert(DeclarationWrapper::Enum(enum_decl)), span)
+        self.insert(DeclarationWrapper::Enum(enum_decl), span)
     }
 
     fn get_enum(
@@ -240,7 +234,7 @@ impl DeclarationEngine {
         new_copy: ty::TyEnumDeclaration,
     ) {
         let span = new_copy.span();
-        let new_id = DeclarationId::new(self.slab.insert(DeclarationWrapper::Enum(new_copy)), span);
+        let new_id = self.insert(DeclarationWrapper::Enum(new_copy), span);
         self.add_monomorphized_copy(original_id, new_id)
     }
 }
@@ -259,6 +253,10 @@ pub(crate) fn de_replace_decl_id(index: DeclarationId, wrapper: DeclarationWrapp
 
 pub(crate) fn de_add_monomorphized_copy(original_id: DeclarationId, new_id: DeclarationId) {
     DECLARATION_ENGINE.add_monomorphized_copy(original_id, new_id);
+}
+
+pub(super) fn de_insert(declaration_wrapper: DeclarationWrapper, span: Span) -> DeclarationId {
+    DECLARATION_ENGINE.insert(declaration_wrapper, span)
 }
 
 pub(crate) fn de_insert_function(function: ty::TyFunctionDeclaration) -> DeclarationId {
