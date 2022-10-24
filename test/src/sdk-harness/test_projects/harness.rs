@@ -3,7 +3,7 @@
 mod auth;
 mod block;
 mod call_frames;
-mod context;
+// mod context;
 mod contract_bytecode;
 mod ec_recover_and_match_predicate;
 mod evm;
@@ -23,5 +23,5 @@ mod script_data;
 mod storage;
 mod storage_map;
 mod storage_vec;
-mod token_ops;
+// mod token_ops;
 mod tx_fields;
