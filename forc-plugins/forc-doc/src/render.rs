@@ -8,6 +8,9 @@ use sway_core::transform::{AttributeKind, AttributesMap};
 
 pub(crate) struct HTMLString(pub(crate) String);
 pub(crate) type RenderedDocumentation = Vec<RenderedDocument>;
+// there's probably a better way to do this, it's the type for the title
+// the path as a string, and the file name for the all doc
+type AllDoc = Vec<(String, (String, String))>;
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
     pub(crate) module_prefix: Vec<String>,
@@ -16,8 +19,9 @@ pub(crate) struct RenderedDocument {
 }
 impl RenderedDocument {
     /// Top level HTML rendering for all [Documentation] of a program.
-    pub fn from_raw_docs(raw: &Documentation) -> RenderedDocumentation {
-        let mut buf: RenderedDocumentation = Default::default();
+    pub fn from_raw_docs(raw: &Documentation, project_name: &String) -> RenderedDocumentation {
+        let mut rendered_docs: RenderedDocumentation = Default::default();
+        let mut all_doc: AllDoc = Default::default();
         for doc in raw {
             let module_prefix = doc.module_prefix.clone();
             let module = if module_prefix.last().is_some() {
@@ -27,9 +31,19 @@ impl RenderedDocument {
                 // in doc.rs during module_prefix gathering
                 "root".to_string()
             };
+            let file_name = doc.file_name();
             let decl_ty = doc.desc_ty.as_str().to_string();
             let rendered_content = match &doc.desc_ty {
-                DescriptorType::Struct(struct_decl) => struct_decl.render(module, decl_ty),
+                DescriptorType::Struct(struct_decl) => {
+                    all_doc.push((
+                        "Struct".to_string(),
+                        (
+                            format!("{}::{}", &module, &struct_decl.name),
+                            file_name.clone(),
+                        ),
+                    ));
+                    struct_decl.render(module, decl_ty)
+                }
                 DescriptorType::Enum(enum_decl) => enum_decl.render(module, decl_ty),
                 DescriptorType::Trait(trait_decl) => trait_decl.render(module, decl_ty),
                 DescriptorType::Abi(abi_decl) => abi_decl.render(module, decl_ty),
@@ -40,17 +54,23 @@ impl RenderedDocument {
                 DescriptorType::Function(fn_decl) => fn_decl.render(module, decl_ty),
                 DescriptorType::Const(const_decl) => const_decl.render(module, decl_ty),
             };
-            buf.push(Self {
+            rendered_docs.push(Self {
                 module_prefix,
-                file_name: doc.file_name(),
+                file_name,
                 file_contents: HTMLString(page_from(rendered_content)),
             })
         }
-        buf
+        // All Doc
+        rendered_docs.push(Self {
+            module_prefix: vec![],
+            file_name: "all.html".to_string(),
+            file_contents: HTMLString(page_from(all_items(project_name.to_string(), &all_doc))),
+        });
+        rendered_docs
     }
 }
 
-pub(crate) fn page_from(rendered_content: Box<dyn RenderBox>) -> String {
+fn page_from(rendered_content: Box<dyn RenderBox>) -> String {
     let markup = html! {
         : doctype::HTML;
         html {
@@ -62,7 +82,7 @@ pub(crate) fn page_from(rendered_content: Box<dyn RenderBox>) -> String {
 }
 
 /// Basic HTML header component
-pub(crate) fn html_head(module: String, decl_ty: String, decl_name: String) -> Box<dyn RenderBox> {
+fn html_head(module: String, decl_ty: String, decl_name: String) -> Box<dyn RenderBox> {
     box_html! {
         head {
             meta(charset="utf-8");
@@ -79,7 +99,7 @@ pub(crate) fn html_head(module: String, decl_ty: String, decl_name: String) -> B
     }
 }
 /// HTML body component
-pub(crate) fn html_body(
+fn html_body(
     module: String,
     decl_ty: String,
     decl_name: String,
@@ -116,7 +136,7 @@ fn crate_index() -> Box<dyn RenderBox> {
     box_html! {}
 }
 // crate level, all items belonging to a crate
-fn all_items(crate_name: String) -> Box<dyn RenderBox> {
+fn all_items(crate_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
     box_html! {
         head {
             meta(charset="utf-8");
@@ -135,6 +155,8 @@ fn all_items(crate_name: String) -> Box<dyn RenderBox> {
     }
 }
 // module level index.html
+// for each module we need to create an index
+// that will have all of the item docs in it
 fn module_index() -> Box<dyn RenderBox> {
     box_html! {}
 }

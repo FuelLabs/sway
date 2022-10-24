@@ -38,6 +38,7 @@ pub fn main() -> Result<()> {
     let manifest = PackageManifestFile::from_dir(&dir)?;
 
     // check if the out path exists
+    let project_name = &manifest.project.name;
     let out_path = PathBuf::from(&manifest.dir()).join("out");
     let doc_path = out_path.join("doc");
     if !out_path.try_exists().unwrap_or(false) {
@@ -50,7 +51,8 @@ pub fn main() -> Result<()> {
     let compilation = pkg::check(&plan, silent_mode)?;
     let raw_docs: Documentation = Document::from_ty_program(&compilation, no_deps)?;
     // render docs to HTML
-    let rendered_docs: RenderedDocumentation = RenderedDocument::from_raw_docs(&raw_docs);
+    let rendered_docs: RenderedDocumentation =
+        RenderedDocument::from_raw_docs(&raw_docs, project_name);
 
     // write to outfile
     for doc in rendered_docs {
