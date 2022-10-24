@@ -156,7 +156,9 @@
       ],
       "type": "enum Option",
       "typeId": 4,
-      "typeParameters": [6]
+      "typeParameters": [
+        6
+      ]
     },
     {
       "components": [
@@ -207,7 +209,9 @@
       ],
       "type": "struct TestStruct",
       "typeId": 8,
-      "typeParameters": [6]
+      "typeParameters": [
+        6
+      ]
     },
     {
       "components": null,

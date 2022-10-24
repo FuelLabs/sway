@@ -320,21 +320,6 @@ impl Ord for b256 {
     }
 }
 
-impl Ord for raw_ptr {
-    fn gt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            gt r3 r1 r2;
-            r3: bool
-        }
-    }
-    fn lt(self, other: Self) -> bool {
-        asm(r1: self, r2: other, r3) {
-            lt r3 r1 r2;
-            r3: bool
-        }
-    }
-}
-
 impl b256 {
     fn neq(self, other: Self) -> bool {
         // Both self and other are addresses of the values, so we can use MEQ.

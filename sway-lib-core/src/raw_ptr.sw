@@ -44,13 +44,6 @@ impl raw_ptr {
             mcp dst src count;
         };
     }
-    
-    /// Copies `size` bytes from `src` to `self`.
-    pub fn copy_from(self, src: raw_ptr, count: u64) {
-        asm(dst: self, src: src, count: count) {
-            mcp dst src count;
-        };
-    }
 
     /// Writes the given value to the address.
     pub fn write<T>(self, val: T) {

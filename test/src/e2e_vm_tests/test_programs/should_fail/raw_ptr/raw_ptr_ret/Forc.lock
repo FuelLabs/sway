@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-51D3AF48CE04FAE0'
-dependencies = []
 
 [[package]]
 name = 'raw_ptr_ret'

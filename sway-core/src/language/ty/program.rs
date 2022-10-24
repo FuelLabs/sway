@@ -180,8 +180,25 @@ impl TyProgram {
                         name: mains.last().unwrap().name.clone(),
                     });
                 }
+                // A script must not return a `raw_ptr`
+                let main_func = mains.remove(0);
+                let nested_types = check!(
+                    look_up_type_id(main_func.return_type)
+                        .extract_nested_types(&main_func.return_type_span),
+                    vec![],
+                    warnings,
+                    errors
+                );
+                if nested_types
+                    .iter()
+                    .any(|ty| matches!(ty, TypeInfo::RawUntypedPtr))
+                {
+                    errors.push(CompileError::PointerReturnNotAllowedInMain {
+                        span: main_func.return_type_span.clone(),
+                    });
+                }
                 TyProgramKind::Script {
-                    main_function: mains.remove(0),
+                    main_function: main_func,
                     declarations,
                 }
             }

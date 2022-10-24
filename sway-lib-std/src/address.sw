@@ -1,6 +1,5 @@
 library address;
 //! A wrapper around the b256 type to help enhance type-safety.
-use ::intrinsics::size_of_val;
 
 /// The Address type, a struct wrappper around the inner `value`.
 pub struct Address {
