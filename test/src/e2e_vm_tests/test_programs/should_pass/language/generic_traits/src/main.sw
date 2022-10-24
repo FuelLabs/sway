@@ -66,6 +66,43 @@ impl<T> MySub<u64> for FooBarData<T> {
     }
 }
 
+struct OtherData<T> {
+    a: T,
+    b: T,
+}
+
+impl<T> MyAdd<u8> for OtherData<T> {
+    fn my_add(self, a: u8, b: u8) -> u8 {
+        a + b
+    }
+}
+
+impl<T> MyAdd<u64> for OtherData<T> {
+    fn my_add(self, a: u64, b: u64) -> u64 {
+        a + b
+    }
+}
+
+impl<T> MySub<u8> for OtherData<T> {
+    fn my_sub(a: u8, b: u8) -> u8 {
+        if a >= b {
+            a - b
+        } else {
+            b - a
+        }
+    }
+}
+
+impl<T> MySub<u64> for OtherData<T> {
+    fn my_sub(a: u64, b: u64) -> u64 {
+        if a >= b {
+            a - b
+        } else {
+            b - a
+        }
+    }
+}
+
 fn main() -> u64 {
     let a = FooBarData {
         value: 1u8
@@ -82,8 +119,21 @@ fn main() -> u64 {
         ~FooBarData::<u8>::my_sub(100, 10),
         ~FooBarData::<u8>::my_sub(50, 10),
     );
+    let i = OtherData {
+        a: true,
+        b: false,
+    };
+    let j = OtherData {
+        a: 10u32,
+        b: 11u32,
+    };
+    let k = j.my_add(i.my_add(1u8, 2u8), i.my_add(3u8, 4u8));
+    let l = ~FooBarData::<u16>::my_sub(
+        ~FooBarData::<u32>::my_sub(100, 10),
+        ~FooBarData::<u32>::my_sub(50, 10),
+    );    
 
-    if c == 42u8 && d && e == 9u64 && g == 10 && h == 50 {
+    if c == 42u8 && d && e == 9u64 && g == 10 && h == 50 && k == 10 && l == 50 {
         42
     } else {
         7
