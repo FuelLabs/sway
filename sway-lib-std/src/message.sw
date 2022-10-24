@@ -15,7 +15,7 @@ const FAILED_SEND_MESSAGE_SIGNAL = 0xffff_ffff_ffff_0002;
 /// * `msg_data` - arbitrary length message data
 /// * `coins` - Amount of base asset sent
 pub fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
-    let mut recipient = recipient;
+    let mut recipient_heap_buffer = __addr_of(recipient);
     let mut size = 0;
 
     // If msg_data is empty, we just ignore it and pass `smo` a pointer to the inner value of recipient. 
@@ -23,10 +23,11 @@ pub fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
     // data and recipient values there
     if !msg_data.is_empty() {
         size = msg_data.len() * 8;
-        let ptr = alloc(32 + size);
-        ptr.write(recipient);
-        recipient = ptr.read();
-        msg_data.buf.ptr.copy_to(ptr.add(32), size);
+        let data_heap_buffer = alloc(size);
+        recipient_heap_buffer = alloc(32);
+        msg_data.buf.ptr.copy_to(data_heap_buffer, size);
+        let addr_of_recipient = __addr_of(recipient);
+        addr_of_recipient.copy_to(recipient_heap_buffer, 32);
     };
 
     let mut index = 0;
@@ -35,7 +36,7 @@ pub fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
     while index < outputs {
         let type_of_output = output_type(index);
         if let Output::Message = type_of_output {
-            asm(r1: recipient, r2: size, r3: index, r4: coins) {
+            asm(r1: recipient_heap_buffer, r2: size, r3: index, r4: coins) {
                 smo r1 r2 r3 r4;
             };
             return;
