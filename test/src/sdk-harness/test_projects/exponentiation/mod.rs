@@ -9,6 +9,7 @@ async fn overflowing_pow_u64_panics() {
     let wallet = launch_provider_and_get_wallet().await;
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance
+        .methods()
         .u64_overflow(100u64, 100u64)
         .call()
         .await
@@ -22,6 +23,7 @@ async fn overflowing_pow_u32_panics() {
     let wallet = launch_provider_and_get_wallet().await;
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance
+        .methods()
         .u32_overflow(10u32, 11u32)
         .call()
         .await
@@ -34,6 +36,7 @@ async fn overflowing_pow_u32_panics_max() {
     let wallet = launch_provider_and_get_wallet().await;
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance
+        .methods()
         .u32_overflow(u32::MAX, u32::MAX)
         .call()
         .await
@@ -46,7 +49,12 @@ async fn overflowing_pow_u32_panics_max() {
 async fn overflowing_pow_u16_panics() {
     let wallet = launch_provider_and_get_wallet().await;
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
-    pow_instance.u16_overflow(10u16, 5u16).call().await.unwrap();
+    pow_instance
+        .methods()
+        .u16_overflow(10u16, 5u16)
+        .call()
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -55,6 +63,7 @@ async fn overflowing_pow_u16_panics_max() {
     let wallet = launch_provider_and_get_wallet().await;
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance
+        .methods()
         .u16_overflow(u16::MAX, u16::MAX)
         .call()
         .await
@@ -67,7 +76,12 @@ async fn overflowing_pow_u16_panics_max() {
 async fn overflowing_pow_u8_panics() {
     let wallet = launch_provider_and_get_wallet().await;
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
-    pow_instance.u8_overflow(10u8, 3u8).call().await.unwrap();
+    pow_instance
+        .methods()
+        .u8_overflow(10u8, 3u8)
+        .call()
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -76,6 +90,7 @@ async fn overflowing_pow_u8_panics_max() {
     let wallet = launch_provider_and_get_wallet().await;
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
     pow_instance
+        .methods()
         .u8_overflow(u8::MAX, u8::MAX)
         .call()
         .await
@@ -94,7 +109,7 @@ async fn get_pow_test_instance(wallet: WalletUnlocked) -> (TestPowContract, Cont
     .await
     .unwrap();
 
-    let pow_instance = TestPowContractBuilder::new(pow_id.to_string(), wallet).build();
+    let pow_instance = TestPowContract::new(pow_id.to_string(), wallet);
 
     (pow_instance, pow_id.into())
 }

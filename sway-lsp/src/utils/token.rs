@@ -1,9 +1,9 @@
 use crate::core::token::{AstToken, SymbolKind, Token, TokenMap, TypedAstToken};
-use sway_core::declaration_engine;
-use sway_core::semantic_analysis::ast_node::{
-    declaration::TypedStructDeclaration, TypedDeclaration,
+use sway_core::{
+    declaration_engine,
+    language::ty,
+    type_system::{TypeId, TypeInfo},
 };
-use sway_core::type_system::{TypeId, TypeInfo};
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 pub fn is_initial_declaration(token_type: &Token) -> bool {
@@ -44,9 +44,9 @@ pub(crate) fn to_ident_key(ident: &Ident) -> (Ident, Span) {
 pub(crate) fn declaration_of_type_id(
     type_id: &TypeId,
     tokens: &TokenMap,
-) -> Option<TypedDeclaration> {
+) -> Option<ty::TyDeclaration> {
     ident_of_type_id(type_id)
-        .and_then(|decl_ident| tokens.get(&to_ident_key(&decl_ident)))
+        .and_then(|decl_ident| tokens.try_get(&to_ident_key(&decl_ident)).try_unwrap())
         .map(|item| item.value().clone())
         .and_then(|token| token.typed)
         .and_then(|typed_token| match typed_token {
@@ -60,9 +60,9 @@ pub(crate) fn declaration_of_type_id(
 pub(crate) fn struct_declaration_of_type_id(
     type_id: &TypeId,
     tokens: &TokenMap,
-) -> Option<TypedStructDeclaration> {
+) -> Option<ty::TyStructDeclaration> {
     declaration_of_type_id(type_id, tokens).and_then(|decl| match decl {
-        TypedDeclaration::StructDeclaration(ref decl_id) => {
+        ty::TyDeclaration::StructDeclaration(ref decl_id) => {
             declaration_engine::de_get_struct(decl_id.clone(), &decl_id.span()).ok()
         }
         _ => None,
@@ -83,18 +83,12 @@ pub(crate) fn ident_of_type_id(type_id: &TypeId) -> Option<Ident> {
 
 pub(crate) fn type_info_to_symbol_kind(type_info: &TypeInfo) -> SymbolKind {
     match type_info {
-        TypeInfo::UnsignedInteger(..)
-        | TypeInfo::Boolean
-        | TypeInfo::Str(..)
-        | TypeInfo::B256
-        | TypeInfo::Byte => SymbolKind::BuiltinType,
+        TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::Str(..) | TypeInfo::B256 => {
+            SymbolKind::BuiltinType
+        }
         TypeInfo::Numeric => SymbolKind::NumericLiteral,
         TypeInfo::Custom { .. } | TypeInfo::Struct { .. } => SymbolKind::Struct,
         TypeInfo::Enum { .. } => SymbolKind::Enum,
-        TypeInfo::Ref(type_id, ..) => {
-            let type_info = sway_core::type_system::look_up_type_id(*type_id);
-            type_info_to_symbol_kind(&type_info)
-        }
         TypeInfo::Array(type_id, ..) => {
             let type_info = sway_core::type_system::look_up_type_id(*type_id);
             type_info_to_symbol_kind(&type_info)
@@ -107,8 +101,8 @@ pub(crate) fn type_id(token_type: &Token) -> Option<TypeId> {
     match &token_type.typed {
         Some(typed_ast_token) => match typed_ast_token {
             TypedAstToken::TypedDeclaration(dec) => match dec {
-                TypedDeclaration::VariableDeclaration(var_decl) => Some(var_decl.type_ascription),
-                TypedDeclaration::ConstantDeclaration(decl_id) => {
+                ty::TyDeclaration::VariableDeclaration(var_decl) => Some(var_decl.type_ascription),
+                ty::TyDeclaration::ConstantDeclaration(decl_id) => {
                     declaration_engine::de_get_constant(decl_id.clone(), &decl_id.span())
                         .ok()
                         .map(|const_decl| const_decl.value.return_type)

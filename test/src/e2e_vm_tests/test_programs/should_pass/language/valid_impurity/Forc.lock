@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-C5124BA2E9BCE152'
-dependencies = []
 
 [[package]]
 name = 'valid_impurity'

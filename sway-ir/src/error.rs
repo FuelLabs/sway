@@ -30,6 +30,7 @@ pub enum IrError {
     VerifyBitcastBetweenInvalidTypes(String, String),
     VerifyBinaryOpIncorrectArgType,
     VerifyBranchToMissingBlock(String),
+    VerifyBranchParamsMismatch,
     VerifyCallArgTypeMismatch(String),
     VerifyCallToMissingFunction(String),
     VerifyCmpBadTypes(String, String),
@@ -45,10 +46,9 @@ pub enum IrError {
     VerifyIntToPtrUnknownSourceType,
     VerifyLoadFromNonPointer,
     VerifyMismatchedReturnTypes(String),
-    VerifyPhiFromMissingBlock(String),
-    VerifyPhiInconsistentTypes,
-    VerifyPhiNonUniqueLabels,
+    VerifyBlockArgMalformed,
     VerifyPtrCastFromNonPointer,
+    VerifyReturnRefTypeValue(String, String),
     VerifyStateKeyBadType,
     VerifyStateDestBadType(String),
     VerifyStoreMismatchedTypes,
@@ -58,6 +58,7 @@ pub enum IrError {
     VerifyInvalidGtfIndexType,
     VerifyLogId,
     VerifyMismatchedLoggedTypes,
+    VerifyRevertCodeBadType,
 }
 
 impl std::error::Error for IrError {}
@@ -252,22 +253,26 @@ impl fmt::Display for IrError {
                 "Verification failed: Function {fn_str} return type must match its RET \
                 instructions."
             ),
-            IrError::VerifyPhiFromMissingBlock(label) => {
+            IrError::VerifyBlockArgMalformed => {
+                write!(f, "Verification failed: Block argument is malformed")
+            }
+            IrError::VerifyBranchParamsMismatch => {
                 write!(
                     f,
-                    "Verification failed: PHI has a block '{label}'not from the current function."
+                    "Verification failed: Block parameter passed in branch is malformed"
                 )
-            }
-            IrError::VerifyPhiInconsistentTypes => {
-                write!(f, "Verification failed: PHI has inconsistent types.")
-            }
-            IrError::VerifyPhiNonUniqueLabels => {
-                write!(f, "Verification failed: PHI must have unique block labels.")
             }
             IrError::VerifyPtrCastFromNonPointer => {
                 write!(
                     f,
                     "Verification failed: Pointer cast from non pointer value."
+                )
+            }
+            IrError::VerifyReturnRefTypeValue(fn_str, ty_str) => {
+                write!(
+                    f,
+                    "Verification failed: Function {fn_str} must not return value with reference \
+                    type of {ty_str}.",
                 )
             }
             IrError::VerifyStateKeyBadType => {
@@ -308,6 +313,12 @@ impl fmt::Display for IrError {
                 write!(
                     f,
                     "Verification failed: log type must match the type of the value being logged."
+                )
+            }
+            IrError::VerifyRevertCodeBadType => {
+                write!(
+                    f,
+                    "Verification failed: error code for revert must be a u64."
                 )
             }
         }

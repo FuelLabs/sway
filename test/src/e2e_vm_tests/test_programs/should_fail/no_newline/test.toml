@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()use std::
+# nextln: $()Expected an import name, group of imports, or `*`.

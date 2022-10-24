@@ -1,36 +1,33 @@
 contract;
 
 use std::{
-    address::Address,
     b512::B512,
     inputs::{
         Input,
         input_amount,
-        input_owner,
         input_count,
         input_message_data,
         input_message_data_length,
         input_message_msg_id,
         input_message_nonce,
-        input_predicate,
-        input_predicate_length,
-        input_predicate_data_length,
         input_message_recipient,
         input_message_sender,
-        input_witness_index,
+        input_owner,
         input_pointer,
+        input_predicate,
+        input_predicate_data_length,
         input_predicate_data_pointer,
+        input_predicate_length,
         input_type,
+        input_witness_index,
     },
-    option::Option,
     outputs::{
         Output,
-        output_count,
         output_amount,
+        output_count,
         output_pointer,
         output_type,
     },
-    revert::revert,
     tx::{
         Transaction,
         tx_gas_limit,
@@ -42,13 +39,12 @@ use std::{
         tx_script_data_length,
         tx_script_data_start_pointer,
         tx_script_length,
-
         tx_script_start_pointer,
         tx_type,
-        tx_witnesses_count,
         tx_witness_data,
         tx_witness_data_length,
         tx_witness_pointer,
+        tx_witnesses_count,
     },
 };
 

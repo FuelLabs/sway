@@ -1,0 +1,3 @@
+script;
+
+use std::

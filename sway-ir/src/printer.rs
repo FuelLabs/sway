@@ -17,7 +17,7 @@ use crate::{
     metadata::{MetadataIndex, Metadatum},
     module::{Kind, ModuleContent},
     value::{Value, ValueContent, ValueDatum},
-    BinaryOpKind,
+    BinaryOpKind, BlockArgument,
 };
 
 #[derive(Debug)]
@@ -141,50 +141,47 @@ fn function_to_doc<'a>(
     function: &'a FunctionContent,
 ) -> Doc {
     Doc::line(
-        Doc::text(format!(
-            "{}fn {}",
-            if function.is_public { "pub " } else { "" },
-            function.name,
-        ))
-        .append(
-            function
-                .selector
-                .map(|bytes| {
-                    Doc::text(format!(
-                        "<{:02x}{:02x}{:02x}{:02x}>",
-                        bytes[0], bytes[1], bytes[2], bytes[3]
-                    ))
-                })
-                .unwrap_or(Doc::Empty),
-        )
-        .append(Doc::in_parens_comma_sep(
-            function
-                .arguments
-                .iter()
-                .map(|(name, arg_val)| {
-                    if let ValueContent {
-                        value: ValueDatum::Argument(ty),
-                        metadata,
-                        ..
-                    } = &context.values[arg_val.0]
-                    {
-                        Doc::text(name)
-                            .append(
-                                Doc::Space.and(md_namer.md_idx_to_doc_no_comma(context, metadata)),
-                            )
-                            .append(Doc::text(format!(": {}", ty.as_string(context))))
-                    } else {
-                        unreachable!("Unexpected non argument value for function arguments.")
-                    }
-                })
-                .collect(),
-        ))
-        .append(Doc::text(format!(
-            " -> {}",
-            function.return_type.as_string(context)
-        )))
-        .append(md_namer.md_idx_to_doc(context, &function.metadata))
-        .append(Doc::text(" {")),
+        Doc::text(format!("fn {}", function.name,))
+            .append(
+                function
+                    .selector
+                    .map(|bytes| {
+                        Doc::text(format!(
+                            "<{:02x}{:02x}{:02x}{:02x}>",
+                            bytes[0], bytes[1], bytes[2], bytes[3]
+                        ))
+                    })
+                    .unwrap_or(Doc::Empty),
+            )
+            .append(Doc::in_parens_comma_sep(
+                function
+                    .arguments
+                    .iter()
+                    .map(|(name, arg_val)| {
+                        if let ValueContent {
+                            value: ValueDatum::Argument(BlockArgument { ty, .. }),
+                            metadata,
+                            ..
+                        } = &context.values[arg_val.0]
+                        {
+                            Doc::text(name)
+                                .append(
+                                    Doc::Space
+                                        .and(md_namer.md_idx_to_doc_no_comma(context, metadata)),
+                                )
+                                .append(Doc::text(format!(": {}", ty.as_string(context))))
+                        } else {
+                            unreachable!("Unexpected non argument value for function arguments.")
+                        }
+                    })
+                    .collect(),
+            ))
+            .append(Doc::text(format!(
+                " -> {}",
+                function.return_type.as_string(context)
+            )))
+            .append(md_namer.md_idx_to_doc(context, &function.metadata))
+            .append(Doc::text(" {")),
     )
     .append(Doc::indent(
         4,
@@ -232,7 +229,23 @@ fn block_to_doc<'a>(
     block: &Block,
 ) -> Doc {
     let block_content = &context.blocks[block.0];
-    Doc::text_line(format!("{}:", block_content.label)).append(Doc::List(
+    Doc::line(
+        Doc::text(block_content.label.to_string()).append(
+            Doc::in_parens_comma_sep(
+                block
+                    .arg_iter(context)
+                    .map(|arg_val| {
+                        Doc::text(namer.name(context, arg_val)).append(Doc::text(format!(
+                            ": {}",
+                            arg_val.get_type(context).unwrap().as_string(context)
+                        )))
+                    })
+                    .collect(),
+            )
+            .append(Doc::Text(":".to_string())),
+        ),
+    )
+    .append(Doc::List(
         block_content
             .instructions
             .iter()
@@ -276,26 +289,6 @@ fn maybe_constant_to_doc(
         constant_to_doc(context, md_namer, namer, maybe_const_val)
     } else {
         Doc::Empty
-    }
-}
-
-fn maybe_constant_phi_to_doc(
-    context: &Context,
-    md_namer: &mut MetadataNamer,
-    namer: &mut Namer,
-    caller: &Block,
-    callee: &Block,
-) -> Doc {
-    if let ValueDatum::Instruction(Instruction::Phi(pairs)) =
-        &context.values[callee.get_phi(context).0].value
-    {
-        pairs
-            .iter()
-            .find(|(block, _)| block == caller)
-            .map(|(_, phi_val)| maybe_constant_to_doc(context, md_namer, namer, phi_val))
-            .unwrap_or(Doc::Empty)
-    } else {
-        unreachable!("Phi must be an instruction.")
     }
 }
 
@@ -354,13 +347,29 @@ fn instruction_to_doc<'a>(
                         .append(md_namer.md_idx_to_doc(context, metadata)),
                     ))
             }
-            Instruction::Branch(to_block) => maybe_constant_phi_to_doc(
-                context, md_namer, namer, block, to_block,
-            )
-            .append(Doc::line(
-                Doc::text(format!("br {}", context.blocks[to_block.0].label,))
-                    .append(md_namer.md_idx_to_doc(context, metadata)),
-            )),
+            Instruction::Branch(to_block) =>
+            // Handle possibly constant block parameters
+            {
+                to_block
+                    .args
+                    .iter()
+                    .fold(Doc::Empty, |doc, param| {
+                        doc.append(maybe_constant_to_doc(context, md_namer, namer, param))
+                    })
+                    .append(Doc::line(
+                        Doc::text(format!("br {}", context.blocks[to_block.block.0].label,))
+                            .append(
+                                Doc::in_parens_comma_sep(
+                                    to_block
+                                        .args
+                                        .iter()
+                                        .map(|arg_val| Doc::text(namer.name(context, arg_val)))
+                                        .collect(),
+                                )
+                                .append(md_namer.md_idx_to_doc(context, metadata)),
+                            ),
+                    ))
+            }
             Instruction::Call(func, args) => args
                 .iter()
                 .fold(Doc::Empty, |doc, arg_val| {
@@ -400,17 +409,41 @@ fn instruction_to_doc<'a>(
                 true_block,
                 false_block,
             } => {
-                let true_label = &context.blocks[true_block.0].label;
-                let false_label = &context.blocks[false_block.0].label;
-                maybe_constant_phi_to_doc(context, md_namer, namer, block, true_block)
-                    .append(maybe_constant_to_doc(context, md_namer, namer, cond_value))
-                    .append(Doc::line(
-                        Doc::text(format!(
-                            "cbr {}, {true_label}, {false_label}",
-                            namer.name(context, cond_value),
-                        ))
-                        .append(md_namer.md_idx_to_doc(context, metadata)),
-                    ))
+                let true_label = &context.blocks[true_block.block.0].label;
+                let false_label = &context.blocks[false_block.block.0].label;
+                // Handle possibly constant block parameters
+                let doc = true_block.args.iter().fold(
+                    maybe_constant_to_doc(context, md_namer, namer, cond_value),
+                    |doc, param| doc.append(maybe_constant_to_doc(context, md_namer, namer, param)),
+                );
+                let doc = false_block.args.iter().fold(doc, |doc, param| {
+                    doc.append(maybe_constant_to_doc(context, md_namer, namer, param))
+                });
+                doc.append(Doc::line(
+                    Doc::text(format!("cbr {}", namer.name(context, cond_value),)).append(
+                        Doc::text(format!(", {true_label}")).append(
+                            Doc::in_parens_comma_sep(
+                                true_block
+                                    .args
+                                    .iter()
+                                    .map(|arg_val| Doc::text(namer.name(context, arg_val)))
+                                    .collect(),
+                            )
+                            .append(
+                                Doc::text(format!(", {false_label}")).append(
+                                    Doc::in_parens_comma_sep(
+                                        false_block
+                                            .args
+                                            .iter()
+                                            .map(|arg_val| Doc::text(namer.name(context, arg_val)))
+                                            .collect(),
+                                    )
+                                    .append(md_namer.md_idx_to_doc(context, metadata)),
+                                ),
+                            ),
+                        ),
+                    ),
+                ))
             }
             Instruction::ContractCall {
                 return_type,
@@ -584,34 +617,23 @@ fn instruction_to_doc<'a>(
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )),
+            Instruction::MemCopy {
+                dst_val,
+                src_val,
+                byte_len,
+            } => maybe_constant_to_doc(context, md_namer, namer, src_val).append(Doc::line(
+                Doc::text(format!(
+                    "mem_copy {}, {}, {}",
+                    namer.name(context, dst_val),
+                    namer.name(context, src_val),
+                    byte_len,
+                ))
+                .append(md_namer.md_idx_to_doc(context, metadata)),
+            )),
             Instruction::Nop => Doc::line(
                 Doc::text(format!("{} = nop", namer.name(context, ins_value)))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
             ),
-            Instruction::Phi(pairs) => {
-                if pairs.is_empty() {
-                    Doc::Empty
-                } else {
-                    // Name the pairs before we name the PHI instruction itself.
-                    let pairs_doc = Doc::in_parens_comma_sep(
-                        pairs
-                            .iter()
-                            .map(|(block, in_value)| {
-                                Doc::text(format!(
-                                    "{}: {}",
-                                    context.blocks[block.0].label,
-                                    namer.name(context, in_value)
-                                ))
-                            })
-                            .collect(),
-                    );
-                    Doc::line(
-                        Doc::text(format!("{} = phi", namer.name(context, ins_value)))
-                            .append(pairs_doc)
-                            .append(md_namer.md_idx_to_doc(context, metadata)),
-                    )
-                }
-            }
             Instruction::ReadRegister(reg) => Doc::line(
                 Doc::text(format!(
                     "{} = read_register {}",
@@ -643,6 +665,12 @@ fn instruction_to_doc<'a>(
                         namer.name(context, v),
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
+                ))
+            }
+            Instruction::Revert(v) => {
+                maybe_constant_to_doc(context, md_namer, namer, v).append(Doc::line(
+                    Doc::text(format!("revert {}", namer.name(context, v),))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
                 ))
             }
             Instruction::StateLoadQuadWord { load_val, key } => Doc::line(

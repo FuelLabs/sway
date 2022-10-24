@@ -1,0 +1,21 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-139A28EAD4E475CB'
+
+[[package]]
+name = 'parsing_logs'
+source = 'root'
+dependencies = [
+    'parsing_logs_test_abi',
+    'std',
+]
+
+[[package]]
+name = 'parsing_logs_test_abi'
+source = 'path+from-root-139A28EAD4E475CB'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-139A28EAD4E475CB'
+dependencies = ['core']

@@ -4,16 +4,22 @@ use crate::{
     utils::token::{desugared_op, to_ident_key, type_info_to_symbol_kind},
 };
 use sway_core::{
-    constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX},
-    parse_tree::{Literal, MethodName},
+    language::{
+        parsed::{
+            AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock,
+            Declaration, DelineatedPathExpression, Expression, ExpressionKind,
+            FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
+            IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
+            MethodApplicationExpression, MethodName, ReassignmentTarget, Scrutinee,
+            StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
+            TraitFn, TupleIndexExpression, WhileLoopExpression,
+        },
+        Literal,
+    },
     type_system::{TypeArgument, TypeParameter},
-    AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock, Declaration,
-    DelineatedPathExpression, Expression, ExpressionKind, FunctionApplicationExpression,
-    FunctionDeclaration, FunctionParameter, IfExpression, IntrinsicFunctionExpression,
-    LazyOperatorExpression, MatchExpression, MethodApplicationExpression, ReassignmentTarget,
-    Scrutinee, StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
-    TraitFn, TupleIndexExpression, TypeInfo, WhileLoopExpression,
+    TypeInfo,
 };
+use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX};
 use sway_types::{Ident, Span, Spanned};
 
 pub fn traverse_node(node: &AstNode, tokens: &TokenMap) {
@@ -205,7 +211,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 ),
             );
 
-            for type_param in &impl_trait.type_parameters {
+            for type_param in &impl_trait.impl_type_parameters {
                 collect_type_parameter(
                     type_param,
                     tokens,
@@ -233,7 +239,7 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
                 }
             }
 
-            for type_param in &impl_self.type_parameters {
+            for type_param in &impl_self.impl_type_parameters {
                 collect_type_parameter(
                     type_param,
                     tokens,
@@ -296,6 +302,9 @@ fn handle_declaration(declaration: &Declaration, tokens: &TokenMap) {
 fn handle_expression(expression: &Expression, tokens: &TokenMap) {
     let span = &expression.span;
     match &expression.kind {
+        ExpressionKind::Error(_part_spans) => {
+            // FIXME(Centril): Left for @JoshuaBatty to use.
+        }
         ExpressionKind::Literal(value) => {
             let symbol_kind = literal_to_symbol_kind(value);
 
@@ -383,23 +392,13 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 );
             }
 
-            if let (
-                TypeInfo::Custom {
-                    name,
-                    type_arguments,
-                },
-                ..,
-            ) = &call_path_binding.inner.suffix
-            {
-                let token = Token::from_parsed(
-                    AstToken::Expression(expression.clone()),
-                    SymbolKind::Struct,
-                );
-                tokens.insert(to_ident_key(name), token.clone());
-                if let Some(args) = type_arguments {
-                    collect_type_args(args, &token, tokens);
-                }
-            }
+            let name = &call_path_binding.inner.suffix;
+            let type_arguments = &call_path_binding.type_arguments;
+
+            let token =
+                Token::from_parsed(AstToken::Expression(expression.clone()), SymbolKind::Struct);
+            tokens.insert(to_ident_key(name), token.clone());
+            collect_type_args(type_arguments, &token, tokens);
 
             for field in fields {
                 tokens.insert(
@@ -567,7 +566,7 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
             body, condition, ..
         }) => handle_while_loop(body, condition, tokens),
         // TODO: collect these tokens as keywords once the compiler returns the span
-        ExpressionKind::Break | ExpressionKind::Continue => (),
+        ExpressionKind::Break | ExpressionKind::Continue => {}
         ExpressionKind::Reassignment(reassignment) => {
             handle_expression(&reassignment.rhs, tokens);
 
@@ -607,7 +606,7 @@ fn literal_to_symbol_kind(value: &Literal) -> SymbolKind {
         | Literal::U64(..)
         | Literal::Numeric(..) => SymbolKind::NumericLiteral,
         Literal::String(..) => SymbolKind::StringLiteral,
-        Literal::Byte(..) | Literal::B256(..) => SymbolKind::ByteLiteral,
+        Literal::B256(..) => SymbolKind::ByteLiteral,
         Literal::Boolean(..) => SymbolKind::BoolLiteral,
     }
 }
@@ -703,17 +702,13 @@ fn collect_type_info_token(
     }
 
     match type_info {
-        TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::Byte | TypeInfo::B256 => {
+        TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::B256 => {
             if let Some(type_span) = type_span {
                 tokens.insert(to_ident_key(&Ident::new(type_span)), token);
             }
         }
         TypeInfo::Tuple(args) => {
             collect_type_args(args, &token, tokens);
-        }
-        TypeInfo::Ref(type_id, span) => {
-            token.type_def = Some(TypeDefinition::TypeId(*type_id));
-            tokens.insert(to_ident_key(&Ident::new(span.clone())), token);
         }
         TypeInfo::Custom {
             name,
@@ -736,12 +731,10 @@ fn collect_function_parameter(parameter: &FunctionParameter, tokens: &TokenMap) 
     );
     tokens.insert(to_ident_key(&parameter.name), token.clone());
 
-    let type_info = sway_core::type_system::look_up_type_id(parameter.type_id);
-
     collect_type_info_token(
         tokens,
         &token,
-        &type_info,
+        &parameter.type_info,
         Some(parameter.type_span.clone()),
         None,
     );

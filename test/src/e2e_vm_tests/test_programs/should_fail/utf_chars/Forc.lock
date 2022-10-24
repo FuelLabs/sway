@@ -1,4 +1,3 @@
 [[package]]
 name = 'utf_chars'
 source = 'root'
-dependencies = []

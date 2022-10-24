@@ -1,6 +1,7 @@
-use crate::{Parse, ParseErrorKind, ParseResult, Parser, Peek, Peeker};
+use crate::{Parse, ParseResult, Parser, Peek, Peeker};
 
 use sway_ast::keywords::*;
+use sway_error::parser_error::ParseErrorKind;
 use sway_types::Spanned;
 
 fn peek_keyword<T: Keyword>(peeker: Peeker<'_>) -> Option<T> {

@@ -4,8 +4,7 @@
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use forc_util::init_tracing_subscriber;
-use forc_util::println_green;
+use forc_tracing::{init_tracing_subscriber, println_green};
 use serde::Deserialize;
 use std::{
     fs::{self, File},
@@ -70,7 +69,7 @@ fn clean() -> Result<()> {
 }
 
 async fn run(app: App) -> Result<()> {
-    init_tracing_subscriber(None);
+    init_tracing_subscriber(Default::default());
     let App { port, .. } = app;
     let releases = get_github_releases().await?;
     let release = releases
@@ -159,7 +158,10 @@ pub(crate) mod path {
     use std::path::PathBuf;
 
     pub fn explorer_directory() -> PathBuf {
-        forc_util::user_forc_directory().join("explorer")
+        dirs::home_dir()
+            .expect("unable to find the user home directory")
+            .join(".forc")
+            .join("explorer")
     }
 
     pub fn web_app() -> PathBuf {

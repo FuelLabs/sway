@@ -10,7 +10,10 @@ use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
-use std::{fmt::Write, fs};
+use std::{fmt::Write, fs, str::FromStr};
+
+pub const NODE_URL: &str = "http://127.0.0.1:4000";
+pub const SECRET_KEY: &str = "de97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
 
 pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
     // build the contract
@@ -27,9 +30,9 @@ pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
                 "{}/src/e2e_vm_tests/test_programs/{}",
                 manifest_dir, file_name
             )),
-            silent_mode: !verbose,
+            terse_mode: !verbose,
             locked,
-            unsigned: true,
+            signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
             ..Default::default()
         }))
         .unwrap()
@@ -57,11 +60,11 @@ pub(crate) fn runs_on_node(
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
         )),
-        node_url: Some("http://127.0.0.1:4000".into()),
-        silent_mode: !verbose,
+        node_url: Some(NODE_URL.to_string()),
+        terse_mode: !verbose,
         contract: Some(contracts),
         locked,
-        unsigned: true,
+        signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
         ..Default::default()
     };
     tokio::runtime::Runtime::new()
@@ -150,7 +153,7 @@ pub(crate) fn compile_to_bytes_verbose(
             manifest_dir, file_name
         )),
         locked,
-        silent_mode: !verbose,
+        terse_mode: !verbose,
         ..Default::default()
     });
 
@@ -179,10 +182,10 @@ pub(crate) fn test_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> 
         manifest_dir, file_name, "json_abi_output.json"
     );
     if fs::metadata(oracle_path.clone()).is_err() {
-        bail!("JSON ABI flat oracle file does not exist for this test.");
+        bail!("JSON ABI oracle file does not exist for this test.");
     }
     if fs::metadata(output_path.clone()).is_err() {
-        bail!("JSON ABI flat output file does not exist for this test.");
+        bail!("JSON ABI output file does not exist for this test.");
     }
     let oracle_contents =
         fs::read_to_string(oracle_path).expect("Something went wrong reading the file.");
@@ -195,7 +198,7 @@ pub(crate) fn test_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> 
 }
 
 fn emit_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> {
-    tracing::info!("   ABI gen flat {}", file_name);
+    tracing::info!("   ABI gen {}", file_name);
     let json_abi = serde_json::json!(compiled.json_abi_program);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let file = std::fs::File::create(format!(

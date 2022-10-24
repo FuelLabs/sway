@@ -1,4 +1,5 @@
 use clap::Parser;
+use fuel_crypto::SecretKey;
 
 /// Run script project.
 /// Crafts a script transaction then sends it to a running node.
@@ -59,17 +60,13 @@ pub struct RunCommand {
     #[clap(short = 'g', long)]
     pub debug_outfile: Option<String>,
 
-    /// Silent mode. Don't output any warnings or errors to the command line.
-    #[clap(long = "silent", short = 's')]
-    pub silent_mode: bool,
+    /// Terse mode. Limited warning and error output.
+    #[clap(long = "terse", short = 't')]
+    pub terse_mode: bool,
 
     /// Output the time elapsed over each part of the compilation process.
     #[clap(long)]
     pub time_phases: bool,
-
-    /// Include logged types in the JSON ABI.
-    #[clap(long)]
-    pub generate_logged_types: bool,
 
     /// Pretty-print the outputs from the node.
     #[clap(long = "pretty-print", short = 'r')]
@@ -117,4 +114,7 @@ pub struct RunCommand {
     /// Do not sign the transaction
     #[clap(long)]
     pub unsigned: bool,
+
+    /// Set the key to be used for signing.
+    pub signing_key: Option<SecretKey>,
 }

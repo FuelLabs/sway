@@ -1,0 +1,14 @@
+script {
+// check: fn main
+    fn main() -> () {
+        local mut ptr b256 addr_a = const b256 0x1111111111111111111111111111111111111111111111111111111111111111
+        local mut ptr b256 addr_b
+
+        entry():
+        v0 = get_ptr ptr b256 addr_a, ptr b256, 0
+        v1 = get_ptr ptr b256 addr_b, ptr b256, 0
+        mem_copy v1, v0, 32
+        v0 = const unit ()
+        ret () v0
+    }
+}

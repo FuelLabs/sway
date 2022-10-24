@@ -1,5 +1,6 @@
 use crate::{
     formatter::{FormattedCode, FormatterError},
+    parse::{lex, parse_file},
     utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use ropey::Rope;
@@ -14,7 +15,6 @@ use sway_ast::{
     token::{Comment, CommentedTokenTree, CommentedTree},
     Module,
 };
-use sway_parse::lex_commented;
 use sway_types::Spanned;
 
 use super::byte_span;
@@ -46,12 +46,11 @@ impl CommentRange for CommentMap {
 /// Get the CommentedTokenStream and collect the spans -> Comment mapping for the input source
 /// code.
 pub fn comment_map_from_src(input: Arc<str>) -> Result<CommentMap, FormatterError> {
+    // Pass the input through the lexer.
+    let tts = lex(&input)?;
+    let tts = tts.token_trees().iter();
+
     let mut comment_map = BTreeMap::new();
-
-    // pass the input through lexer
-    let commented_token_stream = lex_commented(&input, 0, input.len(), None)?;
-    let tts = commented_token_stream.token_trees().iter();
-
     for comment in tts {
         collect_comments_from_token_stream(comment, &mut comment_map);
     }
@@ -94,7 +93,7 @@ pub fn handle_comments(
     let comment_map = comment_map_from_src(unformatted_input.clone())?;
 
     // After the formatting existing items should be the same (type of the item) but their spans will be changed since we applied formatting to them.
-    let formatted_module = sway_parse::parse_file_standalone(formatted_input, path)?;
+    let formatted_module = parse_file(formatted_input, path)?;
 
     // Actually find & insert the comments.
     add_comments(
@@ -235,7 +234,7 @@ fn insert_after_span(
     let mut pre_module_comment = false;
     for comment_with_context in iter {
         let (comment_value, comment_context) = comment_with_context;
-        if comment_value.span.start() == 0 {
+        if comment_value.span.start() == from.start {
             pre_module_comment = true;
         }
         write!(
@@ -245,16 +244,20 @@ fn insert_after_span(
             &format_comment(comment_value)
         )?;
     }
-    if pre_module_comment {
-        writeln!(comment_str)?;
-    }
     let mut src_rope = Rope::from_str(formatted_code);
     // If the position we are going to be inserting from + 1 is a \n we are moving that \n after
     // this comment so if that is the case we are inserting after the \n
     if formatted_code.chars().nth(from.end + offset + 1) == Some('\n') {
         offset += 1;
     }
-    src_rope.insert(from.end + offset, &comment_str);
+
+    if pre_module_comment {
+        writeln!(comment_str)?;
+
+        src_rope.insert(from.end + offset, comment_str.trim_start());
+    } else {
+        src_rope.insert(from.end + offset, &comment_str);
+    }
     formatted_code.clear();
     formatted_code.push_str(&src_rope.to_string());
     Ok(comment_str.len())

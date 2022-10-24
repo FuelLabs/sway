@@ -115,7 +115,7 @@ pub(super) fn run(filter_regex: Option<&regex::Regex>) {
                 .expect("there were no errors, so there should be a program");
 
             // Compile to IR.
-            let mut ir = compile_program(typed_program)
+            let ir = compile_program(typed_program)
                 .unwrap_or_else(|e| {
                     panic!("Failed to compile test {}:\n{e}", path.display());
                 })
@@ -147,30 +147,15 @@ pub(super) fn run(filter_regex: Option<&regex::Regex>) {
             };
 
             if let Some(asm_checker) = opt_asm_checker {
-                // Compile to ASM. Need to inline function calls beforehand.
-                let entry_point_functions: Vec<::sway_ir::Function> = ir
-                    .functions
-                    .iter()
-                    .filter_map(|(idx, fc)| {
-                        if fc.name == "main" || fc.selector.is_some() {
-                            Some(::sway_ir::function::Function(idx))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-
-                for function in entry_point_functions {
-                    assert!(
-                        sway_ir::optimize::inline_all_function_calls(&mut ir, &function).is_ok()
-                    );
-                }
-
+                // Compile to ASM.
                 let asm_result = compile_ir_to_asm(&ir, None);
-                assert!(
-                    asm_result.is_ok(),
-                    "Errors when compiling {test_file_name} IR to ASM."
-                );
+                if !asm_result.is_ok() {
+                    println!("Errors when compiling {test_file_name} IR to ASM:\n");
+                    for e in asm_result.errors {
+                        println!("{e}\n");
+                    }
+                    panic!();
+                };
 
                 let asm_output = asm_result
                     .value
@@ -250,7 +235,7 @@ fn compile_core() -> namespace::Module {
     let check_cmd = forc::cli::CheckCommand {
         path: Some(libcore_root_dir),
         offline_mode: true,
-        silent_mode: true,
+        terse_mode: true,
         locked: false,
     };
 

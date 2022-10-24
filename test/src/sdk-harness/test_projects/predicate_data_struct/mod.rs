@@ -146,7 +146,7 @@ fn encode_struct(predicate_struct: Validation) -> Vec<u8> {
     let total_complete = Token::U64(predicate_struct.total_complete);
     let token_struct: Vec<Token> = vec![has_account, total_complete];
     let predicate_data = ABIEncoder::encode(&token_struct).unwrap();
-    predicate_data
+    predicate_data.resolve(0)
 }
 
 #[tokio::test]

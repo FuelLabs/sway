@@ -2,6 +2,4 @@ script;
 
 struct S {}
 
-fn main() {
-    
-}
+fn main() {}

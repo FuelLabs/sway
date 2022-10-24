@@ -1,10 +1,14 @@
-use crate::priv_prelude::*;
+use crate::{priv_prelude::*, PathExprSegment};
 
 pub mod asm;
 pub mod op_code;
 
 #[derive(Clone, Debug)]
 pub enum Expr {
+    /// A malformed expression.
+    ///
+    /// Used for parser recovery when we cannot form a more specific node.
+    Error(Box<[Span]>),
     Path(PathExpr),
     Literal(Literal),
     AbiCast {
@@ -46,7 +50,7 @@ pub enum Expr {
     MethodCall {
         target: Box<Expr>,
         dot_token: DotToken,
-        name: Ident,
+        path_seg: PathExprSegment,
         contract_args_opt: Option<Braces<Punctuated<ExprStructField, CommaToken>>>,
         args: Parens<Punctuated<Expr, CommaToken>>,
     },
@@ -179,6 +183,7 @@ pub enum Expr {
 impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
+            Expr::Error(spans) => spans.iter().cloned().reduce(Span::join).unwrap(),
             Expr::Path(path_expr) => path_expr.span(),
             Expr::Literal(literal) => literal.span(),
             Expr::AbiCast { abi_token, args } => Span::join(abi_token.span(), args.span()),

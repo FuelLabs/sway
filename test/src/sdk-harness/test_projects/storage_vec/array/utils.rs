@@ -24,7 +24,7 @@ pub mod setup {
         .await
         .unwrap();
 
-        let instance = MyContractBuilder::new(id.to_string(), wallet).build();
+        let instance = MyContract::new(id.to_string(), wallet);
 
         (instance, id.into())
     }
@@ -34,23 +34,36 @@ pub mod wrappers {
     use super::*;
 
     pub async fn push(instance: &MyContract, value: [u8; 3]) {
-        instance.array_push(value).call().await.unwrap();
+        instance.methods().array_push(value).call().await.unwrap();
     }
 
     pub async fn get(instance: &MyContract, index: u64) -> [u8; 3] {
-        instance.array_get(index).call().await.unwrap().value
+        instance
+            .methods()
+            .array_get(index)
+            .call()
+            .await
+            .unwrap()
+            .value
     }
 
     pub async fn pop(instance: &MyContract) -> [u8; 3] {
-        instance.array_pop().call().await.unwrap().value
+        instance.methods().array_pop().call().await.unwrap().value
     }
 
     pub async fn remove(instance: &MyContract, index: u64) -> [u8; 3] {
-        instance.array_remove(index).call().await.unwrap().value
+        instance
+            .methods()
+            .array_remove(index)
+            .call()
+            .await
+            .unwrap()
+            .value
     }
 
     pub async fn swap_remove(instance: &MyContract, index: u64) -> [u8; 3] {
         instance
+            .methods()
             .array_swap_remove(index)
             .call()
             .await
@@ -59,22 +72,38 @@ pub mod wrappers {
     }
 
     pub async fn set(instance: &MyContract, index: u64, value: [u8; 3]) {
-        instance.array_set(index, value).call().await.unwrap();
+        instance
+            .methods()
+            .array_set(index, value)
+            .call()
+            .await
+            .unwrap();
     }
 
     pub async fn insert(instance: &MyContract, index: u64, value: [u8; 3]) {
-        instance.array_insert(index, value).call().await.unwrap();
+        instance
+            .methods()
+            .array_insert(index, value)
+            .call()
+            .await
+            .unwrap();
     }
 
     pub async fn len(instance: &MyContract) -> u64 {
-        instance.array_len().call().await.unwrap().value
+        instance.methods().array_len().call().await.unwrap().value
     }
 
     pub async fn is_empty(instance: &MyContract) -> bool {
-        instance.array_is_empty().call().await.unwrap().value
+        instance
+            .methods()
+            .array_is_empty()
+            .call()
+            .await
+            .unwrap()
+            .value
     }
 
     pub async fn clear(instance: &MyContract) {
-        instance.array_clear().call().await.unwrap();
+        instance.methods().array_clear().call().await.unwrap();
     }
 }

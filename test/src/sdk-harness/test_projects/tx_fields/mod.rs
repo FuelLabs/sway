@@ -39,7 +39,7 @@ async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
     )
     .await
     .unwrap();
-    let instance = TxContractTestBuilder::new(contract_id.to_string(), wallet.clone()).build();
+    let instance = TxContractTest::new(contract_id.to_string(), wallet.clone());
 
     (instance, contract_id.into(), wallet)
 }
@@ -114,10 +114,18 @@ mod tx {
     async fn can_get_tx_type() {
         let (contract_instance, _, _) = get_contracts().await;
 
-        let result = contract_instance.get_tx_type().call().await.unwrap();
+        let result = contract_instance
+            .methods()
+            .get_tx_type()
+            .call()
+            .await
+            .unwrap();
         // Script transactions are of type = 0
         assert_eq!(result.value, Transaction::Script());
     }
+
+
+
 
     #[tokio::test]
     async fn can_get_gas_price() {
@@ -125,11 +133,13 @@ mod tx {
         let gas_price = 3;
 
         let result = contract_instance
+            .methods()
             .get_tx_gas_price()
             .tx_params(TxParameters::new(Some(gas_price), None, None))
             .call()
             .await
             .unwrap();
+
         assert_eq!(result.value, gas_price);
     }
 
@@ -139,11 +149,13 @@ mod tx {
         let gas_limit = 420301;
 
         let result = contract_instance
-            .get_tx_gas_limit()
-            .tx_params(TxParameters::new(None, Some(gas_limit), None))
-            .call()
-            .await
-            .unwrap();
+        .methods()
+        .get_tx_gas_limit()
+        .tx_params(TxParameters::new(None, Some(gas_limit), None))
+        .call()
+        .await
+        .unwrap();
+
         assert_eq!(result.value, gas_limit);
     }
 
@@ -229,6 +241,7 @@ mod tx {
         let (contract_instance, _, _) = get_contracts().await;
 
         let result = contract_instance
+            .methods()
             .get_tx_witness_pointer(0)
             .call()
             .await
@@ -241,6 +254,7 @@ mod tx {
         let (contract_instance, _, _) = get_contracts().await;
 
         let result = contract_instance
+            .methods()
             .get_tx_witness_data_length(0)
             .call()
             .await
@@ -281,6 +295,7 @@ mod tx {
                 .unwrap();
 
         let result = contract_instance
+            .methods()
             .get_tx_receipts_root()
             .call()
             .await
@@ -296,6 +311,7 @@ mod tx {
             + fuel_vm::fuel_tx::consts::TRANSACTION_SCRIPT_FIXED_SIZE;
 
         let result = contract_instance
+            .methods()
             .get_tx_script_start_pointer()
             .call()
             .await
@@ -338,7 +354,7 @@ mod tx {
         let script = call_handler.get_call_execution_script().await.unwrap();
         let tx_id = script.tx.id();
 
-        let result = contract_instance.get_tx_id().call().await.unwrap();
+        let result = contract_instance.methods().get_tx_id().call().await.unwrap();
 
         let byte_array: [u8; 32] = tx_id.into();
 
@@ -349,6 +365,7 @@ mod tx {
     async fn can_get_get_tx_script_data_start_pointer() {
         let (contract_instance, _, _) = get_contracts().await;
         let result = contract_instance
+            .methods()
             .get_tx_script_data_start_pointer()
             .call()
             .await
@@ -372,6 +389,7 @@ mod inputs {
                 let (contract_instance, _, _) = get_contracts().await;
                 let call_params = CallParameters::default();
                 contract_instance
+                    .methods()
                     .get_tx_input_predicate_data_pointer(0)
                     .call_params(call_params)
                     .call()
@@ -388,10 +406,10 @@ mod inputs {
         async fn can_get_input_type() {
             let (contract_instance, _, _) = get_contracts().await;
 
-            let result = contract_instance.get_input_type(0).call().await.unwrap();
+            let result = contract_instance.methods().get_input_type(0).call().await.unwrap();
             assert_eq!(result.value, Input::Contract());
 
-            let result = contract_instance.get_input_type(1).call().await.unwrap();
+            let result = contract_instance.methods().get_input_type(1).call().await.unwrap();
             assert_eq!(result.value, Input::Message());
         }
 
@@ -399,7 +417,7 @@ mod inputs {
         async fn can_get_tx_input_amount() {
             let default_amount = 1000000000;
             let (contract_instance, _, _) = get_contracts().await;
-            let result = contract_instance.get_input_amount(1).call().await.unwrap();
+            let result = contract_instance.methods().get_input_amount(1).call().await.unwrap();
 
             assert_eq!(result.value, default_amount);
         }
@@ -408,7 +426,7 @@ mod inputs {
         async fn can_get_tx_input_coin_owner() {
             let (contract_instance, _, wallet) = get_contracts().await;
 
-            let owner_result = contract_instance.get_input_owner(1).call().await.unwrap();
+            let owner_result = contract_instance.methods().get_input_owner(1).call().await.unwrap();
 
             assert_eq!(owner_result.value, wallet.address().into());
         }
@@ -422,7 +440,7 @@ mod inputs {
             let predicate_bytes: [u8; 32] = predicate_bytecode.try_into().unwrap();
 
             // Add predicate coin to inputs and call contract
-            let call_handler = contract_instance.get_input_predicate(2);
+            let call_handler = contract_instance.methods().get_input_predicate(2);
             let mut script = call_handler.get_call_execution_script().await.unwrap();
             if let FuelTransaction::Script { inputs, .. } = &mut script.tx {
                 inputs.push(predicate_coin)
@@ -441,6 +459,7 @@ mod inputs {
             async fn can_get_input_message_msg_id() -> Result<(), Error> {
                 let (contract_instance, _, wallet) = get_contracts().await;
                 let result = contract_instance
+                    .methods()
                     .get_input_message_msg_id(1)
                     .call()
                     .await
@@ -457,6 +476,7 @@ mod inputs {
             async fn can_get_input_message_sender() -> Result<(), Error> {
                 let (contract_instance, _, wallet) = get_contracts().await;
                 let result = contract_instance
+                    .methods()
                     .get_input_message_sender(1)
                     .call()
                     .await
@@ -472,6 +492,7 @@ mod inputs {
             async fn can_get_input_message_recipient() -> Result<(), Error> {
                 let (contract_instance, _, wallet) = get_contracts().await;
                 let result = contract_instance
+                    .methods()
                     .get_input_message_recipient(1)
                     .call()
                     .await
@@ -488,6 +509,7 @@ mod inputs {
             async fn can_get_input_message_nonce() -> Result<(), Error> {
                 let (contract_instance, _, wallet) = get_contracts().await;
                 let result = contract_instance
+                    .methods()
                     .get_input_message_nonce(1)
                     .call()
                     .await
@@ -502,6 +524,7 @@ mod inputs {
             async fn can_get_input_message_witness_index() -> Result<(), Error> {
                 let (contract_instance, _, wallet) = get_contracts().await;
                 let result = contract_instance
+                    .methods()
                     .get_input_witness_index(1)
                     .call()
                     .await
@@ -515,6 +538,7 @@ mod inputs {
             async fn can_get_input_message_data_length() {
                 let (contract_instance, _, _) = get_contracts().await;
                 let result = contract_instance
+                    .methods()
                     .get_input_message_data_length(1)
                     .call()
                     .await
@@ -526,6 +550,7 @@ mod inputs {
             async fn can_get_input_message_predicate_length() {
                 let (contract_instance, _, _) = get_contracts().await;
                 let result = contract_instance
+                    .methods()
                     .get_input_predicate_length(1)
                     .call()
                     .await
@@ -537,6 +562,7 @@ mod inputs {
             async fn can_get_input_message_predicate_data_length() {
                 let (contract_instance, _, _) = get_contracts().await;
                 let result = contract_instance
+                    .methods()
                     .get_input_predicate_data_length(1)
                     .call()
                     .await
@@ -548,6 +574,7 @@ mod inputs {
             async fn can_get_input_message_data() -> Result<(), Error> {
                 let (contract_instance, _, wallet) = get_contracts().await;
                 let result = contract_instance
+                    .methods()
                     .get_input_message_data(1, 0)
                     .call()
                     .await
@@ -568,7 +595,9 @@ mod inputs {
 
                 // Add predicate coin to inputs and call contract
                 // TODO: Fix this, failing with "enough coins could not be found"
-                let call_handler = contract_instance.get_input_predicate(1);
+                let call_handler = contract_instance
+                    .methods()
+                    .get_input_predicate(1);
                 let mut script = call_handler.get_call_execution_script().await.unwrap();
                 if let FuelTransaction::Script { inputs, .. } = &mut script.tx {
                     inputs.push(predicate_coin)
@@ -591,7 +620,7 @@ mod outputs {
         #[tokio::test]
         async fn can_get_tx_output_type() {
             let (contract_instance, _, _) = get_contracts().await;
-            let result = contract_instance.get_output_type(0).call().await.unwrap();
+            let result = contract_instance.methods().get_output_type(0).call().await.unwrap();
             assert_eq!(result.value, Output::Contract());
         }
 
@@ -610,6 +639,7 @@ mod outputs {
             async fn fails_to_get_amount_for_output_contract() {
                 let (contract_instance, _, _) = get_contracts().await;
                 contract_instance
+                    .methods()
                     .get_tx_output_amount(0)
                     .call()
                     .await

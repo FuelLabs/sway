@@ -41,7 +41,7 @@ impl<T, E> Result<T, E> {
     }
 
     /// Returns the contained [`Ok`] value, consuming the `self` value.
-    /// 
+    ///
     /// Because this function may revert, its use is generally discouraged.
     /// Instead, prefer to use pattern matching and handle the [`Err`]
     /// case explicitly.

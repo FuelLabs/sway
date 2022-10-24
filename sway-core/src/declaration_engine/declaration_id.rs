@@ -4,7 +4,10 @@ use sway_types::{Span, Spanned};
 
 use crate::type_system::{CopyTypes, TypeMapping};
 
-use super::declaration_engine::de_look_up_decl_id;
+use super::{
+    de_insert_function,
+    declaration_engine::{de_look_up_decl_id, de_replace_decl_id},
+};
 
 /// An ID used to refer to an item in the [DeclarationEngine](super::declaration_engine::DeclarationEngine)
 #[derive(Debug, Eq)]
@@ -52,13 +55,26 @@ impl Spanned for DeclarationId {
 }
 
 impl CopyTypes for DeclarationId {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        de_look_up_decl_id(self.clone()).copy_types(type_mapping)
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+        let mut decl = de_look_up_decl_id(self.clone());
+        decl.copy_types(type_mapping);
+        de_replace_decl_id(self.clone(), decl);
     }
 }
 
 impl DeclarationId {
     pub(super) fn new(index: usize, span: Span) -> DeclarationId {
         DeclarationId(index, span)
+    }
+
+    pub(crate) fn replace_id(&mut self, index: usize) {
+        self.0 = index;
+    }
+
+    pub(crate) fn copy_and_insert_new(&self, type_mapping: &TypeMapping) -> DeclarationId {
+        let mut decl = de_look_up_decl_id(self.clone());
+        decl.copy_types(type_mapping);
+        let function = decl.expect_function(&self.1).unwrap();
+        de_insert_function(function)
     }
 }
