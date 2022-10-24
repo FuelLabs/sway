@@ -1,50 +1,14 @@
 # Variables
 
-Sway has two types of variables:
+A variable is a way to reference some information by a specific name and it can take the form of a variety of [data structures](../built-ins/index.md).
 
-- [immutable](#immutable)
+In Sway there are two states that a variable can take:
+
+- immutable
   - Can be read but cannot be changed after it has been declared
-- [mutable](#mutable)
+- mutable
   - Can be read and have its value changed but only if the type is the same
 
-By default all variables in Sway are immutable unless declared as mutable. This is one of the ways how Sway encourages safe programming, and many modern languages have the same default.
+By default all variables in Sway are immutable unless declared as mutable through the use of the `mut` keyword. This is one of the ways how Sway encourages safe programming, and many modern languages have the same default.
 
-## Declaring a Variable
-
-### Immutable
-
-Let's declare a variable that cannot be changed and it has the value of `5`.
-
-```sway
-{{#include ../../../code/language/variables/src/lib.sw:immutable}}
-```
-
-By default `foo` is an immutable `u64` (more info [here](../built-ins/index.md#primitive-types)) with the value of `5`. This means that we can pass `foo` around and its value can be read however it cannot have its value changed from `5` to any other number.
-
-### Mutable
-
-This time we want to declare a variable that can have its value changed. Let's also give it the value of `5` and then change it to `6`.
-
-```sway
-{{#include ../../../code/language/variables/src/lib.sw:mutable}}
-```
-
-Using the `mut` keyword marks the variable `foo` as mutable which means we can change its value to another value of the same type, in this case from `5` to `6`.
-
-## Shadowing
-
-After a variable has been declared its type and value can be changed by declaring the variable again.
-
-```sway
-{{#include ../../../code/language/variables/src/lib.sw:reassignment}}
-```
-
-Initially `foo` is declared as an immutable `u64` however it gets changed to be an immutable `str[4]`. After `foo` has been changed it will continue to be a string.
-
-Another way to shadow a variable name is by using block scope to contain the variable for a shorter duration than the outer scope.
-
-```sway
-{{#include ../../../code/language/variables/src/lib.sw:shadowing}}
-```
-
-The `foo` defined inside `{}` only exists in that scope therefore the original `foo` with the value of `5` maintains its value.
+In the proceeding sections we'll take a look at two keywords that are used to instantiate information ([let](let.md) & [const](const.md)) and a way to temporarily reuse a variable name without affecting the original instantation through [variable shadowing](variable-shadowing.md).
