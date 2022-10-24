@@ -8,9 +8,16 @@ use sway_core::transform::{AttributeKind, AttributesMap};
 
 pub(crate) struct HTMLString(pub(crate) String);
 pub(crate) type RenderedDocumentation = Vec<RenderedDocument>;
-// there's probably a better way to do this, it's the type for the title
-// the path as a string, and the file name for the all doc
-type AllDoc = Vec<(String, (String, String))>;
+enum ItemType {
+    Struct,
+    Enum,
+    Trait,
+    Abi,
+    Storage,
+    Function,
+    Constant,
+}
+type AllDoc = Vec<(ItemType, (String, String))>;
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
     pub(crate) module_prefix: Vec<String>,
@@ -27,16 +34,14 @@ impl RenderedDocument {
             let module = if module_prefix.last().is_some() {
                 module_prefix.last().unwrap().to_string()
             } else {
-                // TODO: maybe there is a way to get the name of the root
-                // in doc.rs during module_prefix gathering
-                "root".to_string()
+                project_name.to_string()
             };
             let file_name = doc.file_name();
             let decl_ty = doc.desc_ty.as_str().to_string();
             let rendered_content = match &doc.desc_ty {
                 DescriptorType::Struct(struct_decl) => {
                     all_doc.push((
-                        "Structs".to_string(),
+                        ItemType::Struct,
                         (
                             format!("{}::{}", &module, &struct_decl.name),
                             file_name.clone(),
@@ -46,7 +51,7 @@ impl RenderedDocument {
                 }
                 DescriptorType::Enum(enum_decl) => {
                     all_doc.push((
-                        "Enums".to_string(),
+                        ItemType::Enum,
                         (
                             format!("{}::{}", &module, &enum_decl.name),
                             file_name.clone(),
@@ -56,7 +61,7 @@ impl RenderedDocument {
                 }
                 DescriptorType::Trait(trait_decl) => {
                     all_doc.push((
-                        "Traits".to_string(),
+                        ItemType::Trait,
                         (
                             format!("{}::{}", &module, &trait_decl.name),
                             file_name.clone(),
@@ -66,7 +71,7 @@ impl RenderedDocument {
                 }
                 DescriptorType::Abi(abi_decl) => {
                     all_doc.push((
-                        "Abi".to_string(),
+                        ItemType::Abi,
                         (
                             format!("{}::{}", &module, &abi_decl.name),
                             file_name.clone(),
@@ -76,24 +81,25 @@ impl RenderedDocument {
                 }
                 DescriptorType::Storage(storage_decl) => {
                     all_doc.push((
-                        "Storage".to_string(),
+                        ItemType::Storage,
                         (format!("{}::ContractStorage", &module), file_name.clone()),
                     ));
                     storage_decl.render(module, decl_ty)
                 }
+                // TODO: Figure out how to represent impl traits
                 DescriptorType::ImplTraitDesc(impl_trait_decl) => {
                     impl_trait_decl.render(module, decl_ty)
                 }
                 DescriptorType::Function(fn_decl) => {
                     all_doc.push((
-                        "Functions".to_string(),
+                        ItemType::Function,
                         (format!("{}::{}", &module, &fn_decl.name), file_name.clone()),
                     ));
                     fn_decl.render(module, decl_ty)
                 }
                 DescriptorType::Const(const_decl) => {
                     all_doc.push((
-                        "Constants".to_string(),
+                        ItemType::Constant,
                         (
                             format!("{}::{}", &module, &const_decl.name),
                             file_name.clone(),
@@ -130,7 +136,7 @@ fn page_from(rendered_content: Box<dyn RenderBox>) -> String {
 }
 
 /// Basic HTML header component
-fn html_head(module: String, decl_ty: String, decl_name: String) -> Box<dyn RenderBox> {
+fn html_head(location: String, decl_ty: String, decl_name: String) -> Box<dyn RenderBox> {
     box_html! {
         head {
             meta(charset="utf-8");
@@ -138,10 +144,10 @@ fn html_head(module: String, decl_ty: String, decl_name: String) -> Box<dyn Rend
             meta(name="generator", content="forcdoc");
             meta(
                 name="description",
-                content=format!("API documentation for the Sway `{decl_name}` {decl_ty} in crate `{module}`.")
+                content=format!("API documentation for the Sway `{decl_name}` {decl_ty} in `{location}`.")
             );
             meta(name="keywords", content=format!("sway, swaylang, sway-lang, {decl_name}"));
-            title: format!("{decl_name} in {module} - Sway");
+            title: format!("{decl_name} in {location} - Sway");
             // TODO: Add links for CSS & Fonts
         }
     }
@@ -185,6 +191,27 @@ fn crate_index() -> Box<dyn RenderBox> {
 }
 // crate level, all items belonging to a crate
 fn all_items(crate_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
+    // TODO: find a better way to do this
+    //
+    // we need to have a finalized list for the all doc
+    let mut struct_items: Vec<(String, String)> = Vec::new();
+    let mut enum_items: Vec<(String, String)> = Vec::new();
+    let mut trait_items: Vec<(String, String)> = Vec::new();
+    let mut abi_items: Vec<(String, String)> = Vec::new();
+    let mut storage_items: Vec<(String, String)> = Vec::new();
+    let mut fn_items: Vec<(String, String)> = Vec::new();
+    let mut const_items: Vec<(String, String)> = Vec::new();
+    for (ty, (path_str, file_name)) in all_doc {
+        match ty {
+            ItemType::Struct => struct_items.push((path_str.clone(), file_name.clone())),
+            ItemType::Enum => enum_items.push((path_str.clone(), file_name.clone())),
+            ItemType::Trait => trait_items.push((path_str.clone(), file_name.clone())),
+            ItemType::Abi => abi_items.push((path_str.clone(), file_name.clone())),
+            ItemType::Storage => storage_items.push((path_str.clone(), file_name.clone())),
+            ItemType::Function => fn_items.push((path_str.clone(), file_name.clone())),
+            ItemType::Constant => const_items.push((path_str.clone(), file_name.clone())),
+        }
+    }
     box_html! {
         head {
             meta(charset="utf-8");
@@ -199,6 +226,44 @@ fn all_items(crate_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
         }
         body(class="forcdoc mod") {
             : sidebar(format!("Crate {crate_name}"));
+            section(id="main-content", class="content") {
+                h1(class="fqn") {
+                    span(class="in-band") { : "List of all items" }
+                }
+                @ if !storage_items.is_empty() {
+                    : all_items_list("Contract Storage".to_string(), storage_items);
+                }
+                @ if !abi_items.is_empty() {
+                    : all_items_list("Abi".to_string(), abi_items);
+                }
+                @ if !trait_items.is_empty() {
+                    : all_items_list("Traits".to_string(), trait_items);
+                }
+                @ if !struct_items.is_empty() {
+                    : all_items_list("Structs".to_string(), struct_items);
+                }
+                @ if !enum_items.is_empty() {
+                    : all_items_list("Enums".to_string(), enum_items);
+                }
+                @ if !fn_items.is_empty() {
+                    : all_items_list("Functions".to_string(), fn_items);
+                }
+                @ if !const_items.is_empty() {
+                    : all_items_list("Constants".to_string(), const_items);
+                }
+            }
+        }
+    }
+}
+fn all_items_list(title: String, list_items: Vec<(String, String)>) -> Box<dyn RenderBox> {
+    box_html! {
+        h3(id=format!("{title}")) { : title.clone(); }
+        ul(class=format!("{} docblock", title.to_lowercase())) {
+            @ for (path_str, file_name) in list_items {
+                li {
+                    a(href=file_name) { : path_str; }
+                }
+            }
         }
     }
 }

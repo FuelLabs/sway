@@ -64,13 +64,13 @@ pub fn main() -> Result<()> {
         fs::create_dir_all(&doc_path)?;
         doc_path.push(doc.file_name);
         let mut file = fs::File::create(doc_path)?;
-        file.write_all(dbg!(doc.file_contents.0).as_bytes())?;
+        file.write_all(doc.file_contents.0.as_bytes())?;
     }
 
     // check if the user wants to open the doc in the browser
     // if opening in the browser fails, attempt to open using a file explorer
     if open_result {
-        let path = doc_path.join("index.html");
+        let path = doc_path.join("all.html");
         let default_browser_opt = std::env::var_os("BROWSER");
         match default_browser_opt {
             Some(def_browser) => {
