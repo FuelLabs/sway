@@ -3842,7 +3842,10 @@ Server::run{addr=127.0.0.1:3030}: listening on http://127.0.0.1:3030
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-deploy"><a class="header" href="#forc-deploy">forc-deploy</a></h1>
 <h2 id="usage-12"><a class="header" href="#usage-12">USAGE:</a></h2>
-<p>forc deploy [OPTIONS]</p>
+<p>forc deploy [OPTIONS] [SIGNING_KEY]</p>
+<h2 id="args-4"><a class="header" href="#args-4">ARGS:</a></h2>
+<p>&lt;<em>SIGNING_KEY</em>&gt;
+Set the key to be used for signing</p>
 <h2 id="options-12"><a class="header" href="#options-12">OPTIONS:</a></h2>
 <p><code>--build-profile</code> &lt;<em>BUILD_PROFILE</em>&gt;</p>
 <p>Name of the build profile to use. If it is not specified, forc will use debug build
@@ -3909,11 +3912,13 @@ overrides network url in manifest file (if there is one)</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-run"><a class="header" href="#forc-run">forc-run</a></h1>
 <p>Run script project. Crafts a script transaction then sends it to a running node</p>
 <h2 id="usage-13"><a class="header" href="#usage-13">USAGE:</a></h2>
-<p>forc run [OPTIONS] [NODE_URL]</p>
-<h2 id="args-4"><a class="header" href="#args-4">ARGS:</a></h2>
+<p>forc run [OPTIONS] [ARGS]</p>
+<h2 id="args-5"><a class="header" href="#args-5">ARGS:</a></h2>
 <p>&lt;<em>NODE_URL</em>&gt;
 URL of the Fuel Client Node</p>
 <p>[env: FUEL_NODE_URL=]</p>
+<p>&lt;<em>SIGNING_KEY</em>&gt;
+Set the key to be used for signing</p>
 <h2 id="options-13"><a class="header" href="#options-13">OPTIONS:</a></h2>
 <p><code>--contract</code> &lt;<em>CONTRACT</em>&gt;</p>
 <p>32-byte contract ID that will be called during the transaction</p>
