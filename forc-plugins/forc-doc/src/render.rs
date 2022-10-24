@@ -275,7 +275,7 @@ fn _module_index() -> Box<dyn RenderBox> {
 fn sidebar(location: String /* sidebar_items: Option<Vec<String>>, */) -> Box<dyn RenderBox> {
     box_html! {
         nav(class="sidebar") {
-            a(class="sidebar-logo", href="../index.html") {
+            a(class="sidebar-logo", href="../all.html") {
                 div(class="logo-container") {
                     img(class="sway-logo", src="../sway-logo.svg", alt="logo");
                 }
