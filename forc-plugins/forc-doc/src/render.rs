@@ -162,7 +162,7 @@ fn html_body(
 ) -> Box<dyn RenderBox> {
     box_html! {
         body(class=format!("forcdoc {decl_ty}")) {
-            // TODO: create nav sidebar
+            : sidebar(decl_name);
             // create main
             // create main content
 
