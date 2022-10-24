@@ -1,4 +1,4 @@
-use crate::error::{DocumentError, LanguageServerError};
+use crate::error::{DirectoryError, DocumentError, LanguageServerError};
 use dashmap::DashMap;
 use forc_pkg::{manifest::Dependency, PackageManifestFile};
 use notify::RecursiveMode;
@@ -58,13 +58,13 @@ impl SyncWorkspace {
         let manifest_dir = manifest
             .path()
             .parent()
-            .ok_or(LanguageServerError::ManifestDirNotFound)?;
+            .ok_or(DirectoryError::ManifestDirNotFound)?;
 
         // extract the project name from the path
         let project_name = manifest_dir
             .file_name()
             .and_then(|name| name.to_str())
-            .ok_or(LanguageServerError::CantExtractProjectName {
+            .ok_or(DirectoryError::CantExtractProjectName {
                 dir: manifest_dir.to_string_lossy().to_string(),
             })?;
 
@@ -72,12 +72,12 @@ impl SyncWorkspace {
         let temp_dir = Builder::new()
             .prefix(SyncWorkspace::LSP_TEMP_PREFIX)
             .tempdir()
-            .map_err(|_| LanguageServerError::TempDirFailed)?;
+            .map_err(|_| DirectoryError::TempDirFailed)?;
 
         let temp_path = temp_dir
             .into_path()
             .canonicalize()
-            .map_err(|_| LanguageServerError::CanonicalizeFailed)?
+            .map_err(|_| DirectoryError::CanonicalizeFailed)?
             .join(project_name);
 
         self.directories
@@ -87,9 +87,9 @@ impl SyncWorkspace {
         Ok(())
     }
 
-    pub(crate) fn clone_manifest_dir_to_temp(&self) -> Result<(), LanguageServerError> {
+    pub(crate) fn clone_manifest_dir_to_temp(&self) -> Result<(), DirectoryError> {
         copy_dir_contents(self.manifest_dir()?, self.temp_dir()?)
-            .map_err(|_| LanguageServerError::CopyContentsFailed)?;
+            .map_err(|_| DirectoryError::CopyContentsFailed)?;
 
         Ok(())
     }
@@ -101,12 +101,12 @@ impl SyncWorkspace {
     }
 
     /// Convert the Url path from the client to point to the same file in our temp folder
-    pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, LanguageServerError> {
+    pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, DirectoryError> {
         self.convert_url(uri, self.temp_dir()?, self.manifest_dir()?)
     }
 
     /// Convert the Url path from the temp folder to point to the same file in the users workspace
-    pub(crate) fn temp_to_workspace_url(&self, uri: &Url) -> Result<Url, LanguageServerError> {
+    pub(crate) fn temp_to_workspace_url(&self, uri: &Url) -> Result<Url, DirectoryError> {
         self.convert_url(uri, self.manifest_dir()?, self.temp_dir()?)
     }
 
@@ -174,36 +174,31 @@ impl SyncWorkspace {
             });
     }
 
-    pub(crate) fn manifest_dir(&self) -> Result<PathBuf, LanguageServerError> {
+    pub(crate) fn manifest_dir(&self) -> Result<PathBuf, DirectoryError> {
         self.directories
             .get(&Directory::Manifest)
             .map(|item| item.value().clone())
-            .ok_or(LanguageServerError::ManifestDirNotFound)
+            .ok_or(DirectoryError::ManifestDirNotFound)
     }
 
-    fn temp_dir(&self) -> Result<PathBuf, LanguageServerError> {
+    fn temp_dir(&self) -> Result<PathBuf, DirectoryError> {
         self.directories
             .get(&Directory::Temp)
             .map(|item| item.value().clone())
-            .ok_or(LanguageServerError::TempDirNotFound)
+            .ok_or(DirectoryError::TempDirNotFound)
     }
 
-    fn convert_url(
-        &self,
-        uri: &Url,
-        from: PathBuf,
-        to: PathBuf,
-    ) -> Result<Url, LanguageServerError> {
+    fn convert_url(&self, uri: &Url, from: PathBuf, to: PathBuf) -> Result<Url, DirectoryError> {
         let path = from.join(
             PathBuf::from(uri.path())
                 .strip_prefix(to)
-                .map_err(LanguageServerError::StripPrefixError)?,
+                .map_err(DirectoryError::StripPrefixError)?,
         );
         self.url_from_path(&path)
     }
 
-    fn url_from_path(&self, path: &PathBuf) -> Result<Url, LanguageServerError> {
-        Url::from_file_path(&path).map_err(|_| LanguageServerError::UrlFromPathFailed {
+    fn url_from_path(&self, path: &PathBuf) -> Result<Url, DirectoryError> {
+        Url::from_file_path(&path).map_err(|_| DirectoryError::UrlFromPathFailed {
             path: path.to_string_lossy().to_string(),
         })
     }

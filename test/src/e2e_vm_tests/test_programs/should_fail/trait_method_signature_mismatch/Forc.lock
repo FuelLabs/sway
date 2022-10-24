@@ -1,4 +1,3 @@
 [[package]]
 name = 'trait_method_signature_mismatch'
 source = 'root'
-dependencies = []

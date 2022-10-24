@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-6B3FD71CFD9E5DB8'
-dependencies = []
 
 [[package]]
 name = 'std'

@@ -1,4 +1,3 @@
 [[package]]
 name = 'illegal_break'
 source = 'root'
-dependencies = []

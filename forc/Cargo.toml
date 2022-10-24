@@ -22,6 +22,7 @@ anyhow = "1.0.41"
 clap = { version = "3.1", features = ["cargo", "derive", "env"] }
 clap_complete = "3.1"
 forc-pkg = { version = "0.27.0", path = "../forc-pkg" }
+forc-tracing = { version = "0.27.0", path = "../forc-tracing" }
 forc-util = { version = "0.27.0", path = "../forc-util" }
 fs_extra = "1.2"
 fuel-asm = "0.8"
