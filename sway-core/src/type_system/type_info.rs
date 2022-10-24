@@ -542,15 +542,7 @@ impl TypeInfo {
                 format!("a[{};{}]", name, size)
             }
             RawUntypedPtr => "rawptr".to_string(),
-            Unknown
-            | UnknownGeneric { .. }
-            | ContractCaller { .. }
-            | Custom { .. }
-            | SelfType { .. }
-            | Numeric { .. }
-            | Contract
-            | ErrorRecovery
-            | Storage { .. } => {
+            _ => {
                 return err(
                     vec![],
                     vec![CompileError::InvalidAbiType {
