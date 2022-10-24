@@ -171,6 +171,7 @@ define_op_codes!(
     (Mul, MulOpcode, "mul", (ret: reg, lhs: reg, rhs: reg)),
     (Muli, MuliOpcode, "muli", (ret: reg, lhs: reg, rhs: imm)),
     (Noop, NoopOpcode, "noop", ()),
+    (Blob, BlobOpcode, "blob", (size: imm)),
     (Not, NotOpcode, "not", (ret: reg, arg: reg)),
     (Or, OrOpcode, "or", (ret: reg, lhs: reg, rhs: reg)),
     (Ori, OriOpcode, "ori", (ret: reg, lhs: reg, rhs: imm)),
