@@ -134,11 +134,12 @@ impl Backend {
                     let session = item.value();
                     session.shutdown();
                 });
+                self.sessions.clear();
 
                 // If no session can be found, then we need to call init and inserst a new session into the map
                 self.init(uri)?;
                 self.sessions
-                    .get(&manifest_dir) //
+                    .get(&manifest_dir)
                     .map(|item| item.value().clone())
                     .expect("no session found even though it was just inserted into the map")
             }
