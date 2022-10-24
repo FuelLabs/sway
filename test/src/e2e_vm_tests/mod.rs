@@ -8,7 +8,6 @@ use crate::{FilterConfig, RunConfig};
 use anyhow::{anyhow, bail, Result};
 use assert_matches::assert_matches;
 use colored::*;
-use forc_tracing::init_tracing_subscriber;
 use fuel_vm::prelude::*;
 use regex::Regex;
 use std::{

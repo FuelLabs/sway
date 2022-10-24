@@ -2,8 +2,8 @@ mod e2e_vm_tests;
 mod ir_generation;
 
 use anyhow::Result;
-use clap::Parser;
-use forc_util::init_tracing_subscriber;
+use clap::{ArgAction, Parser};
+use forc_tracing::init_tracing_subscriber;
 use tracing::Instrument;
 
 #[derive(Parser)]
