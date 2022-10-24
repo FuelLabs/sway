@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-D5DDAB0633863C0B'
-dependencies = []
 
 [[package]]
 name = 'primitive_type_argument'
