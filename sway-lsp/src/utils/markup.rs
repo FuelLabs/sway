@@ -30,12 +30,37 @@ impl fmt::Display for Markup {
 }
 
 impl Markup {
+    pub fn new() -> Self {
+        Self {
+            text: String::new(),
+        }
+    }
+
+    pub fn maybe_add_sway_block(self, contents: Option<String>) -> Self {
+        match contents {
+            Some(contents) => self.fenced_sway_block(&contents).line_sperator(),
+            None => self,
+        }
+    }
+
+    /// Contents will be formatted with sway syntax highlighting.
+    pub fn fenced_sway_block(mut self, contents: &impl fmt::Display) -> Self {
+        self.text.push_str(&format!("```sway\n{}\n```", contents));
+        self
+    }
+
+    pub fn line_sperator(mut self) -> Self {
+        self.text.push_str("\n---\n");
+        self
+    }
+
+    pub fn text(mut self, contents: &str) -> Self {
+        self.text.push_str(contents);
+        self
+    }
+
     /// Get the inner string as a str.
     pub fn as_str(&self) -> &str {
         self.text.as_str()
-    }
-    /// Contents will be formatted with sway syntax highlighting.
-    pub fn fenced_block(contents: &impl fmt::Display) -> Markup {
-        format!("```sway\n{}\n```", contents).into()
     }
 }
