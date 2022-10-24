@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-0FAC91CD97E3941F'
-dependencies = []
 
 [[package]]
 name = 'match_expressions_nested'

@@ -2,7 +2,7 @@
 
 mod harness;
 
-use forc_util::init_tracing_subscriber;
+use forc_tracing::init_tracing_subscriber;
 use fuel_vm::prelude::*;
 use regex::Regex;
 

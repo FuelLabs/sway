@@ -65,7 +65,7 @@ pub(crate) fn debug_print_ident_and_token(ident: &Ident, token: &Token) {
     let pos = ident.span().start_pos().line_col();
     let line_num = pos.0 as u32;
 
-    tracing::info!(
+    tracing::debug!(
         "line num = {:?} | name: = {:?} | ast_node_type = {:?} | type_id = {:?}",
         line_num,
         ident.as_str(),

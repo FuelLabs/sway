@@ -1,6 +1,6 @@
 //! Specific tests for the expression module
 
-use forc_util::{println_green, println_red};
+use forc_tracing::{println_green, println_red};
 use paste::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
 
