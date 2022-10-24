@@ -62,7 +62,6 @@ pub(crate) struct RealizedOp {
     /// A descriptive comment for ASM readability
     pub(crate) comment: String,
     pub(crate) owning_span: Option<Span>,
-    pub(crate) offset: u64,
 }
 
 impl Op {
@@ -941,6 +940,15 @@ impl Op {
                     VirtualOp::S256(r1, r2, r3)
                 }
                 "noop" => VirtualOp::NOOP,
+                "blob" => {
+                    let imm = check!(
+                        single_imm_24(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::BLOB(imm)
+                }
                 "flag" => {
                     let r1 = check!(
                         single_reg(args, immediate, whole_op_span),
@@ -1443,6 +1451,7 @@ impl fmt::Display for VirtualOp {
             K256(a, b, c) => write!(fmtr, "k256 {} {} {}", a, b, c),
             S256(a, b, c) => write!(fmtr, "s256 {} {} {}", a, b, c),
             NOOP => Ok(()),
+            BLOB(a) => write!(fmtr, "blob {a}"),
             FLAG(a) => write!(fmtr, "flag {}", a),
             GM(a, b) => write!(fmtr, "gm {} {}", a, b),
 
@@ -1492,6 +1501,8 @@ pub(crate) enum ControlFlowOp<Reg> {
     MoveAddress(Reg, Label),
     // placeholder for the DataSection offset
     DataSectionOffsetPlaceholder,
+    // Placeholder for loading an address from the data section.
+    LoadLabel(Reg, Label),
     // Save all currently live general purpose registers, using a label as a handle.
     PushAll(Label),
     // Restore all previously saved general purpose registers.
@@ -1516,6 +1527,7 @@ impl<Reg: fmt::Display> fmt::Display for ControlFlowOp<Reg> {
                 MoveAddress(r1, lab) => format!("mova {} {}", r1, lab),
                 DataSectionOffsetPlaceholder =>
                     "DATA SECTION OFFSET[0..32]\nDATA SECTION OFFSET[32..64]".into(),
+                LoadLabel(r1, lab) => format!("lwlab {r1} {lab}"),
                 PushAll(lab) => format!("pusha {lab}"),
                 PopAll(lab) => format!("popa {lab}"),
             }
@@ -1536,7 +1548,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | PopAll(_) => vec![],
 
             JumpIfNotEq(r1, r2, _) => vec![r1, r2],
-            JumpIfNotZero(r1, _) | MoveAddress(r1, _) => vec![r1],
+            JumpIfNotZero(r1, _) | MoveAddress(r1, _) | LoadLabel(r1, _) => vec![r1],
         })
         .into_iter()
         .collect()
@@ -1551,6 +1563,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | Call(_)
             | MoveAddress(..)
             | DataSectionOffsetPlaceholder
+            | LoadLabel(..)
             | PushAll(_)
             | PopAll(_) => vec![],
 
@@ -1564,7 +1577,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
     pub(crate) fn def_registers(&self) -> BTreeSet<&Reg> {
         use ControlFlowOp::*;
         (match self {
-            MoveAddress(reg, _) => vec![reg],
+            MoveAddress(reg, _) | LoadLabel(reg, _) => vec![reg],
 
             Label(_)
             | Comment
@@ -1601,6 +1614,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             JumpIfNotEq(r1, r2, label) => Self::JumpIfNotEq(update_reg(r1), update_reg(r2), *label),
             JumpIfNotZero(r1, label) => Self::JumpIfNotZero(update_reg(r1), *label),
             MoveAddress(r1, label) => Self::MoveAddress(update_reg(r1), *label),
+            LoadLabel(r1, label) => Self::LoadLabel(update_reg(r1), *label),
         }
     }
 
@@ -1619,6 +1633,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | Call(_)
             | MoveAddress(..)
             | DataSectionOffsetPlaceholder
+            | LoadLabel(..)
             | PushAll(_)
             | PopAll(_) => (),
 
@@ -1688,6 +1703,7 @@ impl ControlFlowOp<VirtualRegister> {
             JumpIfNotEq(r1, r2, label) => JumpIfNotEq(map_reg(r1), map_reg(r2), *label),
             JumpIfNotZero(r1, label) => JumpIfNotZero(map_reg(r1), *label),
             MoveAddress(r1, label) => MoveAddress(map_reg(r1), *label),
+            LoadLabel(r1, label) => LoadLabel(map_reg(r1), *label),
         }
     }
 }
