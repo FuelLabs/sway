@@ -11,21 +11,21 @@ use crate::{
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyFunctionDeclaration {
-    pub name: Ident,
-    pub body: TyCodeBlock,
-    pub parameters: Vec<TyFunctionParameter>,
-    pub span: Span,
-    pub attributes: transform::AttributesMap,
-    pub return_type: TypeId,
-    pub initial_return_type: TypeId,
-    pub type_parameters: Vec<TypeParameter>,
+    pub name:                    Ident,
+    pub body:                    TyCodeBlock,
+    pub parameters:              Vec<TyFunctionParameter>,
+    pub span:                    Span,
+    pub attributes:              transform::AttributesMap,
+    pub return_type:             TypeId,
+    pub initial_return_type:     TypeId,
+    pub type_parameters:         Vec<TypeParameter>,
     /// Used for error messages -- the span pointing to the return type
     /// annotation of the function
-    pub return_type_span: Span,
-    pub(crate) visibility: Visibility,
+    pub return_type_span:        Span,
+    pub(crate) visibility:       Visibility,
     /// whether this function exists in another contract and requires a call to it or not
     pub(crate) is_contract_call: bool,
-    pub(crate) purity: Purity,
+    pub(crate) purity:           Purity,
 }
 
 impl From<&TyFunctionDeclaration> for TyAstNode {
@@ -196,18 +196,18 @@ impl TyFunctionDeclaration {
             .parameters
             .iter()
             .map(|x| JsonTypeDeclaration {
-                type_id: *x.initial_type_id,
-                type_field: x.initial_type_id.get_json_type_str(x.type_id),
-                components: x.initial_type_id.get_json_type_components(types, x.type_id),
+                type_id:         *x.initial_type_id,
+                type_field:      x.initial_type_id.get_json_type_str(x.type_id),
+                components:      x.initial_type_id.get_json_type_components(types, x.type_id),
                 type_parameters: x.type_id.get_json_type_parameters(types, x.type_id),
             })
             .collect::<Vec<_>>();
 
         // The single `JsonTypeDeclaration` needed for the output
         let output_type = JsonTypeDeclaration {
-            type_id: *self.initial_return_type,
-            type_field: self.initial_return_type.get_json_type_str(self.return_type),
-            components: self
+            type_id:         *self.initial_return_type,
+            type_field:      self.initial_return_type.get_json_type_str(self.return_type),
+            components:      self
                 .return_type
                 .get_json_type_components(types, self.return_type),
             type_parameters: self
@@ -221,19 +221,19 @@ impl TyFunctionDeclaration {
 
         // Generate the JSON data for the function
         JsonABIFunction {
-            name: self.name.as_str().to_string(),
+            name:   self.name.as_str().to_string(),
             inputs: self
                 .parameters
                 .iter()
                 .map(|x| JsonTypeApplication {
-                    name: x.name.to_string(),
-                    type_id: *x.initial_type_id,
+                    name:           x.name.to_string(),
+                    type_id:        *x.initial_type_id,
                     type_arguments: x.initial_type_id.get_json_type_arguments(types, x.type_id),
                 })
                 .collect(),
             output: JsonTypeApplication {
-                name: "".to_string(),
-                type_id: *self.initial_return_type,
+                name:           "".to_string(),
+                type_id:        *self.initial_return_type,
                 type_arguments: self
                     .initial_return_type
                     .get_json_type_arguments(types, self.return_type),
@@ -244,13 +244,13 @@ impl TyFunctionDeclaration {
 
 #[derive(Debug, Clone, Eq)]
 pub struct TyFunctionParameter {
-    pub name: Ident,
-    pub is_reference: bool,
-    pub is_mutable: bool,
+    pub name:            Ident,
+    pub is_reference:    bool,
+    pub is_mutable:      bool,
     pub mutability_span: Span,
-    pub type_id: TypeId,
+    pub type_id:         TypeId,
     pub initial_type_id: TypeId,
-    pub type_span: Span,
+    pub type_span:       Span,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

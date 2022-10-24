@@ -1,7 +1,6 @@
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
-use sway_error::error::CompileError;
-use sway_error::warning::CompileWarning;
+use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::{LineCol, Spanned};
 
 pub fn get_diagnostics(

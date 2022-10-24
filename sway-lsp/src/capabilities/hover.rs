@@ -112,8 +112,8 @@ fn hover_format(token: &Token, ident: &Ident) -> Hover {
     Hover {
         contents: HoverContents::Markup(MarkupContent {
             value: format!("```sway\n{}\n```", value),
-            kind: MarkupKind::Markdown,
+            kind:  MarkupKind::Markdown,
         }),
-        range: Some(range),
+        range:    Some(range),
     }
 }

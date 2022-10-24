@@ -42,8 +42,8 @@ impl AbstractInstructionSet {
         // Replace the dead jumps with NOPs, as it's cheaper.
         for idx in dead_jumps {
             self.ops[idx] = Op {
-                opcode: Either::Left(VirtualOp::NOOP),
-                comment: "removed redundant JUMP".into(),
+                opcode:      Either::Left(VirtualOp::NOOP),
+                comment:     "removed redundant JUMP".into(),
                 owning_span: None,
             };
         }
@@ -95,8 +95,8 @@ impl AbstractInstructionSet {
             // Replace the dead moves with NOPs, as it's cheaper.
             for idx in dead_moves {
                 self.ops[idx] = Op {
-                    opcode: Either::Left(VirtualOp::NOOP),
-                    comment: "removed redundant MOVE".into(),
+                    opcode:      Either::Left(VirtualOp::NOOP),
+                    comment:     "removed redundant MOVE".into(),
                     owning_span: None,
                 };
             }
@@ -150,8 +150,8 @@ impl AbstractInstructionSet {
         let mut buf = vec![];
         for op in &reduced_ops {
             buf.push(AllocatedAbstractOp {
-                opcode: op.allocate_registers(&pool),
-                comment: op.comment.clone(),
+                opcode:      op.allocate_registers(&pool),
+                comment:     op.comment.clone(),
                 owning_span: op.owning_span.clone(),
             })
         }
@@ -202,8 +202,8 @@ impl RealizedAbstractInstructionSet {
 
         if ops.len() & 1 != 0 {
             ops.push(AllocatedOp {
-                opcode: AllocatedOpcode::NOOP,
-                comment: "word-alignment of data section".into(),
+                opcode:      AllocatedOpcode::NOOP,
+                comment:     "word-alignment of data section".into(),
                 owning_span: None,
             });
         }

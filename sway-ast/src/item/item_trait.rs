@@ -2,14 +2,14 @@ use crate::priv_prelude::*;
 
 #[derive(Clone, Debug)]
 pub struct ItemTrait {
-    pub visibility: Option<PubToken>,
-    pub trait_token: TraitToken,
-    pub name: Ident,
-    pub generics: Option<GenericParams>,
+    pub visibility:       Option<PubToken>,
+    pub trait_token:      TraitToken,
+    pub name:             Ident,
+    pub generics:         Option<GenericParams>,
     pub where_clause_opt: Option<WhereClause>,
-    pub super_traits: Option<(ColonToken, Traits)>,
-    pub trait_items: Braces<Vec<(Annotated<FnSignature>, SemicolonToken)>>,
-    pub trait_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>>,
+    pub super_traits:     Option<(ColonToken, Traits)>,
+    pub trait_items:      Braces<Vec<(Annotated<FnSignature>, SemicolonToken)>>,
+    pub trait_defs_opt:   Option<Braces<Vec<Annotated<ItemFn>>>>,
 }
 
 impl Spanned for ItemTrait {
@@ -28,7 +28,7 @@ impl Spanned for ItemTrait {
 
 #[derive(Clone, Debug)]
 pub struct Traits {
-    pub prefix: PathType,
+    pub prefix:   PathType,
     pub suffixes: Vec<(AddToken, PathType)>,
 }
 

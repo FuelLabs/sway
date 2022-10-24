@@ -2,9 +2,12 @@ use fuel_asm::Word;
 use fuel_crypto::Hasher;
 use fuel_tx::{Bytes32, ContractId};
 use serde::{Deserialize, Serialize};
-use std::hash::Hash;
-use std::path::{Path, PathBuf};
-use std::{io, iter, slice};
+use std::{
+    hash::Hash,
+    io, iter,
+    path::{Path, PathBuf},
+    slice,
+};
 
 pub mod constants;
 
@@ -26,7 +29,7 @@ pub type Contract = [u8; ContractId::LEN];
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Position {
     pub line: usize,
-    pub col: usize,
+    pub col:  usize,
 }
 
 /// Based on `<https://llvm.org/docs/CoverageMappingFormat.html#source-code-range>`
@@ -35,7 +38,7 @@ pub struct Range {
     /// Beginning of the code range
     pub start: Position,
     /// End of the code range (inclusive)
-    pub end: Position,
+    pub end:   Position,
 }
 
 impl Range {
@@ -48,11 +51,11 @@ impl Range {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Instruction {
     /// Relative to the `$is`
-    pub pc: Word,
+    pub pc:    Word,
     /// Code range that translates to this point
     pub range: Range,
     /// Exit from the current scope?
-    pub exit: bool,
+    pub exit:  bool,
 }
 
 impl Instruction {
@@ -101,7 +104,7 @@ where
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ConfigTimeConstant {
     pub r#type: String,
-    pub value: String,
+    pub value:  String,
     #[serde(default)]
     pub public: bool,
 }
@@ -144,15 +147,15 @@ impl Source {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CallFrame {
     /// Deterministic representation of the frame
-    id: Id,
+    id:       Id,
     /// Contract that contains the bytecodes of this frame. Currently only scripts are supported
     contract: Contract,
     /// Sway source code that compiles to this frame
-    source: Source,
+    source:   Source,
     /// Range of code that represents this frame
-    range: Range,
+    range:    Range,
     /// Set of instructions that describes this frame
-    program: Vec<Instruction>,
+    program:  Vec<Instruction>,
 }
 
 impl CallFrame {
@@ -208,11 +211,11 @@ impl CallFrame {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TransactionScript {
     /// Deterministic representation of the script
-    id: Id,
+    id:      Id,
     /// Sway source code that compiles to this script
-    source: Source,
+    source:  Source,
     /// Range of code that represents this script
-    range: Range,
+    range:   Range,
     /// Set of instructions that describes this script
     program: Vec<Instruction>,
 }
@@ -372,18 +375,18 @@ pub type JsonABI = Vec<Function>;
 pub struct Function {
     #[serde(rename = "type")]
     pub type_field: String,
-    pub inputs: Vec<Property>,
-    pub name: String,
-    pub outputs: Vec<Property>,
+    pub inputs:     Vec<Property>,
+    pub name:       String,
+    pub outputs:    Vec<Property>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Property {
-    pub name: String,
+    pub name:           String,
     #[serde(rename = "type")]
-    pub type_field: String,
-    pub components: Option<Vec<Property>>, // Used for custom types
+    pub type_field:     String,
+    pub components:     Option<Vec<Property>>, // Used for custom types
     pub type_arguments: Option<Vec<Property>>, // Used for generic types. Not yet supported in fuels-rs.
 }
 
@@ -392,8 +395,8 @@ pub struct Property {
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonABIProgram {
-    pub types: Vec<JsonTypeDeclaration>,
-    pub functions: Vec<JsonABIFunction>,
+    pub types:        Vec<JsonTypeDeclaration>,
+    pub functions:    Vec<JsonABIFunction>,
     pub logged_types: Vec<JsonLoggedType>,
 }
 
@@ -401,33 +404,33 @@ pub struct JsonABIProgram {
 #[serde(rename_all = "camelCase")]
 pub struct JsonABIFunction {
     pub inputs: Vec<JsonTypeApplication>,
-    pub name: String,
+    pub name:   String,
     pub output: JsonTypeApplication,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonLoggedType {
-    pub log_id: usize,
+    pub log_id:      usize,
     pub logged_type: JsonTypeApplication,
 }
 
 #[derive(Default, Debug, Clone, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonTypeDeclaration {
-    pub type_id: usize,
+    pub type_id:         usize,
     #[serde(rename = "type")]
-    pub type_field: String,
-    pub components: Option<Vec<JsonTypeApplication>>,
+    pub type_field:      String,
+    pub components:      Option<Vec<JsonTypeApplication>>,
     pub type_parameters: Option<Vec<usize>>,
 }
 
 #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Hash, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonTypeApplication {
-    pub name: String,
+    pub name:           String,
     #[serde(rename = "type")]
-    pub type_id: usize,
+    pub type_id:        usize,
     pub type_arguments: Option<Vec<JsonTypeApplication>>,
 }
 

@@ -1,8 +1,9 @@
 use crate::{
     formatter::*,
     utils::{
+        close_angle_bracket,
         map::byte_span::{ByteSpan, LeafSpans},
-        {close_angle_bracket, open_angle_bracket},
+        open_angle_bracket,
     },
 };
 use std::{fmt::Write, vec};

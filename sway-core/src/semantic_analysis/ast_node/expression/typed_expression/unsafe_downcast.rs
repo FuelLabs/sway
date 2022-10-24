@@ -14,21 +14,21 @@ pub(crate) fn instantiate_unsafe_downcast(
 ) -> (MatchReqMap, ty::TyExpression) {
     let match_req_map = vec![(
         ty::TyExpression {
-            expression: ty::TyExpressionVariant::EnumTag {
+            expression:  ty::TyExpressionVariant::EnumTag {
                 exp: Box::new(exp.clone()),
             },
             return_type: insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-            span: exp.span.clone(),
+            span:        exp.span.clone(),
         },
         ty::TyExpression {
-            expression: ty::TyExpressionVariant::Literal(Literal::U64(variant.tag as u64)),
+            expression:  ty::TyExpressionVariant::Literal(Literal::U64(variant.tag as u64)),
             return_type: insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-            span: exp.span.clone(),
+            span:        exp.span.clone(),
         },
     )];
     let unsafe_downcast = ty::TyExpression {
         expression: ty::TyExpressionVariant::UnsafeDowncast {
-            exp: Box::new(exp.clone()),
+            exp:     Box::new(exp.clone()),
             variant: variant.clone(),
         },
         return_type: variant.type_id,

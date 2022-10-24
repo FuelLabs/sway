@@ -72,9 +72,9 @@ use super::{ReplaceSelfType, TypeArgument, TypeId};
 ///     together
 #[derive(Debug, Clone)]
 pub struct TypeBinding<T> {
-    pub inner: T,
+    pub inner:          T,
     pub type_arguments: Vec<TypeArgument>,
-    pub span: Span,
+    pub span:           Span,
 }
 
 impl<T> Spanned for TypeBinding<T> {

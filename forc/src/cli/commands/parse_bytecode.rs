@@ -1,9 +1,13 @@
 use anyhow::{anyhow, Result};
 use clap::Parser;
-use std::fs::{self, File};
-use std::io::Read;
-use term_table::row::Row;
-use term_table::table_cell::{Alignment, TableCell};
+use std::{
+    fs::{self, File},
+    io::Read,
+};
+use term_table::{
+    row::Row,
+    table_cell::{Alignment, TableCell},
+};
 use tracing::info;
 
 /// Parse bytecode file into a debug format.

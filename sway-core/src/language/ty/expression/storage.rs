@@ -5,7 +5,7 @@ use crate::type_system::TypeId;
 /// Describes the full storage access including all the subfields
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TyStorageAccess {
-    pub fields: Vec<TyStorageAccessDescriptor>,
+    pub fields:    Vec<TyStorageAccessDescriptor>,
     pub(crate) ix: StateIndex,
 }
 
@@ -28,7 +28,7 @@ impl TyStorageAccess {
 /// Describes a single subfield access in the sequence when accessing a subfield within storage.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TyStorageAccessDescriptor {
-    pub name: Ident,
+    pub name:           Ident,
     pub(crate) type_id: TypeId,
-    pub(crate) span: Span,
+    pub(crate) span:    Span,
 }

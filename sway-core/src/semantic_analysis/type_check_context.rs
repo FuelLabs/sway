@@ -30,7 +30,7 @@ pub struct TypeCheckContext<'ns> {
     /// While type-checking an `impl` (whether inherent or for a `trait`/`abi`) this represents the
     /// type for which we are implementing. For example in `impl Foo {}` or `impl Trait for Foo
     /// {}`, this represents the type ID of `Foo`.
-    self_type: TypeId,
+    self_type:       TypeId,
     /// While type-checking an expression, this indicates the expected type.
     ///
     /// Assists type inference.
@@ -39,14 +39,14 @@ pub struct TypeCheckContext<'ns> {
     ///
     /// This is `ImplAbiFn` while checking `abi` implementations whether at their original impl
     /// declaration or within an abi cast expression.
-    mode: Mode,
+    mode:            Mode,
     /// Provides "help text" to `TypeError`s during unification.
     // TODO: We probably shouldn't carry this through the `Context`, but instead pass it directly
     // to `unify` as necessary?
     help_text: &'static str,
     /// Tracks the purity of the context, e.g. whether or not we should be allowed to write to
     /// storage.
-    purity: Purity,
+    purity:          Purity,
 }
 
 impl<'ns> TypeCheckContext<'ns> {
@@ -84,12 +84,12 @@ impl<'ns> TypeCheckContext<'ns> {
     /// first visited child node.
     pub fn by_ref(&mut self) -> TypeCheckContext {
         TypeCheckContext {
-            namespace: self.namespace,
+            namespace:       self.namespace,
             type_annotation: self.type_annotation,
-            self_type: self.self_type,
-            mode: self.mode,
-            help_text: self.help_text,
-            purity: self.purity,
+            self_type:       self.self_type,
+            mode:            self.mode,
+            help_text:       self.help_text,
+            purity:          self.purity,
         }
     }
 

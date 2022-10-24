@@ -4,7 +4,7 @@ use sway_types::{span::Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct CodeBlock {
-    pub contents: Vec<AstNode>,
+    pub contents:                Vec<AstNode>,
     pub(crate) whole_block_span: Span,
 }
 

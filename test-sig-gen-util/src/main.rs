@@ -3,8 +3,7 @@
 
 use fuel_crypto::Hasher;
 
-use fuel_vm::crypto;
-use fuel_vm::prelude::*;
+use fuel_vm::{crypto, prelude::*};
 
 use anyhow::Result;
 use secp256k1::{PublicKey, Secp256k1, SecretKey};

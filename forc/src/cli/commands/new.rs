@@ -9,21 +9,21 @@ pub struct Command {
     /// The default program type. Excluding all flags or adding this flag creates a basic contract
     /// program.
     #[clap(long)]
-    pub contract: bool,
+    pub contract:  bool,
     /// Adding this flag creates an empty script program.
     #[clap(long)]
-    pub script: bool,
+    pub script:    bool,
     /// Adding this flag creates an empty predicate program.
     #[clap(long)]
     pub predicate: bool,
     /// Adding this flag creates an empty library program.
     #[clap(long)]
-    pub library: bool,
+    pub library:   bool,
     /// Set the package name. Defaults to the directory name
     #[clap(long)]
-    pub name: Option<String>,
+    pub name:      Option<String>,
     /// The path at which the project directory will be created.
-    pub path: String,
+    pub path:      String,
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {

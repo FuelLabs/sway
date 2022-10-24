@@ -22,7 +22,7 @@ pub struct ByteSpan {
     // The byte position in the string of the start of the span.
     pub start: usize,
     // The byte position in the string of the end of the span.
-    pub end: usize,
+    pub end:   usize,
 }
 
 impl From<Span> for ByteSpan {
@@ -30,7 +30,7 @@ impl From<Span> for ByteSpan {
     fn from(span: Span) -> Self {
         ByteSpan {
             start: span.start(),
-            end: span.end(),
+            end:   span.end(),
         }
     }
 }

@@ -5,10 +5,12 @@ use forc_pkg::{
 };
 use forc_util::validate_name;
 use fs_extra::dir::{copy, CopyOptions};
-use std::env;
-use std::fs::File;
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::{
+    env,
+    fs::File,
+    io::{Read, Write},
+    path::{Path, PathBuf},
+};
 use sway_utils::constants;
 use tracing::info;
 use url::Url;
@@ -22,7 +24,7 @@ pub fn init(command: TemplateCommand) -> Result<()> {
         .unwrap_or_else(|| format!("{}-template-source", command.project_name));
 
     let source = SourceGit {
-        repo: Url::parse(&command.url)?,
+        repo:      Url::parse(&command.url)?,
         reference: forc_pkg::GitReference::DefaultBranch,
     };
 

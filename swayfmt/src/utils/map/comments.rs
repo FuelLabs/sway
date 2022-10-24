@@ -67,7 +67,7 @@ fn collect_comments_from_token_stream(
         CommentedTokenTree::Comment(comment) => {
             let comment_span = ByteSpan {
                 start: comment.span.start(),
-                end: comment.span.end(),
+                end:   comment.span.end(),
             };
             comment_map.insert(comment_span, comment.clone());
         }
@@ -127,11 +127,11 @@ fn add_comments(
     // found & included
     unformatted_comment_spans.push(ByteSpan {
         start: unformatted_code.len(),
-        end: unformatted_code.len(),
+        end:   unformatted_code.len(),
     });
     formatted_comment_spans.push(ByteSpan {
         start: formatted_code.len(),
-        end: formatted_code.len(),
+        end:   formatted_code.len(),
     });
 
     // Since we are adding comments into formatted code, in the next iteration the spans we find for the formatted code needs to be offsetted
@@ -290,8 +290,14 @@ mod tests {
         "#;
         let map = comment_map_from_src(Arc::from(input)).unwrap();
         assert!(!map.is_empty());
-        let range_start_span = ByteSpan { start: 0, end: 32 };
-        let range_end_span = ByteSpan { start: 33, end: 34 };
+        let range_start_span = ByteSpan {
+            start: 0,
+            end:   32,
+        };
+        let range_end_span = ByteSpan {
+            start: 33,
+            end:   34,
+        };
         let found_comment = map
             .range((Included(range_start_span), Included(range_end_span)))
             .last()
@@ -312,10 +318,13 @@ mod tests {
         "#;
         let map = comment_map_from_src(Arc::from(input)).unwrap();
         assert!(!map.is_empty());
-        let range_start_span = ByteSpan { start: 40, end: 54 };
+        let range_start_span = ByteSpan {
+            start: 40,
+            end:   54,
+        };
         let range_end_span = ByteSpan {
             start: 100,
-            end: 115,
+            end:   115,
         };
         let found_comment = map
             .range((Included(range_start_span), Included(range_end_span)))
@@ -339,11 +348,11 @@ mod tests {
         assert!(!map.is_empty());
         let range_start_span = ByteSpan {
             start: 110,
-            end: 116,
+            end:   116,
         };
         let range_end_span = ByteSpan {
             start: 200,
-            end: 201,
+            end:   201,
         };
         let found_comment = map
             .range((Included(range_start_span), Included(range_end_span)))
@@ -357,7 +366,10 @@ mod tests {
     #[test]
     fn test_comment_map_range_from_start() {
         let range_start_span = ByteSpan { start: 0, end: 0 };
-        let range_end_span = ByteSpan { start: 8, end: 16 };
+        let range_end_span = ByteSpan {
+            start: 8,
+            end:   16,
+        };
         let input = r#"// test
 contract;"#;
         let map = comment_map_from_src(Arc::from(input)).unwrap();

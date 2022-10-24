@@ -9,9 +9,9 @@ pub struct TyReassignment {
     // either a direct variable, so length of 1, or
     // at series of struct fields/array indices (array syntax)
     pub lhs_base_name: Ident,
-    pub lhs_type: TypeId,
-    pub lhs_indices: Vec<ProjectionKind>,
-    pub rhs: TyExpression,
+    pub lhs_type:      TypeId,
+    pub lhs_indices:   Vec<ProjectionKind>,
+    pub rhs:           TyExpression,
 }
 
 impl CopyTypes for TyReassignment {
@@ -48,9 +48,9 @@ impl ProjectionKind {
 /// Describes each field being drilled down into in storage and its type.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TyStorageReassignment {
-    pub fields: Vec<TyStorageReassignDescriptor>,
+    pub fields:    Vec<TyStorageReassignDescriptor>,
     pub(crate) ix: StateIndex,
-    pub rhs: TyExpression,
+    pub rhs:       TyExpression,
 }
 
 impl Spanned for TyStorageReassignment {
@@ -76,8 +76,8 @@ impl TyStorageReassignment {
 /// storage.
 #[derive(Clone, Debug, Eq)]
 pub struct TyStorageReassignDescriptor {
-    pub name: Ident,
-    pub type_id: TypeId,
+    pub name:        Ident,
+    pub type_id:     TypeId,
     pub(crate) span: Span,
 }
 

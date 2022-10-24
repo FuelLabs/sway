@@ -78,18 +78,18 @@ impl AllocatedAbstractInstructionSet {
 
                     let stack_use_bytes = regs.len() as u64 * 8;
                     new_ops.push(AllocatedAbstractOp {
-                        opcode: Either::Left(AllocatedOpcode::MOVE(
+                        opcode:      Either::Left(AllocatedOpcode::MOVE(
                             AllocatedRegister::Constant(ConstantRegister::Scratch),
                             AllocatedRegister::Constant(ConstantRegister::StackPointer),
                         )),
-                        comment: "save base stack value".into(),
+                        comment:     "save base stack value".into(),
                         owning_span: None,
                     });
                     new_ops.push(AllocatedAbstractOp {
-                        opcode: Either::Left(AllocatedOpcode::CFEI(
+                        opcode:      Either::Left(AllocatedOpcode::CFEI(
                             VirtualImmediate24::new(stack_use_bytes, Span::dummy()).unwrap(),
                         )),
-                        comment: "reserve space for saved registers".into(),
+                        comment:     "reserve space for saved registers".into(),
                         owning_span: None,
                     });
 
@@ -100,8 +100,8 @@ impl AllocatedAbstractInstructionSet {
                             VirtualImmediate12::new(idx as u64, Span::dummy()).unwrap(),
                         );
                         new_ops.push(AllocatedAbstractOp {
-                            opcode: Either::Left(store_op),
-                            comment: format!("save {}", reg),
+                            opcode:      Either::Left(store_op),
+                            comment:     format!("save {}", reg),
                             owning_span: None,
                         });
                     })
@@ -117,12 +117,12 @@ impl AllocatedAbstractInstructionSet {
 
                     let stack_use_bytes = regs.len() as u64 * 8;
                     new_ops.push(AllocatedAbstractOp {
-                        opcode: Either::Left(AllocatedOpcode::SUBI(
+                        opcode:      Either::Left(AllocatedOpcode::SUBI(
                             AllocatedRegister::Constant(ConstantRegister::Scratch),
                             AllocatedRegister::Constant(ConstantRegister::StackPointer),
                             VirtualImmediate12::new(stack_use_bytes, Span::dummy()).unwrap(),
                         )),
-                        comment: "save base stack value".into(),
+                        comment:     "save base stack value".into(),
                         owning_span: None,
                     });
 
@@ -133,17 +133,17 @@ impl AllocatedAbstractInstructionSet {
                             VirtualImmediate12::new(idx as u64, Span::dummy()).unwrap(),
                         );
                         new_ops.push(AllocatedAbstractOp {
-                            opcode: Either::Left(load_op),
-                            comment: format!("restore {}", reg),
+                            opcode:      Either::Left(load_op),
+                            comment:     format!("restore {}", reg),
                             owning_span: None,
                         });
                     });
 
                     new_ops.push(AllocatedAbstractOp {
-                        opcode: Either::Left(AllocatedOpcode::CFSI(
+                        opcode:      Either::Left(AllocatedOpcode::CFSI(
                             VirtualImmediate24::new(stack_use_bytes, Span::dummy()).unwrap(),
                         )),
-                        comment: "recover space from saved registers".into(),
+                        comment:     "recover space from saved registers".into(),
                         owning_span: None,
                     });
                 }
@@ -224,9 +224,9 @@ impl AllocatedAbstractInstructionSet {
                     }
                     ControlFlowOp::DataSectionOffsetPlaceholder => {
                         realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::DataSectionOffsetPlaceholder,
+                            opcode:      AllocatedOpcode::DataSectionOffsetPlaceholder,
                             owning_span: None,
-                            comment: String::new(),
+                            comment:     String::new(),
                         });
                     }
                     ControlFlowOp::LoadLabel(r1, ref lab) => {
@@ -372,11 +372,11 @@ impl AllocatedAbstractInstructionSet {
                         } else {
                             // Load the destination address into $tmp.
                             new_ops.push(AllocatedAbstractOp {
-                                opcode: Either::Right(ControlFlowOp::LoadLabel(
+                                opcode:      Either::Right(ControlFlowOp::LoadLabel(
                                     AllocatedRegister::Constant(ConstantRegister::Scratch),
                                     *lab,
                                 )),
-                                comment: String::new(),
+                                comment:     String::new(),
                                 owning_span: None,
                             });
 
@@ -396,11 +396,11 @@ impl AllocatedAbstractInstructionSet {
                         } else {
                             // Load the destination address into $tmp.
                             new_ops.push(AllocatedAbstractOp {
-                                opcode: Either::Right(ControlFlowOp::LoadLabel(
+                                opcode:      Either::Right(ControlFlowOp::LoadLabel(
                                     AllocatedRegister::Constant(ConstantRegister::Scratch),
                                     *lab,
                                 )),
-                                comment: String::new(),
+                                comment:     String::new(),
                                 owning_span: None,
                             });
 
@@ -423,11 +423,11 @@ impl AllocatedAbstractInstructionSet {
                         } else {
                             // Load the destination address into $tmp.
                             new_ops.push(AllocatedAbstractOp {
-                                opcode: Either::Right(ControlFlowOp::LoadLabel(
+                                opcode:      Either::Right(ControlFlowOp::LoadLabel(
                                     AllocatedRegister::Constant(ConstantRegister::Scratch),
                                     *lab,
                                 )),
-                                comment: String::new(),
+                                comment:     String::new(),
                                 owning_span: None,
                             });
 

@@ -59,7 +59,7 @@ use register_sequencer::*;
 
 #[derive(Debug)]
 struct RegisterAllocationStatus {
-    reg: AllocatedRegister,
+    reg:     AllocatedRegister,
     used_by: BTreeSet<VirtualRegister>,
 }
 
@@ -74,7 +74,7 @@ impl RegisterPool {
                 // - 1 because we reserve the final register for the data_section begin
                 ..compiler_constants::NUM_ALLOCATABLE_REGISTERS)
             .map(|x| RegisterAllocationStatus {
-                reg: AllocatedRegister::Allocated(x),
+                reg:     AllocatedRegister::Allocated(x),
                 used_by: BTreeSet::new(),
             })
             .collect();

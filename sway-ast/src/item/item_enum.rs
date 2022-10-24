@@ -2,12 +2,12 @@ use crate::priv_prelude::*;
 
 #[derive(Clone, Debug)]
 pub struct ItemEnum {
-    pub visibility: Option<PubToken>,
-    pub enum_token: EnumToken,
-    pub name: Ident,
-    pub generics: Option<GenericParams>,
+    pub visibility:       Option<PubToken>,
+    pub enum_token:       EnumToken,
+    pub name:             Ident,
+    pub generics:         Option<GenericParams>,
     pub where_clause_opt: Option<WhereClause>,
-    pub fields: Braces<Punctuated<Annotated<TypeField>, CommaToken>>,
+    pub fields:           Braces<Punctuated<Annotated<TypeField>, CommaToken>>,
 }
 
 impl Spanned for ItemEnum {

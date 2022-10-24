@@ -859,7 +859,7 @@ impl Constant {
 struct Namer {
     function: Function,
 
-    names: HashMap<Value, String>,
+    names:          HashMap<Value, String>,
     next_value_idx: u64,
 }
 
@@ -900,7 +900,7 @@ impl Namer {
 
 #[derive(Default)]
 struct MetadataNamer {
-    md_map: BTreeMap<MetadataIndex, u64>,
+    md_map:      BTreeMap<MetadataIndex, u64>,
     next_md_idx: u64,
 }
 

@@ -1,8 +1,10 @@
 use crate::constants;
 use std::ffi::OsStr;
 
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 pub fn get_sway_files(path: PathBuf) -> Vec<PathBuf> {
     let mut files = vec![];

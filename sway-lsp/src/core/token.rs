@@ -22,10 +22,10 @@ pub enum TypeDefinition {
 
 #[derive(Debug, Clone)]
 pub struct Token {
-    pub parsed: AstToken,
-    pub typed: Option<TypedAstToken>,
+    pub parsed:   AstToken,
+    pub typed:    Option<TypedAstToken>,
     pub type_def: Option<TypeDefinition>,
-    pub kind: SymbolKind,
+    pub kind:     SymbolKind,
 }
 
 impl Token {

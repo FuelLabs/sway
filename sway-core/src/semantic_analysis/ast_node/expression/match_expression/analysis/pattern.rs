@@ -4,7 +4,11 @@ use std::fmt::Write;
 use sway_error::error::CompileError;
 use sway_types::Span;
 
-use crate::{error::*, language::ty, language::Literal, Namespace, TypeInfo};
+use crate::{
+    error::*,
+    language::{ty, Literal},
+    Namespace, TypeInfo,
+};
 
 use super::{patstack::PatStack, range::Range};
 
@@ -139,7 +143,7 @@ impl Pattern {
                 }
                 Pattern::Struct(StructPattern {
                     struct_name: struct_name.to_string(),
-                    fields: new_fields,
+                    fields:      new_fields,
                 })
             }
             ty::TyScrutineeVariant::Tuple(elems) => {
@@ -408,7 +412,7 @@ impl Pattern {
                 .map(|args| {
                     Pattern::Struct(StructPattern {
                         struct_name: struct_pattern.struct_name.clone(),
-                        fields: struct_pattern
+                        fields:      struct_pattern
                             .fields
                             .iter()
                             .zip(args.into_iter())
@@ -448,9 +452,9 @@ impl Pattern {
                         errors
                     );
                     pats.push(Pattern::Enum(EnumPattern {
-                        enum_name: enum_pattern.enum_name.clone(),
+                        enum_name:    enum_pattern.enum_name.clone(),
                         variant_name: enum_pattern.variant_name.clone(),
-                        value: Box::new(arg),
+                        value:        Box::new(arg),
                     }));
                 }
                 check!(
@@ -743,7 +747,7 @@ impl std::cmp::PartialOrd for Pattern {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct StructPattern {
     struct_name: String,
-    fields: Vec<(String, Pattern)>,
+    fields:      Vec<(String, Pattern)>,
 }
 
 impl StructPattern {
@@ -833,9 +837,9 @@ impl std::cmp::PartialOrd for StructPattern {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct EnumPattern {
-    pub(crate) enum_name: String,
+    pub(crate) enum_name:    String,
     pub(crate) variant_name: String,
-    pub(crate) value: Box<Pattern>,
+    pub(crate) value:        Box<Pattern>,
 }
 
 impl std::cmp::Ord for EnumPattern {

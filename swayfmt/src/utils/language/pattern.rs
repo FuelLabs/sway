@@ -6,7 +6,7 @@ use crate::{
     },
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
-        {CurlyBrace, Parenthesis},
+        CurlyBrace, Parenthesis,
     },
 };
 use std::fmt::Write;

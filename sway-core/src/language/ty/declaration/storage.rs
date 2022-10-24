@@ -7,10 +7,10 @@ use crate::{error::*, language::ty::*, transform, type_system::*};
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
 pub struct TyStorageDeclaration {
-    pub fields: Vec<TyStorageField>,
+    pub fields:     Vec<TyStorageField>,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
-    pub span: Span,
+    pub span:       Span,
     pub attributes: transform::AttributesMap,
 }
 
@@ -67,9 +67,9 @@ impl TyStorageDeclaration {
         };
 
         type_checked_buf.push(TyStorageAccessDescriptor {
-            name: first_field.clone(),
+            name:    first_field.clone(),
             type_id: *initial_field_type,
-            span: first_field.span(),
+            span:    first_field.span(),
         });
 
         fn update_available_struct_fields(id: TypeId) -> Vec<TyStructField> {
@@ -92,9 +92,9 @@ impl TyStorageDeclaration {
             {
                 Some(struct_field) => {
                     type_checked_buf.push(TyStorageAccessDescriptor {
-                        name: field.clone(),
+                        name:    field.clone(),
                         type_id: struct_field.type_id,
-                        span: field.span().clone(),
+                        span:    field.span().clone(),
                     });
                     available_struct_fields = update_available_struct_fields(struct_field.type_id);
                 }
@@ -104,9 +104,9 @@ impl TyStorageDeclaration {
                         .map(|x| x.name.as_str())
                         .collect::<Vec<_>>();
                     errors.push(CompileError::FieldNotFound {
-                        field_name: field.clone(),
+                        field_name:       field.clone(),
                         available_fields: available_fields.join(", "),
-                        struct_name: type_checked_buf.last().unwrap().name.clone(),
+                        struct_name:      type_checked_buf.last().unwrap().name.clone(),
                     });
                     return err(warnings, errors);
                 }
@@ -140,12 +140,12 @@ impl TyStorageDeclaration {
                      ref attributes,
                      ..
                  }| TyStructField {
-                    name: name.clone(),
-                    type_id: *r#type,
+                    name:            name.clone(),
+                    type_id:         *r#type,
                     initial_type_id: *r#type,
-                    span: span.clone(),
-                    type_span: initializer.span.clone(),
-                    attributes: attributes.clone(),
+                    span:            span.clone(),
+                    type_span:       initializer.span.clone(),
+                    attributes:      attributes.clone(),
                 },
             )
             .collect()
@@ -154,12 +154,12 @@ impl TyStorageDeclaration {
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyStorageField {
-    pub name: Ident,
-    pub type_id: TypeId,
-    pub type_span: Span,
+    pub name:        Ident,
+    pub type_id:     TypeId,
+    pub type_span:   Span,
     pub initializer: TyExpression,
     pub(crate) span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes:  transform::AttributesMap,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

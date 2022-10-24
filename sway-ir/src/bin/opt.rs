@@ -206,12 +206,12 @@ impl NamedPass for DCEPass {
 
 #[derive(Default)]
 struct Config {
-    input_path: Option<String>,
+    input_path:  Option<String>,
     output_path: Option<String>,
 
     _verify_each: bool,
     _time_passes: bool,
-    _stats: bool,
+    _stats:       bool,
 
     passes: Vec<Pass>,
 }
@@ -235,9 +235,9 @@ impl From<&str> for Pass {
 // This is a little clumsy in that it needs to consume items from the iterator carefully in each
 // method to ensure we don't enter a weird state.
 struct ConfigBuilder<'a, I: Iterator<Item = String>> {
-    next: Option<String>,
-    rest: I,
-    cfg: Config,
+    next:     Option<String>,
+    rest:     I,
+    cfg:      Config,
     pass_mgr: &'a PassManager,
 }
 

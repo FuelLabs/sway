@@ -20,13 +20,13 @@ pub struct Namespace {
     ///
     /// This is passed through type-checking in order to initialise the namespace of each submodule
     /// within the project.
-    init: Module,
+    init:                Module,
     /// The `root` of the project namespace.
     ///
     /// From the root, the entirety of the project's namespace can always be accessed.
     ///
     /// The root is initialised from the `init` namespace before type-checking begins.
-    pub(crate) root: Root,
+    pub(crate) root:     Root,
     /// An absolute path from the `root` that represents the current module being checked.
     ///
     /// E.g. when type-checking the root module, this is equal to `[]`. When type-checking a

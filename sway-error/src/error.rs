@@ -1,13 +1,11 @@
-use crate::convert_parse_tree_error::ConvertParseTreeError;
-use crate::lex_error::LexError;
-use crate::parser_error::ParseError;
-use crate::type_error::TypeError;
+use crate::{
+    convert_parse_tree_error::ConvertParseTreeError, lex_error::LexError, parser_error::ParseError,
+    type_error::TypeError,
+};
 
 use core::fmt;
-use std::path::PathBuf;
-use std::sync::Arc;
-use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
-use sway_types::{Ident, Span, Spanned};
+use std::{path::PathBuf, sync::Arc};
+use sway_types::{constants::STORAGE_PURITY_ATTRIBUTE_NAME, Ident, Span, Spanned};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -37,7 +35,7 @@ pub enum CompileError {
     UnknownFunction { name: Ident, span: Span },
     #[error("Identifier \"{name}\" was used as a variable, but it is actually a {what_it_is}.")]
     NotAVariable {
-        name: Ident,
+        name:       Ident,
         what_it_is: &'static str,
     },
     #[error(
@@ -45,8 +43,8 @@ pub enum CompileError {
          {what_it_is}."
     )]
     NotAFunction {
-        name: String,
-        span: Span,
+        name:       String,
+        span:       Span,
         what_it_is: &'static str,
     },
     #[error("Unimplemented feature: {0}")]
@@ -69,7 +67,10 @@ pub enum CompileError {
         "Byte literal had length of {byte_length}. Byte literals must be 32 bytes long \
         (256 binary digits or 64 hex digits)"
     )]
-    InvalidByteLiteralLength { byte_length: usize, span: Span },
+    InvalidByteLiteralLength {
+        byte_length: usize,
+        span:        Span,
+    },
     #[error("Expected an expression to follow operator \"{op}\"")]
     ExpectedExprAfterOp { op: String, span: Span },
     #[error("Expected an operator, but \"{op}\" is not a recognized operator. ")]
@@ -115,9 +116,9 @@ pub enum CompileError {
             \"{variable_name}\" is not declared as mutable."
     )]
     MethodRequiresMutableSelf {
-        method_name: Ident,
+        method_name:   Ident,
         variable_name: Ident,
-        span: Span,
+        span:          Span,
     },
     #[error(
         "This parameter was declared as mutable, which is not supported yet, did you mean to use ref mut?"
@@ -155,9 +156,9 @@ pub enum CompileError {
     )]
     MismatchedTypeInInterfaceSurface {
         interface_name: InterfaceName,
-        span: Span,
-        given: String,
-        expected: String,
+        span:           Span,
+        given:          String,
+        expected:       String,
     },
     #[error("\"{name}\" is not a trait, so it cannot be \"impl'd\".")]
     NotATrait { span: Span, name: Ident },
@@ -165,20 +166,20 @@ pub enum CompileError {
     UnknownTrait { span: Span, name: Ident },
     #[error("Function \"{name}\" is not a part of {interface_name}'s interface surface.")]
     FunctionNotAPartOfInterfaceSurface {
-        name: Ident,
+        name:           Ident,
         interface_name: InterfaceName,
-        span: Span,
+        span:           Span,
     },
     #[error("Functions are missing from this trait implementation: {missing_functions}")]
     MissingInterfaceSurfaceMethods {
         missing_functions: String,
-        span: Span,
+        span:              Span,
     },
     #[error("Expected {} type {}, but instead found {}.", expected, if *expected == 1usize { "argument" } else { "arguments" }, given)]
     IncorrectNumberOfTypeArguments {
-        given: usize,
+        given:    usize,
         expected: usize,
-        span: Span,
+        span:     Span,
     },
     #[error("\"{name}\" does not take type arguments.")]
     DoesNotTakeTypeArguments { name: Ident, span: Span },
@@ -207,34 +208,34 @@ pub enum CompileError {
     )]
     AccessedFieldOfNonStruct {
         field_name: Ident,
-        name: Ident,
-        span: Span,
+        name:       Ident,
+        span:       Span,
     },
     #[error(
         "Attempted to access a method on something that has no methods. \"{name}\" is a {thing}, \
          not a type with methods."
     )]
     MethodOnNonValue {
-        name: Ident,
+        name:  Ident,
         thing: Ident,
-        span: Span,
+        span:  Span,
     },
     #[error("Initialization of struct \"{struct_name}\" is missing field \"{field_name}\".")]
     StructMissingField {
-        field_name: Ident,
+        field_name:  Ident,
         struct_name: Ident,
-        span: Span,
+        span:        Span,
     },
     #[error("Struct \"{struct_name}\" does not have field \"{field_name}\".")]
     StructDoesNotHaveField {
-        field_name: Ident,
+        field_name:  Ident,
         struct_name: Ident,
-        span: Span,
+        span:        Span,
     },
     #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
     MethodNotFound {
         method_name: Ident,
-        type_name: String,
+        type_name:   String,
     },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
@@ -242,14 +243,14 @@ pub enum CompileError {
     FieldAccessOnNonStruct { actually: String, span: Span },
     #[error("\"{name}\" is a {actually}, not a tuple. Elements can only be access on tuples.")]
     NotATuple {
-        name: String,
-        span: Span,
+        name:     String,
+        span:     Span,
         actually: String,
     },
     #[error("\"{name}\" is a {actually}, not an enum.")]
     NotAnEnum {
-        name: String,
-        span: Span,
+        name:     String,
+        span:     Span,
         actually: String,
     },
     #[error("This is a {actually}, not a struct.")]
@@ -279,9 +280,9 @@ pub enum CompileError {
          {available_fields}"
     )]
     FieldNotFound {
-        field_name: Ident,
+        field_name:       Ident,
         available_fields: String,
-        struct_name: Ident,
+        struct_name:      Ident,
     },
     #[error("Could not find symbol \"{name}\" in this scope.")]
     SymbolNotFound { name: Ident },
@@ -299,8 +300,8 @@ pub enum CompileError {
          used in this position."
     )]
     NotAType {
-        span: Span,
-        name: String,
+        span:        Span,
+        name:        String,
         actually_is: &'static str,
     },
     #[error(
@@ -313,8 +314,8 @@ pub enum CompileError {
          does not."
     )]
     PathDoesNotReturn {
-        span: Span,
-        ty: String,
+        span:          Span,
+        ty:            String,
         function_name: Ident,
     },
     #[error("Expected block to implicitly return a value of type \"{ty}\".")]
@@ -326,7 +327,7 @@ pub enum CompileError {
          Initialized registers are: {initialized_registers}"
     )]
     UnknownRegister {
-        span: Span,
+        span:                  Span,
         initialized_registers: String,
     },
     #[error("This opcode takes an immediate value but none was provided.")]
@@ -340,9 +341,9 @@ pub enum CompileError {
     InvalidAssemblyMismatchedReturn { span: Span },
     #[error("Variant \"{variant_name}\" does not exist on enum \"{enum_name}\"")]
     UnknownEnumVariant {
-        enum_name: Ident,
+        enum_name:    Ident,
         variant_name: Ident,
-        span: Span,
+        span:         Span,
     },
     #[error("Unknown opcode: \"{op_name}\".")]
     UnrecognizedOp { op_name: Ident, span: Span },
@@ -374,7 +375,7 @@ pub enum CompileError {
         "This op expects {expected} register(s) as arguments, but you provided {received} register(s)."
     )]
     IncorrectNumberOfAsmRegisters {
-        span: Span,
+        span:     Span,
         expected: usize,
         received: usize,
     },
@@ -398,8 +399,8 @@ pub enum CompileError {
     FileNotFound { span: Span, file_path: String },
     #[error("The file {file_path} could not be read: {stringified_error}")]
     FileCouldNotBeRead {
-        span: Span,
-        file_path: String,
+        span:              Span,
+        file_path:         String,
         stringified_error: String,
     },
     #[error("This imported file must be a library. It must start with \"library <name>\", where \"name\" is the name of the library this file contains.")]
@@ -416,42 +417,42 @@ pub enum CompileError {
         "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
     )]
     TooManyArgumentsForFunction {
-        span: Span,
+        span:        Span,
         method_name: Ident,
-        expected: usize,
-        received: usize,
+        expected:    usize,
+        received:    usize,
     },
     #[error(
         "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
     )]
     TooFewArgumentsForFunction {
-        span: Span,
+        span:        Span,
         method_name: Ident,
-        expected: usize,
-        received: usize,
+        expected:    usize,
+        received:    usize,
     },
     #[error("This type is invalid in a function selector. A contract ABI function selector must be a known sized type, not generic.")]
     InvalidAbiType { span: Span },
     #[error("This is a {actually_is}, not an ABI. An ABI cast requires a valid ABI to cast the address to.")]
     NotAnAbi {
-        span: Span,
+        span:        Span,
         actually_is: &'static str,
     },
     #[error("An ABI can only be implemented for the `Contract` type, so this implementation of an ABI for type \"{ty}\" is invalid.")]
     ImplAbiForNonContract { span: Span, ty: String },
     #[error("The function \"{fn_name}\" in {interface_name} is defined with {num_parameters} parameters, but the provided implementation has {provided_parameters} parameters.")]
     IncorrectNumberOfInterfaceSurfaceFunctionParameters {
-        fn_name: Ident,
-        interface_name: InterfaceName,
-        num_parameters: usize,
+        fn_name:             Ident,
+        interface_name:      InterfaceName,
+        num_parameters:      usize,
         provided_parameters: usize,
-        span: Span,
+        span:                Span,
     },
     #[error("This parameter was declared as type {should_be}, but argument of type {provided} was provided.")]
     ArgumentParameterTypeMismatch {
-        span: Span,
+        span:      Span,
         should_be: String,
-        provided: String,
+        provided:  String,
     },
     #[error("Function {fn_name} is recursive, which is unsupported at this time.")]
     RecursiveCall { fn_name: Ident, span: Span },
@@ -459,17 +460,17 @@ pub enum CompileError {
         "Function {fn_name} is recursive via {call_chain}, which is unsupported at this time."
     )]
     RecursiveCallChain {
-        fn_name: Ident,
+        fn_name:    Ident,
         call_chain: String, // Pretty list of symbols, e.g., "a, b and c".
-        span: Span,
+        span:       Span,
     },
     #[error("Type {name} is recursive, which is unsupported at this time.")]
     RecursiveType { name: Ident, span: Span },
     #[error("Type {name} is recursive via {type_chain}, which is unsupported at this time.")]
     RecursiveTypeChain {
-        name: Ident,
+        name:       Ident,
         type_chain: String, // Pretty list of symbols, e.g., "a, b and c".
-        span: Span,
+        span:       Span,
     },
     #[error(
         "The size of this type is not known. Try putting it on the heap or changing the type."
@@ -491,7 +492,7 @@ pub enum CompileError {
     TupleIndexOutOfBounds {
         index: usize,
         count: usize,
-        span: Span,
+        span:  Span,
     },
     #[error("The name \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: Ident },
@@ -506,14 +507,14 @@ pub enum CompileError {
     #[error("Non-exhaustive match expression. Missing patterns {missing_patterns}")]
     MatchExpressionNonExhaustive {
         missing_patterns: String,
-        span: Span,
+        span:             Span,
     },
     #[error("Pattern does not mention {}: {}",
         if missing_fields.len() == 1 { "field" } else { "fields" },
         missing_fields.join(", "))]
     MatchStructPatternMissingFields {
         missing_fields: Vec<String>,
-        span: Span,
+        span:           Span,
     },
     #[error(
         "Storage attribute access mismatch. Try giving the surrounding function more access by \
@@ -527,20 +528,20 @@ pub enum CompileError {
         \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\"."
     )]
     TraitDeclPureImplImpure {
-        fn_name: Ident,
+        fn_name:        Ident,
         interface_name: InterfaceName,
-        attrs: String,
-        span: Span,
+        attrs:          String,
+        span:           Span,
     },
     #[error(
         "Storage attribute access mismatch. The function \"{fn_name}\" in \
         {interface_name} requires the storage attribute(s) #[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]."
     )]
     TraitImplPurityMismatch {
-        fn_name: Ident,
+        fn_name:        Ident,
         interface_name: InterfaceName,
-        attrs: String,
-        span: Span,
+        attrs:          String,
+        span:           Span,
     },
     #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
     ImpureInNonContract { span: Span },
@@ -551,8 +552,8 @@ pub enum CompileError {
     )]
     ImpureInPureContext {
         storage_op: &'static str,
-        attrs: String,
-        span: Span,
+        attrs:      String,
+        span:       Span,
     },
     #[error(
         "Parameter mutability mismatch between the trait function declaration and its implementation."
@@ -573,27 +574,33 @@ pub enum CompileError {
     #[error("The trait \"{supertrait_name}\" is not implemented for type \"{type_name}\"")]
     SupertraitImplMissing {
         supertrait_name: String,
-        type_name: String,
-        span: Span,
+        type_name:       String,
+        span:            Span,
     },
     #[error(
         "Implementation of trait \"{supertrait_name}\" is required by this bound in \"{trait_name}\""
     )]
     SupertraitImplRequired {
         supertrait_name: String,
-        trait_name: Ident,
-        span: Span,
+        trait_name:      Ident,
+        span:            Span,
     },
     #[error("Cannot use `if let` on a non-enum type.")]
     IfLetNonEnum { span: Span },
     #[error(
         "Contract ABI method parameter \"{param_name}\" is set multiple times for this contract ABI method call"
     )]
-    ContractCallParamRepeated { param_name: String, span: Span },
+    ContractCallParamRepeated {
+        param_name: String,
+        span:       Span,
+    },
     #[error(
         "Unrecognized contract ABI method parameter \"{param_name}\". The only available parameters are \"gas\", \"coins\", and \"asset_id\""
     )]
-    UnrecognizedContractParam { param_name: String, span: Span },
+    UnrecognizedContractParam {
+        param_name: String,
+        span:       Span,
+    },
     #[error("Attempting to specify a contract method parameter for a non-contract function call")]
     CallParamForNonContractCallMethod { span: Span },
     #[error("Storage field {name} does not exist")]
@@ -610,7 +617,10 @@ pub enum CompileError {
         "Internal compiler error: Unexpected {decl_type} declaration found.\n\
         Please file an issue on the repository and include the code that triggered this error."
     )]
-    UnexpectedDeclaration { decl_type: &'static str, span: Span },
+    UnexpectedDeclaration {
+        decl_type: &'static str,
+        span:      Span,
+    },
     #[error("This contract caller has no known address. Try instantiating a contract caller with a known contract address instead.")]
     ContractAddressMustBeKnown { span: Span },
     #[error("{}", error)]
@@ -627,7 +637,10 @@ pub enum CompileError {
     #[error("Could not evaluate initializer to a const declaration.")]
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
-    StorageDeclarationInNonContract { program_kind: String, span: Span },
+    StorageDeclarationInNonContract {
+        program_kind: String,
+        span:         Span,
+    },
     #[error("Unsupported argument type to intrinsic \"{name}\". {hint}")]
     IntrinsicUnsupportedArgType {
         name: String,
@@ -636,15 +649,15 @@ pub enum CompileError {
     },
     #[error("Call to \"{name}\" expects {expected} arguments")]
     IntrinsicIncorrectNumArgs {
-        name: String,
+        name:     String,
         expected: u64,
-        span: Span,
+        span:     Span,
     },
     #[error("Call to \"{name}\" expects {expected} type arguments")]
     IntrinsicIncorrectNumTArgs {
-        name: String,
+        name:     String,
         expected: u64,
-        span: Span,
+        span:     Span,
     },
     #[error("\"break\" used outside of a loop")]
     BreakOutsideLoop { span: Span },

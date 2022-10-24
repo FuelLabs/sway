@@ -1,8 +1,6 @@
-use crate::keywords::RESERVED_KEYWORDS;
-use crate::{ParseResult, Parser, ParserConsumed, Peeker};
+use crate::{keywords::RESERVED_KEYWORDS, ParseResult, Parser, ParserConsumed, Peeker};
 
-use sway_ast::token::Delimiter;
-use sway_ast::Intrinsic;
+use sway_ast::{token::Delimiter, Intrinsic};
 use sway_error::parser_error::ParseErrorKind;
 use sway_types::{Ident, Spanned};
 

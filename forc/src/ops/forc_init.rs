@@ -1,10 +1,14 @@
-use crate::cli::InitCommand;
-use crate::utils::{defaults, program_type::ProgramType::*};
+use crate::{
+    cli::InitCommand,
+    utils::{defaults, program_type::ProgramType::*},
+};
 use anyhow::{Context, Result};
 use forc_util::validate_name;
-use std::fs;
-use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    io::Write,
+    path::{Path, PathBuf},
+};
 use sway_utils::constants;
 use tracing::{debug, info};
 

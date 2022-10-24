@@ -28,24 +28,24 @@ pub struct AsmBlock(#[in_context(asm_blocks)] pub generational_arena::Index);
 #[doc(hidden)]
 #[derive(Clone, Debug, DebugWithContext)]
 pub struct AsmBlockContent {
-    pub args_names: Vec<Ident>,
-    pub body: Vec<AsmInstruction>,
+    pub args_names:  Vec<Ident>,
+    pub body:        Vec<AsmInstruction>,
     pub return_type: Type,
     pub return_name: Option<Ident>,
 }
 
 #[derive(Clone, Debug)]
 pub struct AsmArg {
-    pub name: Ident,
+    pub name:        Ident,
     pub initializer: Option<Value>,
 }
 
 #[derive(Clone, Debug)]
 pub struct AsmInstruction {
-    pub name: Ident,
-    pub args: Vec<Ident>,
+    pub name:      Ident,
+    pub args:      Vec<Ident>,
     pub immediate: Option<Ident>,
-    pub metadata: Option<MetadataIndex>,
+    pub metadata:  Option<MetadataIndex>,
 }
 
 impl AsmBlock {

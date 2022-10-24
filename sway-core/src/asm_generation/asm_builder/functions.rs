@@ -83,8 +83,8 @@ impl<'ir> AsmBuilder<'ir> {
         // Jump to function and insert return label.
         let (fn_label, _) = self.func_to_labels(function);
         self.cur_bytecode.push(Op {
-            opcode: Either::Right(OrganizationalOp::Call(fn_label)),
-            comment: format!("call {}", function.get_name(self.context)),
+            opcode:      Either::Right(OrganizationalOp::Call(fn_label)),
+            comment:     format!("call {}", function.get_name(self.context)),
             owning_span: None,
         });
         self.cur_bytecode.push(Op::unowned_jump_label(ret_label));
@@ -92,11 +92,11 @@ impl<'ir> AsmBuilder<'ir> {
         // Save the return value.
         let ret_reg = self.reg_seqr.next();
         self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::MOVE(
+            opcode:      Either::Left(VirtualOp::MOVE(
                 ret_reg.clone(),
                 VirtualRegister::Constant(ConstantRegister::CallReturnValue),
             )),
-            comment: "copy the return value".into(),
+            comment:     "copy the return value".into(),
             owning_span: None,
         });
         self.reg_map.insert(*instr_val, ret_reg);
@@ -163,8 +163,8 @@ impl<'ir> AsmBuilder<'ir> {
         if !func_is_entry {
             // Save any general purpose registers used here on the stack.
             self.cur_bytecode.push(Op {
-                opcode: Either::Right(OrganizationalOp::PushAll(start_label)),
-                comment: "save all regs".to_owned(),
+                opcode:      Either::Right(OrganizationalOp::PushAll(start_label)),
+                comment:     "save all regs".to_owned(),
                 owning_span: None,
             });
         }
@@ -236,8 +236,8 @@ impl<'ir> AsmBuilder<'ir> {
 
             // Restore GP regs.
             self.cur_bytecode.push(Op {
-                opcode: Either::Right(OrganizationalOp::PopAll(start_label)),
-                comment: "restore all regs".to_owned(),
+                opcode:      Either::Right(OrganizationalOp::PopAll(start_label)),
+                comment:     "restore all regs".to_owned(),
                 owning_span: None,
             });
 
@@ -305,12 +305,12 @@ impl<'ir> AsmBuilder<'ir> {
                     // The base is an offset.  Dereference it.
                     if val.get_type(self.context).unwrap().is_copy_type() {
                         self.cur_bytecode.push(Op {
-                            opcode: either::Either::Left(VirtualOp::LW(
+                            opcode:      either::Either::Left(VirtualOp::LW(
                                 single_arg_reg.clone(),
                                 single_arg_reg.clone(),
                                 VirtualImmediate12 { value: 0 },
                             )),
-                            comment: "load main fn parameter".into(),
+                            comment:     "load main fn parameter".into(),
                             owning_span: None,
                         });
                     }
@@ -337,33 +337,33 @@ impl<'ir> AsmBuilder<'ir> {
                         if arg_word_offset > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
                             self.cur_bytecode.push(Op {
-                                opcode: Either::Left(VirtualOp::ADD(
+                                opcode:      Either::Left(VirtualOp::ADD(
                                     args_base_reg.clone(),
                                     args_base_reg.clone(),
                                     offs_reg.clone(),
                                 )),
-                                comment: format!("get offset for arg {}", name),
+                                comment:     format!("get offset for arg {}", name),
                                 owning_span: None,
                             });
                             self.cur_bytecode.push(Op {
-                                opcode: Either::Left(VirtualOp::LW(
+                                opcode:      Either::Left(VirtualOp::LW(
                                     current_arg_reg.clone(),
                                     offs_reg,
                                     VirtualImmediate12 { value: 0 },
                                 )),
-                                comment: format!("get arg {}", name),
+                                comment:     format!("get arg {}", name),
                                 owning_span: None,
                             });
                         } else {
                             self.cur_bytecode.push(Op {
-                                opcode: Either::Left(VirtualOp::LW(
+                                opcode:      Either::Left(VirtualOp::LW(
                                     current_arg_reg.clone(),
                                     args_base_reg.clone(),
                                     VirtualImmediate12 {
                                         value: arg_word_offset as u16,
                                     },
                                 )),
-                                comment: format!("get arg {}", name),
+                                comment:     format!("get arg {}", name),
                                 owning_span: None,
                             });
                         }
@@ -371,24 +371,24 @@ impl<'ir> AsmBuilder<'ir> {
                         let offs_reg = self.reg_seqr.next();
                         self.number_to_reg(arg_word_offset * 8, &offs_reg, None);
                         self.cur_bytecode.push(Op {
-                            opcode: either::Either::Left(VirtualOp::ADD(
+                            opcode:      either::Either::Left(VirtualOp::ADD(
                                 current_arg_reg.clone(),
                                 args_base_reg.clone(),
                                 offs_reg,
                             )),
-                            comment: format!("get offset or arg {}", name),
+                            comment:     format!("get offset or arg {}", name),
                             owning_span: None,
                         });
                     } else {
                         self.cur_bytecode.push(Op {
-                            opcode: either::Either::Left(VirtualOp::ADDI(
+                            opcode:      either::Either::Left(VirtualOp::ADDI(
                                 current_arg_reg.clone(),
                                 args_base_reg.clone(),
                                 VirtualImmediate12 {
                                     value: (arg_word_offset * 8) as u16,
                                 },
                             )),
-                            comment: format!("get address for arg {}", name),
+                            comment:     format!("get address for arg {}", name),
                             owning_span: None,
                         });
                     }
@@ -402,13 +402,13 @@ impl<'ir> AsmBuilder<'ir> {
     // Read the argument(s) base from the call frame.
     fn read_args_base_from_frame(&mut self, reg: &VirtualRegister) {
         self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::LW(
+            opcode:      Either::Left(VirtualOp::LW(
                 reg.clone(),
                 VirtualRegister::Constant(ConstantRegister::FramePointer),
                 // see https://github.com/FuelLabs/fuel-specs/pull/193#issuecomment-876496372
                 VirtualImmediate12 { value: 74 },
             )),
-            comment: "base register for method parameter".into(),
+            comment:     "base register for method parameter".into(),
             owning_span: None,
         });
     }
@@ -416,14 +416,14 @@ impl<'ir> AsmBuilder<'ir> {
     // Read the argument(s) base from the script data.
     fn read_args_base_from_script_data(&mut self, reg: &VirtualRegister) {
         self.cur_bytecode.push(Op {
-            opcode: either::Either::Left(VirtualOp::GTF(
+            opcode:      either::Either::Left(VirtualOp::GTF(
                 reg.clone(),
                 VirtualRegister::Constant(ConstantRegister::Zero),
                 VirtualImmediate12 {
                     value: GTFArgs::ScriptData as u16,
                 },
             )),
-            comment: "base register for main fn parameter".into(),
+            comment:     "base register for main fn parameter".into(),
             owning_span: None,
         });
     }
@@ -485,10 +485,10 @@ impl<'ir> AsmBuilder<'ir> {
                 todo!("Enormous stack usage for locals.");
             }
             self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
+                opcode:      Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
                     value: locals_size as u32,
                 })),
-                comment: format!("allocate {} bytes for locals", locals_size),
+                comment:     format!("allocate {} bytes for locals", locals_size),
                 owning_span: None,
             });
         }
@@ -505,10 +505,10 @@ impl<'ir> AsmBuilder<'ir> {
                 todo!("Enormous stack usage for locals.");
             }
             self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
+                opcode:      Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
                     value: locals_size as u32,
                 })),
-                comment: format!("free {} bytes for locals", locals_size),
+                comment:     format!("free {} bytes for locals", locals_size),
                 owning_span: None,
             });
         }

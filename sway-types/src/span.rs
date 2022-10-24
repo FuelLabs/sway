@@ -1,7 +1,5 @@
-use {
-    lazy_static::lazy_static,
-    std::{borrow::Cow, cmp, fmt, path::PathBuf, sync::Arc},
-};
+use lazy_static::lazy_static;
+use std::{borrow::Cow, cmp, fmt, path::PathBuf, sync::Arc};
 
 lazy_static! {
     static ref DUMMY_SPAN: Span = Span::new(Arc::from(""), 0, 0, None).unwrap();
@@ -9,7 +7,7 @@ lazy_static! {
 
 pub struct Position {
     input: Arc<str>,
-    pos: usize,
+    pos:   usize,
 }
 
 impl Position {
@@ -67,13 +65,13 @@ impl Position {
 #[derive(Clone, Eq, PartialEq, PartialOrd, Hash)]
 pub struct Span {
     // The original source code.
-    src: Arc<str>,
+    src:   Arc<str>,
     // The byte position in the string of the start of the span.
     start: usize,
     // The byte position in the string of the end of the span.
-    end: usize,
+    end:   usize,
     // A reference counted pointer to the file from which this span originated.
-    path: Option<Arc<PathBuf>>,
+    path:  Option<Arc<PathBuf>>,
 }
 
 impl Span {
@@ -151,10 +149,10 @@ impl Span {
         let start_delta = self.as_str().len() - self.as_str().trim_start().len();
         let end_delta = self.as_str().len() - self.as_str().trim_end().len();
         Span {
-            src: self.src,
+            src:   self.src,
             start: self.start + start_delta,
-            end: self.end - end_delta,
-            path: self.path,
+            end:   self.end - end_delta,
+            path:  self.path,
         }
     }
 
@@ -167,10 +165,10 @@ impl Span {
         );
 
         Span {
-            src: s1.src,
+            src:   s1.src,
             start: cmp::min(s1.start, s2.start),
-            end: cmp::max(s1.end, s2.end),
-            path: s1.path,
+            end:   cmp::max(s1.end, s2.end),
+            path:  s1.path,
         }
     }
 
@@ -209,14 +207,14 @@ pub trait Spanned {
 #[derive(Clone, Copy)]
 pub struct LineCol {
     pub line: usize,
-    pub col: usize,
+    pub col:  usize,
 }
 
 impl From<(usize, usize)> for LineCol {
     fn from(o: (usize, usize)) -> Self {
         LineCol {
             line: o.0,
-            col: o.1,
+            col:  o.1,
         }
     }
 }

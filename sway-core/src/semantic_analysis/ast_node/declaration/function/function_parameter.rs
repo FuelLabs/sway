@@ -113,17 +113,17 @@ fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &ty::TyFunction
     ctx.namespace.insert_symbol(
         typed_parameter.name.clone(),
         ty::TyDeclaration::VariableDeclaration(Box::new(ty::TyVariableDeclaration {
-            name: typed_parameter.name.clone(),
-            body: ty::TyExpression {
-                expression: ty::TyExpressionVariant::FunctionParameter,
+            name:                 typed_parameter.name.clone(),
+            body:                 ty::TyExpression {
+                expression:  ty::TyExpressionVariant::FunctionParameter,
                 return_type: typed_parameter.type_id,
-                span: typed_parameter.name.span(),
+                span:        typed_parameter.name.span(),
             },
-            mutability: ty::VariableMutability::new_from_ref_mut(
+            mutability:           ty::VariableMutability::new_from_ref_mut(
                 typed_parameter.is_reference,
                 typed_parameter.is_mutable,
             ),
-            type_ascription: typed_parameter.type_id,
+            type_ascription:      typed_parameter.type_id,
             type_ascription_span: Some(typed_parameter.type_span.clone()),
         })),
     );

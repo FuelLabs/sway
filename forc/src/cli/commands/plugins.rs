@@ -14,7 +14,7 @@ pub struct Command {
     print_full_path: bool,
     /// Prints the long description associated with each listed plugin
     #[clap(long = "describe", short = 'd')]
-    describe: bool,
+    describe:        bool,
 }
 
 pub(crate) fn exec(command: PluginsCommand) -> Result<()> {

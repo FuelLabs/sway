@@ -1,7 +1,6 @@
 use crate::{Parse, ParseBracket, ParseResult, Parser};
 
-use sway_ast::attribute::Annotated;
-use sway_ast::{Braces, FnSignature, ItemAbi, ItemFn};
+use sway_ast::{attribute::Annotated, Braces, FnSignature, ItemAbi, ItemFn};
 
 impl Parse for ItemAbi {
     fn parse(parser: &mut Parser) -> ParseResult<ItemAbi> {

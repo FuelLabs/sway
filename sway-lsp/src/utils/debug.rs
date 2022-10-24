@@ -1,6 +1,8 @@
 #![allow(dead_code)]
-use crate::core::token::{AstToken, Token, TokenMap, TypedAstToken};
-use crate::utils::{common::get_range_from_span, token};
+use crate::{
+    core::token::{AstToken, Token, TokenMap, TypedAstToken},
+    utils::{common::get_range_from_span, token},
+};
 use sway_core::language::{
     parsed::{Expression, ExpressionKind},
     Literal,

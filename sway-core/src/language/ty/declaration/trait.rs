@@ -11,18 +11,18 @@ use crate::{
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
 pub struct TyTraitDeclaration {
-    pub name: Ident,
-    pub interface_surface: Vec<DeclarationId>,
+    pub name:               Ident,
+    pub interface_surface:  Vec<DeclarationId>,
     // NOTE: deriving partialeq and hash on this element may be important in the
     // future, but I am not sure. For now, adding this would 2x the amount of
     // work, so I am just going to exclude it
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
-    pub(crate) methods: Vec<parsed::FunctionDeclaration>,
+    pub(crate) methods:     Vec<parsed::FunctionDeclaration>,
     pub(crate) supertraits: Vec<parsed::Supertrait>,
-    pub visibility: Visibility,
-    pub attributes: transform::AttributesMap,
-    pub span: Span,
+    pub visibility:         Visibility,
+    pub attributes:         transform::AttributesMap,
+    pub span:               Span,
 }
 
 impl CopyTypes for TyTraitDeclaration {

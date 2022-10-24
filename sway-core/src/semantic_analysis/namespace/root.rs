@@ -140,7 +140,7 @@ impl Root {
                 {
                     errors.push(CompileError::MethodNotFound {
                         method_name: method_name.clone(),
-                        type_name: type_id.to_string(),
+                        type_name:   type_id.to_string(),
                     });
                 }
                 err(warnings, errors)

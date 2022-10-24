@@ -7,12 +7,12 @@ use crate::{error::*, language::Visibility, transform, type_system::*};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyStructDeclaration {
-    pub name: Ident,
-    pub fields: Vec<TyStructField>,
+    pub name:            Ident,
+    pub fields:          Vec<TyStructField>,
     pub type_parameters: Vec<TypeParameter>,
-    pub visibility: Visibility,
-    pub(crate) span: Span,
-    pub attributes: transform::AttributesMap,
+    pub visibility:      Visibility,
+    pub(crate) span:     Span,
+    pub attributes:      transform::AttributesMap,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -41,8 +41,8 @@ impl CopyTypes for TyStructDeclaration {
 impl CreateTypeId for TyStructDeclaration {
     fn create_type_id(&self) -> TypeId {
         insert_type(TypeInfo::Struct {
-            name: self.name.clone(),
-            fields: self.fields.clone(),
+            name:            self.name.clone(),
+            fields:          self.fields.clone(),
             type_parameters: self.type_parameters.clone(),
         })
     }
@@ -82,8 +82,8 @@ impl TyStructDeclaration {
                         .map(|TyStructField { name, .. }| name.to_string())
                         .collect::<Vec<_>>()
                         .join("\n"),
-                    field_name: field_to_access.clone(),
-                    struct_name: self.name.clone(),
+                    field_name:       field_to_access.clone(),
+                    struct_name:      self.name.clone(),
                 });
                 err(warnings, errors)
             }
@@ -93,12 +93,12 @@ impl TyStructDeclaration {
 
 #[derive(Debug, Clone, Eq)]
 pub struct TyStructField {
-    pub name: Ident,
-    pub type_id: TypeId,
+    pub name:            Ident,
+    pub type_id:         TypeId,
     pub initial_type_id: TypeId,
-    pub(crate) span: Span,
-    pub type_span: Span,
-    pub attributes: transform::AttributesMap,
+    pub(crate) span:     Span,
+    pub type_span:       Span,
+    pub attributes:      transform::AttributesMap,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

@@ -19,8 +19,10 @@ use sway_core::{
     type_system::{TypeArgument, TypeParameter},
     TypeInfo,
 };
-use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{
+    constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX},
+    Ident, Span, Spanned,
+};
 
 pub fn traverse_node(node: &AstNode, tokens: &TokenMap) {
     match &node.content {

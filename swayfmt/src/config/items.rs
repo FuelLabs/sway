@@ -8,22 +8,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Copy, Clone)]
 pub struct Items {
     /// Brace style for items.
-    pub item_brace_style: ItemBraceStyle,
+    pub item_brace_style:        ItemBraceStyle,
     /// Maximum number of blank lines which can be put between items.
     pub blank_lines_upper_bound: usize,
     /// Minimum number of blank lines which must be put between items.
     pub blank_lines_lower_bound: usize,
     /// Put empty-body functions and impls on a single line.
-    pub empty_item_single_line: bool,
+    pub empty_item_single_line:  bool,
 }
 
 impl Default for Items {
     fn default() -> Self {
         Self {
-            item_brace_style: ItemBraceStyle::SameLineWhere,
+            item_brace_style:        ItemBraceStyle::SameLineWhere,
             blank_lines_upper_bound: DEFAULT_BLANK_LINES_UPPER_BOUND,
             blank_lines_lower_bound: DEFAULT_BLANK_LINES_LOWER_BOUND,
-            empty_item_single_line: true,
+            empty_item_single_line:  true,
         }
     }
 }
@@ -32,14 +32,14 @@ impl Items {
     pub fn from_opts(opts: &ItemsOptions) -> Self {
         let default = Self::default();
         Self {
-            item_brace_style: opts.item_brace_style.unwrap_or(default.item_brace_style),
+            item_brace_style:        opts.item_brace_style.unwrap_or(default.item_brace_style),
             blank_lines_upper_bound: opts
                 .blank_lines_upper_bound
                 .unwrap_or(default.blank_lines_upper_bound),
             blank_lines_lower_bound: opts
                 .blank_lines_lower_bound
                 .unwrap_or(default.blank_lines_lower_bound),
-            empty_item_single_line: opts
+            empty_item_single_line:  opts
                 .empty_item_single_line
                 .unwrap_or(default.empty_item_single_line),
         }

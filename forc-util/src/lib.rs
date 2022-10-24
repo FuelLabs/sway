@@ -6,12 +6,13 @@ use annotate_snippets::{
 };
 use anyhow::{bail, Result};
 use forc_tracing::{println_green_err, println_red_err, println_yellow_err};
-use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
-use std::str;
+use std::{
+    ffi::OsStr,
+    path::{Path, PathBuf},
+    str,
+};
 use sway_core::language::parsed::TreeType;
-use sway_error::error::CompileError;
-use sway_error::warning::CompileWarning;
+use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::{LineCol, Spanned};
 use sway_utils::constants;
 
@@ -206,22 +207,22 @@ fn format_err(err: &CompileError) {
     let friendly_str = maybe_uwuify(&format!("{}", err));
     let (snippet_title, snippet_slices) = if start_pos < end_pos {
         let title = Some(Annotation {
-            label: None,
-            id: None,
+            label:           None,
+            id:              None,
             annotation_type: AnnotationType::Error,
         });
 
         let (mut start, end) = err.span().line_col();
         let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
         let slices = vec![Slice {
-            source: input,
-            line_start: start.line,
-            origin: path_str.as_deref(),
-            fold: false,
+            source:      input,
+            line_start:  start.line,
+            origin:      path_str.as_deref(),
+            fold:        false,
             annotations: vec![SourceAnnotation {
-                label: &friendly_str,
+                label:           &friendly_str,
                 annotation_type: AnnotationType::Error,
-                range: (start_pos, end_pos),
+                range:           (start_pos, end_pos),
             }],
         }];
 
@@ -229,8 +230,8 @@ fn format_err(err: &CompileError) {
     } else {
         (
             Some(Annotation {
-                label: Some(friendly_str.as_str()),
-                id: None,
+                label:           Some(friendly_str.as_str()),
+                id:              None,
                 annotation_type: AnnotationType::Error,
             }),
             Vec::new(),
@@ -238,10 +239,10 @@ fn format_err(err: &CompileError) {
     };
 
     let snippet = Snippet {
-        title: snippet_title,
+        title:  snippet_title,
         footer: vec![],
         slices: snippet_slices,
-        opt: FormatOptions {
+        opt:    FormatOptions {
             color: true,
             ..Default::default()
         },
@@ -266,24 +267,24 @@ fn format_warning(err: &CompileWarning) {
     let (mut start, end) = err.span.line_col();
     let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
     let snippet = Snippet {
-        title: Some(Annotation {
-            label: None,
-            id: None,
+        title:  Some(Annotation {
+            label:           None,
+            id:              None,
             annotation_type: AnnotationType::Warning,
         }),
         footer: vec![],
         slices: vec![Slice {
-            source: input,
-            line_start: start.line,
-            origin: path_str.as_deref(),
-            fold: false,
+            source:      input,
+            line_start:  start.line,
+            origin:      path_str.as_deref(),
+            fold:        false,
             annotations: vec![SourceAnnotation {
-                label: &friendly_str,
+                label:           &friendly_str,
                 annotation_type: AnnotationType::Warning,
-                range: (start_pos, end_pos),
+                range:           (start_pos, end_pos),
             }],
         }],
-        opt: FormatOptions {
+        opt:    FormatOptions {
             color: true,
             ..Default::default()
         },

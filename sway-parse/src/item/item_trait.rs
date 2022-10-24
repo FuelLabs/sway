@@ -1,8 +1,10 @@
 use crate::{Parse, ParseBracket, ParseResult, Parser};
 
-use sway_ast::attribute::Annotated;
-use sway_ast::keywords::{OpenAngleBracketToken, WhereToken};
-use sway_ast::{Braces, FnSignature, ItemFn, ItemTrait, Traits};
+use sway_ast::{
+    attribute::Annotated,
+    keywords::{OpenAngleBracketToken, WhereToken},
+    Braces, FnSignature, ItemFn, ItemTrait, Traits,
+};
 
 impl Parse for ItemTrait {
     fn parse(parser: &mut Parser) -> ParseResult<ItemTrait> {

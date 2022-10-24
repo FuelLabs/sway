@@ -42,14 +42,14 @@ pub enum TypeInfo {
     Str(u64),
     UnsignedInteger(IntegerBits),
     Enum {
-        name: Ident,
+        name:            Ident,
         type_parameters: Vec<TypeParameter>,
-        variant_types: Vec<ty::TyEnumVariant>,
+        variant_types:   Vec<ty::TyEnumVariant>,
     },
     Struct {
-        name: Ident,
+        name:            Ident,
         type_parameters: Vec<TypeParameter>,
-        fields: Vec<ty::TyStructField>,
+        fields:          Vec<ty::TyStructField>,
     },
     Boolean,
     Tuple(Vec<TypeArgument>),
@@ -58,14 +58,14 @@ pub enum TypeInfo {
     ContractCaller {
         abi_name: AbiName,
         // boxed for size
-        address: Option<Box<ty::TyExpression>>,
+        address:  Option<Box<ty::TyExpression>>,
     },
     /// A custom type could be a struct or similar if the name is in scope,
     /// or just a generic parameter if it is not.
     /// At parse time, there is no sense of scope, so this determination is not made
     /// until the semantic analysis stage.
     Custom {
-        name: Ident,
+        name:           Ident,
         type_arguments: Option<Vec<TypeArgument>>,
     },
     SelfType,
@@ -1043,8 +1043,8 @@ impl TypeInfo {
                         let available_fields =
                             fields.iter().map(|x| x.name.as_str()).collect::<Vec<_>>();
                         errors.push(CompileError::FieldNotFound {
-                            field_name: first.clone(),
-                            struct_name: name.clone(),
+                            field_name:       first.clone(),
+                            struct_name:      name.clone(),
                             available_fields: available_fields.join(", "),
                         });
                         return err(warnings, errors);
@@ -1069,7 +1069,7 @@ impl TypeInfo {
             (type_info, _) => {
                 errors.push(CompileError::FieldAccessOnNonStruct {
                     actually: type_info.to_string(),
-                    span: span.clone(),
+                    span:     span.clone(),
                 });
                 err(warnings, errors)
             }
@@ -1093,8 +1093,8 @@ impl TypeInfo {
             a => err(
                 vec![],
                 vec![CompileError::NotATuple {
-                    name: debug_string.into(),
-                    span: debug_span.clone(),
+                    name:     debug_string.into(),
+                    span:     debug_span.clone(),
                     actually: a.to_string(),
                 }],
             ),
@@ -1122,8 +1122,8 @@ impl TypeInfo {
             a => err(
                 vec![],
                 vec![CompileError::NotAnEnum {
-                    name: debug_string.into(),
-                    span: debug_span.clone(),
+                    name:     debug_string.into(),
+                    span:     debug_span.clone(),
                     actually: a.to_string(),
                 }],
             ),
@@ -1147,7 +1147,7 @@ impl TypeInfo {
             a => err(
                 vec![],
                 vec![CompileError::NotAStruct {
-                    span: debug_span.clone(),
+                    span:     debug_span.clone(),
                     actually: a.to_string(),
                 }],
             ),

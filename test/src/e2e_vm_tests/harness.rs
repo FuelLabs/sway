@@ -6,10 +6,8 @@ use forc_client::ops::{
 };
 use forc_pkg::Compiled;
 use fuel_tx::TransactionBuilder;
-use fuel_vm::interpreter::Interpreter;
-use fuel_vm::prelude::*;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use fuel_vm::{interpreter::Interpreter, prelude::*};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::{fmt::Write, fs, str::FromStr};
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";

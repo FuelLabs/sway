@@ -6,8 +6,8 @@ use sway_types::{ident::Ident, span::Span};
 /// All values in this struct are mutable and persistent among executions of the same contract deployment.
 pub struct StorageDeclaration {
     pub attributes: transform::AttributesMap,
-    pub fields: Vec<StorageField>,
-    pub span: Span,
+    pub fields:     Vec<StorageField>,
+    pub span:       Span,
 }
 
 /// An individual field in a storage declaration.
@@ -16,9 +16,9 @@ pub struct StorageDeclaration {
 /// improves, we can update that.
 #[derive(Debug, Clone)]
 pub struct StorageField {
-    pub name: Ident,
-    pub attributes: transform::AttributesMap,
-    pub type_info: TypeInfo,
+    pub name:           Ident,
+    pub attributes:     transform::AttributesMap,
+    pub type_info:      TypeInfo,
     pub type_info_span: Span,
-    pub initializer: Expression,
+    pub initializer:    Expression,
 }

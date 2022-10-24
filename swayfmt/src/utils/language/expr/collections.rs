@@ -2,7 +2,7 @@ use crate::{
     formatter::{shape::LineStyle, *},
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
-        {Parenthesis, SquareBracket},
+        Parenthesis, SquareBracket,
     },
 };
 use std::fmt::Write;

@@ -9,7 +9,7 @@ use std::fmt::{self, Write};
 #[derive(Clone, Debug)]
 pub struct Entry {
     value: Datum,
-    size: usize,
+    size:  usize,
 }
 
 #[derive(Clone, Debug)]
@@ -23,7 +23,7 @@ impl Entry {
     pub(crate) fn new_word(value: u64, size: Option<usize>) -> Entry {
         Entry {
             value: Datum::Word(value),
-            size: size.unwrap_or(8),
+            size:  size.unwrap_or(8),
         }
     }
 

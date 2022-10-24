@@ -115,14 +115,14 @@ where
         + Into<u64>,
 {
     first: T,
-    last: T,
+    last:  T,
 }
 
 impl Range<u8> {
     pub(crate) fn u8() -> Range<u8> {
         Range {
             first: std::u8::MIN,
-            last: std::u8::MAX,
+            last:  std::u8::MAX,
         }
     }
 }
@@ -131,7 +131,7 @@ impl Range<u16> {
     pub(crate) fn u16() -> Range<u16> {
         Range {
             first: std::u16::MIN,
-            last: std::u16::MAX,
+            last:  std::u16::MAX,
         }
     }
 }
@@ -140,7 +140,7 @@ impl Range<u32> {
     pub(crate) fn u32() -> Range<u32> {
         Range {
             first: std::u32::MIN,
-            last: std::u32::MAX,
+            last:  std::u32::MAX,
         }
     }
 }
@@ -149,7 +149,7 @@ impl Range<u64> {
     pub(crate) fn u64() -> Range<u64> {
         Range {
             first: std::u64::MIN,
-            last: std::u64::MAX,
+            last:  std::u64::MAX,
         }
     }
 }
@@ -172,7 +172,7 @@ where
     pub(crate) fn from_single(x: T) -> Range<T> {
         Range {
             first: x.clone(),
-            last: x,
+            last:  x,
         }
     }
 

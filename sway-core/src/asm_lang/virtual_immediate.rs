@@ -1,8 +1,7 @@
 use sway_error::error::CompileError;
 use sway_types::span::Span;
 
-use std::convert::TryInto;
-use std::fmt;
+use std::{convert::TryInto, fmt};
 
 /// 6-bit immediate value type
 #[derive(Clone, Debug)]
@@ -14,7 +13,7 @@ impl VirtualImmediate06 {
     pub(crate) fn new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
         if raw > crate::asm_generation::compiler_constants::SIX_BITS {
             Err(CompileError::Immediate06TooLarge {
-                val: raw,
+                val:  raw,
                 span: err_msg_span,
             })
         } else {
@@ -40,7 +39,7 @@ impl VirtualImmediate12 {
     pub(crate) fn new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
         if raw > crate::asm_generation::compiler_constants::TWELVE_BITS {
             Err(CompileError::Immediate12TooLarge {
-                val: raw,
+                val:  raw,
                 span: err_msg_span,
             })
         } else {
@@ -75,7 +74,7 @@ impl VirtualImmediate18 {
     pub(crate) fn new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
         if raw > crate::asm_generation::compiler_constants::EIGHTEEN_BITS {
             Err(CompileError::Immediate18TooLarge {
-                val: raw,
+                val:  raw,
                 span: err_msg_span,
             })
         } else {
@@ -110,7 +109,7 @@ impl VirtualImmediate24 {
     pub(crate) fn new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
         if raw > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS {
             Err(CompileError::Immediate24TooLarge {
-                val: raw,
+                val:  raw,
                 span: err_msg_span,
             })
         } else {

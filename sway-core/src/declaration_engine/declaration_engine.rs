@@ -14,7 +14,7 @@ lazy_static! {
 /// Used inside of type inference to store declarations.
 #[derive(Debug, Default)]
 pub(crate) struct DeclarationEngine {
-    slab: ConcurrentSlab<DeclarationWrapper>,
+    slab:                 ConcurrentSlab<DeclarationWrapper>,
     // *declaration_id -> vec of monomorphized copies
     // where the declaration_id is the original declaration
     monomorphized_copies: RwLock<HashMap<usize, Vec<DeclarationId>>>,

@@ -6,8 +6,10 @@ use crate::{
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::BTreeSet;
-use sway_error::error::CompileError;
-use sway_error::warning::{CompileWarning, Warning};
+use sway_error::{
+    error::CompileError,
+    warning::{CompileWarning, Warning},
+};
 use sway_types::{span::Span, Ident, Spanned};
 
 impl ControlFlowGraph {
@@ -30,7 +32,7 @@ impl ControlFlowGraph {
             .collect();
 
         let priv_enum_var_warn = |name: &Ident| CompileWarning {
-            span: name.span(),
+            span:            name.span(),
             warning_content: Warning::DeadEnumVariant {
                 variant_name: name.clone(),
             },
@@ -58,15 +60,15 @@ impl ControlFlowGraph {
                 } if !is_public => Some(priv_enum_var_warn(variant_name)),
                 ControlFlowGraphNode::EnumVariant { .. } => None,
                 ControlFlowGraphNode::MethodDeclaration { span, .. } => Some(CompileWarning {
-                    span: span.clone(),
+                    span:            span.clone(),
                     warning_content: Warning::DeadMethod,
                 }),
                 ControlFlowGraphNode::StructField { span, .. } => Some(CompileWarning {
-                    span: span.clone(),
+                    span:            span.clone(),
                     warning_content: Warning::StructFieldNeverRead,
                 }),
                 ControlFlowGraphNode::StorageField { field_name, .. } => Some(CompileWarning {
-                    span: field_name.span(),
+                    span:            field_name.span(),
                     warning_content: Warning::DeadStorageDeclaration,
                 }),
                 ControlFlowGraphNode::OrganizationalDominator(..) => None,
@@ -436,7 +438,7 @@ fn connect_impl_trait(
     // insert method declarations into the graph
     for fn_decl in methods {
         let fn_decl_entry_node = graph.add_node(ControlFlowGraphNode::MethodDeclaration {
-            span: fn_decl.span.clone(),
+            span:        fn_decl.span.clone(),
             method_name: fn_decl.name.clone(),
         });
         graph.add_edge(entry_node, fn_decl_entry_node, "".into());
@@ -482,8 +484,8 @@ fn connect_trait_declaration(
 ) {
     graph.namespace.add_trait(
         CallPath {
-            prefixes: vec![],
-            suffix: decl.name.clone(),
+            prefixes:    vec![],
+            suffix:      decl.name.clone(),
             is_absolute: false,
         },
         entry_node,
@@ -498,8 +500,8 @@ fn connect_abi_declaration(
 ) {
     graph.namespace.add_trait(
         CallPath {
-            prefixes: vec![],
-            suffix: decl.name.clone(),
+            prefixes:    vec![],
+            suffix:      decl.name.clone(),
             is_absolute: false,
         },
         entry_node,
@@ -564,7 +566,7 @@ fn connect_typed_fn_decl(
 
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,
-        exit_point: fn_exit_node,
+        exit_point:  fn_exit_node,
         return_type: ty,
     };
 
@@ -1253,14 +1255,14 @@ fn construct_dead_code_warning_from_node(node: &ty::TyAstNode) -> Option<Compile
             span,
             ..
         } => CompileWarning {
-            span: span.clone(),
+            span:            span.clone(),
             warning_content: Warning::DeadFunctionDeclaration,
         },
         ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration { .. }),
             span,
         } => CompileWarning {
-            span: span.clone(),
+            span:            span.clone(),
             warning_content: Warning::DeadStructDeclaration,
         },
         ty::TyAstNode {
@@ -1282,7 +1284,7 @@ fn construct_dead_code_warning_from_node(node: &ty::TyAstNode) -> Option<Compile
         } => match de_get_impl_trait(decl_id.clone(), span) {
             Ok(ty::TyImplTrait { methods, .. }) if methods.is_empty() => return None,
             _ => CompileWarning {
-                span: span.clone(),
+                span:            span.clone(),
                 warning_content: Warning::DeadDeclaration,
             },
         },
@@ -1300,7 +1302,7 @@ fn construct_dead_code_warning_from_node(node: &ty::TyAstNode) -> Option<Compile
             content: ty::TyAstNodeContent::Declaration(..),
             span,
         } => CompileWarning {
-            span: span.clone(),
+            span:            span.clone(),
             warning_content: Warning::DeadDeclaration,
         },
         // Otherwise, this is unreachable.
@@ -1311,7 +1313,7 @@ fn construct_dead_code_warning_from_node(node: &ty::TyAstNode) -> Option<Compile
                 | ty::TyAstNodeContent::Expression(_)
                 | ty::TyAstNodeContent::SideEffect,
         } => CompileWarning {
-            span: span.clone(),
+            span:            span.clone(),
             warning_content: Warning::UnreachableCode,
         },
     })

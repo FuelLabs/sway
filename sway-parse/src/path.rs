@@ -1,7 +1,7 @@
 use crate::{Parse, ParseResult, Parser};
 
-use sway_ast::keywords::{DoubleColonToken, OpenAngleBracketToken, SelfToken, StorageToken};
 use sway_ast::{
+    keywords::{DoubleColonToken, OpenAngleBracketToken, SelfToken, StorageToken},
     AngleBrackets, PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot,
 };
 use sway_types::Ident;
@@ -52,8 +52,9 @@ impl Parse for PathExprSegment {
     fn parse(parser: &mut Parser) -> ParseResult<PathExprSegment> {
         Ok(PathExprSegment {
             fully_qualified: parser.take(),
-            name: parse_ident(parser)?,
-            generics_opt: parser.guarded_parse::<(DoubleColonToken, OpenAngleBracketToken), _>()?,
+            name:            parse_ident(parser)?,
+            generics_opt:    parser
+                .guarded_parse::<(DoubleColonToken, OpenAngleBracketToken), _>()?,
         })
     }
 }

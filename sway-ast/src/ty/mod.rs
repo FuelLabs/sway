@@ -8,7 +8,7 @@ pub enum Ty {
     Array(SquareBrackets<TyArrayDescriptor>),
     Str {
         str_token: StrToken,
-        length: SquareBrackets<Box<Expr>>,
+        length:    SquareBrackets<Box<Expr>>,
     },
     Infer {
         underscore_token: UnderscoreToken,
@@ -31,9 +31,9 @@ impl Spanned for Ty {
 pub enum TyTupleDescriptor {
     Nil,
     Cons {
-        head: Box<Ty>,
+        head:        Box<Ty>,
         comma_token: CommaToken,
-        tail: Punctuated<Ty, CommaToken>,
+        tail:        Punctuated<Ty, CommaToken>,
     },
 }
 
@@ -54,7 +54,7 @@ impl TyTupleDescriptor {
 
 #[derive(Clone, Debug)]
 pub struct TyArrayDescriptor {
-    pub ty: Box<Ty>,
+    pub ty:              Box<Ty>,
     pub semicolon_token: SemicolonToken,
-    pub length: Box<Expr>,
+    pub length:          Box<Expr>,
 }

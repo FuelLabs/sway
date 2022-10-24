@@ -1,6 +1,8 @@
 use dirs::home_dir;
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -17,9 +19,9 @@ pub struct SourceMap {
     /// This makes inverse source mapping work on any machine with deps downloaded.
     dependency_paths: Vec<PathBuf>,
     /// Paths to source code files, defined separately to avoid repetition.
-    paths: Vec<PathBuf>,
+    paths:            Vec<PathBuf>,
     /// Mapping from opcode index to source location
-    map: HashMap<usize, SourceMapSpan>,
+    map:              HashMap<usize, SourceMapSpan>,
 }
 impl SourceMap {
     pub fn new() -> Self {
@@ -50,10 +52,10 @@ impl SourceMap {
             self.map.insert(
                 pc,
                 SourceMapSpan {
-                    path: PathIndex(path_index),
+                    path:  PathIndex(path_index),
                     range: LocationRange {
                         start: span.start(),
-                        end: span.end(),
+                        end:   span.end(),
                     },
                 },
             );
@@ -83,12 +85,12 @@ impl SourceMap {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourceMapSpan {
-    pub path: PathIndex,
+    pub path:  PathIndex,
     pub range: LocationRange,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct LocationRange {
     pub start: usize,
-    pub end: usize,
+    pub end:   usize,
 }

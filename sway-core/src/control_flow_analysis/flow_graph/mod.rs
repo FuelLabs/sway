@@ -19,9 +19,9 @@ pub type ExitPoint = NodeIndex;
 /// This graph is used as the basis for all of the algorithms in the control flow analysis portion
 /// of the compiler.
 pub struct ControlFlowGraph {
-    pub(crate) graph: Graph,
+    pub(crate) graph:        Graph,
     pub(crate) entry_points: Vec<NodeIndex>,
-    pub(crate) namespace: ControlFlowNamespace,
+    pub(crate) namespace:    ControlFlowNamespace,
 }
 
 pub type Graph = petgraph::Graph<ControlFlowGraphNode, ControlFlowGraphEdge>;
@@ -49,15 +49,15 @@ pub enum ControlFlowGraphNode {
     ProgramNode(ty::TyAstNode),
     EnumVariant {
         variant_name: Ident,
-        is_public: bool,
+        is_public:    bool,
     },
     MethodDeclaration {
-        span: Span,
+        span:        Span,
         method_name: Ident,
     },
     StructField {
         struct_field_name: Ident,
-        span: Span,
+        span:              Span,
     },
     StorageField {
         field_name: Ident,
@@ -105,7 +105,7 @@ impl std::convert::From<&ty::TyStructField> for ControlFlowGraphNode {
     fn from(other: &ty::TyStructField) -> Self {
         ControlFlowGraphNode::StructField {
             struct_field_name: other.name.clone(),
-            span: other.span.clone(),
+            span:              other.span.clone(),
         }
     }
 }

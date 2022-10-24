@@ -42,9 +42,9 @@ pub(crate) fn instantiate_tuple_index_access(
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::TupleElemAccess {
             resolved_type_of_parent: parent.return_type,
-            prefix: Box::new(parent),
-            elem_to_access_num: index,
-            elem_to_access_span: index_span,
+            prefix:                  Box::new(parent),
+            elem_to_access_num:      index,
+            elem_to_access_span:     index_span,
         },
         return_type: tuple_type_arg_to_access.type_id,
         span,

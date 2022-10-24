@@ -62,7 +62,7 @@ fn newline_map_from_src(unformatted_input: &str) -> Result<NewlineMap, Formatter
             // Next char is not a newline so this is the end of the sequence
             let byte_span = ByteSpan {
                 start: sequence_start,
-                end: char_index,
+                end:   char_index,
             };
             let newline_sequence = NewlineSequence {
                 sequence_length: current_sequence_length,
@@ -128,11 +128,11 @@ fn add_newlines(
     // found & included
     unformatted_newline_spans.push(ByteSpan {
         start: unformatted_code.len(),
-        end: unformatted_code.len(),
+        end:   unformatted_code.len(),
     });
     formatted_newline_spans.push(ByteSpan {
         start: formatted_code.len(),
-        end: formatted_code.len(),
+        end:   formatted_code.len(),
     });
     // Since we are adding newline sequences into the formatted code, in the next iteration the spans we find for the formatted code needs to be offsetted
     // as the total length of newline sequences we added in previous iterations.

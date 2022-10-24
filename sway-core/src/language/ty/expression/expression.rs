@@ -12,9 +12,9 @@ use crate::{
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyExpression {
-    pub expression: TyExpressionVariant,
+    pub expression:  TyExpressionVariant,
     pub return_type: TypeId,
-    pub span: Span,
+    pub span:        Span,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

@@ -9,7 +9,7 @@ use crate::{
 pub(crate) struct TyScrutinee {
     pub(crate) variant: TyScrutineeVariant,
     pub(crate) type_id: TypeId,
-    pub(crate) span: Span,
+    pub(crate) span:    Span,
 }
 
 #[derive(Debug, Clone)]
@@ -22,15 +22,15 @@ pub(crate) enum TyScrutineeVariant {
     #[allow(dead_code)]
     EnumScrutinee {
         call_path: CallPath,
-        variant: TyEnumVariant,
-        value: Box<TyScrutinee>,
+        variant:   TyEnumVariant,
+        value:     Box<TyScrutinee>,
     },
     Tuple(Vec<TyScrutinee>),
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct TyStructScrutineeField {
-    pub(crate) field: Ident,
+    pub(crate) field:     Ident,
     pub(crate) scrutinee: Option<TyScrutinee>,
-    pub(crate) span: Span,
+    pub(crate) span:      Span,
 }

@@ -5,7 +5,7 @@ use crate::{language::ty::*, type_system::*};
 #[derive(Clone, Debug)]
 pub struct TyAsmRegisterDeclaration {
     pub(crate) initializer: Option<TyExpression>,
-    pub(crate) name: Ident,
+    pub(crate) name:        Ident,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

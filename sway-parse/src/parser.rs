@@ -1,21 +1,23 @@
 use crate::{Parse, ParseToEnd, Peek};
 
 use core::marker::PhantomData;
-use sway_ast::keywords::Keyword;
-use sway_ast::literal::Literal;
-use sway_ast::token::{
-    Delimiter, DocComment, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree,
+use sway_ast::{
+    keywords::Keyword,
+    literal::Literal,
+    token::{Delimiter, DocComment, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree},
+    PubToken,
 };
-use sway_ast::PubToken;
-use sway_error::error::CompileError;
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_error::parser_error::{ParseError, ParseErrorKind};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+    parser_error::{ParseError, ParseErrorKind},
+};
 use sway_types::{Ident, Span, Spanned};
 
 pub struct Parser<'a, 'e> {
     token_trees: &'a [TokenTree],
-    full_span: Span,
-    handler: &'e Handler,
+    full_span:   Span,
+    handler:     &'e Handler,
 }
 
 impl<'a, 'e> Parser<'a, 'e> {
@@ -113,8 +115,8 @@ impl<'a, 'e> Parser<'a, 'e> {
                 self.token_trees = rest;
                 let parser = Parser {
                     token_trees: token_stream.token_trees(),
-                    full_span: token_stream.span(),
-                    handler: self.handler,
+                    full_span:   token_stream.span(),
+                    handler:     self.handler,
                 };
                 Some((parser, span.clone()))
             }
@@ -152,7 +154,7 @@ impl<'a, 'e> Parser<'a, 'e> {
 
 pub struct Peeker<'a> {
     pub token_trees: &'a [TokenTree],
-    num_tokens: &'a mut usize,
+    num_tokens:      &'a mut usize,
 }
 
 impl<'a> Peeker<'a> {

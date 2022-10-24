@@ -17,26 +17,26 @@ use crate::{
 pub enum TyExpressionVariant {
     Literal(Literal),
     FunctionApplication {
-        call_path: CallPath,
+        call_path:            CallPath,
         #[derivative(Eq(bound = ""))]
         contract_call_params: HashMap<String, TyExpression>,
-        arguments: Vec<(Ident, TyExpression)>,
-        function_decl_id: DeclarationId,
+        arguments:            Vec<(Ident, TyExpression)>,
+        function_decl_id:     DeclarationId,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
-        self_state_idx: Option<StateIndex>,
+        self_state_idx:       Option<StateIndex>,
         #[derivative(Eq(bound = ""))]
-        selector: Option<ContractCallParams>,
+        selector:             Option<ContractCallParams>,
     },
     LazyOperator {
         #[derivative(Eq(bound = ""))]
-        op: LazyOp,
+        op:  LazyOp,
         lhs: Box<TyExpression>,
         rhs: Box<TyExpression>,
     },
     VariableExpression {
-        name: Ident,
-        span: Span,
+        name:       Ident,
+        span:       Span,
         mutability: VariableMutability,
     },
     Tuple {
@@ -47,40 +47,40 @@ pub enum TyExpressionVariant {
     },
     ArrayIndex {
         prefix: Box<TyExpression>,
-        index: Box<TyExpression>,
+        index:  Box<TyExpression>,
     },
     StructExpression {
         struct_name: Ident,
-        fields: Vec<TyStructExpressionField>,
-        span: Span,
+        fields:      Vec<TyStructExpressionField>,
+        span:        Span,
     },
     CodeBlock(TyCodeBlock),
     // a flag that this value will later be provided as a parameter, but is currently unknown
     FunctionParameter,
     IfExp {
         condition: Box<TyExpression>,
-        then: Box<TyExpression>,
-        r#else: Option<Box<TyExpression>>,
+        then:      Box<TyExpression>,
+        r#else:    Option<Box<TyExpression>>,
     },
     AsmExpression {
-        registers: Vec<TyAsmRegisterDeclaration>,
-        body: Vec<AsmOp>,
-        returns: Option<(AsmRegister, Span)>,
+        registers:        Vec<TyAsmRegisterDeclaration>,
+        body:             Vec<AsmOp>,
+        returns:          Option<(AsmRegister, Span)>,
         whole_block_span: Span,
     },
     // like a variable expression but it has multiple parts,
     // like looking up a field in a struct
     StructFieldAccess {
-        prefix: Box<TyExpression>,
-        field_to_access: TyStructField,
+        prefix:                   Box<TyExpression>,
+        field_to_access:          TyStructField,
         field_instantiation_span: Span,
-        resolved_type_of_parent: TypeId,
+        resolved_type_of_parent:  TypeId,
     },
     TupleElemAccess {
-        prefix: Box<TyExpression>,
-        elem_to_access_num: usize,
+        prefix:                  Box<TyExpression>,
+        elem_to_access_num:      usize,
         resolved_type_of_parent: TypeId,
-        elem_to_access_span: Span,
+        elem_to_access_span:     Span,
     },
     EnumInstantiation {
         /// for printing
@@ -97,7 +97,7 @@ pub enum TyExpressionVariant {
     },
     AbiCast {
         abi_name: CallPath,
-        address: Box<TyExpression>,
+        address:  Box<TyExpression>,
         #[allow(dead_code)]
         // this span may be used for errors in the future, although it is not right now.
         span: Span,
@@ -112,12 +112,12 @@ pub enum TyExpressionVariant {
     },
     /// performs an unsafe cast from the `exp` to the type of the given enum `variant`
     UnsafeDowncast {
-        exp: Box<TyExpression>,
+        exp:     Box<TyExpression>,
         variant: TyEnumVariant,
     },
     WhileLoop {
         condition: Box<TyExpression>,
-        body: TyCodeBlock,
+        body:      TyCodeBlock,
     },
     Break,
     Continue,

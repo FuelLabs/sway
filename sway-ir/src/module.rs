@@ -17,9 +17,9 @@ pub struct Module(pub generational_arena::Index);
 
 #[doc(hidden)]
 pub struct ModuleContent {
-    pub kind: Kind,
+    pub kind:      Kind,
     pub functions: Vec<Function>,
-    pub globals: HashMap<String, Value>,
+    pub globals:   HashMap<String, Value>,
 }
 
 /// The different 'kinds' of Sway module: `Contract`, `Library`, `Predicate` or `Script`.
@@ -78,7 +78,7 @@ impl Module {
 /// An iterator over [`Module`]s within a [`Context`].
 pub struct ModuleIterator {
     modules: Vec<generational_arena::Index>,
-    next: usize,
+    next:    usize,
 }
 
 impl ModuleIterator {
@@ -88,7 +88,7 @@ impl ModuleIterator {
         // iteration.
         ModuleIterator {
             modules: context.modules.iter().map(|pair| pair.0).collect(),
-            next: 0,
+            next:    0,
         }
     }
 }

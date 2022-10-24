@@ -11,8 +11,10 @@ use crate::{
     metadata::MetadataManager,
     size_bytes_in_words, size_bytes_round_up_to_word_alignment,
 };
-use sway_error::warning::CompileWarning;
-use sway_error::{error::CompileError, warning::Warning};
+use sway_error::{
+    error::CompileError,
+    warning::{CompileWarning, Warning},
+};
 use sway_ir::*;
 use sway_types::{span::Span, Spanned};
 
@@ -30,7 +32,7 @@ pub(super) struct AsmBuilder<'ir> {
 
     // Label maps are from IR functions or blocks to label name.  Functions have a start and end
     // label.
-    func_label_map: HashMap<Function, (Label, Label)>,
+    func_label_map:  HashMap<Function, (Label, Label)>,
     block_label_map: HashMap<Block, Label>,
 
     // Reg map is tracking IR values to VM values.  Ptr map is tracking IR pointers to local
@@ -55,7 +57,7 @@ pub(super) struct AsmBuilder<'ir> {
 
     // Final resulting VM bytecode ops; entry functions with their function and label, and regular
     // non-entry functions.
-    entries: Vec<(Function, Label, Vec<Op>)>,
+    entries:     Vec<(Function, Label, Vec<Op>)>,
     non_entries: Vec<Vec<Op>>,
 
     // In progress VM bytecode ops.
@@ -303,7 +305,7 @@ impl<'ir> AsmBuilder<'ir> {
                 warnings,
                 name.span().clone(),
                 Warning::ShadowingReservedRegister {
-                    reg_name: name.clone()
+                    reg_name: name.clone(),
                 }
             );
             let arg_reg = initializer
@@ -328,7 +330,7 @@ impl<'ir> AsmBuilder<'ir> {
                 .map(|reg_name| -> Result<_, CompileError> {
                     realize_register(reg_name.as_str()).ok_or_else(|| {
                         CompileError::UnknownRegister {
-                            span: reg_name.span(),
+                            span:                  reg_name.span(),
                             initialized_registers: inline_reg_map
                                 .iter()
                                 .map(|(name, _)| *name)
@@ -364,8 +366,8 @@ impl<'ir> AsmBuilder<'ir> {
             );
 
             inline_ops.push(Op {
-                opcode: either::Either::Left(opcode),
-                comment: "asm block".into(),
+                opcode:      either::Either::Left(opcode),
+                comment:     "asm block".into(),
                 owning_span: Some(op_span),
             });
         }
@@ -383,15 +385,15 @@ impl<'ir> AsmBuilder<'ir> {
                             .map(|(name, _)| name.to_string())
                             .collect::<Vec<_>>()
                             .join("\n"),
-                        span: ret_reg_name.span(),
+                        span:                  ret_reg_name.span(),
                     });
                     return err(warnings, errors);
                 }
             };
             let instr_reg = self.reg_seqr.next();
             inline_ops.push(Op {
-                opcode: Either::Left(VirtualOp::MOVE(instr_reg.clone(), ret_reg)),
-                comment: "return value from inline asm".into(),
+                opcode:      Either::Left(VirtualOp::MOVE(instr_reg.clone(), ret_reg)),
+                comment:     "return value from inline asm".into(),
                 owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
             });
             self.reg_map.insert(*instr_val, instr_reg);
@@ -413,21 +415,21 @@ impl<'ir> AsmBuilder<'ir> {
             // This may not be necessary if we just treat a non-zero value as 'true'.
             let res_reg = self.reg_seqr.next();
             self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::EQ(
+                opcode:      Either::Left(VirtualOp::EQ(
                     res_reg.clone(),
                     val_reg,
                     VirtualRegister::Constant(ConstantRegister::Zero),
                 )),
-                comment: "convert to inversed boolean".into(),
+                comment:     "convert to inversed boolean".into(),
                 owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
             });
             self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::XORI(
+                opcode:      Either::Left(VirtualOp::XORI(
                     res_reg.clone(),
                     res_reg.clone(),
                     VirtualImmediate12 { value: 1 },
                 )),
-                comment: "invert boolean".into(),
+                comment:     "invert boolean".into(),
                 owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
             });
             res_reg
@@ -484,8 +486,8 @@ impl<'ir> AsmBuilder<'ir> {
         match pred {
             Predicate::Equal => {
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::EQ(res_reg.clone(), lhs_reg, rhs_reg)),
-                    comment: String::new(),
+                    opcode:      Either::Left(VirtualOp::EQ(res_reg.clone(), lhs_reg, rhs_reg)),
+                    comment:     String::new(),
                     owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
                 });
             }
@@ -555,13 +557,13 @@ impl<'ir> AsmBuilder<'ir> {
         let gas_register = self.value_to_register(gas);
 
         self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::CALL(
+            opcode:      Either::Left(VirtualOp::CALL(
                 ra_pointer,
                 coins_register,
                 asset_id_register,
                 gas_register,
             )),
-            comment: "call external contract".into(),
+            comment:     "call external contract".into(),
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
 
@@ -609,22 +611,22 @@ impl<'ir> AsmBuilder<'ir> {
         let elem_size = ir_type_size_in_bytes(self.context, &elem_type);
         if elem_type.is_copy_type() {
             self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::MULI(
+                opcode:      Either::Left(VirtualOp::MULI(
                     rel_offset_reg.clone(),
                     index_reg,
                     VirtualImmediate12 { value: 8 },
                 )),
-                comment: "extract_element relative offset".into(),
+                comment:     "extract_element relative offset".into(),
                 owning_span: owning_span.clone(),
             });
             let elem_offs_reg = self.reg_seqr.next();
             self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::ADD(
+                opcode:      Either::Left(VirtualOp::ADD(
                     elem_offs_reg.clone(),
                     base_reg,
                     rel_offset_reg,
                 )),
-                comment: "extract_element absolute offset".into(),
+                comment:     "extract_element absolute offset".into(),
                 owning_span: owning_span.clone(),
             });
             self.cur_bytecode.push(Op {
@@ -644,25 +646,29 @@ impl<'ir> AsmBuilder<'ir> {
                     .insert_data_value(Entry::new_word(elem_size, None));
                 let size_reg = self.reg_seqr.next();
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
+                    opcode:      Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
                     owning_span: owning_span.clone(),
-                    comment: "loading element size for relative offset".into(),
+                    comment:     "loading element size for relative offset".into(),
                 });
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::MUL(instr_reg.clone(), index_reg, size_reg)),
-                    comment: "extract_element relative offset".into(),
+                    opcode:      Either::Left(VirtualOp::MUL(
+                        instr_reg.clone(),
+                        index_reg,
+                        size_reg,
+                    )),
+                    comment:     "extract_element relative offset".into(),
                     owning_span: owning_span.clone(),
                 });
             } else {
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::MULI(
+                    opcode:      Either::Left(VirtualOp::MULI(
                         instr_reg.clone(),
                         index_reg,
                         VirtualImmediate12 {
                             value: elem_size as u16,
                         },
                     )),
-                    comment: "extract_element relative offset".into(),
+                    comment:     "extract_element relative offset".into(),
                     owning_span: owning_span.clone(),
                 });
             }
@@ -696,12 +702,12 @@ impl<'ir> AsmBuilder<'ir> {
                 let offset_reg = self.reg_seqr.next();
                 self.number_to_reg(extract_offset, &offset_reg, owning_span.clone());
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::ADD(
+                    opcode:      Either::Left(VirtualOp::ADD(
                         offset_reg.clone(),
                         base_reg.clone(),
                         base_reg,
                     )),
-                    comment: "add array base to offset".into(),
+                    comment:     "add array base to offset".into(),
                     owning_span: owning_span.clone(),
                 });
                 self.cur_bytecode.push(Op {
@@ -806,8 +812,8 @@ impl<'ir> AsmBuilder<'ir> {
         let reg = self.reg_seqr.next();
 
         self.cur_bytecode.push(Op {
-            opcode: either::Either::Left(VirtualOp::LWDataId(reg.clone(), data_id)),
-            comment: "literal instantiation".into(),
+            opcode:      either::Either::Left(VirtualOp::LWDataId(reg.clone(), data_id)),
+            comment:     "literal instantiation".into(),
             owning_span: instr_span,
         });
         self.reg_map.insert(*instr_val, reg);
@@ -870,14 +876,14 @@ impl<'ir> AsmBuilder<'ir> {
         let instr_reg = self.reg_seqr.next();
         let index_reg = self.value_to_register(index);
         self.cur_bytecode.push(Op {
-            opcode: either::Either::Left(VirtualOp::GTF(
+            opcode:      either::Either::Left(VirtualOp::GTF(
                 instr_reg.clone(),
                 index_reg,
                 VirtualImmediate12 {
                     value: tx_field_id as u16,
                 },
             )),
-            comment: "get transaction field".into(),
+            comment:     "get transaction field".into(),
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
         self.reg_map.insert(*instr_val, instr_reg);
@@ -914,22 +920,22 @@ impl<'ir> AsmBuilder<'ir> {
         let elem_size = ir_type_size_in_bytes(self.context, &elem_type);
         if elem_type.is_copy_type() {
             self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::MULI(
+                opcode:      Either::Left(VirtualOp::MULI(
                     rel_offset_reg.clone(),
                     index_reg,
                     VirtualImmediate12 { value: 8 },
                 )),
-                comment: "insert_element relative offset".into(),
+                comment:     "insert_element relative offset".into(),
                 owning_span: owning_span.clone(),
             });
             let elem_offs_reg = self.reg_seqr.next();
             self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::ADD(
+                opcode:      Either::Left(VirtualOp::ADD(
                     elem_offs_reg.clone(),
                     base_reg.clone(),
                     rel_offset_reg,
                 )),
-                comment: "insert_element absolute offset".into(),
+                comment:     "insert_element absolute offset".into(),
                 owning_span: owning_span.clone(),
             });
             self.cur_bytecode.push(Op {
@@ -948,23 +954,23 @@ impl<'ir> AsmBuilder<'ir> {
             } else {
                 let elem_index_offs_reg = self.reg_seqr.next();
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::MULI(
+                    opcode:      Either::Left(VirtualOp::MULI(
                         elem_index_offs_reg.clone(),
                         index_reg,
                         VirtualImmediate12 {
                             value: elem_size as u16,
                         },
                     )),
-                    comment: "insert_element relative offset".into(),
+                    comment:     "insert_element relative offset".into(),
                     owning_span: owning_span.clone(),
                 });
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::ADD(
+                    opcode:      Either::Left(VirtualOp::ADD(
                         elem_index_offs_reg.clone(),
                         base_reg.clone(),
                         elem_index_offs_reg.clone(),
                     )),
-                    comment: "insert_element absolute offset".into(),
+                    comment:     "insert_element absolute offset".into(),
                     owning_span: owning_span.clone(),
                 });
                 self.cur_bytecode.push(Op {
@@ -1028,12 +1034,12 @@ impl<'ir> AsmBuilder<'ir> {
                 let insert_offs_reg = self.reg_seqr.next();
                 self.number_to_reg(insert_offs, &insert_offs_reg, owning_span.clone());
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::ADD(
+                    opcode:      Either::Left(VirtualOp::ADD(
                         base_reg.clone(),
                         base_reg.clone(),
                         insert_offs_reg,
                     )),
-                    comment: "insert_value absolute offset".into(),
+                    comment:     "insert_value absolute offset".into(),
                     owning_span: owning_span.clone(),
                 });
                 self.cur_bytecode.push(Op {
@@ -1064,14 +1070,14 @@ impl<'ir> AsmBuilder<'ir> {
                 self.number_to_reg(insert_offs * 8, &offs_reg, owning_span.clone());
             } else {
                 self.cur_bytecode.push(Op {
-                    opcode: either::Either::Left(VirtualOp::ADDI(
+                    opcode:      either::Either::Left(VirtualOp::ADDI(
                         offs_reg.clone(),
                         base_reg.clone(),
                         VirtualImmediate12 {
                             value: (insert_offs * 8) as u16,
                         },
                     )),
-                    comment: format!("get struct field(s) {} offset", indices_str),
+                    comment:     format!("get struct field(s) {} offset", indices_str),
                     owning_span: owning_span.clone(),
                 });
             }
@@ -1138,12 +1144,12 @@ impl<'ir> AsmBuilder<'ir> {
                                 owning_span.clone(),
                             );
                             self.cur_bytecode.push(Op {
-                                opcode: Either::Left(VirtualOp::ADD(
+                                opcode:      Either::Left(VirtualOp::ADD(
                                     offs_reg.clone(),
                                     base_reg,
                                     offs_reg.clone(),
                                 )),
-                                comment: "absolute offset for load".into(),
+                                comment:     "absolute offset for load".into(),
                                 owning_span: owning_span.clone(),
                             });
                             self.cur_bytecode.push(Op {
@@ -1219,13 +1225,13 @@ impl<'ir> AsmBuilder<'ir> {
 
         let len_reg = self.reg_seqr.next();
         self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::MOVI(
+            opcode:      Either::Left(VirtualOp::MOVI(
                 len_reg.clone(),
                 VirtualImmediate18 {
                     value: byte_len as u32,
                 },
             )),
-            comment: "get length for mcp".into(),
+            comment:     "get length for mcp".into(),
             owning_span: owning_span.clone(),
         });
 
@@ -1263,9 +1269,9 @@ impl<'ir> AsmBuilder<'ir> {
                 .insert_data_value(Entry::new_word(size_in_bytes, None));
 
             self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
+                opcode:      Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
                 owning_span: owning_span.clone(),
-                comment: "loading size for LOGD".into(),
+                comment:     "loading size for LOGD".into(),
             });
             self.cur_bytecode.push(Op {
                 owning_span,
@@ -1283,7 +1289,7 @@ impl<'ir> AsmBuilder<'ir> {
     fn compile_read_register(&mut self, instr_val: &Value, reg: &sway_ir::Register) {
         let instr_reg = self.reg_seqr.next();
         self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::MOVE(
+            opcode:      Either::Left(VirtualOp::MOVE(
                 instr_reg.clone(),
                 VirtualRegister::Constant(match reg {
                     sway_ir::Register::Of => ConstantRegister::Overflow,
@@ -1302,7 +1308,7 @@ impl<'ir> AsmBuilder<'ir> {
                     sway_ir::Register::Flag => ConstantRegister::Flags,
                 }),
             )),
-            comment: "move register into abi function".to_owned(),
+            comment:     "move register into abi function".to_owned(),
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
 
@@ -1342,9 +1348,9 @@ impl<'ir> AsmBuilder<'ir> {
                     .insert_data_value(Entry::new_word(size_in_bytes, None));
 
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
+                    opcode:      Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
                     owning_span: owning_span.clone(),
-                    comment: "loading size for RETD".into(),
+                    comment:     "loading size for RETD".into(),
                 });
                 self.cur_bytecode.push(Op {
                     owning_span,
@@ -1377,24 +1383,24 @@ impl<'ir> AsmBuilder<'ir> {
             let offs_reg = self.reg_seqr.next();
             self.number_to_reg(offset_in_bytes, &offs_reg, span.clone());
             self.cur_bytecode.push(Op {
-                opcode: either::Either::Left(VirtualOp::ADD(
+                opcode:      either::Either::Left(VirtualOp::ADD(
                     offset_reg.clone(),
                     base_reg.clone(),
                     offs_reg,
                 )),
-                comment: "get offset".into(),
+                comment:     "get offset".into(),
                 owning_span: span,
             });
         } else {
             self.cur_bytecode.push(Op {
-                opcode: either::Either::Left(VirtualOp::ADDI(
+                opcode:      either::Either::Left(VirtualOp::ADDI(
                     offset_reg.clone(),
                     base_reg.clone(),
                     VirtualImmediate12 {
                         value: offset_in_bytes as u16,
                     },
                 )),
-                comment: "get offset".into(),
+                comment:     "get offset".into(),
                 owning_span: span,
             });
         }
@@ -1600,12 +1606,12 @@ impl<'ir> AsmBuilder<'ir> {
                             // stored_reg is a pointer, even though size is 1.  We need to load it.
                             let tmp_reg = self.reg_seqr.next();
                             self.cur_bytecode.push(Op {
-                                opcode: Either::Left(VirtualOp::LW(
+                                opcode:      Either::Left(VirtualOp::LW(
                                     tmp_reg.clone(),
                                     stored_reg,
                                     VirtualImmediate12 { value: 0 },
                                 )),
-                                comment: "load for store".into(),
+                                comment:     "load for store".into(),
                                 owning_span: owning_span.clone(),
                             });
                             tmp_reg
@@ -1618,12 +1624,12 @@ impl<'ir> AsmBuilder<'ir> {
                                 owning_span.clone(),
                             );
                             self.cur_bytecode.push(Op {
-                                opcode: Either::Left(VirtualOp::ADD(
+                                opcode:      Either::Left(VirtualOp::ADD(
                                     offs_reg.clone(),
                                     base_reg,
                                     offs_reg.clone(),
                                 )),
-                                comment: "store absolute offset".into(),
+                                comment:     "store absolute offset".into(),
                                 owning_span: owning_span.clone(),
                             });
                             self.cur_bytecode.push(Op {
@@ -1656,24 +1662,24 @@ impl<'ir> AsmBuilder<'ir> {
                         if word_offs * 8 > compiler_constants::TWELVE_BITS {
                             self.number_to_reg(word_offs * 8, &dest_offs_reg, owning_span.clone());
                             self.cur_bytecode.push(Op {
-                                opcode: either::Either::Left(VirtualOp::ADD(
+                                opcode:      either::Either::Left(VirtualOp::ADD(
                                     dest_offs_reg.clone(),
                                     base_reg,
                                     dest_offs_reg.clone(),
                                 )),
-                                comment: "get store offset".into(),
+                                comment:     "get store offset".into(),
                                 owning_span: owning_span.clone(),
                             });
                         } else {
                             self.cur_bytecode.push(Op {
-                                opcode: either::Either::Left(VirtualOp::ADDI(
+                                opcode:      either::Either::Left(VirtualOp::ADDI(
                                     dest_offs_reg.clone(),
                                     base_reg,
                                     VirtualImmediate12 {
                                         value: (word_offs * 8) as u16,
                                     },
                                 )),
-                                comment: "get store offset".into(),
+                                comment:     "get store offset".into(),
                                 owning_span: owning_span.clone(),
                             });
                         }
@@ -1752,8 +1758,8 @@ impl<'ir> AsmBuilder<'ir> {
                 // Allocate a register for it, and a load instruction.
                 let reg = self.reg_seqr.next();
                 self.cur_bytecode.push(Op {
-                    opcode: either::Either::Left(VirtualOp::LWDataId(reg.clone(), data_id)),
-                    comment: "literal instantiation".into(),
+                    opcode:      either::Either::Left(VirtualOp::LWDataId(reg.clone(), data_id)),
+                    comment:     "literal instantiation".into(),
                     owning_span: span,
                 });
                 reg
@@ -1809,34 +1815,34 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Use bitwise ORs and SHIFTs to crate a 24 bit value in a register.
         self.cur_bytecode.push(Op {
-            opcode: either::Either::Left(VirtualOp::ORI(
+            opcode:      either::Either::Left(VirtualOp::ORI(
                 offset_reg.clone(),
                 VirtualRegister::Constant(ConstantRegister::Zero),
                 VirtualImmediate12 {
                     value: (offset >> 12) as u16,
                 },
             )),
-            comment: "get extract offset high bits".into(),
+            comment:     "get extract offset high bits".into(),
             owning_span: span.clone(),
         });
         self.cur_bytecode.push(Op {
-            opcode: either::Either::Left(VirtualOp::SLLI(
+            opcode:      either::Either::Left(VirtualOp::SLLI(
                 offset_reg.clone(),
                 offset_reg.clone(),
                 VirtualImmediate12 { value: 12 },
             )),
-            comment: "shift extract offset high bits".into(),
+            comment:     "shift extract offset high bits".into(),
             owning_span: span.clone(),
         });
         self.cur_bytecode.push(Op {
-            opcode: either::Either::Left(VirtualOp::ORI(
+            opcode:      either::Either::Left(VirtualOp::ORI(
                 offset_reg.clone(),
                 offset_reg.clone(),
                 VirtualImmediate12 {
                     value: (offset & 0xfff) as u16,
                 },
             )),
-            comment: "get extract offset low bits".into(),
+            comment:     "get extract offset low bits".into(),
             owning_span: span,
         });
     }

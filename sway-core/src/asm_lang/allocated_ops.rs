@@ -9,8 +9,7 @@
 //! It is unfortunate that there are copies of our opcodes in multiple places, but this ensures the
 //! best type safety. It can be macro'd someday.
 
-use super::DataId;
-use super::*;
+use super::{DataId, *};
 use crate::asm_generation::DataSection;
 use either::Either;
 use fuel_asm::Opcode as VmOp;
@@ -367,9 +366,9 @@ impl fmt::Display for AllocatedOpcode {
 
 #[derive(Clone, Debug)]
 pub(crate) struct AllocatedOp {
-    pub(crate) opcode: AllocatedOpcode,
+    pub(crate) opcode:      AllocatedOpcode,
     /// A descriptive comment for ASM readability
-    pub(crate) comment: String,
+    pub(crate) comment:     String,
     pub(crate) owning_span: Option<Span>,
 }
 

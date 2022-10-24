@@ -81,10 +81,10 @@ impl ty::TyProgram {
                     }
                     _ => ok(
                         Self {
-                            kind: self.kind.clone(),
-                            root: self.root.clone(),
+                            kind:          self.kind.clone(),
+                            root:          self.root.clone(),
                             storage_slots: vec![],
-                            logged_types: self.logged_types.clone(),
+                            logged_types:  self.logged_types.clone(),
                         },
                         warnings,
                         errors,
@@ -93,10 +93,10 @@ impl ty::TyProgram {
             }
             _ => ok(
                 Self {
-                    kind: self.kind.clone(),
-                    root: self.root.clone(),
+                    kind:          self.kind.clone(),
+                    root:          self.root.clone(),
                     storage_slots: vec![],
-                    logged_types: self.logged_types.clone(),
+                    logged_types:  self.logged_types.clone(),
                 },
                 warnings,
                 errors,

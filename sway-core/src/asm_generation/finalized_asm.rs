@@ -1,29 +1,26 @@
 use super::{DataSection, InstructionSet};
-use crate::asm_lang::allocated_ops::AllocatedOpcode;
-use crate::error::*;
-use crate::source_map::SourceMap;
+use crate::{asm_lang::allocated_ops::AllocatedOpcode, error::*, source_map::SourceMap};
 
 use sway_error::error::CompileError;
 use sway_types::span::Span;
 
 use either::Either;
-use std::fmt;
-use std::io::Read;
+use std::{fmt, io::Read};
 
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
 /// applied to it
 #[derive(Clone)]
 pub enum FinalizedAsm {
     ContractAbi {
-        data_section: DataSection,
+        data_section:    DataSection,
         program_section: InstructionSet,
     },
     ScriptMain {
-        data_section: DataSection,
+        data_section:    DataSection,
         program_section: InstructionSet,
     },
     PredicateMain {
-        data_section: DataSection,
+        data_section:    DataSection,
         program_section: InstructionSet,
     },
     // Libraries do not generate any asm.

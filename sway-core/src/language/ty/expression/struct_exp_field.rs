@@ -4,7 +4,7 @@ use crate::{language::ty::*, type_system::*};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TyStructExpressionField {
-    pub name: Ident,
+    pub name:  Ident,
     pub value: TyExpression,
 }
 

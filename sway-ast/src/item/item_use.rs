@@ -2,10 +2,10 @@ use crate::priv_prelude::*;
 
 #[derive(Clone, Debug)]
 pub struct ItemUse {
-    pub visibility: Option<PubToken>,
-    pub use_token: UseToken,
-    pub root_import: Option<DoubleColonToken>,
-    pub tree: UseTree,
+    pub visibility:      Option<PubToken>,
+    pub use_token:       UseToken,
+    pub root_import:     Option<DoubleColonToken>,
+    pub tree:            UseTree,
     pub semicolon_token: SemicolonToken,
 }
 
@@ -29,16 +29,16 @@ pub enum UseTree {
         name: Ident,
     },
     Rename {
-        name: Ident,
+        name:     Ident,
         as_token: AsToken,
-        alias: Ident,
+        alias:    Ident,
     },
     Glob {
         star_token: StarToken,
     },
     Path {
-        prefix: Ident,
+        prefix:             Ident,
         double_colon_token: DoubleColonToken,
-        suffix: Box<UseTree>,
+        suffix:             Box<UseTree>,
     },
 }

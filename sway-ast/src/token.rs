@@ -31,8 +31,8 @@ pub enum PunctKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct Punct {
-    pub span: Span,
-    pub kind: PunctKind,
+    pub span:    Span,
+    pub kind:    PunctKind,
     pub spacing: Spacing,
 }
 
@@ -70,9 +70,9 @@ impl PunctKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct GenericGroup<T> {
-    pub delimiter: Delimiter,
+    pub delimiter:    Delimiter,
     pub token_stream: T,
-    pub span: Span,
+    pub span:         Span,
 }
 
 pub type Group = GenericGroup<TokenStream>;
@@ -127,9 +127,9 @@ pub enum DocStyle {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct DocComment {
-    pub span: Span,
+    pub span:         Span,
     pub content_span: Span,
-    pub doc_style: DocStyle,
+    pub doc_style:    DocStyle,
 }
 
 impl Spanned for DocComment {
@@ -160,9 +160,9 @@ pub enum CommentedTokenTree {
 impl CommentedGroup {
     pub fn strip_comments(self) -> Group {
         Group {
-            delimiter: self.delimiter,
+            delimiter:    self.delimiter,
             token_stream: self.token_stream.strip_comments(),
-            span: self.span,
+            span:         self.span,
         }
     }
 }
@@ -233,13 +233,13 @@ impl From<CommentedTree> for CommentedTokenTree {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct TokenStream {
     token_trees: Vec<TokenTree>,
-    full_span: Span,
+    full_span:   Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct CommentedTokenStream {
     pub token_trees: Vec<CommentedTokenTree>,
-    pub full_span: Span,
+    pub full_span:   Span,
 }
 
 #[extension_trait]
@@ -289,7 +289,7 @@ impl CharExt for char {
 }
 
 struct CharIndicesInner<'a> {
-    src: &'a str,
+    src:      &'a str,
     position: usize,
 }
 

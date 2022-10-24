@@ -22,7 +22,7 @@ pub enum Directory {
 
 #[derive(Debug)]
 pub struct SyncWorkspace {
-    pub directories: DashMap<Directory, PathBuf>,
+    pub directories:        DashMap<Directory, PathBuf>,
     pub notify_join_handle: RwLock<Option<tokio::task::JoinHandle<()>>>,
 }
 
@@ -31,7 +31,7 @@ impl SyncWorkspace {
 
     pub(crate) fn new() -> Self {
         Self {
-            directories: DashMap::new(),
+            directories:        DashMap::new(),
             notify_join_handle: RwLock::new(None),
         }
     }

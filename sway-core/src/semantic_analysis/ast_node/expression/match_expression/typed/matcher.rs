@@ -130,8 +130,8 @@ fn match_constant(
         exp.to_owned(),
         ty::TyExpression {
             expression: ty::TyExpressionVariant::VariableExpression {
-                name: scrutinee_name,
-                span: span.clone(),
+                name:       scrutinee_name,
+                span:       span.clone(),
                 mutability: ty::VariableMutability::Immutable,
             },
             return_type: scrutinee_type_id,

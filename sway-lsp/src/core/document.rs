@@ -9,9 +9,9 @@ pub struct TextDocument {
     #[allow(dead_code)]
     language_id: String,
     #[allow(dead_code)]
-    version: i32,
-    uri: String,
-    content: Rope,
+    version:     i32,
+    uri:         String,
+    content:     Rope,
 }
 
 impl TextDocument {
@@ -19,9 +19,9 @@ impl TextDocument {
         std::fs::read_to_string(&path)
             .map(|content| Self {
                 language_id: "sway".into(),
-                version: 1,
-                uri: path.into(),
-                content: Rope::from_str(&content),
+                version:     1,
+                uri:         path.into(),
+                content:     Rope::from_str(&content),
             })
             .map_err(|_| DocumentError::DocumentNotFound { path: path.into() })
     }
@@ -103,7 +103,7 @@ impl TextDocument {
 #[derive(Debug)]
 struct EditText<'text> {
     start_index: usize,
-    end_index: usize,
+    end_index:   usize,
     change_text: &'text str,
 }
 

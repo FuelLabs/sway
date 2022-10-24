@@ -30,15 +30,15 @@ pub struct Block(pub generational_arena::Index);
 #[doc(hidden)]
 pub struct BlockContent {
     /// Block label, useful for printing.
-    pub label: Label,
+    pub label:        Label,
     /// The function containing this block.
-    pub function: Function,
+    pub function:     Function,
     /// List of instructions in the block.
     pub instructions: Vec<Value>,
     /// Block arguments: Another form of SSA PHIs.
-    pub args: Vec<Value>,
+    pub args:         Vec<Value>,
     /// CFG predecessors
-    pub preds: FxHashSet<Block>,
+    pub preds:        FxHashSet<Block>,
 }
 
 #[derive(Debug, Clone, DebugWithContext)]
@@ -46,8 +46,8 @@ pub struct BlockArgument {
     /// The block of which this is an argument.
     pub block: Block,
     /// idx'th argument of the block.
-    pub idx: usize,
-    pub ty: Type,
+    pub idx:   usize,
+    pub ty:    Type,
 }
 
 impl BlockArgument {
@@ -420,7 +420,7 @@ impl Block {
 /// An iterator over each block in a [`Function`].
 pub struct BlockIterator {
     blocks: Vec<generational_arena::Index>,
-    next: usize,
+    next:   usize,
 }
 
 impl BlockIterator {
@@ -434,7 +434,7 @@ impl BlockIterator {
                 .iter()
                 .map(|block| block.0)
                 .collect(),
-            next: 0,
+            next:   0,
         }
     }
 }

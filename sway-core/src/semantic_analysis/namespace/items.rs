@@ -31,20 +31,20 @@ pub(super) type UseAliases = im::HashMap<String, Ident>;
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Items {
     /// An ordered map from `Ident`s to their associated typed declarations.
-    pub(crate) symbols: SymbolMap,
+    pub(crate) symbols:            SymbolMap,
     pub(crate) implemented_traits: TraitMap,
     /// Represents the absolute path from which a symbol was imported.
     ///
     /// For example, in `use ::foo::bar::Baz;`, we store a mapping from the symbol `Baz` to its
     /// path `foo::bar::Baz`.
-    pub(crate) use_synonyms: UseSynonyms,
+    pub(crate) use_synonyms:       UseSynonyms,
     /// Represents an alternative name for an imported symbol.
     ///
     /// Aliases are introduced with syntax like `use foo::bar as baz;` syntax, where `baz` is an
     /// alias for `bar`.
-    pub(crate) use_aliases: UseAliases,
+    pub(crate) use_aliases:        UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
-    pub(crate) declared_storage: Option<DeclarationId>,
+    pub(crate) declared_storage:   Option<DeclarationId>,
 }
 
 impl Items {
@@ -117,7 +117,7 @@ impl Items {
                 }
                 _ => {
                     warnings.push(CompileWarning {
-                        span: name.span(),
+                        span:            name.span(),
                         warning_content: Warning::ShadowsOtherSymbol { name: name.clone() },
                     });
                 }
@@ -149,8 +149,8 @@ impl Items {
             trait_name.prefixes
         };
         let trait_name = CallPath {
-            suffix: trait_name.suffix,
-            prefixes: new_prefixes,
+            suffix:      trait_name.suffix,
+            prefixes:    new_prefixes,
             is_absolute: trait_name.is_absolute,
         };
         self.implemented_traits
@@ -297,7 +297,7 @@ impl Items {
                             errors.push(CompileError::TupleIndexOutOfBounds {
                                 index: *index,
                                 count: fields.len(),
-                                span: Span::join(full_span_for_error, index_span.clone()),
+                                span:  Span::join(full_span_for_error, index_span.clone()),
                             });
                             return err(warnings, errors);
                         }
@@ -310,15 +310,15 @@ impl Items {
                 }
                 (actually, ty::ProjectionKind::StructField { .. }) => {
                     errors.push(CompileError::FieldAccessOnNonStruct {
-                        span: full_span_for_error,
+                        span:     full_span_for_error,
                         actually: actually.to_string(),
                     });
                     return err(warnings, errors);
                 }
                 (actually, ty::ProjectionKind::TupleField { .. }) => {
                     errors.push(CompileError::NotATuple {
-                        name: full_name_for_error,
-                        span: full_span_for_error,
+                        name:     full_name_for_error,
+                        span:     full_span_for_error,
                         actually: actually.to_string(),
                     });
                     return err(warnings, errors);

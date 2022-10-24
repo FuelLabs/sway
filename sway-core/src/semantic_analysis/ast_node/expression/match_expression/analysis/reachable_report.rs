@@ -4,7 +4,7 @@ use crate::language::ty;
 
 pub(crate) struct ReachableReport {
     pub(crate) reachable: bool,
-    pub(crate) span: Span,
+    pub(crate) span:      Span,
 }
 
 impl ReachableReport {

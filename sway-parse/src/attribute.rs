@@ -1,11 +1,15 @@
-use crate::priv_prelude::{Peek, Peeker};
-use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed};
+use crate::{
+    priv_prelude::{Peek, Peeker},
+    Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed,
+};
 
-use sway_ast::attribute::{Annotated, Attribute, AttributeDecl};
-use sway_ast::brackets::{Parens, SquareBrackets};
-use sway_ast::keywords::{HashToken, StorageToken, Token};
-use sway_ast::punctuated::Punctuated;
-use sway_ast::token::{DocComment, DocStyle};
+use sway_ast::{
+    attribute::{Annotated, Attribute, AttributeDecl},
+    brackets::{Parens, SquareBrackets},
+    keywords::{HashToken, StorageToken, Token},
+    punctuated::Punctuated,
+    token::{DocComment, DocStyle},
+};
 use sway_error::parser_error::ParseErrorKind;
 use sway_types::Ident;
 
@@ -39,7 +43,7 @@ impl<T: Parse> Parse for Annotated<T> {
             let value = Ident::new_no_trim(doc_comment.content_span.clone());
             attribute_list.push(AttributeDecl {
                 hash_token: HashToken::new(doc_comment.span.clone()),
-                attribute: SquareBrackets::new(
+                attribute:  SquareBrackets::new(
                     Attribute {
                         name: Ident::new_with_override("doc", doc_comment.span.clone()),
                         args: Some(Parens::new(
@@ -69,7 +73,7 @@ impl Parse for AttributeDecl {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
         Ok(AttributeDecl {
             hash_token: parser.parse()?,
-            attribute: parser.parse()?,
+            attribute:  parser.parse()?,
         })
     }
 }

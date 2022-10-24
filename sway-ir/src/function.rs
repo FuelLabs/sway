@@ -28,13 +28,13 @@ pub struct Function(pub generational_arena::Index);
 
 #[doc(hidden)]
 pub struct FunctionContent {
-    pub name: String,
-    pub arguments: Vec<(String, Value)>,
+    pub name:        String,
+    pub arguments:   Vec<(String, Value)>,
     pub return_type: Type,
-    pub blocks: Vec<Block>,
-    pub is_public: bool,
-    pub selector: Option<[u8; 4]>,
-    pub metadata: Option<MetadataIndex>,
+    pub blocks:      Vec<Block>,
+    pub is_public:   bool,
+    pub selector:    Option<[u8; 4]>,
+    pub metadata:    Option<MetadataIndex>,
 
     pub local_storage: BTreeMap<String, Pointer>, // BTree rather than Hash for deterministic ordering.
 
@@ -452,7 +452,7 @@ impl Function {
 /// An iterator over each [`Function`] in a [`Module`].
 pub struct FunctionIterator {
     functions: Vec<generational_arena::Index>,
-    next: usize,
+    next:      usize,
 }
 
 impl FunctionIterator {
@@ -466,7 +466,7 @@ impl FunctionIterator {
                 .iter()
                 .map(|func| func.0)
                 .collect(),
-            next: 0,
+            next:      0,
         }
     }
 }

@@ -15,19 +15,19 @@ pub enum LexErrorKind {
     UnclosedMultilineComment { unclosed_indices: Vec<usize> },
     #[error("unexpected close delimiter")]
     UnexpectedCloseDelimiter {
-        position: usize,
+        position:        usize,
         close_delimiter: Delimiter,
     },
     #[error("mismatched delimiters")]
     MismatchedDelimiters {
-        open_position: usize,
-        close_position: usize,
-        open_delimiter: Delimiter,
+        open_position:   usize,
+        close_position:  usize,
+        open_delimiter:  Delimiter,
         close_delimiter: Delimiter,
     },
     #[error("unclosed delimiter")]
     UnclosedDelimiter {
-        open_position: usize,
+        open_position:  usize,
         open_delimiter: Delimiter,
     },
     #[error("unclosed string literal")]

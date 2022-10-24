@@ -5,17 +5,17 @@ pub enum Assignable {
     Var(Ident),
     Index {
         target: Box<Assignable>,
-        arg: SquareBrackets<Box<Expr>>,
+        arg:    SquareBrackets<Box<Expr>>,
     },
     FieldProjection {
-        target: Box<Assignable>,
+        target:    Box<Assignable>,
         dot_token: DotToken,
-        name: Ident,
+        name:      Ident,
     },
     TupleFieldProjection {
-        target: Box<Assignable>,
-        dot_token: DotToken,
-        field: BigUint,
+        target:     Box<Assignable>,
+        dot_token:  DotToken,
+        field:      BigUint,
         field_span: Span,
     },
 }

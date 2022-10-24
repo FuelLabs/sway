@@ -10,14 +10,14 @@ use crate::{
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq, Eq)]
 pub struct TyTraitFn {
-    pub name: Ident,
-    pub(crate) purity: Purity,
-    pub parameters: Vec<TyFunctionParameter>,
-    pub return_type: TypeId,
+    pub name:             Ident,
+    pub(crate) purity:    Purity,
+    pub parameters:       Vec<TyFunctionParameter>,
+    pub return_type:      TypeId,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
     pub return_type_span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes:       transform::AttributesMap,
 }
 
 impl CopyTypes for TyTraitFn {

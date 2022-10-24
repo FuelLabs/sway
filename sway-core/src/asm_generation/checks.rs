@@ -1,10 +1,14 @@
 //! Various checks and heuristics that are naively run on sequences of opcodes.
 //!
 //! This is _not_ the place for optimization passes.
-use crate::asm_generation::FinalizedAsm;
-use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
-use crate::asm_lang::*;
-use crate::error::*;
+use crate::{
+    asm_generation::FinalizedAsm,
+    asm_lang::{
+        allocated_ops::{AllocatedOp, AllocatedOpcode},
+        *,
+    },
+    error::*,
+};
 
 use sway_error::error::CompileError;
 

@@ -314,9 +314,9 @@ impl ConstructorFactory {
                                 .into_iter()
                                 .map(|x| {
                                     Pattern::Enum(EnumPattern {
-                                        enum_name: enum_name.to_string(),
+                                        enum_name:    enum_name.to_string(),
                                         variant_name: x.clone(),
-                                        value: Box::new(Pattern::Wildcard),
+                                        value:        Box::new(Pattern::Wildcard),
                                     })
                                 })
                                 .collect::<Vec<_>>()

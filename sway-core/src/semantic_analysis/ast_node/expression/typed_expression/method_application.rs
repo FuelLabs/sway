@@ -9,9 +9,7 @@ use ast_node::typed_expression::{
 };
 use std::collections::{HashMap, VecDeque};
 use sway_error::error::CompileError;
-use sway_types::Spanned;
-use sway_types::{constants, integer_bits::IntegerBits};
-use sway_types::{state::StateIndex, Span};
+use sway_types::{constants, integer_bits::IntegerBits, state::StateIndex, Span, Spanned};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application(
@@ -53,7 +51,7 @@ pub(crate) fn type_check_method_application(
         if !ctx.purity().can_call(method.purity) {
             errors.push(CompileError::StorageAccessMismatch {
                 attrs: promote_purity(ctx.purity(), method.purity).to_attribute_syntax(),
-                span: method_name_binding.inner.easy_name().span(),
+                span:  method_name_binding.inner.easy_name().span(),
             });
         }
         if !contract_call_params.is_empty() {
@@ -79,7 +77,7 @@ pub(crate) fn type_check_method_application(
             {
                 errors.push(CompileError::ContractCallParamRepeated {
                     param_name: param_name.to_string(),
-                    span: span.clone(),
+                    span:       span.clone(),
                 });
             }
         }
@@ -113,7 +111,7 @@ pub(crate) fn type_check_method_application(
                 _ => {
                     errors.push(CompileError::UnrecognizedContractParam {
                         param_name: param.name.to_string(),
-                        span: param.name.span().clone(),
+                        span:       param.name.span().clone(),
                     });
                 }
             };
@@ -231,8 +229,8 @@ pub(crate) fn type_check_method_application(
             }
         }
         MethodName::FromModule { method_name } => CallPath {
-            prefixes: vec![],
-            suffix: method_name,
+            prefixes:    vec![],
+            suffix:      method_name,
             is_absolute: false,
         },
         MethodName::FromTrait { call_path } => call_path,
@@ -286,8 +284,8 @@ pub(crate) fn type_check_method_application(
         warnings.append(&mut new_warnings);
         if !new_errors.is_empty() {
             errors.push(CompileError::ArgumentParameterTypeMismatch {
-                span: arg.span.clone(),
-                provided: arg.return_type.to_string(),
+                span:      arg.span.clone(),
+                provided:  arg.return_type.to_string(),
                 should_be: param.type_id.to_string(),
             });
         }

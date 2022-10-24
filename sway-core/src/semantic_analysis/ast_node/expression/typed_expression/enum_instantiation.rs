@@ -37,7 +37,7 @@ pub(crate) fn instantiate_enum(
         ([], ty) if ty.is_unit() => ok(
             ty::TyExpression {
                 return_type: enum_decl.create_type_id(),
-                expression: ty::TyExpressionVariant::EnumInstantiation {
+                expression:  ty::TyExpressionVariant::EnumInstantiation {
                     tag: enum_variant.tag,
                     contents: None,
                     enum_decl,
@@ -45,7 +45,7 @@ pub(crate) fn instantiate_enum(
                     enum_instantiation_span: enum_name.span(),
                     variant_instantiation_span: enum_variant_name.span(),
                 },
-                span: enum_variant_name.span(),
+                span:        enum_variant_name.span(),
             },
             warnings,
             errors,
@@ -77,7 +77,7 @@ pub(crate) fn instantiate_enum(
             ok(
                 ty::TyExpression {
                     return_type: enum_decl.create_type_id(),
-                    expression: ty::TyExpressionVariant::EnumInstantiation {
+                    expression:  ty::TyExpressionVariant::EnumInstantiation {
                         tag: enum_variant.tag,
                         contents: Some(Box::new(typed_expr)),
                         enum_decl,
@@ -85,7 +85,7 @@ pub(crate) fn instantiate_enum(
                         enum_instantiation_span: enum_name.span(),
                         variant_instantiation_span: enum_variant_name.span(),
                     },
-                    span: enum_variant_name.span(),
+                    span:        enum_variant_name.span(),
                 },
                 warnings,
                 errors,
@@ -106,7 +106,7 @@ pub(crate) fn instantiate_enum(
         (_too_many_expressions, ty) => {
             errors.push(CompileError::MoreThanOneEnumInstantiator {
                 span: enum_variant_name.span(),
-                ty: ty.to_string(),
+                ty:   ty.to_string(),
             });
             err(warnings, errors)
         }

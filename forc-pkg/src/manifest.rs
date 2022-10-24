@@ -21,32 +21,32 @@ pub struct PackageManifestFile {
     /// The deserialized `Forc.toml`.
     manifest: PackageManifest,
     /// The path from which the `Forc.toml` file was read.
-    path: PathBuf,
+    path:     PathBuf,
 }
 
 /// A direct mapping to a `Forc.toml`.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct PackageManifest {
-    pub project: Project,
-    pub network: Option<Network>,
-    pub dependencies: Option<BTreeMap<String, Dependency>>,
-    pub patch: Option<BTreeMap<String, PatchMap>>,
+    pub project:               Project,
+    pub network:               Option<Network>,
+    pub dependencies:          Option<BTreeMap<String, Dependency>>,
+    pub patch:                 Option<BTreeMap<String, PatchMap>>,
     /// A list of [configuration-time constants](https://github.com/FuelLabs/sway/issues/1498).
-    pub constants: Option<BTreeMap<String, ConfigTimeConstant>>,
-    build_profile: Option<BTreeMap<String, BuildProfile>>,
+    pub constants:             Option<BTreeMap<String, ConfigTimeConstant>>,
+    build_profile:             Option<BTreeMap<String, BuildProfile>>,
     pub contract_dependencies: Option<BTreeMap<String, Dependency>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct Project {
-    pub authors: Option<Vec<String>>,
-    pub name: String,
+    pub authors:      Option<Vec<String>>,
+    pub name:         String,
     pub organization: Option<String>,
-    pub license: String,
+    pub license:      String,
     #[serde(default = "default_entry")]
-    pub entry: String,
+    pub entry:        String,
     pub implicit_std: Option<bool>,
     pub forc_version: Option<semver::Version>,
 }
@@ -74,24 +74,24 @@ pub enum Dependency {
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,
-    pub path: Option<String>,
-    pub(crate) git: Option<String>,
-    pub(crate) branch: Option<String>,
-    pub(crate) tag: Option<String>,
+    pub path:           Option<String>,
+    pub(crate) git:     Option<String>,
+    pub(crate) branch:  Option<String>,
+    pub(crate) tag:     Option<String>,
     pub(crate) package: Option<String>,
-    pub(crate) rev: Option<String>,
+    pub(crate) rev:     Option<String>,
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct BuildProfile {
-    pub print_ast: bool,
-    pub print_ir: bool,
-    pub print_finalized_asm: bool,
+    pub print_ast:              bool,
+    pub print_ir:               bool,
+    pub print_finalized_asm:    bool,
     pub print_intermediate_asm: bool,
-    pub terse: bool,
-    pub time_phases: bool,
+    pub terse:                  bool,
+    pub time_phases:            bool,
 }
 
 impl Dependency {
@@ -427,23 +427,23 @@ impl BuildProfile {
 
     pub fn debug() -> Self {
         Self {
-            print_ast: false,
-            print_ir: false,
-            print_finalized_asm: false,
+            print_ast:              false,
+            print_ir:               false,
+            print_finalized_asm:    false,
             print_intermediate_asm: false,
-            terse: false,
-            time_phases: false,
+            terse:                  false,
+            time_phases:            false,
         }
     }
 
     pub fn release() -> Self {
         Self {
-            print_ast: false,
-            print_ir: false,
-            print_finalized_asm: false,
+            print_ast:              false,
+            print_ir:               false,
+            print_finalized_asm:    false,
             print_intermediate_asm: false,
-            terse: false,
-            time_phases: false,
+            terse:                  false,
+            time_phases:            false,
         }
     }
 }
@@ -513,7 +513,7 @@ pub struct WorkspaceManifestFile {
     /// The derserialized `Forc.toml`
     manifest: WorkspaceManifest,
     /// The path from which the `Forc.toml` file was read.
-    path: PathBuf,
+    path:     PathBuf,
 }
 
 /// A direct mapping to `Forc.toml` if it is a WorkspaceManifest

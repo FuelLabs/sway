@@ -1,6 +1,5 @@
 use anyhow::Result;
-use clap::Command as ClapCommand;
-use clap::{CommandFactory, Parser};
+use clap::{Command as ClapCommand, CommandFactory, Parser};
 use clap_complete::{generate, Generator, Shell};
 
 /// Generate tab-completion scripts for your shell

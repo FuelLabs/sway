@@ -105,11 +105,11 @@ impl ty::TyMatchBranch {
             typed_result_expression_variant => {
                 code_block_contents.push(ty::TyAstNode {
                     content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
-                        expression: typed_result_expression_variant,
+                        expression:  typed_result_expression_variant,
                         return_type: typed_result_return_type,
-                        span: typed_result_span.clone(),
+                        span:        typed_result_span.clone(),
                     }),
-                    span: typed_result_span.clone(),
+                    span:    typed_result_span.clone(),
                 });
             }
         }
@@ -117,18 +117,18 @@ impl ty::TyMatchBranch {
         // assemble a new branch result that includes both the variable declarations
         // that we create and the typed result from the original untyped branch
         let new_result = ty::TyExpression {
-            expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
+            expression:  ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
                 contents: code_block_contents,
             }),
             return_type: typed_result.return_type,
-            span: typed_result_span,
+            span:        typed_result_span,
         };
 
         // return!
         let typed_branch = ty::TyMatchBranch {
             conditions: match_req_map,
-            result: new_result,
-            span: branch_span,
+            result:     new_result,
+            span:       branch_span,
         };
         ok((typed_branch, typed_scrutinee), warnings, errors)
     }

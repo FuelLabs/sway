@@ -126,7 +126,7 @@ impl ty::TyAstNode {
 
                             if !is_screaming_snake_case(name.as_str()) {
                                 warnings.push(CompileWarning {
-                                    span: name.span(),
+                                    span:            name.span(),
                                     warning_content: Warning::NonScreamingSnakeCaseConstName {
                                         name: name.clone(),
                                     },
@@ -358,7 +358,7 @@ impl ty::TyAstNode {
                     ty::TyAstNodeContent::ImplicitReturnExpression(typed_expr)
                 }
             },
-            span: node.span.clone(),
+            span:    node.span.clone(),
         };
 
         if let ty::TyAstNode {
@@ -482,9 +482,9 @@ pub(crate) fn reassign_storage_subfield(
     };
 
     type_checked_buf.push(ty::TyStorageReassignDescriptor {
-        name: first_field.clone(),
+        name:    first_field.clone(),
         type_id: *initial_field_type,
-        span: first_field.span(),
+        span:    first_field.span(),
     });
 
     fn update_available_struct_fields(id: TypeId) -> Vec<ty::TyStructField> {
@@ -509,9 +509,9 @@ pub(crate) fn reassign_storage_subfield(
             Some(struct_field) => {
                 curr_type = struct_field.type_id;
                 type_checked_buf.push(ty::TyStorageReassignDescriptor {
-                    name: field.clone(),
+                    name:    field.clone(),
                     type_id: struct_field.type_id,
-                    span: field.span().clone(),
+                    span:    field.span().clone(),
                 });
                 available_struct_fields = update_available_struct_fields(struct_field.type_id);
             }
@@ -521,9 +521,9 @@ pub(crate) fn reassign_storage_subfield(
                     .map(|x| x.name.as_str())
                     .collect::<Vec<_>>();
                 errors.push(CompileError::FieldNotFound {
-                    field_name: field.clone(),
+                    field_name:       field.clone(),
                     available_fields: available_fields.join(", "),
-                    struct_name: type_checked_buf.last().unwrap().name.clone(),
+                    struct_name:      type_checked_buf.last().unwrap().name.clone(),
                 });
                 return err(warnings, errors);
             }

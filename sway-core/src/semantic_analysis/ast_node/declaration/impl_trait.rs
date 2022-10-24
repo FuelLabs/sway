@@ -149,7 +149,7 @@ impl ty::TyImplTrait {
                 if look_up_type_id(implementing_for_type_id) != TypeInfo::Contract {
                     errors.push(CompileError::ImplAbiForNonContract {
                         span: type_implementing_for_span.clone(),
-                        ty: implementing_for_type_id.to_string(),
+                        ty:   implementing_for_type_id.to_string(),
                     });
                 }
 
@@ -395,8 +395,8 @@ impl ty::TyImplTrait {
 
         // create the trait name
         let trait_name = CallPath {
-            prefixes: vec![],
-            suffix: match &type_implementing_for {
+            prefixes:    vec![],
+            suffix:      match &type_implementing_for {
                 TypeInfo::Custom { name, .. } => name.clone(),
                 _ => Ident::new_with_override("r#Self", type_implementing_for_span.clone()),
             },
@@ -549,9 +549,9 @@ fn type_check_trait_implementation(
             Some(trait_fn) => trait_fn,
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
-                    name: fn_decl.name.clone(),
+                    name:           fn_decl.name.clone(),
                     interface_name: interface_name(),
-                    span: fn_decl.name.span(),
+                    span:           fn_decl.name.span(),
                 });
                 return err(warnings, errors);
             }
@@ -562,10 +562,10 @@ fn type_check_trait_implementation(
         if fn_decl.parameters.len() != fn_signature.parameters.len() {
             errors.push(
                 CompileError::IncorrectNumberOfInterfaceSurfaceFunctionParameters {
-                    span: fn_decl.parameters_span(),
-                    fn_name: fn_decl.name.clone(),
-                    interface_name: interface_name(),
-                    num_parameters: fn_signature.parameters.len(),
+                    span:                fn_decl.parameters_span(),
+                    fn_name:             fn_decl.name.clone(),
+                    interface_name:      interface_name(),
+                    num_parameters:      fn_signature.parameters.len(),
                     provided_parameters: fn_decl.parameters.len(),
                 },
             );
@@ -605,9 +605,9 @@ fn type_check_trait_implementation(
             if !new_warnings.is_empty() || !new_errors.is_empty() {
                 errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
-                    span: fn_decl_param.type_span.clone(),
-                    given: fn_decl_param_type.to_string(),
-                    expected: fn_signature_param_type.to_string(),
+                    span:           fn_decl_param.type_span.clone(),
+                    given:          fn_decl_param_type.to_string(),
+                    expected:       fn_signature_param_type.to_string(),
                 });
                 continue;
             }
@@ -618,17 +618,17 @@ fn type_check_trait_implementation(
         if fn_decl.purity != fn_signature.purity {
             errors.push(if fn_signature.purity == Purity::Pure {
                 CompileError::TraitDeclPureImplImpure {
-                    fn_name: fn_decl.name.clone(),
+                    fn_name:        fn_decl.name.clone(),
                     interface_name: interface_name(),
-                    attrs: fn_decl.purity.to_attribute_syntax(),
-                    span: fn_decl.span.clone(),
+                    attrs:          fn_decl.purity.to_attribute_syntax(),
+                    span:           fn_decl.span.clone(),
                 }
             } else {
                 CompileError::TraitImplPurityMismatch {
-                    fn_name: fn_decl.name.clone(),
+                    fn_name:        fn_decl.name.clone(),
                     interface_name: interface_name(),
-                    attrs: fn_signature.purity.to_attribute_syntax(),
-                    span: fn_decl.span.clone(),
+                    attrs:          fn_signature.purity.to_attribute_syntax(),
+                    span:           fn_decl.span.clone(),
                 }
             });
         }
@@ -645,9 +645,9 @@ fn type_check_trait_implementation(
         if !new_warnings.is_empty() || !new_errors.is_empty() {
             errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                 interface_name: interface_name(),
-                span: fn_decl.return_type_span.clone(),
-                expected: fn_signature.return_type.to_string(),
-                given: fn_decl.return_type.to_string(),
+                span:           fn_decl.return_type_span.clone(),
+                expected:       fn_signature.return_type.to_string(),
+                given:          fn_decl.return_type.to_string(),
             });
             continue;
         }
@@ -680,8 +680,8 @@ fn type_check_trait_implementation(
     });
     ctx.namespace.insert_trait_implementation(
         CallPath {
-            prefixes: vec![],
-            suffix: trait_name.suffix.clone(),
+            prefixes:    vec![],
+            suffix:      trait_name.suffix.clone(),
             is_absolute: false,
         },
         self_type_id,
@@ -709,7 +709,7 @@ fn type_check_trait_implementation(
     // check that the implementation checklist is complete
     if !function_checklist.is_empty() {
         errors.push(CompileError::MissingInterfaceSurfaceMethods {
-            span: block_span.clone(),
+            span:              block_span.clone(),
             missing_functions: function_checklist
                 .into_iter()
                 .map(|(ident, _)| ident.as_str().to_string())
@@ -748,7 +748,7 @@ fn check_for_unconstrained_type_parameters(
     }
     for (k, v) in defined_generics.into_iter() {
         errors.push(CompileError::UnconstrainedGenericParameter {
-            ty: format!("{}", k),
+            ty:   format!("{}", k),
             span: v,
         });
     }

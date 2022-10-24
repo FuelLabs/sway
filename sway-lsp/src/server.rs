@@ -20,14 +20,13 @@ use std::{
     sync::Arc,
 };
 use sway_types::Spanned;
-use tower_lsp::lsp_types::*;
-use tower_lsp::{jsonrpc, Client, LanguageServer};
+use tower_lsp::{jsonrpc, lsp_types::*, Client, LanguageServer};
 
 #[derive(Debug)]
 pub struct Backend {
     pub client: Client,
     pub config: RwLock<Config>,
-    sessions: DashMap<PathBuf, Arc<Session>>,
+    sessions:   DashMap<PathBuf, Arc<Session>>,
 }
 
 impl Backend {
@@ -84,7 +83,7 @@ fn capabilities() -> ServerCapabilities {
         semantic_tokens_provider: Some(
             SemanticTokensOptions {
                 legend: SemanticTokensLegend {
-                    token_types: capabilities::semantic_tokens::SUPPORTED_TYPES.to_vec(),
+                    token_types:     capabilities::semantic_tokens::SUPPORTED_TYPES.to_vec(),
                     token_modifiers: capabilities::semantic_tokens::SUPPORTED_MODIFIERS.to_vec(),
                 },
                 full: Some(SemanticTokensFullOptions::Bool(true)),
@@ -425,7 +424,7 @@ pub struct RunnableParams {
 #[serde(rename_all = "camelCase")]
 pub struct ShowAstParams {
     pub text_document: TextDocumentIdentifier,
-    pub ast_kind: String,
+    pub ast_kind:      String,
 }
 
 // Custom LSP-Server Methods

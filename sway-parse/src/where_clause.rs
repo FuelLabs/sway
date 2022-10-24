@@ -1,7 +1,6 @@
 use crate::{Parse, ParseResult, Parser};
 
-use sway_ast::punctuated::Punctuated;
-use sway_ast::{WhereBound, WhereClause};
+use sway_ast::{punctuated::Punctuated, WhereBound, WhereClause};
 
 impl Parse for WhereClause {
     fn parse(parser: &mut Parser) -> ParseResult<WhereClause> {

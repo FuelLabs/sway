@@ -1,16 +1,19 @@
 use core::mem;
 use extension_trait::extension_trait;
 use num_bigint::BigUint;
-use std::path::PathBuf;
-use std::sync::Arc;
-use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
-use sway_ast::token::{
-    Comment, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter, DocComment,
-    DocStyle, Punct, PunctKind, Spacing, TokenStream,
+use std::{path::PathBuf, sync::Arc};
+use sway_ast::{
+    literal::{LitChar, LitInt, LitIntType, LitString, Literal},
+    token::{
+        Comment, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter, DocComment,
+        DocStyle, Punct, PunctKind, Spacing, TokenStream,
+    },
 };
-use sway_error::error::CompileError;
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_error::lex_error::{LexError, LexErrorKind};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+    lex_error::{LexError, LexErrorKind},
+};
 use sway_types::{Ident, Span};
 use unicode_xid::UnicodeXID;
 
@@ -64,7 +67,7 @@ impl CharExt for char {
 }
 
 struct CharIndicesInner<'a> {
-    src: &'a str,
+    src:      &'a str,
     position: usize,
 }
 
@@ -88,9 +91,9 @@ type Result<T> = core::result::Result<T, ErrorEmitted>;
 
 struct Lexer<'l> {
     handler: &'l Handler,
-    src: &'l Arc<str>,
-    path: &'l Option<Arc<PathBuf>>,
-    stream: &'l mut CharIndices<'l>,
+    src:     &'l Arc<str>,
+    path:    &'l Option<Arc<PathBuf>>,
+    stream:  &'l mut CharIndices<'l>,
 }
 
 pub fn lex(
@@ -111,7 +114,7 @@ pub fn lex_commented(
     path: &Option<Arc<PathBuf>>,
 ) -> Result<CommentedTokenStream> {
     let stream = &mut CharIndicesInner {
-        src: &src[..end],
+        src:      &src[..end],
         position: start,
     }
     .peekable();
@@ -459,7 +462,7 @@ fn lex_char(
         );
 
         Literal::String(LitString {
-            span: sp,
+            span:   sp,
             parsed: string,
         })
     } else {
@@ -602,7 +605,7 @@ fn lex_int_lit(
         decimal_int_lit(l, digit)
     };
     let literal = Literal::Int(LitInt {
-        span: span(l, index, end_opt.unwrap_or(l.src.len())),
+        span:   span(l, index, end_opt.unwrap_or(l.src.len())),
         parsed: big_uint,
         ty_opt: lex_int_ty_opt(l)?,
     });
@@ -677,12 +680,12 @@ fn parse_digits(big_uint: &mut BigUint, l: &mut Lexer<'_>, radix: u32) -> Option
 
 fn lex_punctuation(l: &mut Lexer<'_>, index: usize, character: char) -> Option<CommentedTokenTree> {
     let punct = Punct {
-        kind: character.as_punct_kind()?,
+        kind:    character.as_punct_kind()?,
         spacing: match l.stream.peek() {
             Some((_, next_character)) if next_character.as_punct_kind().is_some() => Spacing::Joint,
             _ => Spacing::Alone,
         },
-        span: span_until(l, index),
+        span:    span_until(l, index),
     };
     Some(CommentedTokenTree::Tree(punct.into()))
 }

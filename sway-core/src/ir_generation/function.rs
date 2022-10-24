@@ -30,17 +30,17 @@ use sway_types::{
 use std::collections::HashMap;
 
 pub(super) struct FnCompiler {
-    module: Module,
-    pub(super) function: Function,
+    module:                   Module,
+    pub(super) function:      Function,
     pub(super) current_block: Block,
-    block_to_break_to: Option<Block>,
-    block_to_continue_to: Option<Block>,
-    current_fn_param: Option<ty::TyFunctionParameter>,
-    returns_by_ref: bool,
-    lexical_map: LexicalMap,
-    recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
+    block_to_break_to:        Option<Block>,
+    block_to_continue_to:     Option<Block>,
+    current_fn_param:         Option<ty::TyFunctionParameter>,
+    returns_by_ref:           bool,
+    lexical_map:              LexicalMap,
+    recreated_fns:            HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
     // This is a map from the type IDs of a logged type and the ID of the corresponding log
-    logged_types_map: HashMap<TypeId, LogId>,
+    logged_types_map:         HashMap<TypeId, LogId>,
 }
 
 impl FnCompiler {
@@ -136,19 +136,19 @@ impl FnCompiler {
                 ty::TyDeclaration::FunctionDeclaration(_) => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "function",
-                        span: ast_node.span,
+                        span:      ast_node.span,
                     })
                 }
                 ty::TyDeclaration::TraitDeclaration(_) => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "trait",
-                        span: ast_node.span,
+                        span:      ast_node.span,
                     })
                 }
                 ty::TyDeclaration::StructDeclaration(_) => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "struct",
-                        span: ast_node.span,
+                        span:      ast_node.span,
                     })
                 }
                 ty::TyDeclaration::EnumDeclaration(decl_id) => {
@@ -166,24 +166,24 @@ impl FnCompiler {
                 }
                 ty::TyDeclaration::AbiDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
                     decl_type: "abi",
-                    span: ast_node.span,
+                    span:      ast_node.span,
                 }),
                 ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "abi",
-                        span: ast_node.span,
+                        span:      ast_node.span,
                     })
                 }
                 ty::TyDeclaration::ErrorRecovery { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "error recovery",
-                        span: ast_node.span,
+                        span:      ast_node.span,
                     })
                 }
                 ty::TyDeclaration::StorageDeclaration(_) => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "storage",
-                        span: ast_node.span,
+                        span:      ast_node.span,
                     })
                 }
             },

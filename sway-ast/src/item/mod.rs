@@ -53,9 +53,9 @@ impl Spanned for ItemKind {
 
 #[derive(Clone, Debug)]
 pub struct TypeField {
-    pub name: Ident,
+    pub name:        Ident,
     pub colon_token: ColonToken,
-    pub ty: Ty,
+    pub ty:          Ty,
 }
 
 impl Spanned for TypeField {
@@ -68,18 +68,18 @@ impl Spanned for TypeField {
 pub enum FnArgs {
     Static(Punctuated<FnArg, CommaToken>),
     NonStatic {
-        self_token: SelfToken,
-        ref_self: Option<RefToken>,
+        self_token:   SelfToken,
+        ref_self:     Option<RefToken>,
         mutable_self: Option<MutToken>,
-        args_opt: Option<(CommaToken, Punctuated<FnArg, CommaToken>)>,
+        args_opt:     Option<(CommaToken, Punctuated<FnArg, CommaToken>)>,
     },
 }
 
 #[derive(Clone, Debug)]
 pub struct FnArg {
-    pub pattern: Pattern,
+    pub pattern:     Pattern,
     pub colon_token: ColonToken,
-    pub ty: Ty,
+    pub ty:          Ty,
 }
 
 impl Spanned for FnArg {
@@ -90,12 +90,12 @@ impl Spanned for FnArg {
 
 #[derive(Clone, Debug)]
 pub struct FnSignature {
-    pub visibility: Option<PubToken>,
-    pub fn_token: FnToken,
-    pub name: Ident,
-    pub generics: Option<GenericParams>,
-    pub arguments: Parens<FnArgs>,
-    pub return_type_opt: Option<(RightArrowToken, Ty)>,
+    pub visibility:       Option<PubToken>,
+    pub fn_token:         FnToken,
+    pub name:             Ident,
+    pub generics:         Option<GenericParams>,
+    pub arguments:        Parens<FnArgs>,
+    pub return_type_opt:  Option<(RightArrowToken, Ty)>,
     pub where_clause_opt: Option<WhereClause>,
 }
 

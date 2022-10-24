@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Copy, Clone)]
 pub struct Imports {
     /// Controls the strategy for how imports are grouped together.
-    pub group_imports: GroupImports,
+    pub group_imports:       GroupImports,
     /// Merge or split imports to the provided granularity.
     pub imports_granularity: ImportGranularity,
     /// Indent of imports.
-    pub imports_indent: IndentStyle,
+    pub imports_indent:      IndentStyle,
     /// Item layout inside a import block.
-    pub imports_layout: ListTactic,
+    pub imports_layout:      ListTactic,
 }
 
 impl Default for Imports {
     fn default() -> Self {
         Self {
-            group_imports: GroupImports::Preserve,
+            group_imports:       GroupImports::Preserve,
             imports_granularity: ImportGranularity::Preserve,
-            imports_indent: IndentStyle::Block,
-            imports_layout: ListTactic::Mixed,
+            imports_indent:      IndentStyle::Block,
+            imports_layout:      ListTactic::Mixed,
         }
     }
 }
@@ -29,12 +29,12 @@ impl Imports {
     pub fn from_opts(opts: &ImportsOptions) -> Self {
         let default = Self::default();
         Self {
-            group_imports: opts.group_imports.unwrap_or(default.group_imports),
+            group_imports:       opts.group_imports.unwrap_or(default.group_imports),
             imports_granularity: opts
                 .imports_granularity
                 .unwrap_or(default.imports_granularity),
-            imports_indent: opts.imports_indent.unwrap_or(default.imports_indent),
-            imports_layout: opts.imports_layout.unwrap_or(default.imports_layout),
+            imports_indent:      opts.imports_indent.unwrap_or(default.imports_indent),
+            imports_layout:      opts.imports_layout.unwrap_or(default.imports_layout),
         }
     }
 }

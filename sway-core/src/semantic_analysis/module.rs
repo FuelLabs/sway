@@ -184,13 +184,13 @@ fn check_supertraits(
                         // user code with a single error.
                         errors.push(CompileError::SupertraitImplMissing {
                             supertrait_name: supertrait.name.to_string(),
-                            type_name: implementing_for_type_id.to_string(),
-                            span: span.clone(),
+                            type_name:       implementing_for_type_id.to_string(),
+                            span:            span.clone(),
                         });
                         errors.push(CompileError::SupertraitImplRequired {
                             supertrait_name: supertrait.name.to_string(),
-                            trait_name: tr.name.clone(),
-                            span: tr.name.span().clone(),
+                            trait_name:      tr.name.clone(),
+                            span:            tr.name.span().clone(),
                         });
                     }
                 }

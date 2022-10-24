@@ -15,14 +15,14 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 #[derive(Default)]
 pub(crate) struct MetadataManager {
-    md_span_cache: HashMap<MetadataIndex, Span>,
-    md_file_loc_cache: HashMap<MetadataIndex, (Arc<PathBuf>, Arc<str>)>,
-    md_storage_op_cache: HashMap<MetadataIndex, StorageOperation>,
+    md_span_cache:        HashMap<MetadataIndex, Span>,
+    md_file_loc_cache:    HashMap<MetadataIndex, (Arc<PathBuf>, Arc<str>)>,
+    md_storage_op_cache:  HashMap<MetadataIndex, StorageOperation>,
     md_storage_key_cache: HashMap<MetadataIndex, u64>,
 
-    span_md_cache: HashMap<Span, MetadataIndex>,
-    file_loc_md_cache: HashMap<*const PathBuf, MetadataIndex>,
-    storage_op_md_cache: HashMap<Purity, MetadataIndex>,
+    span_md_cache:        HashMap<Span, MetadataIndex>,
+    file_loc_md_cache:    HashMap<*const PathBuf, MetadataIndex>,
+    storage_op_md_cache:  HashMap<Purity, MetadataIndex>,
     storage_key_md_cache: HashMap<u64, MetadataIndex>,
 }
 

@@ -111,8 +111,7 @@ impl TypedNamedField for ty::ProjectionKind {
     }
 }
 
-use ty::TyStorageAccessDescriptor;
-use ty::TyStorageReassignDescriptor;
+use ty::{TyStorageAccessDescriptor, TyStorageReassignDescriptor};
 impl_typed_named_field_for!(TyStorageAccessDescriptor);
 impl_typed_named_field_for!(TyStorageReassignDescriptor);
 

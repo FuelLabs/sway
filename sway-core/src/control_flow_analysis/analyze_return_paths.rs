@@ -260,7 +260,7 @@ fn connect_impl_trait(
     // insert method declarations into the graph
     for fn_decl in methods {
         let fn_decl_entry_node = graph.add_node(ControlFlowGraphNode::MethodDeclaration {
-            span: fn_decl.span.clone(),
+            span:        fn_decl.span.clone(),
             method_name: fn_decl.name.clone(),
         });
         graph.add_edge(entry_node, fn_decl_entry_node, "".into());
@@ -303,7 +303,7 @@ fn connect_typed_fn_decl(
 
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,
-        exit_point: fn_exit_node,
+        exit_point:  fn_exit_node,
         return_type: to_typeinfo(fn_decl.return_type, &fn_decl.return_type_span)
             .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new())),
     };

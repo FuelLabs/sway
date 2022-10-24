@@ -1,11 +1,13 @@
 use self::shape::Shape;
-use crate::parse::parse_file;
-use crate::utils::map::{
-    comments::handle_comments, newline::handle_newlines, newline_style::apply_newline_style,
-};
 pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
+};
+use crate::{
+    parse::parse_file,
+    utils::map::{
+        comments::handle_comments, newline::handle_newlines, newline_style::apply_newline_style,
+    },
 };
 use std::{fmt::Write, path::Path, sync::Arc};
 use sway_core::BuildConfig;
@@ -14,7 +16,7 @@ pub(crate) mod shape;
 
 #[derive(Debug, Default, Clone)]
 pub struct Formatter {
-    pub shape: Shape,
+    pub shape:  Shape,
     pub config: Config,
 }
 

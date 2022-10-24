@@ -16,7 +16,7 @@ lazy_static! {
 
 #[derive(Debug, Default)]
 pub(crate) struct TypeEngine {
-    pub(super) slab: ConcurrentSlab<TypeInfo>,
+    pub(super) slab:    ConcurrentSlab<TypeInfo>,
     storage_only_types: ConcurrentSlab<TypeInfo>,
 }
 
@@ -134,9 +134,9 @@ impl TypeEngine {
                     .unwrap_or_else(|| value.name().span());
                 if value.type_parameters().len() != type_arguments.len() {
                     errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                        given: type_arguments.len(),
+                        given:    type_arguments.len(),
                         expected: value.type_parameters().len(),
-                        span: type_arguments_span,
+                        span:     type_arguments_span,
                     });
                     return err(warnings, errors);
                 }

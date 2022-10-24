@@ -24,71 +24,71 @@ pub struct Expression {
 #[derive(Debug, Clone)]
 pub struct FunctionApplicationExpression {
     pub call_path_binding: TypeBinding<CallPath>,
-    pub arguments: Vec<Expression>,
+    pub arguments:         Vec<Expression>,
 }
 
 #[derive(Debug, Clone)]
 pub struct LazyOperatorExpression {
-    pub op: LazyOp,
+    pub op:  LazyOp,
     pub lhs: Box<Expression>,
     pub rhs: Box<Expression>,
 }
 
 #[derive(Debug, Clone)]
 pub struct TupleIndexExpression {
-    pub prefix: Box<Expression>,
-    pub index: usize,
+    pub prefix:     Box<Expression>,
+    pub index:      usize,
     pub index_span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct StructExpression {
     pub call_path_binding: TypeBinding<CallPath>,
-    pub fields: Vec<StructExpressionField>,
+    pub fields:            Vec<StructExpressionField>,
 }
 
 #[derive(Debug, Clone)]
 pub struct IfExpression {
     pub condition: Box<Expression>,
-    pub then: Box<Expression>,
-    pub r#else: Option<Box<Expression>>,
+    pub then:      Box<Expression>,
+    pub r#else:    Option<Box<Expression>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct MatchExpression {
-    pub value: Box<Expression>,
+    pub value:    Box<Expression>,
     pub branches: Vec<MatchBranch>,
 }
 
 #[derive(Debug, Clone)]
 pub struct MethodApplicationExpression {
-    pub method_name_binding: TypeBinding<MethodName>,
+    pub method_name_binding:  TypeBinding<MethodName>,
     pub contract_call_params: Vec<StructExpressionField>,
-    pub arguments: Vec<Expression>,
+    pub arguments:            Vec<Expression>,
 }
 
 #[derive(Debug, Clone)]
 pub struct SubfieldExpression {
-    pub prefix: Box<Expression>,
+    pub prefix:          Box<Expression>,
     pub field_to_access: Ident,
 }
 
 #[derive(Debug, Clone)]
 pub struct DelineatedPathExpression {
     pub call_path_binding: TypeBinding<CallPath>,
-    pub args: Vec<Expression>,
+    pub args:              Vec<Expression>,
 }
 
 #[derive(Debug, Clone)]
 pub struct AbiCastExpression {
     pub abi_name: CallPath,
-    pub address: Box<Expression>,
+    pub address:  Box<Expression>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ArrayIndexExpression {
     pub prefix: Box<Expression>,
-    pub index: Box<Expression>,
+    pub index:  Box<Expression>,
 }
 
 #[derive(Debug, Clone)]
@@ -99,13 +99,13 @@ pub struct StorageAccessExpression {
 #[derive(Debug, Clone)]
 pub struct IntrinsicFunctionExpression {
     pub kind_binding: TypeBinding<Intrinsic>,
-    pub arguments: Vec<Expression>,
+    pub arguments:    Vec<Expression>,
 }
 
 #[derive(Debug, Clone)]
 pub struct WhileLoopExpression {
     pub condition: Box<Expression>,
-    pub body: CodeBlock,
+    pub body:      CodeBlock,
 }
 
 #[derive(Debug, Clone)]
@@ -189,8 +189,8 @@ pub enum ReassignmentTarget {
 
 #[derive(Debug, Clone)]
 pub struct StructExpressionField {
-    pub name: Ident,
-    pub value: Expression,
+    pub name:        Ident,
+    pub value:       Expression,
     pub(crate) span: Span,
 }
 
@@ -202,7 +202,7 @@ impl Spanned for Expression {
 
 #[derive(Debug)]
 pub(crate) struct Op {
-    pub span: Span,
+    pub span:       Span,
     pub op_variant: OpVariant,
 }
 

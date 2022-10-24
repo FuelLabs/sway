@@ -14,7 +14,7 @@ use crate::{
 #[derive(Clone, Debug, Eq, Derivative)]
 #[derivative(PartialEq)]
 pub struct TyAstNode {
-    pub content: TyAstNodeContent,
+    pub content:     TyAstNodeContent,
     #[derivative(PartialEq = "ignore")]
     pub(crate) span: Span,
 }

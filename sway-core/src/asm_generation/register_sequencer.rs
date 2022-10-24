@@ -4,7 +4,7 @@ use crate::asm_lang::{Label, VirtualRegister};
 /// register Id for every virtual register that is used.
 #[derive(Default)]
 pub(crate) struct RegisterSequencer {
-    next_register: usize,
+    next_register:   usize,
     next_jump_label: usize,
 }
 

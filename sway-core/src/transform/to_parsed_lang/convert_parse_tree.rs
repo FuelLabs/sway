@@ -17,9 +17,11 @@ use sway_ast::{
     PatternStructField, PubToken, Punctuated, QualifiedPathRoot, Statement, StatementLet, Traits,
     Ty, TypeField, UseTree, WhereClause,
 };
-use sway_error::convert_parse_tree_error::ConvertParseTreeError;
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_error::warning::{CompileWarning, Warning};
+use sway_error::{
+    convert_parse_tree_error::ConvertParseTreeError,
+    handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
+};
 use sway_types::{
     constants::{
         DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX,
@@ -27,8 +29,8 @@ use sway_types::{
         TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
+    Ident, Span, Spanned,
 };
-use sway_types::{Ident, Span, Spanned};
 
 use std::{
     collections::{HashMap, HashSet},
@@ -396,7 +398,7 @@ fn get_attributed_purity(
                     _otherwise => {
                         let error = ConvertParseTreeError::InvalidAttributeArgument {
                             attribute: "storage".to_owned(),
-                            span: arg.span(),
+                            span:      arg.span(),
                         };
                         return Err(handler.emit_err(error.into()));
                     }
@@ -734,13 +736,13 @@ fn generic_params_opt_to_type_parameters(
             .into_iter()
             .map(|ident| {
                 let custom_type = insert_type(TypeInfo::Custom {
-                    name: ident.clone(),
+                    name:           ident.clone(),
                     type_arguments: None,
                 });
                 TypeParameter {
-                    type_id: custom_type,
-                    initial_type_id: custom_type,
-                    name_ident: ident,
+                    type_id:           custom_type,
+                    initial_type_id:   custom_type,
+                    name_ident:        ident,
                     trait_constraints: Vec::new(),
                 }
             })
@@ -758,7 +760,7 @@ fn generic_params_opt_to_type_parameters(
             None => {
                 errors.push(ConvertParseTreeError::ConstrainedNonExistentType {
                     ty_name: ty_name.clone(),
-                    span: ty_name.span().clone(),
+                    span:    ty_name.span().clone(),
                 });
                 continue;
             }
@@ -1208,28 +1210,28 @@ fn expr_func_app_to_expression_kind(
         Some(type_name) => {
             let type_info_span = type_name.span();
             let type_info = type_name_to_type_info_opt(&type_name).unwrap_or(TypeInfo::Custom {
-                name: type_name,
+                name:           type_name,
                 type_arguments: None,
             });
             let call_path_binding = TypeBinding {
-                inner: CallPath {
+                inner:          CallPath {
                     prefixes,
                     suffix: (type_info, type_info_span.clone()),
                     is_absolute,
                 },
                 type_arguments: parent_ty_args,
-                span: name_args_span(type_info_span, parent_ty_args_span),
+                span:           name_args_span(type_info_span, parent_ty_args_span),
             };
 
             let (method_ty_args, method_ty_args_span) = convert_ty_args(generics_opt)?;
             let method_name_span = method_name.span();
             let method_name_binding = TypeBinding {
-                inner: MethodName::FromType {
+                inner:          MethodName::FromType {
                     call_path_binding,
                     method_name,
                 },
                 type_arguments: method_ty_args,
-                span: name_args_span(method_name_span, method_ty_args_span),
+                span:           name_args_span(method_name_span, method_ty_args_span),
             };
             ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
                 method_name_binding,
@@ -1407,18 +1409,18 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
             };
             Expression {
                 kind: ExpressionKind::CodeBlock(CodeBlock {
-                    contents: vec![
+                    contents:         vec![
                         AstNode {
                             content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
                                 VariableDeclaration {
-                                    name: var_decl_name,
-                                    type_ascription: TypeInfo::Unknown,
+                                    name:                 var_decl_name,
+                                    type_ascription:      TypeInfo::Unknown,
                                     type_ascription_span: None,
-                                    is_mutable: false,
-                                    body: value,
+                                    is_mutable:           false,
+                                    body:                 value,
                                 },
                             )),
-                            span: span.clone(),
+                            span:    span.clone(),
                         },
                         AstNode {
                             content: AstNodeContent::ImplicitReturnExpression(Expression {
@@ -1428,7 +1430,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
                                 }),
                                 span: span.clone(),
                             }),
-                            span: span.clone(),
+                            span:    span.clone(),
                         },
                     ],
                     whole_block_span: span.clone(),
@@ -1441,7 +1443,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         } => Expression {
             kind: ExpressionKind::WhileLoop(WhileLoopExpression {
                 condition: Box::new(expr_to_expression(handler, *condition)?),
-                body: braced_code_block_contents_to_code_block(handler, block)?,
+                body:      braced_code_block_contents_to_code_block(handler, block)?,
             }),
             span,
         },
@@ -1452,7 +1454,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         Expr::Index { target, arg } => Expression {
             kind: ExpressionKind::ArrayIndex(ArrayIndexExpression {
                 prefix: Box::new(expr_to_expression(handler, *target)?),
-                index: Box::new(expr_to_expression(handler, *arg.into_inner())?),
+                index:  Box::new(expr_to_expression(handler, *arg.into_inner())?),
             }),
             span,
         },
@@ -1508,7 +1510,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
                     field_names: field_names.into_iter().rev().cloned().collect(),
                 }),
                 None => ExpressionKind::Subfield(SubfieldExpression {
-                    prefix: Box::new(expr_to_expression(handler, *target)?),
+                    prefix:          Box::new(expr_to_expression(handler, *target)?),
                     field_to_access: name,
                 }),
             };
@@ -1521,8 +1523,8 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
             ..
         } => Expression {
             kind: ExpressionKind::TupleIndex(TupleIndexExpression {
-                prefix: Box::new(expr_to_expression(handler, *target)?),
-                index: match usize::try_from(field) {
+                prefix:     Box::new(expr_to_expression(handler, *target)?),
+                index:      match usize::try_from(field) {
                     Ok(index) => index,
                     Err(..) => {
                         let error =
@@ -1686,7 +1688,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         }
         Expr::LogicalAnd { lhs, rhs, .. } => Expression {
             kind: ExpressionKind::LazyOperator(LazyOperatorExpression {
-                op: LazyOp::And,
+                op:  LazyOp::And,
                 lhs: Box::new(expr_to_expression(handler, *lhs)?),
                 rhs: Box::new(expr_to_expression(handler, *rhs)?),
             }),
@@ -1694,7 +1696,7 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         },
         Expr::LogicalOr { lhs, rhs, .. } => Expression {
             kind: ExpressionKind::LazyOperator(LazyOperatorExpression {
-                op: LazyOp::Or,
+                op:  LazyOp::Or,
                 lhs: Box::new(expr_to_expression(handler, *lhs)?),
                 rhs: Box::new(expr_to_expression(handler, *rhs)?),
             }),
@@ -1752,18 +1754,18 @@ fn op_call(
     args: &[Expression],
 ) -> Result<Expression, ErrorEmitted> {
     let method_name_binding = TypeBinding {
-        inner: MethodName::FromTrait {
+        inner:          MethodName::FromTrait {
             call_path: CallPath {
-                prefixes: vec![
+                prefixes:    vec![
                     Ident::new_with_override("core", op_span.clone()),
                     Ident::new_with_override("ops", op_span.clone()),
                 ],
-                suffix: Ident::new_with_override(name, op_span.clone()),
+                suffix:      Ident::new_with_override(name, op_span.clone()),
                 is_absolute: true,
             },
         },
         type_arguments: vec![],
-        span: op_span,
+        span:           op_span,
     };
     Ok(Expression {
         kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
@@ -2052,9 +2054,9 @@ fn path_expr_to_expression(
     } else {
         let call_path = path_expr_to_call_path(handler, path_expr)?;
         let call_path_binding = TypeBinding {
-            inner: call_path.clone(),
+            inner:          call_path.clone(),
             type_arguments: vec![],
-            span: call_path.span(),
+            span:           call_path.span(),
         };
         Expression {
             kind: ExpressionKind::DelineatedPath(Box::new(DelineatedPathExpression {
@@ -2110,8 +2112,8 @@ fn if_expr_to_expression(handler: &Handler, if_expr: IfExpr) -> Result<Expressio
         IfCondition::Expr(condition) => Expression {
             kind: ExpressionKind::If(IfExpression {
                 condition: Box::new(expr_to_expression(handler, *condition)?),
-                then: Box::new(then_block),
-                r#else: else_block.map(Box::new),
+                then:      Box::new(then_block),
+                r#else:    else_block.map(Box::new),
             }),
             span,
         },
@@ -2130,8 +2132,8 @@ fn if_expr_to_expression(handler: &Handler, if_expr: IfExpr) -> Result<Expressio
                         scrutinee: Scrutinee::CatchAll {
                             span: else_block_span.clone(),
                         },
-                        result: else_block,
-                        span: else_block_span,
+                        result:    else_block,
+                        span:      else_block_span,
                     }
                 }
                 None => {
@@ -2142,14 +2144,14 @@ fn if_expr_to_expression(handler: &Handler, if_expr: IfExpr) -> Result<Expressio
                         },
                         // If there's no else in an `if-let` expression,
                         // then the else is equivalent to an empty block.
-                        result: Expression {
+                        result:    Expression {
                             kind: ExpressionKind::CodeBlock(CodeBlock {
-                                contents: vec![],
+                                contents:         vec![],
                                 whole_block_span: else_block_span.clone(),
                             }),
                             span: else_block_span.clone(),
                         },
-                        span: else_block_span,
+                        span:      else_block_span,
                     }
                 }
             });
@@ -2590,7 +2592,7 @@ fn statement_let_to_ast_nodes(
                     content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
                         save_body_first,
                     )),
-                    span: span.clone(),
+                    span:    span.clone(),
                 });
 
                 // create a new variable expression that points to the new destructured struct name that we just created
@@ -2611,8 +2613,8 @@ fn statement_let_to_ast_nodes(
                                 Some((_colon_token, box_pattern)) => *box_pattern,
                                 None => Pattern::Var {
                                     reference: None,
-                                    mutable: None,
-                                    name: field_name.clone(),
+                                    mutable:   None,
+                                    name:      field_name.clone(),
                                 },
                             };
                             (field_name, recursive_pattern)
@@ -2630,7 +2632,7 @@ fn statement_let_to_ast_nodes(
                         None,
                         Expression {
                             kind: ExpressionKind::Subfield(SubfieldExpression {
-                                prefix: Box::new(new_expr.clone()),
+                                prefix:          Box::new(new_expr.clone()),
                                 field_to_access: field,
                             }),
                             span: span.clone(),
@@ -2675,7 +2677,7 @@ fn statement_let_to_ast_nodes(
                     content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
                         save_body_first,
                     )),
-                    span: span.clone(),
+                    span:    span.clone(),
                 });
 
                 // create a variable expression that points to the new tuple name that we just created
@@ -2735,8 +2737,8 @@ fn statement_let_to_ast_nodes(
 
 fn dependency_to_include_statement(dependency: &Dependency) -> IncludeStatement {
     IncludeStatement {
-        _alias: None,
-        span: dependency.span(),
+        _alias:     None,
+        span:       dependency.span(),
         _path_span: dependency.path.span(),
     }
 }
@@ -2759,7 +2761,7 @@ fn asm_register_declaration_to_asm_register_declaration(
     asm_register_declaration: sway_ast::AsmRegisterDeclaration,
 ) -> Result<AsmRegisterDeclaration, ErrorEmitted> {
     Ok(AsmRegisterDeclaration {
-        name: asm_register_declaration.register,
+        name:        asm_register_declaration.register,
         initializer: asm_register_declaration
             .value_opt
             .map(|(_colon_token, expr)| expr_to_expression(handler, *expr))
@@ -2769,9 +2771,9 @@ fn asm_register_declaration_to_asm_register_declaration(
 
 fn instruction_to_asm_op(instruction: Instruction) -> AsmOp {
     AsmOp {
-        op_name: instruction.op_code_ident(),
-        op_args: instruction.register_arg_idents(),
-        span: instruction.span(),
+        op_name:   instruction.op_code_ident(),
+        op_args:   instruction.register_arg_idents(),
+        span:      instruction.span(),
         immediate: instruction.immediate_ident_opt(),
     }
 }
@@ -2877,9 +2879,9 @@ fn ty_to_type_parameter(handler: &Handler, ty: Ty) -> Result<TypeParameter, Erro
         Ty::Infer { underscore_token } => {
             let unknown_type = insert_type(TypeInfo::Unknown);
             return Ok(TypeParameter {
-                type_id: unknown_type,
-                initial_type_id: unknown_type,
-                name_ident: underscore_token.into(),
+                type_id:           unknown_type,
+                initial_type_id:   unknown_type,
+                name_ident:        underscore_token.into(),
                 trait_constraints: Default::default(),
             });
         }
@@ -2888,7 +2890,7 @@ fn ty_to_type_parameter(handler: &Handler, ty: Ty) -> Result<TypeParameter, Erro
         Ty::Str { .. } => panic!("str types are not allowed in this position"),
     };
     let custom_type = insert_type(TypeInfo::Custom {
-        name: name_ident.clone(),
+        name:           name_ident.clone(),
         type_arguments: None,
     });
     Ok(TypeParameter {
@@ -2965,7 +2967,7 @@ fn assignable_to_expression(
         Assignable::Index { target, arg } => Expression {
             kind: ExpressionKind::ArrayIndex(ArrayIndexExpression {
                 prefix: Box::new(assignable_to_expression(handler, *target)?),
-                index: Box::new(expr_to_expression(handler, *arg.into_inner())?),
+                index:  Box::new(expr_to_expression(handler, *arg.into_inner())?),
             }),
             span,
         },
@@ -2999,7 +3001,7 @@ fn assignable_to_expression(
                 }
                 None => Expression {
                     kind: ExpressionKind::Subfield(SubfieldExpression {
-                        prefix: Box::new(assignable_to_expression(handler, *target)?),
+                        prefix:          Box::new(assignable_to_expression(handler, *target)?),
                         field_to_access: name,
                     }),
                     span,
@@ -3218,7 +3220,7 @@ fn item_attrs_to_map(
         let name = attr.name.as_str();
         if !VALID_ATTRIBUTE_NAMES.contains(&name) {
             handler.emit_warn(CompileWarning {
-                span: attr_decl.span().clone(),
+                span:            attr_decl.span().clone(),
                 warning_content: Warning::UnrecognizedAttribute {
                     attrib_name: attr.name.clone(),
                 },

@@ -26,7 +26,7 @@ pub struct ParseTree {
     /// The untyped AST nodes that constitute this tree's root nodes.
     pub root_nodes: Vec<AstNode>,
     /// The [Span] of the entire tree.
-    pub span: Span,
+    pub span:       Span,
 }
 
 /// A single [AstNode] represents a node in the parse tree. Note that [AstNode]
@@ -37,7 +37,7 @@ pub struct AstNode {
     /// basic organizational component.
     pub content: AstNodeContent,
     /// The [Span] representing this entire [AstNode].
-    pub span: Span,
+    pub span:    Span,
 }
 
 /// Represents the various structures that constitute a Sway program.

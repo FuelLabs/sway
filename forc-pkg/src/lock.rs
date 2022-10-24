@@ -22,20 +22,20 @@ pub struct Lock {
 /// The result of `new_lock.diff(&old_lock)`.
 pub struct Diff<'a> {
     pub removed: BTreeSet<&'a PkgLock>,
-    pub added: BTreeSet<&'a PkgLock>,
+    pub added:   BTreeSet<&'a PkgLock>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct PkgLock {
-    pub(crate) name: String,
+    pub(crate) name:       String,
     // TODO: Cargo *always* includes version, whereas we don't even parse it when reading a
     // project's `Manifest` yet. If we decide to enforce versions, we'll want to remove the
     // `Option`.
-    version: Option<semver::Version>,
+    version:               Option<semver::Version>,
     // Short-hand string describing where this package is sourced from.
-    source: String,
-    dependencies: Option<Vec<PkgDepLine>>,
+    source:                String,
+    dependencies:          Option<Vec<PkgDepLine>>,
     contract_dependencies: Option<Vec<PkgDepLine>>,
 }
 

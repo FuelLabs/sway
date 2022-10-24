@@ -21,7 +21,7 @@ pub(crate) fn instantiate_function_application(
     if !ctx.purity().can_call(function_decl.purity) {
         errors.push(CompileError::StorageAccessMismatch {
             attrs: promote_purity(ctx.purity(), function_decl.purity).to_attribute_syntax(),
-            span: call_path.span(),
+            span:  call_path.span(),
         });
     }
 
@@ -143,19 +143,19 @@ pub(crate) fn check_function_arguments_arity(
         std::cmp::Ordering::Equal => ok((), warnings, errors),
         std::cmp::Ordering::Less => {
             errors.push(CompileError::TooFewArgumentsForFunction {
-                span: call_path.span(),
+                span:        call_path.span(),
                 method_name: function_decl.name.clone(),
-                expected: function_decl.parameters.len(),
-                received: arguments_len,
+                expected:    function_decl.parameters.len(),
+                received:    arguments_len,
             });
             err(warnings, errors)
         }
         std::cmp::Ordering::Greater => {
             errors.push(CompileError::TooManyArgumentsForFunction {
-                span: call_path.span(),
+                span:        call_path.span(),
                 method_name: function_decl.name.clone(),
-                expected: function_decl.parameters.len(),
-                received: arguments_len,
+                expected:    function_decl.parameters.len(),
+                received:    arguments_len,
             });
             err(warnings, errors)
         }

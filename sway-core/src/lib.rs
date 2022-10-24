@@ -15,16 +15,17 @@ pub mod source_map;
 pub mod transform;
 pub mod type_system;
 
-use crate::ir_generation::check_function_purity;
-use crate::{error::*, source_map::SourceMap};
+use crate::{error::*, ir_generation::check_function_purity, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use sway_ast::Dependency;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Function, Instruction, Kind, Module, Value};
@@ -33,8 +34,7 @@ pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
 
 pub use error::CompileResult;
-use sway_error::error::CompileError;
-use sway_error::warning::CompileWarning;
+use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
@@ -102,8 +102,8 @@ fn parse_submodules(
             Ok(s) => Arc::from(s),
             Err(e) => {
                 handler.emit_err(CompileError::FileCouldNotBeRead {
-                    span: dep.path.span(),
-                    file_path: dep_path.to_string_lossy().to_string(),
+                    span:              dep.path.span(),
+                    file_path:         dep_path.to_string_lossy().to_string(),
                     stringified_error: e.to_string(),
                 });
                 return;
@@ -171,7 +171,7 @@ fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf 
 pub enum AsmOrLib {
     Asm(FinalizedAsm),
     Library {
-        name: Ident,
+        name:      Ident,
         namespace: Box<namespace::Root>,
     },
 }
@@ -252,7 +252,7 @@ pub fn parsed_to_ast(
     // All unresolved types lead to compile errors.
     errors.extend(types_metadata.iter().filter_map(|m| match m {
         TypeMetadata::UnresolvedType(name) => Some(CompileError::UnableToInferGeneric {
-            ty: name.as_str().to_string(),
+            ty:   name.as_str().to_string(),
             span: name.span(),
         }),
         _ => None,
@@ -860,8 +860,10 @@ fn deduped_err<T>(warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> C
 fn dedup_unsorted<T: PartialEq + std::hash::Hash>(mut data: Vec<T>) -> Vec<T> {
     // TODO(Centril): Consider using `IndexSet` instead for readability.
     use smallvec::SmallVec;
-    use std::collections::hash_map::{DefaultHasher, Entry};
-    use std::hash::Hasher;
+    use std::{
+        collections::hash_map::{DefaultHasher, Entry},
+        hash::Hasher,
+    };
 
     let mut write_index = 0;
     let mut indexes: HashMap<u64, SmallVec<[usize; 1]>> = HashMap::with_capacity(data.len());

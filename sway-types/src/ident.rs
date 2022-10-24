@@ -10,8 +10,8 @@ use std::{
 #[derive(Debug, Clone)]
 pub struct Ident {
     name_override_opt: Option<&'static str>,
-    span: Span,
-    is_raw_ident: bool,
+    span:              Span,
+    is_raw_ident:      bool,
 }
 
 // custom implementation of Hash so that namespacing isn't reliant on the span itself, which will
@@ -100,8 +100,8 @@ impl Ident {
     pub fn new_no_span(name: &'static str) -> Ident {
         Ident {
             name_override_opt: Some(name),
-            span: Span::dummy(),
-            is_raw_ident: false,
+            span:              Span::dummy(),
+            is_raw_ident:      false,
         }
     }
 }

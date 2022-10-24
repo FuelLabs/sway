@@ -16,32 +16,32 @@ use std::path::{Path, PathBuf};
 /// A finalized `swayfmt` config.
 #[derive(Debug, Default, Clone)]
 pub struct Config {
-    pub whitespace: Whitespace,
-    pub imports: Imports,
-    pub ordering: Ordering,
-    pub items: Items,
-    pub lists: Lists,
-    pub literals: Literals,
+    pub whitespace:  Whitespace,
+    pub imports:     Imports,
+    pub ordering:    Ordering,
+    pub items:       Items,
+    pub lists:       Lists,
+    pub literals:    Literals,
     pub expressions: Expressions,
-    pub heuristics: Heuristics,
-    pub structures: Structures,
-    pub comments: Comments,
+    pub heuristics:  Heuristics,
+    pub structures:  Structures,
+    pub comments:    Comments,
 }
 
 /// A direct mapping to an optional `swayfmt.toml`.
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct ConfigOptions {
-    pub whitespace: Option<WhitespaceOptions>,
-    pub imports: Option<ImportsOptions>,
-    pub ordering: Option<OrderingOptions>,
-    pub items: Option<ItemsOptions>,
-    pub lists: Option<ListsOptions>,
-    pub literals: Option<LiteralsOptions>,
+    pub whitespace:  Option<WhitespaceOptions>,
+    pub imports:     Option<ImportsOptions>,
+    pub ordering:    Option<OrderingOptions>,
+    pub items:       Option<ItemsOptions>,
+    pub lists:       Option<ListsOptions>,
+    pub literals:    Option<LiteralsOptions>,
     pub expressions: Option<ExpressionsOptions>,
-    pub heuristics: Option<HeuristicsOptions>,
-    pub structures: Option<StructuresOptions>,
-    pub comments: Option<CommentsOptions>,
+    pub heuristics:  Option<HeuristicsOptions>,
+    pub structures:  Option<StructuresOptions>,
+    pub comments:    Option<CommentsOptions>,
 }
 
 impl Config {
@@ -49,32 +49,32 @@ impl Config {
     ///
     pub fn from_opts(opts: ConfigOptions) -> Self {
         Self {
-            whitespace: opts
+            whitespace:  opts
                 .whitespace
                 .as_ref()
                 .map(Whitespace::from_opts)
                 .unwrap_or_default(),
-            imports: opts
+            imports:     opts
                 .imports
                 .as_ref()
                 .map(Imports::from_opts)
                 .unwrap_or_default(),
-            ordering: opts
+            ordering:    opts
                 .ordering
                 .as_ref()
                 .map(Ordering::from_opts)
                 .unwrap_or_default(),
-            items: opts
+            items:       opts
                 .items
                 .as_ref()
                 .map(Items::from_opts)
                 .unwrap_or_default(),
-            lists: opts
+            lists:       opts
                 .lists
                 .as_ref()
                 .map(Lists::from_opts)
                 .unwrap_or_default(),
-            literals: opts
+            literals:    opts
                 .literals
                 .as_ref()
                 .map(Literals::from_opts)
@@ -84,17 +84,17 @@ impl Config {
                 .as_ref()
                 .map(Expressions::from_opts)
                 .unwrap_or_default(),
-            heuristics: opts
+            heuristics:  opts
                 .heuristics
                 .as_ref()
                 .map(Heuristics::from_opts)
                 .unwrap_or_default(),
-            structures: opts
+            structures:  opts
                 .structures
                 .as_ref()
                 .map(Structures::from_opts)
                 .unwrap_or_default(),
-            comments: opts
+            comments:    opts
                 .comments
                 .as_ref()
                 .map(Comments::from_opts)
@@ -118,7 +118,7 @@ impl ConfigOptions {
         let config_str =
             std::fs::read_to_string(&config_path).map_err(|e| ConfigError::ReadConfig {
                 path: config_path,
-                err: e,
+                err:  e,
             })?;
         let toml_de = &mut toml::de::Deserializer::new(&config_str);
         let config_opts: Self = serde_ignored::deserialize(toml_de, |field| {

@@ -117,9 +117,9 @@ impl ty::TyMatchExpression {
                 }
                 (Some(prev_if_exp), None) => {
                     let conditional = ty::TyExpression {
-                        expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
+                        expression:  ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
                         return_type: insert_type(TypeInfo::Boolean),
-                        span: result_span.clone(),
+                        span:        result_span.clone(),
                     };
                     check!(
                         instantiate_if_expression(

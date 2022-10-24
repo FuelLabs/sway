@@ -25,7 +25,7 @@ pub struct Value(#[in_context(values)] pub generational_arena::Index);
 #[doc(hidden)]
 #[derive(Debug, Clone, DebugWithContext)]
 pub struct ValueContent {
-    pub value: ValueDatum,
+    pub value:    ValueDatum,
     pub metadata: Option<MetadataIndex>,
 }
 
@@ -41,7 +41,7 @@ impl Value {
     /// Return a new argument [`Value`].
     pub fn new_argument(context: &mut Context, arg: BlockArgument) -> Value {
         let content = ValueContent {
-            value: ValueDatum::Argument(arg),
+            value:    ValueDatum::Argument(arg),
             metadata: None,
         };
         Value(context.values.insert(content))
@@ -50,7 +50,7 @@ impl Value {
     /// Return a new constant [`Value`].
     pub fn new_constant(context: &mut Context, constant: Constant) -> Value {
         let content = ValueContent {
-            value: ValueDatum::Constant(constant),
+            value:    ValueDatum::Constant(constant),
             metadata: None,
         };
         Value(context.values.insert(content))
@@ -59,7 +59,7 @@ impl Value {
     /// Return a new instruction [`Value`].
     pub fn new_instruction(context: &mut Context, instruction: Instruction) -> Value {
         let content = ValueContent {
-            value: ValueDatum::Instruction(instruction),
+            value:    ValueDatum::Instruction(instruction),
             metadata: None,
         };
         Value(context.values.insert(content))

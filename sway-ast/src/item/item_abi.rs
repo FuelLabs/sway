@@ -2,9 +2,9 @@ use crate::priv_prelude::*;
 
 #[derive(Clone, Debug)]
 pub struct ItemAbi {
-    pub abi_token: AbiToken,
-    pub name: Ident,
-    pub abi_items: Braces<Vec<(Annotated<FnSignature>, SemicolonToken)>>,
+    pub abi_token:    AbiToken,
+    pub name:         Ident,
+    pub abi_items:    Braces<Vec<(Annotated<FnSignature>, SemicolonToken)>>,
     pub abi_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>>,
 }
 

@@ -13,10 +13,10 @@ pub enum Expr {
     Literal(Literal),
     AbiCast {
         abi_token: AbiToken,
-        args: Parens<AbiCastArgs>,
+        args:      Parens<AbiCastArgs>,
     },
     Struct {
-        path: PathExpr,
+        path:   PathExpr,
         fields: Braces<Punctuated<ExprStructField, CommaToken>>,
     },
     Tuple(Parens<ExprTupleDescriptor>),
@@ -26,18 +26,18 @@ pub enum Expr {
     Asm(AsmBlock),
     Return {
         return_token: ReturnToken,
-        expr_opt: Option<Box<Expr>>,
+        expr_opt:     Option<Box<Expr>>,
     },
     If(IfExpr),
     Match {
         match_token: MatchToken,
-        value: Box<Expr>,
-        branches: Braces<Vec<MatchBranch>>,
+        value:       Box<Expr>,
+        branches:    Braces<Vec<MatchBranch>>,
     },
     While {
         while_token: WhileToken,
-        condition: Box<Expr>,
-        block: Braces<CodeBlockContents>,
+        condition:   Box<Expr>,
+        block:       Braces<CodeBlockContents>,
     },
     FuncApp {
         func: Box<Expr>,
@@ -45,132 +45,132 @@ pub enum Expr {
     },
     Index {
         target: Box<Expr>,
-        arg: SquareBrackets<Box<Expr>>,
+        arg:    SquareBrackets<Box<Expr>>,
     },
     MethodCall {
-        target: Box<Expr>,
-        dot_token: DotToken,
-        path_seg: PathExprSegment,
+        target:            Box<Expr>,
+        dot_token:         DotToken,
+        path_seg:          PathExprSegment,
         contract_args_opt: Option<Braces<Punctuated<ExprStructField, CommaToken>>>,
-        args: Parens<Punctuated<Expr, CommaToken>>,
+        args:              Parens<Punctuated<Expr, CommaToken>>,
     },
     FieldProjection {
-        target: Box<Expr>,
+        target:    Box<Expr>,
         dot_token: DotToken,
-        name: Ident,
+        name:      Ident,
     },
     TupleFieldProjection {
-        target: Box<Expr>,
-        dot_token: DotToken,
-        field: BigUint,
+        target:     Box<Expr>,
+        dot_token:  DotToken,
+        field:      BigUint,
         field_span: Span,
     },
     Ref {
         ref_token: RefToken,
-        expr: Box<Expr>,
+        expr:      Box<Expr>,
     },
     Deref {
         deref_token: DerefToken,
-        expr: Box<Expr>,
+        expr:        Box<Expr>,
     },
     Not {
         bang_token: BangToken,
-        expr: Box<Expr>,
+        expr:       Box<Expr>,
     },
     Mul {
-        lhs: Box<Expr>,
+        lhs:        Box<Expr>,
         star_token: StarToken,
-        rhs: Box<Expr>,
+        rhs:        Box<Expr>,
     },
     Div {
-        lhs: Box<Expr>,
+        lhs:                 Box<Expr>,
         forward_slash_token: ForwardSlashToken,
-        rhs: Box<Expr>,
+        rhs:                 Box<Expr>,
     },
     Modulo {
-        lhs: Box<Expr>,
+        lhs:           Box<Expr>,
         percent_token: PercentToken,
-        rhs: Box<Expr>,
+        rhs:           Box<Expr>,
     },
     Add {
-        lhs: Box<Expr>,
+        lhs:       Box<Expr>,
         add_token: AddToken,
-        rhs: Box<Expr>,
+        rhs:       Box<Expr>,
     },
     Sub {
-        lhs: Box<Expr>,
+        lhs:       Box<Expr>,
         sub_token: SubToken,
-        rhs: Box<Expr>,
+        rhs:       Box<Expr>,
     },
     Shl {
-        lhs: Box<Expr>,
+        lhs:       Box<Expr>,
         shl_token: ShlToken,
-        rhs: Box<Expr>,
+        rhs:       Box<Expr>,
     },
     Shr {
-        lhs: Box<Expr>,
+        lhs:       Box<Expr>,
         shr_token: ShrToken,
-        rhs: Box<Expr>,
+        rhs:       Box<Expr>,
     },
     BitAnd {
-        lhs: Box<Expr>,
+        lhs:             Box<Expr>,
         ampersand_token: AmpersandToken,
-        rhs: Box<Expr>,
+        rhs:             Box<Expr>,
     },
     BitXor {
-        lhs: Box<Expr>,
+        lhs:         Box<Expr>,
         caret_token: CaretToken,
-        rhs: Box<Expr>,
+        rhs:         Box<Expr>,
     },
     BitOr {
-        lhs: Box<Expr>,
+        lhs:        Box<Expr>,
         pipe_token: PipeToken,
-        rhs: Box<Expr>,
+        rhs:        Box<Expr>,
     },
     Equal {
-        lhs: Box<Expr>,
+        lhs:             Box<Expr>,
         double_eq_token: DoubleEqToken,
-        rhs: Box<Expr>,
+        rhs:             Box<Expr>,
     },
     NotEqual {
-        lhs: Box<Expr>,
+        lhs:           Box<Expr>,
         bang_eq_token: BangEqToken,
-        rhs: Box<Expr>,
+        rhs:           Box<Expr>,
     },
     LessThan {
-        lhs: Box<Expr>,
+        lhs:             Box<Expr>,
         less_than_token: LessThanToken,
-        rhs: Box<Expr>,
+        rhs:             Box<Expr>,
     },
     GreaterThan {
-        lhs: Box<Expr>,
+        lhs:                Box<Expr>,
         greater_than_token: GreaterThanToken,
-        rhs: Box<Expr>,
+        rhs:                Box<Expr>,
     },
     LessThanEq {
-        lhs: Box<Expr>,
+        lhs:                Box<Expr>,
         less_than_eq_token: LessThanEqToken,
-        rhs: Box<Expr>,
+        rhs:                Box<Expr>,
     },
     GreaterThanEq {
-        lhs: Box<Expr>,
+        lhs:                   Box<Expr>,
         greater_than_eq_token: GreaterThanEqToken,
-        rhs: Box<Expr>,
+        rhs:                   Box<Expr>,
     },
     LogicalAnd {
-        lhs: Box<Expr>,
+        lhs:                    Box<Expr>,
         double_ampersand_token: DoubleAmpersandToken,
-        rhs: Box<Expr>,
+        rhs:                    Box<Expr>,
     },
     LogicalOr {
-        lhs: Box<Expr>,
+        lhs:               Box<Expr>,
         double_pipe_token: DoublePipeToken,
-        rhs: Box<Expr>,
+        rhs:               Box<Expr>,
     },
     Reassignment {
-        assignable: Assignable,
+        assignable:      Assignable,
         reassignment_op: ReassignmentOp,
-        expr: Box<Expr>,
+        expr:            Box<Expr>,
     },
     Break {
         break_token: BreakToken,
@@ -253,7 +253,7 @@ impl Spanned for Expr {
 #[derive(Clone, Debug)]
 pub struct ReassignmentOp {
     pub variant: ReassignmentOpVariant,
-    pub span: Span,
+    pub span:    Span,
 }
 
 #[derive(Clone, Debug)]
@@ -283,16 +283,16 @@ impl ReassignmentOpVariant {
 
 #[derive(Clone, Debug)]
 pub struct AbiCastArgs {
-    pub name: PathType,
+    pub name:        PathType,
     pub comma_token: CommaToken,
-    pub address: Box<Expr>,
+    pub address:     Box<Expr>,
 }
 
 #[allow(clippy::type_complexity)]
 #[derive(Clone, Debug)]
 pub struct IfExpr {
-    pub if_token: IfToken,
-    pub condition: IfCondition,
+    pub if_token:   IfToken,
+    pub condition:  IfCondition,
     pub then_block: Braces<CodeBlockContents>,
     pub else_opt: Option<(
         ElseToken,
@@ -305,9 +305,9 @@ pub enum IfCondition {
     Expr(Box<Expr>),
     Let {
         let_token: LetToken,
-        lhs: Box<Pattern>,
-        eq_token: EqToken,
-        rhs: Box<Expr>,
+        lhs:       Box<Pattern>,
+        eq_token:  EqToken,
+        rhs:       Box<Expr>,
     },
 }
 
@@ -329,9 +329,9 @@ impl Spanned for IfExpr {
 pub enum ExprTupleDescriptor {
     Nil,
     Cons {
-        head: Box<Expr>,
+        head:        Box<Expr>,
         comma_token: CommaToken,
-        tail: Punctuated<Expr, CommaToken>,
+        tail:        Punctuated<Expr, CommaToken>,
     },
 }
 
@@ -339,17 +339,17 @@ pub enum ExprTupleDescriptor {
 pub enum ExprArrayDescriptor {
     Sequence(Punctuated<Expr, CommaToken>),
     Repeat {
-        value: Box<Expr>,
+        value:           Box<Expr>,
         semicolon_token: SemicolonToken,
-        length: Box<Expr>,
+        length:          Box<Expr>,
     },
 }
 
 #[derive(Clone, Debug)]
 pub struct MatchBranch {
-    pub pattern: Pattern,
+    pub pattern:               Pattern,
     pub fat_right_arrow_token: FatRightArrowToken,
-    pub kind: MatchBranchKind,
+    pub kind:                  MatchBranchKind,
 }
 
 impl Spanned for MatchBranch {
@@ -362,11 +362,11 @@ impl Spanned for MatchBranch {
 #[derive(Debug, Clone)]
 pub enum MatchBranchKind {
     Block {
-        block: Braces<CodeBlockContents>,
+        block:           Braces<CodeBlockContents>,
         comma_token_opt: Option<CommaToken>,
     },
     Expr {
-        expr: Expr,
+        expr:        Expr,
         comma_token: CommaToken,
     },
 }
@@ -390,14 +390,14 @@ impl Spanned for MatchBranchKind {
 
 #[derive(Clone, Debug)]
 pub struct CodeBlockContents {
-    pub statements: Vec<Statement>,
+    pub statements:     Vec<Statement>,
     pub final_expr_opt: Option<Box<Expr>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct ExprStructField {
     pub field_name: Ident,
-    pub expr_opt: Option<(ColonToken, Box<Expr>)>,
+    pub expr_opt:   Option<(ColonToken, Box<Expr>)>,
 }
 
 impl Spanned for ExprStructField {

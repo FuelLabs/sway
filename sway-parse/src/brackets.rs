@@ -1,10 +1,11 @@
 use crate::{Parse, ParseResult, ParseToEnd, Parser};
 
-use sway_ast::brackets::{Braces, Parens, SquareBrackets};
-use sway_ast::keywords::{CloseAngleBracketToken, OpenAngleBracketToken};
-use sway_ast::token::Delimiter;
-use sway_error::handler::ErrorEmitted;
-use sway_error::parser_error::ParseErrorKind;
+use sway_ast::{
+    brackets::{Braces, Parens, SquareBrackets},
+    keywords::{CloseAngleBracketToken, OpenAngleBracketToken},
+    token::Delimiter,
+};
+use sway_error::{handler::ErrorEmitted, parser_error::ParseErrorKind};
 use sway_types::{Span, Spanned};
 
 pub trait ParseBracket<T>: Sized {
@@ -105,8 +106,8 @@ impl_brackets!(SquareBrackets, Bracket, ExpectedOpenBracket);
 
 #[derive(Clone, Debug)]
 pub struct AngleBrackets<T> {
-    pub open_angle_bracket_token: OpenAngleBracketToken,
-    pub inner: T,
+    pub open_angle_bracket_token:  OpenAngleBracketToken,
+    pub inner:                     T,
     pub close_angle_bracket_token: CloseAngleBracketToken,
 }
 

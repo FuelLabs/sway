@@ -7,12 +7,12 @@ use crate::{error::*, language::Visibility, transform, type_system::*};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyEnumDeclaration {
-    pub name: Ident,
+    pub name:            Ident,
     pub type_parameters: Vec<TypeParameter>,
-    pub attributes: transform::AttributesMap,
-    pub variants: Vec<TyEnumVariant>,
-    pub(crate) span: Span,
-    pub visibility: Visibility,
+    pub attributes:      transform::AttributesMap,
+    pub variants:        Vec<TyEnumVariant>,
+    pub(crate) span:     Span,
+    pub visibility:      Visibility,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -41,8 +41,8 @@ impl CopyTypes for TyEnumDeclaration {
 impl CreateTypeId for TyEnumDeclaration {
     fn create_type_id(&self) -> TypeId {
         insert_type(TypeInfo::Enum {
-            name: self.name.clone(),
-            variant_types: self.variants.clone(),
+            name:            self.name.clone(),
+            variant_types:   self.variants.clone(),
             type_parameters: self.type_parameters.clone(),
         })
     }
@@ -79,9 +79,9 @@ impl TyEnumDeclaration {
             Some(variant) => ok(variant, warnings, errors),
             None => {
                 errors.push(CompileError::UnknownEnumVariant {
-                    enum_name: self.name.clone(),
+                    enum_name:    self.name.clone(),
                     variant_name: variant_name.clone(),
-                    span: self.span.clone(),
+                    span:         self.span.clone(),
                 });
                 err(warnings, errors)
             }
@@ -91,13 +91,13 @@ impl TyEnumDeclaration {
 
 #[derive(Debug, Clone, Eq)]
 pub struct TyEnumVariant {
-    pub name: Ident,
-    pub type_id: TypeId,
+    pub name:            Ident,
+    pub type_id:         TypeId,
     pub initial_type_id: TypeId,
-    pub type_span: Span,
-    pub(crate) tag: usize,
-    pub(crate) span: Span,
-    pub attributes: transform::AttributesMap,
+    pub type_span:       Span,
+    pub(crate) tag:      usize,
+    pub(crate) span:     Span,
+    pub attributes:      transform::AttributesMap,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:

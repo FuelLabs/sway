@@ -14,8 +14,10 @@ use super::{
 
 use std::collections::BTreeMap;
 use sway_ast::ItemConst;
-use sway_error::handler::Handler;
-use sway_error::{error::CompileError, handler::ErrorEmitted};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_parse::{lex, Parser};
 use sway_types::{span::Span, ConfigTimeConstant, Spanned};
 
@@ -38,7 +40,7 @@ pub struct Module {
     /// Note that we *require* this map to be ordered to produce deterministic codegen results.
     pub(crate) submodules: im::OrdMap<ModuleName, Module>,
     /// The set of symbols, implementations, synonyms and aliases present within this module.
-    items: Items,
+    items:                 Items,
 }
 
 impl Module {
@@ -105,7 +107,7 @@ impl Module {
 
             let ast_node = AstNode {
                 content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl)),
-                span: const_item_span.clone(),
+                span:    const_item_span.clone(),
             };
             let mut ns = Namespace::init_root(Default::default());
             let type_check_ctx = TypeCheckContext::from_root(&mut ns);

@@ -33,7 +33,7 @@ pub struct App {
     pub check: bool,
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
-    pub path: Option<String>,
+    pub path:  Option<String>,
 }
 
 fn main() {

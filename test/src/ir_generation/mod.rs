@@ -233,10 +233,10 @@ fn compile_core() -> namespace::Module {
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
 
     let check_cmd = forc::cli::CheckCommand {
-        path: Some(libcore_root_dir),
+        path:         Some(libcore_root_dir),
         offline_mode: true,
-        terse_mode: true,
-        locked: false,
+        terse_mode:   true,
+        locked:       false,
     };
 
     let res = forc::test::forc_check::check(check_cmd)

@@ -104,7 +104,7 @@ impl DeclarationWrapper {
             )),
             actually => Err(CompileError::DeclIsNotAFunction {
                 actually: actually.friendly_name().to_string(),
-                span: span.clone(),
+                span:     span.clone(),
             }),
         }
     }
@@ -118,7 +118,7 @@ impl DeclarationWrapper {
             )),
             actually => Err(CompileError::DeclIsNotATrait {
                 actually: actually.friendly_name().to_string(),
-                span: span.clone(),
+                span:     span.clone(),
             }),
         }
     }
@@ -132,7 +132,7 @@ impl DeclarationWrapper {
             )),
             actually => Err(CompileError::DeclIsNotATraitFn {
                 actually: actually.friendly_name().to_string(),
-                span: span.clone(),
+                span:     span.clone(),
             }),
         }
     }
@@ -146,7 +146,7 @@ impl DeclarationWrapper {
             )),
             actually => Err(CompileError::DeclIsNotAnImplTrait {
                 actually: actually.friendly_name().to_string(),
-                span: span.clone(),
+                span:     span.clone(),
             }),
         }
     }
@@ -163,7 +163,7 @@ impl DeclarationWrapper {
             )),
             actually => Err(CompileError::DeclIsNotAStruct {
                 actually: actually.friendly_name().to_string(),
-                span: span.clone(),
+                span:     span.clone(),
             }),
         }
     }
@@ -180,7 +180,7 @@ impl DeclarationWrapper {
             )),
             actually => Err(CompileError::DeclIsNotStorage {
                 actually: actually.friendly_name().to_string(),
-                span: span.clone(),
+                span:     span.clone(),
             }),
         }
     }
@@ -225,7 +225,7 @@ impl DeclarationWrapper {
             )),
             actually => Err(CompileError::DeclIsNotAnEnum {
                 actually: actually.friendly_name().to_string(),
-                span: span.clone(),
+                span:     span.clone(),
             }),
         }
     }

@@ -29,14 +29,14 @@ enum TestResult {
 }
 
 struct TestDescription {
-    name: String,
-    category: TestCategory,
-    script_data: Option<Vec<u8>>,
-    expected_result: Option<TestResult>,
-    contract_paths: Vec<String>,
-    validate_abi: bool,
+    name:                   String,
+    category:               TestCategory,
+    script_data:            Option<Vec<u8>>,
+    expected_result:        Option<TestResult>,
+    contract_paths:         Vec<String>,
+    validate_abi:           bool,
     validate_storage_slots: bool,
-    checker: filecheck::Checker,
+    checker:                filecheck::Checker,
 }
 
 pub fn run(locked: bool, filter_regex: Option<&regex::Regex>) {

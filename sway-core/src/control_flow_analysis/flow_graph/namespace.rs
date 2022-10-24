@@ -13,14 +13,14 @@ use std::collections::HashMap;
 /// Used to both perform control flow analysis on functions as well as produce good error messages.
 pub(crate) struct FunctionNamespaceEntry {
     pub(crate) entry_point: EntryPoint,
-    pub(crate) exit_point: ExitPoint,
+    pub(crate) exit_point:  ExitPoint,
     pub(crate) return_type: TypeInfo,
 }
 
 #[derive(Default, Clone)]
 pub(crate) struct StructNamespaceEntry {
     pub(crate) struct_decl_ix: NodeIndex,
-    pub(crate) fields: HashMap<String, NodeIndex>,
+    pub(crate) fields:         HashMap<String, NodeIndex>,
 }
 
 #[derive(Default, Clone)]
@@ -31,16 +31,16 @@ pub(crate) struct StructNamespaceEntry {
 /// of scope at this point, as that would have been caught earlier and aborted the compilation
 /// process.
 pub struct ControlFlowNamespace {
-    pub(crate) function_namespace: HashMap<Ident, FunctionNamespaceEntry>,
-    pub(crate) enum_namespace: HashMap<Ident, (NodeIndex, HashMap<Ident, NodeIndex>)>,
-    pub(crate) trait_namespace: HashMap<CallPath, NodeIndex>,
+    pub(crate) function_namespace:     HashMap<Ident, FunctionNamespaceEntry>,
+    pub(crate) enum_namespace:         HashMap<Ident, (NodeIndex, HashMap<Ident, NodeIndex>)>,
+    pub(crate) trait_namespace:        HashMap<CallPath, NodeIndex>,
     /// This is a mapping from trait name to method names and their node indexes
     pub(crate) trait_method_namespace: HashMap<CallPath, HashMap<Ident, NodeIndex>>,
     /// This is a mapping from struct name to field names and their node indexes
     /// TODO this should be an Ident and not a String, switch when static spans are implemented
-    pub(crate) struct_namespace: HashMap<String, StructNamespaceEntry>,
-    pub(crate) const_namespace: HashMap<Ident, NodeIndex>,
-    pub(crate) storage: HashMap<Ident, NodeIndex>,
+    pub(crate) struct_namespace:       HashMap<String, StructNamespaceEntry>,
+    pub(crate) const_namespace:        HashMap<Ident, NodeIndex>,
+    pub(crate) storage:                HashMap<Ident, NodeIndex>,
 }
 
 impl ControlFlowNamespace {
@@ -137,7 +137,7 @@ impl ControlFlowNamespace {
     ) {
         let entry = StructNamespaceEntry {
             struct_decl_ix: declaration_node,
-            fields: field_nodes
+            fields:         field_nodes
                 .into_iter()
                 .map(|(ident, ix)| (ident.as_str().to_string(), ix))
                 .collect(),

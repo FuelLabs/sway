@@ -36,7 +36,7 @@ impl ty::TyFunctionDeclaration {
         // Warn against non-snake case function names.
         if !is_snake_case(name.as_str()) {
             warnings.push(CompileWarning {
-                span: name.span(),
+                span:            name.span(),
                 warning_content: Warning::NonSnakeCaseFunctionName { name: name.clone() },
             })
         }
@@ -155,18 +155,18 @@ fn test_function_selector_behavior() {
     use crate::language::Visibility;
     use sway_types::{integer_bits::IntegerBits, Ident, Span};
     let decl = ty::TyFunctionDeclaration {
-        purity: Default::default(),
-        name: Ident::new_no_span("foo"),
-        body: ty::TyCodeBlock { contents: vec![] },
-        parameters: vec![],
-        span: Span::dummy(),
-        attributes: Default::default(),
-        return_type: 0.into(),
+        purity:              Default::default(),
+        name:                Ident::new_no_span("foo"),
+        body:                ty::TyCodeBlock { contents: vec![] },
+        parameters:          vec![],
+        span:                Span::dummy(),
+        attributes:          Default::default(),
+        return_type:         0.into(),
         initial_return_type: 0.into(),
-        type_parameters: vec![],
-        return_type_span: Span::dummy(),
-        visibility: Visibility::Public,
-        is_contract_call: false,
+        type_parameters:     vec![],
+        return_type_span:    Span::dummy(),
+        visibility:          Visibility::Public,
+        is_contract_call:    false,
     };
 
     let selector_text = match decl.to_selector_name().value {
@@ -177,37 +177,37 @@ fn test_function_selector_behavior() {
     assert_eq!(selector_text, "foo()".to_string());
 
     let decl = ty::TyFunctionDeclaration {
-        purity: Default::default(),
-        name: Ident::new_with_override("bar", Span::dummy()),
-        body: ty::TyCodeBlock { contents: vec![] },
-        parameters: vec![
+        purity:              Default::default(),
+        name:                Ident::new_with_override("bar", Span::dummy()),
+        body:                ty::TyCodeBlock { contents: vec![] },
+        parameters:          vec![
             ty::TyFunctionParameter {
-                name: Ident::new_no_span("foo"),
-                is_reference: false,
-                is_mutable: false,
+                name:            Ident::new_no_span("foo"),
+                is_reference:    false,
+                is_mutable:      false,
                 mutability_span: Span::dummy(),
-                type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
+                type_id:         crate::type_system::insert_type(TypeInfo::Str(5)),
                 initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
-                type_span: Span::dummy(),
+                type_span:       Span::dummy(),
             },
             ty::TyFunctionParameter {
-                name: Ident::new_no_span("baz"),
-                is_reference: false,
-                is_mutable: false,
+                name:            Ident::new_no_span("baz"),
+                is_reference:    false,
+                is_mutable:      false,
                 mutability_span: Span::dummy(),
-                type_id: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
+                type_id:         insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
                 initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
-                type_span: Span::dummy(),
+                type_span:       Span::dummy(),
             },
         ],
-        span: Span::dummy(),
-        attributes: Default::default(),
-        return_type: 0.into(),
+        span:                Span::dummy(),
+        attributes:          Default::default(),
+        return_type:         0.into(),
         initial_return_type: 0.into(),
-        type_parameters: vec![],
-        return_type_span: Span::dummy(),
-        visibility: Visibility::Public,
-        is_contract_call: false,
+        type_parameters:     vec![],
+        return_type_span:    Span::dummy(),
+        visibility:          Visibility::Public,
+        is_contract_call:    false,
     };
 
     let selector_text = match decl.to_selector_name().value {

@@ -1,8 +1,7 @@
 //! Utility items shared between forc crates.
 
 use ansi_term::Colour;
-use std::str;
-use std::{env, io};
+use std::{env, io, str};
 use tracing::{Level, Metadata};
 use tracing_subscriber::{
     filter::{EnvFilter, LevelFilter},
@@ -86,9 +85,9 @@ pub enum TracingWriterMode {
 
 #[derive(Default)]
 pub struct TracingSubscriberOptions {
-    pub verbosity: Option<u8>,
-    pub silent: Option<bool>,
-    pub log_level: Option<LevelFilter>,
+    pub verbosity:   Option<u8>,
+    pub silent:      Option<bool>,
+    pub log_level:   Option<LevelFilter>,
     pub writer_mode: Option<TracingWriterMode>,
 }
 

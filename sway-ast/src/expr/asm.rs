@@ -4,30 +4,30 @@ use crate::priv_prelude::*;
 pub struct AsmBlock {
     pub asm_token: AsmToken,
     pub registers: Parens<Punctuated<AsmRegisterDeclaration, CommaToken>>,
-    pub contents: Braces<AsmBlockContents>,
+    pub contents:  Braces<AsmBlockContents>,
 }
 
 #[derive(Clone, Debug)]
 pub struct AsmRegisterDeclaration {
-    pub register: Ident,
+    pub register:  Ident,
     pub value_opt: Option<(ColonToken, Box<Expr>)>,
 }
 
 #[derive(Clone, Debug)]
 pub struct AsmBlockContents {
-    pub instructions: Vec<(Instruction, SemicolonToken)>,
+    pub instructions:   Vec<(Instruction, SemicolonToken)>,
     pub final_expr_opt: Option<AsmFinalExpr>,
 }
 
 #[derive(Clone, Debug)]
 pub struct AsmFinalExpr {
     pub register: Ident,
-    pub ty_opt: Option<(ColonToken, Ty)>,
+    pub ty_opt:   Option<(ColonToken, Ty)>,
 }
 
 #[derive(Clone, Debug)]
 pub struct AsmImmediate {
-    pub span: Span,
+    pub span:   Span,
     pub parsed: BigUint,
 }
 

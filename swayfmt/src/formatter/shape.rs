@@ -107,9 +107,9 @@ impl Sub for Indent {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub(crate) struct CodeLine {
     /// The current number of characters in the given code line.
-    pub(crate) width: usize,
-    pub(crate) line_style: LineStyle,
-    pub(crate) expr_kind: ExprKind,
+    pub(crate) width:            usize,
+    pub(crate) line_style:       LineStyle,
+    pub(crate) expr_kind:        ExprKind,
     /// Used in determining `SameLineWhere` formatting.
     pub(crate) has_where_clause: bool,
 }
@@ -185,10 +185,10 @@ impl Default for ExprKind {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub struct Shape {
     /// The current indentation of code.
-    pub(crate) indent: Indent,
+    pub(crate) indent:           Indent,
     /// Used in determining which heuristics settings to use from the config
     /// and whether a code line is normal, inline or multiline.
-    pub(crate) code_line: CodeLine,
+    pub(crate) code_line:        CodeLine,
     /// The definitive width settings from the `Config`.
     pub(crate) width_heuristics: WidthHeuristics,
 }

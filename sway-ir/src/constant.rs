@@ -10,7 +10,7 @@ use crate::{
 /// A [`Type`] and constant value, including [`ConstantValue::Undef`] for uninitialized constants.
 #[derive(Debug, Clone, DebugWithContext)]
 pub struct Constant {
-    pub ty: Type,
+    pub ty:    Type,
     pub value: ConstantValue,
 }
 
@@ -30,49 +30,49 @@ pub enum ConstantValue {
 impl Constant {
     pub fn new_unit() -> Self {
         Constant {
-            ty: Type::Unit,
+            ty:    Type::Unit,
             value: ConstantValue::Unit,
         }
     }
 
     pub fn new_bool(b: bool) -> Self {
         Constant {
-            ty: Type::Bool,
+            ty:    Type::Bool,
             value: ConstantValue::Bool(b),
         }
     }
 
     pub fn new_uint(nbits: u8, n: u64) -> Self {
         Constant {
-            ty: Type::Uint(nbits),
+            ty:    Type::Uint(nbits),
             value: ConstantValue::Uint(n),
         }
     }
 
     pub fn new_b256(bytes: [u8; 32]) -> Self {
         Constant {
-            ty: Type::B256,
+            ty:    Type::B256,
             value: ConstantValue::B256(bytes),
         }
     }
 
     pub fn new_string(string: Vec<u8>) -> Self {
         Constant {
-            ty: Type::String(string.len() as u64),
+            ty:    Type::String(string.len() as u64),
             value: ConstantValue::String(string),
         }
     }
 
     pub fn new_array(aggregate: &Aggregate, elems: Vec<Constant>) -> Self {
         Constant {
-            ty: Type::Array(*aggregate),
+            ty:    Type::Array(*aggregate),
             value: ConstantValue::Array(elems),
         }
     }
 
     pub fn new_struct(aggregate: &Aggregate, fields: Vec<Constant>) -> Self {
         Constant {
-            ty: Type::Struct(*aggregate),
+            ty:    Type::Struct(*aggregate),
             value: ConstantValue::Struct(fields),
         }
     }

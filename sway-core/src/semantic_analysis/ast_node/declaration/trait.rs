@@ -33,7 +33,7 @@ impl ty::TyTraitDeclaration {
 
         if !is_upper_camel_case(name.as_str()) {
             warnings.push(CompileWarning {
-                span: name.span(),
+                span:            name.span(),
                 warning_content: Warning::NonClassCaseTraitName { name: name.clone() },
             })
         }
@@ -78,8 +78,8 @@ impl ty::TyTraitDeclaration {
         // to allow methods to use those functions
         ctx.namespace.insert_trait_implementation(
             CallPath {
-                prefixes: vec![],
-                suffix: name.clone(),
+                prefixes:    vec![],
+                suffix:      name.clone(),
                 is_absolute: false,
             },
             self_type,

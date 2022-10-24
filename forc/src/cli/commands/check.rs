@@ -10,7 +10,7 @@ use clap::Parser;
 pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
-    pub path: Option<String>,
+    pub path:         Option<String>,
     /// Offline mode, prevents Forc from using the network when managing dependencies.
     /// Meaning it will only try to use previously downloaded dependencies.
     #[clap(long = "offline")]
@@ -18,10 +18,10 @@ pub struct Command {
     /// Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it
     /// needs to be updated, Forc will exit with an error
     #[clap(long)]
-    pub locked: bool,
+    pub locked:       bool,
     /// Terse mode. Limited warning and error output.
     #[clap(long = "terse", short = 't')]
-    pub terse_mode: bool,
+    pub terse_mode:   bool,
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {

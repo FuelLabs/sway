@@ -1,8 +1,6 @@
 use crate::formatter::{format_header_line, format_line};
 use anyhow::{anyhow, Result};
-use std::collections::HashMap;
-use std::ffi::OsString;
-use std::process;
+use std::{collections::HashMap, ffi::OsString, process};
 
 pub fn possible_forc_commands() -> Vec<String> {
     let mut possible_commands = Vec::new();

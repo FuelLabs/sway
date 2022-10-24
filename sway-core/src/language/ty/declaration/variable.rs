@@ -4,10 +4,10 @@ use crate::{language::ty::*, type_system::*};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyVariableDeclaration {
-    pub name: Ident,
-    pub body: TyExpression,
-    pub mutability: VariableMutability,
-    pub type_ascription: TypeId,
+    pub name:                 Ident,
+    pub body:                 TyExpression,
+    pub mutability:           VariableMutability,
+    pub type_ascription:      TypeId,
     pub type_ascription_span: Option<Span>,
 }
 

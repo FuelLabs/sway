@@ -294,7 +294,7 @@ fn inline_instruction(
                 let new_args = args
                     .iter()
                     .map(|AsmArg { name, initializer }| AsmArg {
-                        name: name.clone(),
+                        name:        name.clone(),
                         initializer: initializer.map(&map_value),
                     })
                     .collect();

@@ -16,7 +16,7 @@ pub enum InlayKind {
 #[derive(Debug)]
 pub struct InlayHint {
     pub range: Range,
-    pub kind: InlayKind,
+    pub kind:  InlayKind,
     pub label: String,
 }
 
@@ -78,25 +78,25 @@ pub(crate) fn inlay_hints(
 
 pub(crate) fn inlay_hint(render_colons: bool, inlay_hint: InlayHint) -> lsp_types::InlayHint {
     lsp_types::InlayHint {
-        position: match inlay_hint.kind {
+        position:      match inlay_hint.kind {
             // after annotated thing
             InlayKind::TypeHint => inlay_hint.range.end,
         },
-        label: lsp_types::InlayHintLabel::String(match inlay_hint.kind {
+        label:         lsp_types::InlayHintLabel::String(match inlay_hint.kind {
             InlayKind::TypeHint if render_colons => format!(": {}", inlay_hint.label),
             _ => inlay_hint.label,
         }),
-        kind: match inlay_hint.kind {
+        kind:          match inlay_hint.kind {
             InlayKind::TypeHint => Some(lsp_types::InlayHintKind::TYPE),
         },
-        tooltip: None,
-        padding_left: Some(match inlay_hint.kind {
+        tooltip:       None,
+        padding_left:  Some(match inlay_hint.kind {
             InlayKind::TypeHint => !render_colons,
         }),
         padding_right: Some(match inlay_hint.kind {
             InlayKind::TypeHint => false,
         }),
-        text_edits: None,
-        data: None,
+        text_edits:    None,
+        data:          None,
     }
 }

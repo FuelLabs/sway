@@ -8,8 +8,8 @@ use sway_types::{span::Span, Spanned};
 /// `c` can be any type `T`, but in practice `c` is either an `Ident` or a `TypeInfo`.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct CallPath<T = Ident> {
-    pub prefixes: Vec<Ident>,
-    pub suffix: T,
+    pub prefixes:           Vec<Ident>,
+    pub suffix:             T,
     // If `is_absolute` is true, then this call path is an absolute path from
     // the project root namespace. If not, then it is relative to the current namespace.
     pub(crate) is_absolute: bool,
@@ -18,8 +18,8 @@ pub struct CallPath<T = Ident> {
 impl std::convert::From<Ident> for CallPath {
     fn from(other: Ident) -> Self {
         CallPath {
-            prefixes: vec![],
-            suffix: other,
+            prefixes:    vec![],
+            suffix:      other,
             is_absolute: false,
         }
     }
@@ -59,8 +59,8 @@ impl CallPath {
             self.clone()
         } else {
             CallPath {
-                prefixes: self.prefixes[0..self.prefixes.len() - 1].to_vec(),
-                suffix: self.prefixes.last().unwrap().clone(),
+                prefixes:    self.prefixes[0..self.prefixes.len() - 1].to_vec(),
+                suffix:      self.prefixes.last().unwrap().clone(),
                 is_absolute: self.is_absolute,
             }
         }

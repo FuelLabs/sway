@@ -78,41 +78,41 @@ impl AbstractProgram {
             ops: [
                 // word 1
                 AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::Jump(label)),
-                    comment: String::new(),
+                    opcode:      Either::Right(ControlFlowOp::Jump(label)),
+                    comment:     String::new(),
                     owning_span: None,
                 },
                 // word 1.5
                 AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedOpcode::NOOP),
-                    comment: "".into(),
+                    opcode:      Either::Left(AllocatedOpcode::NOOP),
+                    comment:     "".into(),
                     owning_span: None,
                 },
                 // word 2 -- full word u64 placeholder
                 AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::DataSectionOffsetPlaceholder),
-                    comment: "data section offset".into(),
+                    opcode:      Either::Right(ControlFlowOp::DataSectionOffsetPlaceholder),
+                    comment:     "data section offset".into(),
                     owning_span: None,
                 },
                 AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::Label(label)),
-                    comment: "end of metadata".into(),
+                    opcode:      Either::Right(ControlFlowOp::Label(label)),
+                    comment:     "end of metadata".into(),
                     owning_span: None,
                 },
                 // word 3 -- load the data offset into $ds
                 AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedOpcode::DataSectionRegisterLoadPlaceholder),
-                    comment: "".into(),
+                    opcode:      Either::Left(AllocatedOpcode::DataSectionRegisterLoadPlaceholder),
+                    comment:     "".into(),
                     owning_span: None,
                 },
                 // word 3.5 -- add $ds $ds $is
                 AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedOpcode::ADD(
+                    opcode:      Either::Left(AllocatedOpcode::ADD(
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
                         AllocatedRegister::Constant(ConstantRegister::InstructionStart),
                     )),
-                    comment: "".into(),
+                    comment:     "".into(),
                     owning_span: None,
                 },
             ]
@@ -132,14 +132,14 @@ impl AbstractProgram {
 
         // Build the switch statement for selectors.
         asm_buf.ops.push(AllocatedAbstractOp {
-            opcode: Either::Right(ControlFlowOp::Comment),
-            comment: "Begin contract ABI selector switch".into(),
+            opcode:      Either::Right(ControlFlowOp::Comment),
+            comment:     "Begin contract ABI selector switch".into(),
             owning_span: None,
         });
 
         // Load the selector from the call frame.
         asm_buf.ops.push(AllocatedAbstractOp {
-            opcode: Either::Left(AllocatedOpcode::LW(
+            opcode:      Either::Left(AllocatedOpcode::LW(
                 INPUT_SELECTOR_REG,
                 AllocatedRegister::Constant(ConstantRegister::FramePointer),
                 VirtualImmediate12::new_unchecked(
@@ -147,7 +147,7 @@ impl AbstractProgram {
                     "constant infallible value",
                 ),
             )),
-            comment: "load input function selector".into(),
+            comment:     "load input function selector".into(),
             owning_span: None,
         });
 
@@ -163,27 +163,27 @@ impl AbstractProgram {
 
             // Load the data into a register for comparison.
             asm_buf.ops.push(AllocatedAbstractOp {
-                opcode: Either::Left(AllocatedOpcode::LWDataId(PROG_SELECTOR_REG, data_label)),
-                comment: "load fn selector for comparison".into(),
+                opcode:      Either::Left(AllocatedOpcode::LWDataId(PROG_SELECTOR_REG, data_label)),
+                comment:     "load fn selector for comparison".into(),
                 owning_span: None,
             });
 
             // Compare with the input selector.
             asm_buf.ops.push(AllocatedAbstractOp {
-                opcode: Either::Left(AllocatedOpcode::EQ(
+                opcode:      Either::Left(AllocatedOpcode::EQ(
                     CMP_RESULT_REG,
                     INPUT_SELECTOR_REG,
                     PROG_SELECTOR_REG,
                 )),
-                comment: "function selector comparison".into(),
+                comment:     "function selector comparison".into(),
                 owning_span: None,
             });
 
             // Jump to the function label if the selector was equal.
             asm_buf.ops.push(AllocatedAbstractOp {
                 // If the comparison result is _not_ equal to 0, then it was indeed equal.
-                opcode: Either::Right(ControlFlowOp::JumpIfNotZero(CMP_RESULT_REG, *label)),
-                comment: "jump to selected function".into(),
+                opcode:      Either::Right(ControlFlowOp::JumpIfNotZero(CMP_RESULT_REG, *label)),
+                comment:     "jump to selected function".into(),
                 owning_span: None,
             });
         }
@@ -191,20 +191,20 @@ impl AbstractProgram {
         // If none of the selectors matched, then revert.  This may change in the future, see
         // https://github.com/FuelLabs/sway/issues/444
         asm_buf.ops.push(AllocatedAbstractOp {
-            opcode: Either::Left(AllocatedOpcode::MOVI(
+            opcode:      Either::Left(AllocatedOpcode::MOVI(
                 AllocatedRegister::Constant(ConstantRegister::Scratch),
                 VirtualImmediate18 {
                     value: compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
                 },
             )),
-            comment: "special code for mismatched selector".into(),
+            comment:     "special code for mismatched selector".into(),
             owning_span: None,
         });
         asm_buf.ops.push(AllocatedAbstractOp {
-            opcode: Either::Left(AllocatedOpcode::RVRT(AllocatedRegister::Constant(
+            opcode:      Either::Left(AllocatedOpcode::RVRT(AllocatedRegister::Constant(
                 ConstantRegister::Scratch,
             ))),
-            comment: "revert if no selectors matched".into(),
+            comment:     "revert if no selectors matched".into(),
             owning_span: None,
         });
     }

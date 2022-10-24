@@ -15,7 +15,7 @@ pub struct Handler {
 #[derive(Default)]
 struct HandlerInner {
     /// The sink through which errors will be emitted.
-    errors: Vec<CompileError>,
+    errors:   Vec<CompileError>,
     /// The sink through which warnings will be emitted.
     warnings: Vec<CompileWarning>,
 }

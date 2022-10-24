@@ -1,8 +1,10 @@
-use crate::core::{
-    session::Session,
-    token::{SymbolKind, Token},
+use crate::{
+    core::{
+        session::Session,
+        token::{SymbolKind, Token},
+    },
+    utils::common::get_range_from_span,
 };
-use crate::utils::common::get_range_from_span;
 use std::sync::{
     atomic::{AtomicU32, Ordering},
     Arc,
@@ -43,10 +45,10 @@ pub fn semantic_tokens_full(session: Arc<Session>, url: &Url) -> Option<Semantic
 ///
 /// This is taken from rust-analyzer which is also a direct port of <https://github.com/microsoft/vscode-languageserver-node/blob/f425af9de46a0187adb78ec8a46b9b2ce80c5412/server/src/sematicTokens.proposed.ts#L45>
 pub(crate) struct SemanticTokensBuilder {
-    id: String,
+    id:        String,
     prev_line: u32,
     prev_char: u32,
-    data: Vec<SemanticToken>,
+    data:      Vec<SemanticToken>,
 }
 
 impl SemanticTokensBuilder {
@@ -75,10 +77,10 @@ impl SemanticTokensBuilder {
         let token_len = range.end.character - range.start.character;
 
         let token = SemanticToken {
-            delta_line: push_line,
-            delta_start: push_char,
-            length: token_len as u32,
-            token_type: token_index,
+            delta_line:             push_line,
+            delta_start:            push_char,
+            length:                 token_len as u32,
+            token_type:             token_index,
             token_modifiers_bitset: modifier_bitset,
         };
 
@@ -91,7 +93,7 @@ impl SemanticTokensBuilder {
     pub(crate) fn build(self) -> SemanticTokens {
         SemanticTokens {
             result_id: Some(self.id),
-            data: self.data,
+            data:      self.data,
         }
     }
 }

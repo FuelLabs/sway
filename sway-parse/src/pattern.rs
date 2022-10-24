@@ -1,10 +1,12 @@
 use crate::{Parse, ParseBracket, ParseResult, Parser};
 
-use sway_ast::brackets::{Braces, Parens};
-use sway_ast::keywords::{DoubleDotToken, FalseToken, TrueToken};
-use sway_ast::literal::{LitBool, LitBoolType};
-use sway_ast::punctuated::Punctuated;
-use sway_ast::{Literal, PathExpr, Pattern, PatternStructField};
+use sway_ast::{
+    brackets::{Braces, Parens},
+    keywords::{DoubleDotToken, FalseToken, TrueToken},
+    literal::{LitBool, LitBoolType},
+    punctuated::Punctuated,
+    Literal, PathExpr, Pattern, PatternStructField,
+};
 use sway_error::parser_error::ParseErrorKind;
 use sway_types::Spanned;
 

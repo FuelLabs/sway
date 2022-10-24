@@ -23,7 +23,7 @@ use warp::Filter;
 struct App {
     /// The port number at which the explorer will run on localhost.
     #[clap(short = 'p', long = "port", default_value = "3030")]
-    pub port: String,
+    pub port:   String,
     #[clap(subcommand)]
     pub subcmd: Option<Subcommand>,
 }
@@ -37,7 +37,7 @@ enum Subcommand {
 #[derive(Deserialize, Debug)]
 struct GitHubRelease {
     assets: Vec<GitHubReleaseAsset>,
-    name: String,
+    name:   String,
 }
 
 #[derive(Deserialize, Debug)]

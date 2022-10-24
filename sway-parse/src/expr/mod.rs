@@ -1,18 +1,18 @@
 use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed, Peek};
 
 use core::ops::ControlFlow;
-use sway_ast::brackets::{Braces, Parens, SquareBrackets};
-use sway_ast::expr::{ReassignmentOp, ReassignmentOpVariant};
-use sway_ast::keywords::{
-    AbiToken, AddEqToken, AsmToken, CommaToken, ConstToken, DivEqToken, DoubleColonToken,
-    EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken, OpenAngleBracketToken,
-    PubToken, SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken, StorageToken, StructToken,
-    SubEqToken, TildeToken, Token, TraitToken, TrueToken, UseToken,
-};
-use sway_ast::literal::{LitBool, LitBoolType};
-use sway_ast::punctuated::Punctuated;
-use sway_ast::token::Delimiter;
 use sway_ast::{
+    brackets::{Braces, Parens, SquareBrackets},
+    expr::{ReassignmentOp, ReassignmentOpVariant},
+    keywords::{
+        AbiToken, AddEqToken, AsmToken, CommaToken, ConstToken, DivEqToken, DoubleColonToken,
+        EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken,
+        OpenAngleBracketToken, PubToken, SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken,
+        StorageToken, StructToken, SubEqToken, TildeToken, Token, TraitToken, TrueToken, UseToken,
+    },
+    literal::{LitBool, LitBoolType},
+    punctuated::Punctuated,
+    token::Delimiter,
     AbiCastArgs, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField,
     ExprTupleDescriptor, GenericArgs, IfCondition, IfExpr, LitInt, Literal, MatchBranch,
     MatchBranchKind, PathExprSegment, Statement, StatementLet,
@@ -210,7 +210,7 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
 
 #[derive(Clone, Copy, Debug, Default)]
 struct ParseExprCtx {
-    pub parsing_conditional: bool,
+    pub parsing_conditional:   bool,
     pub at_start_of_statement: bool,
 }
 
@@ -225,7 +225,7 @@ impl ParseExprCtx {
 
 fn parse_condition(parser: &mut Parser) -> ParseResult<Expr> {
     let ctx = ParseExprCtx {
-        parsing_conditional: true,
+        parsing_conditional:   true,
         at_start_of_statement: false,
     };
     parse_reassignment(parser, ctx)
@@ -233,7 +233,7 @@ fn parse_condition(parser: &mut Parser) -> ParseResult<Expr> {
 
 fn parse_statement_expr(parser: &mut Parser) -> ParseResult<Expr> {
     let ctx = ParseExprCtx {
-        parsing_conditional: false,
+        parsing_conditional:   false,
         at_start_of_statement: true,
     };
     parse_reassignment(parser, ctx)

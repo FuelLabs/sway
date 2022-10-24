@@ -41,17 +41,17 @@ fn generic_enum_resolution() {
     let sp = Span::dummy();
 
     let variant_types = vec![ty::TyEnumVariant {
-        name: Ident::new_with_override("a", sp.clone()),
-        tag: 0,
-        type_id: engine.insert_type(TypeInfo::UnknownGeneric {
+        name:            Ident::new_with_override("a", sp.clone()),
+        tag:             0,
+        type_id:         engine.insert_type(TypeInfo::UnknownGeneric {
             name: Ident::new_with_override("T", sp.clone()),
         }),
         initial_type_id: engine.insert_type(TypeInfo::UnknownGeneric {
             name: Ident::new_with_override("T", sp.clone()),
         }),
-        span: sp.clone(),
-        type_span: sp.clone(),
-        attributes: transform::AttributesMap::default(),
+        span:            sp.clone(),
+        type_span:       sp.clone(),
+        attributes:      transform::AttributesMap::default(),
     }];
 
     let ty_1 = engine.insert_type(TypeInfo::Enum {
@@ -61,13 +61,13 @@ fn generic_enum_resolution() {
     });
 
     let variant_types = vec![ty::TyEnumVariant {
-        name: Ident::new_with_override("a", sp.clone()),
-        tag: 0,
-        type_id: engine.insert_type(TypeInfo::Boolean),
+        name:            Ident::new_with_override("a", sp.clone()),
+        tag:             0,
+        type_id:         engine.insert_type(TypeInfo::Boolean),
         initial_type_id: engine.insert_type(TypeInfo::Boolean),
-        span: sp.clone(),
-        type_span: sp.clone(),
-        attributes: transform::AttributesMap::default(),
+        span:            sp.clone(),
+        type_span:       sp.clone(),
+        attributes:      transform::AttributesMap::default(),
     }];
 
     let ty_2 = engine.insert_type(TypeInfo::Enum {

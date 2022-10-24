@@ -12,8 +12,8 @@ pub struct Pointer(#[in_context(pointers)] pub generational_arena::Index);
 #[doc(hidden)]
 #[derive(Clone, DebugWithContext)]
 pub struct PointerContent {
-    pub ty: Type,
-    pub is_mutable: bool,
+    pub ty:          Type,
+    pub is_mutable:  bool,
     pub initializer: Option<Constant>,
 }
 

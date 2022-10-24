@@ -8,25 +8,25 @@ use crate::{declaration_engine::DeclarationId, language::parsed, transform, type
 #[derivative(PartialEq, Eq)]
 pub struct TyAbiDeclaration {
     /// The name of the abi trait (also known as a "contract trait")
-    pub name: Ident,
+    pub name:              Ident,
     /// The methods a contract is required to implement in order opt in to this interface
     pub interface_surface: Vec<DeclarationId>,
     /// The methods provided to a contract "for free" upon opting in to this interface
     // NOTE: It may be important in the future to include this component
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
-    pub(crate) methods: Vec<parsed::FunctionDeclaration>,
+    pub(crate) methods:    Vec<parsed::FunctionDeclaration>,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
-    pub(crate) span: Span,
-    pub attributes: transform::AttributesMap,
+    pub(crate) span:       Span,
+    pub attributes:        transform::AttributesMap,
 }
 
 impl CreateTypeId for TyAbiDeclaration {
     fn create_type_id(&self) -> TypeId {
         let ty = TypeInfo::ContractCaller {
             abi_name: AbiName::Known(self.name.clone().into()),
-            address: None,
+            address:  None,
         };
         insert_type(ty)
     }

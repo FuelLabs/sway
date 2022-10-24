@@ -6,11 +6,11 @@ impl FinalProgram {
     pub(crate) fn finalize(self) -> FinalizedAsm {
         match self.kind {
             ProgramKind::Script => FinalizedAsm::ScriptMain {
-                data_section: self.data_section,
+                data_section:    self.data_section,
                 program_section: self.ops,
             },
             ProgramKind::Contract => FinalizedAsm::ContractAbi {
-                data_section: self.data_section,
+                data_section:    self.data_section,
                 program_section: self.ops,
             },
         }

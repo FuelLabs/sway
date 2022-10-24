@@ -6,8 +6,11 @@ use crate::{
     metadata::{MetadataManager, StorageOperation},
 };
 
-use sway_error::warning::{CompileWarning, Warning};
-use sway_error::{error::CompileError, handler::Handler};
+use sway_error::{
+    error::CompileError,
+    handler::Handler,
+    warning::{CompileWarning, Warning},
+};
 use sway_ir::{Context, Function, Instruction};
 use sway_types::span::Span;
 

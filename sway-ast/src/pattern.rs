@@ -7,8 +7,8 @@ pub enum Pattern {
     },
     Var {
         reference: Option<RefToken>,
-        mutable: Option<MutToken>,
-        name: Ident,
+        mutable:   Option<MutToken>,
+        name:      Ident,
     },
     Literal(Literal),
     Constant(PathExpr),
@@ -17,7 +17,7 @@ pub enum Pattern {
         args: Parens<Punctuated<Pattern, CommaToken>>,
     },
     Struct {
-        path: PathExpr,
+        path:   PathExpr,
         fields: Braces<Punctuated<PatternStructField, CommaToken>>,
     },
     Tuple(Parens<Punctuated<Pattern, CommaToken>>),
@@ -54,7 +54,7 @@ pub enum PatternStructField {
         token: DoubleDotToken,
     },
     Field {
-        field_name: Ident,
+        field_name:  Ident,
         pattern_opt: Option<(ColonToken, Box<Pattern>)>,
     },
 }

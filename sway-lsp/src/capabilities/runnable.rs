@@ -13,7 +13,7 @@ pub enum RunnableType {
 #[derive(Debug, Eq, PartialEq)]
 pub struct Runnable {
     /// The location in the file where the runnable button should be displayed
-    pub range: Range,
+    pub range:     Range,
     /// The program kind of the current file
     pub tree_type: TreeType,
 }

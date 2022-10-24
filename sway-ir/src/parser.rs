@@ -605,35 +605,35 @@ mod ir_builder {
 
     #[derive(Debug)]
     pub(super) struct IrAstModule {
-        kind: Kind,
+        kind:     Kind,
         fn_decls: Vec<IrAstFnDecl>,
         metadata: Vec<(MdIdxRef, IrMetadatum)>,
     }
 
     #[derive(Debug)]
     struct IrAstFnDecl {
-        name: String,
-        args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
-        ret_type: IrAstTy,
+        name:      String,
+        args:      Vec<(IrAstTy, String, Option<MdIdxRef>)>,
+        ret_type:  IrAstTy,
         is_public: bool,
-        metadata: Option<MdIdxRef>,
-        locals: Vec<(IrAstTy, String, bool, Option<IrAstOperation>)>,
-        blocks: Vec<IrAstBlock>,
-        selector: Option<[u8; 4]>,
+        metadata:  Option<MdIdxRef>,
+        locals:    Vec<(IrAstTy, String, bool, Option<IrAstOperation>)>,
+        blocks:    Vec<IrAstBlock>,
+        selector:  Option<[u8; 4]>,
     }
 
     #[derive(Debug)]
     struct IrAstBlock {
-        label: String,
-        args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
+        label:        String,
+        args:         Vec<(IrAstTy, String, Option<MdIdxRef>)>,
         instructions: Vec<IrAstInstruction>,
     }
 
     #[derive(Debug)]
     struct IrAstInstruction {
         value_name: Option<String>,
-        op: IrAstOperation,
-        metadata: Option<MdIdxRef>,
+        op:         IrAstOperation,
+        metadata:   Option<MdIdxRef>,
     }
 
     #[derive(Debug)]
@@ -678,7 +678,7 @@ mod ir_builder {
 
     #[derive(Debug)]
     struct IrAstConst {
-        value: IrAstConstValue,
+        value:    IrAstConstValue,
         meta_idx: Option<MdIdxRef>,
     }
 
@@ -702,9 +702,9 @@ mod ir_builder {
 
     #[derive(Debug)]
     struct IrAstAsmOp {
-        name: Ident,
-        args: Vec<Ident>,
-        imm: Option<Ident>,
+        name:     Ident,
+        args:     Vec<Ident>,
+        imm:      Option<Ident>,
         meta_idx: Option<MdIdxRef>,
     }
 
@@ -736,7 +736,7 @@ mod ir_builder {
 
         fn as_constant(&self, context: &mut Context, val_ty: IrAstTy) -> Constant {
             Constant {
-                ty: val_ty.to_ir_type(context),
+                ty:    val_ty.to_ir_type(context),
                 value: self.as_constant_value(context),
             }
         }
@@ -830,8 +830,8 @@ mod ir_builder {
     pub(super) fn build_context(ir_ast_mod: IrAstModule) -> Result<Context, IrError> {
         let mut ctx = Context::default();
         let mut builder = IrBuilder {
-            module: Module::new(&mut ctx, ir_ast_mod.kind),
-            md_map: build_metadata_map(&mut ctx, ir_ast_mod.metadata),
+            module:           Module::new(&mut ctx, ir_ast_mod.kind),
+            md_map:           build_metadata_map(&mut ctx, ir_ast_mod.metadata),
             unresolved_calls: Vec::new(),
         };
 
@@ -844,14 +844,14 @@ mod ir_builder {
     }
 
     struct IrBuilder {
-        module: Module,
-        md_map: HashMap<MdIdxRef, MetadataIndex>,
+        module:           Module,
+        md_map:           HashMap<MdIdxRef, MetadataIndex>,
         unresolved_calls: Vec<PendingCall>,
     }
 
     struct PendingCall {
         call_val: Value,
-        callee: String,
+        callee:   String,
     }
 
     impl IrBuilder {

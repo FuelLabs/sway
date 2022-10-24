@@ -1,11 +1,11 @@
 use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
-use sway_ast::keywords::{
-    AbiToken, ClassToken, ConstToken, EnumToken, FnToken, ImplToken, MutToken,
-    OpenAngleBracketToken, RefToken, SelfToken, StorageToken, StructToken, TraitToken, UseToken,
-    WhereToken,
-};
 use sway_ast::{
+    keywords::{
+        AbiToken, ClassToken, ConstToken, EnumToken, FnToken, ImplToken, MutToken,
+        OpenAngleBracketToken, RefToken, SelfToken, StorageToken, StructToken, TraitToken,
+        UseToken, WhereToken,
+    },
     FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait,
     ItemUse, TypeField,
 };
@@ -70,9 +70,9 @@ impl Parse for ItemKind {
 impl Parse for TypeField {
     fn parse(parser: &mut Parser) -> ParseResult<TypeField> {
         Ok(TypeField {
-            name: parser.parse()?,
+            name:        parser.parse()?,
             colon_token: parser.parse()?,
-            ty: parser.parse()?,
+            ty:          parser.parse()?,
         })
     }
 }
@@ -129,9 +129,9 @@ impl ParseToEnd for FnArgs {
 impl Parse for FnArg {
     fn parse(parser: &mut Parser) -> ParseResult<FnArg> {
         Ok(FnArg {
-            pattern: parser.parse()?,
+            pattern:     parser.parse()?,
             colon_token: parser.parse()?,
-            ty: parser.parse()?,
+            ty:          parser.parse()?,
         })
     }
 }
@@ -139,12 +139,12 @@ impl Parse for FnArg {
 impl Parse for FnSignature {
     fn parse(parser: &mut Parser) -> ParseResult<FnSignature> {
         Ok(FnSignature {
-            visibility: parser.take(),
-            fn_token: parser.parse()?,
-            name: parser.parse()?,
-            generics: parser.guarded_parse::<OpenAngleBracketToken, _>()?,
-            arguments: parser.parse()?,
-            return_type_opt: match parser.take() {
+            visibility:       parser.take(),
+            fn_token:         parser.parse()?,
+            name:             parser.parse()?,
+            generics:         parser.guarded_parse::<OpenAngleBracketToken, _>()?,
+            arguments:        parser.parse()?,
+            return_type_opt:  match parser.take() {
                 Some(right_arrow_token) => {
                     let ty = parser.parse()?;
                     Some((right_arrow_token, ty))

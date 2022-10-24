@@ -1,10 +1,10 @@
 use crate::priv_prelude::*;
 
 pub struct Module {
-    pub kind: ModuleKind,
+    pub kind:            ModuleKind,
     pub semicolon_token: SemicolonToken,
-    pub dependencies: Vec<Dependency>,
-    pub items: Vec<Item>,
+    pub dependencies:    Vec<Dependency>,
+    pub items:           Vec<Item>,
 }
 
 impl Spanned for Module {
@@ -33,7 +33,7 @@ pub enum ModuleKind {
     },
     Library {
         library_token: LibraryToken,
-        name: Ident,
+        name:          Ident,
     },
 }
 

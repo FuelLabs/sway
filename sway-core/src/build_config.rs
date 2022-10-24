@@ -5,10 +5,10 @@ use std::{path::PathBuf, sync::Arc};
 pub struct BuildConfig {
     // The canonical file path to the root module.
     // E.g. `/home/user/project/src/main.sw`.
-    pub(crate) canonical_root_module: Arc<PathBuf>,
+    pub(crate) canonical_root_module:  Arc<PathBuf>,
     pub(crate) print_intermediate_asm: bool,
-    pub(crate) print_finalized_asm: bool,
-    pub(crate) print_ir: bool,
+    pub(crate) print_finalized_asm:    bool,
+    pub(crate) print_ir:               bool,
 }
 
 impl BuildConfig {
@@ -42,10 +42,10 @@ impl BuildConfig {
             }
         };
         Self {
-            canonical_root_module: Arc::new(canonical_root_module),
+            canonical_root_module:  Arc::new(canonical_root_module),
             print_intermediate_asm: false,
-            print_finalized_asm: false,
-            print_ir: false,
+            print_finalized_asm:    false,
+            print_ir:               false,
         }
     }
 

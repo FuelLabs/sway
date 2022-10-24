@@ -3,15 +3,15 @@ use crate::priv_prelude::*;
 #[derive(Clone, Debug)]
 pub struct PathExpr {
     pub root_opt: Option<(Option<AngleBrackets<QualifiedPathRoot>>, DoubleColonToken)>,
-    pub prefix: PathExprSegment,
-    pub suffix: Vec<(DoubleColonToken, PathExprSegment)>,
+    pub prefix:   PathExprSegment,
+    pub suffix:   Vec<(DoubleColonToken, PathExprSegment)>,
 }
 
 #[derive(Clone, Debug)]
 pub struct PathExprSegment {
     pub fully_qualified: Option<TildeToken>,
-    pub name: Ident,
-    pub generics_opt: Option<(DoubleColonToken, GenericArgs)>,
+    pub name:            Ident,
+    pub generics_opt:    Option<(DoubleColonToken, GenericArgs)>,
 }
 
 impl Spanned for PathExpr {
@@ -61,8 +61,8 @@ impl Spanned for PathExprSegment {
 #[derive(Clone, Debug)]
 pub struct PathType {
     pub root_opt: Option<(Option<AngleBrackets<QualifiedPathRoot>>, DoubleColonToken)>,
-    pub prefix: PathTypeSegment,
-    pub suffix: Vec<(DoubleColonToken, PathTypeSegment)>,
+    pub prefix:   PathTypeSegment,
+    pub suffix:   Vec<(DoubleColonToken, PathTypeSegment)>,
 }
 
 impl Spanned for PathType {
@@ -85,8 +85,8 @@ impl Spanned for PathType {
 #[derive(Clone, Debug)]
 pub struct PathTypeSegment {
     pub fully_qualified: Option<TildeToken>,
-    pub name: Ident,
-    pub generics_opt: Option<(Option<DoubleColonToken>, GenericArgs)>,
+    pub name:            Ident,
+    pub generics_opt:    Option<(Option<DoubleColonToken>, GenericArgs)>,
 }
 
 impl Spanned for PathTypeSegment {
@@ -105,6 +105,6 @@ impl Spanned for PathTypeSegment {
 
 #[derive(Clone, Debug)]
 pub struct QualifiedPathRoot {
-    pub ty: Box<Ty>,
+    pub ty:       Box<Ty>,
     pub as_trait: Option<(AsToken, Box<PathType>)>,
 }

@@ -1,9 +1,11 @@
 use anyhow::{anyhow, Result};
 use clap::Parser;
-use std::collections::VecDeque;
-use std::fs::{self, File};
-use std::io::{self, prelude::*, BufReader};
-use std::path::{Path, PathBuf};
+use std::{
+    collections::VecDeque,
+    fs::{self, File},
+    io::{self, prelude::*, BufReader},
+    path::{Path, PathBuf},
+};
 use tracing::info;
 
 use annotate_snippets::{
@@ -18,16 +20,16 @@ use sway_core::source_map::{LocationRange, SourceMap};
 pub(crate) struct Command {
     /// Where to search for the project root
     #[clap(short = 'S', long, default_value = ".")]
-    pub search_dir: PathBuf,
+    pub search_dir:     PathBuf,
     /// Source file mapping in JSON format
     #[clap(short = 'g', long)]
     pub sourcemap_path: PathBuf,
     /// How many lines of context to show
     #[clap(short, long, default_value = "2")]
-    pub context: usize,
+    pub context:        usize,
     /// Opcode index
     #[clap(short = 'i', long)]
-    pub opcode_index: usize,
+    pub opcode_index:   usize,
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {
@@ -52,20 +54,20 @@ pub(crate) fn exec(command: Command) -> Result<()> {
 
         let path_str = format!("{:?}", path);
         let snippet = Snippet {
-            title: None,
+            title:  None,
             footer: vec![],
             slices: vec![Slice {
-                source: &rr.source,
-                line_start: rr.source_start_line,
-                origin: Some(&path_str),
-                fold: false,
+                source:      &rr.source,
+                line_start:  rr.source_start_line,
+                origin:      Some(&path_str),
+                fold:        false,
                 annotations: vec![SourceAnnotation {
-                    label: "here",
+                    label:           "here",
                     annotation_type: AnnotationType::Note,
-                    range: (rr.offset, rr.offset + rr.length),
+                    range:           (rr.offset, rr.offset + rr.length),
                 }],
             }],
-            opt: FormatOptions {
+            opt:    FormatOptions {
                 color: true,
                 ..Default::default()
             },
@@ -79,11 +81,11 @@ pub(crate) fn exec(command: Command) -> Result<()> {
 }
 
 struct ReadRange {
-    source: String,
+    source:             String,
     _source_start_byte: usize,
-    source_start_line: usize,
-    offset: usize,
-    length: usize,
+    source_start_line:  usize,
+    offset:             usize,
+    length:             usize,
 }
 
 fn read_range<P: AsRef<Path>>(

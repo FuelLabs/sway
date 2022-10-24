@@ -23,7 +23,7 @@ use crate::{
 #[derive(Debug, Clone, DebugWithContext)]
 pub struct BranchToWithArgs {
     pub block: Block,
-    pub args: Vec<Value>,
+    pub args:  Vec<Value>,
 }
 
 #[derive(Debug, Clone, DebugWithContext)]
@@ -34,7 +34,7 @@ pub enum Instruction {
     AsmBlock(AsmBlock, Vec<AsmArg>),
     /// Binary arithmetic operations
     BinaryOp {
-        op: BinaryOpKind,
+        op:   BinaryOpKind,
         arg1: Value,
         arg2: Value,
     },
@@ -48,56 +48,56 @@ pub enum Instruction {
     Cmp(Predicate, Value, Value),
     /// A conditional jump with the boolean condition value and true or false destinations.
     ConditionalBranch {
-        cond_value: Value,
-        true_block: BranchToWithArgs,
+        cond_value:  Value,
+        true_block:  BranchToWithArgs,
         false_block: BranchToWithArgs,
     },
     /// A contract call with a list of arguments
     ContractCall {
         return_type: Type,
-        name: String,
-        params: Value,
-        coins: Value,
-        asset_id: Value,
-        gas: Value,
+        name:        String,
+        params:      Value,
+        coins:       Value,
+        asset_id:    Value,
+        gas:         Value,
     },
     /// Reading a specific element from an array.
     ExtractElement {
-        array: Value,
-        ty: Aggregate,
+        array:     Value,
+        ty:        Aggregate,
         index_val: Value,
     },
     /// Reading a specific field from (nested) structs.
     ExtractValue {
         aggregate: Value,
-        ty: Aggregate,
-        indices: Vec<u64>,
+        ty:        Aggregate,
+        indices:   Vec<u64>,
     },
     /// Generate a unique integer value
     GetStorageKey,
     Gtf {
-        index: Value,
+        index:       Value,
         tx_field_id: u64,
     },
     /// Return a pointer as a value.
     GetPointer {
         base_ptr: Pointer,
-        ptr_ty: Pointer,
-        offset: u64,
+        ptr_ty:   Pointer,
+        offset:   u64,
     },
     /// Writing a specific value to an array.
     InsertElement {
-        array: Value,
-        ty: Aggregate,
-        value: Value,
+        array:     Value,
+        ty:        Aggregate,
+        value:     Value,
         index_val: Value,
     },
     /// Writing a specific value to a (nested) struct field.
     InsertValue {
         aggregate: Value,
-        ty: Aggregate,
-        value: Value,
-        indices: Vec<u64>,
+        ty:        Aggregate,
+        value:     Value,
+        indices:   Vec<u64>,
     },
     /// Re-interpret an integer value as pointer of some type
     IntToPtr(Value, Type),
@@ -106,13 +106,13 @@ pub enum Instruction {
     /// Logs a value along with an identifier.
     Log {
         log_val: Value,
-        log_ty: Type,
-        log_id: Value,
+        log_ty:  Type,
+        log_id:  Value,
     },
     /// Copy a specified number of bytes between pointers.
     MemCopy {
-        dst_val: Value,
-        src_val: Value,
+        dst_val:  Value,
+        src_val:  Value,
         byte_len: u64,
     },
     /// No-op, handy as a placeholder instruction.
@@ -124,27 +124,24 @@ pub enum Instruction {
     /// Revert VM execution.
     Revert(Value),
     /// Read a quad word from a storage slot. Type of `load_val` must be a B256 ptr.
-    StateLoadQuadWord {
-        load_val: Value,
-        key: Value,
-    },
+    StateLoadQuadWord { load_val: Value, key: Value },
     /// Read a single word from a storage slot.
     StateLoadWord(Value),
     /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
     /// Uint(256) ptr.
     StateStoreQuadWord {
         stored_val: Value,
-        key: Value,
+        key:        Value,
     },
     /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
     /// Uint(64) value.
     StateStoreWord {
         stored_val: Value,
-        key: Value,
+        key:        Value,
     },
     /// Write a value to a memory pointer.
     Store {
-        dst_val: Value,
+        dst_val:    Value,
         stored_val: Value,
     },
 }
@@ -449,7 +446,7 @@ impl Instruction {
 /// Iterate over all [`Instruction`]s in a specific [`Block`].
 pub struct InstructionIterator {
     instructions: Vec<generational_arena::Index>,
-    next: usize,
+    next:         usize,
 }
 
 impl InstructionIterator {
@@ -462,7 +459,7 @@ impl InstructionIterator {
                 .iter()
                 .map(|val| val.0)
                 .collect(),
-            next: 0,
+            next:         0,
         }
     }
 }
@@ -484,7 +481,7 @@ impl Iterator for InstructionIterator {
 /// Provide a context for appending new [`Instruction`]s to a [`Block`].
 pub struct InstructionInserter<'a> {
     context: &'a mut Context,
-    block: Block,
+    block:   Block,
 }
 
 macro_rules! make_instruction {
@@ -550,7 +547,7 @@ impl<'a> InstructionInserter<'a> {
             self.context,
             Instruction::Branch(BranchToWithArgs {
                 block: to_block,
-                args: dest_params,
+                args:  dest_params,
             }),
         );
         to_block.add_pred(self.context, &self.block);
@@ -580,11 +577,11 @@ impl<'a> InstructionInserter<'a> {
                 cond_value,
                 true_block: BranchToWithArgs {
                     block: true_block,
-                    args: true_dest_params,
+                    args:  true_dest_params,
                 },
                 false_block: BranchToWithArgs {
                     block: false_block,
-                    args: false_dest_params,
+                    args:  false_dest_params,
                 },
             },
         );

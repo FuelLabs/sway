@@ -1,7 +1,6 @@
 use crate::language::{ty, CallPath};
 use derivative::Derivative;
-use sway_types::integer_bits::IntegerBits;
-use sway_types::Ident;
+use sway_types::{integer_bits::IntegerBits, Ident};
 
 #[derive(Derivative)]
 #[derivative(Debug, Clone, Eq, PartialEq, Hash)]
@@ -14,12 +13,12 @@ pub enum ResolvedType {
     B256,
     #[allow(dead_code)]
     Struct {
-        name: Ident,
+        name:   Ident,
         fields: Vec<ty::TyStructField>,
     },
     #[allow(dead_code)]
     Enum {
-        name: Ident,
+        name:          Ident,
         variant_types: Vec<ResolvedType>,
     },
     /// Represents the contract's type as a whole. Used for implementing
@@ -32,12 +31,12 @@ pub enum ResolvedType {
     ContractCaller {
         abi_name: CallPath,
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
-        address: Box<ty::TyExpression>,
+        address:  Box<ty::TyExpression>,
     },
     #[allow(dead_code)]
     Function {
         from: Box<ResolvedType>,
-        to: Box<ResolvedType>,
+        to:   Box<ResolvedType>,
     },
     /// used for recovering from errors in the ast
     #[allow(dead_code)]

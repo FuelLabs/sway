@@ -39,8 +39,8 @@ define_brackets!(SquareBrackets);
 
 #[derive(Clone, Debug)]
 pub struct AngleBrackets<T> {
-    pub open_angle_bracket_token: OpenAngleBracketToken,
-    pub inner: T,
+    pub open_angle_bracket_token:  OpenAngleBracketToken,
+    pub inner:                     T,
     pub close_angle_bracket_token: CloseAngleBracketToken,
 }
 

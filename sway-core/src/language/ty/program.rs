@@ -12,10 +12,10 @@ use crate::{
 
 #[derive(Debug)]
 pub struct TyProgram {
-    pub kind: TyProgramKind,
-    pub root: TyModule,
+    pub kind:          TyProgramKind,
+    pub root:          TyModule,
     pub storage_slots: Vec<StorageSlot>,
-    pub logged_types: Vec<(LogId, TypeId)>,
+    pub logged_types:  Vec<(LogId, TypeId)>,
 }
 
 impl TyProgram {
@@ -321,8 +321,8 @@ impl TyProgram {
                 }
             }
             _ => JsonABIProgram {
-                types: vec![],
-                functions: vec![],
+                types:        vec![],
+                functions:    vec![],
                 logged_types: vec![],
             },
         }
@@ -337,9 +337,9 @@ impl TyProgram {
             .logged_types
             .iter()
             .map(|(_, type_id)| JsonTypeDeclaration {
-                type_id: **type_id,
-                type_field: type_id.get_json_type_str(*type_id),
-                components: type_id.get_json_type_components(types, *type_id),
+                type_id:         **type_id,
+                type_field:      type_id.get_json_type_str(*type_id),
+                components:      type_id.get_json_type_components(types, *type_id),
                 type_parameters: type_id.get_json_type_parameters(types, *type_id),
             })
             .collect::<Vec<_>>();
@@ -351,10 +351,10 @@ impl TyProgram {
         self.logged_types
             .iter()
             .map(|(log_id, type_id)| JsonLoggedType {
-                log_id: **log_id,
+                log_id:      **log_id,
                 logged_type: JsonTypeApplication {
-                    name: "".to_string(),
-                    type_id: **type_id,
+                    name:           "".to_string(),
+                    type_id:        **type_id,
                     type_arguments: type_id.get_json_type_arguments(types, *type_id),
                 },
             })
@@ -365,7 +365,7 @@ impl TyProgram {
 #[derive(Clone, Debug)]
 pub enum TyProgramKind {
     Contract {
-        abi_entries: Vec<TyFunctionDeclaration>,
+        abi_entries:  Vec<TyFunctionDeclaration>,
         declarations: Vec<TyDeclaration>,
     },
     Library {
@@ -373,11 +373,11 @@ pub enum TyProgramKind {
     },
     Predicate {
         main_function: TyFunctionDeclaration,
-        declarations: Vec<TyDeclaration>,
+        declarations:  Vec<TyDeclaration>,
     },
     Script {
         main_function: TyFunctionDeclaration,
-        declarations: Vec<TyDeclaration>,
+        declarations:  Vec<TyDeclaration>,
     },
 }
 

@@ -1,5 +1,6 @@
-use crate::expr::op_code::parse_instruction;
-use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
+use crate::{
+    expr::op_code::parse_instruction, Parse, ParseResult, ParseToEnd, Parser, ParserConsumed,
+};
 
 use core::str::FromStr;
 use num_bigint::BigUint;
@@ -53,7 +54,7 @@ impl ParseToEnd for AsmBlockContents {
             if let Some(consumed) = parser.check_empty() {
                 let final_expr = AsmFinalExpr {
                     register: ident,
-                    ty_opt: None,
+                    ty_opt:   None,
                 };
                 break (Some(final_expr), consumed);
             }
@@ -69,7 +70,7 @@ impl ParseToEnd for AsmBlockContents {
                 };
                 let final_expr = AsmFinalExpr {
                     register: ident,
-                    ty_opt: Some((colon_token, ty)),
+                    ty_opt:   Some((colon_token, ty)),
                 };
                 break (Some(final_expr), consumed);
             }

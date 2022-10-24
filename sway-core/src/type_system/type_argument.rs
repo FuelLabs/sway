@@ -7,9 +7,9 @@ use sway_types::{Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct TypeArgument {
-    pub type_id: TypeId,
+    pub type_id:         TypeId,
     pub initial_type_id: TypeId,
-    pub span: Span,
+    pub span:            Span,
 }
 
 impl Spanned for TypeArgument {

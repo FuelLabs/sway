@@ -18,7 +18,7 @@ pub fn get_page_text_edit(
     let line_end = std::cmp::max(num_of_lines, text_lines_count) as u32;
 
     Ok(TextEdit {
-        range: Range::new(Position::new(0, 0), Position::new(line_end as u32, 0)),
+        range:    Range::new(Position::new(0, 0), Position::new(line_end as u32, 0)),
         new_text: formatted_code,
     })
 }

@@ -3,10 +3,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
-    pub debug: Debug,
+    pub debug:       Debug,
     pub inlay_hints: InlayHintsConfig,
     #[serde(skip_serializing)]
-    trace: Trace,
+    trace:           Trace,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Default)]
@@ -34,9 +34,9 @@ pub struct InlayHintsConfig {
     /// Whether to render leading colons for type hints, and trailing colons for parameter hints.
     pub render_colons: bool,
     /// Whether to show inlay type hints for variables.
-    pub type_hints: bool,
+    pub type_hints:    bool,
     /// Maximum length for inlay hints. Set to null to have an unlimited length.
-    pub max_length: Option<usize>,
+    pub max_length:    Option<usize>,
 }
 
 impl Default for Debug {
@@ -51,8 +51,8 @@ impl Default for InlayHintsConfig {
     fn default() -> Self {
         Self {
             render_colons: true,
-            type_hints: true,
-            max_length: Some(25),
+            type_hints:    true,
+            max_length:    Some(25),
         }
     }
 }

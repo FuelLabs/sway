@@ -1,10 +1,11 @@
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
 
-use crate::core::{session::Session, token::AstToken};
-use crate::utils::common::get_range_from_span;
+use crate::{
+    core::{session::Session, token::AstToken},
+    utils::common::get_range_from_span,
+};
 
 pub fn rename(
     session: Arc<Session>,
@@ -40,7 +41,7 @@ pub fn prepare_rename(
         match token.parsed {
             AstToken::Reassignment(_) => None,
             _ => Some(PrepareRenameResponse::RangeWithPlaceholder {
-                range: get_range_from_span(&ident.span()),
+                range:       get_range_from_span(&ident.span()),
                 placeholder: ident.as_str().to_string(),
             }),
         }

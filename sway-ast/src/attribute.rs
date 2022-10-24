@@ -3,7 +3,7 @@ use crate::priv_prelude::*;
 #[derive(Clone, Debug)]
 pub struct Annotated<T> {
     pub attribute_list: Vec<AttributeDecl>,
-    pub value: T,
+    pub value:          T,
 }
 
 // Attributes can have any number of arguments:
@@ -16,7 +16,7 @@ pub struct Annotated<T> {
 #[derive(Clone, Debug)]
 pub struct AttributeDecl {
     pub hash_token: HashToken,
-    pub attribute: SquareBrackets<Attribute>,
+    pub attribute:  SquareBrackets<Attribute>,
 }
 
 impl Spanned for AttributeDecl {

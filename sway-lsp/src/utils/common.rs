@@ -36,6 +36,6 @@ pub(crate) fn get_range_from_span(span: &Span) -> Range {
 
     Range {
         start: Position::new(start_line, start_character),
-        end: Position::new(end_line, end_character),
+        end:   Position::new(end_line, end_character),
     }
 }

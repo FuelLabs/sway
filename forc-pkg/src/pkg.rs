@@ -72,16 +72,16 @@ pub struct PinnedId(u64);
 #[derive(Clone)]
 pub struct Compiled {
     pub json_abi_program: JsonABIProgram,
-    pub storage_slots: Vec<StorageSlot>,
-    pub bytecode: Vec<u8>,
-    pub tree_type: TreeType,
+    pub storage_slots:    Vec<StorageSlot>,
+    pub bytecode:         Vec<u8>,
+    pub tree_type:        TreeType,
 }
 
 /// A package uniquely identified by name along with its source.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Pkg {
     /// The unique name of the package as declared in its manifest.
-    pub name: String,
+    pub name:   String,
     /// Where the package is sourced from.
     pub source: Source,
 }
@@ -89,7 +89,7 @@ pub struct Pkg {
 /// A package uniquely identified by name along with its pinned source.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub struct Pinned {
-    pub name: String,
+    pub name:   String,
     pub source: SourcePinned,
 }
 
@@ -116,7 +116,7 @@ pub enum Source {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct SourceGit {
     /// The URL at which the repository is located.
-    pub repo: Url,
+    pub repo:      Url,
     /// A git reference, e.g. a branch or tag.
     pub reference: GitReference,
 }
@@ -144,7 +144,7 @@ pub struct SourceRegistry {
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub struct SourceGitPinned {
     /// The git source that is being pinned.
-    pub source: SourceGit,
+    pub source:      SourceGit,
     /// The hash to which we have pinned the source.
     pub commit_hash: String,
 }
@@ -169,7 +169,7 @@ pub struct SourcePathPinned {
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub struct SourceRegistryPinned {
     /// The registry package with base version.
-    pub source: SourceRegistry,
+    pub source:  SourceRegistry,
     /// The pinned version.
     pub version: semver::Version,
 }
@@ -189,8 +189,8 @@ pub enum SourcePinned {
 /// Represents the full build plan for a project.
 #[derive(Clone)]
 pub struct BuildPlan {
-    graph: Graph,
-    manifest_map: ManifestMap,
+    graph:             Graph,
+    manifest_map:      ManifestMap,
     compilation_order: Vec<NodeIx>,
 }
 
@@ -221,7 +221,7 @@ type HeadWithTime = (String, i64);
 #[derive(Serialize, Deserialize)]
 pub struct GitSourceIndex {
     /// Type of the git reference
-    pub git_reference: GitReference,
+    pub git_reference:  GitReference,
     pub head_with_time: HeadWithTime,
 }
 
@@ -1811,7 +1811,7 @@ pub fn dependency_namespace(
                 let contract_id_value = format!("\"{dep_contract_id}\"");
                 let contract_id_constant = ConfigTimeConstant {
                     r#type: "b256".to_string(),
-                    value: contract_id_value,
+                    value:  contract_id_value,
                     public: true,
                 };
                 constants.insert(contract_dep_constant_name.to_string(), contract_id_constant);
@@ -2265,8 +2265,8 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     let mut json_abi_program = JsonABIProgram {
-        types: vec![],
-        functions: vec![],
+        types:        vec![],
+        functions:    vec![],
         logged_types: vec![],
     };
     let mut storage_slots = vec![];
@@ -2563,29 +2563,29 @@ fn test_source_git_pinned_parsing() {
 
     let expected = [
         SourceGitPinned {
-            source: SourceGit {
-                repo: Url::parse("https://github.com/foo/bar").unwrap(),
+            source:      SourceGit {
+                repo:      Url::parse("https://github.com/foo/bar").unwrap(),
                 reference: GitReference::Branch("baz".to_string()),
             },
             commit_hash: "64092602dd6158f3e41d775ed889389440a2cd86".to_string(),
         },
         SourceGitPinned {
-            source: SourceGit {
-                repo: Url::parse("https://github.com/fuellabs/sway-lib-std").unwrap(),
+            source:      SourceGit {
+                repo:      Url::parse("https://github.com/fuellabs/sway-lib-std").unwrap(),
                 reference: GitReference::Tag("v0.1.0".to_string()),
             },
             commit_hash: "0000000000000000000000000000000000000000".to_string(),
         },
         SourceGitPinned {
-            source: SourceGit {
-                repo: Url::parse("https://github.com/fuellabs/sway-lib-core").unwrap(),
+            source:      SourceGit {
+                repo:      Url::parse("https://github.com/fuellabs/sway-lib-core").unwrap(),
                 reference: GitReference::Tag("v0.0.1".to_string()),
             },
             commit_hash: "0000000000000000000000000000000000000000".to_string(),
         },
         SourceGitPinned {
-            source: SourceGit {
-                repo: Url::parse("https://some-git-host.com/owner/repo").unwrap(),
+            source:      SourceGit {
+                repo:      Url::parse("https://some-git-host.com/owner/repo").unwrap(),
                 reference: GitReference::Rev(
                     "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".to_string(),
                 ),
@@ -2593,8 +2593,8 @@ fn test_source_git_pinned_parsing() {
             commit_hash: "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".to_string(),
         },
         SourceGitPinned {
-            source: SourceGit {
-                repo: Url::parse("https://some-git-host.com/owner/repo").unwrap(),
+            source:      SourceGit {
+                repo:      Url::parse("https://some-git-host.com/owner/repo").unwrap(),
                 reference: GitReference::DefaultBranch,
             },
             commit_hash: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string(),

@@ -240,7 +240,7 @@ impl TyDeclaration {
                 vec![],
                 vec![CompileError::DeclIsNotAnEnum {
                     actually: decl.friendly_name().to_string(),
-                    span: decl.span(),
+                    span:     decl.span(),
                 }],
             ),
         }
@@ -265,7 +265,7 @@ impl TyDeclaration {
             decl => {
                 errors.push(CompileError::DeclIsNotAStruct {
                     actually: decl.friendly_name().to_string(),
-                    span: decl.span(),
+                    span:     decl.span(),
                 });
                 err(warnings, errors)
             }
@@ -294,7 +294,7 @@ impl TyDeclaration {
             decl => {
                 errors.push(CompileError::DeclIsNotAFunction {
                     actually: decl.friendly_name().to_string(),
-                    span: decl.span(),
+                    span:     decl.span(),
                 });
                 err(warnings, errors)
             }
@@ -312,7 +312,7 @@ impl TyDeclaration {
             decl => {
                 errors.push(CompileError::DeclIsNotAVariable {
                     actually: decl.friendly_name().to_string(),
-                    span: decl.span(),
+                    span:     decl.span(),
                 });
                 err(warnings, errors)
             }
@@ -331,7 +331,7 @@ impl TyDeclaration {
                 vec![],
                 vec![CompileError::DeclIsNotAnAbi {
                     actually: decl.friendly_name().to_string(),
-                    span: decl.span(),
+                    span:     decl.span(),
                 }],
             ),
         }
@@ -349,7 +349,7 @@ impl TyDeclaration {
                 let errors = vec![
                     (CompileError::DeclIsNotAConstant {
                         actually: decl.friendly_name().to_string(),
-                        span: decl.span(),
+                        span:     decl.span(),
                     }),
                 ];
                 err(vec![], errors)
@@ -419,8 +419,8 @@ impl TyDeclaration {
             TyDeclaration::GenericTypeForFunctionScope { type_id, .. } => *type_id,
             decl => {
                 errors.push(CompileError::NotAType {
-                    span: decl.span(),
-                    name: decl.to_string(),
+                    span:        decl.span(),
+                    name:        decl.to_string(),
                     actually_is: decl.friendly_name(),
                 });
                 return err(warnings, errors);

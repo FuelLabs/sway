@@ -292,9 +292,9 @@ fn type_check_tuple(
         typed_elems
             .iter()
             .map(|x| TypeArgument {
-                type_id: x.type_id,
+                type_id:         x.type_id,
                 initial_type_id: x.type_id,
-                span: span.clone(),
+                span:            span.clone(),
             })
             .collect(),
     ));

@@ -1,6 +1,5 @@
 use crate::error::ParseFileError;
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 use sway_ast::{token::CommentedTokenStream, Module};
 use sway_error::handler::{ErrorEmitted, Handler};
 

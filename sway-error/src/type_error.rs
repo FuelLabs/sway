@@ -11,10 +11,10 @@ pub enum TypeError {
          help = if !help_text.is_empty() { format!("help: {}", help_text) } else { String::new() }
     )]
     MismatchedType {
-        expected: String,
-        received: String,
+        expected:  String,
+        received:  String,
         help_text: String,
-        span: Span,
+        span:      Span,
     },
     #[error("This type is not known. Try annotating it with a type annotation.")]
     UnknownType { span: Span },
@@ -27,7 +27,7 @@ pub enum TypeError {
     MatchArmScrutineeWrongType {
         expected: String,
         received: String,
-        span: Span,
+        span:     Span,
     },
 }
 

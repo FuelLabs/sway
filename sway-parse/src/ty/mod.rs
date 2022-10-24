@@ -1,9 +1,11 @@
 use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
-use sway_ast::brackets::{Parens, SquareBrackets};
-use sway_ast::keywords::{DoubleColonToken, OpenAngleBracketToken};
-use sway_ast::token::Delimiter;
-use sway_ast::ty::{Ty, TyArrayDescriptor, TyTupleDescriptor};
+use sway_ast::{
+    brackets::{Parens, SquareBrackets},
+    keywords::{DoubleColonToken, OpenAngleBracketToken},
+    token::Delimiter,
+    ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
+};
 use sway_error::parser_error::ParseErrorKind;
 use sway_types::Ident;
 

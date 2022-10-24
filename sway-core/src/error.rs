@@ -1,9 +1,11 @@
 //! Tools related to handling/recovering from Sway compile errors and reporting them to the user.
 
 use crate::language::parsed::VariableDeclaration;
-use sway_error::error::CompileError;
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_error::warning::CompileWarning;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+    warning::CompileWarning,
+};
 
 macro_rules! check {
     ($fn_expr: expr, $error_recovery: expr, $warnings: ident, $errors: ident $(,)?) => {{
@@ -32,7 +34,7 @@ macro_rules! assert_or_warn {
             use sway_error::warning::CompileWarning;
             $warnings.push(CompileWarning {
                 warning_content: $warning,
-                span: $span,
+                span:            $span,
             });
         }
     }};
@@ -67,7 +69,7 @@ pub(crate) fn ok<T>(
 #[derive(Debug, Clone)]
 pub struct ParserLifter<T> {
     pub var_decls: Vec<VariableDeclaration>,
-    pub value: T,
+    pub value:     T,
 }
 
 impl<T> ParserLifter<T> {
@@ -82,23 +84,23 @@ impl<T> ParserLifter<T> {
 
 #[derive(Debug, Clone)]
 pub struct CompileResult<T> {
-    pub value: Option<T>,
+    pub value:    Option<T>,
     pub warnings: Vec<CompileWarning>,
-    pub errors: Vec<CompileError>,
+    pub errors:   Vec<CompileError>,
 }
 
 impl<T> From<Result<T, CompileError>> for CompileResult<T> {
     fn from(o: Result<T, CompileError>) -> Self {
         match o {
             Ok(o) => CompileResult {
-                value: Some(o),
+                value:    Some(o),
                 warnings: vec![],
-                errors: vec![],
+                errors:   vec![],
             },
             Err(e) => CompileResult {
-                value: None,
+                value:    None,
                 warnings: vec![],
-                errors: vec![e],
+                errors:   vec![e],
             },
         }
     }
@@ -154,9 +156,9 @@ impl<T> CompileResult<T> {
             Some(value) => {
                 let res = f(value);
                 CompileResult {
-                    value: res.value,
+                    value:    res.value,
                     warnings: [self.warnings, res.warnings].concat(),
-                    errors: [self.errors, res.errors].concat(),
+                    errors:   [self.errors, res.errors].concat(),
                 }
             }
         }

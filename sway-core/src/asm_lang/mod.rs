@@ -42,25 +42,25 @@ impl From<&AsmRegister> for VirtualRegister {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Op {
-    pub(crate) opcode: Either<VirtualOp, OrganizationalOp>,
+    pub(crate) opcode:      Either<VirtualOp, OrganizationalOp>,
     /// A descriptive comment for ASM readability
-    pub(crate) comment: String,
+    pub(crate) comment:     String,
     pub(crate) owning_span: Option<Span>,
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct AllocatedAbstractOp {
-    pub(crate) opcode: Either<AllocatedOpcode, ControlFlowOp<AllocatedRegister>>,
+    pub(crate) opcode:      Either<AllocatedOpcode, ControlFlowOp<AllocatedRegister>>,
     /// A descriptive comment for ASM readability
-    pub(crate) comment: String,
+    pub(crate) comment:     String,
     pub(crate) owning_span: Option<Span>,
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct RealizedOp {
-    pub(crate) opcode: AllocatedOpcode,
+    pub(crate) opcode:      AllocatedOpcode,
     /// A descriptive comment for ASM readability
-    pub(crate) comment: String,
+    pub(crate) comment:     String,
     pub(crate) owning_span: Option<Span>,
 }
 
@@ -74,8 +74,8 @@ impl Op {
         span: Span,
     ) -> Self {
         Op {
-            opcode: Either::Left(VirtualOp::SW(destination_address, value_to_write, offset)),
-            comment: String::new(),
+            opcode:      Either::Left(VirtualOp::SW(destination_address, value_to_write, offset)),
+            comment:     String::new(),
             owning_span: Some(span),
         }
     }
@@ -89,8 +89,8 @@ impl Op {
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Left(VirtualOp::SW(destination_address, value_to_write, offset)),
-            comment: comment.into(),
+            opcode:      Either::Left(VirtualOp::SW(destination_address, value_to_write, offset)),
+            comment:     comment.into(),
             owning_span: Some(span),
         }
     }
@@ -99,22 +99,22 @@ impl Op {
         size_to_allocate_in_bytes: VirtualImmediate24,
     ) -> Self {
         Op {
-            opcode: Either::Left(VirtualOp::CFEI(size_to_allocate_in_bytes)),
-            comment: String::new(),
+            opcode:      Either::Left(VirtualOp::CFEI(size_to_allocate_in_bytes)),
+            comment:     String::new(),
             owning_span: None,
         }
     }
     pub(crate) fn unowned_new_with_comment(opcode: VirtualOp, comment: impl Into<String>) -> Self {
         Op {
-            opcode: Either::Left(opcode),
-            comment: comment.into(),
+            opcode:      Either::Left(opcode),
+            comment:     comment.into(),
             owning_span: None,
         }
     }
     pub(crate) fn new(opcode: VirtualOp, owning_span: Span) -> Self {
         Op {
-            opcode: Either::Left(opcode),
-            comment: String::new(),
+            opcode:      Either::Left(opcode),
+            comment:     String::new(),
             owning_span: Some(owning_span),
         }
     }
@@ -134,8 +134,8 @@ impl Op {
     /// Given a label, creates the actual asm line to put in the ASM which represents a label
     pub(crate) fn jump_label(label: Label, owning_span: Span) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::Label(label)),
-            comment: String::new(),
+            opcode:      Either::Right(OrganizationalOp::Label(label)),
+            comment:     String::new(),
             owning_span: Some(owning_span),
         }
     }
@@ -146,8 +146,8 @@ impl Op {
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Left(VirtualOp::LWDataId(reg, data)),
-            comment: comment.into(),
+            opcode:      Either::Left(VirtualOp::LWDataId(reg, data)),
+            comment:     comment.into(),
             owning_span: None,
         }
     }
@@ -156,8 +156,8 @@ impl Op {
     /// Also attaches a comment to it.
     pub(crate) fn unowned_jump_label_comment(label: Label, comment: impl Into<String>) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::Label(label)),
-            comment: comment.into(),
+            opcode:      Either::Right(OrganizationalOp::Label(label)),
+            comment:     comment.into(),
             owning_span: None,
         }
     }
@@ -170,8 +170,8 @@ impl Op {
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::Label(label)),
-            comment: comment.into(),
+            opcode:      Either::Right(OrganizationalOp::Label(label)),
+            comment:     comment.into(),
             owning_span: Some(owning_span),
         }
     }
@@ -179,8 +179,8 @@ impl Op {
     /// Given a label, creates the actual asm line to put in the ASM which represents a label
     pub(crate) fn unowned_jump_label(label: Label) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::Label(label)),
-            comment: String::new(),
+            opcode:      Either::Right(OrganizationalOp::Label(label)),
+            comment:     String::new(),
             owning_span: None,
         }
     }
@@ -215,24 +215,24 @@ impl Op {
 
     pub(crate) fn new_comment(comm: impl Into<String>) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::Comment),
-            comment: comm.into(),
+            opcode:      Either::Right(OrganizationalOp::Comment),
+            comment:     comm.into(),
             owning_span: None,
         }
     }
 
     pub(crate) fn jump_to_label(label: Label) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::Jump(label)),
-            comment: String::new(),
+            opcode:      Either::Right(OrganizationalOp::Jump(label)),
+            comment:     String::new(),
             owning_span: None,
         }
     }
 
     pub(crate) fn jump_to_label_comment(label: Label, comment: impl Into<String>) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::Jump(label)),
-            comment: comment.into(),
+            opcode:      Either::Right(OrganizationalOp::Jump(label)),
+            comment:     comment.into(),
             owning_span: None,
         }
     }
@@ -244,8 +244,8 @@ impl Op {
         label: Label,
     ) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::JumpIfNotEq(reg0, reg1, label)),
-            comment: String::new(),
+            opcode:      Either::Right(OrganizationalOp::JumpIfNotEq(reg0, reg1, label)),
+            comment:     String::new(),
             owning_span: None,
         }
     }
@@ -253,8 +253,8 @@ impl Op {
     /// Jumps to [Label] `label`  if the given [VirtualRegister] `reg0` is not equal to zero.
     pub(crate) fn jump_if_not_zero(reg0: VirtualRegister, label: Label) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::JumpIfNotZero(reg0, label)),
-            comment: String::new(),
+            opcode:      Either::Right(OrganizationalOp::JumpIfNotZero(reg0, label)),
+            comment:     String::new(),
             owning_span: None,
         }
     }
@@ -970,7 +970,7 @@ impl Op {
                 _ => {
                     errors.push(CompileError::UnrecognizedOp {
                         op_name: name.clone(),
-                        span: name.span(),
+                        span:    name.span(),
                     });
                     return err(warnings, errors);
                 }
@@ -1013,11 +1013,11 @@ impl Op {
         reg_to_reg_map: &HashMap<VirtualRegister, VirtualRegister>,
     ) -> Self {
         Op {
-            opcode: match &self.opcode {
+            opcode:      match &self.opcode {
                 Either::Left(virt_op) => Either::Left(virt_op.update_register(reg_to_reg_map)),
                 Either::Right(org_op) => Either::Right(org_op.update_register(reg_to_reg_map)),
             },
-            comment: self.comment.clone(),
+            comment:     self.comment.clone(),
             owning_span: self.owning_span.clone(),
         }
     }
@@ -1044,7 +1044,7 @@ fn single_reg(
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
             expected: 1,
             received: args.len(),
-            span: whole_op_span.clone(),
+            span:     whole_op_span.clone(),
         });
     }
 
@@ -1052,7 +1052,7 @@ fn single_reg(
         Some(reg) => reg,
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span,
+                span:     whole_op_span,
                 expected: 1,
                 received: args.len(),
             });
@@ -1078,7 +1078,7 @@ fn two_regs(
     let mut errors = vec![];
     if args.len() > 2 {
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-            span: whole_op_span.clone(),
+            span:     whole_op_span.clone(),
             expected: 2,
             received: args.len(),
         });
@@ -1088,7 +1088,7 @@ fn two_regs(
         (Some(reg), Some(reg2)) => (reg, reg2),
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span,
+                span:     whole_op_span,
                 expected: 2,
                 received: args.len(),
             });
@@ -1117,7 +1117,7 @@ fn four_regs(
     let mut errors = vec![];
     if args.len() > 4 {
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-            span: whole_op_span.clone(),
+            span:     whole_op_span.clone(),
             expected: 4,
             received: args.len(),
         });
@@ -1127,7 +1127,7 @@ fn four_regs(
         (Some(reg), Some(reg2), Some(reg3), Some(reg4)) => (reg, reg2, reg3, reg4),
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span,
+                span:     whole_op_span,
                 expected: 4,
                 received: args.len(),
             });
@@ -1186,7 +1186,7 @@ fn three_regs(
     let mut errors = vec![];
     if args.len() > 3 {
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-            span: whole_op_span.clone(),
+            span:     whole_op_span.clone(),
             expected: 3,
             received: args.len(),
         });
@@ -1196,7 +1196,7 @@ fn three_regs(
         (Some(reg), Some(reg2), Some(reg3)) => (reg, reg2, reg3),
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span,
+                span:     whole_op_span,
                 expected: 3,
                 received: args.len(),
             });
@@ -1221,7 +1221,7 @@ fn single_imm_24(
     let mut errors = vec![];
     if !args.is_empty() {
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-            span: whole_op_span.clone(),
+            span:     whole_op_span.clone(),
             expected: 0,
             received: args.len(),
         });
@@ -1261,7 +1261,7 @@ fn single_reg_imm_18(
     let mut errors = vec![];
     if args.len() > 1 {
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-            span: whole_op_span.clone(),
+            span:     whole_op_span.clone(),
             expected: 1,
             received: args.len(),
         });
@@ -1270,7 +1270,7 @@ fn single_reg_imm_18(
         Some(reg) => reg,
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span,
+                span:     whole_op_span,
                 expected: 1,
                 received: args.len(),
             });
@@ -1312,7 +1312,7 @@ fn two_regs_imm_12(
     let mut errors = vec![];
     if args.len() > 2 {
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-            span: whole_op_span.clone(),
+            span:     whole_op_span.clone(),
             expected: 2,
             received: args.len(),
         });
@@ -1321,7 +1321,7 @@ fn two_regs_imm_12(
         (Some(reg), Some(reg2)) => (reg, reg2),
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span,
+                span:     whole_op_span,
                 expected: 2,
                 received: args.len(),
             });

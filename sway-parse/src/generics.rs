@@ -1,8 +1,8 @@
 use crate::{Parse, ParseResult, Parser};
 
-use sway_ast::keywords::CommaToken;
-use sway_ast::punctuated::Punctuated;
-use sway_ast::{AngleBrackets, GenericArgs, GenericParams};
+use sway_ast::{
+    keywords::CommaToken, punctuated::Punctuated, AngleBrackets, GenericArgs, GenericParams,
+};
 
 impl Parse for GenericParams {
     fn parse(parser: &mut Parser) -> ParseResult<GenericParams> {

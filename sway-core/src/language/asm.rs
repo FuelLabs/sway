@@ -4,9 +4,9 @@ use sway_types::{Ident, Span};
 
 #[derive(Debug, Clone)]
 pub struct AsmOp {
-    pub(crate) op_name: Ident,
-    pub(crate) op_args: Vec<Ident>,
-    pub(crate) span: Span,
+    pub(crate) op_name:   Ident,
+    pub(crate) op_args:   Vec<Ident>,
+    pub(crate) span:      Span,
     pub(crate) immediate: Option<Ident>,
 }
 

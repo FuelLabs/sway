@@ -21,25 +21,25 @@ pub(super) enum ProgramKind {
 /// Use `AbstractProgram::to_allocated_program()` to perform register allocation.
 ///
 pub(super) struct AbstractProgram {
-    kind: ProgramKind,
+    kind:         ProgramKind,
     data_section: DataSection,
-    entries: Vec<(Option<[u8; 4]>, Label, AbstractInstructionSet)>,
-    non_entries: Vec<AbstractInstructionSet>,
-    reg_seqr: RegisterSequencer,
+    entries:      Vec<(Option<[u8; 4]>, Label, AbstractInstructionSet)>,
+    non_entries:  Vec<AbstractInstructionSet>,
+    reg_seqr:     RegisterSequencer,
 }
 
 /// An AllocatedProgram represents code which has allocated registers but still has abstract
 /// control flow.
 pub(super) struct AllocatedProgram {
-    kind: ProgramKind,
+    kind:         ProgramKind,
     data_section: DataSection,
-    prologue: AllocatedAbstractInstructionSet,
-    functions: Vec<AllocatedAbstractInstructionSet>,
+    prologue:     AllocatedAbstractInstructionSet,
+    functions:    Vec<AllocatedAbstractInstructionSet>,
 }
 
 /// A FinalProgram represents code which may be serialized to VM bytecode.
 pub(super) struct FinalProgram {
-    kind: ProgramKind,
+    kind:         ProgramKind,
     data_section: DataSection,
-    ops: InstructionSet,
+    ops:          InstructionSet,
 }

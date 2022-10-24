@@ -1,8 +1,9 @@
+use crate::Context;
+use std::fmt;
 pub use sway_ir_macros::*;
-use {crate::Context, std::fmt};
 
 pub struct WithContext<'a, 'c, T: ?Sized> {
-    thing: &'a T,
+    thing:   &'a T,
     context: &'c Context,
 }
 

@@ -1,21 +1,21 @@
 #[derive(Clone, Debug)]
 pub struct Punctuated<T, P> {
     pub value_separator_pairs: Vec<(T, P)>,
-    pub final_value_opt: Option<Box<T>>,
+    pub final_value_opt:       Option<Box<T>>,
 }
 
 impl<T, P> Punctuated<T, P> {
     pub fn empty() -> Self {
         Self {
             value_separator_pairs: vec![],
-            final_value_opt: None,
+            final_value_opt:       None,
         }
     }
 
     pub fn single(value: T) -> Self {
         Self {
             value_separator_pairs: vec![],
-            final_value_opt: Some(Box::new(value)),
+            final_value_opt:       Some(Box::new(value)),
         }
     }
 }
@@ -26,14 +26,14 @@ impl<T, P> IntoIterator for Punctuated<T, P> {
     fn into_iter(self) -> PunctuatedIter<T, P> {
         PunctuatedIter {
             value_separator_pairs: self.value_separator_pairs.into_iter(),
-            final_value_opt: self.final_value_opt,
+            final_value_opt:       self.final_value_opt,
         }
     }
 }
 
 pub struct PunctuatedIter<T, P> {
     value_separator_pairs: std::vec::IntoIter<(T, P)>,
-    final_value_opt: Option<Box<T>>,
+    final_value_opt:       Option<Box<T>>,
 }
 
 impl<T, P> Iterator for PunctuatedIter<T, P> {
@@ -53,14 +53,14 @@ impl<'a, T, P> IntoIterator for &'a Punctuated<T, P> {
     fn into_iter(self) -> PunctuatedRefIter<'a, T, P> {
         PunctuatedRefIter {
             punctuated: self,
-            index: 0,
+            index:      0,
         }
     }
 }
 
 pub struct PunctuatedRefIter<'a, T, P> {
     punctuated: &'a Punctuated<T, P>,
-    index: usize,
+    index:      usize,
 }
 
 impl<'a, T, P> Iterator for PunctuatedRefIter<'a, T, P> {

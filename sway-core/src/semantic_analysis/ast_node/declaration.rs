@@ -27,18 +27,18 @@ impl ty::TyTraitFn {
     /// interface surface.
     pub(crate) fn to_dummy_func(&self, mode: Mode) -> ty::TyFunctionDeclaration {
         ty::TyFunctionDeclaration {
-            purity: self.purity,
-            name: self.name.clone(),
-            body: ty::TyCodeBlock { contents: vec![] },
-            parameters: self.parameters.clone(),
-            span: self.name.span(),
-            attributes: self.attributes.clone(),
-            return_type: self.return_type,
+            purity:              self.purity,
+            name:                self.name.clone(),
+            body:                ty::TyCodeBlock { contents: vec![] },
+            parameters:          self.parameters.clone(),
+            span:                self.name.span(),
+            attributes:          self.attributes.clone(),
+            return_type:         self.return_type,
             initial_return_type: self.return_type,
-            return_type_span: self.return_type_span.clone(),
-            visibility: Visibility::Public,
-            type_parameters: vec![],
-            is_contract_call: mode == Mode::ImplAbiFn,
+            return_type_span:    self.return_type_span.clone(),
+            visibility:          Visibility::Public,
+            type_parameters:     vec![],
+            is_contract_call:    mode == Mode::ImplAbiFn,
         }
     }
 }

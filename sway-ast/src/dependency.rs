@@ -1,8 +1,8 @@
 use crate::priv_prelude::*;
 
 pub struct Dependency {
-    pub dep_token: DepToken,
-    pub path: DependencyPath,
+    pub dep_token:       DepToken,
+    pub path:            DependencyPath,
     pub semicolon_token: SemicolonToken,
 }
 
@@ -13,7 +13,7 @@ impl Spanned for Dependency {
 }
 
 pub struct DependencyPath {
-    pub prefix: Ident,
+    pub prefix:   Ident,
     pub suffixes: Vec<(ForwardSlashToken, Ident)>,
 }
 

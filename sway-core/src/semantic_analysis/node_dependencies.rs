@@ -1,18 +1,17 @@
-use std::collections::{HashMap, HashSet};
-use std::iter::FromIterator;
+use std::{
+    collections::{HashMap, HashSet},
+    iter::FromIterator,
+};
 
-use crate::type_system::{TypeArgument, TypeParameter};
 use crate::{
     error::*,
     language::{parsed::*, CallPath},
-    type_system::{look_up_type_id, AbiName},
+    type_system::{look_up_type_id, AbiName, TypeArgument, TypeParameter},
     TypeInfo,
 };
 
 use sway_error::error::CompileError;
-use sway_types::integer_bits::IntegerBits;
-use sway_types::Spanned;
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, integer_bits::IntegerBits, span::Span, Spanned};
 
 // -------------------------------------------------------------------------------------------------
 /// Take a list of nodes and reorder them so that they may be semantically analysed without any

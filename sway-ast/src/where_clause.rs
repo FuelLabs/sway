@@ -3,14 +3,14 @@ use crate::priv_prelude::*;
 #[derive(Clone, Debug)]
 pub struct WhereClause {
     pub where_token: WhereToken,
-    pub bounds: Punctuated<WhereBound, CommaToken>,
+    pub bounds:      Punctuated<WhereBound, CommaToken>,
 }
 
 #[derive(Clone, Debug)]
 pub struct WhereBound {
-    pub ty_name: Ident,
+    pub ty_name:     Ident,
     pub colon_token: ColonToken,
-    pub bounds: Traits,
+    pub bounds:      Traits,
 }
 
 impl Spanned for WhereClause {

@@ -123,10 +123,10 @@ impl Context {
 }
 
 struct InstructionVerifier<'a> {
-    context: &'a Context,
-    cur_module: &'a ModuleContent,
+    context:      &'a Context,
+    cur_module:   &'a ModuleContent,
     cur_function: &'a FunctionContent,
-    cur_block: &'a BlockContent,
+    cur_block:    &'a BlockContent,
 }
 
 impl<'a> InstructionVerifier<'a> {

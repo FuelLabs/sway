@@ -7,7 +7,7 @@ use crate::{
     core::{
         document::TextDocument,
         token::{Token, TokenMap, TypeDefinition},
-        {traverse_parse_tree, traverse_typed_tree},
+        traverse_parse_tree, traverse_typed_tree,
     },
     error::{DocumentError, LanguageServerError},
     utils::{
@@ -36,26 +36,26 @@ pub type ProjectDirectory = PathBuf;
 #[derive(Default, Debug)]
 pub struct CompiledProgram {
     pub parsed: Option<ParseProgram>,
-    pub typed: Option<ty::TyProgram>,
+    pub typed:  Option<ty::TyProgram>,
 }
 
 #[derive(Debug)]
 pub struct Session {
-    pub documents: Documents,
-    pub token_map: TokenMap,
-    pub runnables: DashMap<RunnableType, Runnable>,
+    pub documents:        Documents,
+    pub token_map:        TokenMap,
+    pub runnables:        DashMap<RunnableType, Runnable>,
     pub compiled_program: RwLock<CompiledProgram>,
-    pub sync: SyncWorkspace,
+    pub sync:             SyncWorkspace,
 }
 
 impl Session {
     pub fn new() -> Self {
         Session {
-            documents: DashMap::new(),
-            token_map: DashMap::new(),
-            runnables: DashMap::new(),
+            documents:        DashMap::new(),
+            token_map:        DashMap::new(),
+            runnables:        DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
-            sync: SyncWorkspace::new(),
+            sync:             SyncWorkspace::new(),
         }
     }
 

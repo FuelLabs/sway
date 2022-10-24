@@ -4,13 +4,13 @@ use anyhow::{anyhow, bail};
 use commands::{
     get_contents_from_commands, get_forc_command_from_file_name, possible_forc_commands,
 };
-use mdbook::book::{Book, BookItem, Chapter};
-use mdbook::errors::{Error, Result};
-use mdbook::preprocess::{Preprocessor, PreprocessorContext};
+use mdbook::{
+    book::{Book, BookItem, Chapter},
+    errors::{Error, Result},
+    preprocess::{Preprocessor, PreprocessorContext},
+};
 use plugins::{get_all_plugins, plugin_commands};
-use std::collections::HashMap;
-use std::fs;
-use std::path::PathBuf;
+use std::{collections::HashMap, fs, path::PathBuf};
 use toml::Value;
 
 mod commands;

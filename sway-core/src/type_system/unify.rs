@@ -410,10 +410,10 @@ pub(super) fn unify_right(
         (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
         (r, e) => {
             let errors = vec![TypeError::MismatchedType {
-                expected: e.to_string(),
-                received: r.to_string(),
+                expected:  e.to_string(),
+                received:  r.to_string(),
                 help_text: help_text.to_string(),
-                span: span.clone(),
+                span:      span.clone(),
             }];
             (vec![], errors)
         }
@@ -480,7 +480,7 @@ fn unify_unsigned_ints(
     let warnings = match numeric_cast_compat(e, r, arguments_are_flipped) {
         NumericCastCompatResult::CastableWithWarning(warn) => {
             vec![CompileWarning {
-                span: span.clone(),
+                span:            span.clone(),
                 warning_content: warn,
             }]
         }
@@ -520,7 +520,7 @@ fn numeric_cast_compat(
         | (ThirtyTwo, SixtyFour) => {
             NumericCastCompatResult::CastableWithWarning(Warning::LossOfPrecision {
                 initial_type: old_size,
-                cast_to: new_size,
+                cast_to:      new_size,
             })
         }
         // Upcasting is ok, so everything else is ok.

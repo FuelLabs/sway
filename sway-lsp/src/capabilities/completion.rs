@@ -1,5 +1,7 @@
-use crate::core::token::{SymbolKind, TokenMap};
-use crate::utils::token::is_initial_declaration;
+use crate::{
+    core::token::{SymbolKind, TokenMap},
+    utils::token::is_initial_declaration,
+};
 use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind};
 
 pub fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {

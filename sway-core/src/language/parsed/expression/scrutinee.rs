@@ -16,7 +16,7 @@ pub enum Scrutinee {
     },
     Literal {
         value: Literal,
-        span: Span,
+        span:  Span,
     },
     Variable {
         name: Ident,
@@ -24,17 +24,17 @@ pub enum Scrutinee {
     },
     StructScrutinee {
         struct_name: Ident,
-        fields: Vec<StructScrutineeField>,
-        span: Span,
+        fields:      Vec<StructScrutineeField>,
+        span:        Span,
     },
     EnumScrutinee {
         call_path: CallPath,
-        value: Box<Scrutinee>,
-        span: Span,
+        value:     Box<Scrutinee>,
+        span:      Span,
     },
     Tuple {
         elems: Vec<Scrutinee>,
-        span: Span,
+        span:  Span,
     },
 }
 
@@ -45,9 +45,9 @@ pub enum StructScrutineeField {
         span: Span,
     },
     Field {
-        field: Ident,
+        field:     Ident,
         scrutinee: Option<Scrutinee>,
-        span: Span,
+        span:      Span,
     },
 }
 
@@ -126,7 +126,7 @@ impl Scrutinee {
                 ..
             } => {
                 let name = vec![TypeInfo::Custom {
-                    name: struct_name.clone(),
+                    name:           struct_name.clone(),
                     type_arguments: None,
                 }];
                 let fields = fields
@@ -146,7 +146,7 @@ impl Scrutinee {
             } => {
                 let enum_name = call_path.prefixes.last().unwrap_or(&call_path.suffix);
                 let name = vec![TypeInfo::Custom {
-                    name: enum_name.clone(),
+                    name:           enum_name.clone(),
                     type_arguments: None,
                 }];
                 let value = value.gather_approximate_typeinfo_dependencies();

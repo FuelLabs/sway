@@ -1,5 +1,7 @@
-use crate::core::token::{SymbolKind, Token, TokenMap};
-use crate::utils::common::get_range_from_span;
+use crate::{
+    core::token::{SymbolKind, Token, TokenMap},
+    utils::common::get_range_from_span,
+};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{self, Location, SymbolInformation, Url};
 
@@ -20,12 +22,12 @@ pub fn to_symbol_information(token_map: &TokenMap, url: Url) -> Vec<SymbolInform
 fn symbol_info(ident: &Ident, token: &Token, url: Url) -> SymbolInformation {
     let range = get_range_from_span(&ident.span());
     SymbolInformation {
-        name: ident.as_str().to_string(),
-        kind: symbol_kind(&token.kind),
-        location: Location::new(url, range),
-        tags: None,
+        name:           ident.as_str().to_string(),
+        kind:           symbol_kind(&token.kind),
+        location:       Location::new(url, range),
+        tags:           None,
         container_name: None,
-        deprecated: None,
+        deprecated:     None,
     }
 }
 

@@ -8,7 +8,7 @@ use super::{namespace::Namespace, PathBuf};
 /// `Namespace`'s `mod_path` to the parent module path so that type-checking of the parent may
 /// continue.
 pub struct SubmoduleNamespace<'a> {
-    pub(crate) namespace: &'a mut Namespace,
+    pub(crate) namespace:       &'a mut Namespace,
     pub(crate) parent_mod_path: PathBuf,
 }
 

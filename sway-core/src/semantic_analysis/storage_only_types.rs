@@ -1,5 +1,4 @@
-use sway_error::error::CompileError;
-use sway_error::warning::CompileWarning;
+use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::{Span, Spanned};
 
 use crate::{declaration_engine::declaration_engine::*, error::*, language::ty, type_system::*};
@@ -151,7 +150,7 @@ fn check_type(ty: TypeId, span: Span, ignore_self: bool) -> CompileResult<()> {
         }
         if is_type_info_storage_only(&ty) {
             errors.push(CompileError::InvalidStorageOnlyTypeDecl {
-                ty: ty.to_string(),
+                ty:   ty.to_string(),
                 span: span.clone(),
             });
         }

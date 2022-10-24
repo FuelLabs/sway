@@ -2,19 +2,19 @@ use crate::priv_prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct LitString {
-    pub span: Span,
+    pub span:   Span,
     pub parsed: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct LitChar {
-    pub span: Span,
+    pub span:   Span,
     pub parsed: char,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct LitInt {
-    pub span: Span,
+    pub span:   Span,
     pub parsed: BigUint,
     pub ty_opt: Option<(LitIntType, Span)>,
 }

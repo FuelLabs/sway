@@ -7,10 +7,10 @@ use sway_types::Span;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TyIntrinsicFunctionKind {
-    pub kind: Intrinsic,
-    pub arguments: Vec<TyExpression>,
+    pub kind:           Intrinsic,
+    pub arguments:      Vec<TyExpression>,
     pub type_arguments: Vec<TypeArgument>,
-    pub span: Span,
+    pub span:           Span,
 }
 
 impl CopyTypes for TyIntrinsicFunctionKind {

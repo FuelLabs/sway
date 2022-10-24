@@ -1,6 +1,5 @@
 use core::fmt;
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
 
@@ -8,7 +7,7 @@ use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
 // the warning_content will usually contain a duplicate of the span.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CompileWarning {
-    pub span: Span,
+    pub span:            Span,
     pub warning_content: Warning,
 }
 
@@ -56,15 +55,15 @@ pub enum Warning {
     },
     LossOfPrecision {
         initial_type: IntegerBits,
-        cast_to: IntegerBits,
+        cast_to:      IntegerBits,
     },
     UnusedReturnValue {
         r#type: String,
     },
     SimilarMethodFound {
-        lib: Ident,
+        lib:    Ident,
         module: Ident,
-        name: Ident,
+        name:   Ident,
     },
     ShadowsOtherSymbol {
         name: Ident,

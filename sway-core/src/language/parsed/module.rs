@@ -7,7 +7,7 @@ use sway_types::Ident;
 #[derive(Debug)]
 pub struct ParseModule {
     /// The content of this module in the form of a `ParseTree`.
-    pub tree: ParseTree,
+    pub tree:       ParseTree,
     /// Submodules introduced within this module using the `dep` syntax in order of declaration.
     pub submodules: Vec<(DepName, ParseSubmodule)>,
 }
@@ -19,5 +19,5 @@ pub struct ParseModule {
 pub struct ParseSubmodule {
     /// The name of a submodule, parsed from the `library` declaration within the module itself.
     pub library_name: Ident,
-    pub module: ParseModule,
+    pub module:       ParseModule,
 }

@@ -41,23 +41,23 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
         let call_path = CallPath {
-            prefixes: vec![
+            prefixes:    vec![
                 Ident::new_with_override("core", span.clone()),
                 Ident::new_with_override("ops", span.clone()),
             ],
-            suffix: Op {
+            suffix:      Op {
                 op_variant: OpVariant::Equals,
-                span: span.clone(),
+                span:       span.clone(),
             }
             .to_var_name(),
             is_absolute: true,
         };
         let method_name_binding = TypeBinding {
-            inner: MethodName::FromTrait {
+            inner:          MethodName::FromTrait {
                 call_path: call_path.clone(),
             },
             type_arguments: vec![],
-            span: call_path.span(),
+            span:           call_path.span(),
         };
         let arguments = VecDeque::from(arguments);
         let method = check!(
@@ -339,8 +339,8 @@ impl ty::TyExpression {
                 ty::TyExpression {
                     return_type: body.return_type,
                     expression: ty::TyExpressionVariant::VariableExpression {
-                        name: decl_name.clone(),
-                        span: name.span(),
+                        name:       decl_name.clone(),
+                        span:       name.span(),
                         mutability: *mutability,
                     },
                     span,
@@ -362,8 +362,8 @@ impl ty::TyExpression {
                     // Although this isn't strictly a 'variable' expression we can treat it as one for
                     // this context.
                     expression: ty::TyExpressionVariant::VariableExpression {
-                        name: decl_name,
-                        span: name.span(),
+                        name:       decl_name,
+                        span:       name.span(),
                         mutability: ty::VariableMutability::Immutable,
                     },
                     span,
@@ -384,7 +384,7 @@ impl ty::TyExpression {
             }
             Some(a) => {
                 errors.push(CompileError::NotAVariable {
-                    name: name.clone(),
+                    name:       name.clone(),
                     what_it_is: a.friendly_name(),
                 });
                 ty::TyExpression::error(name.span())
@@ -609,7 +609,7 @@ impl ty::TyExpression {
         for reachable_report in arms_reachability.into_iter() {
             if !reachable_report.reachable {
                 warnings.push(CompileWarning {
-                    span: reachable_report.span,
+                    span:            reachable_report.span,
                     warning_content: Warning::MatchExpressionUnreachableArm,
                 });
             }
@@ -687,9 +687,9 @@ impl ty::TyExpression {
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::AsmExpression {
                 whole_block_span: asm.whole_block_span,
-                body: asm.body,
-                registers: typed_registers,
-                returns: asm.returns,
+                body:             asm.body,
+                registers:        typed_registers,
+                returns:          asm.returns,
             },
             return_type,
             span,
@@ -723,11 +723,11 @@ impl ty::TyExpression {
                 return err(warnings, errors);
             }
             (_, true) => TypeInfo::Custom {
-                name: suffix,
+                name:           suffix,
                 type_arguments: None,
             },
             (_, false) => TypeInfo::Custom {
-                name: suffix,
+                name:           suffix,
                 type_arguments: Some(type_arguments),
             },
         };
@@ -772,16 +772,16 @@ impl ty::TyExpression {
                     Some(val) => val.clone(),
                     None => {
                         errors.push(CompileError::StructMissingField {
-                            field_name: def_field.name.clone(),
+                            field_name:  def_field.name.clone(),
                             struct_name: struct_name.clone(),
-                            span: span.clone(),
+                            span:        span.clone(),
                         });
                         typed_fields_buf.push(ty::TyStructExpressionField {
-                            name: def_field.name.clone(),
+                            name:  def_field.name.clone(),
                             value: ty::TyExpression {
-                                expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
+                                expression:  ty::TyExpressionVariant::Tuple { fields: vec![] },
                                 return_type: insert_type(TypeInfo::ErrorRecovery),
-                                span: span.clone(),
+                                span:        span.clone(),
                             },
                         });
                         continue;
@@ -814,7 +814,7 @@ impl ty::TyExpression {
             def_field.span = typed_field.span.clone();
             typed_fields_buf.push(ty::TyStructExpressionField {
                 value: typed_field,
-                name: expr_field.name.clone(),
+                name:  expr_field.name.clone(),
             });
         }
 
@@ -822,17 +822,17 @@ impl ty::TyExpression {
         for field in fields {
             if !struct_fields.iter().any(|x| x.name == field.name) {
                 errors.push(CompileError::StructDoesNotHaveField {
-                    field_name: field.name.clone(),
+                    field_name:  field.name.clone(),
                     struct_name: struct_name.clone(),
-                    span: field.span,
+                    span:        field.span,
                 });
             }
         }
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::StructExpression {
                 struct_name: struct_name.clone(),
-                fields: typed_fields_buf,
-                span: inner_span,
+                fields:      typed_fields_buf,
+                span:        inner_span,
             },
             return_type: type_id,
             span,
@@ -899,9 +899,9 @@ impl ty::TyExpression {
                 errors
             );
             typed_field_types.push(TypeArgument {
-                type_id: typed_field.return_type,
+                type_id:         typed_field.return_type,
                 initial_type_id: field_type.type_id,
-                span: typed_field.span.clone(),
+                span:            typed_field.span.clone(),
             });
             typed_fields.push(typed_field);
         }
@@ -1032,9 +1032,9 @@ impl ty::TyExpression {
             let variant_name = call_path_binding.inner.suffix.clone();
             let enum_call_path = call_path_binding.inner.rshift();
             let mut call_path_binding = TypeBinding {
-                inner: enum_call_path,
+                inner:          enum_call_path,
                 type_arguments: call_path_binding.type_arguments,
-                span: call_path_binding.span,
+                span:           call_path_binding.span,
             };
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
                 .flat_map(|unknown_decl| unknown_decl.expect_enum(&call_path_binding.span()))
@@ -1154,7 +1154,7 @@ impl ty::TyExpression {
                     TypeInfo::ContractCaller { abi_name, .. } => abi_name,
                     _ => {
                         errors.push(CompileError::NotAnAbi {
-                            span: abi_name.span(),
+                            span:        abi_name.span(),
                             actually_is: abi.friendly_name(),
                         });
                         return err(warnings, errors);
@@ -1181,7 +1181,7 @@ impl ty::TyExpression {
                             ty::TyExpression {
                                 return_type: insert_type(TypeInfo::ContractCaller {
                                     abi_name: AbiName::Deferred,
-                                    address: None,
+                                    address:  None,
                                 }),
                                 expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
                                 span,
@@ -1194,7 +1194,7 @@ impl ty::TyExpression {
             }
             a => {
                 errors.push(CompileError::NotAnAbi {
-                    span: abi_name.span(),
+                    span:        abi_name.span(),
                     actually_is: a.friendly_name(),
                 });
                 return err(warnings, errors);
@@ -1203,7 +1203,7 @@ impl ty::TyExpression {
 
         let return_type = insert_type(TypeInfo::ContractCaller {
             abi_name: AbiName::Known(abi_name.clone()),
-            address: Some(Box::new(address_expr.clone())),
+            address:  Some(Box::new(address_expr.clone())),
         });
 
         let mut trait_fns = vec![];
@@ -1359,7 +1359,7 @@ impl ty::TyExpression {
                 ty::TyExpression {
                     expression: ty::TyExpressionVariant::ArrayIndex {
                         prefix: Box::new(prefix_te),
-                        index: Box::new(index_te),
+                        index:  Box::new(index_te),
                     },
                     return_type: elem_type_id,
                     span,
@@ -1370,18 +1370,18 @@ impl ty::TyExpression {
         } else {
             // Otherwise convert into a method call 'index(self, index)' via the std::ops::Index trait.
             let method_name = TypeBinding {
-                inner: MethodName::FromTrait {
+                inner:          MethodName::FromTrait {
                     call_path: CallPath {
-                        prefixes: vec![
+                        prefixes:    vec![
                             Ident::new_with_override("core", span.clone()),
                             Ident::new_with_override("ops", span.clone()),
                         ],
-                        suffix: Ident::new_with_override("index", span.clone()),
+                        suffix:      Ident::new_with_override("index", span.clone()),
                         is_absolute: true,
                     },
                 },
                 type_arguments: vec![],
-                span: span.clone(),
+                span:           span.clone(),
             };
             type_check_method_application(ctx, method_name, vec![], vec![prefix, index], span)
         }
@@ -1445,7 +1445,7 @@ impl ty::TyExpression {
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::WhileLoop {
                 condition: Box::new(typed_condition),
-                body: typed_body,
+                body:      typed_body,
             },
             return_type: unit_ty,
             span,
