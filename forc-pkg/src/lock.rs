@@ -26,6 +26,7 @@ pub struct Diff<'a> {
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct PkgLock {
     pub(crate) name: String,
     // TODO: Cargo *always* includes version, whereas we don't even parse it when reading a
