@@ -146,16 +146,17 @@ impl<T> Vec<T> {
 
         let val_size = size_of::<T>();
         let buf_start = self.buf.ptr();
-        let mut ptr = buf_start.add(val_size * index);
 
-        // Read from `ptr`
+        // Read the value at `index`
+        let ptr = buf_start.add(index * val_size);
         let ret = ptr.read();
 
         // Shift everything down to fill in that spot.
-        let end = buf_start.add(val_size * self.len);
-        while ptr.addr() < end.addr() {
+        let mut i = index;
+        while i < self.len {
+            let ptr = buf_start.add(i * val_size);
             ptr.add(val_size).copy_to(ptr, val_size);
-            ptr += val_size;
+            i += 1;
         }
 
         // Decrease length.
@@ -181,10 +182,11 @@ impl<T> Vec<T> {
         let index_ptr = buf_start.add(index * val_size);
 
         // Shift everything over to make space.
-        let mut curr_ptr = buf_start.add(self.len * val_size);
-        while curr_ptr.addr() > index_ptr.addr() {
-            curr_ptr.sub(val_size).copy_to(curr_ptr, val_size);
-            curr_ptr = curr_ptr.sub(val_size);
+        let mut i = self.len;
+        while i > index {
+            let ptr = buf_start.add(i * val_size);
+            ptr.sub(val_size).copy_to(ptr, val_size);
+            i -= 1;
         }
 
         // Write `element` at pointer `index`
