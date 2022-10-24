@@ -171,6 +171,9 @@
 <li>
 <p><a href="#the-patch-section"><code>[patch]</code></a> - Defines the patches.</p>
 </li>
+<li>
+<p><a href="#the-contract-dependencies-section"><code>[contract-dependencies]</code></a> - Defines the contract dependencies.</p>
+</li>
 </ul>
 <h2 id="the-project-section"><a class="header" href="#the-project-section">The <code>[project]</code> section</a></h2>
 <p>An example <code>Forc.toml</code> is shown below. Under <code>[project]</code> the following fields are optional:</p>
@@ -277,6 +280,30 @@ foo = { git = &quot;https://github.com/foo/foo&quot;, branch = &quot;master&quot
 foo = { git = &quot;https://github.com/foo/foo&quot;, branch = &quot;test&quot; }
 </code></pre>
 <p>Note that each key after the <code>[patch]</code> is a URL of the source that is being patched.</p>
+<h2 id="the-contract-dependencies-section"><a class="header" href="#the-contract-dependencies-section">The <code>[contract-dependencies]</code> section</a></h2>
+<p>The <code>[contract-dependenices]</code> table can be used to declare contract dependencies for a Sway contract or script. Contract dependencies are the set of contracts that our contract or script may interact with. Declaring <code>[contract-dependencies]</code> makes it easier to refer to contracts in your Sway source code without having to manually update IDs each time a new version is deployed. Instead, we can use forc to pin and update contract dependencies just like we do for regular library dependencies.</p>
+<p>Contracts declared under <code>[contract-dependencies]</code> are built and pinned just like regular <code>[dependencies]</code> however rather than importing each contract dependency's entire public namespace we instead import their respective contract IDs as <code>CONTRACT_ID</code> constants available via each contract dependency's namespace root. This means you can use a contract dependency's ID as if it were declared as a <code>pub const</code> in the root of the contract dependency package as demonstrated in the example below.</p>
+<p>Entries under <code>[contract-dependencies]</code> can be declared in the same way that <code>[dependencies]</code> can be declared. That is, they can refer to the <code>path</code> or <code>git</code> source of another contract. Note that entries under <code>[contract-dependencies]</code> must refer to contracts and will otherwise produce an error.</p>
+<p>Example <code>Forc.toml</code>:</p>
+<pre><code class="language-toml">[project]
+authors = [&quot;user&quot;]
+entry = &quot;main.sw&quot;
+organization = &quot;Fuel_Labs&quot;
+license = &quot;Apache-2.0&quot;
+name = &quot;wallet_contract&quot;
+
+[contract-dependencies]
+foo = { path = &quot;../foo&quot; }
+</code></pre>
+<p>Example usage:</p>
+<pre><pre class="playground"><code class="language-rust edition2021">script;
+
+use foo::CONTRACT_ID as FOO_CONTRACT_ID;
+
+fn main() {
+  let x = FOO_CONTRACT_ID;
+}
+</code></pre></pre>
 
                     </main>
 
