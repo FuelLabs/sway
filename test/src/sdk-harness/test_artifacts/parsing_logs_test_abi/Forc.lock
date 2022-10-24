@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-A009C0B7DE63F9ED'
-dependencies = []
 
 [[package]]
 name = 'parsing_logs_test_abi'

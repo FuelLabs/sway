@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-31441D12B1FE5745'
-dependencies = []
 
 [[package]]
 name = 'exponentiation_test'

@@ -1,7 +1,6 @@
 [[package]]
 name = 'get_storage_key_abi'
 source = 'path+from-root-35549077EBF4FDB5'
-dependencies = []
 
 [[package]]
 name = 'get_storage_key_contract'

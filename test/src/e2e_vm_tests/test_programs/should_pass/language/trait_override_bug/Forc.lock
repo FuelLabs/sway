@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-19202DB015C3C015'
-dependencies = []
 
 [[package]]
 name = 'trait_override_bug'

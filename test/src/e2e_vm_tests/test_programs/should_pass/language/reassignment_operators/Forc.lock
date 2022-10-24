@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-D3718BE02F4F019A'
-dependencies = []
 
 [[package]]
 name = 'reassignment_operators'

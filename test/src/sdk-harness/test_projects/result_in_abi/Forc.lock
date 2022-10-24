@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-57810AA7D99333C2'
-dependencies = []
 
 [[package]]
 name = 'result_in_abi'
