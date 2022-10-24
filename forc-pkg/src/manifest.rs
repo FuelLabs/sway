@@ -549,16 +549,34 @@ impl WorkspaceManifestFile {
         Self::from_file(path)
     }
 
+    /// Return an iterator over the names of declared workspace members
     pub fn members(&self) -> impl Iterator<Item = &String> + '_ {
         self.members.iter()
     }
 
+    /// Return an iterator over the paths of declared workspace members
     pub fn member_paths(&self) -> Result<impl Iterator<Item = PathBuf> + '_> {
         let parent = self
             .path
             .parent()
             .ok_or_else(|| anyhow!("Cannot get parent dir of {:?}", self.path))?;
         Ok(self.members.iter().map(|member| parent.join(member)))
+    }
+
+    /// The path to the `Forc.toml` from which this manifest was loaded.
+    ///
+    /// This will always be a canonical path.
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    /// The path to the directory containing the `Forc.toml` from which this manfiest was loaded.
+    ///
+    /// This will always be a canonical path.
+    pub fn dir(&self) -> &Path {
+        self.path()
+            .parent()
+            .expect("failed to retrieve manifest directory")
     }
 }
 

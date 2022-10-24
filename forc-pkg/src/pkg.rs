@@ -2118,15 +2118,18 @@ fn build_workspace_with_options(
     manifest: &WorkspaceManifestFile,
     build_options: BuildOptions,
 ) -> Result<()> {
+    let workspace_dir = PathBuf::from(manifest.dir());
     // Find root member of the workspace and build it.
-    let workspace_root = find_root_workspace_member(manifest, build_options)?;
-    println!("workspace root is {workspace_root}");
+    let root_member = find_root_workspace_member(manifest, &build_options)?;
+    let root_member_path = workspace_dir.join(root_member);
+    let root_member_manifest = PackageManifestFile::from_dir(&root_member_path)?;
+    build_package_with_options(&root_member_manifest, build_options)?;
     Ok(())
 }
 
 fn find_root_workspace_member(
     manifest: &WorkspaceManifestFile,
-    build_options: BuildOptions,
+    build_options: &BuildOptions,
 ) -> Result<String> {
     let locked = build_options.locked;
     let offline = build_options.offline_mode;
