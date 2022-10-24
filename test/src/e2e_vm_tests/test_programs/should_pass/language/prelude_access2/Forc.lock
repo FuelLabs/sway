@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-B3B7F7F1BCA7D931'
-dependencies = []
 
 [[package]]
 name = 'prelude_access2'

@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-4947D78C815C1154'
-dependencies = []
 
 [[package]]
 name = 'evm'

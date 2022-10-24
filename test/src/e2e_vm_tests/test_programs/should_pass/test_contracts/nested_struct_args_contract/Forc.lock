@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-AC1F77B55CB45700'
-dependencies = []
 
 [[package]]
 name = 'nested_struct_args_abi'

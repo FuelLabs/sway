@@ -1,4 +1,4 @@
-use crate::pkg;
+use crate::{pkg, DepKind, Edge};
 use anyhow::{anyhow, Result};
 use forc_tracing::{println_green, println_red};
 use petgraph::{visit::EdgeRef, Direction};
@@ -26,6 +26,7 @@ pub struct Diff<'a> {
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct PkgLock {
     pub(crate) name: String,
     // TODO: Cargo *always* includes version, whereas we don't even parse it when reading a
@@ -34,7 +35,8 @@ pub struct PkgLock {
     version: Option<semver::Version>,
     // Short-hand string describing where this package is sourced from.
     source: String,
-    dependencies: Vec<PkgDepLine>,
+    dependencies: Option<Vec<PkgDepLine>>,
+    contract_dependencies: Option<Vec<PkgDepLine>>,
 }
 
 /// `PkgDepLine` is a terse, single-line, git-diff-friendly description of a package's
@@ -61,27 +63,58 @@ impl PkgLock {
             _ => None,
         };
         let source = pinned.source.to_string();
-        let mut dependencies: Vec<String> = graph
+        // Collection of all dependencies, so this includes both contract-dependencies and
+        // lib-dependencies
+        let all_dependencies: Vec<(String, DepKind)> = graph
             .edges_directed(node, Direction::Outgoing)
             .map(|edge| {
-                let dep_name = edge.weight();
+                let dep_edge = edge.weight();
                 let dep_node = edge.target();
                 let dep_pkg = &graph[dep_node];
-                let dep_name = if *dep_name != dep_pkg.name {
-                    Some(&dep_name[..])
+                let dep_name = if *dep_edge.name != dep_pkg.name {
+                    Some(&dep_edge.name[..])
                 } else {
                     None
                 };
+                let dep_kind = &dep_edge.kind;
                 let disambiguate = disambiguate.contains(&dep_pkg.name[..]);
-                pkg_dep_line(dep_name, &dep_pkg.name, &dep_pkg.source, disambiguate)
+                (
+                    pkg_dep_line(dep_name, &dep_pkg.name, &dep_pkg.source, disambiguate),
+                    dep_kind.clone(),
+                )
             })
             .collect();
+        let mut dependencies: Vec<String> = all_dependencies
+            .iter()
+            .filter(|(_, dep_kind)| *dep_kind == DepKind::Library)
+            .map(|(dep_pkg, _)| dep_pkg.clone())
+            .collect();
+        let mut contract_dependencies: Vec<String> = all_dependencies
+            .iter()
+            .filter(|(_, dep_kind)| *dep_kind == DepKind::Contract)
+            .map(|(dep_pkg, _)| dep_pkg.clone())
+            .collect();
         dependencies.sort();
+        contract_dependencies.sort();
+
+        let dependencies = if !dependencies.is_empty() {
+            Some(dependencies)
+        } else {
+            None
+        };
+
+        let contract_dependencies = if !contract_dependencies.is_empty() {
+            Some(contract_dependencies)
+        } else {
+            None
+        };
+
         Self {
             name,
             version,
             source,
             dependencies,
+            contract_dependencies,
         }
     }
 
@@ -151,7 +184,23 @@ impl Lock {
         for pkg in &self.package {
             let key = pkg.name_disambiguated(&disambiguate);
             let node = pkg_to_node[&key[..]];
-            for dep_line in &pkg.dependencies {
+            // If `pkg.contract_dependencies` is None, we will be collecting an empty list of
+            // contract_deps so that we will omit them during edge adding phase
+            let contract_deps = pkg
+                .contract_dependencies
+                .as_ref()
+                .into_iter()
+                .flatten()
+                .map(|contract_dep| (contract_dep, DepKind::Contract));
+            // If `pkg.dependencies` is None, we will be collecting an empty list of
+            // lib_deps so that we will omit them during edge adding phase
+            let lib_deps = pkg
+                .dependencies
+                .as_ref()
+                .into_iter()
+                .flatten()
+                .map(|lib_dep| (lib_dep, DepKind::Library));
+            for (dep_line, dep_kind) in lib_deps.chain(contract_deps) {
                 let (dep_name, dep_key) = parse_pkg_dep_line(dep_line)
                     .map_err(|e| anyhow!("failed to parse dependency \"{}\": {}", dep_line, e))?;
                 let dep_node = pkg_to_node
@@ -159,7 +208,8 @@ impl Lock {
                     .cloned()
                     .ok_or_else(|| anyhow!("found dep {} without node entry in graph", dep_key))?;
                 let dep_name = dep_name.unwrap_or(&graph[dep_node].name).to_string();
-                graph.update_edge(node, dep_node, dep_name);
+                let dep_edge = Edge::new(dep_name, dep_kind.to_owned());
+                graph.update_edge(node, dep_node, dep_edge);
             }
         }
 
@@ -212,12 +262,13 @@ fn pkg_dep_line(
     }
 }
 
+type ParsedPkgLine<'a> = (Option<&'a str>, &'a str);
 // Parse the given `PkgDepLine` into its dependency name and unique string segments.
 //
 // I.e. given "(<dep_name>) <name> <source>", returns ("<dep_name>", "<name> <source>").
 //
 // Note that <source> may not appear in the case it is not required for disambiguation.
-fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<(Option<&str>, &str)> {
+fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {
     let s = pkg_dep_line.trim();
 
     // Check for the open bracket.

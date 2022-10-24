@@ -63,10 +63,21 @@ impl Module {
         // we don't keep that around so we just use the span from the generated const decl instead.
         let mut compiled_constants: SymbolMap = Default::default();
         // this for loop performs a miniature compilation of each const item in the config
-        for (name, ConfigTimeConstant { r#type, value }) in constants.into_iter() {
+        for (
+            name,
+            ConfigTimeConstant {
+                r#type,
+                value,
+                public,
+            },
+        ) in constants.into_iter()
+        {
             // FIXME(Centril): Stop parsing. Construct AST directly instead!
             // parser config
-            let const_item = format!("const {name}: {type} = {value};");
+            let const_item = match public {
+                true => format!("pub const {name}: {type} = {value};"),
+                false => format!("const {name}: {type} = {value};"),
+            };
             let const_item_len = const_item.len();
             let input_arc = std::sync::Arc::from(const_item);
             let token_stream = lex(handler, &input_arc, 0, const_item_len, None).unwrap();
