@@ -296,14 +296,12 @@ name = &quot;wallet_contract&quot;
 foo = { path = &quot;../foo&quot; }
 </code></pre>
 <p>Example usage:</p>
-<pre><pre class="playground"><code class="language-rust edition2021">script;
-
-use foo::CONTRACT_ID as FOO_CONTRACT_ID;
+<pre><code class="language-sway">script;
 
 fn main() {
-  let x = FOO_CONTRACT_ID;
+  let foo_id = foo::CONTRACT_ID;
 }
-</code></pre></pre>
+</code></pre>
 
                     </main>
 

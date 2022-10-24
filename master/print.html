@@ -3305,14 +3305,12 @@ name = &quot;wallet_contract&quot;
 foo = { path = &quot;../foo&quot; }
 </code></pre>
 <p>Example usage:</p>
-<pre><pre class="playground"><code class="language-rust edition2021">script;
-
-use foo::CONTRACT_ID as FOO_CONTRACT_ID;
+<pre><code class="language-sway">script;
 
 fn main() {
-  let x = FOO_CONTRACT_ID;
+  let foo_id = foo::CONTRACT_ID;
 }
-</code></pre></pre>
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="dependencies-1"><a class="header" href="#dependencies-1">Dependencies</a></h1>
 <p>Forc has a dependency management system which can pull packages using git. This allows users to build and share Forc libraries.</p>
 <h2 id="adding-a-dependency"><a class="header" href="#adding-a-dependency">Adding a dependency</a></h2>
