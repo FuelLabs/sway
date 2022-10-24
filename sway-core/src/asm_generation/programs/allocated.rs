@@ -3,7 +3,7 @@ use super::{AllocatedProgram, FinalProgram};
 use crate::asm_generation::{AllocatedAbstractInstructionSet, InstructionSet};
 
 impl AllocatedProgram {
-    pub(crate) fn into_final_program(self) -> FinalProgram {
+    pub(crate) fn into_final_program(mut self) -> Result<FinalProgram, crate::CompileError> {
         // Concat the prologue and all the functions together.
         let abstract_ops = AllocatedAbstractInstructionSet {
             ops: std::iter::once(self.prologue.ops)
@@ -12,16 +12,16 @@ impl AllocatedProgram {
                 .collect(),
         };
 
-        let realized_ops = abstract_ops.realize_labels(&self.data_section);
+        let realized_ops = abstract_ops.realize_labels(&mut self.data_section)?;
         let ops = InstructionSet {
             ops: realized_ops.pad_to_even(),
         };
 
-        FinalProgram {
+        Ok(FinalProgram {
             kind: self.kind,
             data_section: self.data_section,
             ops,
-        }
+        })
     }
 }
 

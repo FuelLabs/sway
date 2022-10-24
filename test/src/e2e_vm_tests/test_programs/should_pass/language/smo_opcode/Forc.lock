@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-36670D30B34137BE'
-dependencies = []
 
 [[package]]
 name = 'smo_opcode'

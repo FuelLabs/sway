@@ -1,4 +1,3 @@
 [[package]]
 name = 'name_shadowing'
 source = 'root'
-dependencies = []

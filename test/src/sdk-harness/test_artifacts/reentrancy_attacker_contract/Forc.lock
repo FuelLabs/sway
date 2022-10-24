@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-6EFBB843E0F64456'
-dependencies = []
 
 [[package]]
 name = 'reentrancy_attacker_abi'

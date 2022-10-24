@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-EE30911CC58544F9'
-dependencies = []
 
 [[package]]
 name = 'funcs_with_generic_types'
