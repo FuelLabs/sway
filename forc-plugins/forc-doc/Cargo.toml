@@ -12,6 +12,7 @@ description = "Build the documentation for the local package and all dependencie
 anyhow = "1.0.65"
 clap = { version = "4.0.18", features = ["derive"] }
 forc-pkg = { version = "0.27.0", path = "../../forc-pkg" }
+forc-util = { version = "0.27.0", path = "../../forc-util"}
 horrorshow = "0.8.4"
 opener = "0.5.0"
 sway-core = { version = "0.27.0", path = "../../sway-core" }

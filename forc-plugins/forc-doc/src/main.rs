@@ -16,6 +16,7 @@ use crate::{
     render::{RenderedDocument, RenderedDocumentation},
 };
 use forc_pkg::{self as pkg, PackageManifestFile};
+use forc_util::default_output_directory;
 
 /// Main method for `forc doc`.
 pub fn main() -> Result<()> {
@@ -38,7 +39,7 @@ pub fn main() -> Result<()> {
 
     // check if the out path exists
     let project_name = &manifest.project.name;
-    let out_path = PathBuf::from(&manifest.dir()).join("out");
+    let out_path = default_output_directory(manifest.dir());
     let doc_path = out_path.join("doc");
     fs::create_dir_all(&doc_path)?;
 
