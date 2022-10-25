@@ -36,6 +36,12 @@ impl ty::TyImplTrait {
         // type check the type parameters which also inserts them into the namespace
         let mut new_impl_type_parameters = vec![];
         for type_parameter in impl_type_parameters.into_iter() {
+            if !type_parameter.trait_constraints.is_empty() {
+                errors.push(CompileError::WhereClauseNotYetSupported {
+                    span: type_parameter.trait_constraints_span,
+                });
+                return err(warnings, errors);
+            }
             new_impl_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
@@ -419,6 +425,12 @@ impl ty::TyImplTrait {
         // type check the type parameters which also inserts them into the namespace
         let mut new_impl_type_parameters = vec![];
         for type_parameter in impl_type_parameters.into_iter() {
+            if !type_parameter.trait_constraints.is_empty() {
+                errors.push(CompileError::WhereClauseNotYetSupported {
+                    span: type_parameter.trait_constraints_span,
+                });
+                return err(warnings, errors);
+            }
             new_impl_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),

@@ -1,7 +1,7 @@
 category = "fail"
 
 # check: $()trait MyAdd<A> where A: Add {
-# nextln: $()"where" clauses are not yet supported
+# nextln:$()"where" clauses are not yet supported
 
 # check: $()impl<A> MyAdd<A> for u64 where A: Add {
-# nextln: $()"where" clauses are not yet supported
+# nextln:$()"where" clauses are not yet supported

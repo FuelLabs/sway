@@ -1,0 +1,16 @@
+category = "fail"
+
+# check: $()struct MyPoint<T> where T: Getter<T> {
+# nextln:$()"where" clauses are not yet supported
+
+# check: $()impl<T> Getter<T> for MyPoint<T> {
+# nextln:$()Unimplemented feature: Generic traits are not yet implemented.
+
+# check: $()let foo = MyPoint {
+# nextln:$()Could not find symbol "MyPoint" in this scope.
+
+# check:$()let foo = MyPoint {
+# nextln:$()Unknown type name "MyPoint".
+
+# check:$()let foo = MyPoint {
+# nextln:$()Unknown type name "MyPoint".
