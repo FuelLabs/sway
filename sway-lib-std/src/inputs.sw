@@ -2,13 +2,7 @@
 //! This includes InputCoins, InputMessages and InputContracts.
 library inputs;
 
-use ::address::Address;
-use ::assert::assert;
 use ::constants::BASE_ASSET_ID;
-use ::contract_id::ContractId;
-use ::mem::read;
-use ::option::Option;
-use ::revert::revert;
 use ::tx::{
     GTF_CREATE_INPUT_AT_INDEX,
     GTF_CREATE_INPUTS_COUNT,
@@ -138,11 +132,11 @@ pub fn input_owner(index: u64) -> Option<Address> {
 /// If the input's type is `InputCoin` or `InputMessage`,
 /// return the data as an Option::Some(ptr).
 /// Otherwise, returns Option::None.
-pub fn input_predicate_data_pointer(index: u64) -> Option<u64> {
+pub fn input_predicate_data_pointer(index: u64) -> Option<raw_ptr> {
     let type = input_type(index);
     match type {
-        Input::Coin => Option::Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_DATA)),
-        Input::Message => Option::Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA)),
+        Input::Coin => Option::Some(__gtf::<raw_ptr>(index, GTF_INPUT_COIN_PREDICATE_DATA)),
+        Input::Message => Option::Some(__gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA)),
         Input::Contract => Option::None,
     }
 }
@@ -153,7 +147,7 @@ pub fn input_predicate_data_pointer(index: u64) -> Option<u64> {
 pub fn input_predicate_data<T>(index: u64) -> T {
     let data = input_predicate_data_pointer(index);
     match data {
-        Option::Some(d) => read::<T>(d),
+        Option::Some(d) => d.read::<T>(),
         Option::None => revert(0),
     }
 }

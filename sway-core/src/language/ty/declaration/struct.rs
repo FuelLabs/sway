@@ -38,6 +38,17 @@ impl CopyTypes for TyStructDeclaration {
     }
 }
 
+impl ReplaceSelfType for TyStructDeclaration {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.fields
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+        self.type_parameters
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+    }
+}
+
 impl CreateTypeId for TyStructDeclaration {
     fn create_type_id(&self) -> TypeId {
         insert_type(TypeInfo::Struct {

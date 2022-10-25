@@ -129,7 +129,7 @@ impl TxContractTest for Contract {
         tx_receipts_root()
     }
     fn get_tx_script_start_pointer() -> u64 {
-        tx_script_start_pointer()
+        tx_script_start_pointer().addr()
     }
     fn get_tx_script_data_start_pointer() -> u64 {
         tx_script_data_start_pointer()

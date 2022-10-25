@@ -194,7 +194,7 @@ fn type_check_struct(
 }
 
 fn type_check_enum(
-    ctx: TypeCheckContext,
+    mut ctx: TypeCheckContext,
     call_path: CallPath<Ident>,
     value: Scrutinee,
     span: Span,

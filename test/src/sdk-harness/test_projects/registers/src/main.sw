@@ -25,23 +25,23 @@ impl Registers for Contract {
     }
 
     fn get_program_counter() -> u64 {
-        program_counter()
+        program_counter().addr()
     }
 
     fn get_stack_start_ptr() -> u64 {
-        stack_start_ptr()
+        stack_start_ptr().addr()
     }
 
     fn get_stack_ptr() -> u64 {
-        stack_ptr()
+        stack_ptr().addr()
     }
 
     fn get_frame_ptr() -> u64 {
-        frame_ptr()
+        frame_ptr().addr()
     }
 
     fn get_heap_ptr() -> u64 {
-        heap_ptr()
+        heap_ptr().addr()
     }
 
     fn get_error() -> u64 {
@@ -61,7 +61,7 @@ impl Registers for Contract {
     }
 
     fn get_instrs_start() -> u64 {
-        instrs_start()
+        instrs_start().addr()
     }
 
     fn get_return_value() -> u64 {

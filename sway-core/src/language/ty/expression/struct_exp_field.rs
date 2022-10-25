@@ -13,3 +13,9 @@ impl CopyTypes for TyStructExpressionField {
         self.value.copy_types(type_mapping);
     }
 }
+
+impl ReplaceSelfType for TyStructExpressionField {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.value.replace_self_type(self_type);
+    }
+}
