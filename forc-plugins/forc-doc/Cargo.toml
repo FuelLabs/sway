@@ -1,9 +1,12 @@
 [package]
 name = "forc-doc"
 version = "0.1.0"
+authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "Build the documentation for the local package and all dependencies. The output is placed in `out/doc` in the same format as the project."
 
 [dependencies]
 anyhow = "1.0.65"
