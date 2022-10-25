@@ -13,7 +13,7 @@ use sway_types::{Ident, Spanned};
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
     ctx: TypeCheckContext,
-    enum_decl: TyEnumDeclaration,
+    enum_decl: ty::TyEnumDeclaration,
     enum_name: Ident,
     enum_variant_name: Ident,
     args: Vec<Expression>,
@@ -45,7 +45,6 @@ pub(crate) fn instantiate_enum(
                     enum_instantiation_span: enum_name.span(),
                     variant_instantiation_span: enum_variant_name.span(),
                 },
-                is_constant: IsConstant::No,
                 span: enum_variant_name.span(),
             },
             warnings,
@@ -54,10 +53,20 @@ pub(crate) fn instantiate_enum(
         ([single_expr], _) => {
             let ctx = ctx
                 .with_help_text("Enum instantiator must match its declared variant type.")
-                .with_type_annotation(enum_variant.type_id);
+                .with_type_annotation(insert_type(TypeInfo::Unknown));
             let typed_expr = check!(
                 ty::TyExpression::type_check(ctx, single_expr.clone()),
                 return err(warnings, errors),
+                warnings,
+                errors
+            );
+            append!(
+                unify_adt(
+                    typed_expr.return_type,
+                    enum_variant.type_id,
+                    &typed_expr.span,
+                    "Enum instantiator must match its declared variant type."
+                ),
                 warnings,
                 errors
             );
@@ -76,7 +85,6 @@ pub(crate) fn instantiate_enum(
                         enum_instantiation_span: enum_name.span(),
                         variant_instantiation_span: enum_variant_name.span(),
                     },
-                    is_constant: IsConstant::No,
                     span: enum_variant_name.span(),
                 },
                 warnings,

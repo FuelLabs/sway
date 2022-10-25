@@ -151,9 +151,10 @@ pub enum CompileError {
     #[error(
         "Expected: {expected} \n\
          found:    {given}. The definition of this function must \
-         match the one in the trait declaration."
+         match the one in the {interface_name} declaration."
     )]
-    MismatchedTypeInTrait {
+    MismatchedTypeInInterfaceSurface {
+        interface_name: InterfaceName,
         span: Span,
         given: String,
         expected: String,
@@ -271,6 +272,8 @@ pub enum CompileError {
     DeclIsNotATraitFn { actually: String, span: Span },
     #[error("This is a {actually}, not storage.")]
     DeclIsNotStorage { actually: String, span: Span },
+    #[error("This is a {actually}, not a constant")]
+    DeclIsNotAConstant { actually: String, span: Span },
     #[error(
         "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
          {available_fields}"
@@ -653,6 +656,8 @@ pub enum CompileError {
     ConfigTimeConstantNotALiteral { span: Span },
     #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident },
+    #[error("returning a `raw_ptr` from `main()` is not allowed")]
+    PointerReturnNotAllowedInMain { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -694,7 +699,7 @@ impl Spanned for CompileError {
             AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
             MultipleImmediates(span) => span.clone(),
-            MismatchedTypeInTrait { span, .. } => span.clone(),
+            MismatchedTypeInInterfaceSurface { span, .. } => span.clone(),
             NotATrait { span, .. } => span.clone(),
             UnknownTrait { span, .. } => span.clone(),
             FunctionNotAPartOfInterfaceSurface { span, .. } => span.clone(),
@@ -790,6 +795,7 @@ impl Spanned for CompileError {
             DeclIsNotAnImplTrait { span, .. } => span.clone(),
             DeclIsNotATraitFn { span, .. } => span.clone(),
             DeclIsNotStorage { span, .. } => span.clone(),
+            DeclIsNotAConstant { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             ImpureInPureContext { span, .. } => span.clone(),
             ParameterMutabilityMismatch { span, .. } => span.clone(),
@@ -828,6 +834,7 @@ impl Spanned for CompileError {
             ConfigTimeConstantNotAConstDecl { span } => span.clone(),
             ConfigTimeConstantNotALiteral { span } => span.clone(),
             RefMutableNotAllowedInMain { param_name } => param_name.span(),
+            PointerReturnNotAllowedInMain { span } => span.clone(),
         }
     }
 }

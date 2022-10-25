@@ -1,4 +1,3 @@
 [[package]]
 name = 'ref_variables'
 source = 'root'
-dependencies = []

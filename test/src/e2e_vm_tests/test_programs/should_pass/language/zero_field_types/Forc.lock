@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-086E35205BD410DF'
-dependencies = []
 
 [[package]]
 name = 'zero_field_types'

@@ -1,9 +1,6 @@
 contract;
 
-use std::{
-    context::balance_of,
-    token::*,
-};
+use std::{context::balance_of, message::send_message, token::*};
 
 abi TestFuelCoin {
     fn mint_coins(mint_amount: u64);
@@ -15,6 +12,8 @@ abi TestFuelCoin {
     fn mint_and_send_to_address(amount: u64, to: Address);
     fn generic_mint_to(amount: u64, to: Identity);
     fn generic_transfer(amount: u64, asset_id: ContractId, to: Identity);
+    fn send_message_without_data(recipient: b256, coins: u64);
+    fn send_message_with_data(recipient: b256, coins: u64);
 }
 
 impl TestFuelCoin for Contract {
@@ -52,5 +51,18 @@ impl TestFuelCoin for Contract {
 
     fn generic_transfer(amount: u64, asset_id: ContractId, to: Identity) {
         transfer(amount, asset_id, to)
+    }
+
+    fn send_message_without_data(recipient: b256, coins: u64) {
+        let vec: Vec<u64> = ~Vec::new();
+        send_message(recipient, vec, coins);
+    }
+
+    fn send_message_with_data(recipient: b256, coins: u64) {
+        let mut vec: Vec<u64> = ~Vec::new();
+        vec.push(100);
+        vec.push(75);
+        vec.push(50);
+        send_message(recipient, vec, coins);
     }
 }

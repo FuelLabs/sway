@@ -1,51 +1,16 @@
-use derivative::Derivative;
 use sway_error::error::CompileError;
-use sway_types::{Ident, Span};
 
 use crate::{
-    error::{err, ok},
-    language::parsed::*,
-    semantic_analysis::{
-        ast_node::{type_check_interface_surface, type_check_trait_methods},
-        TypeCheckContext,
-    },
-    type_system::{insert_type, AbiName, TypeId},
-    CompileResult, TypeInfo,
+    declaration_engine::de_get_trait_fn,
+    error::*,
+    language::{parsed::*, ty},
+    semantic_analysis::{ast_node::type_check_interface_surface, TypeCheckContext},
+    CompileResult,
 };
 
-use super::{CreateTypeId, TyTraitFn};
-
-/// A [TyAbiDeclaration] contains the type-checked version of the parse tree's `AbiDeclaration`.
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
-pub struct TyAbiDeclaration {
-    /// The name of the abi trait (also known as a "contract trait")
-    pub name: Ident,
-    /// The methods a contract is required to implement in order opt in to this interface
-    pub interface_surface: Vec<TyTraitFn>,
-    /// The methods provided to a contract "for free" upon opting in to this interface
-    // NOTE: It may be important in the future to include this component
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub(crate) methods: Vec<FunctionDeclaration>,
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub(crate) span: Span,
-}
-
-impl CreateTypeId for TyAbiDeclaration {
-    fn create_type_id(&self) -> TypeId {
-        let ty = TypeInfo::ContractCaller {
-            abi_name: AbiName::Known(self.name.clone().into()),
-            address: None,
-        };
-        insert_type(ty)
-    }
-}
-
-impl TyAbiDeclaration {
+impl ty::TyAbiDeclaration {
     pub(crate) fn type_check(
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         abi_decl: AbiDeclaration,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
@@ -56,6 +21,7 @@ impl TyAbiDeclaration {
             interface_surface,
             methods,
             span,
+            attributes,
         } = abi_decl;
 
         // type check the interface surface and methods
@@ -64,29 +30,36 @@ impl TyAbiDeclaration {
         // so we don't support the case of calling a contract's own interface
         // from itself. This is by design.
         let interface_surface = check!(
-            type_check_interface_surface(interface_surface, ctx.namespace),
+            type_check_interface_surface(ctx.by_ref(), interface_surface),
             return err(warnings, errors),
             warnings,
             errors
         );
-        for typed_fn in &interface_surface {
-            for param in &typed_fn.parameters {
-                if param.is_reference && param.is_mutable {
-                    errors.push(CompileError::RefMutableNotAllowedInContractAbi {
-                        param_name: param.name.clone(),
-                    })
+        for typed_fn_decl_id in &interface_surface {
+            match de_get_trait_fn(typed_fn_decl_id.clone(), &span) {
+                Ok(typed_fn) => {
+                    for param in &typed_fn.parameters {
+                        if param.is_reference && param.is_mutable {
+                            errors.push(CompileError::RefMutableNotAllowedInContractAbi {
+                                param_name: param.name.clone(),
+                            })
+                        }
+                    }
                 }
+                Err(err) => errors.push(err),
             }
         }
 
         // type check these for errors but don't actually use them yet -- the real
         // ones will be type checked with proper symbols when the ABI is implemented
-        let _methods = check!(
-            type_check_trait_methods(ctx, methods.clone()),
-            vec![],
-            warnings,
-            errors
-        );
+        let _methods = methods.iter().map(|method| {
+            check!(
+                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true),
+                ty::TyFunctionDeclaration::error(method.clone()),
+                warnings,
+                errors
+            )
+        });
         for typed_fn in &methods {
             for param in &typed_fn.parameters {
                 if param.is_reference && param.is_mutable {
@@ -97,11 +70,12 @@ impl TyAbiDeclaration {
             }
         }
 
-        let abi_decl = TyAbiDeclaration {
+        let abi_decl = ty::TyAbiDeclaration {
             interface_surface,
             methods,
             name,
             span,
+            attributes,
         };
         ok(abi_decl, warnings, errors)
     }

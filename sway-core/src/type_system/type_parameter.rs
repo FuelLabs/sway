@@ -1,4 +1,4 @@
-use crate::{error::*, semantic_analysis::*, type_system::*};
+use crate::{error::*, language::ty, semantic_analysis::*, type_system::*};
 
 use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span::Span, JsonTypeDeclaration, Spanned};
@@ -8,7 +8,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Clone, Debug, Eq)]
 pub struct TypeParameter {
     pub type_id: TypeId,
     pub(crate) initial_type_id: TypeId,
@@ -39,7 +39,7 @@ impl PartialEq for TypeParameter {
 }
 
 impl CopyTypes for TypeParameter {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.type_id.copy_types(type_mapping);
     }
 }
@@ -79,7 +79,7 @@ impl TypeParameter {
         let type_id = insert_type(TypeInfo::UnknownGeneric {
             name: type_parameter.name_ident.clone(),
         });
-        let type_parameter_decl = TyDeclaration::GenericTypeForFunctionScope {
+        let type_parameter_decl = ty::TyDeclaration::GenericTypeForFunctionScope {
             name: type_parameter.name_ident.clone(),
             type_id,
         };

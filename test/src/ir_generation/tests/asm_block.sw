@@ -24,3 +24,18 @@ fn main() -> u64 {
 
 // check: $(gg=$VAL) = asm() -> u64 ggas
 // check: ret u64 $gg
+
+// ::check-asm::
+
+// regex: REG=\$r\d+
+
+// Call get_global_gas() and then return the result of the bhei instruction.
+// check: movi $$$$reta
+// check: ji
+// check: bhei $(ret_val=$REG)
+// check: ret  $ret_val
+
+// The get_global_gas() function:
+// check: move $(ggas_val=$REG) $$ggas
+// check: move $$$$retv $ggas_val
+// check: jmp $$$$reta

@@ -321,7 +321,8 @@ impl Block {
     /// For every instruction within the block, any reference to `old_val` is replaced with
     /// `new_val`.
     pub fn replace_values(&self, context: &mut Context, replace_map: &FxHashMap<Value, Value>) {
-        for ins in context.blocks[self.0].instructions.clone() {
+        for ins_idx in 0..context.blocks[self.0].instructions.len() {
+            let ins = context.blocks[self.0].instructions[ins_idx];
             ins.replace_instruction_values(context, replace_map);
         }
     }

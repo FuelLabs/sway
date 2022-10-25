@@ -3,13 +3,19 @@ use std::{
     fmt,
     hash::{Hash, Hasher},
 };
-use sway_types::Span;
+use sway_types::{Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct TypeArgument {
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
     pub span: Span,
+}
+
+impl Spanned for TypeArgument {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -60,7 +66,7 @@ impl ReplaceSelfType for TypeArgument {
 }
 
 impl CopyTypes for TypeArgument {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.type_id.copy_types(type_mapping);
     }
 }

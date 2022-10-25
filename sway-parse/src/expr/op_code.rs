@@ -45,6 +45,7 @@ define_op_codes!(
     (Mul, MulOpcode, "mul", (ret, lhs, rhs)),
     (Muli, MuliOpcode, "muli", (ret, lhs, rhs)),
     (Noop, NoopOpcode, "noop", ()),
+    (Blob, BlobOpcode, "blob", (size)),
     (Not, NotOpcode, "not", (ret, arg)),
     (Or, OrOpcode, "or", (ret, lhs, rhs)),
     (Ori, OriOpcode, "ori", (ret, lhs, rhs)),

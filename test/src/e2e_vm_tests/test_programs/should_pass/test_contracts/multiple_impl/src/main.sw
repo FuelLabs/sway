@@ -12,8 +12,7 @@ fn foo() {
     testlib::foo();
 }
 
-fn bar() {
-}
+fn bar() {}
 
 impl TestContr for Contract {
     fn foo() {
@@ -22,5 +21,4 @@ impl TestContr for Contract {
     }
 }
 
-fn main() {
-}
+fn main() {}

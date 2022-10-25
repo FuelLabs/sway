@@ -1,9 +1,9 @@
 use crate::{
     declaration_engine::declaration_engine::de_get_constant,
-    language::Visibility,
+    language::{ty, Visibility},
     metadata::MetadataManager,
-    semantic_analysis::{ast_node::*, namespace},
-    type_system::look_up_type_id,
+    semantic_analysis::namespace,
+    type_system::{look_up_type_id, LogId, TypeId},
 };
 
 use super::{
@@ -16,27 +16,37 @@ use sway_error::error::CompileError;
 use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::{span::Span, Spanned};
 
+use std::collections::HashMap;
+
 pub(super) fn compile_script(
     context: &mut Context,
-    main_function: TyFunctionDeclaration,
+    main_function: ty::TyFunctionDeclaration,
     namespace: &namespace::Module,
-    declarations: Vec<TyDeclaration>,
+    declarations: Vec<ty::TyDeclaration>,
+    logged_types_map: &HashMap<TypeId, LogId>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(context, &mut md_mgr, module, namespace)?;
     compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
-    compile_function(context, &mut md_mgr, module, main_function)?;
+    compile_function(
+        context,
+        &mut md_mgr,
+        module,
+        main_function,
+        logged_types_map,
+    )?;
 
     Ok(module)
 }
 
 pub(super) fn compile_contract(
     context: &mut Context,
-    abi_entries: Vec<TyFunctionDeclaration>,
+    abi_entries: Vec<ty::TyFunctionDeclaration>,
     namespace: &namespace::Module,
-    declarations: Vec<TyDeclaration>,
+    declarations: Vec<ty::TyDeclaration>,
+    logged_types_map: &HashMap<TypeId, LogId>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
@@ -44,7 +54,7 @@ pub(super) fn compile_contract(
     compile_constants(context, &mut md_mgr, module, namespace)?;
     compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
     for decl in abi_entries {
-        compile_abi_method(context, &mut md_mgr, module, decl)?;
+        compile_abi_method(context, &mut md_mgr, module, decl, logged_types_map)?;
     }
 
     Ok(module)
@@ -90,11 +100,11 @@ fn compile_declarations(
     md_mgr: &mut MetadataManager,
     module: Module,
     namespace: &namespace::Module,
-    declarations: Vec<TyDeclaration>,
+    declarations: Vec<ty::TyDeclaration>,
 ) -> Result<(), CompileError> {
     for declaration in declarations {
         match declaration {
-            TyDeclaration::ConstantDeclaration(ref decl_id) => {
+            ty::TyDeclaration::ConstantDeclaration(ref decl_id) => {
                 let decl = de_get_constant(decl_id.clone(), &declaration.span())?;
                 compile_const_decl(
                     &mut LookupEnv {
@@ -108,14 +118,14 @@ fn compile_declarations(
                 )?;
             }
 
-            TyDeclaration::FunctionDeclaration(_decl) => {
+            ty::TyDeclaration::FunctionDeclaration(_decl) => {
                 // We no longer compile functions other than `main()` until we can improve the name
                 // resolution.  Currently there isn't enough information in the AST to fully
                 // distinguish similarly named functions and especially trait methods.
                 //
                 //compile_function(context, module, decl).map(|_| ())?
             }
-            TyDeclaration::ImplTrait(_) => {
+            ty::TyDeclaration::ImplTrait(_) => {
                 // And for the same reason we don't need to compile impls at all.
                 //
                 // compile_impl(
@@ -126,14 +136,14 @@ fn compile_declarations(
                 //)?,
             }
 
-            TyDeclaration::StructDeclaration(_)
-            | TyDeclaration::EnumDeclaration(_)
-            | TyDeclaration::TraitDeclaration(_)
-            | TyDeclaration::VariableDeclaration(_)
-            | TyDeclaration::AbiDeclaration(_)
-            | TyDeclaration::GenericTypeForFunctionScope { .. }
-            | TyDeclaration::StorageDeclaration(_)
-            | TyDeclaration::ErrorRecovery => (),
+            ty::TyDeclaration::StructDeclaration(_)
+            | ty::TyDeclaration::EnumDeclaration(_)
+            | ty::TyDeclaration::TraitDeclaration(_)
+            | ty::TyDeclaration::VariableDeclaration(_)
+            | ty::TyDeclaration::AbiDeclaration(_)
+            | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
+            | ty::TyDeclaration::StorageDeclaration(_)
+            | ty::TyDeclaration::ErrorRecovery => (),
         }
     }
     Ok(())
@@ -143,7 +153,8 @@ pub(super) fn compile_function(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: TyFunctionDeclaration,
+    ast_fn_decl: ty::TyFunctionDeclaration,
+    logged_types_map: &HashMap<TypeId, LogId>,
 ) -> Result<Option<Function>, CompileError> {
     // Currently monomorphisation of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
@@ -156,13 +167,22 @@ pub(super) fn compile_function(
             .map(|param| convert_fn_param(context, param))
             .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
-        compile_fn_with_args(context, md_mgr, module, ast_fn_decl, args, None).map(&Some)
+        compile_fn_with_args(
+            context,
+            md_mgr,
+            module,
+            ast_fn_decl,
+            args,
+            None,
+            logged_types_map,
+        )
+        .map(&Some)
     }
 }
 
 fn convert_fn_param(
     context: &mut Context,
-    param: &TyFunctionParameter,
+    param: &ty::TyFunctionParameter,
 ) -> Result<(String, Type, Span), CompileError> {
     convert_resolved_typeid(context, &param.type_id, &param.type_span).map(|ty| {
         (
@@ -181,11 +201,12 @@ fn compile_fn_with_args(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: TyFunctionDeclaration,
+    ast_fn_decl: ty::TyFunctionDeclaration,
     args: Vec<(String, Type, Span)>,
     selector: Option<[u8; 4]>,
+    logged_types_map: &HashMap<TypeId, LogId>,
 ) -> Result<Function, CompileError> {
-    let TyFunctionDeclaration {
+    let ty::TyFunctionDeclaration {
         name,
         body,
         return_type,
@@ -196,14 +217,30 @@ fn compile_fn_with_args(
         ..
     } = ast_fn_decl;
 
-    let args = args
+    let mut args = args
         .into_iter()
         .map(|(name, ty, span)| (name, ty, md_mgr.span_to_md(context, &span)))
-        .collect();
+        .collect::<Vec<_>>();
+
     let ret_type = convert_resolved_typeid(context, &return_type, &return_type_span)?;
+
+    let is_entry = selector.is_some()
+        || (matches!(module.get_kind(context), Kind::Script | Kind::Predicate)
+            && name.as_str() == "main");
+    let returns_by_ref = !is_entry && !ret_type.is_copy_type();
+    if returns_by_ref {
+        // Instead of 'returning' a by-ref value we make the last argument an 'out' parameter.
+        args.push((
+            "__ret_value".to_owned(),
+            Type::Pointer(Pointer::new(context, ret_type, true, None)),
+            md_mgr.span_to_md(context, &return_type_span),
+        ));
+    }
+
     let span_md_idx = md_mgr.span_to_md(context, &span);
     let storage_md_idx = md_mgr.purity_to_md(context, purity);
     let metadata = md_combine(context, &span_md_idx, &storage_md_idx);
+
     let func = Function::new(
         context,
         module,
@@ -215,24 +252,15 @@ fn compile_fn_with_args(
         metadata,
     );
 
-    // We clone the struct symbols here, as they contain the globals; any new local declarations
-    // may remain within the function scope.
-    let mut compiler = FnCompiler::new(context, module, func);
-
+    let mut compiler = FnCompiler::new(context, module, func, returns_by_ref, logged_types_map);
     let mut ret_val = compiler.compile_code_block(context, md_mgr, body)?;
 
     // Special case: if the return type is unit but the return value type is not, then we have an
     // implicit return from the last expression in the code block having a semi-colon.  This isn't
     // codified in the AST explicitly so we need to make a unit to return here.
     if ret_type.eq(context, &Type::Unit) && !matches!(ret_val.get_type(context), Some(Type::Unit)) {
-        // NOTE: We're replacing the ret_val and throwing away whatever it used to be, as it is
-        // never actually used anyway.
         ret_val = Constant::get_unit(context);
     }
-
-    let already_returns = compiler
-        .current_block
-        .is_terminated_by_ret_or_revert(context);
 
     // Another special case: if the last expression in a function is a return then we don't want to
     // add another implicit return instruction here, as `ret_val` will be unit regardless of the
@@ -243,11 +271,18 @@ fn compile_fn_with_args(
     // To tell if this is the case we can check that the current block is empty and has no
     // predecessors (and isn't the entry block which has none by definition), implying the most
     // recent instruction was a RET.
+    let already_returns = compiler
+        .current_block
+        .is_terminated_by_ret_or_revert(context);
     if !already_returns
         && (compiler.current_block.num_instructions(context) > 0
             || compiler.current_block == compiler.function.get_entry_block(context)
             || compiler.current_block.num_predecessors(context) > 0)
     {
+        if returns_by_ref {
+            // Need to copy ref-type return values to the 'out' parameter.
+            ret_val = compiler.compile_copy_to_last_arg(context, ret_val, None);
+        }
         if ret_type.eq(context, &Type::Unit) {
             ret_val = Constant::get_unit(context);
         }
@@ -288,7 +323,8 @@ fn compile_abi_method(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: TyFunctionDeclaration,
+    ast_fn_decl: ty::TyFunctionDeclaration,
+    logged_types_map: &HashMap<TypeId, LogId>,
 ) -> Result<Function, CompileError> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let get_selector_result = ast_fn_decl.to_fn_selector_value();
@@ -320,5 +356,13 @@ fn compile_abi_method(
         })
         .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
-    compile_fn_with_args(context, md_mgr, module, ast_fn_decl, args, Some(selector))
+    compile_fn_with_args(
+        context,
+        md_mgr,
+        module,
+        ast_fn_decl,
+        args,
+        Some(selector),
+        logged_types_map,
+    )
 }

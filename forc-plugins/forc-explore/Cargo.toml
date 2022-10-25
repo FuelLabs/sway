@@ -1,6 +1,6 @@
 [package]
 name = "forc-explore"
-version = "0.25.2"
+version = "0.28.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -11,7 +11,8 @@ description = "A `forc` plugin for running the fuel block explorer."
 [dependencies]
 anyhow = "1"
 clap = { version = "3", features = ["derive"] }
-forc-util = { version = "0.25.2", path = "../../forc-util" }
+dirs = "3.0.2"
+forc-tracing = { version = "0.28.0", path = "../../forc-tracing" }
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1.0", features = ["derive"] }
 tar = "0.4"

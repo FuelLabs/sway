@@ -1,4 +1,5 @@
 use self::shape::Shape;
+use crate::parse::parse_file;
 use crate::utils::map::{
     comments::handle_comments, newline::handle_newlines, newline_style::apply_newline_style,
 };
@@ -61,7 +62,7 @@ impl Formatter {
         // which will reduce the number of reallocations
         let mut raw_formatted_code = String::with_capacity(src.len());
 
-        let module = sway_parse::parse_file_standalone(Arc::from(src), path.clone())?;
+        let module = parse_file(Arc::from(src), path.clone())?;
         module.format(&mut raw_formatted_code, self)?;
 
         let mut formatted_code = String::from(&raw_formatted_code);
@@ -901,8 +902,8 @@ trait Qux {
     fn is_baz_true(self) -> bool;
 }
 
-impl   Qux for 
-Foo 
+impl   Qux for
+Foo
 {fn is_baz_true(self) -> bool {
         self.baz
     }}"#;

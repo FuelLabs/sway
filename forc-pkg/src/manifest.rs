@@ -1,6 +1,7 @@
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Result};
-use forc_util::{find_manifest_dir, println_yellow_err, validate_name};
+use forc_tracing::println_yellow_err;
+use forc_util::{find_manifest_dir, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -34,6 +35,7 @@ pub struct PackageManifest {
     /// A list of [configuration-time constants](https://github.com/FuelLabs/sway/issues/1498).
     pub constants: Option<BTreeMap<String, ConfigTimeConstant>>,
     build_profile: Option<BTreeMap<String, BuildProfile>>,
+    pub contract_dependencies: Option<BTreeMap<String, Dependency>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -72,7 +74,7 @@ pub enum Dependency {
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,
-    pub(crate) path: Option<String>,
+    pub path: Option<String>,
     pub(crate) git: Option<String>,
     pub(crate) branch: Option<String>,
     pub(crate) tag: Option<String>,
@@ -90,7 +92,6 @@ pub struct BuildProfile {
     pub print_intermediate_asm: bool,
     pub terse: bool,
     pub time_phases: bool,
-    pub generate_logged_types: bool,
 }
 
 impl Dependency {
@@ -296,6 +297,14 @@ impl PackageManifest {
             .flat_map(|deps| deps.iter())
     }
 
+    /// Produce an iterator yielding all listed contract dependencies
+    pub fn contract_deps(&self) -> impl Iterator<Item = (&String, &Dependency)> {
+        self.contract_dependencies
+            .as_ref()
+            .into_iter()
+            .flat_map(|deps| deps.iter())
+    }
+
     /// Produce an iterator yielding all `Detailed` dependencies.
     pub fn deps_detailed(&self) -> impl Iterator<Item = (&String, &DependencyDetails)> {
         self.deps().filter_map(|(name, dep)| match dep {
@@ -378,6 +387,25 @@ impl PackageManifest {
             .and_then(|patches| patches.get(patch_name))
     }
 
+    /// Retrieve a reference to the contract dependency with the given name.
+    pub fn contract_dep(&self, contract_dep_name: &str) -> Option<&Dependency> {
+        self.contract_dependencies
+            .as_ref()
+            .and_then(|contract_dependencies| contract_dependencies.get(contract_dep_name))
+    }
+
+    /// Retrieve a reference to the contract dependency with the given name.
+    pub fn contract_dependency_detailed(
+        &self,
+        contract_dep_name: &str,
+    ) -> Option<&DependencyDetails> {
+        self.contract_dep(contract_dep_name)
+            .and_then(|contract_dep| match contract_dep {
+                Dependency::Simple(_) => None,
+                Dependency::Detailed(detailed) => Some(detailed),
+            })
+    }
+
     /// Finds and returns the name of the dependency associated with a package of the specified
     /// name if there is one.
     ///
@@ -405,7 +433,6 @@ impl BuildProfile {
             print_intermediate_asm: false,
             terse: false,
             time_phases: false,
-            generate_logged_types: false,
         }
     }
 
@@ -417,7 +444,6 @@ impl BuildProfile {
             print_intermediate_asm: false,
             terse: false,
             time_phases: false,
-            generate_logged_types: false,
         }
     }
 }

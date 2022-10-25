@@ -4,41 +4,48 @@
 // regex: MD=!\d+
 // regex: LABEL=[[:alpha:]0-9_]+
 
-script {
-    fn return_storage_key_wrapper() -> b256 {
+contract {
+    fn test<58d7eb51>() -> b256, !1 {
+        local ptr {  } __anon_0
+        local mut ptr b256 __ret_val_f_0
+
         entry():
-        v0 = call return_storage_key(), !4
-        ret b256 v0
+        v0 = get_ptr ptr {  } __anon_0, ptr {  }, 0, !2
+        v1 = get_ptr mut ptr b256 __ret_val_f_0, ptr b256, 0
+        v2 = call f_0(v0, v1), !5
+        ret b256 v2
     }
 
-    fn return_storage_key() -> b256 {
-        entry():
-        v0 = get_storage_key, !2
-        ret b256 v0
-    }
-
-// check: fn main
-    fn main() -> b256 {
-        entry():
-        v0 = call return_storage_key_wrapper(), !5
-// check: $(arg0=$VAR) = get_storage_key, $(stk_md=$MD)
-// check: br $(lbl_block1=$LABEL)($arg0)
-// check: $(lbl_block1)($(arg1=$VAR): b256):
-// check: br $(lbl_block0=$LABEL)($arg1)
-// check: $(lbl_block0)($(arg2=$VAR): b256):
-// check: ret b256 $arg2
-        ret b256 v0
+    fn f_0(self !6: {  }, __ret_value !7: mut ptr b256) -> b256, !8 {
+        entry(self: {  }, __ret_value: mut ptr b256):
+        v0 = get_storage_key, !9
+        mem_copy __ret_value, v0, 32
+        ret b256 __ret_value
     }
 }
 
+!0 = "get_storage_key.sw"
+!1 = span !0 218 265
+!2 = span !0 254 255
+!3 = span !0 246 259
+!4 = state_index 42
+!5 = (!3 !4)
+!6 = span !0 42 46
+!7 = span !0 51 55
+!8 = span !0 37 91
+!9 = span !0 66 85
+
+// check: fn test<58d7eb51>() -> b256
+
+// not: call
+// check: $(stk_val=$VAR) = get_storage_key, $(stk_md=$MD)
+
+// check: mem_copy $(block_arg=$VAR), $VAR, 32
+// check: br $(ret_block=$LABEL)($block_arg)
+
+// check: $ret_block($(ret_val=$VAR): b256):
+// check: ret b256 $ret_val
+
 // check: $(si_md=$MD) = state_index 42
-
-// check: $(stk_md) = (
+// check: $stk_md = (
 // sameln: $si_md
-
-!0 = "proj/src/main.sw"
-!1 = span !0 381 425
-!2 = span !0 404 423
-!3 = state_index 42
-!4 = (!2 !3)
-!5 = (!1 !3)

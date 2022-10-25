@@ -3,7 +3,6 @@ use sway_types::Span;
 use crate::{
     error::{err, ok},
     language::ty,
-    semantic_analysis::IsConstant,
     type_system::look_up_type_id,
     CompileError, CompileResult,
 };
@@ -48,7 +47,6 @@ pub(crate) fn instantiate_tuple_index_access(
             elem_to_access_span: index_span,
         },
         return_type: tuple_type_arg_to_access.type_id,
-        is_constant: IsConstant::No,
         span,
     };
     ok(exp, warnings, errors)

@@ -6,12 +6,12 @@ const B1 = Address {
     value: 0x0100000000000000000000000000000000000000000000000000000000000010
 };
 
-pub fn addr_of<T>(val: T) -> u64 {
+pub fn addr_of<T>(val: T) -> raw_ptr {
     if !__is_reference_type::<T>() {
         revert(0);
     }
     asm(ptr: val) {
-        ptr: u64
+        ptr: raw_ptr
     }
 }
 

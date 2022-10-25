@@ -1,4 +1,5 @@
 use clap::Parser;
+use fuel_crypto::SecretKey;
 
 /// Run script project.
 /// Crafts a script transaction then sends it to a running node.
@@ -67,10 +68,6 @@ pub struct RunCommand {
     #[clap(long)]
     pub time_phases: bool,
 
-    /// Include logged types in the JSON ABI.
-    #[clap(long)]
-    pub generate_logged_types: bool,
-
     /// Pretty-print the outputs from the node.
     #[clap(long = "pretty-print", short = 'r')]
     pub pretty_print: bool,
@@ -117,4 +114,7 @@ pub struct RunCommand {
     /// Do not sign the transaction
     #[clap(long)]
     pub unsigned: bool,
+
+    /// Set the key to be used for signing.
+    pub signing_key: Option<SecretKey>,
 }

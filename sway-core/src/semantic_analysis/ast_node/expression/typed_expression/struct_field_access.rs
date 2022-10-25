@@ -3,7 +3,6 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     error::{err, ok},
     language::ty,
-    semantic_analysis::IsConstant,
     type_system::look_up_type_id,
     CompileResult,
 };
@@ -30,7 +29,6 @@ pub(crate) fn instantiate_struct_field_access(
             field_instantiation_span,
         },
         return_type: field.type_id,
-        is_constant: IsConstant::No,
         span,
     };
     ok(exp, warnings, errors)

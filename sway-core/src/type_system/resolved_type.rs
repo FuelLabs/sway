@@ -1,10 +1,7 @@
-use crate::{
-    language::{ty, CallPath},
-    semantic_analysis::ast_node::TyStructField,
-    type_system::*,
-    Ident,
-};
+use crate::language::{ty, CallPath};
 use derivative::Derivative;
+use sway_types::integer_bits::IntegerBits;
+use sway_types::Ident;
 
 #[derive(Derivative)]
 #[derivative(Debug, Clone, Eq, PartialEq, Hash)]
@@ -18,7 +15,7 @@ pub enum ResolvedType {
     #[allow(dead_code)]
     Struct {
         name: Ident,
-        fields: Vec<TyStructField>,
+        fields: Vec<ty::TyStructField>,
     },
     #[allow(dead_code)]
     Enum {

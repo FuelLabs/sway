@@ -5,6 +5,8 @@ pub struct ItemTrait {
     pub visibility: Option<PubToken>,
     pub trait_token: TraitToken,
     pub name: Ident,
+    pub generics: Option<GenericParams>,
+    pub where_clause_opt: Option<WhereClause>,
     pub super_traits: Option<(ColonToken, Traits)>,
     pub trait_items: Braces<Vec<(Annotated<FnSignature>, SemicolonToken)>>,
     pub trait_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>>,
