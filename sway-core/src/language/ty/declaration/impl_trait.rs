@@ -6,6 +6,7 @@ use crate::{declaration_engine::DeclarationId, language::CallPath, type_system::
 pub struct TyImplTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,
+    pub trait_type_arguments: Vec<TypeArgument>,
     pub methods: Vec<DeclarationId>,
     pub implementing_for_type_id: TypeId,
     pub type_implementing_for_span: Span,

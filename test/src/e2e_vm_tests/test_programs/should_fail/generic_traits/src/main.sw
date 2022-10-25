@@ -64,6 +64,23 @@ trait Unused<N> {
     fn unused(self, x: u64, other: N) -> u64;
 }
 
+trait Multiple<T> {
+    fn unused(self, x: u64, other: T) -> u64;
+}
+
+impl<T> Multiple<u64> for FooBarData<T> {
+    fn unused(self, x: u64, other: u64) -> u64 {
+        other
+    }
+}
+
+// Conflicting definitions
+impl<F> Multiple<u64> for FooBarData<F> {
+    fn unused(self, x: u64, other: u64) -> u64 {
+        other
+    }
+}
+
 fn main() -> u64 {
     let a = FooBarData {
         value: 1u8

@@ -1,11 +1,15 @@
+use sway_error::error::CompileError;
+use sway_types::{Ident, Span};
+
 use crate::{
+    error::*,
     insert_type,
     language::{ty, CallPath},
     type_system::{look_up_type_id, CopyTypes, TypeId},
-    ReplaceSelfType, TypeInfo, TypeMapping,
+    ReplaceSelfType, TypeArgument, TypeInfo, TypeMapping,
 };
 
-type TraitName = CallPath;
+type TraitName = CallPath<(Ident, Vec<TypeArgument>)>;
 /// Map of function name to [TyFunctionDeclaration](ty::TyFunctionDeclaration)
 type TraitMethods = im::HashMap<String, ty::TyFunctionDeclaration>;
 /// Map of trait name and type to [TraitMethods].
@@ -30,6 +34,81 @@ impl TraitMap {
     /// [TyFunctionDeclaration](ty::TyFunctionDeclaration) for the key
     /// `(trait_name, type_id)` whenever possible.
     pub(crate) fn insert(
+        &mut self,
+        trait_name: CallPath,
+        trait_type_args: Vec<TypeArgument>,
+        type_id: TypeId,
+        methods: Vec<ty::TyFunctionDeclaration>,
+        impl_span: &Span,
+    ) -> CompileResult<()> {
+        let mut errors = vec![];
+
+        // check to see if adding this trait will produce a conflicting definition
+        let trait_type_id = insert_type(TypeInfo::Custom {
+            name: trait_name.suffix.clone(),
+            type_arguments: if trait_type_args.is_empty() {
+                None
+            } else {
+                Some(trait_type_args.clone())
+            },
+        });
+        for (map_trait_name, map_type_id) in self.trait_impls.keys() {
+            let CallPath {
+                suffix: (map_trait_name_suffix, map_trait_type_args),
+                ..
+            } = map_trait_name;
+            let map_trait_type_id = insert_type(TypeInfo::Custom {
+                name: map_trait_name_suffix.clone(),
+                type_arguments: if map_trait_type_args.is_empty() {
+                    None
+                } else {
+                    Some(map_trait_type_args.to_vec())
+                },
+            });
+            let type_info = look_up_type_id(type_id);
+            if look_up_type_id(trait_type_id).is_subset_of(&look_up_type_id(map_trait_type_id))
+                && type_info.is_subset_of(&look_up_type_id(*map_type_id))
+            {
+                let trait_name_str = format!(
+                    "{}{}",
+                    trait_name.suffix,
+                    if trait_type_args.is_empty() {
+                        String::new()
+                    } else {
+                        format!(
+                            "<{}>",
+                            trait_type_args
+                                .iter()
+                                .map(|type_arg| type_arg.to_string())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )
+                    }
+                );
+                errors.push(CompileError::ConflictingImplsForTraitAndType {
+                    trait_name: trait_name_str,
+                    type_implementing_for: type_id.to_string(),
+                    second_impl_span: impl_span.clone(),
+                });
+            }
+        }
+        let trait_name: TraitName = CallPath {
+            prefixes: trait_name.prefixes,
+            suffix: (trait_name.suffix, trait_type_args),
+            is_absolute: trait_name.is_absolute,
+        };
+
+        // even if there is a conflicting definition, add the trait anyway
+        self.insert_inner(trait_name, type_id, methods);
+
+        if errors.is_empty() {
+            ok((), vec![], vec![])
+        } else {
+            err(vec![], errors)
+        }
+    }
+
+    fn insert_inner(
         &mut self,
         trait_name: TraitName,
         type_id: TypeId,
@@ -267,7 +346,7 @@ impl TraitMap {
                         .cloned()
                         .into_iter()
                         .collect::<Vec<_>>();
-                    trait_map.insert(map_trait_name.clone(), *type_id, trait_methods);
+                    trait_map.insert_inner(map_trait_name.clone(), *type_id, trait_methods);
                 } else if type_info.is_subset_of(&look_up_type_id(*map_type_id)) {
                     let type_mapping =
                         TypeMapping::from_superset_and_subset(*map_type_id, *type_id);
@@ -282,7 +361,7 @@ impl TraitMap {
                         type_id.replace_self_type(new_self_type);
                         trait_method.replace_self_type(new_self_type);
                     });
-                    trait_map.insert(map_trait_name.clone(), *type_id, trait_methods);
+                    trait_map.insert_inner(map_trait_name.clone(), *type_id, trait_methods);
                 }
             }
         }

@@ -202,7 +202,7 @@ impl ty::TyAstNode {
                             decl
                         }
                         Declaration::ImplTrait(impl_trait) => {
-                            let (impl_trait, implementing_for_type_id) = check!(
+                            let impl_trait = check!(
                                 ty::TyImplTrait::type_check_impl_trait(ctx.by_ref(), impl_trait),
                                 return err(warnings, errors),
                                 warnings,
@@ -215,10 +215,17 @@ impl ty::TyAstNode {
                                     Err(err) => errors.push(err),
                                 }
                             }
-                            ctx.namespace.insert_trait_implementation(
-                                impl_trait.trait_name.clone(),
-                                implementing_for_type_id,
-                                methods,
+                            check!(
+                                ctx.namespace.insert_trait_implementation(
+                                    impl_trait.trait_name.clone(),
+                                    impl_trait.trait_type_arguments.clone(),
+                                    impl_trait.implementing_for_type_id,
+                                    methods,
+                                    &impl_trait.span,
+                                ),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
                             );
                             ty::TyDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
                         }
@@ -236,10 +243,15 @@ impl ty::TyAstNode {
                                     Err(err) => errors.push(err),
                                 }
                             }
+                            // specifically dont check for conflicting trait definitions
+                            // because its totally ok to defined multiple impl selfs for
+                            // the same type
                             ctx.namespace.insert_trait_implementation(
                                 impl_trait.trait_name.clone(),
+                                impl_trait.trait_type_arguments.clone(),
                                 impl_trait.implementing_for_type_id,
                                 methods,
+                                &impl_trait.span,
                             );
                             ty::TyDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
                         }

@@ -15,7 +15,7 @@ impl ty::TyImplTrait {
     pub(crate) fn type_check_impl_trait(
         ctx: TypeCheckContext,
         impl_trait: ImplTrait,
-    ) -> CompileResult<(Self, TypeId)> {
+    ) -> CompileResult<Self> {
         let mut errors = vec![];
         let mut warnings = vec![];
 
@@ -116,6 +116,7 @@ impl ty::TyImplTrait {
                     type_check_trait_implementation(
                         ctx,
                         &new_impl_type_parameters,
+                        &trait_type_arguments,
                         implementing_for_type_id,
                         &type_implementing_for_span,
                         &trait_decl.interface_surface,
@@ -133,15 +134,15 @@ impl ty::TyImplTrait {
                     .iter()
                     .map(|d| de_insert_function(d.clone()))
                     .collect::<Vec<_>>();
-                let impl_trait = ty::TyImplTrait {
+                ty::TyImplTrait {
                     impl_type_parameters: new_impl_type_parameters,
                     trait_name: trait_name.clone(),
+                    trait_type_arguments,
                     span: block_span,
                     methods: functions_decl_id,
                     implementing_for_type_id,
                     type_implementing_for_span: type_implementing_for_span.clone(),
-                };
-                (impl_trait, implementing_for_type_id)
+                }
             }
             Some(ty::TyDeclaration::AbiDeclaration(decl_id)) => {
                 // if you are comparing this with the `impl_trait` branch above, note that
@@ -169,6 +170,7 @@ impl ty::TyImplTrait {
                     type_check_trait_implementation(
                         impl_ctx,
                         &[], // this is empty because abi definitions don't support generics,
+                        &[], // this is empty because abi definitions don't support generics,
                         implementing_for_type_id,
                         &type_implementing_for_span,
                         &abi.interface_surface,
@@ -186,15 +188,15 @@ impl ty::TyImplTrait {
                     .iter()
                     .map(|d| de_insert_function(d.clone()))
                     .collect::<Vec<_>>();
-                let impl_trait = ty::TyImplTrait {
+                ty::TyImplTrait {
                     impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
                     trait_name,
+                    trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
                     span: block_span,
                     methods: functions_decl_id,
                     implementing_for_type_id,
                     type_implementing_for_span,
-                };
-                (impl_trait, implementing_for_type_id)
+                }
             }
             Some(_) | None => {
                 errors.push(CompileError::UnknownTrait {
@@ -484,6 +486,7 @@ impl ty::TyImplTrait {
         let impl_trait = ty::TyImplTrait {
             impl_type_parameters: new_impl_type_parameters,
             trait_name,
+            trait_type_arguments: vec![], // this is empty because impl selfs don't support generics on the "Self" trait,
             span: block_span,
             methods: methods_ids,
             implementing_for_type_id,
@@ -496,7 +499,8 @@ impl ty::TyImplTrait {
 #[allow(clippy::too_many_arguments)]
 fn type_check_trait_implementation(
     mut ctx: TypeCheckContext,
-    parent_impl_type_parameters: &[TypeParameter],
+    impl_type_parameters: &[TypeParameter],
+    trait_type_arguments: &[TypeArgument],
     type_implementing_for: TypeId,
     type_implementing_for_span: &Span,
     trait_interface_surface: &[DeclarationId],
@@ -683,13 +687,13 @@ fn type_check_trait_implementation(
         // *This will change* when either https://github.com/FuelLabs/sway/issues/1267
         // or https://github.com/FuelLabs/sway/issues/2814 goes in.
         let unconstrained_type_parameters_in_this_function: HashSet<TypeParameter> = fn_decl
-            .unconstrained_type_parameters(parent_impl_type_parameters)
+            .unconstrained_type_parameters(impl_type_parameters)
             .into_iter()
             .cloned()
             .collect();
         let unconstrained_type_parameters_in_the_type: HashSet<TypeParameter> =
             type_implementing_for
-                .unconstrained_type_parameters(parent_impl_type_parameters)
+                .unconstrained_type_parameters(impl_type_parameters)
                 .into_iter()
                 .cloned()
                 .collect::<HashSet<_>>();
@@ -721,16 +725,6 @@ fn type_check_trait_implementation(
     ]
     .concat();
     ctx.namespace.star_import(&trait_path);
-    // let self_type = ctx.self_type();
-    // ctx.namespace.insert_trait_implementation(
-    //     CallPath {
-    //         prefixes: vec![],
-    //         suffix: trait_name.suffix.clone(),
-    //         is_absolute: false,
-    //     },
-    //     self_type,
-    //     functions_buf.clone(),
-    // );
 
     let self_type_id = insert_type(
         match to_typeinfo(ctx.self_type(), type_implementing_for_span) {
@@ -741,14 +735,21 @@ fn type_check_trait_implementation(
             }
         },
     );
-    ctx.namespace.insert_trait_implementation(
-        CallPath {
-            prefixes: vec![],
-            suffix: trait_name.suffix.clone(),
-            is_absolute: false,
-        },
-        self_type_id,
-        functions_buf.clone(),
+    check!(
+        ctx.namespace.insert_trait_implementation(
+            CallPath {
+                prefixes: vec![],
+                suffix: trait_name.suffix.clone(),
+                is_absolute: false,
+            },
+            trait_type_arguments.to_vec(),
+            self_type_id,
+            functions_buf.clone(),
+            block_span,
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
     );
 
     let mut ctx = ctx
