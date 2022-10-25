@@ -1,6 +1,6 @@
 #![recursion_limit = "256"]
 
-use forc_util::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
+use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
 use tower_lsp::{LspService, Server};
 
 mod capabilities;

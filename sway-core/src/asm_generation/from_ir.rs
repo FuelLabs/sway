@@ -51,7 +51,12 @@ pub fn compile_ir_to_asm(
         println!("{allocated_program}");
     }
 
-    let final_program = allocated_program.into_final_program();
+    let final_program = check!(
+        CompileResult::from(allocated_program.into_final_program()),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     if build_config
         .map(|cfg| cfg.print_finalized_asm)
