@@ -17,12 +17,11 @@ pub fn is_reentrant() -> bool {
 
     // Reentrancy cannot occur in an external context. If not detected by the time we get to the
     // bottom of the call_frame stack, then no reentrancy has occured.
-    let mut call_frame_pointer = if frame_ptr() == 0 {
-        0
-    } else {
-        get_previous_frame_pointer(frame_ptr())
+    let mut call_frame_pointer = frame_ptr();
+    if !call_frame_pointer.is_null() {
+        call_frame_pointer = get_previous_frame_pointer(call_frame_pointer);
     };
-    while call_frame_pointer != 0 {
+    while !call_frame_pointer.is_null() {
         // get the ContractId value from the previous call frame
         let previous_contract_id = get_contract_id_from_call_frame(call_frame_pointer);
         if previous_contract_id == this_id {

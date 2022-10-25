@@ -86,6 +86,13 @@ pub enum TypeInfo {
     Storage {
         fields: Vec<ty::TyStructField>,
     },
+    /// Raw untyped pointers.
+    /// These are represented in memory as u64 but are a different type since pointers only make
+    /// sense in the context they were created in. Users can obtain pointers via standard library
+    /// functions such `alloc` or `stack_ptr`. These functions are implemented using asm blocks
+    /// which can create pointers by (eg.) reading logically-pointer-valued registers, using the
+    /// gtf instruction, or manipulating u64s.
+    RawUntypedPtr,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -177,6 +184,9 @@ impl Hash for TypeInfo {
                 look_up_type_id(*elem_ty).hash(state);
                 count.hash(state);
             }
+            TypeInfo::RawUntypedPtr => {
+                state.write_u8(18);
+            }
         }
     }
 }
@@ -261,6 +271,7 @@ impl PartialEq for TypeInfo {
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
                 l_fields == r_fields
             }
+            (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
             _ => false,
         }
     }
@@ -330,6 +341,7 @@ impl fmt::Display for TypeInfo {
             }
             Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty, count),
             Storage { .. } => "contract storage".into(),
+            RawUntypedPtr => "raw untyped ptr".into(),
         };
         write!(f, "{}", s)
     }
@@ -455,6 +467,7 @@ impl TypeInfo {
             }
             Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty.json_abi_str(), count),
             Storage { .. } => "contract storage".into(),
+            RawUntypedPtr => "raw untyped ptr".into(),
         }
     }
 
@@ -615,6 +628,7 @@ impl TypeInfo {
                 };
                 format!("a[{};{}]", name, size)
             }
+            RawUntypedPtr => "rawptr".to_string(),
             _ => {
                 return err(
                     vec![],
@@ -766,6 +780,7 @@ impl TypeInfo {
             | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Numeric
+            | TypeInfo::RawUntypedPtr
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
             | TypeInfo::Array(_, _, _)
@@ -844,6 +859,7 @@ impl TypeInfo {
                 | TypeInfo::SelfType
                 | TypeInfo::B256
                 | TypeInfo::Numeric
+                | TypeInfo::RawUntypedPtr
                 | TypeInfo::Contract => {
                     inner_types.insert(type_id);
                 }
@@ -908,6 +924,7 @@ impl TypeInfo {
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::Contract
+            | TypeInfo::RawUntypedPtr
             | TypeInfo::ErrorRecovery => {}
         }
         inner_types
@@ -931,6 +948,7 @@ impl TypeInfo {
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Numeric => ok((), warnings, errors),
             TypeInfo::Unknown
+            | TypeInfo::RawUntypedPtr
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
             | TypeInfo::SelfType
@@ -1042,6 +1060,7 @@ impl TypeInfo {
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::B256
             | TypeInfo::Numeric
+            | TypeInfo::RawUntypedPtr
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery => {}
             TypeInfo::Custom { .. } | TypeInfo::SelfType => {
@@ -1316,6 +1335,7 @@ impl TypeInfo {
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
             | TypeInfo::B256
+            | TypeInfo::RawUntypedPtr
             | TypeInfo::ErrorRecovery => false,
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }

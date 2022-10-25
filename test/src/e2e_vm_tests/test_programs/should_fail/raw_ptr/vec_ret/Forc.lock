@@ -1,13 +1,13 @@
 [[package]]
 name = 'core'
-source = 'path+from-root-6FDA2B8841DC691E'
+source = 'path+from-root-D3556C503E51030C'
 
 [[package]]
 name = 'std'
-source = 'path+from-root-6FDA2B8841DC691E'
+source = 'path+from-root-D3556C503E51030C'
 dependencies = ['core']
 
 [[package]]
-name = 'std_mem_test'
+name = 'vec_ret'
 source = 'root'
 dependencies = ['std']
