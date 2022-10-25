@@ -70,7 +70,7 @@ Note that if you `cd` into the `sway/test` directory, you can just say `cargo ru
 To print out the warnings and errors run
 
 ```shell
-SWAY_TEST_VERBOSE=1 cargo run [pattern]
+SWAY_TEST_VERBOSE=true cargo run [pattern]
 ```
 
 from the `sway/test` directory.

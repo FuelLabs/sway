@@ -69,7 +69,7 @@ pub type ManifestMap = HashMap<PinnedId, PackageManifestFile>;
 pub struct PinnedId(u64);
 
 /// The result of successfully compiling a package.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Compiled {
     pub json_abi_program: JsonABIProgram,
     pub storage_slots: Vec<StorageSlot>,
@@ -1832,6 +1832,8 @@ pub fn dependency_namespace(
             namespace.insert_submodule(CORE.to_string(), core_namespace.clone());
         }
     }
+
+    namespace.star_import_with_reexports(&[CORE, PRELUDE].map(Ident::new_no_span), &[]);
 
     if has_std_dep(graph, node) {
         namespace.star_import_with_reexports(&[STD, PRELUDE].map(Ident::new_no_span), &[]);
