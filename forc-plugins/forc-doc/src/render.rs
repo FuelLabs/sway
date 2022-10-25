@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::{descriptor::DescriptorType, doc::Documentation};
 use horrorshow::{box_html, helper::doctype, html, prelude::*};
 use sway_core::language::ty::{
@@ -17,7 +19,7 @@ enum ItemType {
     Function,
     Constant,
 }
-type AllDoc = Vec<(ItemType, (String, String))>;
+type AllDoc = Vec<(ItemType, (String, Vec<String>, String))>;
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
     pub(crate) module_prefix: Vec<String>,
@@ -31,6 +33,7 @@ impl RenderedDocument {
         let mut all_doc: AllDoc = Default::default();
         for doc in raw {
             let module_prefix = doc.module_prefix.clone();
+            let module_depth = module_prefix.len();
             let module = if module_prefix.last().is_some() {
                 module_prefix.last().unwrap().to_string()
             } else {
@@ -44,68 +47,81 @@ impl RenderedDocument {
                         ItemType::Struct,
                         (
                             format!("{}::{}", &module, &struct_decl.name),
+                            module_prefix.clone(),
                             file_name.clone(),
                         ),
                     ));
-                    struct_decl.render(module, decl_ty)
+                    struct_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Enum(enum_decl) => {
                     all_doc.push((
                         ItemType::Enum,
                         (
                             format!("{}::{}", &module, &enum_decl.name),
+                            module_prefix.clone(),
                             file_name.clone(),
                         ),
                     ));
-                    enum_decl.render(module, decl_ty)
+                    enum_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Trait(trait_decl) => {
                     all_doc.push((
                         ItemType::Trait,
                         (
                             format!("{}::{}", &module, &trait_decl.name),
+                            module_prefix.clone(),
                             file_name.clone(),
                         ),
                     ));
-                    trait_decl.render(module, decl_ty)
+                    trait_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Abi(abi_decl) => {
                     all_doc.push((
                         ItemType::Abi,
                         (
                             format!("{}::{}", &module, &abi_decl.name),
+                            module_prefix.clone(),
                             file_name.clone(),
                         ),
                     ));
-                    abi_decl.render(module, decl_ty)
+                    abi_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Storage(storage_decl) => {
                     all_doc.push((
                         ItemType::Storage,
-                        (format!("{}::ContractStorage", &module), file_name.clone()),
+                        (
+                            format!("{}::ContractStorage", &module),
+                            module_prefix.clone(),
+                            file_name.clone(),
+                        ),
                     ));
-                    storage_decl.render(module, decl_ty)
+                    storage_decl.render(module, module_depth, decl_ty)
                 }
                 // TODO: Figure out how to represent impl traits
                 DescriptorType::ImplTraitDesc(impl_trait_decl) => {
-                    impl_trait_decl.render(module, decl_ty)
+                    impl_trait_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Function(fn_decl) => {
                     all_doc.push((
                         ItemType::Function,
-                        (format!("{}::{}", &module, &fn_decl.name), file_name.clone()),
+                        (
+                            format!("{}::{}", &module, &fn_decl.name),
+                            module_prefix.clone(),
+                            file_name.clone(),
+                        ),
                     ));
-                    fn_decl.render(module, decl_ty)
+                    fn_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Const(const_decl) => {
                     all_doc.push((
                         ItemType::Constant,
                         (
                             format!("{}::{}", &module, &const_decl.name),
+                            module_prefix.clone(),
                             file_name.clone(),
                         ),
                     ));
-                    const_decl.render(module, decl_ty)
+                    const_decl.render(module, module_depth, decl_ty)
                 }
             };
             rendered_docs.push(Self {
@@ -154,14 +170,22 @@ fn html_head(location: String, decl_ty: String, decl_name: String) -> Box<dyn Re
 }
 /// HTML body component
 fn html_body(
+    module_depth: usize,
     decl_ty: String,
     decl_name: String,
     code_span: String,
     item_attrs: String,
 ) -> Box<dyn RenderBox> {
+    let href = if module_depth > 0 {
+        "../all.html"
+    } else {
+        "../doc/all.html"
+    }
+    .to_string();
+
     box_html! {
         body(class=format!("forcdoc {decl_ty}")) {
-            : sidebar(decl_name);
+            : sidebar(decl_name, href);
             // create main
             // create main content
 
@@ -200,15 +224,36 @@ fn all_items(crate_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
     let mut storage_items: Vec<(String, String)> = Vec::new();
     let mut fn_items: Vec<(String, String)> = Vec::new();
     let mut const_items: Vec<(String, String)> = Vec::new();
-    for (ty, (path_str, file_name)) in all_doc {
+    for (ty, (path_str, module_prefix, file_name)) in all_doc {
         match ty {
-            ItemType::Struct => struct_items.push((path_str.clone(), file_name.clone())),
-            ItemType::Enum => enum_items.push((path_str.clone(), file_name.clone())),
-            ItemType::Trait => trait_items.push((path_str.clone(), file_name.clone())),
-            ItemType::Abi => abi_items.push((path_str.clone(), file_name.clone())),
-            ItemType::Storage => storage_items.push((path_str.clone(), file_name.clone())),
-            ItemType::Function => fn_items.push((path_str.clone(), file_name.clone())),
-            ItemType::Constant => const_items.push((path_str.clone(), file_name.clone())),
+            ItemType::Struct => struct_items.push((
+                path_str.clone(),
+                qualified_file_path(module_prefix, file_name.clone()),
+            )),
+            ItemType::Enum => enum_items.push((
+                path_str.clone(),
+                qualified_file_path(module_prefix, file_name.clone()),
+            )),
+            ItemType::Trait => trait_items.push((
+                path_str.clone(),
+                qualified_file_path(module_prefix, file_name.clone()),
+            )),
+            ItemType::Abi => abi_items.push((
+                path_str.clone(),
+                qualified_file_path(module_prefix, file_name.clone()),
+            )),
+            ItemType::Storage => storage_items.push((
+                path_str.clone(),
+                qualified_file_path(module_prefix, file_name.clone()),
+            )),
+            ItemType::Function => fn_items.push((
+                path_str.clone(),
+                qualified_file_path(module_prefix, file_name.clone()),
+            )),
+            ItemType::Constant => const_items.push((
+                path_str.clone(),
+                qualified_file_path(module_prefix, file_name.clone()),
+            )),
         }
     }
     box_html! {
@@ -224,7 +269,7 @@ fn all_items(crate_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
             title: "List of all items in this crate";
         }
         body(class="forcdoc mod") {
-            : sidebar(format!("Crate {crate_name}"));
+            : sidebar(format!("Crate {crate_name}"), "../doc/all.html".to_string());
             section(id="main-content", class="content") {
                 h1(class="fqn") {
                     span(class="in-band") { : "List of all items" }
@@ -272,10 +317,13 @@ fn all_items_list(title: String, list_items: Vec<(String, String)>) -> Box<dyn R
 fn _module_index() -> Box<dyn RenderBox> {
     box_html! {}
 }
-fn sidebar(location: String /* sidebar_items: Option<Vec<String>>, */) -> Box<dyn RenderBox> {
+fn sidebar(
+    location: String,
+    href: String, /* sidebar_items: Option<Vec<String>>, */
+) -> Box<dyn RenderBox> {
     box_html! {
         nav(class="sidebar") {
-            a(class="sidebar-logo", href="../all.html") {
+            a(class="sidebar-logo", href=href) {
                 div(class="logo-container") {
                     img(class="sway-logo", src="../sway-logo.svg", alt="logo");
                 }
@@ -283,6 +331,15 @@ fn sidebar(location: String /* sidebar_items: Option<Vec<String>>, */) -> Box<dy
             h2(class="location") { : location; }
         }
     }
+}
+fn qualified_file_path(module_prefix: &Vec<String>, file_name: String) -> String {
+    let mut file_path = PathBuf::new();
+    for prefix in module_prefix {
+        file_path.push(prefix)
+    }
+    file_path.push(file_name);
+
+    file_path.to_str().unwrap().to_string()
 }
 
 fn doc_attributes_to_string_vec(attributes: &AttributesMap) -> String {
@@ -299,11 +356,11 @@ fn doc_attributes_to_string_vec(attributes: &AttributesMap) -> String {
     attr_strings
 }
 trait Renderable {
-    fn render(&self, module: String, decl_ty: String) -> Box<dyn RenderBox>;
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox>;
 }
 
 impl Renderable for TyStructDeclaration {
-    fn render(&self, module: String, decl_ty: String) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyStructDeclaration {
             name,
             fields: _,
@@ -317,12 +374,12 @@ impl Renderable for TyStructDeclaration {
         let struct_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(decl_ty.clone(), name.clone(), code_span, struct_attributes);
+            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, struct_attributes);
         }
     }
 }
 impl Renderable for TyEnumDeclaration {
-    fn render(&self, module: String, decl_ty: String) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyEnumDeclaration {
             name,
             type_parameters: _,
@@ -336,12 +393,12 @@ impl Renderable for TyEnumDeclaration {
         let enum_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(decl_ty.clone(), name.clone(), code_span, enum_attributes);
+            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, enum_attributes);
         }
     }
 }
 impl Renderable for TyTraitDeclaration {
-    fn render(&self, module: String, decl_ty: String) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyTraitDeclaration {
             name,
             interface_surface: _,
@@ -356,12 +413,12 @@ impl Renderable for TyTraitDeclaration {
         let trait_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(decl_ty.clone(), name.clone(), code_span, trait_attributes);
+            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, trait_attributes);
         }
     }
 }
 impl Renderable for TyAbiDeclaration {
-    fn render(&self, module: String, decl_ty: String) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyAbiDeclaration {
             name,
             interface_surface: _,
@@ -374,12 +431,12 @@ impl Renderable for TyAbiDeclaration {
         let abi_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(decl_ty.clone(), name.clone(), code_span, abi_attributes);
+            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, abi_attributes);
         }
     }
 }
 impl Renderable for TyStorageDeclaration {
-    fn render(&self, module: String, decl_ty: String) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyStorageDeclaration {
             fields: _,
             span,
@@ -390,12 +447,12 @@ impl Renderable for TyStorageDeclaration {
         let storage_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(decl_ty.clone(), name.clone(), code_span, storage_attributes);
+            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, storage_attributes);
         }
     }
 }
 impl Renderable for TyImplTrait {
-    fn render(&self, module: String, decl_ty: String) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyImplTrait {
             impl_type_parameters: _,
             trait_name,
@@ -410,12 +467,12 @@ impl Renderable for TyImplTrait {
         // let impl_trait_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(decl_ty.clone(), name.clone(), code_span, "".to_string());
+            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, "".to_string());
         }
     }
 }
 impl Renderable for TyFunctionDeclaration {
-    fn render(&self, module: String, decl_ty: String) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyFunctionDeclaration {
             name,
             body: _,
@@ -435,12 +492,12 @@ impl Renderable for TyFunctionDeclaration {
         let function_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(decl_ty.clone(), name.clone(), code_span, function_attributes);
+            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, function_attributes);
         }
     }
 }
 impl Renderable for TyConstantDeclaration {
-    fn render(&self, module: String, decl_ty: String) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyConstantDeclaration {
             name,
             value: _,
@@ -453,7 +510,7 @@ impl Renderable for TyConstantDeclaration {
         let const_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(decl_ty.clone(), name.clone(), code_span, const_attributes);
+            : html_body(module_depth, decl_ty.clone(), name.clone(), code_span, const_attributes);
         }
     }
 }
