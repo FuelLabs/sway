@@ -6,6 +6,7 @@ use sway_types::Span;
 use crate::{
     language::ty,
     type_system::{CopyTypes, TypeMapping},
+    ReplaceSelfType, TypeId,
 };
 
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]
@@ -71,6 +72,23 @@ impl CopyTypes for DeclarationWrapper {
             DeclarationWrapper::Abi(_) => {}
             DeclarationWrapper::Constant(_) => {}
             DeclarationWrapper::Enum(decl) => decl.copy_types(type_mapping),
+        }
+    }
+}
+
+impl ReplaceSelfType for DeclarationWrapper {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        match self {
+            DeclarationWrapper::Unknown => {}
+            DeclarationWrapper::Function(decl) => decl.replace_self_type(self_type),
+            DeclarationWrapper::Trait(decl) => decl.replace_self_type(self_type),
+            DeclarationWrapper::TraitFn(decl) => decl.replace_self_type(self_type),
+            DeclarationWrapper::ImplTrait(decl) => decl.replace_self_type(self_type),
+            DeclarationWrapper::Struct(decl) => decl.replace_self_type(self_type),
+            DeclarationWrapper::Storage(_) => {}
+            DeclarationWrapper::Abi(_) => {}
+            DeclarationWrapper::Constant(_) => {}
+            DeclarationWrapper::Enum(decl) => decl.replace_self_type(self_type),
         }
     }
 }

@@ -384,6 +384,7 @@ impl TypeInfo {
             RawUntypedPtr => "raw untyped ptr".into(),
         }
     }
+
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(&self, error_msg_span: &Span) -> CompileResult<String> {
         use TypeInfo::*;
@@ -702,6 +703,145 @@ impl TypeInfo {
                 err(warnings, errors)
             }
         }
+    }
+
+    /// Given a `TypeInfo` `self`, analyze `self` and return all inner
+    /// `TypeId`'s of `self`, not including `self`.
+    pub(crate) fn extract_inner_types(&self) -> HashSet<TypeId> {
+        fn helper(type_id: TypeId) -> HashSet<TypeId> {
+            let mut inner_types = HashSet::new();
+            match look_up_type_id(type_id) {
+                TypeInfo::Enum {
+                    type_parameters,
+                    variant_types,
+                    ..
+                } => {
+                    inner_types.insert(type_id);
+                    for type_param in type_parameters.iter() {
+                        inner_types
+                            .extend(look_up_type_id(type_param.type_id).extract_inner_types());
+                    }
+                    for variant in variant_types.iter() {
+                        inner_types.extend(look_up_type_id(variant.type_id).extract_inner_types());
+                    }
+                }
+                TypeInfo::Struct {
+                    type_parameters,
+                    fields,
+                    ..
+                } => {
+                    inner_types.insert(type_id);
+                    for type_param in type_parameters.iter() {
+                        inner_types
+                            .extend(look_up_type_id(type_param.type_id).extract_inner_types());
+                    }
+                    for field in fields.iter() {
+                        inner_types.extend(look_up_type_id(field.type_id).extract_inner_types());
+                    }
+                }
+                TypeInfo::Custom { type_arguments, .. } => {
+                    inner_types.insert(type_id);
+                    if let Some(type_arguments) = type_arguments {
+                        for type_arg in type_arguments.iter() {
+                            inner_types
+                                .extend(look_up_type_id(type_arg.type_id).extract_inner_types());
+                        }
+                    }
+                }
+                TypeInfo::Array(type_id, _, _) => {
+                    inner_types.insert(type_id);
+                    inner_types.extend(look_up_type_id(type_id).extract_inner_types());
+                }
+                TypeInfo::Tuple(elems) => {
+                    inner_types.insert(type_id);
+                    for elem in elems.iter() {
+                        inner_types.extend(look_up_type_id(elem.type_id).extract_inner_types());
+                    }
+                }
+                TypeInfo::Storage { fields } => {
+                    inner_types.insert(type_id);
+                    for field in fields.iter() {
+                        inner_types.extend(look_up_type_id(field.type_id).extract_inner_types());
+                    }
+                }
+                TypeInfo::Unknown
+                | TypeInfo::UnknownGeneric { .. }
+                | TypeInfo::Str(_)
+                | TypeInfo::UnsignedInteger(_)
+                | TypeInfo::Boolean
+                | TypeInfo::ContractCaller { .. }
+                | TypeInfo::SelfType
+                | TypeInfo::B256
+                | TypeInfo::Numeric
+                | TypeInfo::RawUntypedPtr
+                | TypeInfo::Contract => {
+                    inner_types.insert(type_id);
+                }
+                TypeInfo::ErrorRecovery => {}
+            }
+            inner_types
+        }
+
+        let mut inner_types = HashSet::new();
+        match self {
+            TypeInfo::Enum {
+                type_parameters,
+                variant_types,
+                ..
+            } => {
+                for type_param in type_parameters.iter() {
+                    inner_types.extend(helper(type_param.type_id));
+                }
+                for variant in variant_types.iter() {
+                    inner_types.extend(helper(variant.type_id));
+                }
+            }
+            TypeInfo::Struct {
+                type_parameters,
+                fields,
+                ..
+            } => {
+                for type_param in type_parameters.iter() {
+                    inner_types.extend(helper(type_param.type_id));
+                }
+                for field in fields.iter() {
+                    inner_types.extend(helper(field.type_id));
+                }
+            }
+            TypeInfo::Custom { type_arguments, .. } => {
+                if let Some(type_arguments) = type_arguments {
+                    for type_arg in type_arguments.iter() {
+                        inner_types.extend(helper(type_arg.type_id));
+                    }
+                }
+            }
+            TypeInfo::Array(type_id, _, _) => {
+                inner_types.extend(helper(*type_id));
+            }
+            TypeInfo::Tuple(elems) => {
+                for elem in elems.iter() {
+                    inner_types.extend(helper(elem.type_id));
+                }
+            }
+            TypeInfo::Storage { fields } => {
+                for field in fields.iter() {
+                    inner_types.extend(helper(field.type_id));
+                }
+            }
+            TypeInfo::Unknown
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::Str(_)
+            | TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Boolean
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::B256
+            | TypeInfo::Numeric
+            | TypeInfo::Contract
+            | TypeInfo::RawUntypedPtr
+            | TypeInfo::ErrorRecovery => {}
+        }
+        inner_types
     }
 
     /// Given a `TypeInfo` `self`, check to see if `self` is currently
@@ -1090,6 +1230,35 @@ impl TypeInfo {
                 });
                 err(warnings, errors)
             }
+        }
+    }
+
+    pub(crate) fn can_change(&self) -> bool {
+        // TODO: there might be an optimization here that if the type params hold
+        // only non-dynamic types, then it doesn't matter that there are type params
+        match self {
+            TypeInfo::Enum {
+                type_parameters, ..
+            } => !type_parameters.is_empty(),
+            TypeInfo::Struct {
+                type_parameters, ..
+            } => !type_parameters.is_empty(),
+            TypeInfo::Str(_)
+            | TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Boolean
+            | TypeInfo::B256
+            | TypeInfo::RawUntypedPtr
+            | TypeInfo::ErrorRecovery => false,
+            TypeInfo::Unknown
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::Custom { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::Tuple(_)
+            | TypeInfo::Array(_, _, _)
+            | TypeInfo::Contract
+            | TypeInfo::Storage { .. }
+            | TypeInfo::Numeric => true,
         }
     }
 
