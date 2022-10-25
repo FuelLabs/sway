@@ -2248,7 +2248,7 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<()> {
         std::env::current_dir()?
     };
 
-    let manifest_file = ManifestFile::from_dir(&this_dir)?;
+    let manifest_file = ManifestFile::from_path(&this_dir)?;
     match manifest_file {
         ManifestFile::Package(package_manifest) => {
             build_package_with_options(&package_manifest, build_options)?
