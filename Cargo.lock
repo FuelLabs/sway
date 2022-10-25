@@ -1589,7 +1589,7 @@ dependencies = [
 
 [[package]]
 name = "forc-doc"
-version = "0.1.0"
+version = "0.28.1"
 dependencies = [
  "anyhow",
  "clap 4.0.18",
