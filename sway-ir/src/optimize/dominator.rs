@@ -33,6 +33,7 @@ pub struct PostOrder {
 }
 
 /// Compute the post-order traversal of the CFG.
+/// Beware: Unreachable blocks aren't part of the result.
 pub fn compute_post_order(context: &Context, function: &Function) -> PostOrder {
     let mut res = PostOrder {
         block_to_po: FxHashMap::default(),
@@ -63,7 +64,7 @@ pub fn compute_post_order(context: &Context, function: &Function) -> PostOrder {
     post_order(context, entry, &mut res, &mut on_stack, &mut counter);
 
     // We could assert the whole thing, but it'd be expensive.
-    assert!(res.po_to_block[function.num_blocks(context) - 1] == entry);
+    assert!(res.po_to_block.last().unwrap() == &entry);
 
     res
 }
@@ -78,7 +79,7 @@ pub fn compute_dom_tree(context: &Context, function: &Function) -> (DomTree, Pos
     dom_tree.insert(entry, DomTreeNode::new(Some(entry)));
     // initialize the dominators tree. This allows us to do dom_tree[b] fearlessly.
     // Note that we just previously initialized "entry", so we skip that here.
-    for b in po.po_to_block.iter().take(function.num_blocks(context) - 1) {
+    for b in po.po_to_block.iter().take(po.po_to_block.len() - 1) {
         dom_tree.insert(*b, DomTreeNode::new(None));
     }
     let mut changed = true;
@@ -90,12 +91,20 @@ pub fn compute_dom_tree(context: &Context, function: &Function) -> (DomTree, Pos
             // new_idom <- first (processed) predecessor of b (pick one)
             let mut new_idom = b
                 .pred_iter(context)
-                .find(|p| po.block_to_po[p] > po.block_to_po[b])
+                .find(|p| {
+                    // "p" may not be reachable, and hence not in dom_tree.
+                    po.block_to_po
+                        .get(p)
+                        .map_or(false, |p_po| *p_po > po.block_to_po[b])
+                })
                 .cloned()
                 .unwrap();
             let picked_pred = new_idom;
-            // for all other predecessors, p, of b:
-            for p in b.pred_iter(context).filter(|p| **p != picked_pred) {
+            // for all other (reachable) predecessors, p, of b:
+            for p in b
+                .pred_iter(context)
+                .filter(|p| **p != picked_pred && po.block_to_po.contains_key(p))
+            {
                 if matches!(dom_tree[p].parent, Some(_)) {
                     // if doms[p] already calculated
                     new_idom = intersect(&po, &mut dom_tree, *p, new_idom);
@@ -144,24 +153,24 @@ pub fn compute_dom_tree(context: &Context, function: &Function) -> (DomTree, Pos
 }
 
 /// Compute dominance frontiers set for each block.
-pub fn compute_dom_fronts(context: &Context, function: &Function, dom_tree: &DomTree) -> DomFronts {
+pub fn compute_dom_fronts(context: &Context, dom_tree: &DomTree) -> DomFronts {
     let mut res = DomFronts::default();
-    for b in function.block_iter(context) {
-        res.insert(b, FxHashSet::default());
+    for (b, _) in dom_tree.iter() {
+        res.insert(*b, FxHashSet::default());
     }
 
     // for all nodes, b
-    for b in function.block_iter(context) {
+    for (b, _) in dom_tree.iter() {
         // if the number of predecessors of b >= 2
         if b.num_predecessors(context) > 1 {
             // unwrap() is safe as b is not "entry", and hence must have idom.
-            let b_idom = dom_tree[&b].parent.unwrap();
-            // for all predecessors, p, of b
-            for p in b.pred_iter(context) {
+            let b_idom = dom_tree[b].parent.unwrap();
+            // for all (reachable) predecessors, p, of b
+            for p in b.pred_iter(context).filter(|p| dom_tree.contains_key(p)) {
                 let mut runner = *p;
                 while runner != b_idom {
                     // add b to runner’s dominance frontier set
-                    res.get_mut(&runner).unwrap().insert(b);
+                    res.get_mut(&runner).unwrap().insert(*b);
                     runner = dom_tree[&runner].parent.unwrap();
                 }
             }

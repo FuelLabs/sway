@@ -303,7 +303,7 @@ impl<'ir> AsmBuilder<'ir> {
             );
             let arg_reg = match initializer {
                 Some(init_val) => {
-                    let init_val_reg = self.value_to_register(&init_val);
+                    let init_val_reg = self.value_to_register(init_val);
                     match init_val_reg {
                         VirtualRegister::Virtual(_) => init_val_reg,
                         VirtualRegister::Constant(_) => {

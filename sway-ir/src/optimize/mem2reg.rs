@@ -138,7 +138,7 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
     }
 
     let (dom_tree, po) = compute_dom_tree(context, function);
-    let dom_fronts = compute_dom_fronts(context, function, &dom_tree);
+    let dom_fronts = compute_dom_fronts(context, &dom_tree);
     // print!(
     //     "{}\n{}\n{}",
     //     function.dot_cfg(context),
@@ -153,8 +153,14 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
     let mut worklist = Vec::<(String, Type, Block)>::new();
     let mut phi_to_local = FxHashMap::<Value, String>::default();
     // Insert PHIs for each definition (store) at its dominance frontiers.
-    // Start by adding the existing definitions (stores) to a worklist.
-    for (block, inst) in function.instruction_iter(context) {
+    // Start by adding the existing definitions (stores) to a worklist,
+    // in program order (reverse post order). This is for faster convergence (or maybe not).
+    for (block, inst) in po
+        .po_to_block
+        .iter()
+        .rev()
+        .flat_map(|b| b.instruction_iter(context).map(|i| (*b, i)))
+    {
         if let ValueDatum::Instruction(Instruction::Store { dst_val, .. }) =
             context.values[inst.0].value
         {
