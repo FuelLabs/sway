@@ -46,6 +46,12 @@ impl ty::TyImplTrait {
         // TODO: eventually when we support generic traits, we will want to use this
         let mut new_impl_type_parameters = vec![];
         for type_parameter in impl_type_parameters.into_iter() {
+            if !type_parameter.trait_constraints.is_empty() {
+                errors.push(CompileError::WhereClauseNotYetSupported {
+                    span: type_parameter.trait_constraints_span,
+                });
+                return err(warnings, errors);
+            }
             new_impl_type_parameters.push(check!(
                 TypeParameter::type_check(impl_ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
@@ -398,6 +404,12 @@ impl ty::TyImplTrait {
         // insert them into the namespace
         let mut new_type_parameters = vec![];
         for type_parameter in impl_type_parameters.into_iter() {
+            if !type_parameter.trait_constraints.is_empty() {
+                errors.push(CompileError::WhereClauseNotYetSupported {
+                    span: type_parameter.trait_constraints_span,
+                });
+                return err(warnings, errors);
+            }
             new_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),

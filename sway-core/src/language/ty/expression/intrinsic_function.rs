@@ -5,7 +5,7 @@ use itertools::Itertools;
 use sway_ast::Intrinsic;
 use sway_types::Span;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TyIntrinsicFunctionKind {
     pub kind: Intrinsic,
     pub arguments: Vec<TyExpression>,
