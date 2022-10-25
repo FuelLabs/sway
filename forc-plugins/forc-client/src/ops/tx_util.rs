@@ -10,12 +10,12 @@ use fuels_core::constants::BASE_ASSET_ID;
 use fuels_signers::{provider::Provider, Wallet};
 use fuels_types::bech32::Bech32Address;
 
-fn prompt_address() -> Result<Address> {
+fn prompt_address() -> Result<Bech32Address> {
     print!("Please provide the address of the wallet you are going to sign this transaction with:");
     std::io::stdout().flush()?;
     let mut buf = String::new();
     std::io::stdin().read_line(&mut buf)?;
-    Address::from_str(buf.trim()).map_err(Error::msg)
+    Bech32Address::from_str(buf.trim()).map_err(Error::msg)
 }
 
 fn prompt_signature(message: Message) -> Result<Signature> {
@@ -122,7 +122,7 @@ impl TransactionBuilderExt for TransactionBuilder {
         let inputs = wallet
             .get_asset_inputs_for_amount(asset_id, amount, signature_witness_index)
             .await?;
-        let output = Output::change(address, 0, asset_id);
+        let output = Output::change(wallet.address().into(), 0, asset_id);
 
         self.add_inputs(inputs).add_output(output);
 
@@ -140,7 +140,7 @@ impl TransactionBuilderExt for TransactionBuilder {
             let address = if let Some(signing_key) = signing_key {
                 Address::from(*signing_key.public_key().hash())
             } else {
-                prompt_address()?
+                Address::from(prompt_address()?)
             };
 
             // Insert dummy witness for signature
