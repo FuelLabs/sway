@@ -1,6 +1,8 @@
 //! Transforms markdown
 const SWAYDOC_FENCES: [&str; 2] = ["```", "~~~"];
 
+/// Transforms markdown and takes care of any code blocks
+/// to allow for syntax highlighting.
 pub(crate) fn format_docs(src: &str) -> String {
     let mut processed_lines = Vec::new();
     let mut in_code_block = false;
@@ -44,13 +46,13 @@ fn code_line_ignored_by_swaydoc(line: &str) -> bool {
 }
 
 // stripped down version of https://github.com/rust-lang/rust/blob/392ba2ba1a7d6c542d2459fb8133bebf62a4a423/src/librustdoc/html/markdown.rs#L810-L933
-pub fn is_sway_fence(s: &str) -> bool {
+fn is_sway_fence(s: &str) -> bool {
     let mut seen_sway_tags = false;
     let mut seen_other_tags = false;
 
     let tokens = s
         .trim()
-        .split(|c| c == ',' || c == ' ' || c == '\t')
+        .split(|c| matches!(c, ',' | ' ' | '\t'))
         .map(str::trim)
         .filter(|t| !t.is_empty());
 

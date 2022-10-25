@@ -20,23 +20,18 @@ use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{self, Position, Url};
 
 pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option<lsp_types::Hover> {
-    if let Some((ident, token)) = session.token_at_position(&url, position) {
-        let range = get_range_from_span(&ident.span());
-        if let Some(decl_ident) = session.declared_token_ident(&token) {
-            if let Some(decl_token) = session
-                .token_map()
-                .get(&to_ident_key(&decl_ident))
-                .map(|item| item.value().clone())
-            {
-                let contents = hover_format(&decl_token, &decl_ident);
-                return Some(lsp_types::Hover {
-                    contents,
-                    range: Some(range),
-                });
-            }
-        }
-    }
-    None
+    let (ident, token) = session.token_at_position(&url, position)?;
+    let range = get_range_from_span(&ident.span());
+    let decl_ident = session.declared_token_ident(&token)?;
+    let decl_token = session
+        .token_map()
+        .get(&to_ident_key(&decl_ident))
+        .map(|item| item.value().clone())?;
+    let contents = hover_format(&decl_token, &decl_ident);
+    Some(lsp_types::Hover {
+        contents,
+        range: Some(range),
+    })
 }
 
 fn visibility_as_str(visibility: &Visibility) -> &'static str {

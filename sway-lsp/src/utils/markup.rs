@@ -5,6 +5,7 @@
 //! Modified from rust-analyzer.
 use std::fmt;
 
+/// A handy wrapper around `String` for constructing markdown documents.
 #[derive(Default, Debug)]
 pub struct Markup {
     text: String,
@@ -29,9 +30,11 @@ impl fmt::Display for Markup {
 }
 
 impl Markup {
+    /// Get the inner string as a str.
     pub fn as_str(&self) -> &str {
         self.text.as_str()
     }
+    /// Contents will be formatted with sway syntax highlighting.
     pub fn fenced_block(contents: &impl fmt::Display) -> Markup {
         format!("```sway\n{}\n```", contents).into()
     }
