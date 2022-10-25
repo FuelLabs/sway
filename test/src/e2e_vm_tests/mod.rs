@@ -16,7 +16,7 @@ use std::{
     sync::Arc,
 };
 use tokio::sync::Mutex;
-use tracing::Instrument;
+use tracing::{info, Instrument};
 
 use self::util::VecExt;
 
@@ -58,12 +58,14 @@ impl TestContext {
     async fn deploy_contract(&self, contract_path: String) -> ContractId {
         let mut deployed_contracts = self.deployed_contracts.lock().await;
         if let Some(contract_id) = deployed_contracts.get(&contract_path) {
+            info!("Deployed ContractID: {}", contract_id);
             *contract_id
         } else {
             let contract_id = harness::deploy_contract(contract_path.as_str(), &self.run_config)
                 .await
                 .unwrap();
             deployed_contracts.insert(contract_path, contract_id);
+            info!("Deployed ContractID: {}", contract_id);
             contract_id
         }
     }
