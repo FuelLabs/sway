@@ -116,7 +116,7 @@ fn compile_module_to_asm(
         Kind::Contract => ProgramKind::Contract,
         Kind::Script => ProgramKind::Script,
         Kind::Predicate => ProgramKind::Predicate,
-        Kind::Library => todo!("libraries and predicates coming soon!"),
+        Kind::Library => todo!("libraries coming soon!"),
     };
 
     ok(
