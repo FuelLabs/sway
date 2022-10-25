@@ -174,12 +174,10 @@ foo = { path = "../foo" }
 
 Example usage:
 
-```rust
+```sway
 script;
 
-use foo::CONTRACT_ID as FOO_CONTRACT_ID;
-
 fn main() {
-  let x = FOO_CONTRACT_ID;
+  let foo_id = foo::CONTRACT_ID;
 }
 ```
