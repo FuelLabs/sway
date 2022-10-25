@@ -109,7 +109,7 @@ fn module_to_doc<'a>(
         match module.kind {
             Kind::Contract => "contract",
             Kind::Library => "library",
-            Kind::Predicate => "predicate ",
+            Kind::Predicate => "predicate",
             Kind::Script => "script",
         }
     )))
