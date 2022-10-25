@@ -2,7 +2,7 @@ use crate::core::token::TokenMap;
 use sway_types::{Ident, Span};
 use tower_lsp::lsp_types::{Position, Range};
 
-/// Given a curson Position, return the `Ident` and `Span` of a token in the
+/// Given a cursor `Position`, return the `Ident` and `Span` of a token in the
 /// `TokenMap` if one exists at that position.
 pub(crate) fn ident_and_span_at_position(
     cursor_position: Position,
