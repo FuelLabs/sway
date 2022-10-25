@@ -1,7 +1,6 @@
 library contract_id;
 //! A wrapper around the b256 type to help enhance type-safety.
 use ::intrinsics::size_of_val;
-use ::mem::{addr_of, eq};
 
 /// The ContractId type, a struct wrappper around the inner `value`.
 pub struct ContractId {
@@ -10,7 +9,7 @@ pub struct ContractId {
 
 impl core::ops::Eq for ContractId {
     fn eq(self, other: Self) -> bool {
-        eq(addr_of(self), addr_of(other), size_of_val(self))
+        self.value == other.value
     }
 }
 

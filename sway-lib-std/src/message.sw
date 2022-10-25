@@ -2,7 +2,6 @@ library message;
 
 use ::alloc::alloc;
 use ::outputs::{Output, output_count, output_type};
-use ::mem::{addr_of, copy};
 use ::revert::revert;
 use ::vec::Vec;
 
@@ -16,21 +15,19 @@ const FAILED_SEND_MESSAGE_SIGNAL = 0xffff_ffff_ffff_0002;
 /// * `msg_data` - arbitrary length message data
 /// * `coins` - Amount of base asset sent
 pub fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
-    let mut recipient_heap_buffer = 0;
-    let mut data_heap_buffer = 0;
+    let mut recipient_heap_buffer = __addr_of(recipient);
     let mut size = 0;
 
     // If msg_data is empty, we just ignore it and pass `smo` a pointer to the inner value of recipient. 
     // Otherwise, we allocate adjacent space on the heap for the data and the recipient and copy the 
     // data and recipient values there
-    if msg_data.is_empty() {
-        recipient_heap_buffer = addr_of(recipient);
-    } else {
+    if !msg_data.is_empty() {
         size = msg_data.len() * 8;
-        data_heap_buffer = alloc(size);
+        let data_heap_buffer = alloc(size);
         recipient_heap_buffer = alloc(32);
-        copy(msg_data.buf.ptr, data_heap_buffer, size);
-        copy(addr_of(recipient), recipient_heap_buffer, 32);
+        msg_data.buf.ptr.copy_to(data_heap_buffer, size);
+        let addr_of_recipient = __addr_of(recipient);
+        addr_of_recipient.copy_to(recipient_heap_buffer, 32);
     };
 
     let mut index = 0;

@@ -3,7 +3,6 @@
 library outputs;
 
 use ::contract_id::ContractId;
-use ::mem::read;
 use ::revert::revert;
 use ::logging::log;
 use ::tx::{
