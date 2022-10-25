@@ -43,46 +43,50 @@ impl RenderedDocument {
             let decl_ty = doc.desc_ty.as_str().to_string();
             let rendered_content = match &doc.desc_ty {
                 DescriptorType::Struct(struct_decl) => {
+                    let path_str = if module_depth == 0 {
+                        struct_decl.name.as_str().to_string()
+                    } else {
+                        format!("{}::{}", &module, &struct_decl.name)
+                    };
                     all_doc.push((
                         ItemType::Struct,
-                        (
-                            format!("{}::{}", &module, &struct_decl.name),
-                            module_prefix.clone(),
-                            file_name.clone(),
-                        ),
+                        (path_str, module_prefix.clone(), file_name.clone()),
                     ));
                     struct_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Enum(enum_decl) => {
+                    let path_str = if module_depth == 0 {
+                        enum_decl.name.as_str().to_string()
+                    } else {
+                        format!("{}::{}", &module, &enum_decl.name)
+                    };
                     all_doc.push((
                         ItemType::Enum,
-                        (
-                            format!("{}::{}", &module, &enum_decl.name),
-                            module_prefix.clone(),
-                            file_name.clone(),
-                        ),
+                        (path_str, module_prefix.clone(), file_name.clone()),
                     ));
                     enum_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Trait(trait_decl) => {
+                    let path_str = if module_depth == 0 {
+                        trait_decl.name.as_str().to_string()
+                    } else {
+                        format!("{}::{}", &module, &trait_decl.name)
+                    };
                     all_doc.push((
                         ItemType::Trait,
-                        (
-                            format!("{}::{}", &module, &trait_decl.name),
-                            module_prefix.clone(),
-                            file_name.clone(),
-                        ),
+                        (path_str, module_prefix.clone(), file_name.clone()),
                     ));
                     trait_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Abi(abi_decl) => {
+                    let path_str = if module_depth == 0 {
+                        abi_decl.name.as_str().to_string()
+                    } else {
+                        format!("{}::{}", &module, &abi_decl.name)
+                    };
                     all_doc.push((
                         ItemType::Abi,
-                        (
-                            format!("{}::{}", &module, &abi_decl.name),
-                            module_prefix.clone(),
-                            file_name.clone(),
-                        ),
+                        (path_str, module_prefix.clone(), file_name.clone()),
                     ));
                     abi_decl.render(module, module_depth, decl_ty)
                 }
@@ -102,24 +106,26 @@ impl RenderedDocument {
                     impl_trait_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Function(fn_decl) => {
+                    let path_str = if module_depth == 0 {
+                        fn_decl.name.as_str().to_string()
+                    } else {
+                        format!("{}::{}", &module, &fn_decl.name)
+                    };
                     all_doc.push((
                         ItemType::Function,
-                        (
-                            format!("{}::{}", &module, &fn_decl.name),
-                            module_prefix.clone(),
-                            file_name.clone(),
-                        ),
+                        (path_str, module_prefix.clone(), file_name.clone()),
                     ));
                     fn_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Const(const_decl) => {
+                    let path_str = if module_depth == 0 {
+                        const_decl.name.as_str().to_string()
+                    } else {
+                        format!("{}::{}", &module, &const_decl.name)
+                    };
                     all_doc.push((
                         ItemType::Constant,
-                        (
-                            format!("{}::{}", &module, &const_decl.name),
-                            module_prefix.clone(),
-                            file_name.clone(),
-                        ),
+                        (path_str, module_prefix.clone(), file_name.clone()),
                     ));
                     const_decl.render(module, module_depth, decl_ty)
                 }
