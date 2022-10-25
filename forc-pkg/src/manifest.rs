@@ -265,6 +265,9 @@ impl PackageManifest {
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     pub fn from_file(path: &Path) -> Result<Self> {
+        // While creating a `ManifestFile` we need to check if the given path corresponds to a
+        // package or a workspace. While doing so, we should be printing the warnings if the given
+        // parses so that we only see warnings for the correct type of manifest.
         let mut warnings = vec![];
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
@@ -590,6 +593,9 @@ impl WorkspaceManifestFile {
 impl WorkspaceManifest {
     /// Given a path to a `Forc.toml`, read it and construct a `WorkspaceManifest`.
     pub fn from_file(path: &Path) -> Result<Self> {
+        // While creating a `ManifestFile` we need to check if the given path corresponds to a
+        // package or a workspace. While doing so, we should be printing the warnings if the given
+        // parses so that we only see warnings for the correct type of manifest.
         let mut warnings = vec![];
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
