@@ -24,6 +24,17 @@ impl CopyTypes for TyIntrinsicFunctionKind {
     }
 }
 
+impl ReplaceSelfType for TyIntrinsicFunctionKind {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        for arg in &mut self.arguments {
+            arg.replace_self_type(self_type);
+        }
+        for targ in &mut self.type_arguments {
+            targ.type_id.replace_self_type(self_type);
+        }
+    }
+}
+
 impl fmt::Display for TyIntrinsicFunctionKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let targs = self

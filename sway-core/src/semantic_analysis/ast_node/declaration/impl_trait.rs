@@ -13,7 +13,7 @@ use crate::{
 
 impl ty::TyImplTrait {
     pub(crate) fn type_check_impl_trait(
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         impl_trait: ImplTrait,
     ) -> CompileResult<(Self, TypeId)> {
         let mut errors = vec![];
@@ -39,7 +39,7 @@ impl ty::TyImplTrait {
 
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut impl_namespace);
+        let mut impl_ctx = ctx.by_ref().scoped(&mut impl_namespace);
 
         // type check the type parameters
         // insert them into the namespace
@@ -53,7 +53,7 @@ impl ty::TyImplTrait {
                 return err(warnings, errors);
             }
             new_impl_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
+                TypeParameter::type_check(impl_ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -62,7 +62,7 @@ impl ty::TyImplTrait {
 
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
-            ctx.resolve_type_without_self(
+            impl_ctx.resolve_type_without_self(
                 insert_type(type_implementing_for),
                 &type_implementing_for_span,
                 None
@@ -85,9 +85,9 @@ impl ty::TyImplTrait {
         );
 
         // Update the context with the new `self` type.
-        let ctx = ctx.with_self_type(implementing_for_type_id);
+        let impl_ctx = impl_ctx.with_self_type(implementing_for_type_id);
 
-        let impl_trait = match ctx
+        let impl_trait = match impl_ctx
             .namespace
             .resolve_call_path(&trait_name)
             .ok(&mut warnings, &mut errors)
@@ -102,7 +102,7 @@ impl ty::TyImplTrait {
                 );
                 let functions_buf = check!(
                     type_check_trait_implementation(
-                        ctx,
+                        impl_ctx,
                         &tr.interface_surface,
                         &tr.methods,
                         &functions,
@@ -128,15 +128,6 @@ impl ty::TyImplTrait {
                     implementing_for_type_id,
                     type_implementing_for_span: type_implementing_for_span.clone(),
                 };
-                let implementing_for_type_id = insert_type(
-                    match to_typeinfo(implementing_for_type_id, &type_implementing_for_span) {
-                        Ok(o) => o,
-                        Err(e) => {
-                            errors.push(e.into());
-                            return err(warnings, errors);
-                        }
-                    },
-                );
                 (impl_trait, implementing_for_type_id)
             }
             Some(ty::TyDeclaration::AbiDeclaration(decl_id)) => {
@@ -159,7 +150,7 @@ impl ty::TyImplTrait {
                     });
                 }
 
-                let ctx = ctx.with_mode(Mode::ImplAbiFn);
+                let ctx = impl_ctx.with_mode(Mode::ImplAbiFn);
 
                 let functions_buf = check!(
                     type_check_trait_implementation(
@@ -532,8 +523,10 @@ fn type_check_trait_implementation(
     // this map keeps track of the remaining functions in the
     // interface surface that still need to be implemented for the
     // trait to be fully implemented
-    let mut function_checklist: std::collections::BTreeMap<&Ident, _> =
-        trait_fns.iter().map(|decl| (&decl.name, decl)).collect();
+    let mut function_checklist: std::collections::BTreeMap<Ident, _> = trait_fns
+        .into_iter()
+        .map(|decl| (decl.name.clone(), decl))
+        .collect();
     for fn_decl in functions {
         let mut ctx = ctx
             .by_ref()
@@ -557,7 +550,7 @@ fn type_check_trait_implementation(
         }
 
         // remove this function from the "checklist"
-        let fn_signature = match function_checklist.remove(&fn_decl.name) {
+        let mut fn_signature = match function_checklist.remove(&fn_decl.name) {
             Some(trait_fn) => trait_fn,
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
@@ -568,6 +561,11 @@ fn type_check_trait_implementation(
                 return err(warnings, errors);
             }
         };
+
+        // replace instances of `TypeInfo::SelfType` with a fresh
+        // `TypeInfo::SelfType` to avoid replacing types in the original trait
+        // declaration
+        fn_signature.replace_self_type(ctx.self_type());
 
         // ensure this fn decl's parameters and signature lines up with the one
         // in the trait
