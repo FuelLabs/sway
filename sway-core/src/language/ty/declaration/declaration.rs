@@ -32,11 +32,31 @@ impl CopyTypes for TyDeclaration {
         use TyDeclaration::*;
         match self {
             VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
-            FunctionDeclaration(ref mut fn_decl) => fn_decl.copy_types(type_mapping),
-            TraitDeclaration(ref mut trait_decl) => trait_decl.copy_types(type_mapping),
+            FunctionDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping),
+            TraitDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping),
             StructDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping),
-            EnumDeclaration(ref mut enum_decl) => enum_decl.copy_types(type_mapping),
-            ImplTrait(impl_trait) => impl_trait.copy_types(type_mapping),
+            EnumDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping),
+            ImplTrait(decl_id) => decl_id.copy_types(type_mapping),
+            // generics in an ABI is unsupported by design
+            AbiDeclaration(..)
+            | ConstantDeclaration(_)
+            | StorageDeclaration(..)
+            | GenericTypeForFunctionScope { .. }
+            | ErrorRecovery => (),
+        }
+    }
+}
+
+impl ReplaceSelfType for TyDeclaration {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        use TyDeclaration::*;
+        match self {
+            VariableDeclaration(ref mut var_decl) => var_decl.replace_self_type(self_type),
+            FunctionDeclaration(ref mut decl_id) => decl_id.replace_self_type(self_type),
+            TraitDeclaration(ref mut decl_id) => decl_id.replace_self_type(self_type),
+            StructDeclaration(ref mut decl_id) => decl_id.replace_self_type(self_type),
+            EnumDeclaration(ref mut decl_id) => decl_id.replace_self_type(self_type),
+            ImplTrait(decl_id) => decl_id.replace_self_type(self_type),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
             | ConstantDeclaration(_)
@@ -380,12 +400,14 @@ impl TyDeclaration {
         let mut errors = vec![];
         let type_id = match self {
             TyDeclaration::VariableDeclaration(decl) => decl.body.return_type,
-            TyDeclaration::FunctionDeclaration { .. } => {
-                errors.push(CompileError::Unimplemented(
-                    "Function pointers have not yet been implemented.",
-                    self.span(),
-                ));
-                return err(warnings, errors);
+            TyDeclaration::FunctionDeclaration(decl_id) => {
+                let decl = check!(
+                    CompileResult::from(de_get_function(decl_id.clone(), &self.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                decl.return_type
             }
             TyDeclaration::StructDeclaration(decl_id) => {
                 let decl = check!(
