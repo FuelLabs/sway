@@ -22,12 +22,12 @@ pub fn bytecode_size(contract_id: ContractId) -> u64 {
 }
 
 
-// TO DO: Can this be generalized to `bytes_from_bytecode` and return a Vec<u8> ?
-pub fn b256_from_bytecode(pointer: u64, contract_id: ContractId) -> b256 {
+// TO DO: b256 as proof of concept. Is there a way to make this generic? 
+pub fn b256_from_bytecode(contract_id: ContractId, offset: u64) -> b256 {
     let result: b256 = ZERO_B256;
 
-    asm(result: result, pointer: pointer, size: 32, target: contract_id.value) {
-        ccp result target pointer size;
+    asm(result: result, offset: offset, size: 32, target: contract_id.value) {
+        ccp result target offset size;
         result: b256
     }
 }
