@@ -2775,8 +2775,12 @@ repository</a>.</em></p>
 </blockquote>
 <h3 id="3-generate-the-test-harness"><a class="header" href="#3-generate-the-test-harness">3. Generate the test harness</a></h3>
 <p>Let's generate the default test harness with the following:</p>
-<pre><code class="language-console">cargo generate --init fuellabs/sway templates/sway-test-rs --name my-fuel-project
+<pre><code class="language-console">cargo generate --init fuellabs/sway templates/sway-test-rs --name my-fuel-project --force
 </code></pre>
+<p><code>--force</code> forces your <code>--name</code> input to retain your desired casing for the <code>{{project-name}}</code>
+placeholder in the template. Otherwise, <code>cargo-generate</code> automatically converts it to <code>kebab-case</code>.
+With <code>--force</code>, this means that both <code>my_fuel_project</code> and <code>my-fuel-project</code> are valid project names,
+depending on your needs.</p>
 <p>If all goes well, the output should look as follows:</p>
 <pre><code class="language-console">⚠️   Favorite `fuellabs/sway` not found in config, using it as a git repository: https://github.com/fuellabs/sway
 🤷   Project Name : my-fuel-project
