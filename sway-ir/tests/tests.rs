@@ -161,6 +161,22 @@ fn dce() {
 
 // -------------------------------------------------------------------------------------------------
 
+#[allow(clippy::needless_collect)]
+#[test]
+fn mem2reg() {
+    run_tests("mem2reg", |_first_line, ir: &mut Context| {
+        let funcs: Vec<_> = ir
+            .module_iter()
+            .flat_map(|module| module.function_iter(ir))
+            .collect();
+        funcs.into_iter().fold(false, |acc, func| {
+            sway_ir::optimize::promote_to_registers(ir, &func).unwrap() || acc
+        })
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
+
 #[test]
 fn serialize() {
     // This isn't running a pass, it's just confirming that the IR can be loaded and printed, and
