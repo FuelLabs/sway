@@ -13,6 +13,25 @@ use sway_core::{language::parsed::TreeType, parse};
 pub use sway_types::ConfigTimeConstant;
 use sway_utils::constants;
 
+pub enum ManifestFile {
+    Package(Box<PackageManifestFile>),
+    Workspace(WorkspaceManifestFile),
+}
+
+impl ManifestFile {
+    /// Returns a `PackageManifestFile` if the path is within a package directory, otherwise
+    /// returns a `WorkspaceManifestFile` if within a workspace directory.
+    pub fn from_dir(dir: &Path) -> Result<Self> {
+        if let Ok(package_manifest) = PackageManifestFile::from_dir(dir) {
+            Ok(ManifestFile::Package(Box::new(package_manifest)))
+        } else if let Ok(workspace_manifest) = WorkspaceManifestFile::from_dir(dir) {
+            Ok(ManifestFile::Workspace(workspace_manifest))
+        } else {
+            bail!("Cannot find a valid `Forc.toml` at {:?}", dir)
+        }
+    }
+}
+
 type PatchMap = BTreeMap<String, Dependency>;
 
 /// A [PackageManifest] that was deserialized from a file at a particular path.

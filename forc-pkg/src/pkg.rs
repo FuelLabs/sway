@@ -1,7 +1,8 @@
 use crate::{
     lock::Lock,
     manifest::{
-        BuildProfile, ConfigTimeConstant, Dependency, PackageManifest, PackageManifestFile,
+        BuildProfile, ConfigTimeConstant, Dependency, ManifestFile, PackageManifest,
+        PackageManifestFile,
     },
     CORE, PRELUDE, STD,
 };
@@ -2091,13 +2092,15 @@ pub const SWAY_BIN_HASH_SUFFIX: &str = "-bin-hash";
 /// when predicates are built.
 pub const SWAY_BIN_ROOT_SUFFIX: &str = "-bin-root";
 
-/// Builds a project with given BuildOptions
-pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
+pub fn build_package_with_options(
+    manifest: &PackageManifestFile,
+    build_options: BuildOptions,
+) -> Result<Compiled> {
     let key_debug: String = "debug".to_string();
     let key_release: String = "release".to_string();
 
     let BuildOptions {
-        path,
+        path: _,
         binary_outfile,
         debug_outfile,
         print_ast,
@@ -2134,17 +2137,6 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
             }
         }
     }
-
-    let this_dir = if let Some(ref path) = path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir()?
-    };
-
-    let manifest = PackageManifestFile::from_dir(&this_dir)?;
-
-    let plan = BuildPlan::from_lock_and_manifest(&manifest, locked, offline_mode)?;
-
     // Retrieve the specified build profile
     let mut profile = manifest
         .build_profile(&selected_build_profile)
@@ -2163,6 +2155,8 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
     profile.print_intermediate_asm |= print_intermediate_asm;
     profile.terse |= terse_mode;
     profile.time_phases |= time_phases;
+
+    let plan = BuildPlan::from_lock_and_manifest(manifest, locked, offline_mode)?;
 
     // Build it!
     let (compiled, source_map) = build(&plan, &profile)?;
@@ -2242,6 +2236,27 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
     }
 
     Ok(compiled)
+}
+
+/// Builds a project with given BuildOptions
+pub fn build_with_options(build_options: BuildOptions) -> Result<()> {
+    let path = &build_options.path;
+
+    let this_dir = if let Some(ref path) = path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir()?
+    };
+
+    let manifest_file = ManifestFile::from_dir(&this_dir)?;
+    match manifest_file {
+        ManifestFile::Package(package_manifest) => {
+            build_package_with_options(&package_manifest, build_options)?
+        }
+        ManifestFile::Workspace(_) => bail!("Workspace building is not supported"),
+    };
+
+    Ok(())
 }
 
 /// Returns the ContractId of a compiled contract with specified `salt`.
