@@ -29,14 +29,14 @@ pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option
     None
 }
 
-fn extract_visibility(visibility: &Visibility) -> String {
+fn visibility_as_str(visibility: &Visibility) -> &'static str {
     match visibility {
-        Visibility::Private => "".into(),
-        Visibility::Public => "pub ".into(),
+        Visibility::Private => "",
+        Visibility::Public => "pub",
     }
 }
 
-/// Expects a span from either a FunctionDeclaration or a TypedFunctionDeclaration
+/// Expects a span from either a `FunctionDeclaration` or a `TypedFunctionDeclaration`.
 fn extract_fn_signature(span: &Span) -> String {
     let value = span.as_str();
     value.split('{').take(1).map(|v| v.trim()).collect()
@@ -49,7 +49,7 @@ fn hover_format(token: &Token, ident: &Ident) -> Hover {
     let format_visibility_hover = |visibility: Visibility, decl_name: &str| -> String {
         format!(
             "{}{} {}",
-            extract_visibility(&visibility),
+            visibility_as_str(&visibility),
             decl_name,
             token_name
         )

@@ -115,7 +115,7 @@ pub(crate) fn semantic_tokens(tokens_sorted: &[(Span, Token)]) -> SemanticTokens
     builder.build()
 }
 
-/// Get the semantic token type from the symbol kind
+/// Get the semantic token type from the symbol kind.
 fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
     match kind {
         SymbolKind::Field => SemanticTokenType::PROPERTY,

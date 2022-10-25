@@ -19,7 +19,8 @@ pub fn get_diagnostics(warnings: &[CompileWarning], errors: &[CompileError]) -> 
         ..Default::default()
     });
 
-    let mut all = errors.collect::<Vec<_>>();
+    let mut all = Vec::with_capacity(errors.len() + warnings.len());
+    all.extend(errors);
     all.extend(warnings);
     all
 }

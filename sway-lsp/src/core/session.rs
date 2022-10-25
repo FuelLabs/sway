@@ -20,7 +20,7 @@ use sway_core::{
     language::{parsed::ParseProgram, ty},
     CompileResult,
 };
-use sway_types::{Ident, Spanned};
+use sway_types::{Ident, Span, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionResponse, Location, Position, Range,
@@ -102,24 +102,22 @@ impl Session {
     /// Find all references in the session for a given token.
     ///
     /// This is useful for the highlighting and renaming LSP capabilities.
-    pub fn all_references_of_token(&self, token: &Token) -> Vec<(Ident, Token)> {
-        let current_type_id = utils::token::type_id(token);
+    pub fn all_references_of_token<'s>(
+        &'s self,
+        token: &Token,
+    ) -> impl 's + Iterator<Item = (Ident, Token)> {
+        let current_type_id = self.declared_token_span(token);
 
         self.token_map
             .iter()
-            .filter(|item| {
+            .filter(move |item| {
                 let ((_, _), token) = item.pair();
-                if token.typed.is_some() {
-                    current_type_id == utils::token::type_id(token)
-                } else {
-                    false
-                }
+                current_type_id == self.declared_token_span(token)
             })
             .map(|item| {
                 let ((ident, _), token) = item.pair();
                 (ident.clone(), token.clone())
             })
-            .collect()
     }
 
     /// Return a TokenMap with tokens belonging to the provided file path
@@ -145,6 +143,18 @@ impl Session {
         token.type_def.as_ref().and_then(|type_def| match type_def {
             TypeDefinition::TypeId(type_id) => utils::token::ident_of_type_id(type_id),
             TypeDefinition::Ident(ident) => Some(ident.clone()),
+        })
+    }
+
+    /// Return the `Span` of the declaration of the provided token. This is useful for
+    /// performaing == comparisons on spans. We need to do this instead of comparing
+    /// the `Ident` because the `Ident` eq is only comparing the str name.
+    pub fn declared_token_span(&self, token: &Token) -> Option<Span> {
+        token.type_def.as_ref().and_then(|type_def| match type_def {
+            TypeDefinition::TypeId(type_id) => {
+                Some(utils::token::ident_of_type_id(type_id)?.span())
+            }
+            TypeDefinition::Ident(ident) => Some(ident.span()),
         })
     }
 
@@ -316,7 +326,6 @@ impl Session {
         let (_, token) = self.token_at_position(url, position)?;
         let token_ranges = self
             .all_references_of_token(&token)
-            .iter()
             .map(|(ident, _)| utils::common::get_range_from_span(&ident.span()))
             .collect();
 
