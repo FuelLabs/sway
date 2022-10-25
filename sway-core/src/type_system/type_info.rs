@@ -423,6 +423,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
             | TypeInfo::Numeric
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
+            | TypeInfo::RawUntypedPtr
             | TypeInfo::Storage { .. } => false,
         }
     }
