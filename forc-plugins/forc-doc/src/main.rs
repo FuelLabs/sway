@@ -7,7 +7,6 @@ use anyhow::{bail, Result};
 use clap::Parser;
 use cli::Command;
 use std::{
-    io::prelude::*,
     process::Command as Process,
     {fs, path::PathBuf},
 };
