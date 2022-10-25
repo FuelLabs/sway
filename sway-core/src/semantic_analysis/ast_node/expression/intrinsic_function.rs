@@ -185,8 +185,10 @@ impl ty::TyIntrinsicFunctionKind {
                     warnings,
                     errors
                 );
-                let is_valid_arg_ty = matches!(arg_ty, TypeInfo::UnsignedInteger(_))
-                    || matches!(arg_ty, TypeInfo::Boolean);
+                let is_valid_arg_ty = matches!(
+                    arg_ty,
+                    TypeInfo::UnsignedInteger(_) | TypeInfo::Boolean | TypeInfo::RawUntypedPtr
+                );
                 if !is_valid_arg_ty {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
@@ -378,7 +380,7 @@ impl ty::TyIntrinsicFunctionKind {
                     type_arguments: vec![],
                     span,
                 };
-                let return_type = insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour));
+                let return_type = insert_type(TypeInfo::RawUntypedPtr);
                 (intrinsic_function, return_type)
             }
             Intrinsic::StateLoadWord => {

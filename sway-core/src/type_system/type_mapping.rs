@@ -352,6 +352,7 @@ impl TypeMapping {
             | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Numeric
+            | TypeInfo::RawUntypedPtr
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery => None,
         }

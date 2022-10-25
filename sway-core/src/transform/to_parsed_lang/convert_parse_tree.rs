@@ -899,6 +899,7 @@ fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "bool" => Some(TypeInfo::Boolean),
         "unit" => Some(TypeInfo::Tuple(Vec::new())),
         "b256" => Some(TypeInfo::B256),
+        "raw_ptr" => Some(TypeInfo::RawUntypedPtr),
         "Self" | "self" => Some(TypeInfo::SelfType),
         "Contract" => Some(TypeInfo::Contract),
         _other => None,
