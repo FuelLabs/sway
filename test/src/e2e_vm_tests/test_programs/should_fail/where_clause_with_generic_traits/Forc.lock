@@ -1,0 +1,8 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-258877CD3780C719'
+
+[[package]]
+name = 'where_clause_with_generic_traits'
+source = 'root'
+dependencies = ['core']

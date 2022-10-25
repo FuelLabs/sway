@@ -5,7 +5,7 @@ use std::{
 };
 use sway_types::{Span, Spanned};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct TypeArgument {
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
