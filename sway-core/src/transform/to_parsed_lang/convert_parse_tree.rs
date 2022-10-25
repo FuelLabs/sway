@@ -1540,6 +1540,15 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
             let expr = expr_to_expression(handler, *expr)?;
             op_call("not", bang_token.span(), span, &[expr])?
         }
+        Expr::Pow {
+            lhs,
+            double_star_token,
+            rhs,
+        } => {
+            let lhs = expr_to_expression(handler, *lhs)?;
+            let rhs = expr_to_expression(handler, *rhs)?;
+            op_call("pow", double_star_token.span(), span, &vec![lhs, rhs])?
+        }
         Expr::Mul {
             lhs,
             star_token,
