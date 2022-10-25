@@ -28,13 +28,6 @@ pub fn compile_program(program: ty::TyProgram) -> Result<Context, CompileError> 
         ty::TyProgramKind::Script {
             main_function,
             declarations,
-        }
-        | ty::TyProgramKind::Predicate {
-            main_function,
-            declarations,
-            // predicates and scripts have the same codegen, their only difference is static
-            // type-check time checks.
-            // Predicates are not allowed to use logs so no need to pass in `logged_types` here
         } => compile::compile_script(
             &mut ctx,
             main_function,
@@ -45,6 +38,10 @@ pub fn compile_program(program: ty::TyProgram) -> Result<Context, CompileError> 
                 .map(|(log_id, type_id)| (type_id, log_id))
                 .collect(),
         ),
+        ty::TyProgramKind::Predicate {
+            main_function,
+            declarations,
+        } => compile::compile_predicate(&mut ctx, main_function, &root.namespace, declarations),
         ty::TyProgramKind::Contract {
             abi_entries,
             declarations,

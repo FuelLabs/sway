@@ -9,6 +9,10 @@ impl FinalProgram {
                 data_section: self.data_section,
                 program_section: self.ops,
             },
+            ProgramKind::Predicate => FinalizedAsm::PredicateMain {
+                data_section: self.data_section,
+                program_section: self.ops,
+            },
             ProgramKind::Contract => FinalizedAsm::ContractAbi {
                 data_section: self.data_section,
                 program_section: self.ops,

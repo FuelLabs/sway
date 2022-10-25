@@ -41,6 +41,22 @@ pub(super) fn compile_script(
     Ok(module)
 }
 
+pub(super) fn compile_predicate(
+    context: &mut Context,
+    main_function: ty::TyFunctionDeclaration,
+    namespace: &namespace::Module,
+    declarations: Vec<ty::TyDeclaration>,
+) -> Result<Module, CompileError> {
+    let module = Module::new(context, Kind::Predicate);
+    let mut md_mgr = MetadataManager::default();
+
+    compile_constants(context, &mut md_mgr, module, namespace)?;
+    compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
+    compile_function(context, &mut md_mgr, module, main_function, &HashMap::new())?;
+
+    Ok(module)
+}
+
 pub(super) fn compile_contract(
     context: &mut Context,
     abi_entries: Vec<ty::TyFunctionDeclaration>,
