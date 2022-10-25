@@ -13,6 +13,14 @@ impl CopyTypes for TyCodeBlock {
     }
 }
 
+impl ReplaceSelfType for TyCodeBlock {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.contents
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+    }
+}
+
 impl DeterministicallyAborts for TyCodeBlock {
     fn deterministically_aborts(&self) -> bool {
         self.contents.iter().any(|x| x.deterministically_aborts())

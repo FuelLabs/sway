@@ -33,3 +33,12 @@ impl CopyTypes for TyTraitDeclaration {
         // we don't have to type check the methods because it hasn't been type checked yet
     }
 }
+
+impl ReplaceSelfType for TyTraitDeclaration {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.interface_surface
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+        // we don't have to type check the methods because it hasn't been type checked yet
+    }
+}
