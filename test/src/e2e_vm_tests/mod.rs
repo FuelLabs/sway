@@ -258,7 +258,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         if !disabled_tests.is_empty() {
             tracing::info!("{} tests were disabled.", disabled_tests.len());
         }
-        bail!(
+        tracing::warn!(
             "No tests were run. Regex filters filtered out all {} tests.",
             total_number_of_tests
         );
@@ -271,8 +271,8 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             ({} disabled).",
             disabled_tests.len()
         );
-        Ok(())
     }
+    Ok(())
 }
 
 fn discover_test_configs() -> Result<Vec<TestDescription>> {
