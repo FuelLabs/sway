@@ -3,18 +3,14 @@ use crate::{
         session::Session,
         token::{AstToken, Token, TypedAstToken},
     },
-    utils::{
-        common::{extract_visibility, get_range_from_span},
-        function::extract_fn_signature,
-        token::to_ident_key,
-    },
+    utils::{common::get_range_from_span, token::to_ident_key},
 };
 use std::sync::Arc;
 use sway_core::{
     declaration_engine,
     language::{parsed::Declaration, ty, Visibility},
 };
-use sway_types::{Ident, Spanned};
+use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position, Url};
 
 pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option<Hover> {
@@ -31,6 +27,19 @@ pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option
         }
     }
     None
+}
+
+fn extract_visibility(visibility: &Visibility) -> String {
+    match visibility {
+        Visibility::Private => "".into(),
+        Visibility::Public => "pub ".into(),
+    }
+}
+
+/// Expects a span from either a FunctionDeclaration or a TypedFunctionDeclaration
+fn extract_fn_signature(span: &Span) -> String {
+    let value = span.as_str();
+    value.split('{').take(1).map(|v| v.trim()).collect()
 }
 
 fn hover_format(token: &Token, ident: &Ident) -> Hover {

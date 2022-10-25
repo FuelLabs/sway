@@ -29,6 +29,7 @@ fn symbol_info(ident: &Ident, token: &Token, url: Url) -> SymbolInformation {
     }
 }
 
+/// Given a `token::SymbolKind`, return the `lsp_types::SymbolKind` that corresponds to it.
 pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
     match symbol_kind {
         SymbolKind::Field => lsp_types::SymbolKind::FIELD,

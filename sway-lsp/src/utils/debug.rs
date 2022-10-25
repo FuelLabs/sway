@@ -1,10 +1,7 @@
 #![allow(dead_code)]
-use crate::core::token::{AstToken, Token, TokenMap, TypedAstToken};
-use crate::utils::{common::get_range_from_span, token};
-use sway_core::language::{
-    parsed::{Expression, ExpressionKind},
-    Literal,
-};
+use crate::core::token::TokenMap;
+use crate::utils::common::get_range_from_span;
+use sway_core::language::Literal;
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
@@ -58,45 +55,6 @@ fn warning_from_ident(ident: &Ident) -> Diagnostic {
         severity: Some(DiagnosticSeverity::WARNING),
         message: ident.as_str().to_string(),
         ..Default::default()
-    }
-}
-
-pub(crate) fn debug_print_ident_and_token(ident: &Ident, token: &Token) {
-    let pos = ident.span().start_pos().line_col();
-    let line_num = pos.0 as u32;
-
-    tracing::debug!(
-        "line num = {:?} | name: = {:?} | ast_node_type = {:?} | type_id = {:?}",
-        line_num,
-        ident.as_str(),
-        ast_node_type(token),
-        token::type_id(token),
-    );
-}
-
-fn ast_node_type(token_type: &Token) -> String {
-    match &token_type.typed {
-        Some(typed_ast_token) => match typed_ast_token {
-            TypedAstToken::TypedDeclaration(dec) => dec.friendly_name().to_string(),
-            TypedAstToken::TypedExpression(exp) => exp.expression.to_string(),
-            TypedAstToken::TypedFunctionParameter(_) => "function parameter".to_string(),
-            TypedAstToken::TypedStructField(_) => "struct field".to_string(),
-            TypedAstToken::TypedEnumVariant(_) => "enum variant".to_string(),
-            TypedAstToken::TypedTraitFn(_) => "trait function".to_string(),
-            TypedAstToken::TypedStorageField(_) => "storage field".to_string(),
-            TypedAstToken::TypeCheckedStorageReassignDescriptor(_) => {
-                "storage reassignment descriptor".to_string()
-            }
-            TypedAstToken::TypedReassignment(_) => "reassignment".to_string(),
-            _ => "".to_string(),
-        },
-        None => match &token_type.parsed {
-            AstToken::Expression(Expression {
-                kind: ExpressionKind::Literal(value),
-                ..
-            }) => literal_to_string(value),
-            _ => "".to_string(),
-        },
     }
 }
 

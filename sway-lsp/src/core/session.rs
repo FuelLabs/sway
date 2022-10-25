@@ -10,10 +10,7 @@ use crate::{
         {traverse_parse_tree, traverse_typed_tree},
     },
     error::{DocumentError, LanguageServerError},
-    utils::{
-        self,
-        sync::{Directory, SyncWorkspace},
-    },
+    utils::{self, sync::SyncWorkspace},
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
@@ -102,6 +99,9 @@ impl Session {
         }
     }
 
+    /// Find all references in the session for a given token.
+    ///
+    /// This is useful for the highlighting and renaming LSP capabilities.
     pub fn all_references_of_token(&self, token: &Token) -> Vec<(Ident, Token)> {
         let current_type_id = utils::token::type_id(token);
 
@@ -140,6 +140,7 @@ impl Session {
             .collect()
     }
 
+    /// Return the `Ident` of the declaration of the provided token.
     pub fn declared_token_ident(&self, token: &Token) -> Option<Ident> {
         token.type_def.as_ref().and_then(|type_def| match type_def {
             TypeDefinition::TypeId(type_id) => utils::token::ident_of_type_id(type_id),
@@ -147,11 +148,12 @@ impl Session {
         })
     }
 
+    /// Return a reference to the `TokenMap` of the current session.
     pub fn token_map(&self) -> &TokenMap {
         &self.token_map
     }
 
-    // Document
+    /// Store the text document in the session.
     pub fn store_document(&self, text_document: TextDocument) -> Result<(), DocumentError> {
         let uri = text_document.get_uri().to_string();
         self.documents
@@ -161,6 +163,7 @@ impl Session {
             })
     }
 
+    /// Remove the text document from the session.
     pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
         self.documents
             .remove(url.path())
@@ -216,8 +219,8 @@ impl Session {
     ) -> Result<Vec<Diagnostic>, LanguageServerError> {
         let parse_program = parsed_result.value.ok_or_else(|| {
             let diagnostics = capabilities::diagnostic::get_diagnostics(
-                parsed_result.warnings.clone(),
-                parsed_result.errors.clone(),
+                &parsed_result.warnings,
+                &parsed_result.errors,
             );
             LanguageServerError::FailedToParse { diagnostics }
         })?;
@@ -238,8 +241,8 @@ impl Session {
         }
 
         Ok(capabilities::diagnostic::get_diagnostics(
-            parsed_result.warnings,
-            parsed_result.errors,
+            &parsed_result.warnings,
+            &parsed_result.errors,
         ))
     }
 
@@ -249,8 +252,8 @@ impl Session {
     ) -> Result<Vec<Diagnostic>, LanguageServerError> {
         let typed_program = ast_res.value.ok_or(LanguageServerError::FailedToParse {
             diagnostics: capabilities::diagnostic::get_diagnostics(
-                ast_res.warnings.clone(),
-                ast_res.errors.clone(),
+                &ast_res.warnings,
+                &ast_res.errors,
             ),
         })?;
 
@@ -279,8 +282,8 @@ impl Session {
         }
 
         Ok(capabilities::diagnostic::get_diagnostics(
-            ast_res.warnings,
-            ast_res.errors,
+            &ast_res.warnings,
+            &ast_res.errors,
         ))
     }
 
@@ -310,16 +313,14 @@ impl Session {
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
-        if let Some((_, token)) = self.token_at_position(url, position) {
-            let token_ranges = self
-                .all_references_of_token(&token)
-                .iter()
-                .map(|(ident, _)| utils::common::get_range_from_span(&ident.span()))
-                .collect();
+        let (_, token) = self.token_at_position(url, position)?;
+        let token_ranges = self
+            .all_references_of_token(&token)
+            .iter()
+            .map(|(ident, _)| utils::common::get_range_from_span(&ident.span()))
+            .collect();
 
-            return Some(token_ranges);
-        }
-        None
+        Some(token_ranges)
     }
 
     pub fn token_definition_response(
@@ -367,19 +368,12 @@ impl Session {
             .map(|page_text_edit| vec![page_text_edit])
     }
 
-    pub fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
-        if let Some(temp_dir) = self
-            .sync
-            .directories
-            .get(&Directory::Temp)
-            .map(|item| item.value().clone())
-        {
-            // Store the documents.
-            for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
-                self.store_document(TextDocument::build_from_path(path)?)?;
-            }
+    pub fn parse_and_store_sway_files(&self) -> Result<(), LanguageServerError> {
+        let temp_dir = self.sync.temp_dir()?;
+        // Store the documents.
+        for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
+            self.store_document(TextDocument::build_from_path(path)?)?;
         }
-
         Ok(())
     }
 }
