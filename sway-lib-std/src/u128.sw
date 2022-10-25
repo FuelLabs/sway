@@ -1,7 +1,5 @@
 library u128;
 
-use core::num::*;
-
 use ::assert::assert;
 use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
 use ::result::Result;

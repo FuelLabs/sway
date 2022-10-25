@@ -25,8 +25,10 @@ fn main() -> bool {
     // todo: use correct type ContractId
     let fuel_coin = abi(TestFuelCoin, fuelcoin_id.into());
 
-    let mut fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
-    assert(fuelcoin_balance == 0);
+    // Get the initial balances which can be non-zero
+    // since we can't be sure if the contracts are fresh
+    let fuelcoin_initial_balance = balance_of(fuelcoin_id, fuelcoin_id);
+    let balance_test_initial_balance = balance_of(fuelcoin_id, balance_test_id);
 
     fuel_coin.mint {
         gas: default_gas
@@ -34,7 +36,7 @@ fn main() -> bool {
     (11);
 
     // check that the mint was successful
-    fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
+    let fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id) - fuelcoin_initial_balance;
     assert(fuelcoin_balance == 11);
 
     fuel_coin.burn {
@@ -43,7 +45,7 @@ fn main() -> bool {
     (7);
 
     // check that the burn was successful
-    fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
+    let fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id) - fuelcoin_initial_balance;
     assert(fuelcoin_balance == 4);
 
     // force transfer coins
@@ -53,8 +55,8 @@ fn main() -> bool {
     (3, fuelcoin_id, balance_test_id);
 
     // check that the transfer was successful
-    fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id);
-    let balance_test_contract_balance = balance_of(fuelcoin_id, balance_test_id);
+    let fuelcoin_balance = balance_of(fuelcoin_id, fuelcoin_id) - fuelcoin_initial_balance;
+    let balance_test_contract_balance = balance_of(fuelcoin_id, balance_test_id) - balance_test_initial_balance;
     assert(fuelcoin_balance == 1);
     assert(balance_test_contract_balance == 3);
 
