@@ -264,14 +264,18 @@ impl PackageManifest {
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     pub fn from_file(path: &Path) -> Result<Self> {
+        let mut warnings = vec![];
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
         let mut manifest: Self = serde_ignored::deserialize(toml_de, |path| {
             let warning = format!("  WARNING! unused manifest key: {}", path);
-            println_yellow_err(&warning);
+            warnings.push(warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
+        for warning in warnings {
+            println_yellow_err(&warning);
+        }
         manifest.implicitly_include_std_if_missing();
         manifest.implicitly_include_default_build_profiles_if_missing();
         manifest.validate()?;
@@ -585,14 +589,18 @@ impl WorkspaceManifestFile {
 impl WorkspaceManifest {
     /// Given a path to a `Forc.toml`, read it and construct a `WorkspaceManifest`.
     pub fn from_file(path: &Path) -> Result<Self> {
+        let mut warnings = vec![];
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
         let manifest: Self = serde_ignored::deserialize(toml_de, |path| {
             let warning = format!("  WARNING! unused manifest key: {}", path);
-            println_yellow_err(&warning);
+            warnings.push(warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
+        for warning in warnings {
+            println_yellow_err(&warning);
+        }
         Ok(manifest)
     }
 
