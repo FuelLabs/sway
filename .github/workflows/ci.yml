@@ -273,12 +273,12 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
       - name: Build All Tests
-        run: cd test/src/sdk-harness && bash build.sh --locked && cd ../../../
+        run: cd test/src/sdk-harness && bash build.sh --release --locked && cd ../../../
       - name: Cargo Test sway-lib-std
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --manifest-path ./test/src/sdk-harness/Cargo.toml -- --test-threads=1 --nocapture
+          args: --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --test-threads=1 --nocapture
 
   cargo-test-workspace:
     runs-on: ubuntu-latest
