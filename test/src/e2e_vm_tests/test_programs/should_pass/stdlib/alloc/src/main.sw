@@ -7,9 +7,9 @@ use std::context::registers::*;
 use std::assert::assert;
 
 fn lw(ptr: u64) -> u64 {
-    asm(r1: ptr) {
-        lw r1 r1 i0;
-        r1: u64
+    asm(r1: ptr, res) {
+        lw res r1 i0;
+        res: u64
     }
 }
 
