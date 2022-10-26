@@ -2,14 +2,13 @@ use super::*;
 use crate::{
     declaration_engine::declaration_engine::*,
     language::{parsed::TreeType, ty, CallPath, Visibility},
-    transform::AttributeKind,
     type_system::{to_typeinfo, TypeInfo},
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::BTreeSet;
 use sway_error::error::CompileError;
 use sway_error::warning::{CompileWarning, Warning};
-use sway_types::{constants::DEFAULT_ENTRY_POINT_FN_NAME, span::Span, Ident, Spanned};
+use sway_types::{span::Span, Ident, Spanned};
 
 impl ControlFlowGraph {
     pub(crate) fn find_dead_code(&self) -> Vec<CompileWarning> {
@@ -135,9 +134,7 @@ fn entry_points(
                         ..
                     }) => {
                         let decl = de_get_function(decl_id.clone(), span)?;
-                        let is_entry = decl.name.as_str() == DEFAULT_ENTRY_POINT_FN_NAME
-                            || decl.attributes.contains_key(&AttributeKind::Test);
-                        if !is_entry {
+                        if !decl.is_entry() {
                             continue;
                         }
                     }
@@ -158,8 +155,7 @@ fn entry_points(
                         ..
                     }) => {
                         let decl = de_get_function(decl_id.clone(), &decl_id.span())?;
-                        decl.visibility == Visibility::Public
-                            || decl.attributes.contains_key(&AttributeKind::Test)
+                        decl.visibility == Visibility::Public || decl.is_test()
                     }
                     ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
                         content:
