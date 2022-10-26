@@ -2261,7 +2261,6 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Built> {
         }
         ManifestFile::Workspace(_) => bail!("Workspace building is not supported"),
     }
-
 }
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
@@ -2280,7 +2279,10 @@ fn contract_id(built_package: &BuiltPackage) -> ContractId {
 /// This compiles all packages (including dependencies) in the order specified by the `BuildPlan`.
 ///
 /// Also returns the resulting `sway_core::SourceMap` which may be useful for debugging purposes.
-pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(BuiltPackage, SourceMap)> {
+pub fn build(
+    plan: &BuildPlan,
+    profile: &BuildProfile,
+) -> anyhow::Result<(BuiltPackage, SourceMap)> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
 
