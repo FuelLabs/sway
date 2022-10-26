@@ -1,7 +1,5 @@
 contract;
 
-use std::storage::StorageMap;
-
 struct Data {
     value: u64,
 }

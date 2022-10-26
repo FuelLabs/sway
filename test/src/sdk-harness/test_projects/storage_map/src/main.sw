@@ -1,7 +1,5 @@
 contract;
 
-use std::storage::StorageMap;
-
 pub struct Struct {
     x: u32,
     y: b256,

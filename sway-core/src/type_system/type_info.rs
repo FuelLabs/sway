@@ -1192,9 +1192,22 @@ impl TypeInfo {
     /// | `Data<u8, u8>`    | `Data<T, T>`, `Data<T, F>`, any generic type |                     |
     ///
     pub(crate) fn is_subset_of(&self, other: &TypeInfo) -> bool {
+        // any type is the subset of a generic
+        if let Self::UnknownGeneric { .. } = other {
+            return true;
+        }
+        self.is_subset_inner(other)
+    }
+
+    /// Given two `TypeInfo`'s `self` and `other`, checks to see if `self` is
+    /// unidirectionally a subset of `other`, excluding consideration of generic
+    /// types (like in the `is_subset_of` method).
+    pub(crate) fn is_subset_of_for_item_import(&self, other: &TypeInfo) -> bool {
+        self.is_subset_inner(other)
+    }
+
+    fn is_subset_inner(&self, other: &TypeInfo) -> bool {
         match (self, other) {
-            // any type is the subset of a generic
-            (_, Self::UnknownGeneric { .. }) => true,
             (Self::Array(l0, l1, _), Self::Array(r0, r1, _)) => {
                 look_up_type_id(*l0).is_subset_of(&look_up_type_id(*r0)) && l1 == r1
             }

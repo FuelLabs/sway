@@ -242,6 +242,24 @@ impl TyFunctionDeclaration {
             },
         }
     }
+
+    /// Whether or not this function is the default entry point.
+    pub fn is_main_entry(&self) -> bool {
+        // NOTE: We may want to make this check more sophisticated or customisable in the future,
+        // but for now this assumption is baked in throughout the compiler.
+        self.name.as_str() == sway_types::constants::DEFAULT_ENTRY_POINT_FN_NAME
+    }
+
+    /// Whether or not this function is a unit test, i.e. decorated with `#[test]`.
+    pub fn is_test(&self) -> bool {
+        self.attributes
+            .contains_key(&transform::AttributeKind::Test)
+    }
+
+    /// Whether or not this function describes a program entry point.
+    pub fn is_entry(&self) -> bool {
+        self.is_main_entry() || self.is_test()
+    }
 }
 
 #[derive(Debug, Clone, Eq)]
