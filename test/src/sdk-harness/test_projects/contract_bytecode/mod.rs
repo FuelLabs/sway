@@ -1,4 +1,5 @@
 use fuels::prelude::*;
+use fuels::signers::fuel_crypto::Hasher;
 use fuels::tx::Contract as FuelsTxContract;
 
 abigen!(
@@ -51,29 +52,34 @@ async fn can_get_bytecode_size() {
 }
 
 #[tokio::test]
-async fn can_get_b256_from_bytecode() {
+async fn can_read_from_bytecode() {
     let wallet = launch_provider_and_get_wallet().await;
-    let (contract_instance, id) = get_test_contract_instance(wallet).await;
+    let (contract_instance, id) = get_test_contract_instance(wallet.clone()).await;
 
-    let index: usize = 12;
+    // The offset from which to read bytes
+    const OFFSET: u64 = 0;
 
-    let result = contract_instance
+    // The number of bytes to read
+    const LENGTH: u64 = 8;
+
+    let tx = contract_instance
         .methods()
-        .get_b256_from_bytecode(ContractId::from(id.clone()), index as u64)
+        .read_from_bytecode_and_hash(ContractId::from(id.clone()), OFFSET, LENGTH)
         .set_contracts(&[id.clone()])
         .call()
         .await
-        .unwrap()
-        .value
-        .0;
+        .unwrap();
+
+    let result = tx.value.0;
 
     let contract_bytecode =
         std::fs::read("test_projects/contract_bytecode/out/debug/contract_bytecode.bin").unwrap();
 
-    let slice: &[u8] = &contract_bytecode[index..(index + 32)];
-    let arr: [u8; 32] = slice.try_into().unwrap();
+    let slice = &contract_bytecode[OFFSET as usize..(OFFSET as usize + LENGTH as usize)];
+    println!("{:?}", slice);
+    let expected_hash = *Hasher::hash(slice);
 
-    assert_eq!(result, arr);
+    assert_eq!(result, expected_hash);
 }
 
 async fn get_test_contract_instance(
