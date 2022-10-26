@@ -80,6 +80,9 @@ pub struct Command {
     /// Output the time elapsed over each part of the compilation process.
     #[clap(long)]
     pub time_phases: bool,
+    /// Also build all tests within the project.
+    #[clap(long)]
+    pub tests: bool,
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {
