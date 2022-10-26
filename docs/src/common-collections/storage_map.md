@@ -6,11 +6,7 @@ Storage maps are useful when you want to look up data not by using an index, as 
 
 Similarly to `StorageVec<T>`, `StorageMap<K, V>` can only be used in a contract because only contracts are allowed to access persistent storage.
 
-In order to use `StorageMap<K, V>`, you must first import `StorageMap` as follows:
-
-```sway
-{{#include ../../../examples/storage_map/src/main.sw:storage_map_import}}
-```
+`StorageMap<T>` is included in the [standard library prelude](../introduction/standard_library.md#standard-library-prelude) which means that there is no need to import it manually.
 
 ## Creating a New Storage Map
 

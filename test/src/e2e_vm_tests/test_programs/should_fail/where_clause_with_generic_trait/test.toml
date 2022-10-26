@@ -1,0 +1,25 @@
+category = "fail"
+
+# check: $()trait Getter<T> {
+# nextln:$()Unimplemented feature: Generic traits are not yet implemented.
+
+# check: $()impl Getter<u32> for MyU32 {
+# nextln: $()Unimplemented feature: Generic traits are not yet implemented.
+
+# check: $()impl Getter<u64> for MyU64 {
+# nextln: $()Unimplemented feature: Generic traits are not yet implemented.
+
+# check: $()struct MyPoint<T> where T: Getter<T> {
+# nextln:$()"where" clauses are not yet supported
+
+# check: $()impl<T> Getter<T> for MyPoint<T> {
+# nextln:$()Unimplemented feature: Generic traits are not yet implemented.
+
+# check: $()let foo = MyPoint {
+# nextln:$()Could not find symbol "MyPoint" in this scope.
+
+# check:$()let foo = MyPoint {
+# nextln:$()Unknown type name "MyPoint".
+
+# check:$()let foo = MyPoint {
+# nextln:$()Unknown type name "MyPoint".

@@ -9,6 +9,7 @@ use crate::{
 use super::{
     items::{GlobImport, Items, SymbolMap},
     root::Root,
+    trait_map::TraitMap,
     ModuleName, Path,
 };
 
@@ -63,10 +64,21 @@ impl Module {
         // we don't keep that around so we just use the span from the generated const decl instead.
         let mut compiled_constants: SymbolMap = Default::default();
         // this for loop performs a miniature compilation of each const item in the config
-        for (name, ConfigTimeConstant { r#type, value }) in constants.into_iter() {
+        for (
+            name,
+            ConfigTimeConstant {
+                r#type,
+                value,
+                public,
+            },
+        ) in constants.into_iter()
+        {
             // FIXME(Centril): Stop parsing. Construct AST directly instead!
             // parser config
-            let const_item = format!("const {name}: {type} = {value};");
+            let const_item = match public {
+                true => format!("pub const {name}: {type} = {value};"),
+                false => format!("const {name}: {type} = {value};"),
+            };
             let const_item_len = const_item.len();
             let input_arc = std::sync::Arc::from(const_item);
             let token_stream = lex(handler, &input_arc, 0, const_item_len, None).unwrap();
@@ -293,7 +305,7 @@ impl Module {
             warnings,
             errors
         );
-        let mut impls_to_insert = vec![];
+        let mut impls_to_insert: TraitMap = TraitMap::default();
         match src_ns.symbols.get(item).cloned() {
             Some(decl) => {
                 let visibility = check!(
@@ -318,11 +330,9 @@ impl Module {
                 }
                 let a = decl.return_type(&item.span()).value;
                 //  if this is an enum or struct, import its implementations
-                let mut res = match a {
-                    Some(a) => src_ns.implemented_traits.get_call_path_and_type_info(a),
-                    None => vec![],
-                };
-                impls_to_insert.append(&mut res);
+                if let Some(a) = a {
+                    impls_to_insert.extend(src_ns.implemented_traits.filter_by_type(a));
+                }
                 // no matter what, import it this way though.
                 let dst_ns = &mut self[dst];
                 let mut add_synonym = |name| {
@@ -350,13 +360,7 @@ impl Module {
         };
 
         let dst_ns = &mut self[dst];
-        impls_to_insert
-            .into_iter()
-            .for_each(|((call_path, type_info), methods)| {
-                dst_ns
-                    .implemented_traits
-                    .insert(call_path, type_info, methods);
-            });
+        dst_ns.implemented_traits.extend(impls_to_insert);
 
         ok((), warnings, errors)
     }

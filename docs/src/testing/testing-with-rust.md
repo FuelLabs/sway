@@ -44,8 +44,13 @@ cargo install cargo-generate
 Let's generate the default test harness with the following:
 
 ```console
-cargo generate --init fuellabs/sway templates/sway-test-rs --name my-fuel-project
+cargo generate --init fuellabs/sway templates/sway-test-rs --name my-fuel-project --force
 ```
+
+`--force` forces your `--name` input to retain your desired casing for the `{{project-name}}`
+placeholder in the template. Otherwise, `cargo-generate` automatically converts it to `kebab-case`.
+With `--force`, this means that both `my_fuel_project` and `my-fuel-project` are valid project names,
+depending on your needs.
 
 If all goes well, the output should look as follows:
 
@@ -208,6 +213,7 @@ async fn initialize_and_increment() {
     // Now you have an instance of your contract you can use to test each function
 
     let result = contract_instance
+        .methods()
         .initialize_counter(42)
         .call()
         .await
@@ -217,6 +223,7 @@ async fn initialize_and_increment() {
 
     // Call `increment_counter()` method in our deployed contract.
     let result = contract_instance
+        .methods()
         .increment_counter(10)
         .call()
         .await

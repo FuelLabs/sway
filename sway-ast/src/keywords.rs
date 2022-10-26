@@ -144,6 +144,7 @@ define_token!(
     [Colon]
 );
 define_token!(StarToken, "an asterisk (*)", [Star], [Equals]);
+define_token!(DoubleStarToken, "`**`", [Star, Star], []);
 define_token!(CommaToken, "a comma", [Comma], []);
 define_token!(ColonToken, "a colon", [Colon], [Colon]);
 define_token!(

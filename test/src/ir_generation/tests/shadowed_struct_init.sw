@@ -18,7 +18,7 @@ fn main() {
     new(true, false);
 }
 
-// check: fn $ID(a $MD: bool, b $MD: bool) -> { bool, bool }
+// check: fn $ID(a $MD: bool, b $MD: bool, __ret_value $MD: mut ptr { bool, bool }) -> { bool, bool }
 
 // check: local ptr bool a_
 // check: local ptr bool b_

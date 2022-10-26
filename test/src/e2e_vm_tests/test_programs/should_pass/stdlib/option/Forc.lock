@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-188A2A51DABCB20F'
-dependencies = []
 
 [[package]]
 name = 'option'

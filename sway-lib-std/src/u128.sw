@@ -1,7 +1,5 @@
 library u128;
 
-use core::num::*;
-
 use ::assert::assert;
 use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
 use ::result::Result;
@@ -31,10 +29,7 @@ impl From for U128 {
     }
 
     fn into(self) -> (u64, u64) {
-        (
-            self.upper,
-            self.lower,
-        )
+        (self.upper, self.lower)
     }
 }
 

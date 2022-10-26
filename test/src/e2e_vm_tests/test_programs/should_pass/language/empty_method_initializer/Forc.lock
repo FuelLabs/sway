@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-5A54E336CA715EAA'
-dependencies = []
 
 [[package]]
 name = 'empty_method_initializer'

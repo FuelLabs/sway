@@ -9,7 +9,13 @@ pub struct TyStructExpressionField {
 }
 
 impl CopyTypes for TyStructExpressionField {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.value.copy_types(type_mapping);
+    }
+}
+
+impl ReplaceSelfType for TyStructExpressionField {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.value.replace_self_type(self_type);
     }
 }

@@ -115,6 +115,7 @@ fn convert_resolved_type(
                 create_tuple_aggregate(context, new_fields).map(Type::Struct)?
             }
         }
+        TypeInfo::RawUntypedPtr => Type::Uint(64),
 
         // Unsupported types which shouldn't exist in the AST after type checking and
         // monomorphisation.

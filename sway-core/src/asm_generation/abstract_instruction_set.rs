@@ -6,7 +6,7 @@ use crate::{
     },
 };
 
-use std::{collections::BTreeSet, fmt};
+use std::{collections::HashSet, fmt};
 
 use either::Either;
 
@@ -64,12 +64,13 @@ impl AbstractInstructionSet {
         //     MOVE t, a        MOVE b, a
         //     MOVE b, t   =>   USE  b
         //     USE  b
-
         loop {
             // Gather all the uses for each register.
-            let uses: BTreeSet<&VirtualRegister> =
-                self.ops.iter().fold(BTreeSet::new(), |mut acc, op| {
-                    acc.append(&mut op.use_registers());
+            let uses: HashSet<&VirtualRegister> =
+                self.ops.iter().fold(HashSet::new(), |mut acc, op| {
+                    for u in &op.use_registers() {
+                        acc.insert(u);
+                    }
                     acc
                 });
 
@@ -189,7 +190,6 @@ impl RealizedAbstractInstructionSet {
                      opcode,
                      comment,
                      owning_span,
-                     offset: _,
                  }| {
                     AllocatedOp {
                         opcode,

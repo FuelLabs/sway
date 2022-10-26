@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-D3556C503E51030C'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-D3556C503E51030C'
+dependencies = ['core']
+
+[[package]]
+name = 'vec_ret'
+source = 'root'
+dependencies = ['std']

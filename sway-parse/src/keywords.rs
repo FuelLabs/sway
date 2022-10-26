@@ -112,6 +112,7 @@ token_impls! {
     ForwardSlashToken,
     DoubleColonToken,
     StarToken,
+    DoubleStarToken,
     CommaToken,
     ColonToken,
     RightArrowToken,

@@ -1,8 +1,5 @@
 contract;
 
-// ANCHOR: storage_map_import
-use std::storage::StorageMap;
-// ANCHOR_END: storage_map_import
 use std::logging::log;
 
 storage {
