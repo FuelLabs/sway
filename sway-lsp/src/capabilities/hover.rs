@@ -4,10 +4,7 @@ use crate::{
         token::{AstToken, Token, TypedAstToken},
     },
     utils::{
-        attributes::doc_attributes,
-        common::get_range_from_span,
-        markdown,
-        markup::Markup, 
+        attributes::doc_attributes, common::get_range_from_span, markdown, markup::Markup,
         token::to_ident_key,
     },
 };
