@@ -78,6 +78,11 @@ pub struct BuiltPackage {
     pub tree_type: TreeType,
 }
 
+pub enum Built {
+    Package(BuiltPackage),
+    Workspace,
+}
+
 /// A package uniquely identified by name along with its source.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Pkg {
@@ -2239,7 +2244,7 @@ pub fn build_package_with_options(
 }
 
 /// Builds a project with given BuildOptions
-pub fn build_with_options(build_options: BuildOptions) -> Result<()> {
+pub fn build_with_options(build_options: BuildOptions) -> Result<Built> {
     let path = &build_options.path;
 
     let this_dir = if let Some(ref path) = path {
@@ -2251,12 +2256,12 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<()> {
     let manifest_file = ManifestFile::from_path(&this_dir)?;
     match manifest_file {
         ManifestFile::Package(package_manifest) => {
-            build_package_with_options(&package_manifest, build_options)?
+            let built_package = build_package_with_options(&package_manifest, build_options)?;
+            Ok(Built::Package(built_package))
         }
         ManifestFile::Workspace(_) => bail!("Workspace building is not supported"),
-    };
+    }
 
-    Ok(())
 }
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
