@@ -1,7 +1,6 @@
 contract;
 
 use std::{
-    address::Address,
     inputs::{
         Input,
         input_count,
@@ -9,7 +8,6 @@ use std::{
         input_pointer,
         input_type,
     },
-    option::Option,
     outputs::{
         Output,
         output_count,
@@ -74,7 +72,7 @@ impl TxContractTest for Contract {
         tx_receipts_root()
     }
     fn get_tx_script_start_pointer() -> u64 {
-        tx_script_start_pointer()
+        tx_script_start_pointer().addr()
     }
     fn get_tx_script_bytecode_hash() -> b256 {
         tx_script_bytecode_hash()

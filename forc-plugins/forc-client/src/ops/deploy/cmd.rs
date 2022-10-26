@@ -1,4 +1,5 @@
 use clap::Parser;
+use fuel_crypto::SecretKey;
 
 #[derive(Debug, Default, Parser)]
 #[clap(bin_name = "forc deploy", version)]
@@ -69,9 +70,6 @@ pub struct DeployCommand {
     /// Output the time elapsed over each part of the compilation process.
     #[clap(long)]
     pub time_phases: bool,
-    /// Include logged types in the JSON ABI.
-    #[clap(long)]
-    pub generate_logged_types: bool,
     /// Do not sign the transaction
     #[clap(long)]
     pub unsigned: bool,
@@ -81,4 +79,6 @@ pub struct DeployCommand {
     /// Set the transaction gas price. Defaults to 0.
     #[clap(long)]
     pub gas_price: Option<u64>,
+    /// Set the key to be used for signing.
+    pub signing_key: Option<SecretKey>,
 }

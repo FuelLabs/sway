@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-77B89972CE8D8BC6'
-dependencies = []
 
 [[package]]
 name = 'tuple_indexing'

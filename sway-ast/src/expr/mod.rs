@@ -1,4 +1,4 @@
-use crate::priv_prelude::*;
+use crate::{priv_prelude::*, PathExprSegment};
 
 pub mod asm;
 pub mod op_code;
@@ -50,7 +50,7 @@ pub enum Expr {
     MethodCall {
         target: Box<Expr>,
         dot_token: DotToken,
-        name: Ident,
+        path_seg: PathExprSegment,
         contract_args_opt: Option<Braces<Punctuated<ExprStructField, CommaToken>>>,
         args: Parens<Punctuated<Expr, CommaToken>>,
     },
@@ -85,6 +85,11 @@ pub enum Expr {
     Div {
         lhs: Box<Expr>,
         forward_slash_token: ForwardSlashToken,
+        rhs: Box<Expr>,
+    },
+    Pow {
+        lhs: Box<Expr>,
+        double_star_token: DoubleStarToken,
         rhs: Box<Expr>,
     },
     Modulo {
@@ -223,6 +228,7 @@ impl Spanned for Expr {
             Expr::Ref { ref_token, expr } => Span::join(ref_token.span(), expr.span()),
             Expr::Deref { deref_token, expr } => Span::join(deref_token.span(), expr.span()),
             Expr::Not { bang_token, expr } => Span::join(bang_token.span(), expr.span()),
+            Expr::Pow { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
             Expr::Mul { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
             Expr::Div { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
             Expr::Modulo { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),

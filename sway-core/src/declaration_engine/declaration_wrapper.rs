@@ -1,31 +1,29 @@
 use std::fmt;
 
+use sway_error::error::CompileError;
 use sway_types::Span;
 
 use crate::{
-    semantic_analysis::{
-        TypedAbiDeclaration, TypedConstantDeclaration, TypedEnumDeclaration, TypedImplTrait,
-        TypedStorageDeclaration, TypedStructDeclaration, TypedTraitDeclaration, TypedTraitFn,
-    },
+    language::ty,
     type_system::{CopyTypes, TypeMapping},
-    CompileError, TypedFunctionDeclaration,
+    ReplaceSelfType, TypeId,
 };
 
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]
 /// as a means of placing all declaration types into the same type.
 #[derive(Clone, Debug)]
-pub(crate) enum DeclarationWrapper {
+pub enum DeclarationWrapper {
     // no-op variant to fulfill the default trait
     Unknown,
-    Function(TypedFunctionDeclaration),
-    Trait(TypedTraitDeclaration),
-    TraitFn(TypedTraitFn),
-    ImplTrait(TypedImplTrait),
-    Struct(TypedStructDeclaration),
-    Storage(TypedStorageDeclaration),
-    Abi(TypedAbiDeclaration),
-    Constant(Box<TypedConstantDeclaration>),
-    Enum(TypedEnumDeclaration),
+    Function(ty::TyFunctionDeclaration),
+    Trait(ty::TyTraitDeclaration),
+    TraitFn(ty::TyTraitFn),
+    ImplTrait(ty::TyImplTrait),
+    Struct(ty::TyStructDeclaration),
+    Storage(ty::TyStorageDeclaration),
+    Abi(ty::TyAbiDeclaration),
+    Constant(Box<ty::TyConstantDeclaration>),
+    Enum(ty::TyEnumDeclaration),
 }
 
 impl Default for DeclarationWrapper {
@@ -62,7 +60,7 @@ impl fmt::Display for DeclarationWrapper {
 }
 
 impl CopyTypes for DeclarationWrapper {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         match self {
             DeclarationWrapper::Unknown => {}
             DeclarationWrapper::Function(decl) => decl.copy_types(type_mapping),
@@ -74,6 +72,23 @@ impl CopyTypes for DeclarationWrapper {
             DeclarationWrapper::Abi(_) => {}
             DeclarationWrapper::Constant(_) => {}
             DeclarationWrapper::Enum(decl) => decl.copy_types(type_mapping),
+        }
+    }
+}
+
+impl ReplaceSelfType for DeclarationWrapper {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        match self {
+            DeclarationWrapper::Unknown => {}
+            DeclarationWrapper::Function(decl) => decl.replace_self_type(self_type),
+            DeclarationWrapper::Trait(decl) => decl.replace_self_type(self_type),
+            DeclarationWrapper::TraitFn(decl) => decl.replace_self_type(self_type),
+            DeclarationWrapper::ImplTrait(decl) => decl.replace_self_type(self_type),
+            DeclarationWrapper::Struct(decl) => decl.replace_self_type(self_type),
+            DeclarationWrapper::Storage(_) => {}
+            DeclarationWrapper::Abi(_) => {}
+            DeclarationWrapper::Constant(_) => {}
+            DeclarationWrapper::Enum(decl) => decl.replace_self_type(self_type),
         }
     }
 }
@@ -98,7 +113,7 @@ impl DeclarationWrapper {
     pub(super) fn expect_function(
         self,
         span: &Span,
-    ) -> Result<TypedFunctionDeclaration, CompileError> {
+    ) -> Result<ty::TyFunctionDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Function(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(
@@ -112,7 +127,7 @@ impl DeclarationWrapper {
         }
     }
 
-    pub(super) fn expect_trait(self, span: &Span) -> Result<TypedTraitDeclaration, CompileError> {
+    pub(super) fn expect_trait(self, span: &Span) -> Result<ty::TyTraitDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Trait(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(
@@ -126,7 +141,7 @@ impl DeclarationWrapper {
         }
     }
 
-    pub(super) fn expect_trait_fn(self, span: &Span) -> Result<TypedTraitFn, CompileError> {
+    pub(super) fn expect_trait_fn(self, span: &Span) -> Result<ty::TyTraitFn, CompileError> {
         match self {
             DeclarationWrapper::TraitFn(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(
@@ -140,7 +155,7 @@ impl DeclarationWrapper {
         }
     }
 
-    pub(super) fn expect_impl_trait(self, span: &Span) -> Result<TypedImplTrait, CompileError> {
+    pub(super) fn expect_impl_trait(self, span: &Span) -> Result<ty::TyImplTrait, CompileError> {
         match self {
             DeclarationWrapper::ImplTrait(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(
@@ -154,7 +169,10 @@ impl DeclarationWrapper {
         }
     }
 
-    pub(super) fn expect_struct(self, span: &Span) -> Result<TypedStructDeclaration, CompileError> {
+    pub(super) fn expect_struct(
+        self,
+        span: &Span,
+    ) -> Result<ty::TyStructDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Struct(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(
@@ -171,7 +189,7 @@ impl DeclarationWrapper {
     pub(super) fn expect_storage(
         self,
         span: &Span,
-    ) -> Result<TypedStorageDeclaration, CompileError> {
+    ) -> Result<ty::TyStorageDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Storage(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(
@@ -185,7 +203,7 @@ impl DeclarationWrapper {
         }
     }
 
-    pub(super) fn expect_abi(self, span: &Span) -> Result<TypedAbiDeclaration, CompileError> {
+    pub(super) fn expect_abi(self, span: &Span) -> Result<ty::TyAbiDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Abi(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(
@@ -202,7 +220,7 @@ impl DeclarationWrapper {
     pub(super) fn expect_constant(
         self,
         span: &Span,
-    ) -> Result<TypedConstantDeclaration, CompileError> {
+    ) -> Result<ty::TyConstantDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Constant(decl) => Ok(*decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(
@@ -216,7 +234,7 @@ impl DeclarationWrapper {
         }
     }
 
-    pub(super) fn expect_enum(self, span: &Span) -> Result<TypedEnumDeclaration, CompileError> {
+    pub(super) fn expect_enum(self, span: &Span) -> Result<ty::TyEnumDeclaration, CompileError> {
         match self {
             DeclarationWrapper::Enum(decl) => Ok(decl),
             DeclarationWrapper::Unknown => Err(CompileError::Internal(

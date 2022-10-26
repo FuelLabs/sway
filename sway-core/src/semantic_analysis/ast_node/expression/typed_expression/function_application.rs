@@ -1,17 +1,19 @@
 use crate::{
     error::*,
+    language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
 use std::collections::{hash_map::RandomState, HashMap, VecDeque};
+use sway_error::error::CompileError;
 use sway_types::{state::StateIndex, Spanned};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
-    function_decl: TypedFunctionDeclaration,
+    function_decl: ty::TyFunctionDeclaration,
     call_path: CallPath,
     arguments: Vec<Expression>,
-) -> CompileResult<TypedExpression> {
+) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -45,17 +47,29 @@ pub(crate) fn instantiate_function_application(
                     not match the declared type of the parameter in the function \
                     declaration.",
                 )
-                .with_type_annotation(param.type_id);
+                .with_type_annotation(insert_type(TypeInfo::Unknown));
             let exp = check!(
-                TypedExpression::type_check(ctx, arg.clone()),
-                error_recovery_expr(arg.span()),
+                ty::TyExpression::type_check(ctx, arg.clone()),
+                ty::TyExpression::error(arg.span()),
+                warnings,
+                errors
+            );
+            append!(
+                unify_right(
+                    exp.return_type,
+                    param.type_id,
+                    &exp.span,
+                    "The argument that has been provided to this function's type does \
+                    not match the declared type of the parameter in the function \
+                    declaration."
+                ),
                 warnings,
                 errors
             );
 
             // check for matching mutability
             let param_mutability =
-                convert_to_variable_immutability(param.is_reference, param.is_mutable);
+                ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
             if exp.gather_mutability().is_immutable() && param_mutability.is_mutable() {
                 errors.push(CompileError::ImmutableArgumentToMutableParameter { span: arg.span() });
             }
@@ -71,24 +85,23 @@ pub(crate) fn instantiate_function_application(
         typed_arguments,
         function_decl,
         None,
-        IsConstant::No,
         None,
         span,
     );
+
     ok(exp, warnings, errors)
 }
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application_simple(
     call_path: CallPath,
-    contract_call_params: HashMap<String, TypedExpression, RandomState>,
-    arguments: VecDeque<TypedExpression>,
-    function_decl: TypedFunctionDeclaration,
-    selector: Option<ContractCallParams>,
-    is_constant: IsConstant,
+    contract_call_params: HashMap<String, ty::TyExpression, RandomState>,
+    arguments: VecDeque<ty::TyExpression>,
+    function_decl: ty::TyFunctionDeclaration,
+    selector: Option<ty::ContractCallParams>,
     self_state_idx: Option<StateIndex>,
     span: Span,
-) -> CompileResult<TypedExpression> {
+) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -113,7 +126,6 @@ pub(crate) fn instantiate_function_application_simple(
         args_and_names,
         function_decl,
         selector,
-        is_constant,
         self_state_idx,
         span,
     );
@@ -122,7 +134,7 @@ pub(crate) fn instantiate_function_application_simple(
 
 pub(crate) fn check_function_arguments_arity(
     arguments_len: usize,
-    function_decl: &TypedFunctionDeclaration,
+    function_decl: &ty::TyFunctionDeclaration,
     call_path: &CallPath,
 ) -> CompileResult<()> {
     let warnings = vec![];
@@ -153,25 +165,23 @@ pub(crate) fn check_function_arguments_arity(
 #[allow(clippy::too_many_arguments)]
 fn instantiate_function_application_inner(
     call_path: CallPath,
-    contract_call_params: HashMap<String, TypedExpression, RandomState>,
-    arguments: Vec<(Ident, TypedExpression)>,
-    function_decl: TypedFunctionDeclaration,
-    selector: Option<ContractCallParams>,
-    is_constant: IsConstant,
+    contract_call_params: HashMap<String, ty::TyExpression, RandomState>,
+    arguments: Vec<(Ident, ty::TyExpression)>,
+    function_decl: ty::TyFunctionDeclaration,
+    selector: Option<ty::ContractCallParams>,
     self_state_idx: Option<StateIndex>,
     span: Span,
-) -> TypedExpression {
-    TypedExpression {
-        expression: TypedExpressionVariant::FunctionApplication {
+) -> ty::TyExpression {
+    ty::TyExpression {
+        expression: ty::TyExpressionVariant::FunctionApplication {
             call_path,
             contract_call_params,
             arguments,
-            function_decl: function_decl.clone(),
+            function_decl_id: de_insert_function(function_decl.clone()),
             self_state_idx,
             selector,
         },
         return_type: function_decl.return_type,
-        is_constant,
         span,
     }
 }

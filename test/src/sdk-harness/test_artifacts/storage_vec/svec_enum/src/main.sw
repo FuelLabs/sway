@@ -1,6 +1,6 @@
 contract;
 
-use std::{option::Option, result::Result, storage::StorageVec};
+use std::storage::StorageVec;
 
 enum TestEnum {
     A: bool,

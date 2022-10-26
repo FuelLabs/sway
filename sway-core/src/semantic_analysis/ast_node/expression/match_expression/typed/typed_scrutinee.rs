@@ -3,58 +3,28 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     declaration_engine::de_get_constant,
     error::{err, ok},
-    semantic_analysis::{TypeCheckContext, TypedEnumVariant},
-    type_system::{insert_type, CreateTypeId, EnforceTypeArguments, TypeArgument, TypeId},
-    CallPath, CompileError, CompileResult, Literal, Scrutinee, StructScrutineeField, TypeInfo,
-    TypedDeclaration,
+    language::{parsed::*, ty, CallPath},
+    semantic_analysis::TypeCheckContext,
+    type_system::{insert_type, CreateTypeId, EnforceTypeArguments, TypeArgument},
+    CompileError, CompileResult, TypeInfo,
 };
 
-#[derive(Debug, Clone)]
-pub(crate) struct TypedScrutinee {
-    pub(crate) variant: TypedScrutineeVariant,
-    pub(crate) type_id: TypeId,
-    pub(crate) span: Span,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) enum TypedScrutineeVariant {
-    CatchAll,
-    Literal(Literal),
-    Variable(Ident),
-    Constant(Ident, Literal, TypeId),
-    StructScrutinee(Ident, Vec<TypedStructScrutineeField>),
-    #[allow(dead_code)]
-    EnumScrutinee {
-        call_path: CallPath,
-        variant: TypedEnumVariant,
-        value: Box<TypedScrutinee>,
-    },
-    Tuple(Vec<TypedScrutinee>),
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct TypedStructScrutineeField {
-    pub(crate) field: Ident,
-    pub(crate) scrutinee: Option<TypedScrutinee>,
-    pub(crate) span: Span,
-}
-
-impl TypedScrutinee {
+impl ty::TyScrutinee {
     pub(crate) fn type_check(ctx: TypeCheckContext, scrutinee: Scrutinee) -> CompileResult<Self> {
         let warnings = vec![];
         let errors = vec![];
         match scrutinee {
             Scrutinee::CatchAll { span } => {
-                let typed_scrutinee = TypedScrutinee {
-                    variant: TypedScrutineeVariant::CatchAll,
+                let typed_scrutinee = ty::TyScrutinee {
+                    variant: ty::TyScrutineeVariant::CatchAll,
                     type_id: insert_type(TypeInfo::Unknown),
                     span,
                 };
                 ok(typed_scrutinee, warnings, errors)
             }
             Scrutinee::Literal { value, span } => {
-                let typed_scrutinee = TypedScrutinee {
-                    variant: TypedScrutineeVariant::Literal(value.clone()),
+                let typed_scrutinee = ty::TyScrutinee {
+                    variant: ty::TyScrutineeVariant::Literal(value.clone()),
                     type_id: insert_type(value.to_typeinfo()),
                     span,
                 };
@@ -80,13 +50,13 @@ fn type_check_variable(
     ctx: TypeCheckContext,
     name: Ident,
     span: Span,
-) -> CompileResult<TypedScrutinee> {
+) -> CompileResult<ty::TyScrutinee> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
     let typed_scrutinee = match ctx.namespace.resolve_symbol(&name).value {
-        // If this variable is a constant, then we turn it into a `TypedScrutinee::Constant`.
-        Some(TypedDeclaration::ConstantDeclaration(decl_id)) => {
+        // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
+        Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
             let constant_decl = check!(
                 CompileResult::from(de_get_constant(decl_id.clone(), &span)),
                 return err(warnings, errors),
@@ -103,8 +73,8 @@ fn type_check_variable(
                     return err(warnings, errors);
                 }
             };
-            TypedScrutinee {
-                variant: TypedScrutineeVariant::Constant(
+            ty::TyScrutinee {
+                variant: ty::TyScrutineeVariant::Constant(
                     name,
                     value,
                     constant_decl.value.return_type,
@@ -113,9 +83,9 @@ fn type_check_variable(
                 span,
             }
         }
-        // Variable isn't a constant, so so we turn it into a `TypedScrutinee::Variable`.
-        _ => TypedScrutinee {
-            variant: TypedScrutineeVariant::Variable(name),
+        // Variable isn't a constant, so so we turn it into a [ty::TyScrutinee::Variable].
+        _ => ty::TyScrutinee {
+            variant: ty::TyScrutineeVariant::Variable(name),
             type_id: insert_type(TypeInfo::Unknown),
             span,
         },
@@ -129,7 +99,7 @@ fn type_check_struct(
     struct_name: Ident,
     fields: Vec<StructScrutineeField>,
     span: Span,
-) -> CompileResult<TypedScrutinee> {
+) -> CompileResult<ty::TyScrutinee> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -182,13 +152,13 @@ fn type_check_struct(
                 let typed_scrutinee = match scrutinee {
                     None => None,
                     Some(scrutinee) => Some(check!(
-                        TypedScrutinee::type_check(ctx.by_ref(), scrutinee),
+                        ty::TyScrutinee::type_check(ctx.by_ref(), scrutinee),
                         return err(warnings, errors),
                         warnings,
                         errors
                     )),
                 };
-                typed_fields.push(TypedStructScrutineeField {
+                typed_fields.push(ty::TyStructScrutineeField {
                     field,
                     scrutinee: typed_scrutinee,
                     span,
@@ -214,8 +184,8 @@ fn type_check_struct(
         return err(warnings, errors);
     }
 
-    let typed_scrutinee = TypedScrutinee {
-        variant: TypedScrutineeVariant::StructScrutinee(struct_decl.name.clone(), typed_fields),
+    let typed_scrutinee = ty::TyScrutinee {
+        variant: ty::TyScrutineeVariant::StructScrutinee(struct_decl.name.clone(), typed_fields),
         type_id: struct_decl.create_type_id(),
         span,
     };
@@ -224,11 +194,11 @@ fn type_check_struct(
 }
 
 fn type_check_enum(
-    ctx: TypeCheckContext,
+    mut ctx: TypeCheckContext,
     call_path: CallPath<Ident>,
     value: Scrutinee,
     span: Span,
-) -> CompileResult<TypedScrutinee> {
+) -> CompileResult<ty::TyScrutinee> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -282,14 +252,14 @@ fn type_check_enum(
 
     // type check the nested scrutinee
     let typed_value = check!(
-        TypedScrutinee::type_check(ctx, value),
+        ty::TyScrutinee::type_check(ctx, value),
         return err(warnings, errors),
         warnings,
         errors
     );
 
-    let typed_scrutinee = TypedScrutinee {
-        variant: TypedScrutineeVariant::EnumScrutinee {
+    let typed_scrutinee = ty::TyScrutinee {
+        variant: ty::TyScrutineeVariant::EnumScrutinee {
             call_path,
             variant,
             value: Box::new(typed_value),
@@ -305,14 +275,14 @@ fn type_check_tuple(
     mut ctx: TypeCheckContext,
     elems: Vec<Scrutinee>,
     span: Span,
-) -> CompileResult<TypedScrutinee> {
+) -> CompileResult<ty::TyScrutinee> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
     let mut typed_elems = vec![];
     for elem in elems.into_iter() {
         typed_elems.push(check!(
-            TypedScrutinee::type_check(ctx.by_ref(), elem),
+            ty::TyScrutinee::type_check(ctx.by_ref(), elem),
             continue,
             warnings,
             errors
@@ -328,8 +298,8 @@ fn type_check_tuple(
             })
             .collect(),
     ));
-    let typed_scrutinee = TypedScrutinee {
-        variant: TypedScrutineeVariant::Tuple(typed_elems),
+    let typed_scrutinee = ty::TyScrutinee {
+        variant: ty::TyScrutineeVariant::Tuple(typed_elems),
         type_id,
         span,
     };

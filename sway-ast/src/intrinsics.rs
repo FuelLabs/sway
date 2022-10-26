@@ -18,6 +18,7 @@ pub enum Intrinsic {
     Sub,
     Mul,
     Div,
+    Revert,
 }
 
 impl fmt::Display for Intrinsic {
@@ -39,6 +40,7 @@ impl fmt::Display for Intrinsic {
             Intrinsic::Sub => "sub",
             Intrinsic::Mul => "mul",
             Intrinsic::Div => "div",
+            Intrinsic::Revert => "revert",
         };
         write!(f, "{}", s)
     }
@@ -64,6 +66,7 @@ impl Intrinsic {
             "__sub" => Sub,
             "__mul" => Mul,
             "__div" => Div,
+            "__revert" => Revert,
             _ => return None,
         })
     }

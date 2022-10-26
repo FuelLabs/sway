@@ -171,6 +171,7 @@ define_op_codes!(
     (Mul, MulOpcode, "mul", (ret: reg, lhs: reg, rhs: reg)),
     (Muli, MuliOpcode, "muli", (ret: reg, lhs: reg, rhs: imm)),
     (Noop, NoopOpcode, "noop", ()),
+    (Blob, BlobOpcode, "blob", (size: imm)),
     (Not, NotOpcode, "not", (ret: reg, arg: reg)),
     (Or, OrOpcode, "or", (ret: reg, lhs: reg, rhs: reg)),
     (Ori, OriOpcode, "ori", (ret: reg, lhs: reg, rhs: imm)),
@@ -197,7 +198,6 @@ define_op_codes!(
     (Ctmv, CtmvOpcode, "ctmv", (ret: reg, maturity: reg)),
     (Ji, JiOpcode, "ji", (offset: imm)),
     (Jnei, JneiOpcode, "jnei", (lhs: reg, rhs: reg, offset: imm)),
-    (Ret, RetOpcode, "ret", (value: reg)),
     (Aloc, AlocOpcode, "aloc", (size: reg)),
     (Cfei, CfeiOpcode, "cfei", (size: imm)),
     (Cfsi, CfsiOpcode, "cfsi", (size: imm)),
@@ -258,8 +258,6 @@ define_op_codes!(
         (reg_a: reg, reg_b: reg, addr: reg, size: reg)
     ),
     (Mint, MintOpcode, "mint", (coins: reg)),
-    (Retd, RetdOpcode, "retd", (addr: reg, size: reg)),
-    (Rvrt, RvrtOpcode, "rvrt", (value: reg)),
     (
         Sldc,
         SldcOpcode,

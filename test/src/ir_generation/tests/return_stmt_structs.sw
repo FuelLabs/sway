@@ -23,8 +23,8 @@ fn main() {
     fn_explicit_ret_struct();
 }
 
-// check: fn fn_implicit_ret_struct_0() -> { u64 }
-// check: ret { u64 } $VAL
+// check: fn $ID(__ret_value $MD: mut ptr { u64 }) -> { u64 }
+// check:mem_copy __ret_value, $VAL, 8
 
-// check: fn fn_explicit_ret_struct_1() -> { u64 }
-// check: ret { u64 } $VAL
+// check: fn $ID(__ret_value $MD: mut ptr { u64 }) -> { u64 }
+// check:mem_copy __ret_value, $VAL, 8

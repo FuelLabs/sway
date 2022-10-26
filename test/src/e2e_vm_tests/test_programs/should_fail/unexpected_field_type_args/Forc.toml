@@ -1,0 +1,6 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "unexpected_field_type_args"
+entry = "main.sw"
+implicit-std = false

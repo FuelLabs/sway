@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-4F875AA377BDB49F'
-dependencies = []
 
 [[package]]
 name = 'enum_destructuring'

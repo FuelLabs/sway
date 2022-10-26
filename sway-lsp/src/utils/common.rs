@@ -1,29 +1,23 @@
-use crate::core::token::TokenMap;
-use sway_core::Visibility;
-use sway_types::{Ident, Span};
+use crate::core::token::Token;
+use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Range};
 
-pub(crate) fn extract_visibility(visibility: &Visibility) -> String {
-    match visibility {
-        Visibility::Private => "".into(),
-        Visibility::Public => "pub ".into(),
-    }
-}
-
-pub(crate) fn ident_and_span_at_position(
-    cursor_position: Position,
-    tokens: &TokenMap,
-) -> Option<(Ident, Span)> {
-    for item in tokens.iter() {
-        let (ident, span) = item.key();
-        let range = get_range_from_span(span);
+/// Given a cursor `Position`, return the `Ident` of a token in the
+/// Iterator if one exists at that position.
+pub(crate) fn ident_at_position<I>(cursor_position: Position, tokens: I) -> Option<Ident>
+where
+    I: Iterator<Item = (Ident, Token)>,
+{
+    for (ident, _) in tokens {
+        let range = get_range_from_span(&ident.span());
         if cursor_position >= range.start && cursor_position <= range.end {
-            return Some((ident.clone(), span.clone()));
+            return Some(ident);
         }
     }
     None
 }
 
+/// Given a `Span`, convert into an `lsp_types::Range` and return.
 pub(crate) fn get_range_from_span(span: &Span) -> Range {
     let start = span.start_pos().line_col();
     let end = span.end_pos().line_col();

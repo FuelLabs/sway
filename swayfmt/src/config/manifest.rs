@@ -8,7 +8,8 @@ use crate::{
     constants::SWAY_FORMAT_FILE_NAME,
     error::ConfigError,
 };
-use forc_util::{find_parent_dir_with_file, println_yellow_err};
+use forc_tracing::println_yellow_err;
+use forc_util::find_parent_dir_with_file;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 

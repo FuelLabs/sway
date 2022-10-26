@@ -1,5 +1,6 @@
 use crate::{
     formatter::{FormattedCode, FormatterError},
+    parse::{lex, parse_file},
     utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use ropey::Rope;
@@ -14,7 +15,6 @@ use sway_ast::{
     token::{Comment, CommentedTokenTree, CommentedTree},
     Module,
 };
-use sway_parse::lex_commented;
 use sway_types::Spanned;
 
 use super::byte_span;
@@ -46,16 +46,14 @@ impl CommentRange for CommentMap {
 /// Get the CommentedTokenStream and collect the spans -> Comment mapping for the input source
 /// code.
 pub fn comment_map_from_src(input: Arc<str>) -> Result<CommentMap, FormatterError> {
+    // Pass the input through the lexer.
+    let tts = lex(&input)?;
+    let tts = tts.token_trees().iter();
+
     let mut comment_map = BTreeMap::new();
-
-    // pass the input through lexer
-    let commented_token_stream = lex_commented(&input, 0, input.len(), None)?;
-    let tts = commented_token_stream.token_trees().iter();
-
     for comment in tts {
         collect_comments_from_token_stream(comment, &mut comment_map);
     }
-
     Ok(comment_map)
 }
 
@@ -95,7 +93,7 @@ pub fn handle_comments(
     let comment_map = comment_map_from_src(unformatted_input.clone())?;
 
     // After the formatting existing items should be the same (type of the item) but their spans will be changed since we applied formatting to them.
-    let formatted_module = sway_parse::parse_file_standalone(formatted_input, path)?;
+    let formatted_module = parse_file(formatted_input, path)?;
 
     // Actually find & insert the comments.
     add_comments(

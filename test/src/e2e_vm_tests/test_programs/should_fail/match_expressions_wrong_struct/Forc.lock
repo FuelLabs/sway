@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-2E3E6F17B80A063E'
-dependencies = []
 
 [[package]]
 name = 'match_expressions_wrong_struct'

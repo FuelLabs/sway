@@ -6,13 +6,19 @@ use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::{io, iter, slice};
 
+pub mod constants;
+
 pub mod ident;
 pub use ident::*;
+
+pub mod integer_bits;
 
 pub mod span;
 pub use span::*;
 
 pub mod state;
+
+pub mod style;
 
 pub type Id = [u8; Bytes32::LEN];
 pub type Contract = [u8; ContractId::LEN];
@@ -96,6 +102,8 @@ where
 pub struct ConfigTimeConstant {
     pub r#type: String,
     pub value: String,
+    #[serde(default)]
+    pub public: bool,
 }
 impl AsRef<PathBuf> for Source {
     fn as_ref(&self) -> &PathBuf {

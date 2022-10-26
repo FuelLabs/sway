@@ -6,11 +6,10 @@
 //! This pass does not do CFG transformations. That is handled by simplify_cfg.
 
 use crate::{
-    context::Context, error::IrError, function::Function, instruction::Instruction,
-    value::ValueDatum, Block, Value,
+    Block, BranchToWithArgs, Context, Function, Instruction, IrError, Module, Value, ValueDatum,
 };
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 fn can_eliminate_instruction(context: &Context, val: Value) -> bool {
     let inst = val.get_instruction(context).unwrap();
@@ -28,14 +27,19 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
             Instruction::AsmBlock(_, args) => args.iter().filter_map(|aa| aa.initializer).collect(),
             Instruction::BitCast(v, _) => vec![*v],
             Instruction::BinaryOp { op: _, arg1, arg2 } => vec![*arg1, *arg2],
-            Instruction::Branch(_) => vec![],
+            Instruction::Branch(BranchToWithArgs { args, .. }) => args.clone(),
             Instruction::Call(_, vs) => vs.clone(),
             Instruction::Cmp(_, lhs, rhs) => vec![*lhs, *rhs],
             Instruction::ConditionalBranch {
                 cond_value,
-                true_block: _,
-                false_block: _,
-            } => vec![*cond_value],
+                true_block,
+                false_block,
+            } => {
+                let mut v = vec![*cond_value];
+                v.extend_from_slice(&true_block.args);
+                v.extend_from_slice(&false_block.args);
+                v
+            }
             Instruction::ContractCall {
                 return_type: _,
                 name: _,
@@ -85,10 +89,17 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
             Instruction::Log {
                 log_val, log_id, ..
             } => vec![*log_val, *log_id],
+            Instruction::MemCopy {
+                dst_val,
+                src_val,
+                byte_len: _,
+            } => {
+                vec![*dst_val, *src_val]
+            }
             Instruction::Nop => vec![],
-            Instruction::Phi(ins) => ins.iter().map(|v| v.1).collect(),
             Instruction::ReadRegister(_) => vec![],
             Instruction::Ret(v, _) => vec![*v],
+            Instruction::Revert(v) => vec![*v],
             Instruction::StateLoadQuadWord { load_val, key } => vec![*load_val, *key],
             Instruction::StateLoadWord(key) => vec![*key],
             Instruction::StateStoreQuadWord { stored_val, key } => vec![*stored_val, *key],
@@ -144,17 +155,61 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
                 ValueDatum::Constant(_) | ValueDatum::Argument(_) => (),
             }
         }
-        // Don't remove PHIs, just make them empty.
-        if matches!(
-            &context.values[dead.0].value,
-            ValueDatum::Instruction(Instruction::Phi(_))
-        ) {
-            dead.replace(context, ValueDatum::Instruction(Instruction::Phi(vec![])));
-        } else {
-            in_block.remove_instruction(context, dead);
-        }
+
+        in_block.remove_instruction(context, dead);
         modified = true;
     }
 
     Ok(modified)
+}
+
+/// Remove entire functions from a module based on whether they are called or not, using a list of
+/// root 'entry' functions to perform a search.
+///
+/// Functions which are `pub` will not be removed and only functions within the passed [`Module`]
+/// are considered for removal.
+pub fn func_dce(context: &mut Context, module: &Module, entry_fns: &[Function]) -> bool {
+    // Recursively find all the functions called by an entry function.
+    fn grow_called_function_set(
+        context: &Context,
+        caller: Function,
+        called_set: &mut HashSet<Function>,
+    ) {
+        if called_set.insert(caller) {
+            // We haven't seen caller before.  Iterate for all that it calls.
+            for func in caller
+                .instruction_iter(context)
+                .filter_map(|(_block, ins_value)| {
+                    ins_value
+                        .get_instruction(context)
+                        .and_then(|ins| match ins {
+                            Instruction::Call(f, _args) => Some(f),
+                            _otherwise => None,
+                        })
+                })
+            {
+                grow_called_function_set(context, *func, called_set);
+            }
+        }
+    }
+
+    // Gather our entry functions together into a set.
+    let mut called_fns: HashSet<Function> = HashSet::new();
+    for entry_fn in entry_fns {
+        grow_called_function_set(context, *entry_fn, &mut called_fns);
+    }
+
+    // Gather the functions in the module which aren't called.  It's better to collect them
+    // separately first so as to avoid any issues with invalidating the function iterator.
+    let dead_fns = module
+        .function_iter(context)
+        .filter(|f| !called_fns.contains(f))
+        .collect::<Vec<_>>();
+
+    let modified = !dead_fns.is_empty();
+    for dead_fn in dead_fns {
+        module.remove_function(context, &dead_fn);
+    }
+
+    modified
 }

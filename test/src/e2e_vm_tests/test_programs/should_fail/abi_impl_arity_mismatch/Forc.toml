@@ -1,0 +1,6 @@
+[project]
+name = "abi_impl_arity_mismatch"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+implicit-std = false

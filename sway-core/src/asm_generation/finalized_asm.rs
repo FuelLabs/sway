@@ -3,6 +3,7 @@ use crate::asm_lang::allocated_ops::AllocatedOpcode;
 use crate::error::*;
 use crate::source_map::SourceMap;
 
+use sway_error::error::CompileError;
 use sway_types::span::Span;
 
 use either::Either;
@@ -99,12 +100,12 @@ fn to_bytecode_mut(
             .fold(0, |acc, item| match &item.opcode {
                 AllocatedOpcode::LWDataId(_reg, data_label)
                     if !data_section
-                        .type_of_data(data_label)
-                        .expect("data label references non existent data -- internal error")
-                        .is_copy_type() =>
+                        .has_copy_type(data_label)
+                        .expect("data label references non existent data -- internal error") =>
                 {
                     acc + 8
                 }
+                AllocatedOpcode::BLOB(count) => acc + count.value as u64 * 4,
                 _ => acc + 4,
             })
             + 4;
@@ -131,7 +132,9 @@ fn to_bytecode_mut(
                     if let Some(span) = &span {
                         source_map.insert(half_word_ix, span);
                     }
-                    op.read_exact(&mut buf[half_word_ix * 4..])
+                    let read_range_upper_bound =
+                        core::cmp::min(half_word_ix * 4 + std::mem::size_of_val(&op), buf.len());
+                    op.read_exact(&mut buf[half_word_ix * 4..read_range_upper_bound])
                         .expect("Failed to write to in-memory buffer.");
                     half_word_ix += 1;
                 }

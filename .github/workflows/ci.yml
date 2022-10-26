@@ -158,15 +158,25 @@ jobs:
         run: forc new test-proj
       - name: Update project forc manifest to use local sway-lib-std
         run: echo "std = { path = \"../sway-lib-std/\" }" >> test-proj/Forc.toml
+      - name: Build test project
+        run: forc build --path test-proj
+      # TODO: Re-add this upon landing unit test support: #1832
+      # - name: Run test project's test suite
+      #   run: (cd test-proj && forc test)
+      - name: Install cargo-generate
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-generate
+      - name: Generate Rust Integration Tests
+        run: (cd test-proj && cargo generate --init --path ../templates/sway-test-rs --name test-proj)
       - name: Update project cargo manifest with workspace
         run: |
           echo "
 
           [workspace]" >> test-proj/Cargo.toml
-      - name: Build test project
-        run: forc build --path test-proj
-      - name: Run test project's test suite
-        run: cd test-proj && forc test
+      - name: Build and Run Default Integration Test
+        run: (cd test-proj && cargo test)
 
   cargo-build-workspace:
     runs-on: ubuntu-latest
@@ -212,7 +222,7 @@ jobs:
           crate: cargo-toml-lint
           version: "0.1"
       - name: Run Cargo.toml linter
-        run: git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
+        run: git ls-files | grep Cargo.toml$ | grep -v 'templates/sway-test-rs' | xargs --verbose -n 1 cargo-toml-lint
 
   cargo-fmt-check:
     runs-on: ubuntu-latest
@@ -369,9 +379,11 @@ jobs:
         run: |
           cargo install toml-cli
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-client/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-fmt/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-lsp/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-pkg/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-tracing/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-util/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-core/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} swayfmt/Cargo.toml
@@ -601,6 +613,12 @@ jobs:
         with:
           command: install
           args: --profile=release --path ./forc-plugins/forc-lsp
+
+      - name: Install Forc-Client
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --profile=release --path ./forc-plugins/forc-client
 
       - name: Prep Assets
         id: prep_assets

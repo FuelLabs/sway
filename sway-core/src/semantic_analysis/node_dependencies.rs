@@ -4,12 +4,13 @@ use std::iter::FromIterator;
 use crate::type_system::{TypeArgument, TypeParameter};
 use crate::{
     error::*,
-    parse_tree::*,
-    type_system::{look_up_type_id, AbiName, IntegerBits},
-    AstNode, AstNodeContent, CodeBlock, Declaration, Expression, IntrinsicFunctionExpression,
-    TypeInfo, WhileLoopExpression,
+    language::{parsed::*, CallPath},
+    type_system::{look_up_type_id, AbiName},
+    TypeInfo,
 };
 
+use sway_error::error::CompileError;
+use sway_types::integer_bits::IntegerBits;
 use sway_types::Spanned;
 use sway_types::{ident::Ident, span::Span};
 
@@ -333,15 +334,15 @@ impl Dependencies {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
             Declaration::ImplTrait(ImplTrait {
+                impl_type_parameters,
                 trait_name,
                 type_implementing_for,
-                type_parameters: type_arguments,
                 functions,
                 ..
             }) => self
                 .gather_from_call_path(trait_name, false, false)
                 .gather_from_typeinfo(type_implementing_for)
-                .gather_from_type_parameters(type_arguments)
+                .gather_from_type_parameters(impl_type_parameters)
                 .gather_from_iter(functions.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
@@ -441,7 +442,7 @@ impl Dependencies {
                     call_path_binding,
                     fields,
                 } = &**struct_expression;
-                self.gather_from_typeinfo(&call_path_binding.inner.suffix.0)
+                self.gather_from_call_path(&call_path_binding.inner, false, false)
                     .gather_from_type_arguments(&call_path_binding.type_arguments)
                     .gather_from_iter(fields.iter(), |deps, field| {
                         deps.gather_from_expr(&field.value)
@@ -564,7 +565,7 @@ impl Dependencies {
         self.gather_from_iter(type_parameters.iter(), |deps, type_parameter| {
             deps.gather_from_iter(
                 type_parameter.trait_constraints.iter(),
-                |deps, constraint| deps.gather_from_call_path(&constraint.call_path, false, false),
+                |deps, constraint| deps.gather_from_call_path(&constraint.trait_name, false, false),
             )
         })
     }
@@ -737,12 +738,10 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Tuple(fields) if fields.is_empty() => "unit",
         TypeInfo::Tuple(..) => "tuple",
         TypeInfo::SelfType => "self",
-        TypeInfo::Byte => "byte",
         TypeInfo::B256 => "b256",
         TypeInfo::Numeric => "numeric",
         TypeInfo::Contract => "contract",
         TypeInfo::ErrorRecovery => "err_recov",
-        TypeInfo::Ref(x, _sp) => return format!("T{}", x),
         TypeInfo::Unknown => "unknown",
         TypeInfo::UnknownGeneric { name } => return format!("generic {}", name),
         TypeInfo::ContractCaller { abi_name, .. } => {
@@ -752,6 +751,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Enum { .. } => "enum",
         TypeInfo::Array(..) => "array",
         TypeInfo::Storage { .. } => "contract storage",
+        TypeInfo::RawUntypedPtr => "raw untyped ptr",
     }
     .to_string()
 }

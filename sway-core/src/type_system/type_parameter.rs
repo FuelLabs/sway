@@ -1,4 +1,4 @@
-use crate::{error::*, semantic_analysis::*, type_system::*};
+use crate::{error::*, language::ty, semantic_analysis::*, type_system::*};
 
 use sway_types::{ident::Ident, span::Span, JsonTypeDeclaration, Spanned};
 
@@ -7,12 +7,13 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Clone, Debug, Eq)]
 pub struct TypeParameter {
     pub type_id: TypeId,
     pub(crate) initial_type_id: TypeId,
     pub name_ident: Ident,
     pub(crate) trait_constraints: Vec<TraitConstraint>,
+    pub(crate) trait_constraints_span: Span,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -38,8 +39,8 @@ impl PartialEq for TypeParameter {
 }
 
 impl CopyTypes for TypeParameter {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.update_type(type_mapping, &self.span());
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+        self.type_id.copy_types(type_mapping);
     }
 }
 
@@ -68,17 +69,11 @@ impl TypeParameter {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        if !type_parameter.trait_constraints.is_empty() {
-            errors.push(CompileError::WhereClauseNotYetSupported {
-                span: type_parameter.name_ident.span(),
-            });
-            return err(warnings, errors);
-        }
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
         let type_id = insert_type(TypeInfo::UnknownGeneric {
             name: type_parameter.name_ident.clone(),
         });
-        let type_parameter_decl = TypedDeclaration::GenericTypeForFunctionScope {
+        let type_parameter_decl = ty::TyDeclaration::GenericTypeForFunctionScope {
             name: type_parameter.name_ident.clone(),
             type_id,
         };
@@ -90,6 +85,7 @@ impl TypeParameter {
             type_id,
             initial_type_id: type_parameter.initial_type_id,
             trait_constraints: type_parameter.trait_constraints,
+            trait_constraints_span: type_parameter.trait_constraints_span,
         };
         ok(type_parameter, warnings, errors)
     }

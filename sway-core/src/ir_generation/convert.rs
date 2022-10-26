@@ -1,11 +1,11 @@
 use crate::{
-    error::CompileError,
-    parse_tree::Literal,
+    language::Literal,
     type_system::{to_typeinfo, TypeId, TypeInfo},
 };
 
 use super::types::{create_enum_aggregate, create_tuple_aggregate};
 
+use sway_error::error::CompileError;
 use sway_ir::{Aggregate, Constant, Context, Type, Value};
 use sway_types::span::Span;
 
@@ -17,7 +17,7 @@ pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Lite
         // consistent and doesn't tolerate mising integers of different width, so for now, until we
         // do introduce explicit `as` casting, all integers are `u64` as far as the IR is
         // concerned.
-        Literal::U8(n) | Literal::Byte(n) => Constant::get_uint(context, 64, *n as u64),
+        Literal::U8(n) => Constant::get_uint(context, 64, *n as u64),
         Literal::U16(n) => Constant::get_uint(context, 64, *n as u64),
         Literal::U32(n) => Constant::get_uint(context, 64, *n as u64),
         Literal::U64(n) => Constant::get_uint(context, 64, *n),
@@ -31,7 +31,7 @@ pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Lite
 pub(super) fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
     match ast_literal {
         // All integers are `u64`.  See comment above.
-        Literal::U8(n) | Literal::Byte(n) => Constant::new_uint(64, *n as u64),
+        Literal::U8(n) => Constant::new_uint(64, *n as u64),
         Literal::U16(n) => Constant::new_uint(64, *n as u64),
         Literal::U32(n) => Constant::new_uint(64, *n as u64),
         Literal::U64(n) => Constant::new_uint(64, *n),
@@ -86,7 +86,6 @@ fn convert_resolved_type(
         TypeInfo::UnsignedInteger(_) => Type::Uint(64),
         TypeInfo::Numeric => Type::Uint(64),
         TypeInfo::Boolean => Type::Bool,
-        TypeInfo::Byte => Type::Uint(64),
         TypeInfo::B256 => Type::B256,
         TypeInfo::Str(n) => Type::String(*n),
         TypeInfo::Struct { fields, .. } => super::types::get_aggregate_for_types(
@@ -116,6 +115,7 @@ fn convert_resolved_type(
                 create_tuple_aggregate(context, new_fields).map(Type::Struct)?
             }
         }
+        TypeInfo::RawUntypedPtr => Type::Uint(64),
 
         // Unsupported types which shouldn't exist in the AST after type checking and
         // monomorphisation.
@@ -125,7 +125,6 @@ fn convert_resolved_type(
         TypeInfo::ContractCaller { .. } => reject_type!("ContractCaller"),
         TypeInfo::Unknown => reject_type!("Unknown"),
         TypeInfo::UnknownGeneric { .. } => reject_type!("Generic"),
-        TypeInfo::Ref(..) => reject_type!("Ref"),
         TypeInfo::ErrorRecovery => reject_type!("Error recovery"),
         TypeInfo::Storage { .. } => reject_type!("Storage"),
     })

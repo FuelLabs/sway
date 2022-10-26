@@ -1,6 +1,7 @@
-use crate::{ParseErrorKind, ParseResult, Parser};
+use crate::{ParseResult, Parser};
 
 use sway_ast::expr::op_code::*;
+use sway_error::parser_error::ParseErrorKind;
 use sway_types::{Ident, Spanned};
 
 macro_rules! define_op_codes (
@@ -44,6 +45,7 @@ define_op_codes!(
     (Mul, MulOpcode, "mul", (ret, lhs, rhs)),
     (Muli, MuliOpcode, "muli", (ret, lhs, rhs)),
     (Noop, NoopOpcode, "noop", ()),
+    (Blob, BlobOpcode, "blob", (size)),
     (Not, NotOpcode, "not", (ret, arg)),
     (Or, OrOpcode, "or", (ret, lhs, rhs)),
     (Ori, OriOpcode, "ori", (ret, lhs, rhs)),
@@ -56,7 +58,6 @@ define_op_codes!(
     (Subi, SubiOpcode, "subi", (ret, lhs, rhs)),
     (Xor, XorOpcode, "xor", (ret, lhs, rhs)),
     (Xori, XoriOpcode, "xori", (ret, lhs, rhs)),
-    (Ret, RetOpcode, "ret", (value)),
     (Aloc, AlocOpcode, "aloc", (size)),
     (Cfei, CfeiOpcode, "cfei", (size)),
     (Cfsi, CfsiOpcode, "cfsi", (size)),
@@ -82,8 +83,6 @@ define_op_codes!(
     (Log, LogOpcode, "log", (reg_a, reg_b, reg_c, reg_d)),
     (Logd, LogdOpcode, "logd", (reg_a, reg_b, addr, size)),
     (Mint, MintOpcode, "mint", (coins)),
-    (Retd, RetdOpcode, "retd", (addr, size)),
-    (Rvrt, RvrtOpcode, "rvrt", (value)),
     (Srw, SrwOpcode, "srw", (ret, state_addr)),
     (Srwq, SrwqOpcode, "srwq", (addr, state_addr)),
     (Sww, SwwOpcode, "sww", (state_addr, value)),

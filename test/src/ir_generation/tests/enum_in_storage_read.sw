@@ -37,13 +37,13 @@ impl StorageAccess for Contract {
 // check: local mut ptr [b256; 2] val_for_0_1
 // check: local mut ptr [b256; 2] val_for_1_1
 
+// check: $(enum_undef=$VAL) = get_ptr ptr { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } $ID, ptr { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, 0
 // check: $(local_key_ptr=$VAL) = get_ptr mut ptr b256 key_for_0_0, ptr b256, 0
 // check: $(key=$VAL) = const b256 0xd625ff6d8e88efd7bb3476e748e5d5935618d78bfc7eedf584fe909ce0809fc3
 // check: store $key, ptr $local_key_ptr
 // check: $(stored_tag_ptr=$VAL) = state_load_word key ptr $local_key_ptr
 // check: $(stored_tag=$VAL) = bitcast $stored_tag_ptr to u64
 
-// check: $(enum_undef=$VAL) = const { u64, ( { u64, u64, u64, u64, u64 } | u64 ) } { u64 undef, ( { u64, u64, u64, u64, u64 } | u64 ) undef }
 // check: insert_value $enum_undef, { u64, ( { u64, u64, u64, u64, u64 } | u64 ) }, $stored_tag, 0
 
 // check: $(local_key_ptr2=$VAL) = get_ptr mut ptr b256 key_for_0_1, ptr b256, 0

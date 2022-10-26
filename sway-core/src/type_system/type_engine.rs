@@ -1,13 +1,14 @@
-use super::*;
-use crate::concurrent_slab::ConcurrentSlab;
-use crate::declaration_engine::{
-    de_add_monomorphized_enum_copy, de_add_monomorphized_struct_copy, de_get_enum, de_get_struct,
+use std::sync::RwLock;
+use std::{collections::HashMap, fmt};
+
+use crate::{
+    concurrent_slab::ConcurrentSlab, declaration_engine::*, language::ty, namespace::Path,
+    type_system::*, Namespace,
 };
-use crate::namespace::{Path, Root};
-use crate::TypedDeclaration;
+
 use lazy_static::lazy_static;
-use sway_types::span::Span;
-use sway_types::{Ident, Spanned};
+use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
+use sway_types::{span::Span, Ident, Spanned};
 
 lazy_static! {
     static ref TYPE_ENGINE: TypeEngine = TypeEngine::default();
@@ -15,49 +16,56 @@ lazy_static! {
 
 #[derive(Debug, Default)]
 pub(crate) struct TypeEngine {
-    slab: ConcurrentSlab<TypeInfo>,
+    pub(super) slab: ConcurrentSlab<TypeInfo>,
     storage_only_types: ConcurrentSlab<TypeInfo>,
+    id_map: RwLock<HashMap<TypeInfo, TypeId>>,
+}
+
+impl fmt::Display for TypeEngine {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "DeclarationEngine {{\n{}\n}}", self.slab)
+    }
 }
 
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
     pub(crate) fn insert_type(&self, ty: TypeInfo) -> TypeId {
-        TypeId::new(self.slab.insert(ty))
-    }
-
-    pub fn size(&self) -> usize {
-        self.slab.size()
-    }
-
-    /// Gets the size of the [TypeEngine].
-    fn look_up_type_id_raw(&self, id: TypeId) -> TypeInfo {
-        self.slab.get(*id)
-    }
-
-    /// Performs a lookup of `id` into the [TypeEngine], but only one level
-    /// deep. (i.e. lookup will stop after looking up `id` once, even if it
-    /// returns a [TypeInfo::Ref(..)])
-    pub(crate) fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
-        match self.slab.get(*id) {
-            TypeInfo::Ref(other, _sp) => self.look_up_type_id(other),
-            ty => ty,
+        let mut id_map = self.id_map.write().unwrap();
+        if let Some(type_id) = id_map.get(&ty) {
+            return *type_id;
+        }
+        if ty.can_change() {
+            TypeId::new(self.slab.insert(ty))
+        } else {
+            let type_id = TypeId::new(self.slab.insert(ty.clone()));
+            id_map.insert(ty, type_id);
+            type_id
         }
     }
 
-    /// Performs a recursive lookup of `id` into the [TypeEngine] until the
-    /// lookup yields a [TypeInfo] variant other than [TypeInfo::Ref(..)].
+    /// Gets the size of the [TypeEngine].
+    fn size(&self) -> usize {
+        self.slab.size()
+    }
+
+    /// Performs a lookup of `id` into the [TypeEngine].
+    pub(crate) fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
+        self.slab.get(*id)
+    }
+
+    /// Denotes the given [TypeId] as being used with storage.
     fn set_type_as_storage_only(&self, id: TypeId) {
         self.storage_only_types.insert(self.look_up_type_id(id));
     }
 
-    /// Denotes the given [TypeId] as being used with storage.
+    /// Checks if the given [TypeId] is a storage only type.
     fn is_type_storage_only(&self, id: TypeId) -> bool {
         let ti = &self.look_up_type_id(id);
         self.is_type_info_storage_only(ti)
     }
 
-    /// Checks if the given [TypeId] is a storage only type.
+    /// Checks if the given [TypeInfo] is a storage only type.
     fn is_type_info_storage_only(&self, ti: &TypeInfo) -> bool {
         self.storage_only_types.exists(|x| ti.is_subset_of(x))
     }
@@ -98,7 +106,7 @@ impl TypeEngine {
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
-        namespace: &Root,
+        namespace: &mut Namespace,
         mod_path: &Path,
     ) -> CompileResult<()>
     where
@@ -164,17 +172,37 @@ impl TypeEngine {
                         errors
                     );
                 }
-                let type_mapping = TypeMapping::from_type_parameters(value.type_parameters());
-                check!(
-                    type_mapping.unify_with_type_arguments(type_arguments),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
+                let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
+                    value
+                        .type_parameters()
+                        .iter()
+                        .map(|type_param| type_param.type_id)
+                        .collect(),
+                    type_arguments
+                        .iter()
+                        .map(|type_arg| type_arg.type_id)
+                        .collect(),
                 );
                 value.copy_types(&type_mapping);
                 ok((), warnings, errors)
             }
         }
+    }
+
+    /// Replace any instances of the [TypeInfo::SelfType] variant with
+    /// `self_type` in both `received` and `expected`, then unify `received` and
+    /// `expected`.
+    fn unify_with_self(
+        &self,
+        mut received: TypeId,
+        mut expected: TypeId,
+        self_type: TypeId,
+        span: &Span,
+        help_text: &str,
+    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
+        received.replace_self_type(self_type);
+        expected.replace_self_type(self_type);
+        self.unify(received, expected, span, help_text)
     }
 
     /// Make the types of `received` and `expected` equivalent (or produce an
@@ -189,333 +217,127 @@ impl TypeEngine {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        help_text: impl Into<String>,
+        help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        use TypeInfo::*;
-        let help_text = help_text.into();
-        match (self.slab.get(*received), self.slab.get(*expected)) {
-            // If the types are exactly the same, we are done.
-            (Boolean, Boolean) => (vec![], vec![]),
-            (SelfType, SelfType) => (vec![], vec![]),
-            (Byte, Byte) => (vec![], vec![]),
-            (B256, B256) => (vec![], vec![]),
-            (Numeric, Numeric) => (vec![], vec![]),
-            (Contract, Contract) => (vec![], vec![]),
-            (Str(l), Str(r)) => {
-                let warnings = vec![];
-                let mut errors = vec![];
-                if l != r {
-                    errors.push(TypeError::MismatchedType {
-                        expected,
-                        received,
-                        help_text,
-                        span: span.clone(),
-                    });
-                }
-                (warnings, errors)
-            }
-            //(received_info, expected_info) if received_info == expected_info => (vec![], vec![]),
-
-            // Follow any references
-            (Ref(received, _sp1), Ref(expected, _sp2)) if received == expected => (vec![], vec![]),
-            (Ref(received, _sp), _) => self.unify(received, expected, span, help_text),
-            (_, Ref(expected, _sp)) => self.unify(received, expected, span, help_text),
-
-            // When we don't know anything about either term, assume that
-            // they match and make the one we know nothing about reference the
-            // one we may know something about
-            (Unknown, Unknown) => (vec![], vec![]),
-            (Unknown, _) => {
-                match self
-                    .slab
-                    .replace(received, &Unknown, TypeInfo::Ref(expected, span.clone()))
-                {
-                    None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
-                }
-            }
-            (_, Unknown) => {
-                match self
-                    .slab
-                    .replace(expected, &Unknown, TypeInfo::Ref(received, span.clone()))
-                {
-                    None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
-                }
-            }
-
-            (Tuple(fields_a), Tuple(fields_b)) if fields_a.len() == fields_b.len() => {
-                let mut warnings = vec![];
-                let mut errors = vec![];
-                for (field_a, field_b) in fields_a.iter().zip(fields_b.iter()) {
-                    append!(
-                        self.unify(
-                            field_a.type_id,
-                            field_b.type_id,
-                            &field_a.span,
-                            help_text.clone(),
-                        ),
-                        warnings,
-                        errors
-                    );
-                }
-                (warnings, errors)
-            }
-
-            (UnsignedInteger(received_width), UnsignedInteger(expected_width)) => {
-                // E.g., in a variable declaration `let a: u32 = 10u64` the 'expected' type will be
-                // the annotation `u32`, and the 'received' type is 'self' of the initialiser, or
-                // `u64`.  So we're casting received TO expected.
-                let warnings = match numeric_cast_compat(expected_width, received_width) {
-                    NumericCastCompatResult::CastableWithWarning(warn) => {
-                        vec![CompileWarning {
-                            span: span.clone(),
-                            warning_content: warn,
-                        }]
-                    }
-                    NumericCastCompatResult::Compatible => {
-                        vec![]
-                    }
-                };
-
-                // we don't want to do a slab replacement here, because
-                // we don't want to overwrite the original numeric type with the new one.
-                // This isn't actually inferencing the original type to the new numeric type.
-                // We just want to say "up until this point, this was a u32 (eg) and now it is a
-                // u64 (eg)". If we were to do a slab replace here, we'd be saying "this was always a
-                // u64 (eg)".
-                (warnings, vec![])
-            }
-
-            (UnknownGeneric { name: l_name }, UnknownGeneric { name: r_name })
-                if l_name.as_str() == r_name.as_str() =>
-            {
-                (vec![], vec![])
-            }
-            (ref received_info @ UnknownGeneric { .. }, _) => {
-                self.slab.replace(
-                    received,
-                    received_info,
-                    TypeInfo::Ref(expected, span.clone()),
-                );
-                (vec![], vec![])
-            }
-
-            (_, ref expected_info @ UnknownGeneric { .. }) => {
-                self.slab.replace(
-                    expected,
-                    expected_info,
-                    TypeInfo::Ref(received, span.clone()),
-                );
-                (vec![], vec![])
-            }
-
-            // if the types, once their ids have been looked up, are the same, we are done
-            (
-                Struct {
-                    name: a_name,
-                    fields: a_fields,
-                    type_parameters: a_parameters,
-                    ..
-                },
-                Struct {
-                    name: b_name,
-                    fields: b_fields,
-                    type_parameters: b_parameters,
-                    ..
-                },
-            ) => {
-                let mut warnings = vec![];
-                let mut errors = vec![];
-                if a_name == b_name
-                    && a_fields.len() == b_fields.len()
-                    && a_parameters.len() == b_parameters.len()
-                {
-                    a_fields.iter().zip(b_fields.iter()).for_each(|(a, b)| {
-                        append!(
-                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone()),
-                            warnings,
-                            errors
-                        );
-                    });
-                    a_parameters
-                        .iter()
-                        .zip(b_parameters.iter())
-                        .for_each(|(a, b)| {
-                            append!(
-                                self.unify(
-                                    a.type_id,
-                                    b.type_id,
-                                    &a.name_ident.span(),
-                                    help_text.clone(),
-                                ),
-                                warnings,
-                                errors
-                            );
-                        });
-                } else {
-                    errors.push(TypeError::MismatchedType {
-                        expected,
-                        received,
-                        help_text,
-                        span: span.clone(),
-                    });
-                }
-                (warnings, errors)
-            }
-            (
-                Enum {
-                    name: a_name,
-                    variant_types: a_variants,
-                    type_parameters: a_parameters,
-                },
-                Enum {
-                    name: b_name,
-                    variant_types: b_variants,
-                    type_parameters: b_parameters,
-                },
-            ) => {
-                let mut warnings = vec![];
-                let mut errors = vec![];
-                if a_name == b_name
-                    && a_variants.len() == b_variants.len()
-                    && a_parameters.len() == b_parameters.len()
-                {
-                    a_variants.iter().zip(b_variants.iter()).for_each(|(a, b)| {
-                        append!(
-                            self.unify(a.type_id, b.type_id, &a.span, help_text.clone()),
-                            warnings,
-                            errors
-                        );
-                    });
-                    a_parameters
-                        .iter()
-                        .zip(b_parameters.iter())
-                        .for_each(|(a, b)| {
-                            append!(
-                                self.unify(
-                                    a.type_id,
-                                    b.type_id,
-                                    &a.name_ident.span(),
-                                    help_text.clone(),
-                                ),
-                                warnings,
-                                errors
-                            );
-                        });
-                } else {
-                    errors.push(TypeError::MismatchedType {
-                        expected,
-                        received,
-                        help_text,
-                        span: span.clone(),
-                    });
-                }
-                (warnings, errors)
-            }
-
-            (Numeric, expected_info @ UnsignedInteger(_)) => {
-                match self.slab.replace(received, &Numeric, expected_info) {
-                    None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
-                }
-            }
-            (received_info @ UnsignedInteger(_), Numeric) => {
-                match self.slab.replace(expected, &Numeric, received_info) {
-                    None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
-                }
-            }
-
-            (Array(a_elem, a_count, _), Array(b_elem, b_count, _)) if a_count == b_count => {
-                let (warnings, new_errors) = self.unify(a_elem, b_elem, span, help_text.clone());
-
-                // If there was an error then we want to report the array types as mismatching, not
-                // the elem types.
-                let mut errors = vec![];
-                if !new_errors.is_empty() {
-                    errors.push(TypeError::MismatchedType {
-                        expected,
-                        received,
-                        help_text,
-                        span: span.clone(),
-                    });
-                }
-                (warnings, errors)
-            }
-
-            (
-                ref r @ TypeInfo::ContractCaller {
-                    abi_name: ref abi_name_received,
-                    address: ref received_address,
-                },
-                TypeInfo::ContractCaller {
-                    abi_name: ref abi_name_expected,
-                    ..
-                },
-            ) if (abi_name_received == abi_name_expected && received_address.is_none())
-                || matches!(abi_name_received, AbiName::Deferred) =>
-            {
-                // if one address is empty, coerce to the other one
-                match self.slab.replace(received, r, look_up_type_id(expected)) {
-                    None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
-                }
-            }
-            (
-                TypeInfo::ContractCaller {
-                    abi_name: ref abi_name_received,
-                    ..
-                },
-                ref e @ TypeInfo::ContractCaller {
-                    abi_name: ref abi_name_expected,
-                    ref address,
-                },
-            ) if (abi_name_received == abi_name_expected && address.is_none())
-                || matches!(abi_name_expected, AbiName::Deferred) =>
-            {
-                // if one address is empty, coerce to the other one
-                match self.slab.replace(expected, e, look_up_type_id(received)) {
-                    None => (vec![], vec![]),
-                    Some(_) => self.unify(received, expected, span, help_text),
-                }
-            }
-            (ref r @ TypeInfo::ContractCaller { .. }, ref e @ TypeInfo::ContractCaller { .. })
-                if r == e =>
-            {
-                // if they are the same, then it's ok
-                (vec![], vec![])
-            }
-
-            // If no previous attempts to unify were successful, raise an error
-            (TypeInfo::ErrorRecovery, _) => (vec![], vec![]),
-            (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
-            (_, _) => {
-                let errors = vec![TypeError::MismatchedType {
-                    expected,
-                    received,
-                    help_text,
-                    span: span.clone(),
-                }];
-                (vec![], errors)
-            }
-        }
+        unify::unify(self, received, expected, span, help_text, false)
     }
 
     /// Replace any instances of the [TypeInfo::SelfType] variant with
-    /// `self_type` in both `received` and `expected`, then unify `received` and
-    /// `expected`.
-    fn unify_with_self(
+    /// `self_type` in both `received` and `expected`, then unify_right
+    /// `received` and `expected`.
+    fn unify_right_with_self(
         &self,
         mut received: TypeId,
         mut expected: TypeId,
         self_type: TypeId,
         span: &Span,
-        help_text: impl Into<String>,
+        help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         received.replace_self_type(self_type);
         expected.replace_self_type(self_type);
-        self.unify(received, expected, span, help_text)
+        self.unify_right(received, expected, span, help_text)
+    }
+
+    /// Make the type of `expected` equivalent to `received`.
+    ///
+    /// This is different than the `unify` method because it _only allows
+    /// changes to `expected`_. It also rejects the case where `received` is a
+    /// generic type and `expected` is not a generic type.
+    ///
+    /// Here is an example for why this method is necessary. Take this Sway
+    /// code:
+    ///
+    /// ```ignore
+    /// fn test_function<T>(input: T) -> T {
+    ///     input
+    /// }
+    ///
+    /// fn call_it() -> bool {
+    ///     test_function(true)
+    /// }
+    /// ```
+    ///
+    /// This is valid Sway code and we should expect it to compile because the
+    /// type `bool` is valid under the generic type `T`.
+    ///
+    /// Now, look at this Sway code:
+    ///
+    /// ```ignore
+    /// fn test_function(input: bool) -> bool {
+    ///     input
+    /// }
+    ///
+    /// fn call_it<T>(input: T) -> T {
+    ///     test_function(input)
+    /// }
+    /// ```
+    ///
+    /// We should expect this Sway to fail to compile because the generic type
+    /// `T` is not valid under the type `bool`.
+    ///
+    /// This is the function that makes that distinction for us!
+    fn unify_right(
+        &self,
+        received: TypeId,
+        expected: TypeId,
+        span: &Span,
+        help_text: &str,
+    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
+        unify::unify_right(self, received, expected, span, help_text)
+    }
+
+    /// Helper function for making the type of `expected` equivalent to
+    /// `received` for instantiating algebraic data types.
+    ///
+    /// This method simply switches the arguments of `received` and `expected`
+    /// and calls the `unify` method---the main purpose of this method is reduce
+    /// developer overhead during implementation, as it is a little non-intuitive
+    /// why `received` and `expected` should be switched.
+    ///
+    /// Let me explain, take this Sway code:
+    ///
+    /// ```ignore
+    /// enum Option<T> {
+    ///     Some(T),
+    ///     None
+    /// }
+    ///
+    /// struct Wrapper {
+    ///     option: Option<bool>,
+    /// }
+    ///
+    /// fn create_it<T>() -> Wrapper {
+    ///     Wrapper {
+    ///         option: Option::None
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// This is valid Sway code and we should expect it to compile. Here is the
+    /// pseudo-code of roughly what we can expect from type inference:
+    /// 1. `Option::None` is originally found to be of type `Option<T>` (because
+    ///     it is not possible to know what `T` is just from the `None` case)
+    /// 2. we call `unify_adt` with arguments `received` of type `Option<T>` and
+    ///     `expected` of type `Option<bool>`
+    /// 3. we switch `received` and `expected` and call the `unify` method
+    /// 4. we perform type inference with a `received` type of `Option<bool>`
+    ///     and an `expected` type of `Option<T>`
+    /// 5. we perform type inference with a `received` type of `bool` and an
+    ///     `expected` type of `T`
+    /// 6. because we have called the `unify` method (and not the `unify_right`
+    ///     method), we can replace `T` with `bool`
+    ///
+    /// What's important about this is flipping the arguments prioritizes
+    /// unifying `expected`, meaning if both `received` and `expected` are
+    /// generic types, then `expected` will be replaced with `received`.
+    fn unify_adt(
+        &self,
+        received: TypeId,
+        expected: TypeId,
+        span: &Span,
+        help_text: &str,
+    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
+        unify::unify(self, expected, received, span, help_text, true)
     }
 
     pub fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
@@ -531,6 +353,8 @@ impl TypeEngine {
     fn clear(&self) {
         self.slab.clear();
         self.storage_only_types.clear();
+        let mut id_map = self.id_map.write().unwrap();
+        id_map.clear();
     }
 
     /// Resolve the type of the given [TypeId], replacing any instances of
@@ -542,7 +366,7 @@ impl TypeEngine {
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
-        namespace: &Root,
+        namespace: &mut Namespace,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
@@ -554,14 +378,15 @@ impl TypeEngine {
                 type_arguments,
             } => {
                 match namespace
+                    .root()
                     .resolve_symbol(module_path, &name)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(TypedDeclaration::StructDeclaration(original_id)) => {
+                    Some(ty::TyDeclaration::StructDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
-                            CompileResult::from(de_get_struct(original_id.clone(), &name.span())),
+                            CompileResult::from(de_get_struct(original_id, &name.span())),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -585,16 +410,16 @@ impl TypeEngine {
                         // create the type id from the copy
                         let type_id = new_copy.create_type_id();
 
-                        // add the new copy as a monomorphized copy of the original id
-                        de_add_monomorphized_struct_copy(original_id, new_copy);
+                        // take any trait methods that apply to this type and copy them to the new type
+                        namespace.insert_trait_implementation_for_type(type_id);
 
                         // return the id
                         type_id
                     }
-                    Some(TypedDeclaration::EnumDeclaration(original_id)) => {
+                    Some(ty::TyDeclaration::EnumDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
-                            CompileResult::from(de_get_enum(original_id.clone(), &name.span())),
+                            CompileResult::from(de_get_enum(original_id, &name.span())),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -618,15 +443,13 @@ impl TypeEngine {
                         // create the type id from the copy
                         let type_id = new_copy.create_type_id();
 
-                        // add the new copy as a monomorphized copy of the original id
-                        de_add_monomorphized_enum_copy(original_id, new_copy);
+                        // take any trait methods that apply to this type and copy them to the new type
+                        namespace.insert_trait_implementation_for_type(type_id);
 
                         // return the id
                         type_id
                     }
-                    Some(TypedDeclaration::GenericTypeForFunctionScope { name, type_id }) => {
-                        self.insert_type(TypeInfo::Ref(type_id, name.span()))
-                    }
+                    Some(ty::TyDeclaration::GenericTypeForFunctionScope { type_id, .. }) => type_id,
                     _ => {
                         errors.push(CompileError::UnknownTypeName {
                             name: name.to_string(),
@@ -636,7 +459,6 @@ impl TypeEngine {
                     }
                 }
             }
-            TypeInfo::Ref(id, _) => id,
             TypeInfo::Array(type_id, n, initial_type_id) => {
                 let new_type_id = check!(
                     self.resolve_type(
@@ -686,7 +508,7 @@ impl TypeEngine {
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
-        namespace: &Root,
+        namespace: &mut Namespace,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
         type_id.replace_self_type(self_type);
@@ -701,6 +523,11 @@ impl TypeEngine {
     }
 }
 
+#[allow(dead_code)]
+pub(crate) fn print_type_engine() {
+    println!("{}", &*TYPE_ENGINE);
+}
+
 pub fn insert_type(ty: TypeInfo) -> TypeId {
     TYPE_ENGINE.insert_type(ty)
 }
@@ -711,10 +538,6 @@ pub fn type_engine_size() -> usize {
 
 pub fn look_up_type_id(id: TypeId) -> TypeInfo {
     TYPE_ENGINE.look_up_type_id(id)
-}
-
-pub(crate) fn look_up_type_id_raw(id: TypeId) -> TypeInfo {
-    TYPE_ENGINE.look_up_type_id_raw(id)
 }
 
 pub fn set_type_as_storage_only(id: TypeId) {
@@ -734,7 +557,7 @@ pub(crate) fn monomorphize<T>(
     type_arguments: &mut [TypeArgument],
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
-    namespace: &Root,
+    namespace: &mut Namespace,
     module_path: &Path,
 ) -> CompileResult<()>
 where
@@ -751,13 +574,14 @@ where
 }
 
 pub fn unify_with_self(
-    a: TypeId,
-    b: TypeId,
+    received: TypeId,
+    expected: TypeId,
     self_type: TypeId,
     span: &Span,
-    help_text: impl Into<String>,
+    help_text: &str,
 ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-    let (warnings, errors) = TYPE_ENGINE.unify_with_self(a, b, self_type, span, help_text);
+    let (warnings, errors) =
+        TYPE_ENGINE.unify_with_self(received, expected, self_type, span, help_text);
     (
         warnings,
         errors.into_iter().map(|error| error.into()).collect(),
@@ -765,12 +589,53 @@ pub fn unify_with_self(
 }
 
 pub(crate) fn unify(
-    a: TypeId,
-    b: TypeId,
+    received: TypeId,
+    expected: TypeId,
     span: &Span,
-    help_text: impl Into<String>,
+    help_text: &str,
 ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-    let (warnings, errors) = TYPE_ENGINE.unify(a, b, span, help_text);
+    let (warnings, errors) = TYPE_ENGINE.unify(received, expected, span, help_text);
+    (
+        warnings,
+        errors.into_iter().map(|error| error.into()).collect(),
+    )
+}
+
+pub fn unify_right_with_self(
+    received: TypeId,
+    expected: TypeId,
+    self_type: TypeId,
+    span: &Span,
+    help_text: &str,
+) -> (Vec<CompileWarning>, Vec<CompileError>) {
+    let (warnings, errors) =
+        TYPE_ENGINE.unify_right_with_self(received, expected, self_type, span, help_text);
+    (
+        warnings,
+        errors.into_iter().map(|error| error.into()).collect(),
+    )
+}
+
+pub(crate) fn unify_right(
+    received: TypeId,
+    expected: TypeId,
+    span: &Span,
+    help_text: &str,
+) -> (Vec<CompileWarning>, Vec<CompileError>) {
+    let (warnings, errors) = TYPE_ENGINE.unify_right(received, expected, span, help_text);
+    (
+        warnings,
+        errors.into_iter().map(|error| error.into()).collect(),
+    )
+}
+
+pub(crate) fn unify_adt(
+    received: TypeId,
+    expected: TypeId,
+    span: &Span,
+    help_text: &str,
+) -> (Vec<CompileWarning>, Vec<CompileError>) {
+    let (warnings, errors) = TYPE_ENGINE.unify_adt(received, expected, span, help_text);
     (
         warnings,
         errors.into_iter().map(|error| error.into()).collect(),
@@ -790,7 +655,7 @@ pub(crate) fn resolve_type(
     span: &Span,
     enforce_type_arguments: EnforceTypeArguments,
     type_info_prefix: Option<&Path>,
-    namespace: &Root,
+    namespace: &mut Namespace,
     mod_path: &Path,
 ) -> CompileResult<TypeId> {
     TYPE_ENGINE.resolve_type(
@@ -809,7 +674,7 @@ pub(crate) fn resolve_type_with_self(
     span: &Span,
     enforce_type_arguments: EnforceTypeArguments,
     type_info_prefix: Option<&Path>,
-    namespace: &Root,
+    namespace: &mut Namespace,
     mod_path: &Path,
 ) -> CompileResult<TypeId> {
     TYPE_ENGINE.resolve_type_with_self(
@@ -821,31 +686,6 @@ pub(crate) fn resolve_type_with_self(
         namespace,
         mod_path,
     )
-}
-
-fn numeric_cast_compat(new_size: IntegerBits, old_size: IntegerBits) -> NumericCastCompatResult {
-    // If this is a downcast, warn for loss of precision. If upcast, then no warning.
-    use IntegerBits::*;
-    match (new_size, old_size) {
-        // These should generate a downcast warning.
-        (Eight, Sixteen)
-        | (Eight, ThirtyTwo)
-        | (Eight, SixtyFour)
-        | (Sixteen, ThirtyTwo)
-        | (Sixteen, SixtyFour)
-        | (ThirtyTwo, SixtyFour) => {
-            NumericCastCompatResult::CastableWithWarning(Warning::LossOfPrecision {
-                initial_type: old_size,
-                cast_to: new_size,
-            })
-        }
-        // Upcasting is ok, so everything else is ok.
-        _ => NumericCastCompatResult::Compatible,
-    }
-}
-enum NumericCastCompatResult {
-    Compatible,
-    CastableWithWarning(Warning),
 }
 
 pub(crate) trait MonomorphizeHelper {
