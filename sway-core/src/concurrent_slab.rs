@@ -1,4 +1,4 @@
-use std::sync::RwLock;
+use std::{fmt, sync::RwLock};
 
 use crate::{
     declaration_engine::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper},
@@ -19,6 +19,25 @@ where
         Self {
             inner: Default::default(),
         }
+    }
+}
+
+impl<T> fmt::Display for ConcurrentSlab<T>
+where
+    T: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let inner = self.inner.read().unwrap();
+        write!(
+            f,
+            "{}",
+            inner
+                .iter()
+                .enumerate()
+                .map(|(i, value)| { format!("{:<10}\t->\t{}", i, value) })
+                .collect::<Vec<_>>()
+                .join("\n"),
+        )
     }
 }
 

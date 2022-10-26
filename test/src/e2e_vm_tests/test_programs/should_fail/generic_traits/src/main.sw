@@ -81,6 +81,18 @@ impl<F> Multiple<u64> for FooBarData<F> {
     }
 }
 
+impl<T> Returner<T> for T {
+    fn return_it(self, the_value: T) -> T {
+        the_value
+    }
+}
+
+impl<T> Returner<T> for Self {
+    fn return_it(self, the_value: T) -> T {
+        the_value
+    }
+}
+
 fn main() -> u64 {
     let a = FooBarData {
         value: 1u8

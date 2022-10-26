@@ -22,5 +22,11 @@ category = "fail"
 # nextln: $()}
 # nextln: $()Conflicting implementations of trait "Multiple<u64>" for type "FooBarData<F>".
 
+# check: $()impl<T> Returner<T> for T {
+# nextln:$()Unimplemented feature: implementing traits on this type is unsupported right now
+
+# check: $()impl<T> Returner<T> for Self {
+# nextln:$()Unimplemented feature: implementing traits on this type is unsupported right now
+
 # check: $()let b = a.set(42);
 # nextln: $()No method named "set" found for type "FooBarData<u8>".

@@ -1,5 +1,12 @@
 script;
 
+dep my_double;
+dep my_point;
+dep my_triple;
+
+use my_point::MyPoint;
+use my_triple::MyTriple;
+
 trait Setter<T> {
     fn set(self, new_value: T) -> Self;
 }
@@ -103,6 +110,22 @@ impl<T> MySub<u64> for OtherData<T> {
     }
 }
 
+impl MyTriple<u64> for MyPoint<u64> {
+    fn my_triple(self, value: u64) -> u64 {
+        (self.x*3) + (self.y*3) + (value*3)
+    }
+}
+
+struct MyU64 {
+    inner: u64
+}
+
+impl MyTriple<u64> for MyU64 {
+    fn my_triple(self, value: u64) -> u64 {
+        (self.inner*3) + (value*3)
+    }
+}
+
 fn main() -> u64 {
     let a = FooBarData {
         value: 1u8
@@ -132,8 +155,27 @@ fn main() -> u64 {
         ~FooBarData::<u32>::my_sub(100, 10),
         ~FooBarData::<u32>::my_sub(50, 10),
     );    
+    let m = MyPoint {
+        x: 10u64,
+        y: 10u64,
+    };
+    let n = m.my_double(100);
+    let o = m.my_triple(100);
+    let p = MyU64 {
+        inner: 30u64
+    };
+    let q = p.my_triple(1);
 
-    if c == 42u8 && d && e == 9u64 && g == 10 && h == 50 && k == 10 && l == 50 {
+    if c == 42u8
+        && d
+        && e == 9u64
+        && g == 10
+        && h == 50
+        && k == 10
+        && l == 50
+        && n == 240 
+        && o == 360
+        && q == 93 {
         42
     } else {
         7

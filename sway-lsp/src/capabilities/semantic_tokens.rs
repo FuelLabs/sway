@@ -7,7 +7,7 @@ use std::sync::{
     atomic::{AtomicU32, Ordering},
     Arc,
 };
-use sway_types::Span;
+use sway_types::{Span, Spanned};
 use tower_lsp::lsp_types::{
     Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
     SemanticTokensResult, Url,
@@ -19,13 +19,7 @@ pub fn semantic_tokens_full(session: Arc<Session>, url: &Url) -> Option<Semantic
 
     // The tokens need sorting by their span so each token is sequential
     // If this step isn't done, then the bit offsets used for the lsp_types::SemanticToken are incorrect.
-    let mut tokens_sorted: Vec<_> = tokens
-        .iter()
-        .map(|item| {
-            let ((_, span), token) = item.pair();
-            (span.clone(), token.clone())
-        })
-        .collect();
+    let mut tokens_sorted: Vec<_> = tokens.map(|(ident, token)| (ident.span(), token)).collect();
 
     tokens_sorted.sort_by(|(a_span, _), (b_span, _)| {
         let a = (a_span.start(), a_span.end());
@@ -115,6 +109,7 @@ pub(crate) fn semantic_tokens(tokens_sorted: &[(Span, Token)]) -> SemanticTokens
     builder.build()
 }
 
+/// Get the semantic token type from the symbol kind.
 fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
     match kind {
         SymbolKind::Field => SemanticTokenType::PROPERTY,

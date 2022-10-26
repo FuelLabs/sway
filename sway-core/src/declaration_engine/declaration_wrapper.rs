@@ -12,7 +12,7 @@ use crate::{
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]
 /// as a means of placing all declaration types into the same type.
 #[derive(Clone, Debug)]
-pub(crate) enum DeclarationWrapper {
+pub enum DeclarationWrapper {
     // no-op variant to fulfill the default trait
     Unknown,
     Function(ty::TyFunctionDeclaration),

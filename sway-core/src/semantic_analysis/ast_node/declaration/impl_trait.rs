@@ -13,7 +13,7 @@ use crate::{
 
 impl ty::TyImplTrait {
     pub(crate) fn type_check_impl_trait(
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         impl_trait: ImplTrait,
     ) -> CompileResult<Self> {
         let mut errors = vec![];
@@ -31,7 +31,7 @@ impl ty::TyImplTrait {
 
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut impl_namespace);
+        let mut ctx = ctx.by_ref().scoped(&mut impl_namespace);
 
         // type check the type parameters which also inserts them into the namespace
         let mut new_impl_type_parameters = vec![];
@@ -67,6 +67,15 @@ impl ty::TyImplTrait {
                 &type_implementing_for_span,
                 None
             ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // check to see if this type is supported in impl blocks
+        check!(
+            look_up_type_id(implementing_for_type_id)
+                .expect_is_supported_in_impl_blocks_self(&type_implementing_for_span),
             return err(warnings, errors),
             warnings,
             errors
@@ -169,11 +178,11 @@ impl ty::TyImplTrait {
                     });
                 }
 
-                let impl_ctx = ctx.with_mode(Mode::ImplAbiFn);
+                let ctx = ctx.with_mode(Mode::ImplAbiFn);
 
                 let methods = check!(
                     type_check_trait_implementation(
-                        impl_ctx,
+                        ctx,
                         &[], // this is empty because abi definitions don't support generics,
                         &[], // this is empty because abi definitions don't support generics,
                         implementing_for_type_id,
@@ -444,6 +453,15 @@ impl ty::TyImplTrait {
                 &type_implementing_for_span,
                 None
             ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // check to see if this type is supported in impl blocks
+        check!(
+            look_up_type_id(implementing_for_type_id)
+                .expect_is_supported_in_impl_blocks_self(&type_implementing_for_span),
             return err(warnings, errors),
             warnings,
             errors
