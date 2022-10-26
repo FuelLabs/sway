@@ -29,15 +29,14 @@ pub struct SubmodulesRecursive<'module> {
 impl TyModule {
     /// An iterator yielding all submodules recursively, depth-first.
     pub fn submodules_recursive(&self) -> SubmodulesRecursive {
-        let mut submods = self.submodules.iter();
-        let current = submods
-            .next()
-            .map(|(_, submod)| Box::new(submod.module.submodules_recursive()));
-        SubmodulesRecursive { submods, current }
+        SubmodulesRecursive {
+            submods: self.submodules.iter(),
+            current: None,
+        }
     }
 
     /// All test functions within this module.
-    pub fn test_fns(&self) -> impl Iterator<Item = TyFunctionDeclaration> + '_ {
+    pub fn test_fns(&self) -> impl '_ + Iterator<Item = TyFunctionDeclaration> {
         self.all_nodes.iter().filter_map(|node| {
             if let TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(ref decl_id)) =
                 node.content
@@ -64,7 +63,10 @@ impl<'module> Iterator for SubmodulesRecursive<'module> {
                 },
                 Some(submod) => match submod.next() {
                     Some(submod) => return Some(submod),
-                    None => continue,
+                    None => {
+                        self.current = None;
+                        continue;
+                    }
                 },
             }
         }
