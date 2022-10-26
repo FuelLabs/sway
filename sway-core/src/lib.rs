@@ -381,6 +381,14 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         .flat_map(|module| module.function_iter(&ir))
         .collect::<Vec<_>>();
 
+    // Promote local values to registers.
+    check!(
+        promote_to_registers(&mut ir, &all_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
     // Inline function calls.
     check!(
         inline_function_calls(&mut ir, &all_functions, &tree_type),
@@ -417,6 +425,21 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     );
 
     ok(final_asm, warnings, errors)
+}
+
+fn promote_to_registers(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+    for function in functions {
+        if let Err(ir_error) = sway_ir::optimize::promote_to_registers(ir, function) {
+            return err(
+                Vec::new(),
+                vec![CompileError::InternalOwned(
+                    ir_error.to_string(),
+                    span::Span::dummy(),
+                )],
+            );
+        }
+    }
+    ok((), Vec::new(), Vec::new())
 }
 
 // Inline function calls based on two conditions:

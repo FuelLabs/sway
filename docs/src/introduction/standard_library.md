@@ -13,10 +13,10 @@ The standard library is made implicitly available to all Forc projects created u
 Importing items from the standard library can be done using the `use` keyword, just as importing items from any Sway project. For example:
 
 ```sway
-use std::storage::StorageMap;
+use std::storage::StorageVec;
 ```
 
-This imports the `StorageMap` type into the current namespace.
+This imports the `StorageVec` type into the current namespace.
 
 ## Standard Library Prelude
 
@@ -30,6 +30,7 @@ The current version of the prelude lives in [`std::prelude`](https://github.com/
 - [`std::contract_id::ContractId`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/contract_id.sw), a wrapper around the `b256` type representing the ID of a contract.
 - [`std::identity::Identity`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/identity.sw), an enum with two possible variants: `Address: Address` and `ContractId: ContractId`.
 - [`std::vec::Vec`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw), a growable, heap-allocated vector.
+- [`std::storage::StorageMap`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage.sw), a key-value mapping in contract storage.
 - [`std::option::Option`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw), an enum which expresses the presence or absence of a value.
 - [`std::result::Result`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/result.sw), an enum for functions that may succeed or fail.
 - [`std::assert::assert`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw), a function that reverts the VM if the condition provided to it is `false`.
