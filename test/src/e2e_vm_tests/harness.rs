@@ -3,7 +3,7 @@ use forc_client::ops::{
     deploy::{cmd::DeployCommand, op::deploy},
     run::{cmd::RunCommand, op::run},
 };
-use forc_pkg::{Compiled, PackageManifestFile};
+use forc_pkg::{BuiltPackage, PackageManifestFile};
 use fuel_tx::TransactionBuilder;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
@@ -68,9 +68,9 @@ pub(crate) async fn runs_on_node(
 /// Very basic check that code does indeed run in the VM.
 /// `true` if it does, `false` if not.
 pub(crate) fn runs_in_vm(
-    script: Compiled,
+    script: BuiltPackage,
     script_data: Option<Vec<u8>>,
-) -> (ProgramState, Compiled) {
+) -> (ProgramState, BuiltPackage) {
     let storage = MemoryStorage::default();
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -100,7 +100,7 @@ pub(crate) fn compile_to_bytes(
     file_name: &str,
     run_config: &RunConfig,
     capture_output: bool,
-) -> (Result<Compiled>, String) {
+) -> (Result<BuiltPackage>, String) {
     tracing::info!(" Compiling {}", file_name);
 
     let mut buf_stdout: Option<gag::BufferRedirect> = None;
@@ -154,8 +154,8 @@ pub(crate) fn compile_to_bytes(
     (result, output)
 }
 
-pub(crate) fn test_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> {
-    emit_json_abi(file_name, compiled)?;
+pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
+    emit_json_abi(file_name, built_package)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let oracle_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
@@ -181,9 +181,9 @@ pub(crate) fn test_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> 
     Ok(())
 }
 
-fn emit_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> {
+fn emit_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
     tracing::info!("   ABI gen {}", file_name);
-    let json_abi = serde_json::json!(compiled.json_abi_program);
+    let json_abi = serde_json::json!(built_package.json_abi_program);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let file = std::fs::File::create(format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
@@ -194,8 +194,8 @@ fn emit_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn test_json_storage_slots(file_name: &str, compiled: &Compiled) -> Result<()> {
-    emit_json_storage_slots(file_name, compiled)?;
+pub(crate) fn test_json_storage_slots(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
+    emit_json_storage_slots(file_name, built_package)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let oracle_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
@@ -221,9 +221,9 @@ pub(crate) fn test_json_storage_slots(file_name: &str, compiled: &Compiled) -> R
     Ok(())
 }
 
-fn emit_json_storage_slots(file_name: &str, compiled: &Compiled) -> Result<()> {
+fn emit_json_storage_slots(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
     tracing::info!("   storage slots JSON gen {}", file_name);
-    let json_storage_slots = serde_json::json!(compiled.storage_slots);
+    let json_storage_slots = serde_json::json!(built_package.storage_slots);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let file = std::fs::File::create(format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
