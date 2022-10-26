@@ -469,9 +469,9 @@ data_0 .word 559005003
 <h2 id="using-the-standard-library"><a class="header" href="#using-the-standard-library">Using the Standard Library</a></h2>
 <p>The standard library is made implicitly available to all Forc projects created using <a href="introduction/../forc/commands/forc_new.html"><code>forc new</code></a>. In other words, it is not required to manually specify <code>std</code> as an explicit dependency. Forc will automatically use the version of <code>std</code> that matches its version.</p>
 <p>Importing items from the standard library can be done using the <code>use</code> keyword, just as importing items from any Sway project. For example:</p>
-<pre><code class="language-sway">use std::storage::StorageMap;
+<pre><code class="language-sway">use std::storage::StorageVec;
 </code></pre>
-<p>This imports the <code>StorageMap</code> type into the current namespace.</p>
+<p>This imports the <code>StorageVec</code> type into the current namespace.</p>
 <h2 id="standard-library-prelude"><a class="header" href="#standard-library-prelude">Standard Library Prelude</a></h2>
 <p>Sway comes with a variety of things in its standard library. However, if you had to manually import every single thing that you used, it would be very verbose. But importing a lot of things that a program never uses isn't good either. A balance needs to be struck.</p>
 <p>The prelude is the list of things that Sway automatically imports into every Sway program. It's kept as small as possible, and is focused on things which are used in almost every single Sway program.</p>
@@ -481,6 +481,7 @@ data_0 .word 559005003
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/contract_id.sw"><code>std::contract_id::ContractId</code></a>, a wrapper around the <code>b256</code> type representing the ID of a contract.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/identity.sw"><code>std::identity::Identity</code></a>, an enum with two possible variants: <code>Address: Address</code> and <code>ContractId: ContractId</code>.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw"><code>std::vec::Vec</code></a>, a growable, heap-allocated vector.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage.sw"><code>std::storage::StorageMap</code></a>, a key-value mapping in contract storage.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw"><code>std::option::Option</code></a>, an enum which expresses the presence or absence of a value.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/result.sw"><code>std::result::Result</code></a>, an enum for functions that may succeed or fail.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw"><code>std::assert::assert</code></a>, a function that reverts the VM if the condition provided to it is <code>false</code>.</li>
@@ -533,7 +534,7 @@ impl TestContract for Contract {
 <p>Being a ledger-based token, this example does not use Fuel's <a href="examples/../blockchain-development/native_assets.html">native asset system</a>. It is not recommended to actually use ledger-based tokens in production; this example is here purely for illustrative purposes.</p>
 <pre><code class="language-sway">contract;
 
-use std::{chain::auth::{AuthError, msg_sender}, hash::sha256, logging::log, storage::StorageMap};
+use std::{chain::auth::{AuthError, msg_sender}, hash::sha256, logging::log};
 
 ////////////////////////////////////////
 // Event declarations
@@ -2661,9 +2662,7 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
 <p>Another important common collection is the storage map. The type <code>StorageMap&lt;K, V&gt;</code> from the standard library stores a mapping of keys of type <code>K</code> to values of type <code>V</code> using a hashing function, which determines how it places these keys and values into <em>storage slots</em>. This is similar to <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html">Rust's <code>HashMap&lt;K, V&gt;</code></a> but with a few differences.</p>
 <p>Storage maps are useful when you want to look up data not by using an index, as you can with vectors, but by using a key that can be of any type. For example, when building a ledger-based sub-currency smart contract, you could keep track of the balance of each wallet in a storage map in which each key is a wallet’s <code>Address</code> and the values are each wallet’s balance. Given an <code>Address</code>, you can retrieve its balance.</p>
 <p>Similarly to <code>StorageVec&lt;T&gt;</code>, <code>StorageMap&lt;K, V&gt;</code> can only be used in a contract because only contracts are allowed to access persistent storage.</p>
-<p>In order to use <code>StorageMap&lt;K, V&gt;</code>, you must first import <code>StorageMap</code> as follows:</p>
-<pre><code class="language-sway">use std::storage::StorageMap;
-</code></pre>
+<p><code>StorageMap&lt;T&gt;</code> is included in the <a href="common-collections/../introduction/standard_library.html#standard-library-prelude">standard library prelude</a> which means that there is no need to import it manually.</p>
 <h2 id="creating-a-new-storage-map"><a class="header" href="#creating-a-new-storage-map">Creating a New Storage Map</a></h2>
 <p>To create a new empty storage map, we have to declare the map in a <code>storage</code> block as follows:</p>
 <pre><code class="language-sway">    map: StorageMap&lt;Address, u64&gt; = StorageMap {},

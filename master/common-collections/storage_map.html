@@ -141,9 +141,7 @@
 <p>Another important common collection is the storage map. The type <code>StorageMap&lt;K, V&gt;</code> from the standard library stores a mapping of keys of type <code>K</code> to values of type <code>V</code> using a hashing function, which determines how it places these keys and values into <em>storage slots</em>. This is similar to <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html">Rust's <code>HashMap&lt;K, V&gt;</code></a> but with a few differences.</p>
 <p>Storage maps are useful when you want to look up data not by using an index, as you can with vectors, but by using a key that can be of any type. For example, when building a ledger-based sub-currency smart contract, you could keep track of the balance of each wallet in a storage map in which each key is a wallet’s <code>Address</code> and the values are each wallet’s balance. Given an <code>Address</code>, you can retrieve its balance.</p>
 <p>Similarly to <code>StorageVec&lt;T&gt;</code>, <code>StorageMap&lt;K, V&gt;</code> can only be used in a contract because only contracts are allowed to access persistent storage.</p>
-<p>In order to use <code>StorageMap&lt;K, V&gt;</code>, you must first import <code>StorageMap</code> as follows:</p>
-<pre><code class="language-sway">use std::storage::StorageMap;
-</code></pre>
+<p><code>StorageMap&lt;T&gt;</code> is included in the <a href="../introduction/standard_library.html#standard-library-prelude">standard library prelude</a> which means that there is no need to import it manually.</p>
 <h2 id="creating-a-new-storage-map"><a class="header" href="#creating-a-new-storage-map">Creating a New Storage Map</a></h2>
 <p>To create a new empty storage map, we have to declare the map in a <code>storage</code> block as follows:</p>
 <pre><code class="language-sway">    map: StorageMap&lt;Address, u64&gt; = StorageMap {},
