@@ -1,0 +1,345 @@
+// regex: VAR=v\d+
+// regex: ID=[[:alpha:]0-9_]+
+
+script {
+    fn main() -> bool, !1 {
+        entry():
+        v0 = const u64 64, !2
+        v1 = call check_prime_4(v0), !3
+        v2 = const bool false, !4
+        v3 = call eq_3(v1, v2), !5
+        v4 = call assert_0(v3), !7
+        v5 = const u64 8, !8
+        v6 = call check_prime_4(v5), !3
+        v7 = const bool false, !9
+        v8 = call eq_3(v6, v7), !10
+        v9 = call assert_0(v8), !7
+        v10 = const u64 7, !11
+        v11 = call check_prime_4(v10), !3
+        v12 = const bool true, !12
+        v13 = call eq_3(v11, v12), !13
+        v14 = call assert_0(v13), !7
+        v15 = const u64 11, !14
+        v16 = call check_prime_4(v15), !3
+        v17 = const bool true, !15
+        v18 = call eq_3(v16, v17), !16
+        v19 = call assert_0(v18), !7
+        v20 = const u64 13, !17
+        v21 = call check_prime_4(v20), !3
+        v22 = const bool true, !18
+        v23 = call eq_3(v21, v22), !19
+        v24 = call assert_0(v23), !7
+        v25 = const u64 2, !20
+        v26 = call check_prime_4(v25), !3
+        v27 = const bool true, !21
+        v28 = call eq_3(v26, v27), !22
+        v29 = call assert_0(v28), !7
+        v30 = const u64 3, !23
+        v31 = call check_prime_4(v30), !3
+        v32 = const bool true, !24
+        v33 = call eq_3(v31, v32), !25
+        v34 = call assert_0(v33), !7
+        v35 = const u64 1, !26
+        v36 = call check_prime_4(v35), !3
+        v37 = const bool false, !27
+        v38 = call eq_3(v36, v37), !28
+        v39 = call assert_0(v38), !7
+        v40 = const u64 0, !29
+        v41 = call check_prime_4(v40), !3
+        v42 = const bool false, !30
+        v43 = call eq_3(v41, v42), !31
+        v44 = call assert_0(v43), !7
+        v45 = const u64 11, !32
+        v46 = call check_prime_4(v45), !3
+        v47 = const u64 17, !33
+        v48 = call check_prime_4(v47), !3
+        v49 = call eq_3(v46, v48), !34
+        v50 = call assert_0(v49), !7
+        v51 = const u64 12, !35
+        v52 = call check_prime_4(v51), !3
+        v53 = const bool false, !36
+        v54 = call eq_3(v52, v53), !37
+        v55 = call assert_0(v54), !7
+        v56 = const u64 18, !38
+        v57 = call check_prime_4(v56), !3
+        v58 = const bool false, !39
+        v59 = call eq_3(v57, v58), !40
+        v60 = call assert_0(v59), !7
+        v61 = const u64 12, !41
+        v62 = call check_prime_4(v61), !3
+        v63 = const u64 18, !42
+        v64 = call check_prime_4(v63), !3
+        v65 = call eq_3(v62, v64), !43
+        v66 = call assert_0(v65), !7
+        v67 = const bool true, !44
+        ret bool v67
+    }
+
+    fn assert_0(condition !45: bool) -> (), !7 {
+        entry(condition: bool):
+        v0 = call not_1(condition), !46
+        cbr v0, block0(), block1(), !46
+
+        block0():
+        v1 = const u64 0, !47
+        v2 = call revert_2(v1), !49
+        v3 = const unit ()
+        br block2(v3)
+
+        block1():
+        v4 = const unit ()
+        br block2(v4)
+
+        block2(v5: ()):
+        v6 = const unit ()
+        ret () v6
+    }
+
+    fn not_1(self !51: bool) -> bool, !52 {
+        entry(self: bool):
+        v0 = const bool false, !53
+        v1 = cmp eq self v0
+        ret bool v1
+    }
+
+    fn revert_2(code !54: u64) -> (), !49 {
+        entry(code: u64):
+        revert code, !55
+    }
+
+    fn eq_3(self !56: bool, other !57: bool) -> bool, !58 {
+        entry(self: bool, other: bool):
+        v0 = cmp eq self other
+        ret bool v0
+    }
+
+    // check: fn check_prime_4(n
+    fn check_prime_4(n !59: u64) -> bool, !3 {
+        local mut ptr u64 i
+        local mut ptr bool is_not_prime
+
+        entry(n: u64):
+        v0 = const u64 0, !60
+        v1 = call eq_5(n, v0), !61
+        cbr v1, block1(v1), block0(), !62
+
+        block0():
+        v2 = const u64 1, !63
+        v3 = call eq_5(n, v2), !64
+        br block1(v3), !62
+
+        block1(v4: bool):
+        cbr v4, block2(), block3(), !62
+
+        block2():
+        v5 = const bool false, !65
+        br block7(v5)
+
+        block3():
+        // check: $(v6=$VAR) = get_ptr mut ptr bool is_not_prime, ptr bool
+        v6 = get_ptr mut ptr bool is_not_prime, ptr bool, 0, !66
+        v7 = const bool false, !67
+        // not: store $VAR, ptr $v6
+        store v7, ptr v6, !66
+        // check: $(v8=$VAR) = get_ptr mut ptr u64 i, ptr u64
+        v8 = get_ptr mut ptr u64 i, ptr u64, 0, !68
+        v9 = const u64 2, !69
+        // not: store $VAR, ptr $v8
+        store v9, ptr v8, !68
+        br while()
+
+        while():
+        // check: $(v10=$VAR) = get_ptr mut ptr u64 i, ptr u64
+        v10 = get_ptr mut ptr u64 i, ptr u64, 0, !70
+        // not: load ptr $v10
+        v11 = load ptr v10, !70
+        v12 = call lt_8(v11, n), !71
+        cbr v12, while_body(), end_while()
+
+        while_body():
+        v13 = get_ptr mut ptr u64 i, ptr u64, 0, !72
+        v14 = load ptr v13, !72
+        v15 = call modulo_6(n, v14), !73
+        v16 = const u64 0, !74
+        v17 = call eq_5(v15, v16), !75
+        cbr v17, block4(), block5(), !75
+
+        end_while():
+        // check: $(v18=$VAR) = get_ptr mut ptr bool is_not_prime, ptr bool
+        v18 = get_ptr mut ptr bool is_not_prime, ptr bool, 0, !76
+        // not: load ptr $v18
+        v19 = load ptr v18, !76
+        v20 = call not_9(v19), !77
+        br block7(v20)
+
+        block4():
+        // check: $(v21=$VAR) = get_ptr mut ptr bool is_not_prime, ptr bool
+        v21 = get_ptr mut ptr bool is_not_prime, ptr bool, 0, !78
+        v22 = const bool true, !79
+        // not: store $VAR, ptr $v21
+        store v22, ptr v21, !78
+        // check: $(v23=$VAR) = get_ptr mut ptr u64 i, ptr u64
+        v23 = get_ptr mut ptr u64 i, ptr u64, 0, !80
+        // not: store $VAR, ptr $v23
+        store n, ptr v23, !80
+        v24 = const unit ()
+        br block6(v24)
+
+        block5():
+        v25 = const unit ()
+        br block6(v25)
+
+        block6(v26: ()):
+        // check: $(v27=$VAR) = get_ptr mut ptr u64 i, ptr u64
+        v27 = get_ptr mut ptr u64 i, ptr u64, 0, !81
+        // check: $(v28=$VAR) = get_ptr mut ptr u64 i, ptr u64
+        v28 = get_ptr mut ptr u64 i, ptr u64, 0, !82
+        // not: load ptr $v28
+        v29 = load ptr v28, !82
+        v30 = const u64 1, !83
+        v31 = call add_7(v29, v30), !84
+        // not: store $VAR, ptr $v27
+        store v31, ptr v27, !81
+        br while()
+
+        block7(v32: bool):
+        ret bool v32
+    }
+
+    fn eq_5(self !85: u64, other !86: u64) -> bool, !87 {
+        entry(self: u64, other: u64):
+        v0 = cmp eq self other
+        ret bool v0
+    }
+
+    fn modulo_6(self !88: u64, other !89: u64) -> u64, !90 {
+        entry(self: u64, other: u64):
+        v0 = asm(r1: self, r2: other, r3) -> u64 r3, !91 {
+            mod    r3 r1 r2, !92
+        }
+        ret u64 v0
+    }
+
+    fn add_7(self !93: u64, other !94: u64) -> u64, !95 {
+        entry(self: u64, other: u64):
+        v0 = add self, other
+        ret u64 v0
+    }
+
+    fn lt_8(self !96: u64, other !97: u64) -> bool, !98 {
+        entry(self: u64, other: u64):
+        v0 = asm(r1: self, r2: other, r3) -> bool r3, !99 {
+            lt     r3 r1 r2, !100
+        }
+        ret bool v0
+    }
+
+    fn not_9(self !51: bool) -> bool, !52 {
+        entry(self: bool):
+        v0 = const bool false, !53
+        v1 = cmp eq self v0
+        ret bool v1
+    }
+}
+
+!0 = "sway/test/src/e2e_vm_tests/test_programs/should_pass/language/is_prime/src/main.sw"
+!1 = span !0 395 930
+!2 = span !0 438 440
+!3 = span !0 48 393
+!4 = span !0 445 450
+!5 = span !0 426 450
+!6 = "sway/sway-lib-std/src/assert.sw"
+!7 = span !6 308 387
+!8 = span !0 476 477
+!9 = span !0 482 487
+!10 = span !0 464 487
+!11 = span !0 513 514
+!12 = span !0 519 523
+!13 = span !0 501 523
+!14 = span !0 549 551
+!15 = span !0 556 560
+!16 = span !0 537 560
+!17 = span !0 586 588
+!18 = span !0 593 597
+!19 = span !0 574 597
+!20 = span !0 623 624
+!21 = span !0 629 633
+!22 = span !0 611 633
+!23 = span !0 659 660
+!24 = span !0 665 669
+!25 = span !0 647 669
+!26 = span !0 695 696
+!27 = span !0 701 706
+!28 = span !0 683 706
+!29 = span !0 732 733
+!30 = span !0 738 743
+!31 = span !0 720 743
+!32 = span !0 770 772
+!33 = span !0 789 791
+!34 = span !0 758 792
+!35 = span !0 818 820
+!36 = span !0 825 830
+!37 = span !0 806 830
+!38 = span !0 856 858
+!39 = span !0 863 868
+!40 = span !0 844 868
+!41 = span !0 894 896
+!42 = span !0 913 915
+!43 = span !0 882 916
+!44 = span !0 924 928
+!45 = span !6 322 331
+!46 = span !6 348 358
+!47 = span !6 376 377
+!48 = "sway/sway-lib-std/src/revert.sw"
+!49 = span !48 172 219
+!50 = "sway/sway-lib-core/src/ops.sw"
+!51 = span !50 2706 2710
+!52 = span !50 2699 2753
+!53 = span !50 2741 2746
+!54 = span !48 186 190
+!55 = span !48 203 217
+!56 = span !50 2923 2927
+!57 = span !50 2929 2934
+!58 = span !50 2917 2983
+!59 = span !0 63 64
+!60 = span !0 93 94
+!61 = span !0 88 94
+!62 = span !0 88 104
+!63 = span !0 103 104
+!64 = span !0 98 104
+!65 = span !0 115 120
+!66 = span !0 142 171
+!67 = span !0 165 170
+!68 = span !0 180 194
+!69 = span !0 192 193
+!70 = span !0 209 210
+!71 = span !0 209 214
+!72 = span !0 237 238
+!73 = span !0 233 238
+!74 = span !0 242 243
+!75 = span !0 233 243
+!76 = span !0 373 385
+!77 = span !0 372 385
+!78 = span !0 262 281
+!79 = span !0 277 281
+!80 = span !0 299 304
+!81 = span !0 342 351
+!82 = span !0 346 347
+!83 = span !0 350 351
+!84 = span !0 346 351
+!85 = span !50 3015 3019
+!86 = span !50 3021 3026
+!87 = span !50 3009 3075
+!88 = span !50 2001 2005
+!89 = span !50 2007 2012
+!90 = span !50 1991 2130
+!91 = span !50 2038 2124
+!92 = span !50 2081 2093
+!93 = span !50 117 121
+!94 = span !50 123 128
+!95 = span !50 110 178
+!96 = span !50 3993 3997
+!97 = span !50 3999 4004
+!98 = span !50 3987 4122
+!99 = span !50 4030 4116
+!100 = span !50 4073 4084
