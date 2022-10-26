@@ -441,10 +441,10 @@ impl TraitMap {
                         .cloned()
                         .into_iter()
                         .collect::<Vec<_>>();
+                    let new_self_type = insert_type(TypeInfo::SelfType);
+                    type_id.replace_self_type(new_self_type);
                     trait_methods.iter_mut().for_each(|trait_method| {
                         trait_method.copy_types(&type_mapping);
-                        let new_self_type = insert_type(TypeInfo::SelfType);
-                        type_id.replace_self_type(new_self_type);
                         trait_method.replace_self_type(new_self_type);
                     });
                     trait_map.insert_inner(map_trait_name.clone(), *type_id, trait_methods);
