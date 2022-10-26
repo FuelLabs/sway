@@ -10,7 +10,7 @@ pub struct TyImplTrait {
     pub methods: Vec<DeclarationId>,
     pub implementing_for_type_id: TypeId,
     pub type_implementing_for_span: Span,
-    pub(crate) span: Span,
+    pub span: Span,
 }
 
 impl CopyTypes for TyImplTrait {
@@ -25,5 +25,20 @@ impl CopyTypes for TyImplTrait {
         self.methods
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
+    }
+}
+
+impl ReplaceSelfType for TyImplTrait {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.impl_type_parameters
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+        self.trait_type_parameters
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+        self.implementing_for_type_id.replace_self_type(self_type);
+        self.methods
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
     }
 }

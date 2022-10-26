@@ -177,7 +177,7 @@ impl<'ns> TypeCheckContext<'ns> {
 
     /// Short-hand for calling the `monomorphize` function in the type engine
     pub(crate) fn monomorphize<T>(
-        &self,
+        &mut self,
         value: &mut T,
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
@@ -186,13 +186,14 @@ impl<'ns> TypeCheckContext<'ns> {
     where
         T: MonomorphizeHelper + CopyTypes,
     {
+        let mod_path = self.namespace.mod_path.clone();
         monomorphize(
             value,
             type_arguments,
             enforce_type_arguments,
             call_site_span,
-            &self.namespace.root,
-            &self.namespace.mod_path,
+            self.namespace,
+            &mod_path,
         )
     }
 
