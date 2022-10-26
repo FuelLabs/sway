@@ -9,7 +9,7 @@ type TraitName = CallPath;
 /// Map of function name to [TyFunctionDeclaration](ty::TyFunctionDeclaration)
 type TraitMethods = im::HashMap<String, ty::TyFunctionDeclaration>;
 /// Map of trait name and type to [TraitMethods].
-type TraitImpls = im::HashMap<(TraitName, TypeId), TraitMethods>;
+type TraitImpls = im::Vector<((TraitName, TypeId), TraitMethods)>;
 
 /// Map holding trait implementations for types.
 ///
@@ -138,11 +138,27 @@ impl TraitMap {
     /// Given [TraitMap]s `self` and `other`, extend `self` with `other`,
     /// extending existing entries when possible.
     pub(crate) fn extend(&mut self, other: TraitMap) {
-        for (key, other_trait_methods) in other.trait_impls.into_iter() {
-            self.trait_impls
-                .entry(key)
-                .or_insert(other_trait_methods.clone())
-                .extend(other_trait_methods.into_iter());
+        let mut add_after = vec![];
+        for ((other_trait_name, other_type_id), other_trait_methods) in
+            other.trait_impls.into_iter()
+        {
+            let mut found_match = false;
+            for ((trait_name, type_id), trait_methods) in self.trait_impls.iter_mut() {
+                if trait_name.clone() == other_trait_name && *type_id == other_type_id {
+                    trait_methods.extend(other_trait_methods.clone());
+                    found_match = true;
+                    break;
+                }
+            }
+            if !found_match {
+                add_after.push((
+                    (other_trait_name, other_type_id),
+                    other_trait_methods.clone(),
+                ));
+            }
+        }
+        for elem in add_after.into_iter() {
+            self.trait_impls.push_back(elem);
         }
     }
 
