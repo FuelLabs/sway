@@ -6,7 +6,7 @@ use crate::{
     language::{ty, CallPath},
     semantic_analysis::TypeCheckContext,
     type_system::{insert_type, EnforceTypeArguments},
-    TypeInfo,
+    CreateTypeId, TypeInfo,
 };
 
 use super::{ReplaceSelfType, TypeArgument, TypeId};
@@ -208,6 +208,10 @@ impl TypeBinding<CallPath> {
                     errors
                 );
 
+                // take any trait methods that apply to this type and copy them to the new type
+                ctx.namespace
+                    .insert_trait_implementation_for_type(new_copy.create_type_id());
+
                 // insert the new copy into the declaration engine
                 let new_id = de_insert_enum(new_copy);
 
@@ -237,6 +241,10 @@ impl TypeBinding<CallPath> {
                     warnings,
                     errors
                 );
+
+                // take any trait methods that apply to this type and copy them to the new type
+                ctx.namespace
+                    .insert_trait_implementation_for_type(new_copy.create_type_id());
 
                 // insert the new copy into the declaration engine
                 let new_id = de_insert_struct(new_copy);

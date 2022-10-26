@@ -15,10 +15,10 @@ pub struct TyAbiDeclaration {
     // NOTE: It may be important in the future to include this component
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
-    pub(crate) methods: Vec<parsed::FunctionDeclaration>,
+    pub methods: Vec<parsed::FunctionDeclaration>,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
-    pub(crate) span: Span,
+    pub span: Span,
     pub attributes: transform::AttributesMap,
 }
 
