@@ -85,6 +85,7 @@
 - [Assertions](./documentation/operations/assertions/index.md)
   - [assert](./documentation/operations/assertions/assert.md)
   - [require](./documentation/operations/assertions/require.md)
+  - [revert](./documentation/operations/assertions/revert.md)
 - [Logging](./documentation/operations/log.md)
 - [Asset Operations](./documentation/operations/asset/index.md)
   - [Minting](./documentation/operations/asset/mint.md)
