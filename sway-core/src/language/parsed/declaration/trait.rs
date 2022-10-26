@@ -16,8 +16,8 @@ pub struct TraitDeclaration {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub(crate) struct Supertrait {
-    pub(crate) name: CallPath,
+pub struct Supertrait {
+    pub name: CallPath,
 }
 
 impl Spanned for Supertrait {

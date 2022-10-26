@@ -145,6 +145,7 @@ impl TestContext {
                 }
 
                 let contract_ids = contract_paths
+                    .clone()
                     .into_iter()
                     .map(|contract_path| context.deploy_contract(contract_path))
                     .collect::<Vec<_>>();

@@ -1,0 +1,7 @@
+category = "fail"
+
+# check: $()impl<T> MyAdd for MyPoint<T> where T: MyAdd {
+# nextln: $()"where" clauses are not yet supported
+
+# check: $()let baz = foo.my_add(bar);
+# nextln: $()No method named "my_add" found for type "MyPoint<u32>".
