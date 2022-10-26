@@ -121,6 +121,8 @@ pub fn compute_dom_tree(context: &Context, function: &Function) -> (DomTree, Pos
         }
     }
 
+    // Find the nearest common dominator of two blocks,
+    // using the partially computed dominator tree.
     fn intersect(
         po: &PostOrder,
         dom_tree: &mut DomTree,

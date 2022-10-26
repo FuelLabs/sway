@@ -139,12 +139,6 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
 
     let (dom_tree, po) = compute_dom_tree(context, function);
     let dom_fronts = compute_dom_fronts(context, &dom_tree);
-    // print!(
-    //     "{}\n{}\n{}",
-    //     function.dot_cfg(context),
-    //     print_dot(context, function.get_name(context), &dom_tree),
-    //     print_dom_fronts(context, function.get_name(context), &dom_fronts),
-    // );
     let liveins = compute_livein(context, function, &po, &safe_locals);
 
     // A list of the PHIs we insert in this transform.
@@ -177,11 +171,6 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
         let (local, ty, known_def) = worklist.pop().unwrap();
         for df in dom_fronts[&known_def].iter() {
             if !new_phi_tracker.contains(&(local.clone(), *df)) && liveins[df].contains(&local) {
-                // print!(
-                //     "Adding PHI for {} in block {}\n",
-                //     local,
-                //     df.get_label(context)
-                // );
                 // Insert PHI for this local at block df.
                 let index = df.new_arg(context, ty);
                 phi_to_local.insert(df.get_arg(context, index).unwrap(), local.clone());
