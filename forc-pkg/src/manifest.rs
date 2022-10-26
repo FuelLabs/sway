@@ -278,7 +278,7 @@ impl PackageManifest {
     pub fn from_file(path: &Path) -> Result<Self> {
         // While creating a `ManifestFile` we need to check if the given path corresponds to a
         // package or a workspace. While doing so, we should be printing the warnings if the given
-        // parses so that we only see warnings for the correct type of manifest.
+        // file parses so that we only see warnings for the correct type of manifest.
         let mut warnings = vec![];
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
@@ -606,7 +606,7 @@ impl WorkspaceManifest {
     pub fn from_file(path: &Path) -> Result<Self> {
         // While creating a `ManifestFile` we need to check if the given path corresponds to a
         // package or a workspace. While doing so, we should be printing the warnings if the given
-        // parses so that we only see warnings for the correct type of manifest.
+        // file parses so that we only see warnings for the correct type of manifest.
         let mut warnings = vec![];
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
