@@ -2253,7 +2253,7 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Built> {
         std::env::current_dir()?
     };
 
-    let manifest_file = ManifestFile::from_path(&this_dir)?;
+    let manifest_file = ManifestFile::from_dir(&this_dir)?;
     match manifest_file {
         ManifestFile::Package(package_manifest) => {
             let built_package = build_package_with_options(&package_manifest, build_options)?;

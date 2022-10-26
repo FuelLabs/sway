@@ -21,14 +21,25 @@ pub enum ManifestFile {
 impl ManifestFile {
     /// Returns a `PackageManifestFile` if the path is within a package directory, otherwise
     /// returns a `WorkspaceManifestFile` if within a workspace directory.
-    pub fn from_path(dir: &Path) -> Result<Self> {
-        let path = dir.to_path_buf().join("Forc.toml");
-        if let Ok(package_manifest) = PackageManifestFile::from_file(path.clone()) {
+    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
+        if let Ok(package_manifest) = PackageManifestFile::from_dir(manifest_dir) {
             Ok(ManifestFile::Package(Box::new(package_manifest)))
-        } else if let Ok(workspace_manifest) = WorkspaceManifestFile::from_file(path) {
+        } else if let Ok(workspace_manifest) = WorkspaceManifestFile::from_dir(manifest_dir) {
             Ok(ManifestFile::Workspace(workspace_manifest))
         } else {
-            bail!("Cannot find a valid `Forc.toml` at {:?}", dir)
+            bail!("Cannot find a valid `Forc.toml` at {:?}", manifest_dir)
+        }
+    }
+
+    /// Returns a `PackageManifestFile` if the path is pointing to package manifest, otherwise
+    /// returns a `WorkspaceManifestFile` if it is pointing to a workspace manifest.
+    pub fn from_file(path: PathBuf) -> Result<Self> {
+        if let Ok(package_manifest) = PackageManifestFile::from_file(path.clone()) {
+            Ok(ManifestFile::Package(Box::new(package_manifest)))
+        } else if let Ok(workspace_manifest) = WorkspaceManifestFile::from_file(path.clone()) {
+            Ok(ManifestFile::Workspace(workspace_manifest))
+        } else {
+            bail!("Cannot find a valid `Forc.toml` at {:?}", path)
         }
     }
 }
