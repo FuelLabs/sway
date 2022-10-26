@@ -829,18 +829,32 @@ mod tests {
         let response = call_request(service, highlight.clone()).await;
         let ok = Response::from_ok(
             1.into(),
-            json!([{
-                "range": {
-                    "end": {
-                        "character": 27,
-                        "line": 44
-                    },
-                    "start": {
-                        "character": 23,
-                        "line": 44
+            json!([
+                {
+                    "range": {
+                        "end": {
+                            "character": 11,
+                            "line": 19
+                        },
+                        "start": {
+                            "character": 7,
+                            "line": 19
+                        }
+                    }
+                },
+                {
+                    "range": {
+                        "end": {
+                            "character": 27,
+                            "line": 44
+                        },
+                        "start": {
+                            "character": 23,
+                            "line": 44
+                        }
                     }
                 }
-            }]),
+            ]),
         );
         assert_eq!(response, Ok(Some(ok)));
         highlight
