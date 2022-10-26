@@ -16,6 +16,7 @@ fn main() -> Result<(), anyhow::Error> {
     pass_mgr.register::<InlinePass>();
     pass_mgr.register::<SimplifyCfgPass>();
     pass_mgr.register::<DCEPass>();
+    pass_mgr.register::<Mem2RegPass>();
 
     // Build the config from the command line.
     let config = ConfigBuilder::build(&pass_mgr, std::env::args())?;
@@ -198,6 +199,24 @@ impl NamedPass for DCEPass {
 
     fn run(ir: &mut Context) -> Result<bool, IrError> {
         Self::run_on_all_fns(ir, optimize::dce)
+    }
+}
+
+// -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
+
+struct Mem2RegPass;
+
+impl NamedPass for Mem2RegPass {
+    fn name() -> &'static str {
+        "mem2reg"
+    }
+
+    fn descr() -> &'static str {
+        "Promote local memory to SSA registers."
+    }
+
+    fn run(ir: &mut Context) -> Result<bool, IrError> {
+        Self::run_on_all_fns(ir, optimize::promote_to_registers)
     }
 }
 
