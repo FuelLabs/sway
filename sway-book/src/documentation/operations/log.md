@@ -1,41 +1,24 @@
 # Logging
 
-The `logging` library provides a generic `log` function that can be imported using `use std::logging::log` and used to log variables of any type. Each call to `log` appends a `receipt` to the list of receipts. There are two types of receipts that a `log` can generate: `Log` and `LogData`.
+Logging is a way to record data as the program runs.
 
-### `Log` Receipt
+The [standard library](https://github.com/FuelLabs/sway/tree/master/sway-lib-std) provides a [`logging`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/logging.sw) module which contains a [generic](../language/generics/index.md) `log` function that is used to log a variable of any type.
 
-The `Log` receipt is generated for _non-reference_ types, namely `bool`, `u8`, `u16`, `u32`, and `u64`. For example, logging an integer variable `x` that holds the value `42` using `log(x)` may generate the following receipt:
+Each call to `log` appends 1 of 2 types of a [`receipt`](https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md#receipt) to the list of receipts
 
-```console
-"Log": {
-  "id": "0000000000000000000000000000000000000000000000000000000000000000",
-  "is": 10352,
-  "pc": 10404,
-  "ra": 42,
-  "rb": 0,
-  "rc": 0,
-  "rd": 0
-}
+- [`Log`](https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md#log-receipt)
+  - Generated for _non-reference_ types: `bool`, `u8`, `u16`, `u32`, and `u64`
+- [`LogData`](https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md#logdata-receipt)
+  - Generated for _reference_ types
+
+The [Rust](https://fuellabs.github.io/fuels-rs/latest/) & [Typescript](https://fuellabs.github.io/fuels-ts/) SDKs may be used to decode the data.
+
+## Example
+
+To use the `log` function we must import it from the standard library and pass in any [generic](../language/generics/index.md) type `T` that we want to log.
+
+```sway
+{{#include ../../code/operations/logging/src/lib.sw:logging}}
 ```
 
-Note that `ra` will include the value being logged. The additional registers `rb` to `rd` will be zero when using `log(x)`.
-
-### `LogData` Receipt
-
-`LogData` is generated for _reference_ types which include all types except for the _non_reference_ types mentioned above. For example, logging a `b256` variable `b` that holds the value `0x1111111111111111111111111111111111111111111111111111111111111111` using `log(b)` may generate the following receipt:
-
-```console
-"LogData": {
-  "data": "1111111111111111111111111111111111111111111111111111111111111111",
-  "digest": "02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc",
-  "id": "0000000000000000000000000000000000000000000000000000000000000000",
-  "is": 10352,
-  "len": 32,
-  "pc": 10444,
-  "ptr": 10468,
-  "ra": 0,
-  "rb": 0
-}
-```
-
-Note that `data` in the receipt above will include the value being logged as a hexadecimal.
+In the example above a `u64` is used however we can pass in any [generic](../language/generics/index.md) type such as a [struct](../language/built-ins/structs.md), [enum](../language/built-ins/enums.md), [string](../language/built-ins/string.md) etc.
