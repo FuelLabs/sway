@@ -1,9 +1,9 @@
+use std::sync::RwLock;
+use std::{collections::HashMap, fmt};
+
 use crate::{
-    concurrent_slab::ConcurrentSlab,
-    declaration_engine::*,
-    language::ty,
-    namespace::{Path, Root},
-    type_system::*,
+    concurrent_slab::ConcurrentSlab, declaration_engine::*, language::ty, namespace::Path,
+    type_system::*, Namespace,
 };
 
 use lazy_static::lazy_static;
@@ -18,13 +18,30 @@ lazy_static! {
 pub(crate) struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
     storage_only_types: ConcurrentSlab<TypeInfo>,
+    id_map: RwLock<HashMap<TypeInfo, TypeId>>,
+}
+
+impl fmt::Display for TypeEngine {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "DeclarationEngine {{\n{}\n}}", self.slab)
+    }
 }
 
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
     pub(crate) fn insert_type(&self, ty: TypeInfo) -> TypeId {
-        TypeId::new(self.slab.insert(ty))
+        let mut id_map = self.id_map.write().unwrap();
+        if let Some(type_id) = id_map.get(&ty) {
+            return *type_id;
+        }
+        if ty.can_change() {
+            TypeId::new(self.slab.insert(ty))
+        } else {
+            let type_id = TypeId::new(self.slab.insert(ty.clone()));
+            id_map.insert(ty, type_id);
+            type_id
+        }
     }
 
     /// Gets the size of the [TypeEngine].
@@ -89,7 +106,7 @@ impl TypeEngine {
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
-        namespace: &Root,
+        namespace: &mut Namespace,
         mod_path: &Path,
     ) -> CompileResult<()>
     where
@@ -336,6 +353,8 @@ impl TypeEngine {
     fn clear(&self) {
         self.slab.clear();
         self.storage_only_types.clear();
+        let mut id_map = self.id_map.write().unwrap();
+        id_map.clear();
     }
 
     /// Resolve the type of the given [TypeId], replacing any instances of
@@ -347,7 +366,7 @@ impl TypeEngine {
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
-        namespace: &Root,
+        namespace: &mut Namespace,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
@@ -359,6 +378,7 @@ impl TypeEngine {
                 type_arguments,
             } => {
                 match namespace
+                    .root()
                     .resolve_symbol(module_path, &name)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
@@ -366,7 +386,7 @@ impl TypeEngine {
                     Some(ty::TyDeclaration::StructDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
-                            CompileResult::from(de_get_struct(original_id.clone(), &name.span())),
+                            CompileResult::from(de_get_struct(original_id, &name.span())),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -390,8 +410,8 @@ impl TypeEngine {
                         // create the type id from the copy
                         let type_id = new_copy.create_type_id();
 
-                        // add the new copy as a monomorphized copy of the original id
-                        de_add_monomorphized_struct_copy(original_id, new_copy);
+                        // take any trait methods that apply to this type and copy them to the new type
+                        namespace.insert_trait_implementation_for_type(type_id);
 
                         // return the id
                         type_id
@@ -399,7 +419,7 @@ impl TypeEngine {
                     Some(ty::TyDeclaration::EnumDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
-                            CompileResult::from(de_get_enum(original_id.clone(), &name.span())),
+                            CompileResult::from(de_get_enum(original_id, &name.span())),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -423,8 +443,8 @@ impl TypeEngine {
                         // create the type id from the copy
                         let type_id = new_copy.create_type_id();
 
-                        // add the new copy as a monomorphized copy of the original id
-                        de_add_monomorphized_enum_copy(original_id, new_copy);
+                        // take any trait methods that apply to this type and copy them to the new type
+                        namespace.insert_trait_implementation_for_type(type_id);
 
                         // return the id
                         type_id
@@ -488,7 +508,7 @@ impl TypeEngine {
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
-        namespace: &Root,
+        namespace: &mut Namespace,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
         type_id.replace_self_type(self_type);
@@ -501,6 +521,11 @@ impl TypeEngine {
             mod_path,
         )
     }
+}
+
+#[allow(dead_code)]
+pub(crate) fn print_type_engine() {
+    println!("{}", &*TYPE_ENGINE);
 }
 
 pub fn insert_type(ty: TypeInfo) -> TypeId {
@@ -532,7 +557,7 @@ pub(crate) fn monomorphize<T>(
     type_arguments: &mut [TypeArgument],
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
-    namespace: &Root,
+    namespace: &mut Namespace,
     module_path: &Path,
 ) -> CompileResult<()>
 where
@@ -630,7 +655,7 @@ pub(crate) fn resolve_type(
     span: &Span,
     enforce_type_arguments: EnforceTypeArguments,
     type_info_prefix: Option<&Path>,
-    namespace: &Root,
+    namespace: &mut Namespace,
     mod_path: &Path,
 ) -> CompileResult<TypeId> {
     TYPE_ENGINE.resolve_type(
@@ -649,7 +674,7 @@ pub(crate) fn resolve_type_with_self(
     span: &Span,
     enforce_type_arguments: EnforceTypeArguments,
     type_info_prefix: Option<&Path>,
-    namespace: &Root,
+    namespace: &mut Namespace,
     mod_path: &Path,
 ) -> CompileResult<TypeId> {
     TYPE_ENGINE.resolve_type_with_self(

@@ -123,6 +123,7 @@ pub struct BuildProfile {
     pub print_intermediate_asm: bool,
     pub terse: bool,
     pub time_phases: bool,
+    pub include_tests: bool,
 }
 
 impl Dependency {
@@ -471,6 +472,7 @@ impl BuildProfile {
             print_intermediate_asm: false,
             terse: false,
             time_phases: false,
+            include_tests: false,
         }
     }
 
@@ -482,6 +484,7 @@ impl BuildProfile {
             print_intermediate_asm: false,
             terse: false,
             time_phases: false,
+            include_tests: false,
         }
     }
 }

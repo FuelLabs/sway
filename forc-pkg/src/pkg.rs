@@ -33,7 +33,7 @@ use sway_core::{
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
-    BytecodeOrLib, CompileResult,
+    CompileResult, CompiledBytecode,
 };
 use sway_error::error::CompileError;
 use sway_types::{Ident, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
@@ -1770,7 +1770,8 @@ pub fn sway_build_config(
     )
     .print_finalized_asm(build_profile.print_finalized_asm)
     .print_intermediate_asm(build_profile.print_intermediate_asm)
-    .print_ir(build_profile.print_ir);
+    .print_ir(build_profile.print_ir)
+    .include_tests(build_profile.include_tests);
     Ok(build_config)
 }
 
@@ -2022,10 +2023,7 @@ pub fn compile(
     );
 
     match bc_res.value {
-        Some(BytecodeOrLib::Library) => {
-            unreachable!("compilation of library program types is handled above")
-        }
-        Some(BytecodeOrLib::Bytecode(bytes)) if bc_res.errors.is_empty() => {
+        Some(CompiledBytecode(bytes)) if bc_res.errors.is_empty() => {
             print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
             let bytecode = bytes;
             let built_package = BuiltPackage {
@@ -2036,9 +2034,10 @@ pub fn compile(
             };
             Ok((built_package, None))
         }
-        Some(BytecodeOrLib::Bytecode(_)) | None => fail(&bc_res.warnings, &bc_res.errors),
+        _ => fail(&bc_res.warnings, &bc_res.errors),
     }
 }
+
 #[derive(Default)]
 pub struct BuildOptions {
     /// Path to the project, if not specified, current working directory will be used.
@@ -2087,6 +2086,8 @@ pub struct BuildOptions {
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+    /// Include all test functions within the build.
+    pub tests: bool,
 }
 
 /// The suffix that helps identify the file which contains the hash of the binary file created when
@@ -2121,6 +2122,7 @@ pub fn build_package_with_options(
         build_profile,
         release,
         time_phases,
+        tests,
     } = build_options;
 
     let mut selected_build_profile = key_debug;
@@ -2160,6 +2162,7 @@ pub fn build_package_with_options(
     profile.print_intermediate_asm |= print_intermediate_asm;
     profile.terse |= terse_mode;
     profile.time_phases |= time_phases;
+    profile.include_tests |= tests;
 
     let plan = BuildPlan::from_lock_and_manifest(manifest, locked, offline_mode)?;
 

@@ -22,10 +22,10 @@ pub struct TyFunctionDeclaration {
     /// Used for error messages -- the span pointing to the return type
     /// annotation of the function
     pub return_type_span: Span,
-    pub(crate) visibility: Visibility,
+    pub visibility: Visibility,
     /// whether this function exists in another contract and requires a call to it or not
-    pub(crate) is_contract_call: bool,
-    pub(crate) purity: Purity,
+    pub is_contract_call: bool,
+    pub purity: Purity,
 }
 
 impl From<&TyFunctionDeclaration> for TyAstNode {
@@ -66,6 +66,19 @@ impl CopyTypes for TyFunctionDeclaration {
             .for_each(|x| x.copy_types(type_mapping));
         self.return_type.copy_types(type_mapping);
         self.body.copy_types(type_mapping);
+    }
+}
+
+impl ReplaceSelfType for TyFunctionDeclaration {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.type_parameters
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+        self.parameters
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+        self.return_type.replace_self_type(self_type);
+        self.body.replace_self_type(self_type);
     }
 }
 
@@ -267,6 +280,12 @@ impl PartialEq for TyFunctionParameter {
 impl CopyTypes for TyFunctionParameter {
     fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.type_id.copy_types(type_mapping);
+    }
+}
+
+impl ReplaceSelfType for TyFunctionParameter {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.type_id.replace_self_type(self_type);
     }
 }
 

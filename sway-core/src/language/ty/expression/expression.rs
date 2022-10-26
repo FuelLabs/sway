@@ -34,6 +34,13 @@ impl CopyTypes for TyExpression {
     }
 }
 
+impl ReplaceSelfType for TyExpression {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.return_type.replace_self_type(self_type);
+        self.expression.replace_self_type(self_type);
+    }
+}
+
 impl fmt::Display for TyExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(

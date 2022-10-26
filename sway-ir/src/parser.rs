@@ -26,21 +26,25 @@ mod ir_builder {
     peg::parser! {
         pub(in crate::parser) grammar parser() for str {
             pub(in crate::parser) rule ir_descrs() -> IrAstModule
-                = _ s:script() eoi() {
-                    s
+                = _ sop:script_or_predicate() eoi() {
+                    sop
                 }
                 / _ c:contract() eoi() {
                     c
                 }
 
-            rule script() -> IrAstModule
-                = "script" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
+            rule script_or_predicate() -> IrAstModule
+                = kind:module_kind() "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
                     IrAstModule {
-                        kind: crate::module::Kind::Script,
+                        kind,
                         fn_decls,
                         metadata
                     }
                 }
+
+            rule module_kind() -> Kind
+                = "script" _ { Kind::Script }
+                / "predicate" _ { Kind::Predicate }
 
             rule contract() -> IrAstModule
                 = "contract" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {

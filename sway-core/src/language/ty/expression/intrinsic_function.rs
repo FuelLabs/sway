@@ -5,7 +5,7 @@ use itertools::Itertools;
 use sway_ast::Intrinsic;
 use sway_types::Span;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TyIntrinsicFunctionKind {
     pub kind: Intrinsic,
     pub arguments: Vec<TyExpression>,
@@ -20,6 +20,17 @@ impl CopyTypes for TyIntrinsicFunctionKind {
         }
         for targ in &mut self.type_arguments {
             targ.type_id.copy_types(type_mapping);
+        }
+    }
+}
+
+impl ReplaceSelfType for TyIntrinsicFunctionKind {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        for arg in &mut self.arguments {
+            arg.replace_self_type(self_type);
+        }
+        for targ in &mut self.type_arguments {
+            targ.type_id.replace_self_type(self_type);
         }
     }
 }

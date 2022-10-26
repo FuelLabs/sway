@@ -37,9 +37,7 @@ pub(crate) fn inlay_hints(
 
     let hints: Vec<lsp_types::InlayHint> = session
         .tokens_for_file(uri)
-        .iter()
-        .filter_map(|item| {
-            let token = item.value();
+        .filter_map(|(_, token)| {
             token.typed.as_ref().and_then(|t| match t {
                 TypedAstToken::TypedDeclaration(TyDeclaration::VariableDeclaration(var_decl)) => {
                     match var_decl.type_ascription_span {

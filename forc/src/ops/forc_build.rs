@@ -20,6 +20,7 @@ pub fn build(command: BuildCommand) -> Result<pkg::Built> {
         release: command.release,
         time_phases: command.time_phases,
         print_intermediate_asm: command.print_intermediate_asm,
+        tests: command.tests,
     };
     let built = pkg::build_with_options(build_options)?;
     Ok(built)

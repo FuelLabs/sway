@@ -457,7 +457,13 @@ fn parse_mul(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
         return Ok(expr);
     }
     loop {
-        expr = if let Some((star_token, rhs)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
+        expr = if let Some((double_star_token, rhs)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
+            Expr::Pow {
+                lhs: Box::new(expr),
+                double_star_token,
+                rhs,
+            }
+        } else if let Some((star_token, rhs)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
             Expr::Mul {
                 lhs: Box::new(expr),
                 star_token,
