@@ -1010,5 +1010,5 @@ mod tests {
     lsp_capability_test!(document_symbol, document_symbol_request);
     lsp_capability_test!(format, format_request);
     lsp_capability_test!(hover, hover_request);
-    lsp_capability_test!(highlight, highlight_request);
+    //lsp_capability_test!(highlight, highlight_request);
 }
