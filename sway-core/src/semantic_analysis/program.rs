@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::{de_print, declaration_engine::de_get_storage},
+    declaration_engine::declaration_engine::de_get_storage,
     error::*,
     language::{parsed::ParseProgram, ty},
     metadata::MetadataManager,
@@ -25,7 +25,6 @@ impl ty::TyProgram {
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
         let mod_res = ty::TyModule::type_check(ctx, root);
-        de_print();
         mod_res.flat_map(|root| {
             let kind_res = Self::validate_root(&root, kind.clone(), mod_span);
             kind_res.map(|kind| Self {
