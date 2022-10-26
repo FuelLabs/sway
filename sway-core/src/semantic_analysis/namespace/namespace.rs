@@ -139,56 +139,13 @@ impl Namespace {
         )
     }
 
-    /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
-    pub(crate) fn star_import(&mut self, src: &Path) -> CompileResult<()> {
-        self.root.star_import(src, &self.mod_path)
-    }
-
-    /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
-    pub(crate) fn self_import(&mut self, src: &Path, alias: Option<Ident>) -> CompileResult<()> {
-        self.root.self_import(src, &self.mod_path, alias)
-    }
-
-    /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.
-    pub(crate) fn item_import(
-        &mut self,
-        src: &Path,
-        item: &Ident,
-        alias: Option<Ident>,
-    ) -> CompileResult<()> {
-        self.root.item_import(src, item, &self.mod_path, alias)
-    }
-
-    /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].
+    /// Given a method and a type (plus a `self_type` to potentially
+    /// resolve it), find that method in the namespace. Requires `args_buf`
+    /// because of some special casing for the standard library where we pull
+    /// the type from the arguments buffer.
     ///
-    /// Here we temporarily change `mod_path` to the given `dep_mod_path` and wrap `self` in a
-    /// [SubmoduleNamespace] type. When dropped, the [SubmoduleNamespace] resets the `mod_path`
-    /// back to the original path so that we can continue type-checking the current module after
-    /// finishing with the dependency.
-    pub(crate) fn enter_submodule(&mut self, dep_name: Ident) -> SubmoduleNamespace {
-        let init = self.init.clone();
-        self.submodules.entry(dep_name.to_string()).or_insert(init);
-        let submod_path: Vec<_> = self
-            .mod_path
-            .iter()
-            .cloned()
-            .chain(Some(dep_name))
-            .collect();
-        let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
-        SubmoduleNamespace {
-            namespace: self,
-            parent_mod_path,
-        }
-    }
-
-    /// Given a method and a type (plus a `self_type` to potentially resolve it), find that method
-    /// in the namespace. Requires `args_buf` because of some special casing for the standard
-    /// library where we pull the type from the arguments buffer.
-    ///
-    /// This function will generate a missing method error if the method is not found.
-    ///
-    /// This method should only be called on the root namespace. `mod_path` is the current module,
-    /// `method_path` is assumed to be absolute.
+    /// This function will generate a missing method error if the method is not
+    /// found.
     pub(crate) fn find_method_for_type(
         &mut self,
         mut type_id: TypeId,
@@ -264,6 +221,48 @@ impl Namespace {
                 }
                 err(warnings, errors)
             }
+        }
+    }
+
+    /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
+    pub(crate) fn star_import(&mut self, src: &Path) -> CompileResult<()> {
+        self.root.star_import(src, &self.mod_path)
+    }
+
+    /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
+    pub(crate) fn self_import(&mut self, src: &Path, alias: Option<Ident>) -> CompileResult<()> {
+        self.root.self_import(src, &self.mod_path, alias)
+    }
+
+    /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.
+    pub(crate) fn item_import(
+        &mut self,
+        src: &Path,
+        item: &Ident,
+        alias: Option<Ident>,
+    ) -> CompileResult<()> {
+        self.root.item_import(src, item, &self.mod_path, alias)
+    }
+
+    /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].
+    ///
+    /// Here we temporarily change `mod_path` to the given `dep_mod_path` and wrap `self` in a
+    /// [SubmoduleNamespace] type. When dropped, the [SubmoduleNamespace] resets the `mod_path`
+    /// back to the original path so that we can continue type-checking the current module after
+    /// finishing with the dependency.
+    pub(crate) fn enter_submodule(&mut self, dep_name: Ident) -> SubmoduleNamespace {
+        let init = self.init.clone();
+        self.submodules.entry(dep_name.to_string()).or_insert(init);
+        let submod_path: Vec<_> = self
+            .mod_path
+            .iter()
+            .cloned()
+            .chain(Some(dep_name))
+            .collect();
+        let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
+        SubmoduleNamespace {
+            namespace: self,
+            parent_mod_path,
         }
     }
 }

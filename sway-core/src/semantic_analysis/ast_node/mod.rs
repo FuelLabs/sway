@@ -172,12 +172,8 @@ impl ty::TyAstNode {
                         Declaration::FunctionDeclaration(fn_decl) => {
                             let mut ctx = ctx.with_type_annotation(insert_type(TypeInfo::Unknown));
                             let fn_decl = check!(
-                                ty::TyFunctionDeclaration::type_check(
-                                    ctx.by_ref(),
-                                    fn_decl.clone(),
-                                    false
-                                ),
-                                ty::TyFunctionDeclaration::error(fn_decl),
+                                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, false),
+                                return err(warnings, errors),
                                 warnings,
                                 errors
                             );

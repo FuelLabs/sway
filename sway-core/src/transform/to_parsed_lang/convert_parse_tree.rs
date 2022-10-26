@@ -744,6 +744,7 @@ fn generic_params_opt_to_type_parameters(
                     initial_type_id: custom_type,
                     name_ident: ident,
                     trait_constraints: Vec::new(),
+                    trait_constraints_span: Span::dummy(),
                 }
             })
             .collect::<Vec<_>>(),
@@ -766,15 +767,16 @@ fn generic_params_opt_to_type_parameters(
             }
         };
 
-        param_to_edit
-            .trait_constraints
-            .extend(
-                traits_to_call_paths(handler, bounds)?
-                    .iter()
-                    .map(|call_path| TraitConstraint {
-                        call_path: call_path.clone(),
-                    }),
-            );
+        param_to_edit.trait_constraints_span = Span::join(ty_name.span(), bounds.span());
+
+        param_to_edit.trait_constraints.extend(
+            traits_to_call_paths(handler, bounds)?.into_iter().map(
+                |(trait_name, type_arguments)| TraitConstraint {
+                    trait_name,
+                    type_arguments,
+                },
+            ),
+        );
     }
     if let Some(errors) = emit_all(handler, errors) {
         return Err(errors);
@@ -966,13 +968,19 @@ fn fn_signature_to_trait_fn(
     Ok(trait_fn)
 }
 
-fn traits_to_call_paths(handler: &Handler, traits: Traits) -> Result<Vec<CallPath>, ErrorEmitted> {
-    let mut call_paths = vec![path_type_to_call_path(handler, traits.prefix)?];
+fn traits_to_call_paths(
+    handler: &Handler,
+    traits: Traits,
+) -> Result<Vec<(CallPath, Vec<TypeArgument>)>, ErrorEmitted> {
+    let mut parsed_traits = vec![path_type_to_call_path_and_type_arguments(
+        handler,
+        traits.prefix,
+    )?];
     for (_add_token, suffix) in traits.suffixes {
-        let supertrait = path_type_to_call_path(handler, suffix)?;
-        call_paths.push(supertrait);
+        let supertrait = path_type_to_call_path_and_type_arguments(handler, suffix)?;
+        parsed_traits.push(supertrait);
     }
-    Ok(call_paths)
+    Ok(parsed_traits)
 }
 
 fn traits_to_supertraits(
@@ -1542,6 +1550,15 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
         Expr::Not { bang_token, expr } => {
             let expr = expr_to_expression(handler, *expr)?;
             op_call("not", bang_token.span(), span, &[expr])?
+        }
+        Expr::Pow {
+            lhs,
+            double_star_token,
+            rhs,
+        } => {
+            let lhs = expr_to_expression(handler, *lhs)?;
+            let rhs = expr_to_expression(handler, *rhs)?;
+            op_call("pow", double_star_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Mul {
             lhs,
@@ -2884,6 +2901,7 @@ fn ty_to_type_parameter(handler: &Handler, ty: Ty) -> Result<TypeParameter, Erro
                 initial_type_id: unknown_type,
                 name_ident: underscore_token.into(),
                 trait_constraints: Default::default(),
+                trait_constraints_span: Span::dummy(),
             });
         }
         Ty::Tuple(..) => panic!("tuple types are not allowed in this position"),
@@ -2899,6 +2917,7 @@ fn ty_to_type_parameter(handler: &Handler, ty: Ty) -> Result<TypeParameter, Erro
         initial_type_id: custom_type,
         name_ident,
         trait_constraints: Vec::new(),
+        trait_constraints_span: Span::dummy(),
     })
 }
 

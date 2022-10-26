@@ -1,6 +1,7 @@
 use crate::{
     error::*,
     language::{parsed::*, ty, Visibility},
+    look_up_type_id,
     semantic_analysis::*,
     transform::to_parsed_lang,
     Ident, Namespace,
@@ -329,9 +330,17 @@ impl Module {
                     }
                 }
                 let type_id = decl.return_type(&item.span()).value;
+                println!(
+                    "importing type {}",
+                    type_id.map(look_up_type_id).unwrap_or_default()
+                );
                 //  if this is an enum or struct or function, import its implementations
                 if let Some(type_id) = type_id {
-                    impls_to_insert.extend(src_ns.implemented_traits.filter_by_type(type_id));
+                    impls_to_insert.extend(
+                        src_ns
+                            .implemented_traits
+                            .filter_by_type_item_import(type_id),
+                    );
                 }
                 // no matter what, import it this way though.
                 let dst_ns = &mut self[dst];

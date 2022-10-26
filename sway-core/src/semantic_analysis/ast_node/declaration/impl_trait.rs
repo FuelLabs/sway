@@ -13,7 +13,7 @@ use crate::{
 
 impl ty::TyImplTrait {
     pub(crate) fn type_check_impl_trait(
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         impl_trait: ImplTrait,
     ) -> CompileResult<Self> {
         let mut errors = vec![];
@@ -31,11 +31,17 @@ impl ty::TyImplTrait {
 
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut impl_namespace);
+        let mut ctx = ctx.by_ref().scoped(&mut impl_namespace);
 
         // type check the type parameters which also inserts them into the namespace
         let mut new_impl_type_parameters = vec![];
         for type_parameter in impl_type_parameters.into_iter() {
+            if !type_parameter.trait_constraints.is_empty() {
+                errors.push(CompileError::WhereClauseNotYetSupported {
+                    span: type_parameter.trait_constraints_span,
+                });
+                return err(warnings, errors);
+            }
             new_impl_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
@@ -164,11 +170,11 @@ impl ty::TyImplTrait {
                     });
                 }
 
-                let impl_ctx = ctx.with_mode(Mode::ImplAbiFn);
+                let ctx = ctx.with_mode(Mode::ImplAbiFn);
 
                 let functions_buf = check!(
                     type_check_trait_implementation(
-                        impl_ctx,
+                        ctx,
                         &[], // this is empty because abi definitions don't support generics,
                         &[], // this is empty because abi definitions don't support generics,
                         implementing_for_type_id,
@@ -419,6 +425,12 @@ impl ty::TyImplTrait {
         // type check the type parameters which also inserts them into the namespace
         let mut new_impl_type_parameters = vec![];
         for type_parameter in impl_type_parameters.into_iter() {
+            if !type_parameter.trait_constraints.is_empty() {
+                errors.push(CompileError::WhereClauseNotYetSupported {
+                    span: type_parameter.trait_constraints_span,
+                });
+                return err(warnings, errors);
+            }
             new_impl_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
