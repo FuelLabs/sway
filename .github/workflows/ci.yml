@@ -119,8 +119,8 @@ jobs:
         run: |
           cargo install --debug --path ./forc-plugins/forc-fmt
           cargo install --debug --path ./forc-plugins/forc-lsp
+          cargo install --debug --path ./forc-plugins/forc-client
           cargo install --debug forc-explore
-          cargo install --debug forc-client
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
         with:
@@ -612,7 +612,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for binary in forc forc-fmt forc-lsp; do
+          for binary in forc forc-fmt forc-lsp forc-deploy forc-run; do
             cp $(which ${binary}) ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries
