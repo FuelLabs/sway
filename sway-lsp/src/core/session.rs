@@ -86,15 +86,14 @@ impl Session {
     /// Check if the code editor's cursor is currently over one of our collected tokens.
     pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
         let tokens = self.tokens_for_file(uri);
-        match utils::common::ident_and_span_at_position(position, &tokens) {
-            Some((ident, _)) => {
-                self.token_map
-                    .get(&utils::token::to_ident_key(&ident))
-                    .map(|item| {
-                        let ((ident, _), token) = item.pair();
-                        (ident.clone(), token.clone())
-                    })
-            }
+        match utils::common::ident_at_position(position, tokens) {
+            Some(ident) => self
+                .token_map
+                .get(&utils::token::to_ident_key(&ident))
+                .map(|item| {
+                    let ((ident, _), token) = item.pair();
+                    (ident.clone(), token.clone())
+                }),
             None => None,
         }
     }
@@ -121,7 +120,10 @@ impl Session {
     }
 
     /// Return a TokenMap with tokens belonging to the provided file path
-    pub fn tokens_for_file(&self, uri: &Url) -> TokenMap {
+    pub fn tokens_for_file<'s>(
+        &'s self,
+        uri: &'s Url,
+    ) -> impl 's + Iterator<Item = (Ident, Token)> {
         self.token_map
             .iter()
             .filter(|item| {
@@ -132,10 +134,9 @@ impl Session {
                 }
             })
             .map(|item| {
-                let (key, token) = item.pair();
-                (key.clone(), token.clone())
+                let ((ident, _), token) = item.pair();
+                (ident.clone(), token.clone())
             })
-            .collect()
     }
 
     /// Return the `Ident` of the declaration of the provided token.
@@ -362,7 +363,7 @@ impl Session {
         let tokens = self.tokens_for_file(url);
         self.sync
             .to_workspace_url(url.clone())
-            .map(|url| capabilities::document_symbol::to_symbol_information(&tokens, url))
+            .map(|url| capabilities::document_symbol::to_symbol_information(tokens, url))
     }
 
     pub fn format_text(&self, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {

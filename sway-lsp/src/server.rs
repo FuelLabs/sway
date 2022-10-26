@@ -155,15 +155,15 @@ impl Backend {
     ) {
         let diagnostics_res = {
             let debug = &self.config.read().debug;
-            let token_map = session.tokens_for_file(uri);
+            let tokens = session.tokens_for_file(uri);
             match debug.show_collected_tokens_as_warnings {
                 Warnings::Default => diagnostics,
                 // If collected_tokens_as_warnings is Parsed or Typed,
                 // take over the normal error and warning display behavior
                 // and instead show the either the parsed or typed tokens as warnings.
                 // This is useful for debugging the lsp parser.
-                Warnings::Parsed => debug::generate_warnings_for_parsed_tokens(&token_map),
-                Warnings::Typed => debug::generate_warnings_for_typed_tokens(&token_map),
+                Warnings::Parsed => debug::generate_warnings_for_parsed_tokens(tokens),
+                Warnings::Typed => debug::generate_warnings_for_typed_tokens(tokens),
             }
         };
 

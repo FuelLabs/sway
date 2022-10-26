@@ -1,14 +1,16 @@
-use crate::core::token::{SymbolKind, Token, TokenMap};
+use crate::core::token::{SymbolKind, Token};
 use crate::utils::common::get_range_from_span;
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{self, Location, SymbolInformation, Url};
 
-pub fn to_symbol_information(token_map: &TokenMap, url: Url) -> Vec<SymbolInformation> {
+pub fn to_symbol_information<I>(tokens: I, url: Url) -> Vec<SymbolInformation>
+where
+    I: Iterator<Item = (Ident, Token)>,
+{
     let mut symbols: Vec<SymbolInformation> = vec![];
 
-    for item in token_map.iter() {
-        let ((ident, _), token) = item.pair();
-        let symbol = symbol_info(ident, token, url.clone());
+    for (ident, token) in tokens {
+        let symbol = symbol_info(&ident, &token, url.clone());
         symbols.push(symbol)
     }
 
