@@ -49,6 +49,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         build_profile: None,
         release: false,
         time_phases: command.time_phases,
+        tests: false,
     };
     let compiled = forc_pkg::build_with_options(build_options)?;
 
