@@ -1,4 +1,3 @@
-use sha2::{Digest, Sha256};
 use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
 
 use crate::{
@@ -7,6 +6,7 @@ use crate::{
     language::{parsed, ty::*, Purity, Visibility},
     transform,
     type_system::*,
+    types::ToFnSelector,
 };
 
 #[derive(Clone, Debug, Eq)]
@@ -125,6 +125,26 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
     }
 }
 
+impl ToFnSelector for TyFunctionDeclaration {
+    fn to_fn_selector_value_untruncated(&self) -> CompileResult<Vec<u8>> {
+        let func_signature: TyFunctionSignature = self.into();
+        func_signature.to_fn_selector_value_untruncated()
+    }
+
+    /// Converts a [TyFunctionDeclaration] into a value that is to be used in contract function
+    /// selectors.
+    /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
+    fn to_fn_selector_value(&self) -> CompileResult<[u8; 4]> {
+        let func_signature: TyFunctionSignature = self.into();
+        func_signature.to_fn_selector_value()
+    }
+
+    fn to_selector_name(&self) -> CompileResult<String> {
+        let func_signature: TyFunctionSignature = self.into();
+        func_signature.to_selector_name()
+    }
+}
+
 impl TyFunctionDeclaration {
     /// Used to create a stubbed out function when the function fails to compile, preventing cascading
     /// namespace errors
@@ -167,64 +187,6 @@ impl TyFunctionDeclaration {
         } else {
             self.name.span()
         }
-    }
-
-    pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<Vec<u8>> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-        let mut hasher = Sha256::new();
-        let data = check!(
-            self.to_selector_name(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        hasher.update(data);
-        let hash = hasher.finalize();
-        ok(hash.to_vec(), warnings, errors)
-    }
-
-    /// Converts a [TyFunctionDeclaration] into a value that is to be used in contract function
-    /// selectors.
-    /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
-    pub fn to_fn_selector_value(&self) -> CompileResult<[u8; 4]> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-        let hash = check!(
-            self.to_fn_selector_value_untruncated(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        // 4 bytes truncation via copying into a 4 byte buffer
-        let mut buf = [0u8; 4];
-        buf.copy_from_slice(&hash[..4]);
-        ok(buf, warnings, errors)
-    }
-
-    pub fn to_selector_name(&self) -> CompileResult<String> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-        let named_params = self
-            .parameters
-            .iter()
-            .map(
-                |TyFunctionParameter {
-                     type_id, type_span, ..
-                 }| {
-                    to_typeinfo(*type_id, type_span)
-                        .expect("unreachable I think?")
-                        .to_selector_name(type_span)
-                },
-            )
-            .filter_map(|name| name.ok(&mut warnings, &mut errors))
-            .collect::<Vec<String>>();
-
-        ok(
-            format!("{}({})", self.name.as_str(), named_params.join(","),),
-            warnings,
-            errors,
-        )
     }
 
     pub(crate) fn generate_json_abi_function(

@@ -4,6 +4,7 @@ use crate::{
     metadata::MetadataManager,
     semantic_analysis::namespace,
     type_system::{look_up_type_id, LogId, TypeId},
+    types::ToFnSelector,
 };
 
 use super::{

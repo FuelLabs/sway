@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::DeclarationId,
     error::*,
     language::{ty, CallPath},
     type_system::*,
@@ -196,7 +197,7 @@ impl Namespace {
         method_name: &Ident,
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
-    ) -> CompileResult<ty::TyFunctionDeclaration> {
+    ) -> CompileResult<(ty::TyFunctionSignature, DeclarationId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -244,14 +245,14 @@ impl Namespace {
 
         match methods
             .into_iter()
-            .find(|ty::TyFunctionDeclaration { name, .. }| name == method_name)
+            .find(|(func_signature, _)| &func_signature.name == method_name)
         {
-            Some(o) => {
+            Some((func_signature, func_decl_id)) => {
                 // if we find the method that we are looking for, we also need
                 // to retrieve the impl definitions for the return type so that
                 // the user can string together method calls
-                self.insert_trait_implementation_for_type(o.return_type);
-                ok(o, warnings, errors)
+                self.insert_trait_implementation_for_type(func_signature.return_type);
+                ok((func_signature, func_decl_id), warnings, errors)
             }
             None => {
                 if args_buf.get(0).map(|x| look_up_type_id(x.return_type))

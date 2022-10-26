@@ -1,5 +1,8 @@
 use crate::{
-    declaration_engine::{declaration_engine::de_get_storage, declaration_id::DeclarationId},
+    declaration_engine::{
+        de_look_up_decl_id, declaration_engine::de_get_storage, declaration_id::DeclarationId,
+        declaration_wrapper::DeclarationWrapper,
+    },
     error::*,
     language::{ty, CallPath},
     namespace::*,
@@ -128,9 +131,10 @@ impl Items {
     }
 
     pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDeclaration, CompileError> {
-        self.symbols
-            .get(name)
-            .ok_or_else(|| CompileError::SymbolNotFound { name: name.clone() })
+        self.symbols.get(name).ok_or_else(|| {
+            //println!("name: {:?}", name);
+            CompileError::SymbolNotFound { name: name.clone() }
+        })
     }
 
     pub(crate) fn insert_trait_implementation(
@@ -138,7 +142,7 @@ impl Items {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
-        methods: Vec<ty::TyFunctionDeclaration>,
+        methods: &[DeclarationId],
         impl_span: &Span,
     ) -> CompileResult<()> {
         let new_prefixes = if trait_name.prefixes.is_empty() {
@@ -155,8 +159,26 @@ impl Items {
             suffix: trait_name.suffix,
             is_absolute: trait_name.is_absolute,
         };
-        self.implemented_traits
-            .insert(trait_name, trait_type_args, type_id, methods, impl_span)
+        let mut trait_methods = im::HashMap::default();
+        for decl_id in methods.iter() {
+            let decl_id = decl_id.clone();
+            match de_look_up_decl_id(decl_id.clone()) {
+                DeclarationWrapper::Function(decl) => {
+                    trait_methods.insert(decl.name.as_str().to_string(), decl_id);
+                }
+                DeclarationWrapper::TraitFn(decl) => {
+                    trait_methods.insert(decl.name.as_str().to_string(), decl_id);
+                }
+                _ => todo!(),
+            }
+        }
+        self.implemented_traits.insert(
+            trait_name,
+            trait_type_args,
+            type_id,
+            trait_methods,
+            impl_span,
+        )
     }
 
     pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
@@ -166,7 +188,7 @@ impl Items {
     pub(crate) fn get_methods_for_type(
         &self,
         implementing_for_type_id: TypeId,
-    ) -> Vec<ty::TyFunctionDeclaration> {
+    ) -> Vec<(ty::TyFunctionSignature, DeclarationId)> {
         self.implemented_traits
             .get_methods_for_type(implementing_for_type_id)
     }

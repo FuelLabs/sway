@@ -169,7 +169,7 @@ impl ty::TyFunctionDeclaration {
 
 #[test]
 fn test_function_selector_behavior() {
-    use crate::language::Visibility;
+    use crate::{language::Visibility, types::ToFnSelector};
     use sway_types::{integer_bits::IntegerBits, Ident, Span};
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),

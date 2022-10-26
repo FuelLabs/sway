@@ -3,7 +3,9 @@ use std::fmt;
 use sway_types::Span;
 
 use crate::{
-    declaration_engine::de_get_function,
+    declaration_engine::{
+        de_get_function, de_look_up_decl_id, declaration_wrapper::DeclarationWrapper,
+    },
     error::*,
     language::{ty::*, Literal},
     type_system::*,
@@ -373,12 +375,12 @@ impl DeterministicallyAborts for TyExpression {
                 arguments,
                 ..
             } => {
-                let function_decl = match de_get_function(function_decl_id.clone(), &self.span) {
-                    Ok(decl) => decl,
-                    Err(_e) => panic!("failed to get function"),
+                let body_aborts = match de_look_up_decl_id(function_decl_id.clone()) {
+                    DeclarationWrapper::Function(decl) => decl.body.deterministically_aborts(),
+                    DeclarationWrapper::TraitFn(_) => false,
+                    _ => todo!(),
                 };
-                function_decl.body.deterministically_aborts()
-                    || arguments.iter().any(|(_, x)| x.deterministically_aborts())
+                body_aborts || arguments.iter().any(|(_, x)| x.deterministically_aborts())
             }
             Tuple { fields, .. } => fields.iter().any(|x| x.deterministically_aborts()),
             Array { contents, .. } => contents.iter().any(|x| x.deterministically_aborts()),

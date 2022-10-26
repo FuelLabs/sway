@@ -60,21 +60,40 @@ impl ty::TyExpression {
             span: call_path.span(),
         };
         let arguments = VecDeque::from(arguments);
-        let method = check!(
+        let (method_signature, method_decl_id) = check!(
             resolve_method_name(ctx, &method_name_binding, arguments.clone()),
             return err(warnings, errors),
             warnings,
             errors
         );
-        instantiate_function_application_simple(
-            call_path,
-            HashMap::new(),
-            arguments,
-            method,
-            None,
-            None,
+        // check that the number of parameters and the number of the arguments is the same
+        check!(
+            check_function_arguments_arity(arguments.len(), &method_signature, &call_path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let args_and_names = method_signature
+            .parameters
+            .iter()
+            .zip(arguments.into_iter())
+            .map(|(param, arg)| (param.name.clone(), arg))
+            .collect::<Vec<(_, _)>>();
+
+        let return_type = method_signature.return_type;
+        let exp = ty::TyExpression {
+            expression: ty::TyExpressionVariant::FunctionApplication {
+                call_path,
+                contract_call_params: HashMap::new(),
+                arguments: args_and_names,
+                function_decl_id: method_decl_id,
+                self_state_idx: None,
+                selector: None,
+            },
+            return_type,
             span,
-        )
+        };
+        ok(exp, warnings, errors)
     }
 
     pub(crate) fn type_check(mut ctx: TypeCheckContext, expr: Expression) -> CompileResult<Self> {
@@ -1206,18 +1225,8 @@ impl ty::TyExpression {
             address: Some(Box::new(address_expr.clone())),
         });
 
-        let mut trait_fns = vec![];
-        for decl_id in abi.interface_surface.iter() {
-            match de_get_trait_fn(decl_id.clone(), &abi.span) {
-                Ok(decl) => trait_fns.push(decl),
-                Err(err) => errors.push(err),
-            }
-        }
+        let mut functions_buf = abi.interface_surface.clone();
 
-        let mut functions_buf = trait_fns
-            .iter()
-            .map(|x| x.to_dummy_func(Mode::ImplAbiFn))
-            .collect::<Vec<_>>();
         // calls of ABI methods do not result in any codegen of the ABI method block
         // they instead just use the CALL opcode and the return type
         let mut type_checked_fn_buf = Vec::with_capacity(abi.methods.len());
@@ -1227,12 +1236,13 @@ impl ty::TyExpression {
                 .with_help_text("")
                 .with_type_annotation(insert_type(TypeInfo::Unknown))
                 .with_mode(Mode::ImplAbiFn);
-            type_checked_fn_buf.push(check!(
+            let func_decl = check!(
                 ty::TyFunctionDeclaration::type_check(ctx, method.clone(), true),
                 return err(warnings, errors),
                 warnings,
                 errors
-            ));
+            );
+            type_checked_fn_buf.push(de_insert_function(func_decl));
         }
 
         functions_buf.append(&mut type_checked_fn_buf);
@@ -1241,7 +1251,7 @@ impl ty::TyExpression {
                 abi_name.clone(),
                 vec![],
                 return_type,
-                functions_buf,
+                &functions_buf,
                 &span,
             ),
             return err(warnings, errors),

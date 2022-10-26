@@ -118,7 +118,7 @@ impl ty::TyImplTrait {
                     errors
                 );
 
-                let functions_buf = check!(
+                let methods = check!(
                     type_check_trait_implementation(
                         ctx,
                         &new_impl_type_parameters,
@@ -136,16 +136,15 @@ impl ty::TyImplTrait {
                     warnings,
                     errors
                 );
-                let functions_decl_id = functions_buf
-                    .iter()
-                    .map(|d| de_insert_function(d.clone()))
-                    .collect::<Vec<_>>();
+
+                println!("created an impl trait with name {}", trait_name);
+
                 ty::TyImplTrait {
                     impl_type_parameters: new_impl_type_parameters,
                     trait_name: trait_name.clone(),
                     trait_type_arguments,
                     span: block_span,
-                    methods: functions_decl_id,
+                    methods,
                     implementing_for_type_id,
                     type_implementing_for_span: type_implementing_for_span.clone(),
                 }
@@ -172,7 +171,7 @@ impl ty::TyImplTrait {
 
                 let impl_ctx = ctx.with_mode(Mode::ImplAbiFn);
 
-                let functions_buf = check!(
+                let methods = check!(
                     type_check_trait_implementation(
                         impl_ctx,
                         &[], // this is empty because abi definitions don't support generics,
@@ -190,16 +189,15 @@ impl ty::TyImplTrait {
                     warnings,
                     errors
                 );
-                let functions_decl_id = functions_buf
-                    .iter()
-                    .map(|d| de_insert_function(d.clone()))
-                    .collect::<Vec<_>>();
+
+                println!("created an impl abi with name {}", trait_name);
+
                 ty::TyImplTrait {
                     impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
                     trait_name,
                     trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
                     span: block_span,
-                    methods: functions_decl_id,
+                    methods,
                     implementing_for_type_id,
                     type_implementing_for_span,
                 }
@@ -521,7 +519,7 @@ fn type_check_trait_implementation(
     trait_name: &CallPath,
     block_span: &Span,
     is_contract: bool,
-) -> CompileResult<Vec<ty::TyFunctionDeclaration>> {
+) -> CompileResult<Vec<DeclarationId>> {
     use sway_error::error::InterfaceName;
     let interface_name = || -> InterfaceName {
         if is_contract {
@@ -534,7 +532,7 @@ fn type_check_trait_implementation(
     let mut errors = vec![];
     let mut warnings = vec![];
 
-    let mut functions_buf: Vec<ty::TyFunctionDeclaration> = vec![];
+    let mut functions_buf: Vec<DeclarationId> = vec![];
     let mut processed_fns = std::collections::HashSet::<Ident>::new();
 
     let mut trait_fns = vec![];
@@ -719,7 +717,7 @@ fn type_check_trait_implementation(
             .type_parameters
             .append(&mut unconstrained_type_parameters_to_be_added);
 
-        functions_buf.push(fn_decl);
+        functions_buf.push(de_insert_function(fn_decl));
     }
 
     // This name space is temporary! It is used only so that the below methods
@@ -756,7 +754,7 @@ fn type_check_trait_implementation(
             },
             trait_type_arguments.to_vec(),
             self_type_id,
-            functions_buf.clone(),
+            &functions_buf,
             block_span,
         ),
         return err(warnings, errors),
@@ -779,7 +777,7 @@ fn type_check_trait_implementation(
             warnings,
             errors
         );
-        functions_buf.push(method);
+        functions_buf.push(de_insert_function(method));
     }
 
     // check that the implementation checklist is complete

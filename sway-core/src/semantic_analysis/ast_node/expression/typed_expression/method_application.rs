@@ -1,12 +1,14 @@
 use crate::{
+    declaration_engine::{
+        de_look_up_decl_id, declaration_wrapper::DeclarationWrapper, DeclarationId,
+    },
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
     type_system::*,
+    types::ToFnSelector,
 };
-use ast_node::typed_expression::{
-    check_function_arguments_arity, instantiate_function_application_simple,
-};
+use ast_node::typed_expression::check_function_arguments_arity;
 use std::collections::{HashMap, VecDeque};
 use sway_error::error::CompileError;
 use sway_types::Spanned;
@@ -40,7 +42,7 @@ pub(crate) fn type_check_method_application(
     }
 
     // resolve the method name to a typed function declaration and type_check
-    let method = check!(
+    let (method_signature, method_decl_id) = check!(
         resolve_method_name(ctx.by_ref(), &method_name_binding, args_buf.clone()),
         return err(warnings, errors),
         warnings,
@@ -48,11 +50,11 @@ pub(crate) fn type_check_method_application(
     );
 
     // check the function storage purity
-    if !method.is_contract_call {
-        // 'method.purity' is that of the callee, 'opts.purity' of the caller.
-        if !ctx.purity().can_call(method.purity) {
+    if !method_signature.is_contract_call {
+        // 'purity' is that of the callee, 'opts.purity' of the caller.
+        if !ctx.purity().can_call(method_signature.purity) {
             errors.push(CompileError::StorageAccessMismatch {
-                attrs: promote_purity(ctx.purity(), method.purity).to_attribute_syntax(),
+                attrs: promote_purity(ctx.purity(), method_signature.purity).to_attribute_syntax(),
                 span: method_name_binding.inner.easy_name().span(),
             });
         }
@@ -65,7 +67,7 @@ pub(crate) fn type_check_method_application(
 
     // generate the map of the contract call params
     let mut contract_call_params_map = HashMap::new();
-    if method.is_contract_call {
+    if method_signature.is_contract_call {
         for param_name in &[
             constants::CONTRACT_CALL_GAS_PARAMETER_NAME,
             constants::CONTRACT_CALL_COINS_PARAMETER_NAME,
@@ -155,9 +157,9 @@ pub(crate) fn type_check_method_application(
 
     // If this function is being called with method call syntax, a.b(c),
     // then make sure the first parameter is self, else issue an error.
-    if !method.is_contract_call {
+    if !method_signature.is_contract_call {
         if let MethodName::FromModule { ref method_name } = method_name_binding.inner {
-            let is_first_param_self = method
+            let is_first_param_self = method_signature
                 .parameters
                 .get(0)
                 .map(|f| f.is_self())
@@ -180,7 +182,7 @@ pub(crate) fn type_check_method_application(
             ..
         }),
         Some(ty::TyFunctionParameter { is_mutable, .. }),
-    ) = (args_buf.get(0), method.parameters.get(0))
+    ) = (args_buf.get(0), method_signature.parameters.get(0))
     {
         let unknown_decl = check!(
             ctx.namespace.resolve_symbol(name).cloned(),
@@ -239,7 +241,7 @@ pub(crate) fn type_check_method_application(
     };
 
     // build the function selector
-    let selector = if method.is_contract_call {
+    let selector = if method_signature.is_contract_call {
         let contract_caller = args_buf.pop_front();
         let contract_address = match contract_caller.map(|x| look_up_type_id(x.return_type)) {
             Some(TypeInfo::ContractCaller { address, .. }) => address,
@@ -259,7 +261,12 @@ pub(crate) fn type_check_method_application(
             });
             return err(warnings, errors);
         };
-        let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
+        let func_selector = check!(
+            method_signature.to_fn_selector_value(),
+            [0; 4],
+            warnings,
+            errors
+        );
         Some(ty::ContractCallParams {
             func_selector,
             contract_address,
@@ -270,14 +277,14 @@ pub(crate) fn type_check_method_application(
 
     // check that the number of parameters and the number of the arguments is the same
     check!(
-        check_function_arguments_arity(args_buf.len(), &method, &call_path),
+        check_function_arguments_arity(args_buf.len(), &method_signature, &call_path),
         return err(warnings, errors),
         warnings,
         errors
     );
 
     // unify the types of the arguments with the types of the parameters from the function declaration
-    for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
+    for (arg, param) in args_buf.iter().zip(method_signature.parameters.iter()) {
         let (mut new_warnings, new_errors) = unify_right_with_self(
             arg.return_type,
             param.type_id,
@@ -295,21 +302,26 @@ pub(crate) fn type_check_method_application(
         }
     }
 
-    // build the function application
-    let exp = check!(
-        instantiate_function_application_simple(
+    let args_and_names = method_signature
+        .parameters
+        .iter()
+        .zip(args_buf.into_iter())
+        .map(|(param, arg)| (param.name.clone(), arg))
+        .collect::<Vec<(_, _)>>();
+
+    let return_type = method_signature.return_type;
+    let exp = ty::TyExpression {
+        expression: ty::TyExpressionVariant::FunctionApplication {
             call_path,
-            contract_call_params_map,
-            args_buf,
-            method,
-            selector,
+            contract_call_params: contract_call_params_map,
+            arguments: args_and_names,
+            function_decl_id: method_decl_id,
             self_state_idx,
-            span,
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+            selector,
+        },
+        return_type,
+        span,
+    };
     ok(exp, warnings, errors)
 }
 
@@ -317,12 +329,12 @@ pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
     method_name: &TypeBinding<MethodName>,
     arguments: VecDeque<ty::TyExpression>,
-) -> CompileResult<ty::TyFunctionDeclaration> {
+) -> CompileResult<(ty::TyFunctionSignature, DeclarationId)> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
     // retrieve the function declaration using the components of the method name
-    let mut func_decl = match &method_name.inner {
+    let (_, func_decl_id) = match &method_name.inner {
         MethodName::FromType {
             call_path_binding,
             method_name,
@@ -410,18 +422,39 @@ pub(crate) fn resolve_method_name(
         }
     };
 
-    // monomorphize the function declaration
-    check!(
-        ctx.monomorphize(
-            &mut func_decl,
-            &mut method_name.type_arguments.clone(),
-            EnforceTypeArguments::No,
-            &method_name.span()
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let func_signature = match de_look_up_decl_id(func_decl_id.clone()) {
+        DeclarationWrapper::Function(mut func_decl) => {
+            // monomorphize the function declaration
+            check!(
+                ctx.monomorphize(
+                    &mut func_decl,
+                    &mut method_name.type_arguments.clone(),
+                    EnforceTypeArguments::No,
+                    &method_name.span()
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            func_decl.into()
+        }
+        DeclarationWrapper::TraitFn(mut trait_fn_decl) => {
+            // monomorphize the trait fn declaration
+            check!(
+                ctx.monomorphize(
+                    &mut trait_fn_decl,
+                    &mut method_name.type_arguments.clone(),
+                    EnforceTypeArguments::No,
+                    &method_name.span()
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            trait_fn_decl.into()
+        }
+        _ => todo!(),
+    };
 
-    ok(func_decl, warnings, errors)
+    ok((func_signature, func_decl_id), warnings, errors)
 }

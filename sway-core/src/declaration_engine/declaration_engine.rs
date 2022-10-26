@@ -255,7 +255,7 @@ pub(crate) fn de_add_monomorphized_copy(original_id: DeclarationId, new_id: Decl
     DECLARATION_ENGINE.add_monomorphized_copy(original_id, new_id);
 }
 
-pub(super) fn de_insert(declaration_wrapper: DeclarationWrapper, span: Span) -> DeclarationId {
+pub(crate) fn de_insert(declaration_wrapper: DeclarationWrapper, span: Span) -> DeclarationId {
     DECLARATION_ENGINE.insert(declaration_wrapper, span)
 }
 
