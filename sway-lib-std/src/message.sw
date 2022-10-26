@@ -23,11 +23,10 @@ pub fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
     // data and recipient values there
     if !msg_data.is_empty() {
         size = msg_data.len() * 8;
-        let data_heap_buffer = alloc(size);
-        recipient_heap_buffer = alloc(32);
+        recipient_heap_buffer = alloc(32 + size);
+        recipient_heap_buffer.write(recipient);
+        let data_heap_buffer = recipient_heap_buffer.add(32);
         msg_data.buf.ptr.copy_to(data_heap_buffer, size);
-        let addr_of_recipient = __addr_of(recipient);
-        addr_of_recipient.copy_to(recipient_heap_buffer, 32);
     };
 
     let mut index = 0;
