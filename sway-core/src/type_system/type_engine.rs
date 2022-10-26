@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use std::sync::RwLock;
+use std::{collections::HashMap, fmt};
 
 use crate::{
     concurrent_slab::ConcurrentSlab, declaration_engine::*, language::ty, namespace::Path,
@@ -19,6 +19,12 @@ pub(crate) struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
     storage_only_types: ConcurrentSlab<TypeInfo>,
     id_map: RwLock<HashMap<TypeInfo, TypeId>>,
+}
+
+impl fmt::Display for TypeEngine {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "DeclarationEngine {{\n{}\n}}", self.slab)
+    }
 }
 
 impl TypeEngine {
@@ -380,7 +386,7 @@ impl TypeEngine {
                     Some(ty::TyDeclaration::StructDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
-                            CompileResult::from(de_get_struct(original_id.clone(), &name.span())),
+                            CompileResult::from(de_get_struct(original_id, &name.span())),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -407,16 +413,13 @@ impl TypeEngine {
                         // take any trait methods that apply to this type and copy them to the new type
                         namespace.insert_trait_implementation_for_type(type_id);
 
-                        // add the new copy as a monomorphized copy of the original id
-                        de_add_monomorphized_struct_copy(original_id, new_copy);
-
                         // return the id
                         type_id
                     }
                     Some(ty::TyDeclaration::EnumDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
-                            CompileResult::from(de_get_enum(original_id.clone(), &name.span())),
+                            CompileResult::from(de_get_enum(original_id, &name.span())),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -442,9 +445,6 @@ impl TypeEngine {
 
                         // take any trait methods that apply to this type and copy them to the new type
                         namespace.insert_trait_implementation_for_type(type_id);
-
-                        // add the new copy as a monomorphized copy of the original id
-                        de_add_monomorphized_enum_copy(original_id, new_copy);
 
                         // return the id
                         type_id
@@ -521,6 +521,11 @@ impl TypeEngine {
             mod_path,
         )
     }
+}
+
+#[allow(dead_code)]
+pub(crate) fn print_type_engine() {
+    println!("{}", &*TYPE_ENGINE);
 }
 
 pub fn insert_type(ty: TypeInfo) -> TypeId {

@@ -96,31 +96,3 @@ pub(crate) fn type_info_to_symbol_kind(type_info: &TypeInfo) -> SymbolKind {
         _ => SymbolKind::Unknown,
     }
 }
-
-pub(crate) fn type_id(token_type: &Token) -> Option<TypeId> {
-    match &token_type.typed {
-        Some(typed_ast_token) => match typed_ast_token {
-            TypedAstToken::TypedDeclaration(dec) => match dec {
-                ty::TyDeclaration::VariableDeclaration(var_decl) => Some(var_decl.type_ascription),
-                ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                    declaration_engine::de_get_constant(decl_id.clone(), &decl_id.span())
-                        .ok()
-                        .map(|const_decl| const_decl.value.return_type)
-                }
-                _ => None,
-            },
-            TypedAstToken::TypedExpression(exp) => Some(exp.return_type),
-            TypedAstToken::TypedFunctionParameter(func_param) => Some(func_param.type_id),
-            TypedAstToken::TypedStructField(struct_field) => Some(struct_field.type_id),
-            TypedAstToken::TypedEnumVariant(enum_var) => Some(enum_var.type_id),
-            TypedAstToken::TypedTraitFn(trait_fn) => Some(trait_fn.return_type),
-            TypedAstToken::TypedStorageField(storage_field) => Some(storage_field.type_id),
-            TypedAstToken::TypeCheckedStorageReassignDescriptor(storage_desc) => {
-                Some(storage_desc.type_id)
-            }
-            TypedAstToken::TypedReassignment(reassignment) => Some(reassignment.lhs_type),
-            _ => None,
-        },
-        None => None,
-    }
-}
