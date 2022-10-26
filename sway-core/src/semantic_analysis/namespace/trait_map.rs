@@ -403,13 +403,15 @@ impl TraitMap {
     pub(crate) fn filter_by_type_item_import(&self, type_id: TypeId) -> TraitMap {
         // a curried version of the decider protocol to use in the helper functions
         let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
-            type_info.is_subset_of(map_type_info) || map_type_info.is_subset_of(type_info)
+            type_info.is_subset_of(map_type_info)
+                || map_type_info.is_subset_of_for_item_import(type_info)
         };
         let mut trait_map = self.filter_by_type_inner(vec![type_id], decider);
         let all_types = look_up_type_id(type_id)
             .extract_inner_types()
             .into_iter()
             .collect::<Vec<_>>();
+        // a curried version of the decider protocol to use in the helper functions
         let decider2 =
             |type_info: &TypeInfo, map_type_info: &TypeInfo| type_info.is_subset_of(map_type_info);
         trait_map.extend(self.filter_by_type_inner(all_types, decider2));
