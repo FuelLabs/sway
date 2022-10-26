@@ -821,36 +821,23 @@ mod tests {
                 "uri": uri,
             },
             "position": {
-                "line": 44,
-                "character": 27
+                "line": 45,
+                "character": 37
             }
         });
         let highlight = build_request_with_id("textDocument/documentHighlight", params, 1);
         let response = call_request(service, highlight.clone()).await;
         let ok = Response::from_ok(
             1.into(),
-            json!([
-                {
+            json!([{
                     "range": {
                         "end": {
-                            "character": 11,
-                            "line": 19
+                            "character": 41,
+                            "line": 45
                         },
                         "start": {
-                            "character": 7,
-                            "line": 19
-                        }
-                    }
-                },
-                {
-                    "range": {
-                        "end": {
-                            "character": 27,
-                            "line": 44
-                        },
-                        "start": {
-                            "character": 23,
-                            "line": 44
+                            "character": 35,
+                            "line": 45
                         }
                     }
                 }
@@ -1010,5 +997,5 @@ mod tests {
     lsp_capability_test!(document_symbol, document_symbol_request);
     lsp_capability_test!(format, format_request);
     lsp_capability_test!(hover, hover_request);
-    //lsp_capability_test!(highlight, highlight_request);
+    lsp_capability_test!(highlight, highlight_request);
 }
