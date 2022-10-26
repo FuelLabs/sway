@@ -422,24 +422,22 @@ impl TraitMap {
                 } else if decider(&type_info, &look_up_type_id(*map_type_id)) {
                     let type_mapping =
                         TypeMapping::from_superset_and_subset(*map_type_id, *type_id);
-                    // let mut trait_methods = map_trait_methods.clone();
-                    // trait_methods.iter_mut().for_each(|(_, trait_method)| {
-                    //     trait_method.copy_types(&type_mapping);
-                    //     let new_self_type = insert_type(TypeInfo::SelfType);
-                    //     type_id.replace_self_type(new_self_type);
-                    //     trait_method.replace_self_type(new_self_type);
-                    // });
+                    let new_self_type = insert_type(TypeInfo::SelfType);
+                    type_id.replace_self_type(new_self_type);
                     let trait_methods: TraitMethods = map_trait_methods
                         .clone()
                         .into_iter()
                         .map(|(name, decl_id)| {
                             let mut decl = de_look_up_decl_id(decl_id.clone());
                             decl.copy_types(&type_mapping);
-                            let new_self_type = insert_type(TypeInfo::SelfType);
                             decl.replace_self_type(new_self_type);
                             (name, de_insert(decl, decl_id.span()))
                         })
                         .collect();
+                    // trait_methods.iter_mut().for_each(|trait_method| {
+                    //     trait_method.copy_types(&type_mapping);
+                    //     trait_method.replace_self_type(new_self_type);
+                    // });
                     trait_map.insert_inner(map_trait_name.clone(), *type_id, trait_methods);
                 }
             }
