@@ -967,6 +967,39 @@ impl TypeInfo {
         }
     }
 
+    /// Given a `TypeInfo` `self`, check to see if `self` is currently
+    /// supported in `impl` blocks in the "type implementing for" position.
+    pub(crate) fn expect_is_supported_in_impl_blocks_self(&self, span: &Span) -> CompileResult<()> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Enum { .. }
+            | TypeInfo::Struct { .. }
+            | TypeInfo::Boolean
+            | TypeInfo::Tuple(_)
+            | TypeInfo::B256
+            | TypeInfo::RawUntypedPtr
+            | TypeInfo::Custom { .. }
+            | TypeInfo::Str(_)
+            | TypeInfo::Array(_, _, _)
+            | TypeInfo::Contract
+            | TypeInfo::Numeric => ok((), warnings, errors),
+            TypeInfo::Unknown
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::Storage { .. } => {
+                errors.push(CompileError::Unimplemented(
+                    "implementing traits on this type is unsupported right now",
+                    span.clone(),
+                ));
+                err(warnings, errors)
+            }
+        }
+    }
+
     /// Given a `TypeInfo` `self`, analyze `self` and return all nested
     /// `TypeInfo`'s found in `self`, including `self`.
     pub(crate) fn extract_nested_types(self, span: &Span) -> CompileResult<Vec<TypeInfo>> {

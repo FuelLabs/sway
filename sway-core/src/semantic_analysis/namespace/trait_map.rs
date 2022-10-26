@@ -403,12 +403,7 @@ impl TraitMap {
     pub(crate) fn filter_by_type_item_import(&self, type_id: TypeId) -> TraitMap {
         // a curried version of the decider protocol to use in the helper functions
         let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
-            let hit =
-                type_info.is_subset_of(map_type_info) || map_type_info.is_subset_of(type_info);
-            if hit {
-                println!("found hit: {} and {}", type_info, map_type_info);
-            }
-            hit
+            type_info.is_subset_of(map_type_info) || map_type_info.is_subset_of(type_info)
         };
         let mut trait_map = self.filter_by_type_inner(vec![type_id], decider);
         let all_types = look_up_type_id(type_id)

@@ -72,6 +72,15 @@ impl ty::TyImplTrait {
             errors
         );
 
+        // check to see if this type is supported in impl blocks
+        check!(
+            look_up_type_id(implementing_for_type_id)
+                .expect_is_supported_in_impl_blocks_self(&type_implementing_for_span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
@@ -446,6 +455,15 @@ impl ty::TyImplTrait {
                 &type_implementing_for_span,
                 None
             ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // check to see if this type is supported in impl blocks
+        check!(
+            look_up_type_id(implementing_for_type_id)
+                .expect_is_supported_in_impl_blocks_self(&type_implementing_for_span),
             return err(warnings, errors),
             warnings,
             errors
