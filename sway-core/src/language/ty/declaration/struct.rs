@@ -11,7 +11,7 @@ pub struct TyStructDeclaration {
     pub fields: Vec<TyStructField>,
     pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
-    pub(crate) span: Span,
+    pub span: Span,
     pub attributes: transform::AttributesMap,
 }
 
@@ -35,6 +35,17 @@ impl CopyTypes for TyStructDeclaration {
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
+    }
+}
+
+impl ReplaceSelfType for TyStructDeclaration {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.fields
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+        self.type_parameters
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
     }
 }
 
@@ -96,7 +107,7 @@ pub struct TyStructField {
     pub name: Ident,
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
-    pub(crate) span: Span,
+    pub span: Span,
     pub type_span: Span,
     pub attributes: transform::AttributesMap,
 }

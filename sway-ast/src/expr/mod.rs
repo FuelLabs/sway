@@ -87,6 +87,11 @@ pub enum Expr {
         forward_slash_token: ForwardSlashToken,
         rhs: Box<Expr>,
     },
+    Pow {
+        lhs: Box<Expr>,
+        double_star_token: DoubleStarToken,
+        rhs: Box<Expr>,
+    },
     Modulo {
         lhs: Box<Expr>,
         percent_token: PercentToken,
@@ -223,6 +228,7 @@ impl Spanned for Expr {
             Expr::Ref { ref_token, expr } => Span::join(ref_token.span(), expr.span()),
             Expr::Deref { deref_token, expr } => Span::join(deref_token.span(), expr.span()),
             Expr::Not { bang_token, expr } => Span::join(bang_token.span(), expr.span()),
+            Expr::Pow { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
             Expr::Mul { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
             Expr::Div { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
             Expr::Modulo { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
