@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, Result};
-use forc_pkg::{fuel_core_not_running, BuildOptions, PackageManifestFile};
+use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder};
 use futures::TryFutureExt;
@@ -22,36 +22,19 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     let manifest = PackageManifestFile::from_dir(&path_dir)?;
     manifest.check_program_type(vec![TreeType::Script])?;
 
-    let input_data = &command.data.unwrap_or_else(|| "".into());
+    let input_data = command.data.as_deref().unwrap_or("");
     let data = format_hex_data(input_data);
     let script_data = hex::decode(data).expect("Invalid hex");
 
-    let node_url = command.node_url.unwrap_or_else(|| match &manifest.network {
-        Some(network) => network.url.to_owned(),
-        None => NODE_URL.to_owned(),
-    });
-    let client = FuelClient::new(&node_url)?;
+    let node_url = command
+        .node_url
+        .as_deref()
+        .or_else(|| manifest.network.as_ref().map(|nw| &nw.url[..]))
+        .unwrap_or(NODE_URL);
+    let client = FuelClient::new(node_url)?;
 
-    let build_options = BuildOptions {
-        path: command.path,
-        print_ast: command.print_ast,
-        print_finalized_asm: command.print_finalized_asm,
-        print_intermediate_asm: command.print_intermediate_asm,
-        print_ir: command.print_ir,
-        binary_outfile: command.binary_outfile,
-        debug_outfile: command.debug_outfile,
-        offline_mode: false,
-        terse_mode: command.terse_mode,
-        output_directory: command.output_directory,
-        minify_json_abi: command.minify_json_abi,
-        minify_json_storage_slots: command.minify_json_storage_slots,
-        locked: command.locked,
-        build_profile: None,
-        release: false,
-        time_phases: command.time_phases,
-        tests: false,
-    };
-    let compiled = forc_pkg::build_package_with_options(&manifest, build_options)?;
+    let build_opts = build_opts_from_cmd(&command);
+    let compiled = forc_pkg::build_package_with_options(&manifest, build_opts)?;
 
     let contract_ids: Vec<ContractId> = command
         .contract
@@ -69,7 +52,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         info!("{:?}", tx);
         Ok(vec![])
     } else {
-        try_send_tx(&node_url, &tx, command.pretty_print, command.simulate).await
+        try_send_tx(node_url, &tx, command.pretty_print, command.simulate).await
     }
 }
 
@@ -151,4 +134,32 @@ fn print_receipt_output(receipts: &Vec<fuel_tx::Receipt>, pretty_print: bool) ->
         info!("{}", serde_json::to_string(&receipt_to_json_array)?);
     }
     Ok(())
+}
+
+fn build_opts_from_cmd(cmd: &RunCommand) -> pkg::BuildOpts {
+    pkg::BuildOpts {
+        pkg: pkg::PkgOpts {
+            path: cmd.path.clone(),
+            offline: false,
+            terse: cmd.terse_mode,
+            locked: cmd.locked,
+            output_directory: cmd.output_directory.clone(),
+        },
+        print: pkg::PrintOpts {
+            ast: cmd.print_ast,
+            finalized_asm: cmd.print_finalized_asm,
+            intermediate_asm: cmd.print_intermediate_asm,
+            ir: cmd.print_ir,
+        },
+        minify: pkg::MinifyOpts {
+            json_abi: cmd.minify_json_abi,
+            json_storage_slots: cmd.minify_json_storage_slots,
+        },
+        build_profile: cmd.build_profile.clone(),
+        release: cmd.release,
+        time_phases: cmd.time_phases,
+        binary_outfile: cmd.binary_outfile.clone(),
+        debug_outfile: cmd.debug_outfile.clone(),
+        tests: false,
+    }
 }
