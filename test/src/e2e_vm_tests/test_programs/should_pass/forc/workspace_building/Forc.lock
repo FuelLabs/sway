@@ -1,0 +1,29 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-064254D1F5F62D46'
+
+[[package]]
+name = 'std'
+source = 'git+https://github.com/fuellabs/sway?tag=v0.28.1#84f9aad376760cd9c8eacc8a4848bffeb25bf9a5'
+dependencies = ['core']
+
+[[package]]
+name = 'test_contract'
+source = 'root'
+dependencies = [
+    'std',
+    'test_lib path+from-root-4D4735C41181917E',
+]
+
+[[package]]
+name = 'test_lib'
+source = 'path+from-root-4D4735C41181917E'
+
+[[package]]
+name = 'test_lib'
+source = 'root'
+
+[[package]]
+name = 'test_projec2t'
+source = 'root'
+dependencies = ['test_lib path+from-root-4D4735C41181917E']
