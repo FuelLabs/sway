@@ -3,7 +3,10 @@ use crate::{
         session::Session,
         token::{AstToken, Token, TypedAstToken},
     },
-    utils::{common::get_range_from_span, token::to_ident_key},
+    utils::{
+        attributes::doc_attributes, common::get_range_from_span, markdown, markup::Markup,
+        token::to_ident_key,
+    },
 };
 use std::sync::Arc;
 use sway_core::{
@@ -11,22 +14,22 @@ use sway_core::{
     language::{parsed::Declaration, ty, Visibility},
 };
 use sway_types::{Ident, Span, Spanned};
-use tower_lsp::lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position, Url};
+use tower_lsp::lsp_types::{self, Position, Url};
 
-pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option<Hover> {
-    if let Some((_, token)) = session.token_at_position(&url, position) {
-        if let Some(decl_ident) = session.declared_token_ident(&token) {
-            if let Some(decl_token) = session
-                .token_map()
-                .get(&to_ident_key(&decl_ident))
-                .map(|item| item.value().clone())
-            {
-                let hover = hover_format(&decl_token, &decl_ident);
-                return Some(hover);
-            }
-        }
-    }
-    None
+/// Extracts the hover information for a token at the current position.
+pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option<lsp_types::Hover> {
+    let (ident, token) = session.token_at_position(&url, position)?;
+    let range = get_range_from_span(&ident.span());
+    let decl_ident = session.declared_token_ident(&token)?;
+    let decl_token = session
+        .token_map()
+        .get(&to_ident_key(&decl_ident))
+        .map(|item| item.value().clone())?;
+    let contents = hover_format(&decl_token, &decl_ident);
+    Some(lsp_types::Hover {
+        contents,
+        range: Some(range),
+    })
 }
 
 fn visibility_as_str(visibility: &Visibility) -> &'static str {
@@ -42,9 +45,29 @@ fn extract_fn_signature(span: &Span) -> String {
     value.split('{').take(1).map(|v| v.trim()).collect()
 }
 
-fn hover_format(token: &Token, ident: &Ident) -> Hover {
+fn format_doc_attributes(token: &Token) -> String {
+    let mut doc_comment = String::new();
+    if let Some(attributes) = doc_attributes(token) {
+        doc_comment = attributes
+            .iter()
+            .map(|attribute| {
+                let comment = attribute.args.first().unwrap().as_str();
+                format!("{}\n", comment)
+            })
+            .collect()
+    }
+    doc_comment
+}
+
+fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
+    let kind = lsp_types::MarkupKind::Markdown;
+    let value = markdown::format_docs(markup.as_str());
+    lsp_types::MarkupContent { kind, value }
+}
+
+fn hover_format(token: &Token, ident: &Ident) -> lsp_types::HoverContents {
     let token_name: String = ident.as_str().into();
-    let range = get_range_from_span(&ident.span());
+    let doc_comment = format_doc_attributes(token);
 
     let format_visibility_hover = |visibility: Visibility, decl_name: &str| -> String {
         format!(
@@ -63,7 +86,8 @@ fn hover_format(token: &Token, ident: &Ident) -> Hover {
         format!("let{} {}: {}", mutability, token_name, type_name,)
     };
 
-    let value = match &token.typed {
+    // TODO implement this properly in a future PR
+    let _value = match &token.typed {
         Some(typed_token) => match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {
                 ty::TyDeclaration::VariableDeclaration(var_decl) => {
@@ -118,11 +142,5 @@ fn hover_format(token: &Token, ident: &Ident) -> Hover {
         },
     };
 
-    Hover {
-        contents: HoverContents::Markup(MarkupContent {
-            value: format!("```sway\n{}\n```", value),
-            kind: MarkupKind::Markdown,
-        }),
-        range: Some(range),
-    }
+    lsp_types::HoverContents::Markup(markup_content(Markup::from(doc_comment)))
 }
