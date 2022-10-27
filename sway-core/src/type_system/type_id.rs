@@ -3,7 +3,7 @@ use std::fmt;
 use sway_types::{JsonTypeApplication, JsonTypeDeclaration};
 
 /// A identifier to uniquely refer to our type terms
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd)]
 pub struct TypeId(usize);
 
 impl std::ops::Deref for TypeId {
