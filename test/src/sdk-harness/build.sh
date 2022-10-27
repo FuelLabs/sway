@@ -17,7 +17,7 @@ parent_manifest_dir="${base_dir}"
 while true; do
   parent_manifest_dir=$(abs_path "${parent_manifest_dir}/..")
   if [[ -f "${parent_manifest_dir}/Cargo.toml" ]]; then
-    forc="cargo run --release $locked --manifest-path ${parent_manifest_dir}/Cargo.toml --package forc --"
+    forc="cargo run $locked --manifest-path ${parent_manifest_dir}/Cargo.toml --package forc --"
     break
   fi
   if [[ "${parent_manifest_dir}" = "/" ]]; then
