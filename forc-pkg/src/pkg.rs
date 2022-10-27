@@ -331,7 +331,7 @@ impl BuildPlan {
     // the manifest alongside some lock diff type that can be used to optionally write the updated
     // lock file and print the diff.
     pub fn from_lock_and_manifest(
-        manifest: &PackageManifestFile,
+        manifest: &ManifestFile,
         locked: bool,
         offline: bool,
     ) -> Result<Self> {
@@ -362,8 +362,19 @@ impl BuildPlan {
         // might have edited the `Forc.lock` file when they shouldn't have, a path dependency no
         // longer exists at its specified location, etc. We must first remove all invalid nodes
         // before we can determine what we need to fetch.
-        let invalid_deps = validate_graph(&graph, manifest);
-        remove_deps(&mut graph, &manifest.project.name, &invalid_deps);
+        let invalid_deps = validate_graph(&graph, manifest)?;
+        let members = match manifest {
+            ManifestFile::Package(pkg_manifest_file) => {
+                let pkg_name = pkg_manifest_file.project.name;
+                let members = HashSet::new();
+                members.insert(&pkg_name);
+                members
+            }
+            ManifestFile::Workspace(workspace_manifest_file) => {
+                workspace_manifest_file.members().collect()
+            }
+        };
+        remove_deps(&mut graph, &members, &invalid_deps);
 
         // We know that the remaining nodes have valid paths, otherwise they would have been
         // removed. We can safely produce an initial `manifest_map`.
@@ -622,11 +633,12 @@ fn validate_dep_manifest(
             dep_manifest.project.name,
         );
     }
-    validate_version(dep_manifest)?;
+    let dep_manifest = ManifestFile::Package(Box::new(*dep_manifest));
+    validate_version(&dep_manifest)?;
     Ok(())
 }
 
-/// Returns the canonical, local path to the given dependency node if it exists, `None` otherwise.
+/// Returns the canonical, local path to the given depend>ency node if it exists, `None` otherwise.
 ///
 /// Also returns `None` in the case that the dependency is a `Path` dependency and the path root is
 /// invalid.
@@ -685,16 +697,24 @@ fn dep_path(
 /// Remove the given set of dependency edges from the `graph`.
 ///
 /// Also removes all nodes that are no longer connected to the project node as a result.
-fn remove_deps(graph: &mut Graph, proj_name: &str, edges_to_remove: &BTreeSet<EdgeIx>) {
-    // Retrieve the project node.
-    let proj_node = match find_proj_node(graph, proj_name) {
-        Ok(node) => node,
-        Err(_) => {
-            // If it fails, invalidate everything.
-            graph.clear();
-            return;
-        }
-    };
+fn remove_deps(
+    graph: &mut Graph,
+    member_names: &HashSet<&String>,
+    edges_to_remove: &BTreeSet<EdgeIx>,
+) {
+    // Retrieve the project nodes for members.
+    let member_root_nodes = HashSet::new();
+    for member_name in member_names {
+        let member_root_node = match find_proj_node(graph, member_name) {
+            Ok(node) => node,
+            Err(_) => {
+                // If it fails, invalidate everything.
+                graph.clear();
+                return;
+            }
+        };
+        member_root_nodes.insert(member_root_node);
+    }
 
     // Before removing edges, sort the nodes in order of dependency for the node removal pass.
     let node_removal_order = match petgraph::algo::toposort(&*graph, None) {
@@ -714,9 +734,8 @@ fn remove_deps(graph: &mut Graph, proj_name: &str, edges_to_remove: &BTreeSet<Ed
     // Remove all nodes that are no longer connected to the project node as a result.
     // Skip iteration over the project node.
     let mut nodes = node_removal_order.into_iter();
-    assert_eq!(nodes.next(), Some(proj_node));
     for node in nodes {
-        if !has_parent(graph, node) {
+        if !has_parent(graph, node) && !member_root_nodes.contains(&node) {
             graph.remove_node(node);
         }
     }

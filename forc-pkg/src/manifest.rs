@@ -42,6 +42,25 @@ impl ManifestFile {
             bail!("Cannot find a valid `Forc.toml` at {:?}", path)
         }
     }
+
+    /// The path to the `Forc.toml` from which this manifest was loaded.
+    ///
+    /// This will always be a canonical path.
+    pub fn path(&self) -> &Path {
+        match self {
+            ManifestFile::Package(pkg_manifest_file) => pkg_manifest_file.path(),
+            ManifestFile::Workspace(workspace_manifest_file) => workspace_manifest_file.path(),
+        }
+    }
+
+    /// The path to the directory containing the `Forc.toml` from which this manfiest was loaded.
+    ///
+    /// This will always be a canonical path.
+    pub fn dir(&self) -> &Path {
+        self.path()
+            .parent()
+            .expect("failed to retrieve manifest directory")
+    }
 }
 
 type PatchMap = BTreeMap<String, Dependency>;
@@ -601,6 +620,22 @@ impl WorkspaceManifestFile {
             .parent()
             .ok_or_else(|| anyhow!("Cannot get parent dir of {:?}", self.path))?;
         Ok(self.members.iter().map(|member| parent.join(member)))
+    }
+
+    /// The path to the `Forc.toml` from which this manifest was loaded.
+    ///
+    /// This will always be a canonical path.
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    /// The path to the directory containing the `Forc.toml` from which this manfiest was loaded.
+    ///
+    /// This will always be a canonical path.
+    pub fn dir(&self) -> &Path {
+        self.path()
+            .parent()
+            .expect("failed to retrieve manifest directory")
     }
 }
 
