@@ -657,7 +657,6 @@ fn validate_dep_manifest(
             dep_manifest.project.name,
         );
     }
-    // TODO(KAYA): refactor me
     let dep_manifest = ManifestFile::Package(Box::new(dep_manifest.clone()));
     validate_version(&dep_manifest)?;
     Ok(())
@@ -2301,7 +2300,6 @@ pub fn build_package_with_options(
     profile.time_phases |= time_phases;
     profile.include_tests |= tests;
 
-    // TODO(KAYA): refactor me
     let manifest_file = ManifestFile::Package(Box::new(manifest.clone()));
     let plan = BuildPlan::from_lock_and_manifest(&manifest_file, locked, offline_mode)?;
 

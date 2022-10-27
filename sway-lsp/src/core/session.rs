@@ -193,15 +193,13 @@ impl Session {
         let locked = false;
         let offline = false;
 
-        let manifest = pkg::PackageManifestFile::from_dir(&manifest_dir).map_err(|_| {
+        let manifest = ManifestFile::from_dir(&manifest_dir).map_err(|_| {
             DocumentError::ManifestFileNotFound {
                 dir: uri.path().into(),
             }
         })?;
 
-        // TODO(KAYA): refactor me
-        let manifest_file = ManifestFile::Package(Box::new(manifest));
-        let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest_file, locked, offline)
+        let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)
             .map_err(LanguageServerError::BuildPlanFailed)?;
 
         // We can convert these destructured elements to a Vec<Diagnostic> later on.

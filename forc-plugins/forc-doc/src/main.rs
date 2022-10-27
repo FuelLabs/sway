@@ -16,7 +16,7 @@ use crate::{
     doc::{Document, Documentation},
     render::{RenderedDocument, RenderedDocumentation},
 };
-use forc_pkg::{self as pkg, PackageManifestFile};
+use forc_pkg::{self as pkg};
 use forc_util::default_output_directory;
 
 /// Main method for `forc doc`.
@@ -36,18 +36,21 @@ pub fn main() -> Result<()> {
     } else {
         std::env::current_dir()?
     };
-    let manifest = PackageManifestFile::from_dir(&dir)?;
+    let manifest = ManifestFile::from_dir(&dir)?;
+    let pkg_manifest = if let ManifestFile::Package(pkg_manifest) = &manifest {
+        pkg_manifest
+    } else {
+        bail!("forc-doc does not support workspaces.")
+    };
 
     // check if the out path exists
-    let project_name = &manifest.project.name;
+    let project_name = &pkg_manifest.project.name;
     let out_path = default_output_directory(manifest.dir());
     let doc_path = out_path.join("doc");
     fs::create_dir_all(&doc_path)?;
 
     // compile the program and extract the docs
-    // TODO(Kaya) : refactor me
-    let manifest_file = ManifestFile::Package(Box::new(manifest.clone()));
-    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest_file, locked, offline)?;
+    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
     let compilation = pkg::check(&plan, silent)?;
     let raw_docs: Documentation = Document::from_ty_program(&compilation, no_deps)?;
     // render docs to HTML

@@ -1,6 +1,6 @@
 use crate::cli::UpdateCommand;
 use anyhow::{anyhow, Result};
-use forc_pkg::{self as pkg, lock, Lock, PackageManifestFile};
+use forc_pkg::{self as pkg, lock, Lock};
 use forc_util::lock_path;
 use pkg::manifest::ManifestFile;
 use std::{fs, path::PathBuf};
@@ -33,19 +33,19 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
         None => std::env::current_dir()?,
     };
 
-    let manifest = PackageManifestFile::from_dir(&this_dir)?;
-    // TODO(KAYA): refactor me
-    let manifest_file = ManifestFile::Package(Box::new(manifest.clone()));
+    let manifest = ManifestFile::from_dir(&this_dir)?;
     let lock_path = lock_path(manifest.dir());
     let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
     let offline = false;
-    let new_plan = pkg::BuildPlan::from_manifest(&manifest_file, offline)?;
+    let new_plan = pkg::BuildPlan::from_manifest(&manifest, offline)?;
     let new_lock = Lock::from_graph(new_plan.graph());
     let diff = new_lock.diff(&old_lock);
-    // TODO: Since we are not supporting updating in workspaces just yet, we are directly passing
-    // Some(..) to print_diff. Once we have the support for workspaces we will construct the
-    // optional name value here and pass that instead.
-    lock::print_diff(Some(&manifest.project.name), &diff);
+    let name = if let ManifestFile::Package(pkg_manifest) = &manifest {
+        Some(pkg_manifest.project.name.as_str())
+    } else {
+        None
+    };
+    lock::print_diff(name, &diff);
 
     // If we're not only `check`ing, write the updated lock file.
     if !check {
