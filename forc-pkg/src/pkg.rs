@@ -439,7 +439,7 @@ impl BuildPlan {
         // explicitly inserted as a node in the graph. So a root node can have a corresponding
         // pinned node which is a child of another root. While finding the order we need to take
         // pinned versions into account so we should remove root version, if they have a
-        // corresponding pinned node in the graph. While doing so we should not lose root pkg 
+        // corresponding pinned node in the graph. While doing so we should not lose root pkg
         // indices that we removed for ordering since we are going to return corresponding root node
         // indices as the ordered root_pkgs for this BuildPlan.
         let mut ordering_graph = self.graph().clone();
