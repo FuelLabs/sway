@@ -36,7 +36,7 @@ pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option
 fn visibility_as_str(visibility: &Visibility) -> &'static str {
     match visibility {
         Visibility::Private => "",
-        Visibility::Public => "pub",
+        Visibility::Public => "pub ",
     }
 }
 
