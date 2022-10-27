@@ -102,6 +102,7 @@ fn capabilities() -> ServerCapabilities {
         document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
         inlay_hint_provider: Some(OneOf::Left(true)),
+        hover_provider: Some(HoverProviderCapability::Simple(true)),
         ..ServerCapabilities::default()
     }
 }
@@ -133,11 +134,12 @@ impl Backend {
                     let session = item.value();
                     session.shutdown();
                 });
+                self.sessions.clear();
 
                 // If no session can be found, then we need to call init and inserst a new session into the map
                 self.init(uri)?;
                 self.sessions
-                    .get(&manifest_dir) //
+                    .get(&manifest_dir)
                     .map(|item| item.value().clone())
                     .expect("no session found even though it was just inserted into the map")
             }
@@ -780,16 +782,16 @@ mod tests {
             json!({
                 "contents": {
                     "kind": "markdown",
-                    "value": "```sway\nstruct Data\n```"
+                    "value": " Struct holding:\n\n 1. A `value` of type `NumberOrString`\n 2. An `address` of type `u64`"
                 },
                 "range": {
                     "end": {
-                        "character": 11,
-                        "line": 19
+                        "character": 27,
+                        "line": 44
                     },
                     "start": {
-                        "character": 7,
-                        "line": 19
+                        "character": 23,
+                        "line": 44
                     }
                 }
             }),
@@ -819,8 +821,8 @@ mod tests {
                 "uri": uri,
             },
             "position": {
-                "line": 44,
-                "character": 27
+                "line": 45,
+                "character": 37
             }
         });
         let highlight = build_request_with_id("textDocument/documentHighlight", params, 1);
@@ -828,17 +830,18 @@ mod tests {
         let ok = Response::from_ok(
             1.into(),
             json!([{
-                "range": {
-                    "end": {
-                        "character": 27,
-                        "line": 44
-                    },
-                    "start": {
-                        "character": 23,
-                        "line": 44
+                    "range": {
+                        "end": {
+                            "character": 41,
+                            "line": 45
+                        },
+                        "start": {
+                            "character": 35,
+                            "line": 45
+                        }
                     }
                 }
-            }]),
+            ]),
         );
         assert_eq!(response, Ok(Some(ok)));
         highlight

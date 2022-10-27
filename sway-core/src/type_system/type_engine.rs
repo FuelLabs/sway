@@ -183,15 +183,6 @@ impl TypeEngine {
                         .map(|type_arg| type_arg.type_id)
                         .collect(),
                 );
-                // let type_mapping = TypeMapping::from_type_parameters(value.type_parameters());
-                // println!("before: {:?}", type_mapping);
-                // check!(
-                //     type_mapping.unify_with_type_arguments(type_arguments),
-                //     return err(warnings, errors),
-                //     warnings,
-                //     errors
-                // );
-                // println!("after: {:?}", type_mapping);
                 value.copy_types(&type_mapping);
                 ok((), warnings, errors)
             }
