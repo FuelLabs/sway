@@ -3736,10 +3736,11 @@ https://github.com/FuelLabs/sway/issues/1832</p>
 behaviour served no benefit over running <code>cargo test</code> directly. The proposal to change the behaviour
 to support unit testing can be found at the following link:
 https://github.com/FuelLabs/sway/issues/1833</p>
-<p>Sway unit tests are functions decorated with the <code>#[test_script]</code> attribute. Each test is compiled
-as an independent <code>script</code> program and has access to the namespace of the module in which it is
-declared. Unit tests declared within <code>contract</code> projects may also call directly into their
-associated contract's ABI.</p>
+<p>Sway unit tests are functions decorated with the <code>#[test]</code> attribute. Each test is compiled as a
+unique entry point for a single program and has access to the namespace of the module in which it is
+declared.</p>
+<p>Unit tests decorated with the <code>#[test(script)]</code> attribute that are declared within <code>contract</code>
+projects may also call directly into their associated contract's ABI.</p>
 <p>Upon successful compilation, test scripts are executed to their completion. A test is considered a
 failure in the case that a revert (<code>rvrt</code>) instruction is encountered during execution. Otherwise,
 it is considered a success.</p>
@@ -3749,12 +3750,61 @@ it is considered a success.</p>
 <p>&lt;<em>FILTER</em>&gt;
 When specified, only tests containing the given string will be executed</p>
 <h2 id="options-9"><a class="header" href="#options-9">OPTIONS:</a></h2>
+<p><code>--build-profile</code> &lt;<em>BUILD_PROFILE</em>&gt;</p>
+<p>Name of the build profile to use. If it is not specified, forc will use debug build
+profile</p>
+<p><code>-g</code>, <code>--debug-outfile</code> &lt;<em>DEBUG_OUTFILE</em>&gt;</p>
+<p>If set, outputs source file mapping in JSON format</p>
 <p><code>-h</code>, <code>--help</code> </p>
 <p>Print help information</p>
 <p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
 <p>Set the log level</p>
+<p><code>--locked</code> </p>
+<p>Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs
+to be updated, Forc will exit with an error</p>
+<p><code>--minify-json-abi</code> </p>
+<p>By default the JSON for ABIs is formatted for human readability. By using this option
+JSON output will be &quot;minified&quot;, i.e. all on one line without whitespace</p>
+<p><code>--minify-json-storage-slots</code> </p>
+<p>By default the JSON for initial storage slots is formatted for human readability. By
+using this option JSON output will be &quot;minified&quot;, i.e. all on one line without
+whitespace</p>
+<p><code>-o</code> &lt;<em>BINARY_OUTFILE</em>&gt;</p>
+<p>If set, outputs a binary file representing the script bytes</p>
+<p><code>--offline</code> </p>
+<p>Offline mode, prevents Forc from using the network when managing dependencies. Meaning
+it will only try to use previously downloaded dependencies</p>
+<p><code>--output-directory</code> &lt;<em>OUTPUT_DIRECTORY</em>&gt;</p>
+<p>The directory in which the sway compiler output artifacts are placed.</p>
+<p>By default, this is <code>&lt;project-root&gt;/out</code>.</p>
+<p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
+<p>Path to the project, if not specified, current working directory will be used</p>
+<p><code>--print-ast</code> </p>
+<p>Print the generated Sway AST (Abstract Syntax Tree)</p>
+<p><code>--print-finalized-asm</code> </p>
+<p>Print the finalized ASM.</p>
+<p>This is the state of the ASM with registers allocated and optimisations applied.</p>
+<p><code>--print-intermediate-asm</code> </p>
+<p>Print the generated ASM.</p>
+<p>This is the state of the ASM prior to performing register allocation and other ASM
+optimisations.</p>
+<p><code>--print-ir</code> </p>
+<p>Print the generated Sway IR (Intermediate Representation)</p>
+<p><code>--release</code> </p>
+<p>Use release build plan. If a custom release plan is not specified, it is implicitly
+added to the manifest file.</p>
+<p>If --build-profile is also provided, forc omits this flag and uses provided
+build-profile.</p>
 <p><code>-s</code>, <code>--silent</code> </p>
 <p>Silence all output</p>
+<p><code>-t</code>, <code>--terse</code> </p>
+<p>Terse mode. Limited warning and error output</p>
+<p><code>--time-phases</code> </p>
+<p>Output the time elapsed over each part of the compilation process</p>
+<p><code>--unstable</code> </p>
+<p>Enable the incomplete, unstable unit testing support. Warning: May create a black hole!</p>
+<p>This is purely for Sway devs to test the unit testing functionality until it stabilises,
+and will be removed upon stabilisation of the command.</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-update"><a class="header" href="#forc-update">forc-update</a></h1>
