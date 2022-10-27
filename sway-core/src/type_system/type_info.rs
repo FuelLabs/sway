@@ -196,11 +196,6 @@ impl Hash for TypeInfo {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for TypeInfo {
     fn eq(&self, other: &Self) -> bool {
-        // println!(
-        //     "comparing {} and {}",
-        //     self,
-        //     other,
-        // );
         match (self, other) {
             (Self::Unknown, Self::Unknown) => true,
             (Self::Boolean, Self::Boolean) => true,
