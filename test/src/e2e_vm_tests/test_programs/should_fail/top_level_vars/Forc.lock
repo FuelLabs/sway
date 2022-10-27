@@ -1,4 +1,3 @@
 [[package]]
 name = 'top_level_vars'
 source = 'root'
-dependencies = []

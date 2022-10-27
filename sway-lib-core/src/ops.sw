@@ -1,5 +1,7 @@
 library ops;
 
+use ::num::*;
+
 pub trait Add {
     fn add(self, other: Self) -> Self;
 }
@@ -152,11 +154,21 @@ impl Mod for u8 {
     }
 }
 
+pub trait Not {
+    fn not(self) -> Self;
+}
+
+impl Not for bool {
+    fn not(self) -> Self {
+        __eq(self, false)
+    }
+}
+
 pub trait Eq {
     fn eq(self, other: Self) -> bool;
 } {
     fn neq(self, other: Self) -> bool {
-        not(self.eq(other))
+        (self.eq(other)).not()
     }
 }
 
@@ -198,6 +210,12 @@ impl Eq for b256 {
             meq r4 r1 r2 r3;
             r4: bool
         }
+    }
+}
+
+impl Eq for raw_ptr {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
     }
 }
 
@@ -302,20 +320,14 @@ impl Ord for b256 {
     }
 }
 
-// Should this be a trait eventually? Do we want to allow people to customize what `!` does?
-// Scala says yes, Rust says perhaps...
-pub fn not(a: bool) -> bool {
-    __eq(a, false)
-}
-
 impl b256 {
     fn neq(self, other: Self) -> bool {
         // Both self and other are addresses of the values, so we can use MEQ.
-        not(asm(r1: self, r2: other, r3, r4) {
+        asm(r1: self, r2: other, r3, r4) {
             addi r3 zero i32;
             meq r4 r1 r2 r3;
             r4: bool
-        })
+        }.not()
     }
 }
 
@@ -354,6 +366,45 @@ impl BitwiseXor for u64 {
         asm(r1: self, r2: other, r3) {
             xor r3 r1 r2;
             r3: u64
+        }
+    }
+}
+
+impl Not for u64 {
+    fn not(self) -> Self {
+        asm(r1: self, r2) {
+            not r2 r1;
+            r2: u64
+        }
+    }
+}
+
+impl Not for u32 {
+    fn not(self) -> Self {
+        asm(r1: self, r2, r3: ~u32::max(), r4) {
+            not r2 r1;
+            and r4 r2 r3;
+            r4: u32
+        }
+    }
+}
+
+impl Not for u16 {
+    fn not(self) -> Self {
+        asm(r1: self, r2, r3: ~u16::max(), r4) {
+            not r2 r1;
+            and r4 r2 r3;
+            r4: u16
+        }
+    }
+}
+
+impl Not for u8 {
+    fn not(self) -> Self {
+        asm(r1: self, r2, r3: ~u8::max(), r4) {
+            not r2 r1;
+            and r4 r2 r3;
+            r4: u8
         }
     }
 }

@@ -12,7 +12,8 @@ use std::{
 use taplo::formatter as taplo_fmt;
 use tracing::{error, info};
 
-use forc_util::{find_manifest_dir, init_tracing_subscriber, println_green, println_red};
+use forc_tracing::{init_tracing_subscriber, println_green, println_red};
+use forc_util::find_manifest_dir;
 use sway_core::BuildConfig;
 use sway_utils::{constants, get_sway_files};
 use swayfmt::Formatter;

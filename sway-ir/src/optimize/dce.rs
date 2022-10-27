@@ -5,9 +5,7 @@
 //!   2. At the time of inspecting a definition, if it has no uses, it is removed.
 //! This pass does not do CFG transformations. That is handled by simplify_cfg.
 
-use crate::{
-    Block, BranchToWithArgs, Context, Function, Instruction, IrError, Module, Value, ValueDatum,
-};
+use crate::{Block, Context, Function, Instruction, IrError, Module, Value, ValueDatum};
 
 use std::collections::{HashMap, HashSet};
 
@@ -21,94 +19,9 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
     // Number of uses that an instruction has.
     let mut num_uses: HashMap<Value, (Block, u32)> = HashMap::new();
 
-    fn get_operands(inst: &Instruction) -> Vec<Value> {
-        match inst {
-            Instruction::AddrOf(v) => vec![*v],
-            Instruction::AsmBlock(_, args) => args.iter().filter_map(|aa| aa.initializer).collect(),
-            Instruction::BitCast(v, _) => vec![*v],
-            Instruction::BinaryOp { op: _, arg1, arg2 } => vec![*arg1, *arg2],
-            Instruction::Branch(BranchToWithArgs { args, .. }) => args.clone(),
-            Instruction::Call(_, vs) => vs.clone(),
-            Instruction::Cmp(_, lhs, rhs) => vec![*lhs, *rhs],
-            Instruction::ConditionalBranch {
-                cond_value,
-                true_block,
-                false_block,
-            } => {
-                let mut v = vec![*cond_value];
-                v.extend_from_slice(&true_block.args);
-                v.extend_from_slice(&false_block.args);
-                v
-            }
-            Instruction::ContractCall {
-                return_type: _,
-                name: _,
-                params,
-                coins,
-                asset_id,
-                gas,
-            } => vec![*params, *coins, *asset_id, *gas],
-            Instruction::ExtractElement {
-                array,
-                ty: _,
-                index_val,
-            } => vec![*array, *index_val],
-            Instruction::ExtractValue {
-                aggregate,
-                ty: _,
-                indices: _,
-            } => vec![*aggregate],
-            Instruction::GetStorageKey => vec![],
-            Instruction::Gtf {
-                index,
-                tx_field_id: _,
-            } => vec![*index],
-            Instruction::GetPointer {
-                base_ptr: _,
-                ptr_ty: _,
-                offset: _,
-            } =>
-            // TODO: Not sure.
-            {
-                vec![]
-            }
-            Instruction::InsertElement {
-                array,
-                ty: _,
-                value,
-                index_val,
-            } => vec![*array, *value, *index_val],
-            Instruction::InsertValue {
-                aggregate,
-                ty: _,
-                value,
-                indices: _,
-            } => vec![*aggregate, *value],
-            Instruction::IntToPtr(v, _) => vec![*v],
-            Instruction::Load(v) => vec![*v],
-            Instruction::Log {
-                log_val, log_id, ..
-            } => vec![*log_val, *log_id],
-            Instruction::Nop => vec![],
-            Instruction::ReadRegister(_) => vec![],
-            Instruction::Ret(v, _) => vec![*v],
-            Instruction::Revert(v) => vec![*v],
-            Instruction::StateLoadQuadWord { load_val, key } => vec![*load_val, *key],
-            Instruction::StateLoadWord(key) => vec![*key],
-            Instruction::StateStoreQuadWord { stored_val, key } => vec![*stored_val, *key],
-            Instruction::StateStoreWord { stored_val, key } => vec![*stored_val, *key],
-            Instruction::Store {
-                dst_val,
-                stored_val,
-            } => {
-                vec![*dst_val, *stored_val]
-            }
-        }
-    }
-
     // Go through each instruction and update use_count.
     for (block, inst) in function.instruction_iter(context) {
-        let opds = get_operands(inst.get_instruction(context).unwrap());
+        let opds = inst.get_instruction(context).unwrap().get_operands();
         for v in opds {
             match context.values[v.0].value {
                 ValueDatum::Instruction(_) => {
@@ -134,7 +47,7 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
             continue;
         }
         // Process dead's operands.
-        let opds = get_operands(dead.get_instruction(context).unwrap());
+        let opds = dead.get_instruction(context).unwrap().get_operands();
         for v in opds {
             // Reduce the use count of v. If it reaches 0, add it to the worklist.
             match context.values[v.0].value {

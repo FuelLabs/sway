@@ -4,7 +4,10 @@ use crate::{
     core::token::{TokenMap, TypeDefinition, TypedAstToken},
     utils::token::{struct_declaration_of_type_id, to_ident_key},
 };
-use sway_core::{declaration_engine, language::ty};
+use sway_core::{
+    declaration_engine::{self, de_get_function},
+    language::ty,
+};
 use sway_types::{ident::Ident, Spanned};
 
 pub fn traverse_node(node: &ty::TyAstNode, tokens: &TokenMap) {
@@ -23,6 +26,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
         ty::TyDeclaration::VariableDeclaration(variable) => {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&variable.name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                token.type_def = Some(TypeDefinition::Ident(variable.name.clone()));
             }
             if let Some(type_ascription_span) = &variable.type_ascription_span {
                 if let Some(mut token) =
@@ -41,6 +45,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
             {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&const_decl.name)) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
                 }
                 handle_expression(&const_decl.value, tokens);
             }
@@ -58,6 +63,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
             {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_decl.name)) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(trait_decl.name.clone()));
                 }
 
                 for trait_fn_decl_id in &trait_decl.interface_surface {
@@ -76,6 +82,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
             {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&struct_decl.name)) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(struct_decl.name));
                 }
 
                 for field in &struct_decl.fields {
@@ -105,6 +112,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
             {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&enum_decl.name)) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(enum_decl.name.clone()));
                 }
 
                 for type_param in &enum_decl.type_parameters {
@@ -169,6 +177,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
             if let Ok(abi_decl) = declaration_engine::de_get_abi(decl_id.clone(), &decl_id.span()) {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&abi_decl.name)) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(abi_decl.name.clone()));
                 }
 
                 for trait_fn_decl_id in &abi_decl.interface_surface {
@@ -224,7 +233,7 @@ fn handle_expression(expression: &ty::TyExpression, tokens: &TokenMap) {
             call_path,
             contract_call_params,
             arguments,
-            function_decl,
+            function_decl_id,
             ..
         } => {
             for ident in &call_path.prefixes {
@@ -236,7 +245,11 @@ fn handle_expression(expression: &ty::TyExpression, tokens: &TokenMap) {
 
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&call_path.suffix)) {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                token.type_def = Some(TypeDefinition::Ident(function_decl.name.clone()));
+                if let Ok(function_decl) =
+                    de_get_function(function_decl_id.clone(), &call_path.span())
+                {
+                    token.type_def = Some(TypeDefinition::Ident(function_decl.name));
+                }
             }
 
             for exp in contract_call_params.values() {
@@ -250,8 +263,11 @@ fn handle_expression(expression: &ty::TyExpression, tokens: &TokenMap) {
                 handle_expression(exp, tokens);
             }
 
-            for node in &function_decl.body.contents {
-                traverse_node(node, tokens);
+            if let Ok(function_decl) = de_get_function(function_decl_id.clone(), &call_path.span())
+            {
+                for node in &function_decl.body.contents {
+                    traverse_node(node, tokens);
+                }
             }
         }
         ty::TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
@@ -465,6 +481,7 @@ fn handle_while_loop(body: &ty::TyCodeBlock, condition: &ty::TyExpression, token
 fn collect_typed_trait_fn_token(trait_fn: &ty::TyTraitFn, tokens: &TokenMap) {
     if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_fn.name)) {
         token.typed = Some(TypedAstToken::TypedTraitFn(trait_fn.clone()));
+        token.type_def = Some(TypeDefinition::Ident(trait_fn.name.clone()));
     }
 
     for parameter in &trait_fn.parameters {
@@ -494,6 +511,7 @@ fn collect_typed_fn_param_token(param: &ty::TyFunctionParameter, tokens: &TokenM
 fn collect_typed_fn_decl(func_decl: &ty::TyFunctionDeclaration, tokens: &TokenMap) {
     if let Some(mut token) = tokens.get_mut(&to_ident_key(&func_decl.name)) {
         token.typed = Some(TypedAstToken::TypedFunctionDeclaration(func_decl.clone()));
+        token.type_def = Some(TypeDefinition::Ident(func_decl.name.clone()));
     }
 
     for node in &func_decl.body.contents {

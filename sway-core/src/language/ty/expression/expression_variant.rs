@@ -7,6 +7,7 @@ use derivative::Derivative;
 use sway_types::{state::StateIndex, Ident, Span};
 
 use crate::{
+    declaration_engine::{de_get_function, DeclarationId},
     language::{ty::*, *},
     type_system::*,
 };
@@ -20,7 +21,7 @@ pub enum TyExpressionVariant {
         #[derivative(Eq(bound = ""))]
         contract_call_params: HashMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
-        function_decl: TyFunctionDeclaration,
+        function_decl_id: DeclarationId,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
@@ -136,16 +137,20 @@ impl PartialEq for TyExpressionVariant {
                 Self::FunctionApplication {
                     call_path: l_name,
                     arguments: l_arguments,
-                    function_decl: l_function_decl,
+                    function_decl_id: l_function_decl_id,
                     ..
                 },
                 Self::FunctionApplication {
                     call_path: r_name,
                     arguments: r_arguments,
-                    function_decl: r_function_decl,
+                    function_decl_id: r_function_decl_id,
                     ..
                 },
             ) => {
+                let l_function_decl =
+                    de_get_function(l_function_decl_id.clone(), &Span::dummy()).unwrap();
+                let r_function_decl =
+                    de_get_function(r_function_decl_id.clone(), &Span::dummy()).unwrap();
                 l_name == r_name
                     && l_arguments == r_arguments
                     && l_function_decl.body == r_function_decl.body
@@ -354,19 +359,22 @@ impl PartialEq for TyExpressionVariant {
 }
 
 impl CopyTypes for TyExpressionVariant {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         use TyExpressionVariant::*;
         match self {
             Literal(..) => (),
             FunctionApplication {
                 arguments,
-                function_decl,
+                ref mut function_decl_id,
                 ..
             } => {
                 arguments
                     .iter_mut()
                     .for_each(|(_ident, expr)| expr.copy_types(type_mapping));
-                function_decl.copy_types(type_mapping);
+                let new_decl_id = function_decl_id
+                    .clone()
+                    .copy_types_and_insert_new(type_mapping);
+                function_decl_id.replace_id(*new_decl_id);
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).copy_types(type_mapping);
@@ -461,6 +469,119 @@ impl CopyTypes for TyExpressionVariant {
             Reassignment(reassignment) => reassignment.copy_types(type_mapping),
             StorageReassignment(..) => (),
             Return(stmt) => stmt.copy_types(type_mapping),
+        }
+    }
+}
+
+impl ReplaceSelfType for TyExpressionVariant {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        use TyExpressionVariant::*;
+        match self {
+            Literal(..) => (),
+            FunctionApplication {
+                arguments,
+                ref mut function_decl_id,
+                ..
+            } => {
+                arguments
+                    .iter_mut()
+                    .for_each(|(_ident, expr)| expr.replace_self_type(self_type));
+                let new_decl_id = function_decl_id
+                    .clone()
+                    .replace_self_type_and_insert_new(self_type);
+                function_decl_id.replace_id(*new_decl_id);
+            }
+            LazyOperator { lhs, rhs, .. } => {
+                (*lhs).replace_self_type(self_type);
+                (*rhs).replace_self_type(self_type);
+            }
+            VariableExpression { .. } => (),
+            Tuple { fields } => fields
+                .iter_mut()
+                .for_each(|x| x.replace_self_type(self_type)),
+            Array { contents } => contents
+                .iter_mut()
+                .for_each(|x| x.replace_self_type(self_type)),
+            ArrayIndex { prefix, index } => {
+                (*prefix).replace_self_type(self_type);
+                (*index).replace_self_type(self_type);
+            }
+            StructExpression { fields, .. } => fields
+                .iter_mut()
+                .for_each(|x| x.replace_self_type(self_type)),
+            CodeBlock(block) => {
+                block.replace_self_type(self_type);
+            }
+            FunctionParameter => (),
+            IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.replace_self_type(self_type);
+                then.replace_self_type(self_type);
+                if let Some(ref mut r#else) = r#else {
+                    r#else.replace_self_type(self_type);
+                }
+            }
+            AsmExpression { registers, .. } => {
+                registers
+                    .iter_mut()
+                    .for_each(|x| x.replace_self_type(self_type));
+            }
+            StructFieldAccess {
+                prefix,
+                field_to_access,
+                ref mut resolved_type_of_parent,
+                ..
+            } => {
+                resolved_type_of_parent.replace_self_type(self_type);
+                field_to_access.replace_self_type(self_type);
+                prefix.replace_self_type(self_type);
+            }
+            TupleElemAccess {
+                prefix,
+                ref mut resolved_type_of_parent,
+                ..
+            } => {
+                resolved_type_of_parent.replace_self_type(self_type);
+                prefix.replace_self_type(self_type);
+            }
+            EnumInstantiation {
+                enum_decl,
+                contents,
+                ..
+            } => {
+                enum_decl.replace_self_type(self_type);
+                if let Some(ref mut contents) = contents {
+                    contents.replace_self_type(self_type)
+                };
+            }
+            AbiCast { address, .. } => address.replace_self_type(self_type),
+            StorageAccess { .. } => (),
+            IntrinsicFunction(kind) => {
+                kind.replace_self_type(self_type);
+            }
+            EnumTag { exp } => {
+                exp.replace_self_type(self_type);
+            }
+            UnsafeDowncast { exp, variant } => {
+                exp.replace_self_type(self_type);
+                variant.replace_self_type(self_type);
+            }
+            AbiName(_) => (),
+            WhileLoop {
+                ref mut condition,
+                ref mut body,
+            } => {
+                condition.replace_self_type(self_type);
+                body.replace_self_type(self_type);
+            }
+            Break => (),
+            Continue => (),
+            Reassignment(reassignment) => reassignment.replace_self_type(self_type),
+            StorageReassignment(..) => (),
+            Return(stmt) => stmt.replace_self_type(self_type),
         }
     }
 }

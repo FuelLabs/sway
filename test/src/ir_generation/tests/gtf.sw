@@ -8,6 +8,8 @@ fn main() {
     let field2 = __gtf::<b256>(2, SOME_OTHER_TX_FIELD);
 }
 
+// ::check-ir::
+
 // check: local ptr u64 field1
 // check: local ptr b256 field2
 
@@ -21,3 +23,15 @@ fn main() {
 // check: $(gtf2_int_to_ptr=$VAL) = int_to_ptr $gtf2 to b256, !6
 // check: $(field2_ptr=$VAL) = get_ptr ptr b256 field2, ptr b256, 0
 // check: store $gtf2_int_to_ptr, ptr $field2_ptr
+
+// ::check-asm::
+
+// regex: REG=.r\d+\b
+
+// check: gtf  $REG $$one i66
+
+// check: lw   $(two=$REG) data_0
+// check: gtf  $(b256_ptr=$REG) $two i119
+// check: mcpi $REG $b256_ptr i32
+
+// check: data_0 .word 2

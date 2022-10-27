@@ -1,8 +1,8 @@
-use fuel_vm::fuel_crypto::Hasher;
-use fuel_vm::fuel_tx::ConsensusParameters;
-use fuel_vm::fuel_tx::Transaction as FuelTransaction;
-use fuels::prelude::*;
-use fuels::tx::{Bytes32, ContractId};
+use fuel_vm::{fuel_crypto::Hasher, fuel_tx::ConsensusParameters};
+use fuels::{
+    prelude::*,
+    tx::{Bytes32, ContractId},
+};
 use std::str::FromStr;
 
 abigen!(
@@ -203,7 +203,7 @@ async fn can_get_script_bytecode_hash() {
         .unwrap()
         .tx;
     let hash = match tx {
-        FuelTransaction::Script { script, .. } => {
+        fuels::tx::Transaction::Script { script, .. } => {
             // Make sure script is actually something fairly substantial
             assert!(script.len() > 1);
             Hasher::hash(&script)

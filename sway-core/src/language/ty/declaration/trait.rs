@@ -1,5 +1,5 @@
 use derivative::Derivative;
-use sway_types::Ident;
+use sway_types::{Ident, Span};
 
 use crate::{
     declaration_engine::DeclarationId,
@@ -18,17 +18,27 @@ pub struct TyTraitDeclaration {
     // work, so I am just going to exclude it
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
-    pub(crate) methods: Vec<parsed::FunctionDeclaration>,
-    pub(crate) supertraits: Vec<parsed::Supertrait>,
+    pub methods: Vec<parsed::FunctionDeclaration>,
+    pub supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
     pub attributes: transform::AttributesMap,
+    pub span: Span,
 }
 
 impl CopyTypes for TyTraitDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.interface_surface
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
+        // we don't have to type check the methods because it hasn't been type checked yet
+    }
+}
+
+impl ReplaceSelfType for TyTraitDeclaration {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.interface_surface
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
         // we don't have to type check the methods because it hasn't been type checked yet
     }
 }

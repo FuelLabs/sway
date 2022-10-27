@@ -22,10 +22,10 @@ pub struct TyFunctionDeclaration {
     /// Used for error messages -- the span pointing to the return type
     /// annotation of the function
     pub return_type_span: Span,
-    pub(crate) visibility: Visibility,
+    pub visibility: Visibility,
     /// whether this function exists in another contract and requires a call to it or not
-    pub(crate) is_contract_call: bool,
-    pub(crate) purity: Purity,
+    pub is_contract_call: bool,
+    pub purity: Purity,
 }
 
 impl From<&TyFunctionDeclaration> for TyAstNode {
@@ -57,7 +57,7 @@ impl PartialEq for TyFunctionDeclaration {
 }
 
 impl CopyTypes for TyFunctionDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
@@ -66,6 +66,19 @@ impl CopyTypes for TyFunctionDeclaration {
             .for_each(|x| x.copy_types(type_mapping));
         self.return_type.copy_types(type_mapping);
         self.body.copy_types(type_mapping);
+    }
+}
+
+impl ReplaceSelfType for TyFunctionDeclaration {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.type_parameters
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+        self.parameters
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+        self.return_type.replace_self_type(self_type);
+        self.body.replace_self_type(self_type);
     }
 }
 
@@ -95,11 +108,12 @@ impl TyFunctionDeclaration {
             span,
             return_type_span,
             visibility,
+            purity,
             ..
         } = decl;
         let initial_return_type = insert_type(return_type);
         TyFunctionDeclaration {
-            purity: Default::default(),
+            purity,
             name,
             body: TyCodeBlock {
                 contents: Default::default(),
@@ -239,6 +253,24 @@ impl TyFunctionDeclaration {
             },
         }
     }
+
+    /// Whether or not this function is the default entry point.
+    pub fn is_main_entry(&self) -> bool {
+        // NOTE: We may want to make this check more sophisticated or customisable in the future,
+        // but for now this assumption is baked in throughout the compiler.
+        self.name.as_str() == sway_types::constants::DEFAULT_ENTRY_POINT_FN_NAME
+    }
+
+    /// Whether or not this function is a unit test, i.e. decorated with `#[test]`.
+    pub fn is_test(&self) -> bool {
+        self.attributes
+            .contains_key(&transform::AttributeKind::Test)
+    }
+
+    /// Whether or not this function describes a program entry point.
+    pub fn is_entry(&self) -> bool {
+        self.is_main_entry() || self.is_test()
+    }
 }
 
 #[derive(Debug, Clone, Eq)]
@@ -264,8 +296,14 @@ impl PartialEq for TyFunctionParameter {
 }
 
 impl CopyTypes for TyFunctionParameter {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.type_id.copy_types(type_mapping);
+    }
+}
+
+impl ReplaceSelfType for TyFunctionParameter {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.type_id.replace_self_type(self_type);
     }
 }
 

@@ -26,21 +26,25 @@ mod ir_builder {
     peg::parser! {
         pub(in crate::parser) grammar parser() for str {
             pub(in crate::parser) rule ir_descrs() -> IrAstModule
-                = _ s:script() eoi() {
-                    s
+                = _ sop:script_or_predicate() eoi() {
+                    sop
                 }
                 / _ c:contract() eoi() {
                     c
                 }
 
-            rule script() -> IrAstModule
-                = "script" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
+            rule script_or_predicate() -> IrAstModule
+                = kind:module_kind() "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
                     IrAstModule {
-                        kind: crate::module::Kind::Script,
+                        kind,
                         fn_decls,
                         metadata
                     }
                 }
+
+            rule module_kind() -> Kind
+                = "script" _ { Kind::Script }
+                / "predicate" _ { Kind::Predicate }
 
             rule contract() -> IrAstModule
                 = "contract" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
@@ -52,16 +56,34 @@ mod ir_builder {
                 }
 
             rule fn_decl() -> IrAstFnDecl
-                = "fn" _ name:id() _ selector:selector_id()? _ "(" _
-                      args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
-                          metadata:comma_metadata_idx()? "{" _
-                      locals:fn_local()*
-                      blocks:block_decl()*
-                  "}" _ {
+                = "pub fn" _ name:id() _ selector:selector_id()? _ "(" _
+                        args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
+                            metadata:comma_metadata_idx()? "{" _
+                        locals:fn_local()*
+                        blocks:block_decl()*
+                    "}" _ {
                     IrAstFnDecl {
                         name,
                         args,
                         ret_type,
+                        is_public: true,
+                        metadata,
+                        locals,
+                        blocks,
+                        selector
+                    }
+                }
+                / "fn" _ name:id() _ selector:selector_id()? _ "(" _
+                        args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
+                            metadata:comma_metadata_idx()? "{" _
+                        locals:fn_local()*
+                        blocks:block_decl()*
+                    "}" _ {
+                    IrAstFnDecl {
+                        name,
+                        args,
+                        ret_type,
+                        is_public: false,
                         metadata,
                         locals,
                         blocks,
@@ -150,6 +172,7 @@ mod ir_builder {
                 / op_int_to_ptr()
                 / op_load()
                 / op_log()
+                / op_mem_copy()
                 / op_nop()
                 / op_read_register()
                 / op_ret()
@@ -271,6 +294,11 @@ mod ir_builder {
             rule op_log() -> IrAstOperation
                 = "log" _ log_ty:ast_ty() log_val:id() comma() log_id:id() {
                     IrAstOperation::Log(log_ty, log_val, log_id)
+                }
+
+            rule op_mem_copy() -> IrAstOperation
+                = "mem_copy" _ dst_name:id() comma() src_name:id() comma() len:decimal() {
+                    IrAstOperation::MemCopy(dst_name, src_name, len)
                 }
 
             rule op_nop() -> IrAstOperation
@@ -443,6 +471,7 @@ mod ir_builder {
                 / array_ty()
                 / struct_ty()
                 / union_ty()
+                / mp:mut_ptr() ty:ast_ty() { IrAstTy::Pointer(Box::new(ty), mp) }
 
             rule array_ty() -> IrAstTy
                 = "[" _ ty:ast_ty() ";" _ c:decimal() "]" _ {
@@ -590,6 +619,7 @@ mod ir_builder {
         name: String,
         args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
         ret_type: IrAstTy,
+        is_public: bool,
         metadata: Option<MdIdxRef>,
         locals: Vec<(IrAstTy, String, bool, Option<IrAstOperation>)>,
         blocks: Vec<IrAstBlock>,
@@ -638,6 +668,7 @@ mod ir_builder {
         IntToPtr(String, IrAstTy),
         Load(String),
         Log(IrAstTy, String, String),
+        MemCopy(String, String, u64),
         Nop,
         ReadRegister(String),
         Ret(IrAstTy, String),
@@ -744,6 +775,7 @@ mod ir_builder {
         Array(Box<IrAstTy>, u64),
         Union(Vec<IrAstTy>),
         Struct(Vec<IrAstTy>),
+        Pointer(Box<IrAstTy>, bool),
     }
 
     impl IrAstTy {
@@ -757,6 +789,10 @@ mod ir_builder {
                 IrAstTy::Array(..) => Type::Array(self.to_ir_aggregate_type(context)),
                 IrAstTy::Union(_) => Type::Union(self.to_ir_aggregate_type(context)),
                 IrAstTy::Struct(_) => Type::Struct(self.to_ir_aggregate_type(context)),
+                IrAstTy::Pointer(ty, is_mut) => {
+                    let ty = ty.to_ir_type(context);
+                    Type::Pointer(Pointer::new(context, ty, *is_mut, None))
+                }
             }
         }
 
@@ -846,7 +882,7 @@ mod ir_builder {
                 args,
                 ret_type,
                 fn_decl.selector,
-                false,
+                fn_decl.is_public,
                 convert_md_idx(&fn_decl.metadata),
             );
 
@@ -1151,6 +1187,14 @@ mod ir_builder {
                             )
                             .add_metadatum(context, opt_metadata)
                     }
+                    IrAstOperation::MemCopy(dst_name, src_name, len) => block
+                        .ins(context)
+                        .mem_copy(
+                            *val_map.get(&dst_name).unwrap(),
+                            *val_map.get(&src_name).unwrap(),
+                            len,
+                        )
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::Nop => block.ins(context).nop(),
                     IrAstOperation::ReadRegister(reg_name) => block
                         .ins(context)

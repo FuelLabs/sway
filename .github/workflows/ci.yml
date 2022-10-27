@@ -384,6 +384,7 @@ jobs:
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-fmt/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-lsp/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-pkg/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-tracing/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-util/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-core/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} swayfmt/Cargo.toml

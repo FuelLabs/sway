@@ -8,6 +8,8 @@
 
 use std::collections::{BTreeMap, HashMap};
 
+use rustc_hash::{FxHashMap, FxHashSet};
+
 use crate::{
     block::{Block, BlockIterator, Label},
     constant::Constant,
@@ -18,7 +20,7 @@ use crate::{
     module::Module,
     pointer::{Pointer, PointerContent},
     value::Value,
-    BlockArgument,
+    BlockArgument, BranchToWithArgs,
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
@@ -264,6 +266,11 @@ impl Function {
         context.functions[self.0].return_type
     }
 
+    /// Get the number of args.
+    pub fn num_args(&self, context: &Context) -> usize {
+        context.functions[self.0].arguments.len()
+    }
+
     /// Get an arg value by name, if found.
     pub fn get_arg(&self, context: &Context, name: &str) -> Option<Value> {
         context.functions[self.0]
@@ -417,15 +424,14 @@ impl Function {
     /// Replace a value with another within this function.
     ///
     /// This is a convenience method which iterates over this function's blocks and calls
-    /// [`Block::replace_value`] in turn.
+    /// [`Block::replace_values`] in turn.
     ///
     /// `starting_block` is an optimisation for when the first possible reference to `old_val` is
     /// known.
-    pub fn replace_value(
+    pub fn replace_values(
         &self,
         context: &mut Context,
-        old_val: Value,
-        new_val: Value,
+        replace_map: &FxHashMap<Value, Value>,
         starting_block: Option<Block>,
     ) {
         let mut block_iter = self.block_iter(context).peekable();
@@ -439,8 +445,47 @@ impl Function {
         }
 
         for block in block_iter {
-            block.replace_value(context, old_val, new_val);
+            block.replace_values(context, replace_map);
         }
+    }
+
+    pub fn replace_value(
+        &self,
+        context: &mut Context,
+        old_val: Value,
+        new_val: Value,
+        starting_block: Option<Block>,
+    ) {
+        let mut map = FxHashMap::<Value, Value>::default();
+        map.insert(old_val, new_val);
+        self.replace_values(context, &map, starting_block);
+    }
+
+    /// A graphviz dot graph of the control-flow-graph.
+    pub fn dot_cfg(&self, context: &Context) -> String {
+        let mut worklist = Vec::<Block>::new();
+        let mut visited = FxHashSet::<Block>::default();
+        let entry = self.get_entry_block(context);
+        let mut res = format!("digraph {} {{\n", self.get_name(context));
+
+        worklist.push(entry);
+        while !worklist.is_empty() {
+            let n = worklist.pop().unwrap();
+            visited.insert(n);
+            for BranchToWithArgs { block: n_succ, .. } in n.successors(context) {
+                res += &(format!(
+                    "\t{} -> {}\n",
+                    n.get_label(context),
+                    n_succ.get_label(context)
+                ));
+                if !visited.contains(&n_succ) {
+                    worklist.push(n_succ);
+                }
+            }
+        }
+
+        res += "}\n";
+        res
     }
 }
 

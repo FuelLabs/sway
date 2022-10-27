@@ -6,7 +6,7 @@ use super::{
 };
 
 use crate::{
-    asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualOp},
+    asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
     error::*,
     metadata::MetadataManager,
     size_bytes_in_words, size_bytes_round_up_to_word_alignment,
@@ -212,13 +212,18 @@ impl<'ir> AsmBuilder<'ir> {
                     log_ty,
                     log_id,
                 } => self.compile_log(instr_val, log_val, log_ty, log_id),
+                Instruction::MemCopy {
+                    dst_val,
+                    src_val,
+                    byte_len,
+                } => self.compile_mem_copy(instr_val, dst_val, src_val, *byte_len),
                 Instruction::Nop => (),
                 Instruction::ReadRegister(reg) => self.compile_read_register(instr_val, reg),
                 Instruction::Ret(ret_val, ty) => {
                     if func_is_entry {
                         self.compile_ret_from_entry(instr_val, ret_val, ty)
                     } else {
-                        self.compile_ret_from_call(instr_val, ret_val, ty)
+                        self.compile_ret_from_call(instr_val, ret_val)
                     }
                 }
                 Instruction::Revert(revert_val) => self.compile_revert(instr_val, revert_val),
@@ -301,9 +306,27 @@ impl<'ir> AsmBuilder<'ir> {
                     reg_name: name.clone()
                 }
             );
-            let arg_reg = initializer
-                .map(|init_val| self.value_to_register(&init_val))
-                .unwrap_or_else(|| self.reg_seqr.next());
+            let arg_reg = match initializer {
+                Some(init_val) => {
+                    let init_val_reg = self.value_to_register(init_val);
+                    match init_val_reg {
+                        VirtualRegister::Virtual(_) => init_val_reg,
+                        VirtualRegister::Constant(_) => {
+                            let const_copy = self.reg_seqr.next();
+                            inline_ops.push(Op {
+                                opcode: Either::Left(VirtualOp::MOVE(
+                                    const_copy.clone(),
+                                    init_val_reg,
+                                )),
+                                comment: "copy const asm init to GP reg".into(),
+                                owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+                            });
+                            const_copy
+                        }
+                    }
+                }
+                None => self.reg_seqr.next(),
+            };
             inline_reg_map.insert(name.as_str(), arg_reg);
         }
 
@@ -1198,6 +1221,37 @@ impl<'ir> AsmBuilder<'ir> {
         }
         self.reg_map.insert(*instr_val, instr_reg);
         ok((), Vec::new(), Vec::new())
+    }
+
+    fn compile_mem_copy(
+        &mut self,
+        instr_val: &Value,
+        dst_val: &Value,
+        src_val: &Value,
+        byte_len: u64,
+    ) {
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
+        let dst_reg = self.value_to_register(dst_val);
+        let src_reg = self.value_to_register(src_val);
+
+        let len_reg = self.reg_seqr.next();
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::MOVI(
+                len_reg.clone(),
+                VirtualImmediate18 {
+                    value: byte_len as u32,
+                },
+            )),
+            comment: "get length for mcp".into(),
+            owning_span: owning_span.clone(),
+        });
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::MCP(dst_reg, src_reg, len_reg)),
+            comment: "copy memory with mem_copy".into(),
+            owning_span,
+        });
     }
 
     fn compile_log(&mut self, instr_val: &Value, log_val: &Value, log_ty: &Type, log_id: &Value) {

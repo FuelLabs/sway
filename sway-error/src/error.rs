@@ -272,6 +272,8 @@ pub enum CompileError {
     DeclIsNotATraitFn { actually: String, span: Span },
     #[error("This is a {actually}, not storage.")]
     DeclIsNotStorage { actually: String, span: Span },
+    #[error("This is a {actually}, not a constant")]
+    DeclIsNotAConstant { actually: String, span: Span },
     #[error(
         "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
          {available_fields}"
@@ -654,6 +656,8 @@ pub enum CompileError {
     ConfigTimeConstantNotALiteral { span: Span },
     #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident },
+    #[error("returning a `raw_ptr` from `main()` is not allowed")]
+    PointerReturnNotAllowedInMain { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -791,6 +795,7 @@ impl Spanned for CompileError {
             DeclIsNotAnImplTrait { span, .. } => span.clone(),
             DeclIsNotATraitFn { span, .. } => span.clone(),
             DeclIsNotStorage { span, .. } => span.clone(),
+            DeclIsNotAConstant { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             ImpureInPureContext { span, .. } => span.clone(),
             ParameterMutabilityMismatch { span, .. } => span.clone(),
@@ -829,6 +834,7 @@ impl Spanned for CompileError {
             ConfigTimeConstantNotAConstDecl { span } => span.clone(),
             ConfigTimeConstantNotALiteral { span } => span.clone(),
             RefMutableNotAllowedInMain { param_name } => param_name.span(),
+            PointerReturnNotAllowedInMain { span } => span.clone(),
         }
     }
 }

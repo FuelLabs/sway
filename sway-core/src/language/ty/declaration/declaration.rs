@@ -28,17 +28,35 @@ pub enum TyDeclaration {
 }
 
 impl CopyTypes for TyDeclaration {
-    /// The entry point to monomorphizing typed declarations. Instantiates all new type ids,
-    /// assuming `self` has already been copied.
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         use TyDeclaration::*;
         match self {
             VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
-            FunctionDeclaration(ref mut fn_decl) => fn_decl.copy_types(type_mapping),
-            TraitDeclaration(ref mut trait_decl) => trait_decl.copy_types(type_mapping),
+            FunctionDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping),
+            TraitDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping),
             StructDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping),
-            EnumDeclaration(ref mut enum_decl) => enum_decl.copy_types(type_mapping),
-            ImplTrait(impl_trait) => impl_trait.copy_types(type_mapping),
+            EnumDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping),
+            ImplTrait(decl_id) => decl_id.copy_types(type_mapping),
+            // generics in an ABI is unsupported by design
+            AbiDeclaration(..)
+            | ConstantDeclaration(_)
+            | StorageDeclaration(..)
+            | GenericTypeForFunctionScope { .. }
+            | ErrorRecovery => (),
+        }
+    }
+}
+
+impl ReplaceSelfType for TyDeclaration {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        use TyDeclaration::*;
+        match self {
+            VariableDeclaration(ref mut var_decl) => var_decl.replace_self_type(self_type),
+            FunctionDeclaration(ref mut decl_id) => decl_id.replace_self_type(self_type),
+            TraitDeclaration(ref mut decl_id) => decl_id.replace_self_type(self_type),
+            StructDeclaration(ref mut decl_id) => decl_id.replace_self_type(self_type),
+            EnumDeclaration(ref mut decl_id) => decl_id.replace_self_type(self_type),
+            ImplTrait(decl_id) => decl_id.replace_self_type(self_type),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
             | ConstantDeclaration(_)
@@ -132,20 +150,23 @@ impl fmt::Display for TyDeclaration {
 
 impl CollectTypesMetadata for TyDeclaration {
     // this is only run on entry nodes, which must have all well-formed types
-    fn collect_types_metadata(&self) -> CompileResult<Vec<TypeMetadata>> {
+    fn collect_types_metadata(
+        &self,
+        ctx: &mut CollectTypesMetadataContext,
+    ) -> CompileResult<Vec<TypeMetadata>> {
         use TyDeclaration::*;
         let mut warnings = vec![];
         let mut errors = vec![];
         let metadata = match self {
             VariableDeclaration(decl) => {
                 let mut body = check!(
-                    decl.body.collect_types_metadata(),
+                    decl.body.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 body.append(&mut check!(
-                    decl.type_ascription.collect_types_metadata(),
+                    decl.type_ascription.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -158,21 +179,21 @@ impl CollectTypesMetadata for TyDeclaration {
                     let mut body = vec![];
                     for content in decl.body.contents.iter() {
                         body.append(&mut check!(
-                            content.collect_types_metadata(),
+                            content.collect_types_metadata(ctx),
                             return err(warnings, errors),
                             warnings,
                             errors
                         ));
                     }
                     body.append(&mut check!(
-                        decl.return_type.collect_types_metadata(),
+                        decl.return_type.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
                     ));
                     for type_param in decl.type_parameters.iter() {
                         body.append(&mut check!(
-                            type_param.type_id.collect_types_metadata(),
+                            type_param.type_id.collect_types_metadata(ctx),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -180,7 +201,7 @@ impl CollectTypesMetadata for TyDeclaration {
                     }
                     for param in decl.parameters.iter() {
                         body.append(&mut check!(
-                            param.type_id.collect_types_metadata(),
+                            param.type_id.collect_types_metadata(ctx),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -197,7 +218,7 @@ impl CollectTypesMetadata for TyDeclaration {
                 match de_get_constant(decl_id.clone(), &decl_id.span()) {
                     Ok(TyConstantDeclaration { value, .. }) => {
                         check!(
-                            value.collect_types_metadata(),
+                            value.collect_types_metadata(ctx),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -336,6 +357,26 @@ impl TyDeclaration {
         }
     }
 
+    /// Retrieves the declaration as an Constant declaration.
+    ///
+    /// Returns an error if `self` is not a [TyConstantDeclaration].
+    pub(crate) fn expect_const(&self, access_span: &Span) -> CompileResult<TyConstantDeclaration> {
+        match self {
+            TyDeclaration::ConstantDeclaration(decl) => {
+                CompileResult::from(de_get_constant(decl.clone(), access_span))
+            }
+            decl => {
+                let errors = vec![
+                    (CompileError::DeclIsNotAConstant {
+                        actually: decl.friendly_name().to_string(),
+                        span: decl.span(),
+                    }),
+                ];
+                err(vec![], errors)
+            }
+        }
+    }
+
     /// friendly name string used for error reporting.
     pub fn friendly_name(&self) -> &'static str {
         use TyDeclaration::*;
@@ -359,12 +400,14 @@ impl TyDeclaration {
         let mut errors = vec![];
         let type_id = match self {
             TyDeclaration::VariableDeclaration(decl) => decl.body.return_type,
-            TyDeclaration::FunctionDeclaration { .. } => {
-                errors.push(CompileError::Unimplemented(
-                    "Function pointers have not yet been implemented.",
-                    self.span(),
-                ));
-                return err(warnings, errors);
+            TyDeclaration::FunctionDeclaration(decl_id) => {
+                let decl = check!(
+                    CompileResult::from(de_get_function(decl_id.clone(), &self.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                decl.return_type
             }
             TyDeclaration::StructDeclaration(decl_id) => {
                 let decl = check!(
