@@ -410,6 +410,7 @@ impl BuildPlan {
                 );
             }
             info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
+            // TODO: refactor me
             let name = match manifest {
                 ManifestFile::Package(pkg_manifest_file) => pkg_manifest_file.project.name.clone(),
                 ManifestFile::Workspace(_) => "workspace".to_string(),
@@ -432,15 +433,7 @@ impl BuildPlan {
     /// resulting list of node indices.
     pub fn root_pkgs(&self) -> Result<Vec<NodeIx>> {
         let graph = self.graph();
-        let parentless_nodes: HashSet<NodeIx> = graph
-            .node_indices()
-            .filter(|&n| {
-                graph
-                    .edges_directed(n, Direction::Incoming)
-                    .next()
-                    .is_none()
-            })
-            .collect();
+        let parentless_nodes: HashSet<NodeIx> = parentless_nodes(graph).collect();
         let rev_pkg_graph = petgraph::visit::Reversed(&graph);
         let mut order = petgraph::algo::toposort(rev_pkg_graph, None)
             .map_err(|e| -> Error { anyhow!("{:?}", e) })?;
@@ -464,12 +457,17 @@ impl BuildPlan {
     }
 }
 
+/// Given a graph return yields an iterator over nodes without parents. These can be later filtered for
+/// detecting possible root nodes.
+fn parentless_nodes(g: &'_ Graph) -> impl '_ + Iterator<Item = NodeIx> {
+    g.node_indices()
+        .filter(|&n| g.edges_directed(n, Direction::Incoming).next().is_none())
+}
+
 /// Given a graph and the known project name retrieved from the manifest, produce an iterator
 /// yielding any nodes from the graph that might potentially be the project node.
 fn potential_proj_nodes<'a>(g: &'a Graph, proj_name: &'a str) -> impl 'a + Iterator<Item = NodeIx> {
-    g.node_indices()
-        .filter(|&n| g.edges_directed(n, Direction::Incoming).next().is_none())
-        .filter(move |&n| g[n].name == proj_name)
+    parentless_nodes(g).filter(move |&n| g[n].name == proj_name)
 }
 
 /// Given a graph, find the project node.
