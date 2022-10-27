@@ -2450,16 +2450,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
             let built_package = build_package_with_options(&package_manifest, build_options)?;
             Ok(Built::Package(built_package))
         }
-        ManifestFile::Workspace(workspace_manifest) => {
-            let manifest_file = ManifestFile::Workspace(workspace_manifest);
-            let build_plan = BuildPlan::from_lock_and_manifest(&manifest_file, false, false)?;
-            println!("{:?}", petgraph::dot::Dot::new(&build_plan.graph()));
-            let order: Vec<String> = build_plan
-                .root_pkgs()?
-                .iter()
-                .map(|ix| build_plan.graph()[*ix].name.clone())
-                .collect();
-            println!("{:?}", order);
+        ManifestFile::Workspace(_) => {
             bail!("Workspace building is not supported")
         }
     }
