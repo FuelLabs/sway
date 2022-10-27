@@ -36,9 +36,9 @@ fn main() -> bool {
     // Copy the struct into a buffer
     let buf_ptr = alloc(16);
     foo_ptr.copy_to(buf_ptr, 16);
-    assert(asm(r1: buf_ptr, r2: foo_ptr, r3: foo_len) {
-        meq r1 r1 r2 r3;
-        r1: bool
+    assert(asm(r1: buf_ptr, r2: foo_ptr, r3: foo_len, res) {
+        meq res r1 r2 r3;
+        res: bool
     });
 
     // Read the pointer as a TestStruct
