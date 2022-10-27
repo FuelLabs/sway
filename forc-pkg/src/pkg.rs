@@ -366,9 +366,7 @@ impl BuildPlan {
         let members = match manifest {
             ManifestFile::Package(pkg_manifest_file) => {
                 let pkg_name = pkg_manifest_file.project.name.clone();
-                let mut members = HashSet::new();
-                members.insert(pkg_name);
-                members
+                HashSet::from([pkg_name])
             }
             ManifestFile::Workspace(workspace_manifest_file) => {
                 workspace_manifest_file.members().cloned().collect()
@@ -437,11 +435,13 @@ impl BuildPlan {
         let graph = self.graph();
         let parentless_nodes: HashSet<NodeIx> = parentless_nodes(graph).collect();
         let mut pinned_to_root_map = HashMap::new();
-        // The graph will have root's of workspace members and pinned dependencies between them are
-        // explicitly inserted as a node in the graph. While finding the order we need to take
-        // pinned versions into account so we should remove root correspondings but while doing so
-        // we should not lose root pkg indices since we should return corresponding root node
-        // indices.
+        // The graph will have roots of workspace members and pinned dependencies between them are
+        // explicitly inserted as a node in the graph. So a root node can have a corresponding
+        // pinned node which is a child of another root. While finding the order we need to take
+        // pinned versions into account so we should remove root version, if they have a
+        // corresponding pinned node in the graph. While doing so we should not lose root pkg 
+        // indices that we removed for ordering since we are going to return corresponding root node
+        // indices as the ordered root_pkgs for this BuildPlan.
         let mut ordering_graph = self.graph().clone();
         for node in graph
             .node_indices()
@@ -453,7 +453,9 @@ impl BuildPlan {
                 .filter(|node| !matches!(graph[*node].source, SourcePinned::Root))
                 .find(|node| graph[*node].name == root_version.name);
             if let Some(pinned_version) = pinned_version {
+                // Add this Root node as the corresponding node for `pinned_version`
                 pinned_to_root_map.insert(pinned_version, node);
+                // remove this root node from the ordering graph.
                 ordering_graph.remove_node(node);
             }
         }
@@ -463,11 +465,16 @@ impl BuildPlan {
         for node in &order {
             match pinned_to_root_map.get(node) {
                 Some(root_pkg) => {
+                    // If given node has actually a root node corresponding add that to
+                    // root_pkgs. This happens when a workspace member depends on this member.
                     if parentless_nodes.contains(root_pkg) {
                         root_pkgs.push(*root_pkg);
                     }
                 }
                 None => {
+                    // If this node does not have a corresponding root node in the map, add the
+                    // node directly. This happens if the no workspace member depends on this
+                    // member.
                     if parentless_nodes.contains(node) {
                         root_pkgs.push(*node);
                     }
