@@ -6,6 +6,7 @@ mod render;
 use anyhow::{bail, Result};
 use clap::Parser;
 use cli::Command;
+use pkg::manifest::ManifestFile;
 use std::{
     process::Command as Process,
     {fs, path::PathBuf},
@@ -44,7 +45,9 @@ pub fn main() -> Result<()> {
     fs::create_dir_all(&doc_path)?;
 
     // compile the program and extract the docs
-    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
+    // TODO(Kaya) : refactor me
+    let manifest_file = ManifestFile::Package(Box::new(manifest.clone()));
+    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest_file, locked, offline)?;
     let compilation = pkg::check(&plan, silent)?;
     let raw_docs: Documentation = Document::from_ty_program(&compilation, no_deps)?;
     // render docs to HTML

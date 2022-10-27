@@ -15,6 +15,7 @@ use crate::{
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use parking_lot::RwLock;
+use pkg::manifest::ManifestFile;
 use std::{path::PathBuf, sync::Arc};
 use sway_core::{
     language::{parsed::ParseProgram, ty},
@@ -198,7 +199,9 @@ impl Session {
             }
         })?;
 
-        let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)
+        // TODO(KAYA): refactor me
+        let manifest_file = ManifestFile::Package(Box::new(manifest));
+        let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest_file, locked, offline)
             .map_err(LanguageServerError::BuildPlanFailed)?;
 
         // We can convert these destructured elements to a Vec<Diagnostic> later on.

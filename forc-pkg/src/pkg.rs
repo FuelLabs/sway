@@ -378,7 +378,7 @@ impl BuildPlan {
 
         // We know that the remaining nodes have valid paths, otherwise they would have been
         // removed. We can safely produce an initial `manifest_map`.
-        let mut manifest_map = graph_to_manifest_map(manifest.clone(), &graph)?;
+        let mut manifest_map = graph_to_manifest_map(manifest, &graph)?;
 
         // Attempt to fetch the remainder of the graph.
         let _added = fetch_graph(manifest, offline, &mut graph, &mut manifest_map)?;
