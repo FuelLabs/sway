@@ -231,6 +231,74 @@ pub struct GitSourceIndex {
     pub head_with_time: HeadWithTime,
 }
 
+#[derive(Default)]
+pub struct PkgOpts {
+    /// Path to the project, if not specified, current working directory will be used.
+    pub path: Option<String>,
+    /// Offline mode, prevents Forc from using the network when managing dependencies.
+    /// Meaning it will only try to use previously downloaded dependencies.
+    pub offline: bool,
+    /// Terse mode. Limited warning and error output.
+    pub terse: bool,
+    /// Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it
+    /// needs to be updated, Forc will exit with an error
+    pub locked: bool,
+    /// The directory in which the sway compiler output artifacts are placed.
+    ///
+    /// By default, this is `<project-root>/out`.
+    pub output_directory: Option<String>,
+}
+
+#[derive(Default)]
+pub struct PrintOpts {
+    /// Print the generated Sway AST (Abstract Syntax Tree).
+    pub ast: bool,
+    /// Print the finalized ASM.
+    ///
+    /// This is the state of the ASM with registers allocated and optimisations applied.
+    pub finalized_asm: bool,
+    /// Print the generated ASM.
+    ///
+    /// This is the state of the ASM prior to performing register allocation and other ASM
+    /// optimisations.
+    pub intermediate_asm: bool,
+    /// Print the generated Sway IR (Intermediate Representation).
+    pub ir: bool,
+}
+
+#[derive(Default)]
+pub struct MinifyOpts {
+    /// By default the JSON for ABIs is formatted for human readability. By using this option JSON
+    /// output will be "minified", i.e. all on one line without whitespace.
+    pub json_abi: bool,
+    /// By default the JSON for initial storage slots is formatted for human readability. By using
+    /// this option JSON output will be "minified", i.e. all on one line without whitespace.
+    pub json_storage_slots: bool,
+}
+
+/// The set of options provided to the `build` functions.
+#[derive(Default)]
+pub struct BuildOpts {
+    pub pkg: PkgOpts,
+    pub print: PrintOpts,
+    pub minify: MinifyOpts,
+    /// If set, outputs a binary file representing the script bytes.
+    pub binary_outfile: Option<String>,
+    /// If set, outputs source file mapping in JSON format
+    pub debug_outfile: Option<String>,
+    /// Name of the build profile to use.
+    /// If it is not specified, forc will use debug build profile.
+    pub build_profile: Option<String>,
+    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
+    ///
+    ///  If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    pub release: bool,
+    /// Output the time elapsed over each part of the compilation process.
+    pub time_phases: bool,
+    /// Include all test functions within the build.
+    pub tests: bool,
+}
+
 impl GitSourceIndex {
     pub fn new(time: i64, git_reference: GitReference, commit_hash: String) -> GitSourceIndex {
         GitSourceIndex {
@@ -2216,58 +2284,6 @@ pub fn compile(
     }
 }
 
-#[derive(Default)]
-pub struct BuildOptions {
-    /// Path to the project, if not specified, current working directory will be used.
-    pub path: Option<String>,
-    /// Print the generated Sway AST (Abstract Syntax Tree).
-    pub print_ast: bool,
-    /// Print the finalized ASM.
-    ///
-    /// This is the state of the ASM with registers allocated and optimisations applied.
-    pub print_finalized_asm: bool,
-    /// Print the generated ASM.
-    ///
-    /// This is the state of the ASM prior to performing register allocation and other ASM
-    /// optimisations.
-    pub print_intermediate_asm: bool,
-    /// Print the generated Sway IR (Intermediate Representation).
-    pub print_ir: bool,
-    /// If set, outputs a binary file representing the script bytes.
-    pub binary_outfile: Option<String>,
-    /// If set, outputs source file mapping in JSON format
-    pub debug_outfile: Option<String>,
-    /// Offline mode, prevents Forc from using the network when managing dependencies.
-    /// Meaning it will only try to use previously downloaded dependencies.
-    pub offline_mode: bool,
-    /// Terse mode. Limited warning and error output.
-    pub terse_mode: bool,
-    /// The directory in which the sway compiler output artifacts are placed.
-    ///
-    /// By default, this is `<project-root>/out`.
-    pub output_directory: Option<String>,
-    /// By default the JSON for ABIs is formatted for human readability. By using this option JSON
-    /// output will be "minified", i.e. all on one line without whitespace.
-    pub minify_json_abi: bool,
-    /// By default the JSON for initial storage slots is formatted for human readability. By using
-    /// this option JSON output will be "minified", i.e. all on one line without whitespace.
-    pub minify_json_storage_slots: bool,
-    /// Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it
-    /// needs to be updated, Forc will exit with an error
-    pub locked: bool,
-    /// Name of the build profile to use.
-    /// If it is not specified, forc will use debug build profile.
-    pub build_profile: Option<String>,
-    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
-    ///
-    ///  If --build-profile is also provided, forc omits this flag and uses provided build-profile.
-    pub release: bool,
-    /// Output the time elapsed over each part of the compilation process.
-    pub time_phases: bool,
-    /// Include all test functions within the build.
-    pub tests: bool,
-}
-
 /// The suffix that helps identify the file which contains the hash of the binary file created when
 /// scripts are built_package.
 pub const SWAY_BIN_HASH_SUFFIX: &str = "-bin-hash";
@@ -2278,25 +2294,17 @@ pub const SWAY_BIN_ROOT_SUFFIX: &str = "-bin-root";
 
 pub fn build_package_with_options(
     manifest: &PackageManifestFile,
-    build_options: BuildOptions,
+    build_options: BuildOpts,
 ) -> Result<BuiltPackage> {
     let key_debug: String = "debug".to_string();
     let key_release: String = "release".to_string();
 
-    let BuildOptions {
-        path: _,
+    let BuildOpts {
+        pkg,
+        print,
+        minify,
         binary_outfile,
         debug_outfile,
-        print_ast,
-        print_finalized_asm,
-        print_intermediate_asm,
-        print_ir,
-        offline_mode,
-        terse_mode,
-        output_directory,
-        minify_json_abi,
-        minify_json_storage_slots,
-        locked,
         build_profile,
         release,
         time_phases,
@@ -2334,16 +2342,16 @@ pub fn build_package_with_options(
             );
             Default::default()
         });
-    profile.print_ast |= print_ast;
-    profile.print_ir |= print_ir;
-    profile.print_finalized_asm |= print_finalized_asm;
-    profile.print_intermediate_asm |= print_intermediate_asm;
-    profile.terse |= terse_mode;
+    profile.print_ast |= print.ast;
+    profile.print_ir |= print.ir;
+    profile.print_finalized_asm |= print.finalized_asm;
+    profile.print_intermediate_asm |= print.intermediate_asm;
+    profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
     profile.include_tests |= tests;
 
     let manifest_file = ManifestFile::Package(Box::new(manifest.clone()));
-    let plan = BuildPlan::from_lock_and_manifest(&manifest_file, locked, offline_mode)?;
+    let plan = BuildPlan::from_lock_and_manifest(&manifest_file, pkg.locked, pkg.offline)?;
 
     // Build it!
     let (built_package, source_map) = build(&plan, &profile)?;
@@ -2358,7 +2366,8 @@ pub fn build_package_with_options(
     }
 
     // Create the output directory for build artifacts.
-    let output_dir = output_directory
+    let output_dir = pkg
+        .output_directory
         .map(PathBuf::from)
         .unwrap_or_else(|| default_output_directory(manifest.dir()).join(selected_build_profile));
     if !output_dir.exists() {
@@ -2376,7 +2385,7 @@ pub fn build_package_with_options(
             .join(&json_abi_program_stem)
             .with_extension("json");
         let file = File::create(json_abi_program_path)?;
-        let res = if minify_json_abi {
+        let res = if minify.json_abi {
             serde_json::to_writer(&file, &built_package.json_abi_program)
         } else {
             serde_json::to_writer_pretty(&file, &built_package.json_abi_program)
@@ -2395,7 +2404,7 @@ pub fn build_package_with_options(
                 .join(&json_storage_slots_stem)
                 .with_extension("json");
             let storage_slots_file = File::create(json_storage_slots_path)?;
-            let res = if minify_json_storage_slots {
+            let res = if minify.json_storage_slots {
                 serde_json::to_writer(&storage_slots_file, &built_package.storage_slots)
             } else {
                 serde_json::to_writer_pretty(&storage_slots_file, &built_package.storage_slots)
@@ -2426,8 +2435,8 @@ pub fn build_package_with_options(
 }
 
 /// Builds a project with given BuildOptions
-pub fn build_with_options(build_options: BuildOptions) -> Result<Built> {
-    let path = &build_options.path;
+pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
+    let path = &build_options.pkg.path;
 
     let this_dir = if let Some(ref path) = path {
         PathBuf::from(path)
