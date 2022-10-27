@@ -44,6 +44,18 @@ impl TypeEngine {
         }
     }
 
+    /// Currently the [TypeEngine] is a lazy static object, so when we run
+    /// cargo tests, we can either choose to use a local [TypeEngine] and bypass
+    /// all of the global methods or we can use the lazy static [TypeEngine].
+    /// This method is for testing to be able to bypass the global methods for
+    /// the lazy static [TypeEngine] (contained within the call to hash in the
+    /// id_map).
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub(crate) fn insert_type_always(&self, ty: TypeInfo) -> TypeId {
+        TypeId::new(self.slab.insert(ty))
+    }
+
     /// Gets the size of the [TypeEngine].
     fn size(&self) -> usize {
         self.slab.size()

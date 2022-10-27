@@ -40,40 +40,50 @@ fn generic_enum_resolution() {
 
     let sp = Span::dummy();
 
+    let generic_type = engine.insert_type_always(TypeInfo::UnknownGeneric {
+        name: Ident::new_with_override("T", sp.clone()),
+    });
     let variant_types = vec![ty::TyEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
         tag: 0,
-        type_id: engine.insert_type(TypeInfo::UnknownGeneric {
-            name: Ident::new_with_override("T", sp.clone()),
-        }),
-        initial_type_id: engine.insert_type(TypeInfo::UnknownGeneric {
-            name: Ident::new_with_override("T", sp.clone()),
-        }),
+        type_id: generic_type,
+        initial_type_id: generic_type,
         span: sp.clone(),
         type_span: sp.clone(),
         attributes: transform::AttributesMap::default(),
     }];
-
-    let ty_1 = engine.insert_type(TypeInfo::Enum {
+    let ty_1 = engine.insert_type_always(TypeInfo::Enum {
         name: Ident::new_with_override("Result", sp.clone()),
         variant_types,
-        type_parameters: vec![],
+        type_parameters: vec![TypeParameter {
+            type_id: generic_type,
+            initial_type_id: generic_type,
+            name_ident: Ident::new_no_span("T"),
+            trait_constraints: vec![],
+            trait_constraints_span: Span::dummy(),
+        }],
     });
 
+    let boolean_type = engine.insert_type_always(TypeInfo::Boolean);
     let variant_types = vec![ty::TyEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
         tag: 0,
-        type_id: engine.insert_type(TypeInfo::Boolean),
-        initial_type_id: engine.insert_type(TypeInfo::Boolean),
+        type_id: boolean_type,
+        initial_type_id: boolean_type,
         span: sp.clone(),
         type_span: sp.clone(),
         attributes: transform::AttributesMap::default(),
     }];
-
-    let ty_2 = engine.insert_type(TypeInfo::Enum {
+    let ty_2 = engine.insert_type_always(TypeInfo::Enum {
         name: Ident::new_with_override("Result", sp.clone()),
         variant_types,
-        type_parameters: vec![],
+        type_parameters: vec![TypeParameter {
+            type_id: boolean_type,
+            initial_type_id: boolean_type,
+            name_ident: Ident::new_no_span("T"),
+            trait_constraints: vec![],
+            trait_constraints_span: Span::dummy(),
+        }],
     });
 
     // Unify them together...
@@ -102,8 +112,8 @@ fn basic_numeric_unknown() {
 
     let sp = Span::dummy();
     // numerics
-    let id = engine.insert_type(TypeInfo::Numeric);
-    let id2 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id = engine.insert_type_always(TypeInfo::Numeric);
+    let id2 = engine.insert_type_always(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
     let (_, errors) = engine.unify(id, id2, &sp, "");
@@ -121,8 +131,8 @@ fn unify_numerics() {
     let sp = Span::dummy();
 
     // numerics
-    let id = engine.insert_type(TypeInfo::Numeric);
-    let id2 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id = engine.insert_type_always(TypeInfo::Numeric);
+    let id2 = engine.insert_type_always(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
     let (_, errors) = engine.unify(id2, id, &sp, "");
@@ -140,8 +150,8 @@ fn unify_numerics_2() {
     let sp = Span::dummy();
 
     // numerics
-    let id = engine.insert_type(TypeInfo::Numeric);
-    let id2 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id = engine.insert_type_always(TypeInfo::Numeric);
+    let id2 = engine.insert_type_always(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
     let (_, errors) = engine.unify(id, id2, &sp, "");
