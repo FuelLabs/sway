@@ -11,7 +11,7 @@ pub struct TyEnumDeclaration {
     pub type_parameters: Vec<TypeParameter>,
     pub attributes: transform::AttributesMap,
     pub variants: Vec<TyEnumVariant>,
-    pub(crate) span: Span,
+    pub span: Span,
     pub visibility: Visibility,
 }
 
@@ -35,6 +35,17 @@ impl CopyTypes for TyEnumDeclaration {
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
+    }
+}
+
+impl ReplaceSelfType for TyEnumDeclaration {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.variants
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+        self.type_parameters
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
     }
 }
 
@@ -96,7 +107,7 @@ pub struct TyEnumVariant {
     pub initial_type_id: TypeId,
     pub type_span: Span,
     pub(crate) tag: usize,
-    pub(crate) span: Span,
+    pub span: Span,
     pub attributes: transform::AttributesMap,
 }
 

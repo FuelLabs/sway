@@ -157,6 +157,10 @@ impl Items {
             .insert(trait_name, implementing_for_type_id, functions_buf);
     }
 
+    pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
+        self.implemented_traits.insert_for_type(type_id);
+    }
+
     pub(crate) fn get_methods_for_type(
         &self,
         implementing_for_type_id: TypeId,

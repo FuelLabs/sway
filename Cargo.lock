@@ -1588,6 +1588,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-doc"
+version = "0.28.1"
+dependencies = [
+ "anyhow",
+ "clap 4.0.18",
+ "forc-pkg",
+ "forc-util",
+ "horrorshow",
+ "opener",
+ "sway-core",
+ "sway-types",
+]
+
+[[package]]
 name = "forc-explore"
 version = "0.28.1"
 dependencies = [
@@ -2334,6 +2348,12 @@ checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
 dependencies = [
  "digest 0.10.5",
 ]
+
+[[package]]
+name = "horrorshow"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8371fb981840150b1a54f7cb117bf6699f7466a1d4861daac33bc6fe2b5abea0"
 
 [[package]]
 name = "http"
@@ -4508,6 +4528,7 @@ dependencies = [
  "rustc-hash",
  "sway-ir-macros",
  "sway-types",
+ "sway-utils",
 ]
 
 [[package]]
