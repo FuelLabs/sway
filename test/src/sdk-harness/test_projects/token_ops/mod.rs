@@ -446,7 +446,7 @@ async fn get_fuelcoin_instance(wallet: WalletUnlocked) -> (TestFuelCoinContract,
     .await
     .unwrap();
 
-    let fuelcoin_instance = TestFuelCoinContract::new(fuelcoin_id.to_string(), wallet);
+    let fuelcoin_instance = TestFuelCoinContract::new(fuelcoin_id.clone(), wallet);
 
     (fuelcoin_instance, fuelcoin_id.into())
 }

@@ -18,7 +18,7 @@ async fn get_test_storage_instance() -> TestStorageContract {
     .await
     .unwrap();
 
-    TestStorageContract::new(id.to_string(), wallet)
+    TestStorageContract::new(id.clone(), wallet)
 }
 
 #[tokio::test]
