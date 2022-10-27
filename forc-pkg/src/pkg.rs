@@ -433,13 +433,48 @@ impl BuildPlan {
     /// To do so first gets `toposort` of the graph and filters the non-root members from the
     /// resulting list of node indices.
     pub fn root_pkgs(&self) -> Result<Vec<NodeIx>> {
+        let mut root_pkgs = Vec::new();
         let graph = self.graph();
         let parentless_nodes: HashSet<NodeIx> = parentless_nodes(graph).collect();
-        let rev_pkg_graph = petgraph::visit::Reversed(&graph);
-        let mut order = petgraph::algo::toposort(rev_pkg_graph, None)
+        let mut pinned_to_root_map = HashMap::new();
+        // The graph will have root's of workspace members and pinned dependencies between them are
+        // explicitly inserted as a node in the graph. While finding the order we need to take
+        // pinned versions into account so we should remove root correspondings but while doing so
+        // we should not lose root pkg indices since we should return corresponding root node
+        // indices.
+        let mut ordering_graph = self.graph().clone();
+        for node in graph
+            .node_indices()
+            .filter(|node| matches!(graph[*node].source, SourcePinned::Root))
+        {
+            let root_version = &graph[node];
+            let pinned_version = graph
+                .node_indices()
+                .filter(|node| !matches!(graph[*node].source, SourcePinned::Root))
+                .find(|node| graph[*node].name == root_version.name);
+            if let Some(pinned_version) = pinned_version {
+                pinned_to_root_map.insert(pinned_version, node);
+                ordering_graph.remove_node(node);
+            }
+        }
+        let rev_pkg_graph = petgraph::visit::Reversed(&ordering_graph);
+        let order = petgraph::algo::toposort(rev_pkg_graph, None)
             .map_err(|e| -> Error { anyhow!("{:?}", e) })?;
-        order.retain(|node_ix| parentless_nodes.contains(node_ix));
-        Ok(order)
+        for node in &order {
+            match pinned_to_root_map.get(node) {
+                Some(root_pkg) => {
+                    if parentless_nodes.contains(root_pkg) {
+                        root_pkgs.push(*root_pkg);
+                    }
+                }
+                None => {
+                    if parentless_nodes.contains(node) {
+                        root_pkgs.push(*node);
+                    }
+                }
+            }
+        }
+        Ok(root_pkgs)
     }
 
     /// View the build plan's compilation graph.
@@ -2724,6 +2759,25 @@ pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
 /// The same as [find_within], but returns the package's project directory.
 pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     find_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
+}
+
+#[test]
+fn test_root_pkg_order() {
+    let current_dir = env!("CARGO_MANIFEST_DIR");
+    let manifest_dir = PathBuf::from(current_dir)
+        .parent()
+        .unwrap()
+        .join("test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building/");
+    let manifest_file = ManifestFile::from_dir(&manifest_dir).unwrap();
+    let build_plan = BuildPlan::from_lock_and_manifest(&manifest_file, false, false).unwrap();
+    let graph = build_plan.graph();
+    let order: Vec<String> = build_plan
+        .root_pkgs()
+        .unwrap()
+        .iter()
+        .map(|order| graph[*order].name.clone())
+        .collect();
+    assert_eq!(order, vec!["test_lib", "test_contract", "test_script"])
 }
 
 #[test]
