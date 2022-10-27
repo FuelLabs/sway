@@ -16,7 +16,7 @@ type TraitName = CallPath<(Ident, Vec<TypeArgument>)>;
 /// Map of function name to [TyFunctionDeclaration](ty::TyFunctionDeclaration)
 type TraitMethods = im::HashMap<String, DeclarationId>;
 /// Map of trait name and type to [TraitMethods].
-type TraitImpls = im::HashMap<(TraitName, TypeId), TraitMethods>;
+type TraitImpls = im::OrdMap<(TraitName, TypeId), TraitMethods>;
 
 /// Map holding trait implementations for types.
 ///
