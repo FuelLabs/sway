@@ -493,19 +493,41 @@ fn validate_pkg_version(pkg_manifest: &PackageManifestFile) -> Result<()> {
     Ok(())
 }
 
-/// Validates the state of the pinned package graph against the given project manifest.
+/// Validates the state of the pinned package graph against the given `manifest`
+///
+/// If the given `manifest` is of type ManifestFile::Workspace, checks each indivual subgraph
+/// residing the in the graph against their corresponding manifest.
 ///
 /// Returns the set of invalid dependency edges.
-fn validate_graph(graph: &Graph, proj_manifest: &PackageManifestFile) -> BTreeSet<EdgeIx> {
+fn validate_graph(graph: &Graph, manifest: &ManifestFile) -> Result<BTreeSet<EdgeIx>> {
+    match manifest {
+        ManifestFile::Package(pkg_manifest_file) => {
+            Ok(validate_pkg_graph(graph, pkg_manifest_file))
+        }
+        ManifestFile::Workspace(workspace_manifest_file) => {
+            let invalid_edges = BTreeSet::default();
+            for member_path in workspace_manifest_file.member_paths()? {
+                let member_pkg_manifest = PackageManifestFile::from_dir(&member_path)?;
+                invalid_edges.extend(&validate_pkg_graph(graph, &member_pkg_manifest))
+            }
+            Ok(invalid_edges)
+        }
+    }
+}
+
+/// Validates the state of the pinned package graph against the given package manifest.
+///
+/// Returns the set of invalid dependency edges.
+fn validate_pkg_graph(graph: &Graph, pkg_manifest: &PackageManifestFile) -> BTreeSet<EdgeIx> {
     // If we don't have a project node, remove everything as we can't validate dependencies
     // without knowing where to start.
-    let proj_node = match find_proj_node(graph, &proj_manifest.project.name) {
+    let proj_node = match find_proj_node(graph, &pkg_manifest.project.name) {
         Ok(node) => node,
         Err(_) => return graph.edge_indices().collect(),
     };
     // Collect all invalid dependency nodes.
     let mut visited = HashSet::new();
-    validate_deps(graph, proj_node, proj_manifest, &mut visited)
+    validate_deps(graph, proj_node, pkg_manifest, &mut visited)
 }
 
 /// Recursively validate all dependencies of the given `node`.
