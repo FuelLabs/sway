@@ -42,7 +42,10 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
     let new_plan = pkg::BuildPlan::from_manifest(&manifest_file, offline)?;
     let new_lock = Lock::from_graph(new_plan.graph());
     let diff = new_lock.diff(&old_lock);
-    lock::print_diff(&manifest.project.name, &diff);
+    // TODO: Since we are not supporting updating in workspaces just yet, we are directly passing
+    // Some(..) to print_diff. Once we have the support for workspaces we will construct the
+    // optional name value here and pass that instead.
+    lock::print_diff(Some(&manifest.project.name), &diff);
 
     // If we're not only `check`ing, write the updated lock file.
     if !check {

@@ -410,12 +410,13 @@ impl BuildPlan {
                 );
             }
             info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
-            // TODO: refactor me
             let name = match manifest {
-                ManifestFile::Package(pkg_manifest_file) => pkg_manifest_file.project.name.clone(),
-                ManifestFile::Workspace(_) => "workspace".to_string(),
+                ManifestFile::Package(pkg_manifest_file) => {
+                    Some(pkg_manifest_file.project.name.as_str())
+                }
+                ManifestFile::Workspace(_) => None,
             };
-            crate::lock::print_diff(&name, &lock_diff);
+            crate::lock::print_diff(name, &lock_diff);
             let string = toml::ser::to_string_pretty(&new_lock)
                 .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
             fs::write(&lock_path, &string)
