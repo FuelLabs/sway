@@ -12,6 +12,7 @@ use crate::asm_lang::Label;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum ProgramKind {
     Script,
+    Predicate,
     Contract,
 }
 

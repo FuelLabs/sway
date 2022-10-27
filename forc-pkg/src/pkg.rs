@@ -1,7 +1,8 @@
 use crate::{
     lock::Lock,
     manifest::{
-        BuildProfile, ConfigTimeConstant, Dependency, PackageManifest, PackageManifestFile,
+        BuildProfile, ConfigTimeConstant, Dependency, ManifestFile, PackageManifest,
+        PackageManifestFile,
     },
     CORE, PRELUDE, STD,
 };
@@ -32,7 +33,7 @@ use sway_core::{
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
-    BytecodeOrLib, CompileResult,
+    CompileResult, CompiledBytecode,
 };
 use sway_error::error::CompileError;
 use sway_types::{Ident, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
@@ -69,12 +70,17 @@ pub type ManifestMap = HashMap<PinnedId, PackageManifestFile>;
 pub struct PinnedId(u64);
 
 /// The result of successfully compiling a package.
-#[derive(Clone)]
-pub struct Compiled {
+#[derive(Debug, Clone)]
+pub struct BuiltPackage {
     pub json_abi_program: JsonABIProgram,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
     pub tree_type: TreeType,
+}
+
+pub enum Built {
+    Package(BuiltPackage),
+    Workspace,
 }
 
 /// A package uniquely identified by name along with its source.
@@ -1764,7 +1770,8 @@ pub fn sway_build_config(
     )
     .print_finalized_asm(build_profile.print_finalized_asm)
     .print_intermediate_asm(build_profile.print_intermediate_asm)
-    .print_ir(build_profile.print_ir);
+    .print_ir(build_profile.print_ir)
+    .include_tests(build_profile.include_tests);
     Ok(build_config)
 }
 
@@ -1779,7 +1786,7 @@ pub fn sway_build_config(
 /// then the std prelude will also be added.
 pub fn dependency_namespace(
     lib_namespace_map: &HashMap<NodeIx, namespace::Module>,
-    compiled_contract_deps: &HashMap<NodeIx, Compiled>,
+    compiled_contract_deps: &HashMap<NodeIx, BuiltPackage>,
     graph: &Graph,
     node: NodeIx,
     constants: BTreeMap<String, ConfigTimeConstant>,
@@ -1832,6 +1839,8 @@ pub fn dependency_namespace(
             namespace.insert_submodule(CORE.to_string(), core_namespace.clone());
         }
     }
+
+    namespace.star_import_with_reexports(&[CORE, PRELUDE].map(Ident::new_no_span), &[]);
 
     if has_std_dep(graph, node) {
         namespace.star_import_with_reexports(&[STD, PRELUDE].map(Ident::new_no_span), &[]);
@@ -1929,7 +1938,7 @@ pub fn compile(
     build_profile: &BuildProfile,
     namespace: namespace::Module,
     source_map: &mut SourceMap,
-) -> Result<(Compiled, Option<namespace::Root>)> {
+) -> Result<(BuiltPackage, Option<namespace::Root>)> {
     // Time the given expression and print the result if `build_config.time_phases` is true.
     macro_rules! time_expr {
         ($description:expr, $expression:expr) => {{
@@ -1992,13 +2001,13 @@ pub fn compile(
             print_on_success_library(terse_mode, &pkg.name, &ast_res.warnings);
             let bytecode = vec![];
             let lib_namespace = typed_program.root.namespace.clone();
-            let compiled = Compiled {
+            let built_package = BuiltPackage {
                 json_abi_program,
                 storage_slots,
                 bytecode,
                 tree_type,
             };
-            return Ok((compiled, Some(lib_namespace.into())));
+            return Ok((built_package, Some(lib_namespace.into())));
         }
         // For all other program types, we'll compile the bytecode.
         TreeType::Contract | TreeType::Predicate | TreeType::Script => {}
@@ -2014,23 +2023,21 @@ pub fn compile(
     );
 
     match bc_res.value {
-        Some(BytecodeOrLib::Library) => {
-            unreachable!("compilation of library program types is handled above")
-        }
-        Some(BytecodeOrLib::Bytecode(bytes)) if bc_res.errors.is_empty() => {
+        Some(CompiledBytecode(bytes)) if bc_res.errors.is_empty() => {
             print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
             let bytecode = bytes;
-            let compiled = Compiled {
+            let built_package = BuiltPackage {
                 json_abi_program,
                 storage_slots,
                 bytecode,
                 tree_type,
             };
-            Ok((compiled, None))
+            Ok((built_package, None))
         }
-        Some(BytecodeOrLib::Bytecode(_)) | None => fail(&bc_res.warnings, &bc_res.errors),
+        _ => fail(&bc_res.warnings, &bc_res.errors),
     }
 }
+
 #[derive(Default)]
 pub struct BuildOptions {
     /// Path to the project, if not specified, current working directory will be used.
@@ -2079,23 +2086,27 @@ pub struct BuildOptions {
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+    /// Include all test functions within the build.
+    pub tests: bool,
 }
 
 /// The suffix that helps identify the file which contains the hash of the binary file created when
-/// scripts are built.
+/// scripts are built_package.
 pub const SWAY_BIN_HASH_SUFFIX: &str = "-bin-hash";
 
 /// The suffix that helps identify the file which contains the root hash of the binary file created
-/// when predicates are built.
+/// when predicates are built_package.
 pub const SWAY_BIN_ROOT_SUFFIX: &str = "-bin-root";
 
-/// Builds a project with given BuildOptions
-pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
+pub fn build_package_with_options(
+    manifest: &PackageManifestFile,
+    build_options: BuildOptions,
+) -> Result<BuiltPackage> {
     let key_debug: String = "debug".to_string();
     let key_release: String = "release".to_string();
 
     let BuildOptions {
-        path,
+        path: _,
         binary_outfile,
         debug_outfile,
         print_ast,
@@ -2111,6 +2122,7 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
         build_profile,
         release,
         time_phases,
+        tests,
     } = build_options;
 
     let mut selected_build_profile = key_debug;
@@ -2132,17 +2144,6 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
             }
         }
     }
-
-    let this_dir = if let Some(ref path) = path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir()?
-    };
-
-    let manifest = PackageManifestFile::from_dir(&this_dir)?;
-
-    let plan = BuildPlan::from_lock_and_manifest(&manifest, locked, offline_mode)?;
-
     // Retrieve the specified build profile
     let mut profile = manifest
         .build_profile(&selected_build_profile)
@@ -2161,12 +2162,15 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
     profile.print_intermediate_asm |= print_intermediate_asm;
     profile.terse |= terse_mode;
     profile.time_phases |= time_phases;
+    profile.include_tests |= tests;
+
+    let plan = BuildPlan::from_lock_and_manifest(manifest, locked, offline_mode)?;
 
     // Build it!
-    let (compiled, source_map) = build(&plan, &profile)?;
+    let (built_package, source_map) = build(&plan, &profile)?;
 
     if let Some(outfile) = binary_outfile {
-        fs::write(&outfile, &compiled.bytecode)?;
+        fs::write(&outfile, &built_package.bytecode)?;
     }
 
     if let Some(outfile) = debug_outfile {
@@ -2186,25 +2190,25 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
     let bin_path = output_dir
         .join(&manifest.project.name)
         .with_extension("bin");
-    fs::write(&bin_path, &compiled.bytecode)?;
-    if !compiled.json_abi_program.functions.is_empty() {
+    fs::write(&bin_path, &built_package.bytecode)?;
+    if !built_package.json_abi_program.functions.is_empty() {
         let json_abi_program_stem = format!("{}-abi", manifest.project.name);
         let json_abi_program_path = output_dir
             .join(&json_abi_program_stem)
             .with_extension("json");
         let file = File::create(json_abi_program_path)?;
         let res = if minify_json_abi {
-            serde_json::to_writer(&file, &compiled.json_abi_program)
+            serde_json::to_writer(&file, &built_package.json_abi_program)
         } else {
-            serde_json::to_writer_pretty(&file, &compiled.json_abi_program)
+            serde_json::to_writer_pretty(&file, &built_package.json_abi_program)
         };
         res?;
     }
 
-    info!("  Bytecode size is {} bytes.", compiled.bytecode.len());
+    info!("  Bytecode size is {} bytes.", built_package.bytecode.len());
 
     // Additional ops required depending on the program type
-    match compiled.tree_type {
+    match built_package.tree_type {
         TreeType::Contract => {
             // For contracts, emit a JSON file with all the initialized storage slots.
             let json_storage_slots_stem = format!("{}-storage_slots", manifest.project.name);
@@ -2213,16 +2217,16 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
                 .with_extension("json");
             let storage_slots_file = File::create(json_storage_slots_path)?;
             let res = if minify_json_storage_slots {
-                serde_json::to_writer(&storage_slots_file, &compiled.storage_slots)
+                serde_json::to_writer(&storage_slots_file, &built_package.storage_slots)
             } else {
-                serde_json::to_writer_pretty(&storage_slots_file, &compiled.storage_slots)
+                serde_json::to_writer_pretty(&storage_slots_file, &built_package.storage_slots)
             };
 
             res?;
         }
         TreeType::Predicate => {
             // get the root hash of the bytecode for predicates and store the result in a file in the output directory
-            let root = format!("0x{}", Contract::root_from_code(&compiled.bytecode));
+            let root = format!("0x{}", Contract::root_from_code(&built_package.bytecode));
             let root_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_ROOT_SUFFIX);
             let root_path = output_dir.join(root_file_name);
             fs::write(root_path, &root)?;
@@ -2230,7 +2234,7 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
         }
         TreeType::Script => {
             // hash the bytecode for scripts and store the result in a file in the output directory
-            let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&compiled.bytecode));
+            let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&built_package.bytecode));
             let hash_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_HASH_SUFFIX);
             let hash_path = output_dir.join(hash_file_name);
             fs::write(hash_path, &bytecode_hash)?;
@@ -2239,26 +2243,49 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Compiled> {
         _ => (),
     }
 
-    Ok(compiled)
+    Ok(built_package)
 }
 
-/// Returns the ContractId of a compiled contract with specified `salt`.
-fn contract_id(compiled: &Compiled) -> ContractId {
+/// Builds a project with given BuildOptions
+pub fn build_with_options(build_options: BuildOptions) -> Result<Built> {
+    let path = &build_options.path;
+
+    let this_dir = if let Some(ref path) = path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir()?
+    };
+
+    let manifest_file = ManifestFile::from_dir(&this_dir)?;
+    match manifest_file {
+        ManifestFile::Package(package_manifest) => {
+            let built_package = build_package_with_options(&package_manifest, build_options)?;
+            Ok(Built::Package(built_package))
+        }
+        ManifestFile::Workspace(_) => bail!("Workspace building is not supported"),
+    }
+}
+
+/// Returns the ContractId of a built_package contract with specified `salt`.
+fn contract_id(built_package: &BuiltPackage) -> ContractId {
     // Construct the contract ID
-    let contract = Contract::from(compiled.bytecode.clone());
+    let contract = Contract::from(built_package.bytecode.clone());
     let salt = fuel_tx::Salt::new([0; 32]);
-    let mut storage_slots = compiled.storage_slots.clone();
+    let mut storage_slots = built_package.storage_slots.clone();
     storage_slots.sort();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     contract.id(&salt, &contract.root(), &state_root)
 }
 
-/// Build an entire forc package and return the compiled output.
+/// Build an entire forc package and return the built_package output.
 ///
 /// This compiles all packages (including dependencies) in the order specified by the `BuildPlan`.
 ///
 /// Also returns the resulting `sway_core::SourceMap` which may be useful for debugging purposes.
-pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compiled, SourceMap)> {
+pub fn build(
+    plan: &BuildPlan,
+    profile: &BuildProfile,
+) -> anyhow::Result<(BuiltPackage, SourceMap)> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
 
@@ -2291,30 +2318,30 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
             }
         };
         let res = compile(pkg, manifest, profile, dep_namespace, &mut source_map)?;
-        let (compiled, maybe_namespace) = res;
+        let (built_package, maybe_namespace) = res;
         // If the current node is a contract dependency, collect the contract_id
         if plan
             .graph()
             .edges_directed(node, Direction::Incoming)
             .any(|e| e.weight().kind == DepKind::Contract)
         {
-            compiled_contract_deps.insert(node, compiled.clone());
+            compiled_contract_deps.insert(node, built_package.clone());
         }
         if let Some(namespace) = maybe_namespace {
             lib_namespace_map.insert(node, namespace.into());
         }
         json_abi_program
             .types
-            .extend(compiled.json_abi_program.types);
+            .extend(built_package.json_abi_program.types);
         json_abi_program
             .functions
-            .extend(compiled.json_abi_program.functions);
+            .extend(built_package.json_abi_program.functions);
         json_abi_program
             .logged_types
-            .extend(compiled.json_abi_program.logged_types);
-        storage_slots.extend(compiled.storage_slots);
-        bytecode = compiled.bytecode;
-        tree_type = Some(compiled.tree_type);
+            .extend(built_package.json_abi_program.logged_types);
+        storage_slots.extend(built_package.storage_slots);
+        bytecode = built_package.bytecode;
+        tree_type = Some(built_package.tree_type);
         source_map.insert_dependency(manifest.dir());
     }
 
@@ -2322,13 +2349,13 @@ pub fn build(plan: &BuildPlan, profile: &BuildProfile) -> anyhow::Result<(Compil
 
     let tree_type =
         tree_type.ok_or_else(|| anyhow!("build plan must contain at least one package"))?;
-    let compiled = Compiled {
+    let built_package = BuiltPackage {
         bytecode,
         json_abi_program,
         storage_slots,
         tree_type,
     };
-    Ok((compiled, source_map))
+    Ok((built_package, source_map))
 }
 
 /// Standardize the JSON ABI data structure by eliminating duplicate types. This is an iterative

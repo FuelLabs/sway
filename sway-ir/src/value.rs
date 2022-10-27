@@ -6,6 +6,8 @@
 //! Like most IR data structures they are `Copy` and cheap to pass around by value.  They are
 //! therefore also easy to replace, a common practice for optimization passes.
 
+use rustc_hash::FxHashMap;
+
 use crate::{
     constant::Constant,
     context::Context,
@@ -123,11 +125,15 @@ impl Value {
 
     /// If this value is an instruction and if any of its parameters is `old_val` then replace them
     /// with `new_val`.
-    pub fn replace_instruction_value(&self, context: &mut Context, old_val: Value, new_val: Value) {
+    pub fn replace_instruction_values(
+        &self,
+        context: &mut Context,
+        replace_map: &FxHashMap<Value, Value>,
+    ) {
         if let ValueDatum::Instruction(instruction) =
             &mut context.values.get_mut(self.0).unwrap().value
         {
-            instruction.replace_value(old_val, new_val);
+            instruction.replace_values(replace_map);
         }
     }
 

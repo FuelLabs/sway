@@ -21,6 +21,13 @@ impl CopyTypes for TyReassignment {
     }
 }
 
+impl ReplaceSelfType for TyReassignment {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.rhs.replace_self_type(self_type);
+        self.lhs_type.replace_self_type(self_type);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ProjectionKind {
     StructField { name: Ident },

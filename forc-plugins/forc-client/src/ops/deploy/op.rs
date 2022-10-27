@@ -45,8 +45,9 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         build_profile: command.build_profile,
         release: command.release,
         time_phases: command.time_phases,
+        tests: false,
     };
-    let compiled = forc_pkg::build_with_options(build_options)?;
+    let compiled = forc_pkg::build_package_with_options(&manifest, build_options)?;
 
     let bytecode = compiled.bytecode.clone().into();
     let salt = Salt::new([0; 32]);
@@ -56,6 +57,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id = contract.id(&salt, &root, &state_root);
+    info!("Contract id: 0x{}", hex::encode(contract_id));
     let tx = TransactionBuilder::create(bytecode, salt, storage_slots.clone())
         .params(TxParameters::new(command.gas_limit, command.gas_price))
         .add_output(Output::contract_created(contract_id, state_root))

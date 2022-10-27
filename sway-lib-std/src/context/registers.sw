@@ -8,28 +8,28 @@ pub fn overflow() -> u64 {
 }
 
 /// The program counter. Memory address of the current instruction.
-pub fn program_counter() -> u64 {
-    asm() { pc }
+pub fn program_counter() -> raw_ptr {
+    asm() { pc: raw_ptr }
 }
 
 /// Memory address of bottom of current writable stack area.
-pub fn stack_start_ptr() -> u64 {
-    asm() { ssp }
+pub fn stack_start_ptr() -> raw_ptr {
+    asm() { ssp: raw_ptr }
 }
 
 /// Memory address on top of current writable stack area (points to free memory).
-pub fn stack_ptr() -> u64 {
-    asm() { sp }
+pub fn stack_ptr() -> raw_ptr {
+    asm() { sp: raw_ptr }
 }
 
 /// Memory address of beginning of current call frame.
-pub fn frame_ptr() -> u64 {
-    asm() { fp }
+pub fn frame_ptr() -> raw_ptr {
+    asm() { fp: raw_ptr }
 }
 
 /// Memory address below the current bottom of the heap (points to free memory).
-pub fn heap_ptr() -> u64 {
-    asm() { hp }
+pub fn heap_ptr() -> raw_ptr {
+    asm() { hp: raw_ptr }
 }
 
 /// Error codes for particular operations.
@@ -53,8 +53,8 @@ pub fn balance() -> u64 {
 }
 
 /// Pointer to the start of the currently-executing code.
-pub fn instrs_start() -> u64 {
-    asm() { is }
+pub fn instrs_start() -> raw_ptr {
+    asm() { is: raw_ptr }
 }
 
 /// Return value or pointer.

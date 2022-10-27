@@ -13,6 +13,37 @@ use sway_core::{language::parsed::TreeType, parse};
 pub use sway_types::ConfigTimeConstant;
 use sway_utils::constants;
 
+pub enum ManifestFile {
+    Package(Box<PackageManifestFile>),
+    Workspace(WorkspaceManifestFile),
+}
+
+impl ManifestFile {
+    /// Returns a `PackageManifestFile` if the path is within a package directory, otherwise
+    /// returns a `WorkspaceManifestFile` if within a workspace directory.
+    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
+        if let Ok(package_manifest) = PackageManifestFile::from_dir(manifest_dir) {
+            Ok(ManifestFile::Package(Box::new(package_manifest)))
+        } else if let Ok(workspace_manifest) = WorkspaceManifestFile::from_dir(manifest_dir) {
+            Ok(ManifestFile::Workspace(workspace_manifest))
+        } else {
+            bail!("Cannot find a valid `Forc.toml` at {:?}", manifest_dir)
+        }
+    }
+
+    /// Returns a `PackageManifestFile` if the path is pointing to package manifest, otherwise
+    /// returns a `WorkspaceManifestFile` if it is pointing to a workspace manifest.
+    pub fn from_file(path: PathBuf) -> Result<Self> {
+        if let Ok(package_manifest) = PackageManifestFile::from_file(path.clone()) {
+            Ok(ManifestFile::Package(Box::new(package_manifest)))
+        } else if let Ok(workspace_manifest) = WorkspaceManifestFile::from_file(path.clone()) {
+            Ok(ManifestFile::Workspace(workspace_manifest))
+        } else {
+            bail!("Cannot find a valid `Forc.toml` at {:?}", path)
+        }
+    }
+}
+
 type PatchMap = BTreeMap<String, Dependency>;
 
 /// A [PackageManifest] that was deserialized from a file at a particular path.
@@ -92,6 +123,7 @@ pub struct BuildProfile {
     pub print_intermediate_asm: bool,
     pub terse: bool,
     pub time_phases: bool,
+    pub include_tests: bool,
 }
 
 impl Dependency {
@@ -245,14 +277,21 @@ impl PackageManifest {
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     pub fn from_file(path: &Path) -> Result<Self> {
+        // While creating a `ManifestFile` we need to check if the given path corresponds to a
+        // package or a workspace. While doing so, we should be printing the warnings if the given
+        // file parses so that we only see warnings for the correct type of manifest.
+        let mut warnings = vec![];
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
         let mut manifest: Self = serde_ignored::deserialize(toml_de, |path| {
             let warning = format!("  WARNING! unused manifest key: {}", path);
-            println_yellow_err(&warning);
+            warnings.push(warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
+        for warning in warnings {
+            println_yellow_err(&warning);
+        }
         manifest.implicitly_include_std_if_missing();
         manifest.implicitly_include_default_build_profiles_if_missing();
         manifest.validate()?;
@@ -433,6 +472,7 @@ impl BuildProfile {
             print_intermediate_asm: false,
             terse: false,
             time_phases: false,
+            include_tests: false,
         }
     }
 
@@ -444,6 +484,7 @@ impl BuildProfile {
             print_intermediate_asm: false,
             terse: false,
             time_phases: false,
+            include_tests: false,
         }
     }
 }
@@ -566,14 +607,21 @@ impl WorkspaceManifestFile {
 impl WorkspaceManifest {
     /// Given a path to a `Forc.toml`, read it and construct a `WorkspaceManifest`.
     pub fn from_file(path: &Path) -> Result<Self> {
+        // While creating a `ManifestFile` we need to check if the given path corresponds to a
+        // package or a workspace. While doing so, we should be printing the warnings if the given
+        // file parses so that we only see warnings for the correct type of manifest.
+        let mut warnings = vec![];
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
         let manifest: Self = serde_ignored::deserialize(toml_de, |path| {
             let warning = format!("  WARNING! unused manifest key: {}", path);
-            println_yellow_err(&warning);
+            warnings.push(warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
+        for warning in warnings {
+            println_yellow_err(&warning);
+        }
         Ok(manifest)
     }
 
