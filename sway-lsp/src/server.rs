@@ -191,7 +191,7 @@ impl LanguageServer for Backend {
         // Initalizing tracing library based on the user's config
         let config = self.config.read();
         let tracing_options = TracingSubscriberOptions {
-            log_level: Some(config.logging.level.clone()),
+            log_level: Some(config.logging.level),
             writer_mode: Some(TracingWriterMode::Stderr),
             ..Default::default()
         };

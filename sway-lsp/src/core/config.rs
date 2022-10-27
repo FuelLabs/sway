@@ -39,6 +39,7 @@ impl Default for LoggingConfig {
 #[derive(Deserialize, Serialize, Clone)]
 #[serde(rename_all = "lowercase")]
 #[serde(remote = "LevelFilter")]
+#[allow(clippy::upper_case_acronyms)]
 enum LevelFilterDef {
     OFF,
     ERROR,
