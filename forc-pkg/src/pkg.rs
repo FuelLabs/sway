@@ -497,8 +497,7 @@ fn validate_version(manifest: &ManifestFile) -> Result<()> {
     match manifest {
         ManifestFile::Package(pkg_manifest) => validate_pkg_version(pkg_manifest),
         ManifestFile::Workspace(workspace_manifest) => {
-            for member_path in workspace_manifest.member_paths()? {
-                let member_pkg_manifest = PackageManifestFile::from_dir(&member_path)?;
+            for member_pkg_manifest in workspace_manifest.member_pkg_manifests()? {
                 validate_pkg_version(&member_pkg_manifest)?;
             }
             Ok(())
@@ -544,8 +543,7 @@ fn validate_graph(graph: &Graph, manifest: &ManifestFile) -> Result<BTreeSet<Edg
         }
         ManifestFile::Workspace(workspace_manifest_file) => {
             let mut invalid_edges = BTreeSet::default();
-            for member_path in workspace_manifest_file.member_paths()? {
-                let member_pkg_manifest = PackageManifestFile::from_dir(&member_path)?;
+            for member_pkg_manifest in workspace_manifest_file.member_pkg_manifests()? {
                 invalid_edges.extend(&validate_pkg_graph(graph, &member_pkg_manifest))
             }
             Ok(invalid_edges)
@@ -724,13 +722,13 @@ fn dep_path(
 
 /// Remove the given set of dependency edges from the `graph`.
 ///
-/// Also removes all nodes that are no longer connected to the project node as a result.
+/// Also removes all nodes that are no longer connected to any root node as a result.
 fn remove_deps(
     graph: &mut Graph,
     member_names: &HashSet<String>,
     edges_to_remove: &BTreeSet<EdgeIx>,
 ) {
-    // Retrieve the project nodes for members.
+    // Retrieve the project nodes for workspace members.
     let mut member_root_nodes = HashSet::new();
     for member_name in member_names {
         let member_root_node = match find_proj_node(graph, member_name) {
@@ -759,8 +757,7 @@ fn remove_deps(
         graph.remove_edge(edge);
     }
 
-    // Remove all nodes that are no longer connected to the project node as a result.
-    // Skip iteration over the project node.
+    // Remove all nodes that are no longer connected to any project node as a result.
     let nodes = node_removal_order.into_iter();
     for node in nodes {
         if !has_parent(graph, node) && !member_root_nodes.contains(&node) {
@@ -1076,7 +1073,7 @@ pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
 
 /// Given a graph collects ManifestMap while taking in to account that manifest can be a
 /// ManifestFile::Workspace. In the case of a workspace each pkg manifest map is collected and
-/// merged.
+/// their added node lists are merged.
 fn graph_to_manifest_map(manifest: &ManifestFile, graph: &Graph) -> Result<ManifestMap> {
     match manifest {
         ManifestFile::Package(pkg_manifest_file) => {
@@ -1084,8 +1081,7 @@ fn graph_to_manifest_map(manifest: &ManifestFile, graph: &Graph) -> Result<Manif
         }
         ManifestFile::Workspace(workspace_manifest_file) => {
             let mut manifest_map = ManifestMap::new();
-            for member_path in workspace_manifest_file.member_paths()? {
-                let member_pkg_manifest = PackageManifestFile::from_dir(&member_path)?;
+            for member_pkg_manifest in workspace_manifest_file.member_pkg_manifests()? {
                 manifest_map.extend(pkg_graph_to_manifest_map(&member_pkg_manifest, graph)?);
             }
             Ok(manifest_map)
@@ -1097,6 +1093,9 @@ fn graph_to_manifest_map(manifest: &ManifestFile, graph: &Graph) -> Result<Manif
 /// manifest of for every node in the graph.
 ///
 /// Assumes the given `graph` only contains valid dependencies (see `validate_graph`).
+///
+/// `pkg_graph_to_manifest_map` starts from each node (which corresponds to the given proj_manifest)
+/// and visits childs to collect their manifest files.
 fn pkg_graph_to_manifest_map(
     proj_manifest: &PackageManifestFile,
     graph: &Graph,
@@ -2407,7 +2406,11 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Built> {
             let manifest_file = ManifestFile::Workspace(workspace_manifest);
             let build_plan = BuildPlan::from_lock_and_manifest(&manifest_file, false, false)?;
             println!("{:?}", petgraph::dot::Dot::new(&build_plan.graph()));
-            let order: Vec<String> = build_plan.root_pkgs()?.iter().map(|ix| build_plan.graph()[*ix].name.clone()).collect();
+            let order: Vec<String> = build_plan
+                .root_pkgs()?
+                .iter()
+                .map(|ix| build_plan.graph()[*ix].name.clone())
+                .collect();
             println!("{:?}", order);
             bail!("Workspace building is not supported")
         }

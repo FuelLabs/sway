@@ -610,16 +610,26 @@ impl WorkspaceManifestFile {
         Self::from_file(path)
     }
 
+    /// Returns an iterator over names of workspace members.
     pub fn members(&self) -> impl Iterator<Item = &String> + '_ {
         self.members.iter()
     }
 
+    /// Returns an iterator over workspace member root directories.
     pub fn member_paths(&self) -> Result<impl Iterator<Item = PathBuf> + '_> {
         let parent = self
             .path
             .parent()
             .ok_or_else(|| anyhow!("Cannot get parent dir of {:?}", self.path))?;
         Ok(self.members.iter().map(|member| parent.join(member)))
+    }
+
+    /// Returns an iterator over workspace member package manifests.
+    pub fn member_pkg_manifests(&self) -> Result<impl Iterator<Item = PackageManifestFile> + '_> {
+        let member_paths = self.member_paths()?;
+        let member_pkg_manifests =
+            member_paths.flat_map(|member_path| PackageManifestFile::from_dir(&member_path));
+        Ok(member_pkg_manifests)
     }
 
     /// The path to the `Forc.toml` from which this manifest was loaded.
