@@ -305,7 +305,7 @@ impl BuildPlan {
         fetch_graph(manifest, offline, &mut graph, &mut manifest_map)?;
         // Validate the graph, since we constructed the graph from scratch the paths will not be a
         // problem but the version check is still needed
-        validate_graph(&graph, manifest);
+        validate_graph(&graph, manifest)?;
         let compilation_order = compilation_order(&graph)?;
         Ok(Self {
             graph,
@@ -423,6 +423,29 @@ impl BuildPlan {
         }
 
         Ok(plan)
+    }
+
+    /// Return root packages in the order of required compilation/deployment order.
+    ///
+    /// Returns indices of nodes that are root packages given from the build plan graph.
+    /// To do so first gets `toposort` of the graph and filters the non-root members from the
+    /// resulting list of node indices.
+    pub fn root_pkgs(&self) -> Result<Vec<NodeIx>> {
+        let graph = self.graph();
+        let parentless_nodes: HashSet<NodeIx> = graph
+            .node_indices()
+            .filter(|&n| {
+                graph
+                    .edges_directed(n, Direction::Incoming)
+                    .next()
+                    .is_none()
+            })
+            .collect();
+        let rev_pkg_graph = petgraph::visit::Reversed(&graph);
+        let mut order = petgraph::algo::toposort(rev_pkg_graph, None)
+            .map_err(|e| -> Error { anyhow!("{:?}", e) })?;
+        order.retain(|node_ix| parentless_nodes.contains(node_ix));
+        Ok(order)
     }
 
     /// View the build plan's compilation graph.
@@ -2384,6 +2407,8 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Built> {
             let manifest_file = ManifestFile::Workspace(workspace_manifest);
             let build_plan = BuildPlan::from_lock_and_manifest(&manifest_file, false, false)?;
             println!("{:?}", petgraph::dot::Dot::new(&build_plan.graph()));
+            let order: Vec<String> = build_plan.root_pkgs()?.iter().map(|ix| build_plan.graph()[*ix].name.clone()).collect();
+            println!("{:?}", order);
             bail!("Workspace building is not supported")
         }
     }
