@@ -63,7 +63,7 @@ fn format_doc_attributes(token: &Token) -> String {
 fn format_visibility_hover(visibility: Visibility, decl_name: &str, token_name: &str) -> String {
     format!(
         "{}{} {}",
-        extract_visibility(&visibility),
+        visibility_as_str(&visibility),
         decl_name,
         token_name
     )
