@@ -1520,6 +1520,7 @@ dependencies = [
  "clap 3.2.23",
  "clap_complete",
  "forc-pkg",
+ "forc-test",
  "forc-tracing",
  "forc-util",
  "fs_extra",
@@ -1630,6 +1631,18 @@ dependencies = [
  "url",
  "vec1",
  "walkdir",
+]
+
+[[package]]
+name = "forc-test"
+version = "0.28.1"
+dependencies = [
+ "anyhow",
+ "forc-pkg",
+ "fuel-tx",
+ "fuel-vm",
+ "rand 0.8.5",
+ "sway-core",
 ]
 
 [[package]]
