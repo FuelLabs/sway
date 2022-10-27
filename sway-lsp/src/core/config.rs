@@ -1,22 +1,51 @@
 use serde::{Deserialize, Serialize};
+use tracing::metadata::LevelFilter;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
-    pub debug: Debug,
+    pub debug: DebugConfig,
+    pub logging: LoggingConfig,
     pub inlay_hints: InlayHintsConfig,
     #[serde(skip_serializing)]
-    trace: Trace,
+    trace: TraceConfig,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Default)]
-struct Trace {}
+struct TraceConfig {}
 
 // Options for debugging various parts of the server
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Debug {
+pub struct DebugConfig {
     pub show_collected_tokens_as_warnings: Warnings,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LoggingConfig {
+    #[serde(with = "LevelFilterDef")]
+    pub level: LevelFilter,
+}
+
+impl Default for LoggingConfig {
+    fn default() -> Self {
+        Self {
+            level: LevelFilter::OFF,
+        }
+    }
+}
+
+// This allows us to deserialize the enum that is defined in another crate.
+#[derive(Deserialize, Serialize, Clone)]
+#[serde(rename_all = "lowercase")]
+#[serde(remote = "LevelFilter")]
+enum LevelFilterDef {
+    OFF,
+    ERROR,
+    WARN,
+    INFO,
+    DEBUG,
+    TRACE,
 }
 
 /// Instructs the client to draw squiggly lines
@@ -39,7 +68,7 @@ pub struct InlayHintsConfig {
     pub max_length: Option<usize>,
 }
 
-impl Default for Debug {
+impl Default for DebugConfig {
     fn default() -> Self {
         Self {
             show_collected_tokens_as_warnings: Warnings::Default,
