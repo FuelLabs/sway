@@ -297,7 +297,7 @@ impl BuildPlan {
     /// Create a new build plan for the project by fetching and pinning all dependenies.
     ///
     /// To account for an existing lock file, use `from_lock_and_manifest` instead.
-    pub fn from_manifest(manifest: &PackageManifestFile, offline: bool) -> Result<Self> {
+    pub fn from_manifest(manifest: &ManifestFile, offline: bool) -> Result<Self> {
         // Check toolchain version
         validate_version(manifest)?;
         let mut graph = Graph::default();
@@ -1086,6 +1086,37 @@ pub fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
     hasher.finish()
 }
 
+/// Given an empty or partially completed `graph`, complete the graph.
+///
+/// If the given `manifest` is of type ManifestFile::Workspace resulting graph will have multiple
+/// root nodes, each representing a member of the workspace. Otherwise resulting graph will only
+/// have a single root node, representing the package that is described by the ManifestFile::Package
+fn fetch_graph(
+    manifest: &ManifestFile,
+    offline: bool,
+    graph: &mut Graph,
+    manifest_map: &mut ManifestMap,
+) -> Result<HashSet<NodeIx>> {
+    match manifest {
+        ManifestFile::Package(pkg_manifest_file) => {
+            fetch_pkg_graph(pkg_manifest_file, offline, graph, manifest_map)
+        }
+        ManifestFile::Workspace(workspace_manifest_file) => {
+            let mut added_nodes = HashSet::default();
+            for workspace_member_path in workspace_manifest_file.member_paths()? {
+                let member_pkg_manifest = PackageManifestFile::from_dir(&workspace_member_path)?;
+                added_nodes.extend(&fetch_pkg_graph(
+                    &member_pkg_manifest,
+                    offline,
+                    graph,
+                    manifest_map,
+                )?);
+            }
+            Ok(added_nodes)
+        }
+    }
+}
+
 /// Given an empty or partially completed package `graph`, complete the graph.
 ///
 /// The given `graph` may be empty, partially complete, or fully complete. All existing nodes
@@ -1099,7 +1130,7 @@ pub fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
 /// `graph` and will `panic!` otherwise.
 ///
 /// Upon success, returns the set of nodes that were added to the graph during traversal.
-fn fetch_graph(
+fn fetch_pkg_graph(
     proj_manifest: &PackageManifestFile,
     offline: bool,
     graph: &mut Graph,
