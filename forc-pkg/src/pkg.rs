@@ -193,7 +193,7 @@ pub enum SourcePinned {
 }
 
 /// Represents the full build plan for a project.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BuildPlan {
     graph: Graph,
     manifest_map: ManifestMap,
@@ -365,13 +365,13 @@ impl BuildPlan {
         let invalid_deps = validate_graph(&graph, manifest)?;
         let members = match manifest {
             ManifestFile::Package(pkg_manifest_file) => {
-                let pkg_name = pkg_manifest_file.project.name;
-                let members = HashSet::new();
-                members.insert(&pkg_name);
+                let pkg_name = pkg_manifest_file.project.name.clone();
+                let mut members = HashSet::new();
+                members.insert(pkg_name);
                 members
             }
             ManifestFile::Workspace(workspace_manifest_file) => {
-                workspace_manifest_file.members().collect()
+                workspace_manifest_file.members().cloned().collect()
             }
         };
         remove_deps(&mut graph, &members, &invalid_deps);
@@ -410,7 +410,11 @@ impl BuildPlan {
                 );
             }
             info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
-            crate::lock::print_diff(&manifest.project.name, &lock_diff);
+            let name = match manifest {
+                ManifestFile::Package(pkg_manifest_file) => pkg_manifest_file.project.name.clone(),
+                ManifestFile::Workspace(_) => "workspace".to_string(),
+            };
+            crate::lock::print_diff(&name, &lock_diff);
             let string = toml::ser::to_string_pretty(&new_lock)
                 .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
             fs::write(&lock_path, &string)
@@ -516,7 +520,7 @@ fn validate_graph(graph: &Graph, manifest: &ManifestFile) -> Result<BTreeSet<Edg
             Ok(validate_pkg_graph(graph, pkg_manifest_file))
         }
         ManifestFile::Workspace(workspace_manifest_file) => {
-            let invalid_edges = BTreeSet::default();
+            let mut invalid_edges = BTreeSet::default();
             for member_path in workspace_manifest_file.member_paths()? {
                 let member_pkg_manifest = PackageManifestFile::from_dir(&member_path)?;
                 invalid_edges.extend(&validate_pkg_graph(graph, &member_pkg_manifest))
@@ -633,7 +637,8 @@ fn validate_dep_manifest(
             dep_manifest.project.name,
         );
     }
-    let dep_manifest = ManifestFile::Package(Box::new(*dep_manifest));
+    // TODO(KAYA): refactor me
+    let dep_manifest = ManifestFile::Package(Box::new(dep_manifest.clone()));
     validate_version(&dep_manifest)?;
     Ok(())
 }
@@ -699,11 +704,11 @@ fn dep_path(
 /// Also removes all nodes that are no longer connected to the project node as a result.
 fn remove_deps(
     graph: &mut Graph,
-    member_names: &HashSet<&String>,
+    member_names: &HashSet<String>,
     edges_to_remove: &BTreeSet<EdgeIx>,
 ) {
     // Retrieve the project nodes for members.
-    let member_root_nodes = HashSet::new();
+    let mut member_root_nodes = HashSet::new();
     for member_name in member_names {
         let member_root_node = match find_proj_node(graph, member_name) {
             Ok(node) => node,
@@ -733,7 +738,7 @@ fn remove_deps(
 
     // Remove all nodes that are no longer connected to the project node as a result.
     // Skip iteration over the project node.
-    let mut nodes = node_removal_order.into_iter();
+    let nodes = node_removal_order.into_iter();
     for node in nodes {
         if !has_parent(graph, node) && !member_root_nodes.contains(&node) {
             graph.remove_node(node);
@@ -1046,11 +1051,33 @@ pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
     })
 }
 
+/// Given a graph collects ManifestMap while taking in to account that manifest can be a
+/// ManifestFile::Workspace. In the case of a workspace each pkg manifest map is collected and
+/// merged.
+fn graph_to_manifest_map(manifest: &ManifestFile, graph: &Graph) -> Result<ManifestMap> {
+    match manifest {
+        ManifestFile::Package(pkg_manifest_file) => {
+            pkg_graph_to_manifest_map(pkg_manifest_file, graph)
+        }
+        ManifestFile::Workspace(workspace_manifest_file) => {
+            let mut manifest_map = ManifestMap::new();
+            for member_path in workspace_manifest_file.member_paths()? {
+                let member_pkg_manifest = PackageManifestFile::from_dir(&member_path)?;
+                manifest_map.extend(pkg_graph_to_manifest_map(&member_pkg_manifest, graph)?);
+            }
+            Ok(manifest_map)
+        }
+    }
+}
+
 /// Given a graph of pinned packages and the project manifest, produce a map containing the
 /// manifest of for every node in the graph.
 ///
 /// Assumes the given `graph` only contains valid dependencies (see `validate_graph`).
-fn graph_to_manifest_map(proj_manifest: PackageManifestFile, graph: &Graph) -> Result<ManifestMap> {
+fn pkg_graph_to_manifest_map(
+    proj_manifest: &PackageManifestFile,
+    graph: &Graph,
+) -> Result<ManifestMap> {
     let mut manifest_map = ManifestMap::new();
 
     // Traverse the graph from the project node.
@@ -1059,7 +1086,7 @@ fn graph_to_manifest_map(proj_manifest: PackageManifestFile, graph: &Graph) -> R
         Err(_) => return Ok(manifest_map),
     };
     let proj_id = graph[proj_node].id();
-    manifest_map.insert(proj_id, proj_manifest);
+    manifest_map.insert(proj_id, proj_manifest.clone());
 
     // Resolve all parents before their dependencies as we require the parent path to construct the
     // dependency path. Skip the already added project node at the beginning of traversal.
@@ -2253,7 +2280,9 @@ pub fn build_package_with_options(
     profile.time_phases |= time_phases;
     profile.include_tests |= tests;
 
-    let plan = BuildPlan::from_lock_and_manifest(manifest, locked, offline_mode)?;
+    // TODO(KAYA): refactor me
+    let manifest_file = ManifestFile::Package(Box::new(manifest.clone()));
+    let plan = BuildPlan::from_lock_and_manifest(&manifest_file, locked, offline_mode)?;
 
     // Build it!
     let (built_package, source_map) = build(&plan, &profile)?;
@@ -2351,7 +2380,12 @@ pub fn build_with_options(build_options: BuildOptions) -> Result<Built> {
             let built_package = build_package_with_options(&package_manifest, build_options)?;
             Ok(Built::Package(built_package))
         }
-        ManifestFile::Workspace(_) => bail!("Workspace building is not supported"),
+        ManifestFile::Workspace(workspace_manifest) => {
+            let manifest_file = ManifestFile::Workspace(workspace_manifest);
+            let build_plan = BuildPlan::from_lock_and_manifest(&manifest_file, false, false)?;
+            println!("{:?}", petgraph::dot::Dot::new(&build_plan.graph()));
+            bail!("Workspace building is not supported")
+        }
     }
 }
 

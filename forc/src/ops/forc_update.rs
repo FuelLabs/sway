@@ -2,6 +2,7 @@ use crate::cli::UpdateCommand;
 use anyhow::{anyhow, Result};
 use forc_pkg::{self as pkg, lock, Lock, PackageManifestFile};
 use forc_util::lock_path;
+use pkg::manifest::ManifestFile;
 use std::{fs, path::PathBuf};
 use tracing::info;
 
@@ -33,10 +34,12 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
     };
 
     let manifest = PackageManifestFile::from_dir(&this_dir)?;
+    // TODO(KAYA): refactor me
+    let manifest_file = ManifestFile::Package(Box::new(manifest.clone()));
     let lock_path = lock_path(manifest.dir());
     let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
     let offline = false;
-    let new_plan = pkg::BuildPlan::from_manifest(&manifest, offline)?;
+    let new_plan = pkg::BuildPlan::from_manifest(&manifest_file, offline)?;
     let new_lock = Lock::from_graph(new_plan.graph());
     let diff = new_lock.diff(&old_lock);
     lock::print_diff(&manifest.project.name, &diff);
