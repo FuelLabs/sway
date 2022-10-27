@@ -451,11 +451,28 @@ fn find_proj_node(graph: &Graph, proj_name: &str) -> Result<NodeIx> {
     }
 }
 
-/// Check minimum forc version given in the manifest file and the current toolchain version
+/// Checks if the toolchain version is in compliance with minimum implied by `manifest`.
+///
+/// If the `manifest` is a ManifestFile::Workspace, check all members of the workspace for version
+/// validation. Otherwise only the given package is checked.
+fn validate_version(manifest: &ManifestFile) -> Result<()> {
+    match manifest {
+        ManifestFile::Package(pkg_manifest) => validate_pkg_version(pkg_manifest),
+        ManifestFile::Workspace(workspace_manifest) => {
+            for member_path in workspace_manifest.member_paths()? {
+                let member_pkg_manifest = PackageManifestFile::from_dir(&member_path)?;
+                validate_pkg_version(&member_pkg_manifest)?;
+            }
+            Ok(())
+        }
+    }
+}
+
+/// Check minimum forc version given in the package manifest file
 ///
 /// If required minimum forc version is higher than current forc version return an error with
 /// upgrade instructions
-fn validate_version(pkg_manifest: &PackageManifestFile) -> Result<()> {
+fn validate_pkg_version(pkg_manifest: &PackageManifestFile) -> Result<()> {
     match &pkg_manifest.project.forc_version {
         Some(min_forc_version) => {
             // Get the current version of the toolchain
@@ -472,7 +489,7 @@ fn validate_version(pkg_manifest: &PackageManifestFile) -> Result<()> {
             }
         }
         None => {}
-    }
+    };
     Ok(())
 }
 
