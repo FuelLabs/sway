@@ -50,6 +50,7 @@ impl TypeEngine {
     /// This method is for testing to be able to bypass the global methods for
     /// the lazy static [TypeEngine] (contained within the call to hash in the
     /// id_map).
+    #[cfg(test)]
     #[allow(dead_code)]
     pub(crate) fn insert_type_always(&self, ty: TypeInfo) -> TypeId {
         TypeId::new(self.slab.insert(ty))
