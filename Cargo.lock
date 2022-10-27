@@ -4420,6 +4420,7 @@ dependencies = [
  "forc",
  "forc-client",
  "forc-pkg",
+ "forc-test",
  "forc-tracing",
  "fuel-vm 0.22.3",
  "futures",
