@@ -135,3 +135,26 @@ pub trait BinaryLogarithm {
     fn log2(self) -> Self;
 }
 
+impl BinaryLogarithm for u64 {
+    fn log2(self) -> Self {
+        self.log(2)
+    }
+}
+
+impl BinaryLogarithm for u32 {
+    fn log2(self) -> Self {
+        self.log(2u32)
+    }
+}
+
+impl BinaryLogarithm for u16 {
+    fn log2(self) -> Self {
+        self.log(2u16)
+    }
+}
+
+impl BinaryLogarithm for u8 {
+    fn log2(self) -> Self {
+        self.log(2u8)
+    }
+}
