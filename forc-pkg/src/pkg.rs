@@ -2422,10 +2422,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
             let built_package = build_package_with_options(&package_manifest, build_options)?;
             Ok(Built::Package(built_package))
         }
-        ManifestFile::Workspace(w) => {
-            let manifest_file = ManifestFile::from_dir(w.dir())?;
-            let build_plan = BuildPlan::from_lock_and_manifest(&manifest_file, false, false)?;
-            println!("{:?}", petgraph::dot::Dot::new(build_plan.graph()));
+        ManifestFile::Workspace(_) => {
             bail!("Workspace building is not supported")
         }
     }
