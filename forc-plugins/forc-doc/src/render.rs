@@ -490,6 +490,7 @@ impl Renderable for TyFunctionDeclaration {
             type_parameters: _,
             return_type_span: _,
             purity: _,
+            inline: _,
             is_contract_call: _,
             visibility: _,
         } = &self;
