@@ -34,4 +34,3 @@ Note that some plugin crates can also provide more than one command. For example
 We encourage anyone to write and publish their own `forc` plugin to enhance their development experience.
 
 Your plugin must be named in the format `forc-<MY_PLUGIN>` and you may use the above template as a starting point. You can use [clap](https://docs.rs/clap/latest/clap/) and add more subcommands, options and configurations to suit your plugin's needs.
-
