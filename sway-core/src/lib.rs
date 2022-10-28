@@ -247,7 +247,8 @@ pub fn parsed_to_ast(
     }));
 
     // CEI pattern analysis
-    let cei_analysis_warnings = semantic_analysis::cei_pattern_analysis::program(&typed_program);
+    let cei_analysis_warnings =
+        semantic_analysis::cei_pattern_analysis::analyze_program(&typed_program);
     warnings.extend(cei_analysis_warnings);
 
     ok(

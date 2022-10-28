@@ -23,21 +23,21 @@ enum CEIAnalysisState {
     LookingForStorageWrite,
 }
 
-pub(crate) fn program(prog: &ty::TyProgram) -> Vec<CompileWarning> {
+pub(crate) fn analyze_program(prog: &ty::TyProgram) -> Vec<CompileWarning> {
     match &prog.kind {
         // Libraries, scripts, or predicates can't access storage
         // so we don't analyze these
         ty::TyProgramKind::Library { .. }
         | ty::TyProgramKind::Script { .. }
         | ty::TyProgramKind::Predicate { .. } => vec![],
-        ty::TyProgramKind::Contract { .. } => contract(&prog.root.all_nodes),
+        ty::TyProgramKind::Contract { .. } => analyze_contract(&prog.root.all_nodes),
     }
 }
 
-fn contract(ast_nodes: &[ty::TyAstNode]) -> Vec<CompileWarning> {
+fn analyze_contract(ast_nodes: &[ty::TyAstNode]) -> Vec<CompileWarning> {
     contract_entry_points(ast_nodes)
         .iter()
-        .flat_map(|fn_decl| code_block(&fn_decl.body))
+        .flat_map(|fn_decl| analyze_code_block(&fn_decl.body))
         .collect()
 }
 
@@ -78,7 +78,9 @@ fn impl_trait_methods<'a>(
     }
 }
 
-fn code_block(code_block: &ty::TyCodeBlock) -> Vec<CompileWarning> {
+// This is the main part of the analysis algorithm:
+// we are looking for state effects after contract interaction
+fn analyze_code_block(code_block: &ty::TyCodeBlock) -> Vec<CompileWarning> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut interaction_span: Span = Span::dummy();
     let mut analysis_state: CEIAnalysisState = CEIAnalysisState::LookingForInteraction;
@@ -94,9 +96,7 @@ fn code_block(code_block: &ty::TyCodeBlock) -> Vec<CompileWarning> {
             CEIAnalysisState::LookingForStorageWrite => {
                 if effects_of_codeblock_entry(ast_node).contains(&Effect::StorageWrite) {
                     warnings.push(CompileWarning {
-                        // TODO: or just use ast_node.span ? (i.e. warn on the storage ast node)
                         span: Span::join(interaction_span, ast_node.span.clone()),
-                        // TODO: more info for this warning?
                         warning_content: Warning::StorageWriteAfterInteraction,
                     });
                     return warnings;
