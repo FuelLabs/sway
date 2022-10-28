@@ -5,7 +5,6 @@ use std::{
 };
 
 use anyhow::Result;
-use sway_core::language::parsed;
 use sway_core::{
     compile_ir_to_asm, compile_to_ast, inline_function_calls, ir_generation::compile_program,
     namespace,
@@ -129,6 +128,8 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     .value
                     .expect("there were no errors, so there should be a program");
 
+                let tree_type = typed_program.kind.tree_type();
+
                 // Compile to IR.
                 let mut ir = compile_program(typed_program)
                     .unwrap_or_else(|e| {
@@ -160,8 +161,6 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     }
                     _ => (),
                 };
-
-                let tree_type = parsed::TreeType::Script; //typed_program.kind.tree_type();
 
                 // Now we're working with all functions in the module.
                 let all_functions = ir
