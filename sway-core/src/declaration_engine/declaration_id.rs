@@ -8,7 +8,7 @@ use crate::{
 };
 
 use super::{
-    de_insert_function,
+    de_insert,
     declaration_engine::{de_look_up_decl_id, de_replace_decl_id},
 };
 
@@ -85,14 +85,12 @@ impl DeclarationId {
     pub(crate) fn copy_types_and_insert_new(&self, type_mapping: &TypeMapping) -> DeclarationId {
         let mut decl = de_look_up_decl_id(self.clone());
         decl.copy_types(type_mapping);
-        let function = decl.expect_function(&self.1).unwrap();
-        de_insert_function(function)
+        de_insert(decl, self.1.clone())
     }
 
     pub(crate) fn replace_self_type_and_insert_new(&self, self_type: TypeId) -> DeclarationId {
         let mut decl = de_look_up_decl_id(self.clone());
         decl.replace_self_type(self_type);
-        let function = decl.expect_function(&self.1).unwrap();
-        de_insert_function(function)
+        de_insert(decl, self.1.clone())
     }
 }
