@@ -4,7 +4,7 @@ use crate::{
         BuildProfile, ConfigTimeConstant, Dependency, ManifestFile, PackageManifest,
         PackageManifestFile,
     },
-    CORE, PRELUDE, STD,
+    WorkspaceManifestFile, CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
@@ -576,9 +576,11 @@ fn parentless_nodes(g: &'_ Graph) -> impl '_ + Iterator<Item = NodeIx> {
 }
 
 /// Given a graph and the known project name retrieved from the manifest, produce an iterator
-/// yielding any nodes from the graph that might potentially be the project node.
+/// yielding any nodes from the graph that might potentially be a project node.
 fn potential_proj_nodes<'a>(g: &'a Graph, proj_name: &'a str) -> impl 'a + Iterator<Item = NodeIx> {
-    parentless_nodes(g).filter(move |&n| g[n].name == proj_name)
+    g.node_indices()
+        .filter(move |&n| g[n].name == proj_name)
+        .filter(move |&n| matches!(g[n].source, SourcePinned::Root))
 }
 
 /// Given a graph, find the project node.
@@ -772,7 +774,7 @@ fn validate_dep_manifest(
     Ok(())
 }
 
-/// Returns the canonical, local path to the given depend>ency node if it exists, `None` otherwise.
+/// Returns the canonical, local path to the given dependency node if it exists, `None` otherwise.
 ///
 /// Also returns `None` in the case that the dependency is a `Path` dependency and the path root is
 /// invalid.
@@ -824,7 +826,23 @@ fn dep_path(
             )
         }
         SourcePinned::Registry(_reg) => unreachable!("registry dependencies not yet supported"),
-        SourcePinned::Root => unreachable!("a `Root` node cannot be a dependency"),
+        SourcePinned::Root => {
+            // If a node has a root dependency it is a member of the workspace.
+            let parent_workspace_manifest = node_manifest
+                .dir()
+                .parent()
+                .and_then(|path| WorkspaceManifestFile::from_dir(path).ok());
+            if let Some(parent_workspace_manifest) = parent_workspace_manifest {
+                parent_workspace_manifest
+                    .members()
+                    .zip(parent_workspace_manifest.member_paths()?)
+                    .find(|(member_name, _)| *member_name == dep_name)
+                    .map(|(_, member_path)| member_path)
+                    .ok_or_else(|| anyhow!("cannot find dependency in the workspace"))
+            } else {
+                bail!("a node cannot depend on a root node if it is not a member of a workspace")
+            }
+        }
     }
 }
 
@@ -1933,7 +1951,25 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
                 let canonical_path = path.canonicalize().map_err(|e| {
                     anyhow!("Failed to canonicalize dependency path {:?}: {}", path, e)
                 })?;
-                Source::Path(canonical_path)
+                // Check if path is a member of a workspace.
+                let workspace_manifest = canonical_path
+                    .parent()
+                    .and_then(|parent_dir| WorkspaceManifestFile::from_dir(parent_dir).ok());
+                if let Some(workspace_manifest) = workspace_manifest {
+                    // There is a workspace manifest in the parent directory.
+                    //
+                    // Check if that manifest declares this path as a member_path
+                    let member_paths: HashSet<PathBuf> =
+                        workspace_manifest.member_paths()?.collect();
+                    if member_paths.contains(&canonical_path) {
+                        // This is a workspace member so the source should be inserted as `Member`
+                        Source::Root(canonical_path)
+                    } else {
+                        Source::Path(canonical_path)
+                    }
+                } else {
+                    Source::Path(canonical_path)
+                }
             }
             (_, _, Some(repo)) => {
                 let reference = match (&det.branch, &det.tag, &det.rev) {
@@ -2450,7 +2486,10 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
             let built_package = build_package_with_options(&package_manifest, build_options)?;
             Ok(Built::Package(built_package))
         }
-        ManifestFile::Workspace(_) => {
+        ManifestFile::Workspace(w) => {
+            let manifest_file = ManifestFile::from_dir(w.dir())?;
+            let build_plan = BuildPlan::from_lock_and_manifest(&manifest_file, false, false)?;
+            println!("{:?}", petgraph::dot::Dot::new(build_plan.graph()));
             bail!("Workspace building is not supported")
         }
     }
