@@ -23,12 +23,13 @@ enum CEIAnalysisState {
     LookingForStorageWrite,
 }
 
-// TODO: process libraries, scripts and predicates
 pub(crate) fn program(prog: &ty::TyProgram) -> Vec<CompileWarning> {
     match &prog.kind {
-        ty::TyProgramKind::Library { .. } => vec![],
-        ty::TyProgramKind::Script { .. } => vec![],
-        ty::TyProgramKind::Predicate { .. } => vec![],
+        // Libraries, scripts, or predicates can't access storage
+        // so we don't analyze these
+        ty::TyProgramKind::Library { .. }
+        | ty::TyProgramKind::Script { .. }
+        | ty::TyProgramKind::Predicate { .. } => vec![],
         ty::TyProgramKind::Contract { .. } => contract(&prog.root.all_nodes),
     }
 }
