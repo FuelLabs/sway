@@ -299,7 +299,7 @@ where
     I: IntoIterator<Item = &'a PkgLock>,
 {
     for pkg in removed {
-        if proj_name == Some(&pkg.name) {
+        if proj_name != Some(&pkg.name) {
             let name = name_or_git_unique_string(pkg);
             println_red(&format!("  Removing {}", name));
         }
@@ -311,7 +311,7 @@ where
     I: IntoIterator<Item = &'a PkgLock>,
 {
     for pkg in removed {
-        if proj_name == Some(&pkg.name) {
+        if proj_name != Some(&pkg.name) {
             let name = name_or_git_unique_string(pkg);
             println_green(&format!("    Adding {}", name));
         }
