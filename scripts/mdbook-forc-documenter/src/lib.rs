@@ -7,7 +7,7 @@ use commands::{
 use mdbook::book::{Book, BookItem, Chapter};
 use mdbook::errors::{Error, Result};
 use mdbook::preprocess::{Preprocessor, PreprocessorContext};
-use plugins::{get_all_plugins, plugin_commands};
+use plugins::forc_plugins_from_path;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -41,12 +41,11 @@ impl Preprocessor for ForcDocumenter {
 
         let possible_commands: Vec<String> = possible_forc_commands();
         let examples: HashMap<String, String> = load_examples()?;
-
-        let mut plugin_commands = plugin_commands();
+        let plugin_commands = forc_plugins_from_path()?;
         let mut command_contents: HashMap<String, String> =
             get_contents_from_commands(&possible_commands);
         let mut plugin_contents: HashMap<String, String> =
-            get_contents_from_commands(&get_all_plugins(&mut plugin_commands));
+            get_contents_from_commands(&plugin_commands);
         let mut removed_commands = Vec::new();
 
         book.for_each_mut(|item| {
@@ -56,7 +55,7 @@ impl Preprocessor for ForcDocumenter {
                         if let BookItem::Chapter(ref mut plugin_chapter) = sub_item {
                             if let Some(content) = plugin_contents.remove(&plugin_chapter.name) {
                                 inject_content(plugin_chapter, &content, &examples);
-                            } else if plugin_commands.get(&plugin_chapter.name).is_none() {
+                            } else {
                                 removed_commands.push(plugin_chapter.name.clone());
                             };
                             for sub_sub_item in plugin_chapter.sub_items.iter_mut() {
