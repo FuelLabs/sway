@@ -9,23 +9,11 @@ dependencies = ['core']
 
 [[package]]
 name = 'test_contract'
-source = 'path+from-root-C9E1B0494AB5FDF1'
-dependencies = [
-    'std',
-    'test_lib path+from-root-4D4735C41181917E',
-]
-
-[[package]]
-name = 'test_contract'
 source = 'root'
 dependencies = [
     'std',
-    'test_lib path+from-root-4D4735C41181917E',
+    'test_lib',
 ]
-
-[[package]]
-name = 'test_lib'
-source = 'path+from-root-4D4735C41181917E'
 
 [[package]]
 name = 'test_lib'
@@ -34,5 +22,5 @@ source = 'root'
 [[package]]
 name = 'test_script'
 source = 'root'
-dependencies = ['test_lib path+from-root-4D4735C41181917E']
-contract-dependencies = ['test_contract path+from-root-C9E1B0494AB5FDF1']
+dependencies = ['test_lib']
+contract-dependencies = ['test_contract']

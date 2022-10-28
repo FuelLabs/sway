@@ -493,63 +493,15 @@ impl BuildPlan {
         Ok(plan)
     }
 
-    /// Return root packages in the order of required compilation/deployment order.
+    /// Produce an iterator yielding all workspace member nodes in order of compilation.
     ///
-    /// Returns indices of nodes that are root packages given from the build plan graph.
-    /// To do so first gets `toposort` of the graph and filters the non-root members from the
-    /// resulting list of node indices.
-    pub fn root_pkgs(&self) -> Result<Vec<NodeIx>> {
-        let mut root_pkgs = Vec::new();
-        let graph = self.graph();
-        let parentless_nodes: HashSet<NodeIx> = parentless_nodes(graph).collect();
-        let mut pinned_to_root_map = HashMap::new();
-        // The graph will have roots of workspace members and pinned dependencies between them are
-        // explicitly inserted as a node in the graph. So a root node can have a corresponding
-        // pinned node which is a child of another root. While finding the order we need to take
-        // pinned versions into account so we should remove root version, if they have a
-        // corresponding pinned node in the graph. While doing so we should not lose root pkg
-        // indices that we removed for ordering since we are going to return corresponding root node
-        // indices as the ordered root_pkgs for this BuildPlan.
-        let mut ordering_graph = self.graph().clone();
-        for node in graph
-            .node_indices()
-            .filter(|node| matches!(graph[*node].source, SourcePinned::Member))
-        {
-            let root_version = &graph[node];
-            let pinned_version = graph
-                .node_indices()
-                .filter(|node| !matches!(graph[*node].source, SourcePinned::Member))
-                .find(|node| graph[*node].name == root_version.name);
-            if let Some(pinned_version) = pinned_version {
-                // Add this Root node as the corresponding node for `pinned_version`
-                pinned_to_root_map.insert(pinned_version, node);
-                // remove this root node from the ordering graph.
-                ordering_graph.remove_node(node);
-            }
-        }
-        let rev_pkg_graph = petgraph::visit::Reversed(&ordering_graph);
-        let order = petgraph::algo::toposort(rev_pkg_graph, None)
-            .map_err(|e| -> Error { anyhow!("{:?}", e) })?;
-        for node in &order {
-            match pinned_to_root_map.get(node) {
-                Some(root_pkg) => {
-                    // If given node has actually a root node corresponding add that to
-                    // root_pkgs. This happens when a workspace member depends on this member.
-                    if parentless_nodes.contains(root_pkg) {
-                        root_pkgs.push(*root_pkg);
-                    }
-                }
-                None => {
-                    // If this node does not have a corresponding root node in the map, add the
-                    // node directly. This happens if the no workspace member depends on this
-                    // member.
-                    if parentless_nodes.contains(node) {
-                        root_pkgs.push(*node);
-                    }
-                }
-            }
-        }
-        Ok(root_pkgs)
+    /// In the case that this `BuildPlan` was constructed for a single package,
+    /// only that package's node will be yielded.
+    pub fn member_nodes(&self) -> impl Iterator<Item = NodeIx> + '_ {
+        self.compilation_order()
+            .iter()
+            .cloned()
+            .filter(|&n| self.graph[n].source == SourcePinned::Member)
     }
 
     /// View the build plan's compilation graph.
@@ -566,13 +518,6 @@ impl BuildPlan {
     pub fn compilation_order(&self) -> &[NodeIx] {
         &self.compilation_order
     }
-}
-
-/// Given a graph return yields an iterator over nodes without parents. These can be later filtered for
-/// detecting possible root nodes.
-fn parentless_nodes(g: &'_ Graph) -> impl '_ + Iterator<Item = NodeIx> {
-    g.node_indices()
-        .filter(|&n| g.edges_directed(n, Direction::Incoming).next().is_none())
 }
 
 /// Given a graph and the known project name retrieved from the manifest, produce an iterator
@@ -2818,10 +2763,8 @@ fn test_root_pkg_order() {
     let build_plan = BuildPlan::from_lock_and_manifest(&manifest_file, false, false).unwrap();
     let graph = build_plan.graph();
     let order: Vec<String> = build_plan
-        .root_pkgs()
-        .unwrap()
-        .iter()
-        .map(|order| graph[*order].name.clone())
+        .member_nodes()
+        .map(|order| graph[order].name.clone())
         .collect();
     assert_eq!(order, vec!["test_lib", "test_contract", "test_script"])
 }
