@@ -1,6 +1,5 @@
 script;
 
-use std::assert::assert;
 use std::u128::*;
 
 fn main() -> bool {
