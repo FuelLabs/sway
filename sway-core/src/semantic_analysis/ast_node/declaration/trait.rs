@@ -61,12 +61,17 @@ impl ty::TyTraitDeclaration {
             warnings,
             errors
         );
-        let mut trait_fns = vec![];
+
+        // transform the interface surface into methods
+        let mut trait_methods = vec![];
         for decl_id in interface_surface.iter() {
-            match de_get_trait_fn(decl_id.clone(), &name.span()) {
-                Ok(decl) => trait_fns.push(decl),
-                Err(err) => errors.push(err),
-            }
+            let trait_fn = check!(
+                CompileResult::from(de_get_trait_fn(decl_id.clone(), &name.span())),
+                continue,
+                warnings,
+                errors
+            );
+            trait_methods.push(de_insert_function(trait_fn.to_dummy_func(Mode::NonAbi)));
         }
 
         // Recursively handle supertraits: make their interfaces and methods available to this trait
@@ -95,10 +100,7 @@ impl ty::TyTraitDeclaration {
                     })
                     .collect(),
                 self_type,
-                trait_fns
-                    .iter()
-                    .map(|x| x.to_dummy_func(Mode::NonAbi))
-                    .collect(),
+                &trait_methods,
                 &span,
             ),
             return err(warnings, errors),
@@ -160,12 +162,16 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                     errors
                 );
 
-                let mut trait_fns = vec![];
-                for decl_id in interface_surface.iter() {
-                    match de_get_trait_fn(decl_id.clone(), &name.span()) {
-                        Ok(decl) => trait_fns.push(decl),
-                        Err(err) => errors.push(err),
-                    }
+                // transform the interface surface into methods
+                let mut trait_methods = vec![];
+                for decl_id in interface_surface {
+                    let trait_fn = check!(
+                        CompileResult::from(de_get_trait_fn(decl_id.clone(), &name.span())),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                    trait_methods.push(de_insert_function(trait_fn.to_dummy_func(Mode::NonAbi)));
                 }
 
                 let type_params_as_type_args = type_parameters
@@ -184,10 +190,7 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                     supertrait.name.clone(),
                     type_params_as_type_args.clone(),
                     self_type,
-                    trait_fns
-                        .iter()
-                        .map(|x| x.to_dummy_func(Mode::NonAbi))
-                        .collect(),
+                    &trait_methods,
                     &supertrait.name.span(),
                 );
 
@@ -198,13 +201,14 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                     warnings,
                     errors
                 );
+
                 // specifically don't check for conflicting definitions because
                 // these are just dummy definitions
                 ctx.namespace.insert_trait_implementation(
                     supertrait.name.clone(),
                     type_params_as_type_args,
                     self_type,
-                    dummy_funcs,
+                    &dummy_funcs,
                     &supertrait.name.span(),
                 );
 
@@ -237,7 +241,7 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
 fn convert_trait_methods_to_dummy_funcs(
     mut ctx: TypeCheckContext,
     methods: &[FunctionDeclaration],
-) -> CompileResult<Vec<ty::TyFunctionDeclaration>> {
+) -> CompileResult<Vec<DeclarationId>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut dummy_funcs = vec![];
@@ -278,7 +282,7 @@ fn convert_trait_methods_to_dummy_funcs(
             errors,
         );
 
-        dummy_funcs.push(ty::TyFunctionDeclaration {
+        let decl = ty::TyFunctionDeclaration {
             purity: Default::default(),
             name: name.clone(),
             body: ty::TyCodeBlock { contents: vec![] },
@@ -291,7 +295,8 @@ fn convert_trait_methods_to_dummy_funcs(
             visibility: Visibility::Public,
             type_parameters: vec![],
             is_contract_call: false,
-        });
+        };
+        dummy_funcs.push(de_insert_function(decl));
     }
     if errors.is_empty() {
         ok(dummy_funcs, warnings, errors)

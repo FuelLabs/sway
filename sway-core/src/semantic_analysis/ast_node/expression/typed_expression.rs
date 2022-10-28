@@ -1206,48 +1206,50 @@ impl ty::TyExpression {
             address: Some(Box::new(address_expr.clone())),
         });
 
-        let mut trait_fns = vec![];
+        // retrieve the interface surface
+        let mut typed_methods = vec![];
         for decl_id in abi.interface_surface.iter() {
-            match de_get_trait_fn(decl_id.clone(), &abi.span) {
-                Ok(decl) => trait_fns.push(decl),
-                Err(err) => errors.push(err),
-            }
+            let decl = check!(
+                CompileResult::from(de_get_trait_fn(decl_id.clone(), &abi.span)),
+                continue,
+                warnings,
+                errors
+            );
+            typed_methods.push(de_insert_function(decl.to_dummy_func(Mode::ImplAbiFn)))
         }
 
-        let mut functions_buf = trait_fns
-            .iter()
-            .map(|x| x.to_dummy_func(Mode::ImplAbiFn))
-            .collect::<Vec<_>>();
         // calls of ABI methods do not result in any codegen of the ABI method block
         // they instead just use the CALL opcode and the return type
-        let mut type_checked_fn_buf = Vec::with_capacity(abi.methods.len());
+        // type check the abi methods
         for method in &abi.methods {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
                 .with_type_annotation(insert_type(TypeInfo::Unknown))
                 .with_mode(Mode::ImplAbiFn);
-            type_checked_fn_buf.push(check!(
+            let decl = check!(
                 ty::TyFunctionDeclaration::type_check(ctx, method.clone(), true),
                 return err(warnings, errors),
                 warnings,
                 errors
-            ));
+            );
+            typed_methods.push(de_insert_function(decl));
         }
 
-        functions_buf.append(&mut type_checked_fn_buf);
+        // insert the typed methods into the parent namespace
         check!(
             ctx.namespace.insert_trait_implementation(
                 abi_name.clone(),
                 vec![],
                 return_type,
-                functions_buf,
+                &typed_methods,
                 &span,
             ),
             return err(warnings, errors),
             warnings,
             errors
         );
+
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::AbiCast {
                 abi_name,

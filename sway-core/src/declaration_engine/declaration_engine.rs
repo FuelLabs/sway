@@ -180,7 +180,7 @@ pub(crate) fn de_replace_decl_id(index: DeclarationId, wrapper: DeclarationWrapp
     DECLARATION_ENGINE.replace_decl_id(index, wrapper)
 }
 
-pub(super) fn de_insert(declaration_wrapper: DeclarationWrapper, span: Span) -> DeclarationId {
+pub(crate) fn de_insert(declaration_wrapper: DeclarationWrapper, span: Span) -> DeclarationId {
     DECLARATION_ENGINE.insert(declaration_wrapper, span)
 }
 
