@@ -256,7 +256,10 @@ fn compile_fn_with_args(
 
     let span_md_idx = md_mgr.span_to_md(context, &span);
     let storage_md_idx = md_mgr.purity_to_md(context, purity);
-    let metadata = md_combine(context, &span_md_idx, &storage_md_idx);
+    let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
+
+    let inline_md_idx = md_mgr.inline_to_md(context, inline);
+    metadata = md_combine(context, &metadata, &inline_md_idx);
 
     let func = Function::new(
         context,

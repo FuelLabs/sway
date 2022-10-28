@@ -1,4 +1,4 @@
-use crate::language::Purity;
+use crate::language::{Inline, Purity};
 
 use sway_ir::{Context, MetadataIndex, Metadatum, Value};
 use sway_types::Span;
@@ -19,11 +19,13 @@ pub(crate) struct MetadataManager {
     md_file_loc_cache: HashMap<MetadataIndex, (Arc<PathBuf>, Arc<str>)>,
     md_storage_op_cache: HashMap<MetadataIndex, StorageOperation>,
     md_storage_key_cache: HashMap<MetadataIndex, u64>,
+    md_inline_cache: HashMap<MetadataIndex, Inline>,
 
     span_md_cache: HashMap<Span, MetadataIndex>,
     file_loc_md_cache: HashMap<*const PathBuf, MetadataIndex>,
     storage_op_md_cache: HashMap<Purity, MetadataIndex>,
     storage_key_md_cache: HashMap<u64, MetadataIndex>,
+    inline_md_cache: HashMap<Inline, MetadataIndex>,
 }
 
 #[derive(Clone, Copy)]
@@ -105,6 +107,34 @@ impl MetadataManager {
                         self.md_storage_key_cache.insert(md_idx, key);
 
                         Some(key)
+                    })
+            })
+        })
+    }
+
+    pub(crate) fn md_to_inline(
+        &mut self,
+        context: &Context,
+        md_idx: Option<MetadataIndex>,
+    ) -> Option<Inline> {
+        Self::for_each_md_idx(context, md_idx, |md_idx| {
+            self.md_inline_cache.get(&md_idx).copied().or_else(|| {
+                // Create a new inline and save it in the cache.
+                md_idx
+                    .get_content(context)
+                    .unwrap_struct("inline", 1)
+                    .and_then(|fields| {
+                        fields[0].unwrap_string().and_then(|inline_str| {
+                            let inline = match inline_str {
+                                "always" => Some(Inline::Always),
+                                "never" => Some(Inline::Never),
+                                _otherwise => None,
+                            }?;
+
+                            self.md_inline_cache.insert(md_idx, inline);
+
+                            Some(inline)
+                        })
                     })
             })
         })
@@ -214,6 +244,35 @@ impl MetadataManager {
                     );
 
                     self.storage_op_md_cache.insert(purity, md_idx);
+
+                    md_idx
+                })
+        })
+    }
+
+    pub(crate) fn inline_to_md(
+        &mut self,
+        context: &mut Context,
+        inline: Inline,
+    ) -> Option<MetadataIndex> {
+        (inline != Inline::Default).then(|| {
+            self.inline_md_cache
+                .get(&inline)
+                .copied()
+                .unwrap_or_else(|| {
+                    // Create new metadatum.
+                    let field = match inline {
+                        Inline::Default => unreachable!("Already checked for Default above."),
+                        Inline::Always => "always",
+                        Inline::Never => "never",
+                    };
+                    let md_idx = MetadataIndex::new_struct(
+                        context,
+                        "inline",
+                        vec![Metadatum::String(field.to_owned())],
+                    );
+
+                    self.inline_md_cache.insert(inline, md_idx);
 
                     md_idx
                 })
