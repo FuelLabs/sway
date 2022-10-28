@@ -46,6 +46,7 @@ impl Preprocessor for ForcDocumenter {
             get_contents_from_commands(&possible_commands);
         let mut plugin_contents: HashMap<String, String> =
             get_contents_from_commands(&plugin_commands);
+
         let mut removed_commands = Vec::new();
 
         book.for_each_mut(|item| {
@@ -56,7 +57,11 @@ impl Preprocessor for ForcDocumenter {
                             if let Some(content) = plugin_contents.remove(&plugin_chapter.name) {
                                 inject_content(plugin_chapter, &content, &examples);
                             } else {
-                                removed_commands.push(plugin_chapter.name.clone());
+                                // When sub_items exist, it means that a plugin installs a group of
+                                // commands, and the name of the plugin will not match this group.
+                                if plugin_chapter.sub_items.is_empty() {
+                                    removed_commands.push(plugin_chapter.name.clone());
+                                }
                             };
                             for sub_sub_item in plugin_chapter.sub_items.iter_mut() {
                                 if let BookItem::Chapter(ref mut plugin_sub_chapter) = sub_sub_item
