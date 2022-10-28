@@ -1131,4 +1131,26 @@ fn struct_destructuring() {
         assert_eq!(correct_sway_code, formatted_sway_code);
         assert!(test_stability(formatted_sway_code, formatter));
     }
+
+    #[test]
+    fn test_multiline_collections() {
+        let sway_code_to_format = r#"library test_multiline_collections;
+fn func_with_multiline_collections() {
+    let x = (
+        "hello",
+        "world",
+    );
+}
+"#;
+        let correct_sway_code = r#"library test_multiline_collections;
+fn func_with_multiline_collections() {
+    let x = ("hello", "world");
+}
+"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
+    }
 }
