@@ -230,7 +230,6 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
     use sway_ast::Intrinsic::*;
     match intr {
         StateStoreWord | StateStoreQuad => HashSet::from([Effect::StorageWrite]),
-        // TODO: figure out the effect of __revert
         Revert | GetStorageKey | IsReferenceType | SizeOfType | SizeOfVal | Eq | Gtf | AddrOf
         | StateLoadWord | StateLoadQuad | Log | Add | Sub | Mul | Div => HashSet::new(),
     }
