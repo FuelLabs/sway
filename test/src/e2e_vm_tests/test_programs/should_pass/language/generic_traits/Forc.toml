@@ -6,4 +6,4 @@ license = "Apache-2.0"
 implicit-std = false
 
 [dependencies]
-core = { path = "../../../../../../sway-lib-core" }
+core = { path = "../../../../../../../sway-lib-core" }
