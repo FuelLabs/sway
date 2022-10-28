@@ -278,11 +278,13 @@ pub(crate) fn type_check_method_application(
 
     // unify the types of the arguments with the types of the parameters from the function declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
-        let (mut new_warnings, new_errors) = ctx
-            .by_ref()
-            .with_help_text("This argument's type is not castable to the declared parameter type.")
-            .with_type_annotation(param.type_id)
-            .unify_with_self(arg.return_type, &arg.span);
+        let (mut new_warnings, new_errors) = unify_right_with_self(
+            arg.return_type,
+            param.type_id,
+            ctx.self_type(),
+            &arg.span,
+            "This argument's type is not castable to the declared parameter type.",
+        );
         warnings.append(&mut new_warnings);
         if !new_errors.is_empty() {
             errors.push(CompileError::ArgumentParameterTypeMismatch {
