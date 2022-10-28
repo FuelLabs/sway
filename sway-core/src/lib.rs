@@ -41,6 +41,10 @@ pub use type_system::*;
 use language::{parsed, ty};
 use transform::to_parsed_lang;
 
+pub mod fuel_prelude {
+    pub use fuel_vm::{self, fuel_asm, fuel_crypto, fuel_tx, fuel_types};
+}
+
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
 /// # Example

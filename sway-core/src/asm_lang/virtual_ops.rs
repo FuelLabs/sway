@@ -124,10 +124,20 @@ pub(crate) enum VirtualOp {
     ),
     MINT(VirtualRegister),
     RVRT(VirtualRegister),
-    SRW(VirtualRegister, VirtualRegister),
-    SRWQ(VirtualRegister, VirtualRegister),
-    SWW(VirtualRegister, VirtualRegister),
-    SWWQ(VirtualRegister, VirtualRegister),
+    SRW(VirtualRegister, VirtualRegister, VirtualRegister),
+    SRWQ(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
+    SWW(VirtualRegister, VirtualRegister, VirtualRegister),
+    SWWQ(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
     TIME(VirtualRegister, VirtualRegister),
     TR(VirtualRegister, VirtualRegister, VirtualRegister),
     TRO(
@@ -217,10 +227,10 @@ impl VirtualOp {
             LOGD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             MINT(r1) => vec![r1],
             RVRT(r1) => vec![r1],
-            SRW(r1, r2) => vec![r1, r2],
-            SRWQ(r1, r2) => vec![r1, r2],
-            SWW(r1, r2) => vec![r1, r2],
-            SWWQ(r1, r2) => vec![r1, r2],
+            SRW(r1, r2, r3) => vec![r1, r2, r3],
+            SRWQ(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SWW(r1, r2, r3) => vec![r1, r2, r3],
+            SWWQ(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             TIME(r1, r2) => vec![r1, r2],
             TR(r1, r2, r3) => vec![r1, r2, r3],
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
@@ -310,10 +320,10 @@ impl VirtualOp {
             LOGD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             MINT(r1) => vec![r1],
             RVRT(r1) => vec![r1],
-            SRW(_r1, r2) => vec![r2],
-            SRWQ(r1, r2) => vec![r1, r2],
-            SWW(r1, r2) => vec![r1, r2],
-            SWWQ(r1, r2) => vec![r1, r2],
+            SRW(_r1, _r2, r3) => vec![r3],
+            SRWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
+            SWW(r1, _r2, r3) => vec![r1, r3],
+            SWWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
             TIME(_r1, r2) => vec![r2],
             TR(r1, r2, r3) => vec![r1, r2, r3],
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
@@ -403,10 +413,10 @@ impl VirtualOp {
             LOGD(_r1, _r2, _r3, _r4) => vec![],
             MINT(_r1) => vec![],
             RVRT(_r1) => vec![],
-            SRW(r1, _r2) => vec![r1],
-            SRWQ(_r1, _r2) => vec![],
-            SWW(_r1, _r2) => vec![],
-            SWWQ(_r1, _r2) => vec![],
+            SRW(r1, r2, _r3) => vec![r1, r2],
+            SRWQ(_r1, r2, _r3, _r4) => vec![r2],
+            SWW(_r1, r2, _r3) => vec![r2],
+            SWWQ(_r1, r2, _r3, _r4) => vec![r2],
             TIME(r1, _r2) => vec![r1],
             TR(_r1, _r2, _r3) => vec![],
             TRO(_r1, _r2, _r3, _r4) => vec![],
@@ -717,21 +727,27 @@ impl VirtualOp {
             ),
             MINT(r1) => Self::MINT(update_reg(reg_to_reg_map, r1)),
             RVRT(reg1) => Self::RVRT(update_reg(reg_to_reg_map, reg1)),
-            SRW(r1, r2) => Self::SRW(
+            SRW(r1, r2, r3) => Self::SRW(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
             ),
-            SRWQ(r1, r2) => Self::SRWQ(
+            SRWQ(r1, r2, r3, r4) => Self::SRWQ(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
             ),
-            SWW(r1, r2) => Self::SWW(
+            SWW(r1, r2, r3) => Self::SWW(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
             ),
-            SWWQ(r1, r2) => Self::SWWQ(
+            SWWQ(r1, r2, r3, r4) => Self::SWWQ(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
             ),
             TIME(r1, r2) => Self::TIME(
                 update_reg(reg_to_reg_map, r1),
@@ -1103,18 +1119,28 @@ impl VirtualOp {
             ),
             MINT(reg1) => AllocatedOpcode::MINT(map_reg(&mapping, reg1)),
             RVRT(reg1) => AllocatedOpcode::RVRT(map_reg(&mapping, reg1)),
-            SRW(reg1, reg2) => {
-                AllocatedOpcode::SRW(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
-            }
-            SRWQ(reg1, reg2) => {
-                AllocatedOpcode::SRWQ(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
-            }
-            SWW(reg1, reg2) => {
-                AllocatedOpcode::SWW(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
-            }
-            SWWQ(reg1, reg2) => {
-                AllocatedOpcode::SWWQ(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
-            }
+            SRW(reg1, reg2, reg3) => AllocatedOpcode::SRW(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
+            SRWQ(reg1, reg2, reg3, reg4) => AllocatedOpcode::SRWQ(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                map_reg(&mapping, reg4),
+            ),
+            SWW(reg1, reg2, reg3) => AllocatedOpcode::SWW(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
+            SWWQ(reg1, reg2, reg3, reg4) => AllocatedOpcode::SWWQ(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                map_reg(&mapping, reg4),
+            ),
             TIME(reg1, reg2) => {
                 AllocatedOpcode::TIME(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }

@@ -1,7 +1,7 @@
 use anyhow::{anyhow, bail, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
 use fuel_gql_client::client::FuelClient;
-use fuel_tx::{ContractId, Transaction, TransactionBuilder};
+use fuel_tx::{ContractId, Transaction, TransactionBuilder, UniqueIdentifier};
 use futures::TryFutureExt;
 use std::{path::PathBuf, str::FromStr};
 use sway_core::language::parsed::TreeType;

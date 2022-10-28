@@ -2,10 +2,13 @@ use std::{io::Write, str::FromStr};
 
 use anyhow::{Error, Result};
 use async_trait::async_trait;
-use fuel_crypto::{Message, SecretKey, Signature};
-use fuel_gql_client::client::FuelClient;
-use fuel_tx::{Address, ContractId, Input, Output, Transaction, TransactionBuilder, Witness};
-use fuel_vm::prelude::SerializableVec;
+use fuel_gql_client::{
+    client::FuelClient,
+    fuel_crypto::{Message, SecretKey, Signature},
+    fuel_tx::{Address, ContractId, Input, Output, Transaction, TransactionBuilder, Witness},
+    prelude::SerializableVec,
+};
+use fuel_tx::Buildable;
 use fuels_core::constants::BASE_ASSET_ID;
 use fuels_signers::{provider::Provider, Wallet};
 use fuels_types::bech32::Bech32Address;
@@ -74,7 +77,7 @@ pub trait TransactionBuilderExt {
 }
 
 #[async_trait]
-impl TransactionBuilderExt for TransactionBuilder {
+impl<Tx: Buildable> TransactionBuilderExt for TransactionBuilder<Tx> {
     fn params(&mut self, params: TxParameters) -> &mut Self {
         self.gas_limit(params.gas_limit).gas_price(params.gas_price)
     }
@@ -152,7 +155,7 @@ impl TransactionBuilderExt for TransactionBuilder {
                 .await?;
         }
 
-        let mut tx = self.finalize();
+        let mut tx = self._finalize_without_signature();
 
         if !unsigned {
             let message = Message::new(tx.to_bytes());

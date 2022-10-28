@@ -1,8 +1,10 @@
 use anyhow::{bail, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
-use fuel_gql_client::client::FuelClient;
-use fuel_tx::{Output, Salt, TransactionBuilder};
-use fuel_vm::prelude::*;
+use fuel_gql_client::{
+    client::FuelClient,
+    fuel_tx::{Output, Salt, TransactionBuilder},
+    fuel_vm::prelude::*,
+};
 use std::path::PathBuf;
 use sway_core::language::parsed::TreeType;
 use sway_utils::constants::DEFAULT_NODE_URL;

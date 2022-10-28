@@ -13,11 +13,7 @@ clap = { version = "3.1", features = ["derive"], optional = true }
 derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
-fuel-asm = "0.9"
-fuel-crypto = "0.6"
-fuel-tx = "0.20"
-fuel-types = "0.5"
-fuel-vm = "0.18"
+fuel-vm = { version = "0.22", features = ["serde"] }
 hex = { version = "0.4", optional = true }
 im = "15.0"
 itertools = "0.10"
