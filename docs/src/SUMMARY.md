@@ -74,6 +74,5 @@
       - [forc deploy](./forc/plugins/forc_client/forc_deploy.md)
       - [forc run](./forc/plugins/forc_client/forc_run.md)
     - [forc explore](./forc/plugins/forc_explore.md)
-    - [forc wallet](./forc/plugins/forc_wallet.md)
     - [forc fmt](./forc/plugins/forc_fmt.md)
     - [forc lsp](./forc/plugins/forc_lsp.md)
