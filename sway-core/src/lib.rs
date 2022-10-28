@@ -450,7 +450,7 @@ fn promote_to_registers(ir: &mut Context, functions: &[Function]) -> CompileResu
 // 2. If the program is not a "predicate" then, we rely on some heuristic which is described below
 //    in the `inline_heuristc` closure.
 //
-fn inline_function_calls(
+pub fn inline_function_calls(
     ir: &mut Context,
     functions: &[Function],
     tree_type: &parsed::TreeType,
