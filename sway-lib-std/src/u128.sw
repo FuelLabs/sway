@@ -356,15 +356,12 @@ impl Root for U128 {
 }
 
 impl BinaryLogarithm for U128 {
-    /// As binary form stores a number as sum of powers of 2
-    /// finding logarithm which is the maximum power of 2 
-    /// such that 2 to that power is smeller of equal to the
-    /// original value, and 2 to that power + 1 is already 
-    /// bigger
-    /// In case the value is smaller 2 ^ 64 we could just use
-    /// regular log with the base of 2, based on the opcode
-    /// Otherwise we can find the highest bit by taking
-    /// the regular log of the upper part and add 64
+    /// log2 of `x` is the largest `n` such that `2^n <= x < 2^(n+1)`.
+    /// 
+    /// * If `x` is smaller than `2^64`, we could just rely on the `log` method by setting
+    /// the base to 2.
+    /// * Otherwise, we can find the highest non-zero bit by taking the regular log of the upper
+    /// part of the `U128`, and then add 64.
     fn log2(self) -> Self {
         let zero = ~U128::from(0, 0);
         let mut res = zero;
