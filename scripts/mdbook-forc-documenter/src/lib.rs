@@ -59,6 +59,8 @@ impl Preprocessor for ForcDocumenter {
                             } else {
                                 // When sub_items exist, it means that a plugin installs a group of
                                 // commands, and the name of the plugin will not match this group.
+                                // Note that this is determined by SUMMARY.md by placing
+                                // sub-chapters under a chapter.
                                 if plugin_chapter.sub_items.is_empty() {
                                     removed_commands.push(plugin_chapter.name.clone());
                                 }
