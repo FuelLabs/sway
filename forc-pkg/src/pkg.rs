@@ -586,40 +586,40 @@ fn validate_pkg_version(pkg_manifest: &PackageManifestFile) -> Result<()> {
     Ok(())
 }
 
-/// Validates the state of the pinned package graph against the given `manifest`
-///
-/// If the given `manifest` is of type ManifestFile::Workspace, checks each indivual subgraph
-/// residing the in the graph against their corresponding manifest.
+fn member_nodes(g: &Graph) -> impl Iterator<Item = NodeIx> + '_ {
+    g.node_indices()
+        .filter(|&n| g[n].source == SourcePinned::Member)
+}
+
+/// Validates the state of the pinned package graph against the given ManifestFile.
 ///
 /// Returns the set of invalid dependency edges.
 fn validate_graph(graph: &Graph, manifest: &ManifestFile) -> Result<BTreeSet<EdgeIx>> {
-    match manifest {
-        ManifestFile::Package(pkg_manifest_file) => {
-            Ok(validate_pkg_graph(graph, pkg_manifest_file))
+    let mut member_pkgs: HashMap<String, PackageManifestFile> = match manifest {
+        ManifestFile::Package(pkg) => {
+            std::iter::once((pkg.project.name.clone(), *pkg.clone())).collect()
         }
-        ManifestFile::Workspace(workspace_manifest_file) => {
-            let mut invalid_edges = BTreeSet::default();
-            for member_pkg_manifest in workspace_manifest_file.member_pkg_manifests()? {
-                invalid_edges.extend(&validate_pkg_graph(graph, &member_pkg_manifest))
-            }
-            Ok(invalid_edges)
-        }
-    }
-}
-
-/// Validates the state of the pinned package graph against the given package manifest.
-///
-/// Returns the set of invalid dependency edges.
-fn validate_pkg_graph(graph: &Graph, pkg_manifest: &PackageManifestFile) -> BTreeSet<EdgeIx> {
-    // If we don't have a project node, remove everything as we can't validate dependencies
-    // without knowing where to start.
-    let proj_node = match find_proj_node(graph, &pkg_manifest.project.name) {
-        Ok(node) => node,
-        Err(_) => return graph.edge_indices().collect(),
+        ManifestFile::Workspace(ref ws) => ws
+            .member_pkg_manifests()?
+            .map(|pkg| (pkg.project.name.clone(), pkg))
+            .collect(),
     };
-    // Collect all invalid dependency nodes.
+
+    let member_nodes: Vec<_> = member_nodes(graph)
+        .filter_map(|n| member_pkgs.remove(&graph[n].name).map(|pkg| (n, pkg)))
+        .collect();
+
+    // If no member nodes, the graph is either empty or corrupted. Remove all edges.
+    if member_nodes.is_empty() {
+        return Ok(graph.edge_indices().collect());
+    }
+
     let mut visited = HashSet::new();
-    validate_deps(graph, proj_node, pkg_manifest, &mut visited)
+    let edges = member_nodes
+        .into_iter()
+        .flat_map(move |(n, pkg_mfst)| validate_deps(graph, n, &pkg_mfst, &mut visited))
+        .collect();
+    Ok(edges)
 }
 
 /// Recursively validate all dependencies of the given `node`.
