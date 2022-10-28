@@ -473,6 +473,20 @@ fn inline_function_calls(
     };
 
     let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
+        let mut md_mgr = metadata::MetadataManager::default();
+        let attributed_inline = md_mgr.md_to_inline(ctx, func.get_metadata(ctx));
+
+        match attributed_inline {
+            Some(Inline::Always) => {
+                // TODO: check if inlining of function is possible
+                // return true;
+            }
+            Some(Inline::Never) => {
+                return false;
+            }
+            _ => {}
+        }
+
         // For now, pending improvements to ASMgen for calls, we must inline any function which has
         // too many args.
         if func.args_iter(ctx).count() as u8
