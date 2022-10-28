@@ -800,18 +800,9 @@ fn remove_deps(
     edges_to_remove: &BTreeSet<EdgeIx>,
 ) {
     // Retrieve the project nodes for workspace members.
-    let mut member_root_nodes = HashSet::new();
-    for member_name in member_names {
-        let member_root_node = match find_proj_node(graph, member_name) {
-            Ok(node) => node,
-            Err(_) => {
-                // If it fails, invalidate everything.
-                graph.clear();
-                return;
-            }
-        };
-        member_root_nodes.insert(member_root_node);
-    }
+    let member_nodes: HashSet<_> = member_nodes(graph)
+        .filter(|&n| member_names.contains(&graph[n].name))
+        .collect();
 
     // Before removing edges, sort the nodes in order of dependency for the node removal pass.
     let node_removal_order = match petgraph::algo::toposort(&*graph, None) {
@@ -831,7 +822,7 @@ fn remove_deps(
     // Remove all nodes that are no longer connected to any project node as a result.
     let nodes = node_removal_order.into_iter();
     for node in nodes {
-        if !has_parent(graph, node) && !member_root_nodes.contains(&node) {
+        if !has_parent(graph, node) && !member_nodes.contains(&node) {
             graph.remove_node(node);
         }
     }
