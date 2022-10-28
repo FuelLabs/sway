@@ -3,7 +3,7 @@ library u128;
 use ::assert::assert;
 use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
 use ::result::Result;
-use ::math::{Exponentiate, Root, BinaryLogarithm, Logarithm};
+use ::math::*;
 
 /// The 128-bit unsigned integer type.
 /// Represented as two 64-bit components: `(upper, lower)`, where `value = (upper << 64) + lower`.
@@ -355,19 +355,24 @@ impl Root for U128 {
 }
 
 impl BinaryLogarithm for U128 {
+    /// As binary form stores a number as sum of powers of 2
+    /// finding logarithm which is the maximum power of 2 
+    /// such that 2 to that power is smeller of equal to the
+    /// original value, and 2 to that power + 1 is already 
+    /// bigger
+    /// In case the value is smaller 2 ^ 64 we could just use
+    /// regular log with the base of 2, based on the opcode
+    /// Otherwise we can find the highest bit by taking
+    /// the regular log of the upper part and add 64
     fn log2(self) -> Self {
         let zero = ~U128::from(0, 0);
-        let one = ~U128::from(0, 1);
         let mut res = zero;
-        let mut s = self;
         // If trying to get a log2(0), panic, as infinity is not a number.
         assert(self != zero);
-        while s > zero {
-            res += one;
-            s >>= 1;
-        }
-        if res > zero {
-            res -= one;
+        if self.upper != 0 {
+            res = ~U128::from(0, self.upper.log(2) + 64);
+        } else if self.lower != 0{
+            res = ~U128::from(0, self.lower.log(2));
         }
         res
     }
