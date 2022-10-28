@@ -333,6 +333,7 @@ impl Exponentiate for U128 {
 }
 
 impl Root for U128 {
+    /// Newton's method as in https://en.wikipedia.org/wiki/Integer_square_root#Algorithm_using_Newton's_method
     fn sqrt(self) -> Self {
         let zero = ~U128::from(0, 0);
         let two = ~U128::from(0, 2);
