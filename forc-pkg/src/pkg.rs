@@ -109,7 +109,7 @@ pub struct Pinned {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum Source {
     /// Used to refer to the root project.
-    Root(PathBuf),
+    Member(PathBuf),
     /// A git repo with a `Forc.toml` manifest at its root.
     Git(SourceGit),
     /// A path to a directory with a `Forc.toml` manifest at its root.
@@ -186,7 +186,7 @@ pub struct SourceRegistryPinned {
 /// pinned version or commit is updated upon creation of the lock file and on `forc update`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub enum SourcePinned {
-    Root,
+    Member,
     Git(SourceGitPinned),
     Path(SourcePathPinned),
     Registry(SourceRegistryPinned),
@@ -513,12 +513,12 @@ impl BuildPlan {
         let mut ordering_graph = self.graph().clone();
         for node in graph
             .node_indices()
-            .filter(|node| matches!(graph[*node].source, SourcePinned::Root))
+            .filter(|node| matches!(graph[*node].source, SourcePinned::Member))
         {
             let root_version = &graph[node];
             let pinned_version = graph
                 .node_indices()
-                .filter(|node| !matches!(graph[*node].source, SourcePinned::Root))
+                .filter(|node| !matches!(graph[*node].source, SourcePinned::Member))
                 .find(|node| graph[*node].name == root_version.name);
             if let Some(pinned_version) = pinned_version {
                 // Add this Root node as the corresponding node for `pinned_version`
@@ -580,7 +580,7 @@ fn parentless_nodes(g: &'_ Graph) -> impl '_ + Iterator<Item = NodeIx> {
 fn potential_proj_nodes<'a>(g: &'a Graph, proj_name: &'a str) -> impl 'a + Iterator<Item = NodeIx> {
     g.node_indices()
         .filter(move |&n| g[n].name == proj_name)
-        .filter(move |&n| matches!(g[n].source, SourcePinned::Root))
+        .filter(move |&n| matches!(g[n].source, SourcePinned::Member))
 }
 
 /// Given a graph, find the project node.
@@ -826,7 +826,7 @@ fn dep_path(
             )
         }
         SourcePinned::Registry(_reg) => unreachable!("registry dependencies not yet supported"),
-        SourcePinned::Root => {
+        SourcePinned::Member => {
             // If a node has a root dependency it is a member of the workspace.
             let parent_workspace_manifest = node_manifest
                 .dir()
@@ -961,7 +961,7 @@ impl Pinned {
     /// Retrieve the unpinned version of this source.
     pub fn unpinned(&self, path: &Path) -> Pkg {
         let source = match &self.source {
-            SourcePinned::Root => Source::Root(path.to_owned()),
+            SourcePinned::Member => Source::Member(path.to_owned()),
             SourcePinned::Git(git) => Source::Git(git.source.clone()),
             SourcePinned::Path(_) => Source::Path(path.to_owned()),
             SourcePinned::Registry(reg) => Source::Registry(reg.source.clone()),
@@ -1031,7 +1031,7 @@ impl fmt::Display for GitReference {
 impl fmt::Display for SourcePinned {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            SourcePinned::Root => write!(f, "root"),
+            SourcePinned::Member => write!(f, "root"),
             SourcePinned::Path(src) => src.fmt(f),
             SourcePinned::Git(src) => src.fmt(f),
             SourcePinned::Registry(_reg) => unimplemented!("pkg registries not yet implemented"),
@@ -1131,7 +1131,7 @@ impl FromStr for SourcePinned {
     type Err = SourcePinnedParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let source = if s == "root" {
-            SourcePinned::Root
+            SourcePinned::Member
         } else if let Ok(src) = SourcePathPinned::from_str(s) {
             SourcePinned::Path(src)
         } else if let Ok(src) = SourceGitPinned::from_str(s) {
@@ -1301,7 +1301,7 @@ fn find_path_root(graph: &Graph, mut node: NodeIx) -> Result<NodeIx> {
                     })?;
                 node = parent;
             }
-            SourcePinned::Git(_) | SourcePinned::Registry(_) | SourcePinned::Root => {
+            SourcePinned::Git(_) | SourcePinned::Registry(_) | SourcePinned::Member => {
                 return Ok(node);
             }
         }
@@ -1374,7 +1374,7 @@ fn fetch_pkg_graph(
         Ok(proj_node) => proj_node,
         Err(_) => {
             let name = proj_manifest.project.name.clone();
-            let source = SourcePinned::Root;
+            let source = SourcePinned::Member;
             let pkg = Pinned { name, source };
             let pkg_id = pkg.id();
             manifest_map.insert(pkg_id, proj_manifest.clone());
@@ -1475,7 +1475,7 @@ fn fetch_deps(
         })?;
 
         let path_root = match dep_pinned.source {
-            SourcePinned::Root | SourcePinned::Git(_) | SourcePinned::Registry(_) => dep_pkg_id,
+            SourcePinned::Member | SourcePinned::Git(_) | SourcePinned::Registry(_) => dep_pkg_id,
             SourcePinned::Path(_) => path_root,
         };
 
@@ -1638,8 +1638,8 @@ fn pin_pkg(
 ) -> Result<Pinned> {
     let name = pkg.name.clone();
     let pinned = match &pkg.source {
-        Source::Root(path) => {
-            let source = SourcePinned::Root;
+        Source::Member(path) => {
+            let source = SourcePinned::Member;
             let pinned = Pinned { name, source };
             let id = pinned.id();
             let manifest = PackageManifestFile::from_dir(path)?;
@@ -1963,7 +1963,7 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
                         workspace_manifest.member_paths()?.collect();
                     if member_paths.contains(&canonical_path) {
                         // This is a workspace member so the source should be inserted as `Member`
-                        Source::Root(canonical_path)
+                        Source::Member(canonical_path)
                     } else {
                         Source::Path(canonical_path)
                     }
