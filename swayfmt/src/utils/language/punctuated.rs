@@ -31,6 +31,9 @@ where
 
                     if let Some(final_value) = &self.final_value_opt {
                         final_value.format(formatted_code, formatter)?;
+                    } else {
+                        formatted_code.pop();
+                        formatted_code.pop();
                     }
                 }
                 LineStyle::Inline => {

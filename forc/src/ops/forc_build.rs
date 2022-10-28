@@ -1,27 +1,37 @@
 use crate::cli::BuildCommand;
 use anyhow::Result;
-use forc_pkg::{self as pkg};
+use forc_pkg as pkg;
 
-pub fn build(command: BuildCommand) -> Result<pkg::Built> {
-    let build_options = pkg::BuildOptions {
-        path: command.path,
-        print_ast: command.print_ast,
-        print_finalized_asm: command.print_finalized_asm,
-        print_ir: command.print_ir,
-        binary_outfile: command.binary_outfile,
-        debug_outfile: command.debug_outfile,
-        offline_mode: command.offline_mode,
-        terse_mode: command.terse_mode,
-        output_directory: command.output_directory,
-        minify_json_abi: command.minify_json_abi,
-        minify_json_storage_slots: command.minify_json_storage_slots,
-        locked: command.locked,
-        build_profile: command.build_profile,
-        release: command.release,
-        time_phases: command.time_phases,
-        print_intermediate_asm: command.print_intermediate_asm,
-        tests: command.tests,
-    };
-    let built = pkg::build_with_options(build_options)?;
+pub fn build(cmd: BuildCommand) -> Result<pkg::Built> {
+    let opts = opts_from_cmd(cmd);
+    let built = pkg::build_with_options(opts)?;
     Ok(built)
+}
+
+fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
+    pkg::BuildOpts {
+        pkg: pkg::PkgOpts {
+            path: cmd.build.path,
+            offline: cmd.build.offline_mode,
+            terse: cmd.build.terse_mode,
+            locked: cmd.build.locked,
+            output_directory: cmd.build.output_directory,
+        },
+        print: pkg::PrintOpts {
+            ast: cmd.build.print_ast,
+            finalized_asm: cmd.build.print_finalized_asm,
+            intermediate_asm: cmd.build.print_intermediate_asm,
+            ir: cmd.build.print_ir,
+        },
+        minify: pkg::MinifyOpts {
+            json_abi: cmd.build.minify_json_abi,
+            json_storage_slots: cmd.build.minify_json_storage_slots,
+        },
+        build_profile: cmd.build.build_profile,
+        release: cmd.build.release,
+        time_phases: cmd.build.time_phases,
+        binary_outfile: cmd.build.binary_outfile,
+        debug_outfile: cmd.build.debug_outfile,
+        tests: cmd.tests,
+    }
 }

@@ -17,7 +17,7 @@ async fn get_parsing_logs_instance() -> (ParsingLogsTestContract, ContractId) {
     )
     .await
     .unwrap();
-    let instance = ParsingLogsTestContract::new(id.to_string(), wallet);
+    let instance = ParsingLogsTestContract::new(id.clone(), wallet);
 
     (instance, id.into())
 }

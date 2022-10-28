@@ -49,8 +49,7 @@ impl ty::TyFunctionDeclaration {
         let mut fn_namespace = ctx.namespace.clone();
         let mut fn_ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
 
-        // type check the type parameters
-        // insert them into the namespace
+        // type check the type parameters, which will also insert them into the namespace
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
             if !type_parameter.trait_constraints.is_empty() {
@@ -67,8 +66,7 @@ impl ty::TyFunctionDeclaration {
             ));
         }
 
-        // type check the function parameters
-        // insert them into the namespace
+        // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
         for parameter in parameters.into_iter() {
             new_parameters.push(check!(

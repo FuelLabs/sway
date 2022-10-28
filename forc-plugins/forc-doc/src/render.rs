@@ -413,6 +413,7 @@ impl Renderable for TyTraitDeclaration {
             attributes,
             supertraits: _,
             span,
+            type_parameters: _,
         } = &self;
         let name = name.as_str().to_string();
         let code_span = span.as_str().to_string();
@@ -462,7 +463,7 @@ impl Renderable for TyImplTrait {
         let TyImplTrait {
             impl_type_parameters: _,
             trait_name,
-            trait_type_parameters: _,
+            trait_type_arguments: _,
             methods: _,
             implementing_for_type_id: _,
             type_implementing_for_span: _,

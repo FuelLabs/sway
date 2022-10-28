@@ -100,6 +100,33 @@ impl MonomorphizeHelper for TyFunctionDeclaration {
     }
 }
 
+impl UnconstrainedTypeParameters for TyFunctionDeclaration {
+    fn type_parameter_is_unconstrained(&self, type_parameter: &TypeParameter) -> bool {
+        let type_parameter_info = look_up_type_id(type_parameter.type_id);
+        if self
+            .type_parameters
+            .iter()
+            .map(|type_param| look_up_type_id(type_param.type_id))
+            .any(|x| x == type_parameter_info)
+        {
+            return false;
+        }
+        if self
+            .parameters
+            .iter()
+            .map(|param| look_up_type_id(param.type_id))
+            .any(|x| x == type_parameter_info)
+        {
+            return true;
+        }
+        if look_up_type_id(self.return_type) == type_parameter_info {
+            return true;
+        }
+
+        false
+    }
+}
+
 impl TyFunctionDeclaration {
     /// Used to create a stubbed out function when the function fails to compile, preventing cascading
     /// namespace errors
