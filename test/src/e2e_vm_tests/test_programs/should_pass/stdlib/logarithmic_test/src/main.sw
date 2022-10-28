@@ -1,8 +1,6 @@
 script;
 
-use std::{assert::assert, math::*};
-use std::revert::revert;
-use core::num::*;
+use std::math::*;
 
 fn main() -> bool {
     let max_u64 = ~u64::max();

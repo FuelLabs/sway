@@ -1,8 +1,6 @@
 script;
 
-use std::{assert::assert, math::*};
-use std::revert::revert;
-use core::num::*;
+use std::math::*;
 use std::u128::*;
 
 fn main() -> bool {
