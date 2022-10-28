@@ -216,7 +216,7 @@ impl ty::TyAstNode {
                                     impl_trait.trait_name.clone(),
                                     impl_trait.trait_type_arguments.clone(),
                                     impl_trait.implementing_for_type_id,
-                                    methods,
+                                    &impl_trait.methods,
                                     &impl_trait.span,
                                 ),
                                 return err(warnings, errors),
@@ -232,13 +232,6 @@ impl ty::TyAstNode {
                                 warnings,
                                 errors
                             );
-                            let mut methods = vec![];
-                            for method_id in &impl_trait.methods {
-                                match de_get_function(method_id.clone(), &impl_trait.span) {
-                                    Ok(method) => methods.push(method),
-                                    Err(err) => errors.push(err),
-                                }
-                            }
                             // specifically dont check for conflicting trait definitions
                             // because its totally ok to defined multiple impl selfs for
                             // the same type
@@ -246,7 +239,7 @@ impl ty::TyAstNode {
                                 impl_trait.trait_name.clone(),
                                 impl_trait.trait_type_arguments.clone(),
                                 impl_trait.implementing_for_type_id,
-                                methods,
+                                &impl_trait.methods,
                                 &impl_trait.span,
                             );
                             ty::TyDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
