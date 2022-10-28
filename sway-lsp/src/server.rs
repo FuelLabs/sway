@@ -23,6 +23,7 @@ use std::{
 use sway_types::Spanned;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
+use tracing::metadata::LevelFilter;
 
 #[derive(Debug)]
 pub struct Backend {
@@ -190,12 +191,14 @@ impl LanguageServer for Backend {
 
         // Initalizing tracing library based on the user's config
         let config = self.config.read();
-        let tracing_options = TracingSubscriberOptions {
-            log_level: Some(config.logging.level),
-            writer_mode: Some(TracingWriterMode::Stderr),
-            ..Default::default()
-        };
-        init_tracing_subscriber(tracing_options);
+        if config.logging.level != LevelFilter::OFF {
+            let tracing_options = TracingSubscriberOptions {
+                log_level: Some(config.logging.level),
+                writer_mode: Some(TracingWriterMode::Stderr),
+                ..Default::default()
+            };
+            init_tracing_subscriber(tracing_options);
+        }
 
         tracing::info!("Initializing the Sway Language Server");
 
