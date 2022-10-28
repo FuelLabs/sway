@@ -1483,7 +1483,7 @@ impl<'ir> AsmBuilder<'ir> {
             _ => unreachable!("Unexpected storage locations for key and val"),
         };
 
-        // capture the status of whether the slot was set before the calling this instruction
+        // capture the status of whether the slot was set before calling this instruction
         let was_slot_set_reg = self.reg_seqr.next();
 
         self.cur_bytecode.push(Op {
@@ -1527,7 +1527,7 @@ impl<'ir> AsmBuilder<'ir> {
         let load_reg = self.reg_seqr.next();
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
 
-        // capture the status of whether the slot was set before the calling this instruction
+        // capture the status of whether the slot was set before calling this instruction
         let was_slot_set_reg = self.reg_seqr.next();
 
         match self.ptr_map.get(&key_ptr) {
@@ -1580,7 +1580,7 @@ impl<'ir> AsmBuilder<'ir> {
         }
         let (key_ptr, ptr_ty, offset) = key_ptr.value.unwrap();
 
-        // capture the status of whether the slot was set before the calling this instruction
+        // capture the status of whether the slot was set before calling this instruction
         let was_slot_set_reg = self.reg_seqr.next();
 
         // Not expecting an offset here nor a pointer cast
