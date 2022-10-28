@@ -36,6 +36,7 @@ pub struct Attribute {
 pub enum AttributeKind {
     Doc,
     Storage,
+    Inline,
     Test,
 }
 

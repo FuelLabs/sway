@@ -28,6 +28,7 @@ impl ty::TyTraitFn {
     pub(crate) fn to_dummy_func(&self, mode: Mode) -> ty::TyFunctionDeclaration {
         ty::TyFunctionDeclaration {
             purity: self.purity,
+            inline: self.inline,
             name: self.name.clone(),
             body: ty::TyCodeBlock { contents: vec![] },
             parameters: self.parameters.clone(),

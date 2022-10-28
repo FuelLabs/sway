@@ -244,6 +244,7 @@ fn convert_trait_methods_to_dummy_funcs(
 
         dummy_funcs.push(ty::TyFunctionDeclaration {
             purity: Default::default(),
+            inline: Default::default(),
             name: name.clone(),
             body: ty::TyCodeBlock { contents: vec![] },
             parameters: typed_parameters,

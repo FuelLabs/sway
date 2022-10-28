@@ -229,6 +229,7 @@ fn compile_fn_with_args(
         return_type_span,
         visibility,
         purity,
+        inline,
         span,
         ..
     } = ast_fn_decl;

@@ -16,6 +16,7 @@ pub mod transform;
 pub mod type_system;
 
 use crate::ir_generation::check_function_purity;
+use crate::language::Inline;
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
