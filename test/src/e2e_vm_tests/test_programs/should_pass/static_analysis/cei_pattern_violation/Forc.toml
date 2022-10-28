@@ -3,4 +3,6 @@ name = "cei_pattern_violation"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
-implicit-std = true
+
+[dependencies]
+std = { path = "../../../../../../../sway-lib-std" }
