@@ -1,3 +1,5 @@
+// optimisation-inline
+
 script;
 
 #[inline(always)]
@@ -14,8 +16,6 @@ fn main() -> u64{
     always_inline();
     never_inline()
 }
-
-// ::optimisation-inline::
 
 // ::check-ir::
 

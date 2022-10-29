@@ -40,7 +40,14 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
             let ir_checks_begin_offs = input.find("::check-ir::").unwrap_or(0);
             let asm_checks_begin_offs = input.find("::check-asm::");
 
-            let optimisation_inline = input.contains("::optimisation-inline::");
+            let mut optimisation_inline = false;
+
+            match input.lines().nth(0) {
+                Some(first_line) => {
+                    optimisation_inline = first_line.contains("optimisation-inline")
+                }
+                _ => {}
+            }
 
             let ir_checks_end_offs = match asm_checks_begin_offs {
                 Some(asm_offs) if asm_offs > ir_checks_begin_offs => asm_offs,
