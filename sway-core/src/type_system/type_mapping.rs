@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{collections::BTreeSet, fmt};
 
 use super::*;
 
@@ -52,11 +52,15 @@ impl TypeMapping {
     pub(crate) fn from_type_parameters(type_parameters: &[TypeParameter]) -> TypeMapping {
         let mapping = type_parameters
             .iter()
-            .map(|x| {
+            .map(|type_param| {
                 (
-                    x.type_id,
+                    type_param.type_id,
                     insert_type(TypeInfo::UnknownGeneric {
-                        name: x.name_ident.clone(),
+                        name: type_param.name_ident.clone(),
+                        trait_constraints: type_param
+                            .trait_constraints
+                            .into_iter()
+                            .collect::<BTreeSet<_>>(),
                     }),
                 )
             })

@@ -8,7 +8,7 @@ use sway_types::{integer_bits::IntegerBits, span::Span};
 
 use derivative::Derivative;
 use std::{
-    collections::HashSet,
+    collections::{BTreeSet, HashSet},
     fmt,
     hash::{Hash, Hasher},
 };
@@ -38,6 +38,7 @@ pub enum TypeInfo {
     Unknown,
     UnknownGeneric {
         name: Ident,
+        trait_constraints: BTreeSet<TraitConstraint>,
     },
     Str(u64),
     UnsignedInteger(IntegerBits),
@@ -163,9 +164,13 @@ impl Hash for TypeInfo {
             TypeInfo::SelfType => {
                 state.write_u8(13);
             }
-            TypeInfo::UnknownGeneric { name } => {
+            TypeInfo::UnknownGeneric {
+                name,
+                trait_constraints,
+            } => {
                 state.write_u8(14);
                 name.hash(state);
+                trait_constraints.hash(state);
             }
             TypeInfo::Custom {
                 name,
@@ -204,7 +209,16 @@ impl PartialEq for TypeInfo {
             (Self::Numeric, Self::Numeric) => true,
             (Self::Contract, Self::Contract) => true,
             (Self::ErrorRecovery, Self::ErrorRecovery) => true,
-            (Self::UnknownGeneric { name: l }, Self::UnknownGeneric { name: r }) => l == r,
+            (
+                Self::UnknownGeneric {
+                    name: l_name,
+                    trait_constraints: l_trait_constraints,
+                },
+                Self::UnknownGeneric {
+                    name: r_name,
+                    trait_constraints: r_trait_constraints,
+                },
+            ) => l_name == r_name && l_trait_constraints == r_trait_constraints,
             (
                 Self::Custom {
                     name: l_name,
