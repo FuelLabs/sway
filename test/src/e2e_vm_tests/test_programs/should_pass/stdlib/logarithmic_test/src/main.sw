@@ -27,6 +27,7 @@ fn main() -> bool {
     assert(256u32.log(4u32) == 4u32);
     assert(max_u32.log(10) == 9);
     assert(max_u32.log(2) == 31);
+    assert(max_u32.log2() == 31);
 
     // u16
     assert(7u16.log(7u16) == 1u16);
