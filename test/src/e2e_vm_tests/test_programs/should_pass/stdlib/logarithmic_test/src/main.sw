@@ -20,6 +20,7 @@ fn main() -> bool {
     assert(100.log(9) == 2);
     assert(max_u64.log(10) == 19);
     assert(max_u64.log(2) == 64);
+    assert(max_u64.log2() == 64);
 
     // u32
     assert(2u32.log(2u32) == 1u32);
