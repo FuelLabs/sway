@@ -47,6 +47,7 @@ fn main() -> bool {
     assert(125u8.log(5u8) == 3u8);
     assert(max_u8.log(10) == 2);
     assert(max_u8.log(2) == 7);
+    assert(max_u8.log2() == 7);
     
     true
 }
