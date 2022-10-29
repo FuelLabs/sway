@@ -530,7 +530,8 @@ mod ir_builder {
                     IrMetadatum::Index(idx)
                 }
                 / ['"'] s:$(([^ '"' | '\\'] / ['\\'] ['\\' | '"' ])+) ['"'] __ {
-                    IrMetadatum::String(s.to_owned())
+                    // Metadata strings are printed with '\\' escaped on parsing we unescape it.
+                    IrMetadatum::String(s.to_owned().replace("\\\\", "\\"))
                 }
                 / tag:$(id_char0() id_char()*) __ els:metadata_item()* {
                     IrMetadatum::Struct(tag.to_owned(), els)
