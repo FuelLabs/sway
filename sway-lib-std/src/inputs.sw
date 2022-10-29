@@ -2,7 +2,12 @@
 //! This includes InputCoins, InputMessages and InputContracts.
 library inputs;
 
+use ::address::Address;
+use ::assert::assert;
+use ::revert::revert;
+use ::contract_id::ContractId;
 use ::constants::BASE_ASSET_ID;
+use ::option::Option;
 use ::tx::{
     GTF_CREATE_INPUT_AT_INDEX,
     GTF_CREATE_INPUTS_COUNT,
@@ -194,11 +199,11 @@ pub fn input_predicate_length(index: u64) -> Option<u16> {
 /// If the input's type is `InputCoin` or `InputMessage`,
 /// return the pointer as an Option::Some(ptr).
 /// Otherwise, returns Option::None.
-pub fn input_predicate_pointer(index: u64) -> Option<u64> {
+pub fn input_predicate_pointer(index: u64) -> Option<raw_ptr> {
     let type = input_type(index);
     match type {
-        Input::Coin => Option::Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE)),
-        Input::Message => Option::Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE)),
+        Input::Coin => Option::Some(__gtf::<raw_ptr>(index, GTF_INPUT_COIN_PREDICATE)),
+        Input::Message => Option::Some(__gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_PREDICATE)),
         Input::Contract => Option::None,
     }
 }
@@ -209,7 +214,7 @@ pub fn input_predicate_pointer(index: u64) -> Option<u64> {
 pub fn input_predicate<T>(index: u64) -> T {
     let data = input_predicate_pointer(index);
     match data {
-        Option::Some(d) => read::<T>(d),
+        Option::Some(d) => d.read::<T>(),
         Option::None => revert(0),
     }
 }
@@ -277,7 +282,9 @@ pub fn input_message_data_length(index: u64) -> u16 {
 
 /// Get the data of the input message at `index`.
 pub fn input_message_data<T>(index: u64, offset: u64) -> T {
-    read::<T>(__gtf::<u64>(index, GTF_INPUT_MESSAGE_DATA) + offset)
+    let data = __gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_DATA);
+    let data_with_offset = data + offset;
+    data_with_offset.read::<T>()
 }
 
 fn valid_input_type(index: u64, expected_type: Input) -> bool {

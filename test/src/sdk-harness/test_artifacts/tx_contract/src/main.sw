@@ -63,7 +63,7 @@ abi TxContractTest {
     fn get_tx_witness_data(index: u64) -> B512;
     fn get_tx_receipts_root() -> b256;
     fn get_tx_script_start_pointer() -> u64;
-    fn get_tx_script_data_start_pointer() -> u64;
+    fn get_tx_script_data_start_pointer() -> raw_ptr;
     fn get_tx_id() -> b256;
     fn get_tx_script_bytecode_hash() -> b256;
 
@@ -71,7 +71,7 @@ abi TxContractTest {
     fn get_tx_input_pointer(index: u64) -> u64;
     fn get_input_owner(index: u64) -> Address;
     fn get_input_amount(index: u64) -> u64;
-    fn get_tx_input_predicate_data_pointer(index: u64) -> u64;
+    fn get_tx_input_predicate_data_pointer(index: u64) -> raw_ptr;
     fn get_input_message_msg_id(index: u64) -> b256;
     fn get_input_message_sender(index: u64) -> Address;
     fn get_input_message_recipient(index: u64) -> Address;
@@ -131,7 +131,7 @@ impl TxContractTest for Contract {
     fn get_tx_script_start_pointer() -> u64 {
         tx_script_start_pointer().addr()
     }
-    fn get_tx_script_data_start_pointer() -> u64 {
+    fn get_tx_script_data_start_pointer() -> raw_ptr {
         tx_script_data_start_pointer()
     }
     fn get_tx_id() -> b256 {
@@ -152,7 +152,7 @@ impl TxContractTest for Contract {
     fn get_input_amount(index: u64) -> u64 {
         input_amount(index).unwrap()
     }
-    fn get_tx_input_predicate_data_pointer(index: u64) -> u64 {
+    fn get_tx_input_predicate_data_pointer(index: u64) -> raw_ptr {
         input_predicate_data_pointer(index).unwrap()
     }
     fn get_input_message_msg_id(index: u64) -> b256 {
