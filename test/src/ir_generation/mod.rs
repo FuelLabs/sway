@@ -42,11 +42,8 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
             let mut optimisation_inline = false;
 
-            match input.lines().nth(0) {
-                Some(first_line) => {
-                    optimisation_inline = first_line.contains("optimisation-inline")
-                }
-                _ => {}
+            if let Some(first_line) = input.lines().next() {
+                optimisation_inline = first_line.contains("optimisation-inline")
             }
 
             let ir_checks_end_offs = match asm_checks_begin_offs {

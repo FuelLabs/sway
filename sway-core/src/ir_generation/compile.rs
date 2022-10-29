@@ -257,12 +257,9 @@ fn compile_fn_with_args(
     let storage_md_idx = md_mgr.purity_to_md(context, purity);
     let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
 
-    match ast_fn_decl.inline() {
-        Some(inline) => {
-            let inline_md_idx = md_mgr.inline_to_md(context, inline);
-            metadata = md_combine(context, &metadata, &inline_md_idx);
-        }
-        _ => {}
+    if let Some(inline) = ast_fn_decl.inline() {
+        let inline_md_idx = md_mgr.inline_to_md(context, inline);
+        metadata = md_combine(context, &metadata, &inline_md_idx);
     }
 
     let func = Function::new(
