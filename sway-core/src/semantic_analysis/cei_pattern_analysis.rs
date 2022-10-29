@@ -6,7 +6,10 @@
 
 use crate::{
     declaration_engine::DeclarationId,
-    language::ty::{self, TyFunctionDeclaration},
+    language::{
+        ty::{self, TyFunctionDeclaration},
+        AsmOp,
+    },
 };
 use std::collections::HashSet;
 use sway_error::warning::{CompileWarning, Warning};
@@ -213,15 +216,16 @@ fn effects_of_expression(expr: &ty::TyExpression) -> HashSet<Effect> {
             };
             effs
         },
-        // TODO: process assembly blocks
         AsmExpression {
-            registers: _,
-            body: _,
+            registers,
+            body,
             whole_block_span: _,
             ..
         } => {
-            // temporary solution, will remove after this is finished
-            HashSet::new()
+            effects_of_register_initializers(registers)
+            .union(&effects_of_asm_ops(body))
+            .cloned()
+            .collect()
         },
     }
 }
@@ -232,6 +236,13 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         StateStoreWord | StateStoreQuad => HashSet::from([Effect::StorageWrite]),
         Revert | GetStorageKey | IsReferenceType | SizeOfType | SizeOfVal | Eq | Gtf | AddrOf
         | StateLoadWord | StateLoadQuad | Log | Add | Sub | Mul | Div => HashSet::new(),
+    }
+}
+
+fn effects_of_asm_op(op: &AsmOp) -> HashSet<Effect> {
+    match op.op_name.as_str().to_lowercase().as_str() {
+        "sww" | "swwq" => HashSet::from([Effect::StorageWrite]),
+        _ => HashSet::new(),
     }
 }
 
@@ -255,4 +266,19 @@ fn effects_of_expressions(exprs: &[ty::TyExpression]) -> HashSet<Effect> {
 
 fn effects_of_struct_expressions(struct_exprs: &[ty::TyStructExpressionField]) -> HashSet<Effect> {
     map_hashsets_union(struct_exprs, |se| effects_of_expression(&se.value))
+}
+
+fn effects_of_asm_ops(asm_ops: &[AsmOp]) -> HashSet<Effect> {
+    map_hashsets_union(asm_ops, effects_of_asm_op)
+}
+
+fn effects_of_register_initializers(
+    initializers: &[ty::TyAsmRegisterDeclaration],
+) -> HashSet<Effect> {
+    map_hashsets_union(initializers, |asm_reg_decl| {
+        asm_reg_decl
+            .initializer
+            .as_ref()
+            .map_or(HashSet::new(), effects_of_expression)
+    })
 }
