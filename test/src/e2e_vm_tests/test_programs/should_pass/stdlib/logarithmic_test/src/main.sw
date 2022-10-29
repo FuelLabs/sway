@@ -9,7 +9,8 @@ fn main() -> bool {
     let max_u8 = ~u8::max();
 
     // u64
-    assert(2.log(2) == 1);    
+    assert(2.log(2) == 1);
+    assert(2.log2() == 1);
     assert(1.log(3) == 0);
     assert(8.log(2) == 3);
     assert(100.log(10) == 2);
