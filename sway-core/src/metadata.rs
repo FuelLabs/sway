@@ -255,14 +255,13 @@ impl MetadataManager {
         context: &mut Context,
         inline: Inline,
     ) -> Option<MetadataIndex> {
-        (inline != Inline::Default).then(|| {
+        Some(
             self.inline_md_cache
                 .get(&inline)
                 .copied()
                 .unwrap_or_else(|| {
                     // Create new metadatum.
                     let field = match inline {
-                        Inline::Default => unreachable!("Already checked for Default above."),
                         Inline::Always => "always",
                         Inline::Never => "never",
                     };
@@ -275,8 +274,8 @@ impl MetadataManager {
                     self.inline_md_cache.insert(inline, md_idx);
 
                     md_idx
-                })
-        })
+                }),
+        )
     }
 
     fn file_location_to_md(
