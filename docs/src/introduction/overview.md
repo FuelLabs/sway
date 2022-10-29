@@ -2,6 +2,8 @@
 
 Follow this guide to write, test, and deploy a simple smart contract in Sway.
 
+Check out the [Developer Quickstart](https://fuellabs.github.io/fuel-docs/master/developer-quickstart.html) for a guide on building a fullstack dapp on Fuel. The quickstart will walk you through writing a smart contract, setting up a wallet, and building a frontend to interact with your contract.
+
 ## Glossary
 
 Before we begin, it may be helpful to understand terminology that will used throughout the docs and how they relate to each other:
@@ -169,6 +171,9 @@ This starts a Fuel node with a volatile database that will be cleared when shut 
 
 ### Deploy `counter_contract` To Your Local Fuel Node
 
+> **Note**
+> If you want to deploy your contract to the testnet instead of to a local Fuel node, check out the [Developer Quickstart](https://fuellabs.github.io/fuel-docs/master/developer-quickstart.html).
+
 To deploy `counter_contract` on your local Fuel node, open a new terminal tab and run the following command from the root of the `wallet_contract` directory:
 
 ```sh
@@ -230,4 +235,8 @@ test can_get_contract_id ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
 ```
 
-Congratulations, you've just created and tested your first Sway smart contract 🎉. Now you can build a frontend to interact with your contract using the TypeScript SDK. You can find a step-by-step guide to building a front end for your project [here](https://fuellabs.github.io/fuels-ts/QUICKSTART.html).
+Congratulations, you've just created and tested your first Sway smart contract 🎉.
+
+## Next Steps
+
+Now that you've written a smart contract with Sway and deployed it to a local Fuel node, try out building a fullstack dapp deployed to the testnet. A step-by-step guide to write your smart contract, deploy to testnet, set up a wallet, and build a frontend can be found in the [Developer Quickstart Guide](https://fuellabs.github.io/fuel-docs/master/developer-quickstart.html).
