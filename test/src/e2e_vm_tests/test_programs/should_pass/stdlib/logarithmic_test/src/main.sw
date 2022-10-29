@@ -38,6 +38,7 @@ fn main() -> bool {
     assert(1024u16.log(2u16) == 10u16);
     assert(max_u16.log(10) == 4);
     assert(max_u16.log(2) == 15);
+    assert(max_u16.log2() == 15);
 
     // u8
     assert(20u8.log(20u8) == 1u8);
