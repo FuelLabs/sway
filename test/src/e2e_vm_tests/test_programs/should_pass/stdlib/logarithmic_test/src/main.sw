@@ -16,7 +16,7 @@ fn main() -> bool {
     assert(8.log2() == 3);
     assert(100.log(10) == 2);
     assert(100.log(2) == 6);
-    assert(100.log2 == 6);
+    assert(100.log2() == 6);
     assert(100.log(9) == 2);
     assert(max_u64.log(10) == 19);
     assert(max_u64.log(2) == 64);
