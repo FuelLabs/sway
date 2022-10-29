@@ -5,7 +5,6 @@ use async_trait::async_trait;
 use fuel_crypto::{Message, SecretKey, Signature};
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Address, ContractId, Input, Output, Transaction, TransactionBuilder, Witness};
-use fuel_vm::prelude::SerializableVec;
 use fuels_core::constants::BASE_ASSET_ID;
 use fuels_signers::{provider::Provider, Wallet};
 use fuels_types::bech32::Bech32Address;
@@ -18,9 +17,9 @@ fn prompt_address() -> Result<Bech32Address> {
     Bech32Address::from_str(buf.trim()).map_err(Error::msg)
 }
 
-fn prompt_signature(message: Message) -> Result<Signature> {
-    println!("Message to sign: {}", message);
-    print!("Please provide the signed message:");
+fn prompt_signature(tx_id: fuel_tx::Bytes32) -> Result<Signature> {
+    println!("Transaction id to sign: {}", tx_id);
+    print!("Please provide the signature:");
     std::io::stdout().flush()?;
     let mut buf = String::new();
     std::io::stdin().read_line(&mut buf)?;
@@ -155,11 +154,11 @@ impl TransactionBuilderExt for TransactionBuilder {
         let mut tx = self.finalize();
 
         if !unsigned {
-            let message = Message::new(tx.to_bytes());
             let signature = if let Some(signing_key) = signing_key {
+                let message = unsafe { Message::from_bytes_unchecked(*tx.id()) };
                 Signature::sign(&signing_key, &message)
             } else {
-                prompt_signature(message)?
+                prompt_signature(tx.id())?
             };
 
             let witness = Witness::from(signature.as_ref());
