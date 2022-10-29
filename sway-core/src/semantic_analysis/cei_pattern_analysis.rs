@@ -40,7 +40,7 @@ pub(crate) fn analyze_program(prog: &ty::TyProgram) -> Vec<CompileWarning> {
 fn analyze_contract(ast_nodes: &[ty::TyAstNode]) -> Vec<CompileWarning> {
     contract_entry_points(ast_nodes)
         .iter()
-        .flat_map(|fn_decl| analyze_code_block(&fn_decl.body))
+        .flat_map(|fn_decl| analyze_code_block(&fn_decl.body, &fn_decl.name))
         .collect()
 }
 
@@ -83,7 +83,10 @@ fn impl_trait_methods<'a>(
 
 // This is the main part of the analysis algorithm:
 // we are looking for state effects after contract interaction
-fn analyze_code_block(code_block: &ty::TyCodeBlock) -> Vec<CompileWarning> {
+fn analyze_code_block(
+    code_block: &ty::TyCodeBlock,
+    block_name: &sway_types::Ident,
+) -> Vec<CompileWarning> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut interaction_span: Span = Span::dummy();
     let mut analysis_state: CEIAnalysisState = CEIAnalysisState::LookingForInteraction;
@@ -100,7 +103,9 @@ fn analyze_code_block(code_block: &ty::TyCodeBlock) -> Vec<CompileWarning> {
                 if effects_of_codeblock_entry(ast_node).contains(&Effect::StorageWrite) {
                     warnings.push(CompileWarning {
                         span: Span::join(interaction_span, ast_node.span.clone()),
-                        warning_content: Warning::StorageWriteAfterInteraction,
+                        warning_content: Warning::StorageWriteAfterInteraction {
+                            block_name: block_name.clone(),
+                        },
                     });
                     return warnings;
                 }
