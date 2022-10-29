@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: fn main() -> Vec<u64> {
+# nextln: $()returning a `raw_ptr` from `main()` is not allowed

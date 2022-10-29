@@ -37,6 +37,8 @@
 // For now it's easiest to just export absolutely everything to core_lang, we can refine the public
 // API when it's closer to finished.
 
+pub mod analysis;
+pub use analysis::*;
 pub mod asm;
 pub use asm::*;
 pub mod block;

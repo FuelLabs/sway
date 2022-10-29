@@ -19,7 +19,7 @@ async fn get_block_instance() -> (BlockTestContract, ContractId) {
     )
     .await
     .unwrap();
-    let instance = BlockTestContract::new(id.to_string(), wallet);
+    let instance = BlockTestContract::new(id.clone(), wallet);
 
     (instance, id.into())
 }

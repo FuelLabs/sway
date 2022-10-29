@@ -1,6 +1,6 @@
 script;
 
-use std::{alloc::alloc, assert::assert, hash::sha256, intrinsics::{size_of, size_of_val}, mem::*};
+use std::{alloc::alloc, assert::assert, hash::sha256, intrinsics::{size_of, size_of_val}};
 
 struct TestStruct {
     boo: bool,
@@ -24,50 +24,49 @@ fn main() -> bool {
     assert(foo_len == 16);
 
     // Get a pointer to it
-    let foo_ptr = addr_of(foo);
+    let foo_ptr = __addr_of(foo);
     assert(foo_ptr == asm(r1: foo) {
-        r1: u64
+        r1: raw_ptr
     });
 
     // Get another pointer to it and compare
-    let foo_ptr_2 = addr_of(foo);
+    let foo_ptr_2 = __addr_of(foo);
     assert(foo_ptr_2 == foo_ptr);
 
     // Copy the struct into a buffer
     let buf_ptr = alloc(16);
-    copy(foo_ptr, buf_ptr, 16);
-    assert(eq(buf_ptr, foo_ptr, 16));
-    assert(asm(r1: buf_ptr, r2: foo_ptr, r3: foo_len) {
-        meq r1 r1 r2 r3;
-        r1: bool
+    foo_ptr.copy_to(buf_ptr, 16);
+    assert(asm(r1: buf_ptr, r2: foo_ptr, r3: foo_len, res) {
+        meq res r1 r2 r3;
+        res: bool
     });
 
     // Read the pointer as a TestStruct
-    let foo: TestStruct = read(buf_ptr);
+    let foo: TestStruct = buf_ptr.read();
     assert(foo.boo == true);
     assert(foo.uwu == 42);
 
     // Read fields of the struct
-    let uwu_ptr = buf_ptr + size_of::<bool>();
-    let uwu: u64 = read(uwu_ptr);
+    let uwu_ptr = buf_ptr.add(size_of::<bool>());
+    let uwu: u64 = uwu_ptr.read();
     assert(uwu == 42);
-    let boo_ptr = uwu_ptr - size_of::<bool>();
-    let boo: bool = read(boo_ptr);
+    let boo_ptr = uwu_ptr.sub(size_of::<bool>());
+    let boo: bool = boo_ptr.read();
     assert(boo == true);
 
     // Write values into a buffer
     let buf_ptr = alloc(16);
-    write(buf_ptr, true);
-    write(buf_ptr + size_of::<bool>(), 42);
-    let foo: TestStruct = read(buf_ptr);
+    buf_ptr.write(true);
+    buf_ptr.add(size_of::<bool>()).write(42);
+    let foo: TestStruct = buf_ptr.read();
     assert(foo.boo == true);
     assert(foo.uwu == 42);
 
     // Write structs into a buffer
     let buf_ptr = alloc(32);
-    write(buf_ptr, foo);
-    write(buf_ptr + size_of::<TestStruct>(), foo);
-    let bar: ExtendedTestStruct = read(buf_ptr);
+    buf_ptr.write(foo);
+    buf_ptr.add(size_of::<TestStruct>()).write(foo);
+    let bar: ExtendedTestStruct = buf_ptr.read();
     assert(bar.boo == true);
     assert(bar.uwu == 42);
     assert(bar.kek == true);
@@ -78,20 +77,20 @@ fn main() -> bool {
     let buf_ptr = alloc(8);
     let small_string_1 = "fuel";
     let small_string_2 = "labs";
-    write(buf_ptr, small_string_1);
-    let read_small_string_1 = read::<str[4]>(buf_ptr);
-    write(buf_ptr, small_string_2);
-    let read_small_string_2 = read::<str[4]>(buf_ptr);
+    buf_ptr.write(small_string_1);
+    let read_small_string_1 = buf_ptr.read::<str[4]>();
+    buf_ptr.write(small_string_2);
+    let read_small_string_2 = buf_ptr.read::<str[4]>();
     assert(sha256(small_string_1) == sha256(read_small_string_1));
     assert(sha256(small_string_2) == sha256(read_small_string_2));
 
     let buf_ptr = alloc(16);
     let large_string_1 = "fuelfuelfuel";
     let large_string_2 = "labslabslabs";
-    write(buf_ptr, large_string_1);
-    let read_large_string_1 = read::<str[12]>(buf_ptr);
-    write(buf_ptr, large_string_2);
-    let read_large_string_2 = read::<str[12]>(buf_ptr);
+    buf_ptr.write(large_string_1);
+    let read_large_string_1 = buf_ptr.read::<str[12]>();
+    buf_ptr.write(large_string_2);
+    let read_large_string_2 = buf_ptr.read::<str[12]>();
     assert(sha256(large_string_1) == sha256(read_large_string_1));
     assert(sha256(large_string_2) == sha256(read_large_string_2));
 

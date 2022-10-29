@@ -3,7 +3,7 @@ use std::fmt;
 use sway_types::{JsonTypeApplication, JsonTypeDeclaration};
 
 /// A identifier to uniquely refer to our type terms
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd)]
 pub struct TypeId(usize);
 
 impl std::ops::Deref for TypeId {
@@ -15,13 +15,13 @@ impl std::ops::Deref for TypeId {
 
 impl fmt::Display for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&look_up_type_id(*self).to_string())
+        write!(f, "{}", look_up_type_id(*self))
     }
 }
 
 impl fmt::Debug for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&look_up_type_id(*self).to_string())
+        write!(f, "{:?}", look_up_type_id(*self))
     }
 }
 
@@ -102,6 +102,7 @@ impl ReplaceSelfType for TypeId {
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::B256
             | TypeInfo::Numeric
+            | TypeInfo::RawUntypedPtr
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery => {}
         }
@@ -113,6 +114,12 @@ impl CopyTypes for TypeId {
         if let Some(matching_id) = type_mapping.find_match(*self) {
             *self = matching_id;
         }
+    }
+}
+
+impl UnconstrainedTypeParameters for TypeId {
+    fn type_parameter_is_unconstrained(&self, type_parameter: &TypeParameter) -> bool {
+        look_up_type_id(*self).type_parameter_is_unconstrained(type_parameter)
     }
 }
 

@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use forc_pkg::{BuildOptions, PackageManifestFile};
+use forc_pkg::{self as pkg, PackageManifestFile};
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, TransactionBuilder};
 use fuel_vm::prelude::*;
@@ -25,28 +25,11 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         Some(network) => &network.url,
         _ => DEFAULT_NODE_URL,
     };
-    let node_url = command.url.unwrap_or_else(|| node_url.to_string());
+    let node_url = command.url.as_deref().unwrap_or(node_url);
     let client = FuelClient::new(node_url)?;
 
-    let build_options = BuildOptions {
-        path: command.path,
-        print_ast: command.print_ast,
-        print_finalized_asm: command.print_finalized_asm,
-        print_intermediate_asm: command.print_intermediate_asm,
-        print_ir: command.print_ir,
-        binary_outfile: command.binary_outfile,
-        offline_mode: command.offline_mode,
-        debug_outfile: command.debug_outfile,
-        terse_mode: command.terse_mode,
-        output_directory: command.output_directory,
-        minify_json_abi: command.minify_json_abi,
-        minify_json_storage_slots: command.minify_json_storage_slots,
-        locked: command.locked,
-        build_profile: command.build_profile,
-        release: command.release,
-        time_phases: command.time_phases,
-    };
-    let compiled = forc_pkg::build_with_options(build_options)?;
+    let build_opts = build_opts_from_cmd(&command);
+    let compiled = forc_pkg::build_package_with_options(&manifest, build_opts)?;
 
     let bytecode = compiled.bytecode.clone().into();
     let salt = Salt::new([0; 32]);
@@ -56,6 +39,7 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id = contract.id(&salt, &root, &state_root);
+    info!("Contract id: 0x{}", hex::encode(contract_id));
     let tx = TransactionBuilder::create(bytecode, salt, storage_slots.clone())
         .params(TxParameters::new(command.gas_limit, command.gas_price))
         .add_output(Output::contract_created(contract_id, state_root))
@@ -68,5 +52,33 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
             Ok(contract_id)
         }
         Err(e) => bail!("{e}"),
+    }
+}
+
+fn build_opts_from_cmd(cmd: &DeployCommand) -> pkg::BuildOpts {
+    pkg::BuildOpts {
+        pkg: pkg::PkgOpts {
+            path: cmd.path.clone(),
+            offline: cmd.offline_mode,
+            terse: cmd.terse_mode,
+            locked: cmd.locked,
+            output_directory: cmd.output_directory.clone(),
+        },
+        print: pkg::PrintOpts {
+            ast: cmd.print_ast,
+            finalized_asm: cmd.print_finalized_asm,
+            intermediate_asm: cmd.print_intermediate_asm,
+            ir: cmd.print_ir,
+        },
+        minify: pkg::MinifyOpts {
+            json_abi: cmd.minify_json_abi,
+            json_storage_slots: cmd.minify_json_storage_slots,
+        },
+        build_profile: cmd.build_profile.clone(),
+        release: cmd.release,
+        time_phases: cmd.time_phases,
+        binary_outfile: cmd.binary_outfile.clone(),
+        debug_outfile: cmd.debug_outfile.clone(),
+        tests: false,
     }
 }

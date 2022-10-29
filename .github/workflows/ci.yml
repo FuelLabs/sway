@@ -241,7 +241,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.10.1
+        image: ghcr.io/fuellabs/fuel-core:v0.11.2
         ports:
           - 4000:4000
     steps:
@@ -262,7 +262,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.10.1
+        image: ghcr.io/fuellabs/fuel-core:v0.11.2
         ports:
           - 4000:4000
     steps:
@@ -384,6 +384,7 @@ jobs:
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-fmt/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-lsp/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-pkg/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-tracing/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-util/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-core/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} swayfmt/Cargo.toml
@@ -626,6 +627,12 @@ jobs:
           command: install
           args: --profile=release --path ./forc-plugins/forc-client
 
+      - name: Install forc-doc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --profile=release --path ./forc-plugins/forc-doc
+
       - name: Prep Assets
         id: prep_assets
         env:
@@ -636,7 +643,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for binary in forc forc-fmt forc-lsp forc-explore forc-deploy forc-run; do
+          for binary in forc forc-fmt forc-lsp forc-explore forc-deploy forc-run forc-doc; do
             cp $(which ${binary}) ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries

@@ -1,0 +1,13 @@
+category = "fail"
+
+# check: $()struct MyPoint<T> where T: MyAdd {
+# nextln:$()"where" clauses are not yet supported
+
+# check: $()let foo = MyPoint {
+# nextln: $()Could not find symbol "MyPoint" in this scope.
+
+# check: $()MyPoint {
+# nextln: $()Unknown type name "MyPoint".
+
+# check: $()MyPoint {
+# nextln: $()Unknown type name "MyPoint".

@@ -29,3 +29,10 @@ impl CopyTypes for TyVariableDeclaration {
         self.body.copy_types(type_mapping)
     }
 }
+
+impl ReplaceSelfType for TyVariableDeclaration {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.type_ascription.replace_self_type(self_type);
+        self.body.replace_self_type(self_type)
+    }
+}

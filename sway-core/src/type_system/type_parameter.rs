@@ -1,6 +1,5 @@
 use crate::{error::*, language::ty, semantic_analysis::*, type_system::*};
 
-use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span::Span, JsonTypeDeclaration, Spanned};
 
 use std::{
@@ -8,12 +7,13 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Eq)]
 pub struct TypeParameter {
     pub type_id: TypeId,
     pub(crate) initial_type_id: TypeId,
     pub name_ident: Ident,
     pub(crate) trait_constraints: Vec<TraitConstraint>,
+    pub(crate) trait_constraints_span: Span,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -62,6 +62,12 @@ impl fmt::Display for TypeParameter {
     }
 }
 
+impl fmt::Debug for TypeParameter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {:?}", self.name_ident, self.type_id)
+    }
+}
+
 impl TypeParameter {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
@@ -69,12 +75,6 @@ impl TypeParameter {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        if !type_parameter.trait_constraints.is_empty() {
-            errors.push(CompileError::WhereClauseNotYetSupported {
-                span: type_parameter.name_ident.span(),
-            });
-            return err(warnings, errors);
-        }
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
         let type_id = insert_type(TypeInfo::UnknownGeneric {
             name: type_parameter.name_ident.clone(),
@@ -91,6 +91,7 @@ impl TypeParameter {
             type_id,
             initial_type_id: type_parameter.initial_type_id,
             trait_constraints: type_parameter.trait_constraints,
+            trait_constraints_span: type_parameter.trait_constraints_span,
         };
         ok(type_parameter, warnings, errors)
     }

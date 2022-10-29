@@ -26,5 +26,5 @@ async fn get_methods_instance(wallet: WalletUnlocked) -> MethodsContract {
     )
     .await
     .unwrap();
-    MethodsContract::new(id.to_string(), wallet)
+    MethodsContract::new(id.clone(), wallet)
 }

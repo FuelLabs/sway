@@ -4,9 +4,10 @@ use std::{
     sync::Arc,
 };
 
+use anyhow::Result;
 use sway_core::{compile_ir_to_asm, compile_to_ast, ir_generation::compile_program, namespace};
 
-pub(super) fn run(filter_regex: Option<&regex::Regex>) {
+pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
     // Compile core library and reuse it when compiling tests.
     let core_lib = compile_core();
 
@@ -207,6 +208,7 @@ pub(super) fn run(filter_regex: Option<&regex::Regex>) {
     } else {
         tracing::info!("Ran {run_test_count} out of {total_test_count} IR generation tests.");
     }
+    Ok(())
 }
 
 fn discover_test_files() -> Vec<PathBuf> {
