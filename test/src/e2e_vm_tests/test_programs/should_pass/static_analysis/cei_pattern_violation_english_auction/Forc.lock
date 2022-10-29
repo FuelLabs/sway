@@ -1,0 +1,13 @@
+[[package]]
+name = 'cei_pattern_violation_english_auction'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-064254D1F5F62D46'
+
+[[package]]
+name = 'std'
+source = 'git+https://github.com/fuellabs/sway?tag=v0.28.1#84f9aad376760cd9c8eacc8a4848bffeb25bf9a5'
+dependencies = ['core']

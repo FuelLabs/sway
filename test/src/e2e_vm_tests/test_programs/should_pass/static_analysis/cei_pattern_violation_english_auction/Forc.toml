@@ -1,0 +1,7 @@
+[project]
+name = "cei_pattern_violation_english_auction"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+
+[dependencies]
