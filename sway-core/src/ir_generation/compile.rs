@@ -229,10 +229,9 @@ fn compile_fn_with_args(
         return_type_span,
         visibility,
         purity,
-        inline,
         span,
         ..
-    } = ast_fn_decl;
+    } = ast_fn_decl.clone();
 
     let mut args = args
         .into_iter()
@@ -258,8 +257,13 @@ fn compile_fn_with_args(
     let storage_md_idx = md_mgr.purity_to_md(context, purity);
     let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
 
-    let inline_md_idx = md_mgr.inline_to_md(context, inline);
-    metadata = md_combine(context, &metadata, &inline_md_idx);
+    match ast_fn_decl.inline() {
+        Some(inline) => {
+            let inline_md_idx = md_mgr.inline_to_md(context, inline);
+            metadata = md_combine(context, &metadata, &inline_md_idx);
+        }
+        _ => {}
+    }
 
     let func = Function::new(
         context,

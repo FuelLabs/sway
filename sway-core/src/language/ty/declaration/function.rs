@@ -9,6 +9,8 @@ use crate::{
     type_system::*,
 };
 
+use sway_types::constants::{INLINE_ALWAYS_NAME, INLINE_NEVER_NAME};
+
 #[derive(Clone, Debug, Eq)]
 pub struct TyFunctionDeclaration {
     pub name: Ident,
@@ -292,6 +294,23 @@ impl TyFunctionDeclaration {
     pub fn is_test(&self) -> bool {
         self.attributes
             .contains_key(&transform::AttributeKind::Test)
+    }
+
+    pub fn inline(&self) -> Option<Inline> {
+        match self.attributes.get(&transform::AttributeKind::Inline) {
+            Some(attributes) => match attributes.last() {
+                Some(attribute) => match attribute.args.first() {
+                    Some(arg) => match arg.as_str() {
+                        INLINE_NEVER_NAME => Some(Inline::Never),
+                        INLINE_ALWAYS_NAME => Some(Inline::Always),
+                        _ => None,
+                    },
+                    _ => None,
+                },
+                _ => None,
+            },
+            _ => None,
+        }
     }
 
     /// Whether or not this function describes a program entry point.
