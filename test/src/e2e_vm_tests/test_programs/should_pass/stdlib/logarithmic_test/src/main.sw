@@ -13,6 +13,7 @@ fn main() -> bool {
     assert(2.log2() == 1);
     assert(1.log(3) == 0);
     assert(8.log(2) == 3);
+    assert(8.log2() == 3);
     assert(100.log(10) == 2);
     assert(100.log(2) == 6);
     assert(100.log(9) == 2);
