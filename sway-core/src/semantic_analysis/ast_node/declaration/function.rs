@@ -34,7 +34,6 @@ impl ty::TyFunctionDeclaration {
             return_type_span,
             visibility,
             purity,
-            inline,
         } = fn_decl;
 
         // Warn against non-snake case function names.
@@ -153,7 +152,6 @@ impl ty::TyFunctionDeclaration {
             visibility,
             is_contract_call,
             purity,
-            inline,
         };
 
         // Retrieve the implemented traits for the type of the return type and
@@ -175,7 +173,6 @@ fn test_function_selector_behavior() {
     use sway_types::{integer_bits::IntegerBits, Ident, Span};
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
-        inline: Default::default(),
         name: Ident::new_no_span("foo"),
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![],
@@ -198,7 +195,6 @@ fn test_function_selector_behavior() {
 
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
-        inline: Default::default(),
         name: Ident::new_with_override("bar", Span::dummy()),
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![

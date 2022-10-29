@@ -2,7 +2,7 @@ use derivative::Derivative;
 use sway_types::{Ident, Span};
 
 use crate::{
-    language::{ty::*, Inline, Purity},
+    language::{ty::*, Purity},
     transform,
     type_system::*,
 };
@@ -12,7 +12,6 @@ use crate::{
 pub struct TyTraitFn {
     pub name: Ident,
     pub(crate) purity: Purity,
-    pub(crate) inline: Inline,
     pub parameters: Vec<TyFunctionParameter>,
     pub return_type: TypeId,
     #[derivative(PartialEq = "ignore")]

@@ -22,10 +22,9 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{
     constants::{
-        DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, INLINE_ALWAYS_NAME, INLINE_ATTRIBUTE_NAME,
-        INLINE_NEVER_NAME, MATCH_RETURN_VAR_NAME_PREFIX, STORAGE_PURITY_ATTRIBUTE_NAME,
-        STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
-        TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
+        DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME,
+        MATCH_RETURN_VAR_NAME_PREFIX, STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME,
+        STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
 };
@@ -354,7 +353,6 @@ fn item_fn_to_function_declaration(
     };
     Ok(FunctionDeclaration {
         purity: get_attributed_purity(handler, &attributes)?,
-        inline: get_attributed_inline(handler, &attributes)?,
         attributes,
         name: item_fn.fn_signature.name,
         visibility: pub_token_opt_to_visibility(item_fn.fn_signature.visibility),
@@ -407,33 +405,6 @@ fn get_attributed_purity(
             Ok(purity)
         }
         _otherwise => Ok(Purity::Pure),
-    }
-}
-
-fn get_attributed_inline(
-    handler: &Handler,
-    attributes: &AttributesMap,
-) -> Result<Inline, ErrorEmitted> {
-    let mut inline = Inline::Default;
-
-    match attributes.get(&AttributeKind::Inline) {
-        Some(attrs) if !attrs.is_empty() => {
-            for arg in attrs.iter().flat_map(|attr| &attr.args) {
-                match arg.as_str() {
-                    INLINE_NEVER_NAME => inline = Inline::Never,
-                    INLINE_ALWAYS_NAME => inline = Inline::Always,
-                    _otherwise => {
-                        let error = ConvertParseTreeError::InvalidAttributeArgument {
-                            attribute: "inline".to_owned(),
-                            span: arg.span(),
-                        };
-                        return Err(handler.emit_err(error.into()));
-                    }
-                }
-            }
-            Ok(inline)
-        }
-        _otherwise => Ok(Inline::Default),
     }
 }
 
@@ -986,7 +957,6 @@ fn fn_signature_to_trait_fn(
     let trait_fn = TraitFn {
         name: fn_signature.name,
         purity: get_attributed_purity(handler, &attributes)?,
-        inline: get_attributed_inline(handler, &attributes)?,
         attributes,
         parameters: fn_args_to_function_parameters(handler, fn_signature.arguments.into_inner())?,
         return_type: match fn_signature.return_type_opt {

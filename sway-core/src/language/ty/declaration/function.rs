@@ -26,7 +26,6 @@ pub struct TyFunctionDeclaration {
     /// whether this function exists in another contract and requires a call to it or not
     pub is_contract_call: bool,
     pub purity: Purity,
-    pub inline: Inline,
 }
 
 impl From<&TyFunctionDeclaration> for TyAstNode {
@@ -54,7 +53,6 @@ impl PartialEq for TyFunctionDeclaration {
             && self.visibility == other.visibility
             && self.is_contract_call == other.is_contract_call
             && self.purity == other.purity
-            && self.inline == other.inline
     }
 }
 
@@ -138,12 +136,10 @@ impl TyFunctionDeclaration {
             return_type_span,
             visibility,
             purity,
-            inline,
             ..
         } = decl;
         let initial_return_type = insert_type(return_type);
         TyFunctionDeclaration {
-            inline,
             purity,
             name,
             body: TyCodeBlock {

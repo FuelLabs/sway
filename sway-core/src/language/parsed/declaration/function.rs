@@ -8,7 +8,6 @@ use sway_types::{ident::Ident, span::Span};
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration {
     pub purity: Purity,
-    pub inline: Inline,
     pub attributes: transform::AttributesMap,
     pub name: Ident,
     pub visibility: Visibility,

@@ -31,7 +31,6 @@ pub struct TraitFn {
     pub name: Ident,
     pub attributes: transform::AttributesMap,
     pub purity: Purity,
-    pub inline: Inline,
     pub parameters: Vec<FunctionParameter>,
     pub return_type: TypeInfo,
     pub return_type_span: Span,

@@ -400,7 +400,6 @@ fn type_check_interface_surface(
         let TraitFn {
             name,
             purity,
-            inline,
             parameters,
             return_type,
             return_type_span,
@@ -438,7 +437,6 @@ fn type_check_interface_surface(
         typed_surface.push(de_insert_trait_fn(ty::TyTraitFn {
             name,
             purity,
-            inline,
             return_type_span,
             parameters: typed_parameters,
             return_type,
