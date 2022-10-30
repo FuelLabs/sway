@@ -41,9 +41,21 @@ impl TraitMap {
         type_id: TypeId,
         methods: &[DeclarationId],
         impl_span: &Span,
+        is_impl_self: bool,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let mut trait_methods: TraitMethods = im::HashMap::new();
+        for decl_id in methods.iter() {
+            let method = check!(
+                CompileResult::from(de_get_function(decl_id.clone(), impl_span)),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            trait_methods.insert(method.name.to_string(), decl_id.clone());
+        }
 
         // check to see if adding this trait will produce a conflicting definition
         let trait_type_id = insert_type(TypeInfo::Custom {
@@ -54,7 +66,7 @@ impl TraitMap {
                 Some(trait_type_args.clone())
             },
         });
-        for (map_trait_name, map_type_id) in self.trait_impls.keys() {
+        for ((map_trait_name, map_type_id), map_trait_methods) in self.trait_impls.iter() {
             let CallPath {
                 suffix: (map_trait_name_suffix, map_trait_type_args),
                 ..
@@ -67,10 +79,13 @@ impl TraitMap {
                     Some(map_trait_type_args.to_vec())
                 },
             });
-            let type_info = look_up_type_id(type_id);
-            if look_up_type_id(trait_type_id).is_subset_of(&look_up_type_id(map_trait_type_id))
-                && type_info.is_subset_of(&look_up_type_id(*map_type_id))
-            {
+
+            let types_are_subset =
+                look_up_type_id(type_id).is_subset_of(&look_up_type_id(*map_type_id));
+            let traits_are_subset =
+                look_up_type_id(trait_type_id).is_subset_of(&look_up_type_id(map_trait_type_id));
+
+            if types_are_subset && traits_are_subset && !is_impl_self {
                 let trait_name_str = format!(
                     "{}{}",
                     trait_name.suffix,
@@ -92,6 +107,22 @@ impl TraitMap {
                     type_implementing_for: type_id.to_string(),
                     second_impl_span: impl_span.clone(),
                 });
+            } else if types_are_subset {
+                for (name, decl_id) in trait_methods.iter() {
+                    if map_trait_methods.get(name).is_some() {
+                        let method = check!(
+                            CompileResult::from(de_get_function(decl_id.clone(), impl_span)),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        errors.push(CompileError::DuplicateMethodsDefinedForType {
+                            func_name: method.name.to_string(),
+                            type_implementing_for: type_id.to_string(),
+                            span: method.name.span(),
+                        });
+                    }
+                }
             }
         }
         let trait_name: TraitName = CallPath {
@@ -99,17 +130,6 @@ impl TraitMap {
             suffix: (trait_name.suffix, trait_type_args),
             is_absolute: trait_name.is_absolute,
         };
-
-        let mut trait_methods: TraitMethods = im::HashMap::new();
-        for decl_id in methods.iter() {
-            let method = check!(
-                CompileResult::from(de_get_function(decl_id.clone(), impl_span)),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            trait_methods.insert(method.name.to_string(), decl_id.clone());
-        }
 
         // even if there is a conflicting definition, add the trait anyway
         self.insert_inner(trait_name, type_id, trait_methods);

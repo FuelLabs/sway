@@ -98,6 +98,7 @@ impl ty::TyTraitDeclaration {
                 self_type,
                 &dummy_interface_surface,
                 &span,
+                false
             ),
             return err(warnings, errors),
             warnings,
@@ -195,6 +196,7 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                     self_type,
                     &dummy_interface_surface,
                     &supertrait.name.span(),
+                    false,
                 );
 
                 // Insert the trait methods of the supertrait into the
@@ -207,6 +209,7 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                     self_type,
                     &methods,
                     &supertrait.name.span(),
+                    false,
                 );
 
                 // Recurse to insert versions of interfaces and methods of the

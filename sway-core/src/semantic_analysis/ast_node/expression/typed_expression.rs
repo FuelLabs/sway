@@ -1265,6 +1265,7 @@ impl ty::TyExpression {
                 return_type,
                 &abi_methods,
                 &span,
+                false
             ),
             return err(warnings, errors),
             warnings,

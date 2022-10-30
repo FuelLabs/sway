@@ -775,6 +775,7 @@ fn type_check_trait_implementation(
             self_type,
             &new_method_ids,
             block_span,
+            false,
         ),
         return err(warnings, errors),
         warnings,
