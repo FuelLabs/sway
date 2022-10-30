@@ -2,7 +2,7 @@
 
 Follow this guide to write, test, and deploy a simple smart contract in Sway.
 
-Check out the [Developer Quickstart](https://fuellabs.github.io/fuel-docs/master/developer-quickstart.html) for a guide on building a fullstack dapp on Fuel. The quickstart will walk you through writing a smart contract, setting up a wallet, and building a frontend to interact with your contract.
+Check out the [Developer Quickstart Guide](https://fuellabs.github.io/fuel-docs/master/developer-quickstart.html) for a step-by-step guide on building a fullstack dapp on Fuel. The guide will walk you through writing a smart contract, setting up a wallet, and building a frontend to interact with your contract.
 
 ## Glossary
 
