@@ -138,7 +138,7 @@ impl Items {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
-        methods: Vec<ty::TyFunctionDeclaration>,
+        methods: &[DeclarationId],
         impl_span: &Span,
     ) -> CompileResult<()> {
         let new_prefixes = if trait_name.prefixes.is_empty() {
@@ -166,7 +166,7 @@ impl Items {
     pub(crate) fn get_methods_for_type(
         &self,
         implementing_for_type_id: TypeId,
-    ) -> Vec<ty::TyFunctionDeclaration> {
+    ) -> Vec<DeclarationId> {
         self.implemented_traits
             .get_methods_for_type(implementing_for_type_id)
     }

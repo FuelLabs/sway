@@ -7,7 +7,7 @@ use derivative::Derivative;
 use sway_types::{state::StateIndex, Ident, Span};
 
 use crate::{
-    declaration_engine::{de_get_function, DeclarationId},
+    declaration_engine::{de_get_function, DeclMapping, DeclarationId, ReplaceDecls},
     language::{ty::*, *},
     type_system::*,
 };
@@ -582,6 +582,94 @@ impl ReplaceSelfType for TyExpressionVariant {
             Reassignment(reassignment) => reassignment.replace_self_type(self_type),
             StorageReassignment(..) => (),
             Return(stmt) => stmt.replace_self_type(self_type),
+        }
+    }
+}
+
+impl ReplaceDecls for TyExpressionVariant {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
+        use TyExpressionVariant::*;
+        match self {
+            Literal(..) => (),
+            FunctionApplication {
+                ref mut function_decl_id,
+                ..
+            } => {
+                function_decl_id.replace_decls(decl_mapping);
+            }
+            LazyOperator { lhs, rhs, .. } => {
+                (*lhs).replace_decls(decl_mapping);
+                (*rhs).replace_decls(decl_mapping);
+            }
+            VariableExpression { .. } => (),
+            Tuple { fields } => fields
+                .iter_mut()
+                .for_each(|x| x.replace_decls(decl_mapping)),
+            Array { contents } => contents
+                .iter_mut()
+                .for_each(|x| x.replace_decls(decl_mapping)),
+            ArrayIndex { prefix, index } => {
+                (*prefix).replace_decls(decl_mapping);
+                (*index).replace_decls(decl_mapping);
+            }
+            StructExpression { fields, .. } => fields
+                .iter_mut()
+                .for_each(|x| x.replace_decls(decl_mapping)),
+            CodeBlock(block) => {
+                block.replace_decls(decl_mapping);
+            }
+            FunctionParameter => (),
+            IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.replace_decls(decl_mapping);
+                then.replace_decls(decl_mapping);
+                if let Some(ref mut r#else) = r#else {
+                    r#else.replace_decls(decl_mapping);
+                }
+            }
+            AsmExpression { .. } => {}
+            StructFieldAccess { prefix, .. } => {
+                prefix.replace_decls(decl_mapping);
+            }
+            TupleElemAccess { prefix, .. } => {
+                prefix.replace_decls(decl_mapping);
+            }
+            EnumInstantiation {
+                enum_decl: _,
+                contents,
+                ..
+            } => {
+                // TODO: replace enum decl
+                //enum_decl.replace_decls(decl_mapping);
+                if let Some(ref mut contents) = contents {
+                    contents.replace_decls(decl_mapping);
+                };
+            }
+            AbiCast { address, .. } => address.replace_decls(decl_mapping),
+            StorageAccess { .. } => (),
+            IntrinsicFunction(_) => {}
+            EnumTag { exp } => {
+                exp.replace_decls(decl_mapping);
+            }
+            UnsafeDowncast { exp, .. } => {
+                exp.replace_decls(decl_mapping);
+            }
+            AbiName(_) => (),
+            WhileLoop {
+                ref mut condition,
+                ref mut body,
+            } => {
+                condition.replace_decls(decl_mapping);
+                body.replace_decls(decl_mapping);
+            }
+            Break => (),
+            Continue => (),
+            Reassignment(reassignment) => reassignment.replace_decls(decl_mapping),
+            StorageReassignment(..) => (),
+            Return(stmt) => stmt.replace_decls(decl_mapping),
         }
     }
 }

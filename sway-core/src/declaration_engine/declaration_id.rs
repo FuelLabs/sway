@@ -8,8 +8,9 @@ use crate::{
 };
 
 use super::{
-    de_insert,
+    de_find_all_parents, de_insert, de_register_parent,
     declaration_engine::{de_look_up_decl_id, de_replace_decl_id},
+    DeclMapping, ReplaceDecls,
 };
 
 /// An ID used to refer to an item in the [DeclarationEngine](super::declaration_engine::DeclarationEngine)
@@ -73,9 +74,41 @@ impl ReplaceSelfType for DeclarationId {
     }
 }
 
+impl ReplaceDecls for DeclarationId {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
+        if let Some(new_decl_id) = decl_mapping.find_match(self) {
+            println!("switching {} and {}", self.0, *new_decl_id);
+            self.0 = *new_decl_id;
+            return;
+        }
+        let all_parents = de_find_all_parents(self.clone());
+        println!(
+            "self: {}, all_parents: [{}]",
+            **self,
+            all_parents
+                .iter()
+                .map(|x| format!("{}", **x))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        for parent in all_parents.into_iter() {
+            if let Some(new_decl_id) = decl_mapping.find_match(&parent) {
+                println!("switching {} and {}", self.0, *new_decl_id);
+                self.0 = *new_decl_id;
+                return;
+            }
+        }
+    }
+}
+
 impl DeclarationId {
     pub(super) fn new(index: usize, span: Span) -> DeclarationId {
         DeclarationId(index, span)
+    }
+
+    pub(crate) fn with_parent(self, parent: DeclarationId) -> DeclarationId {
+        de_register_parent(&self, parent);
+        self
     }
 
     pub(crate) fn replace_id(&mut self, index: usize) {

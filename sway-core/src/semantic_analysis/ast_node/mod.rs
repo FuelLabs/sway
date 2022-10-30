@@ -8,7 +8,7 @@ pub(crate) use expression::*;
 pub(crate) use mode::*;
 
 use crate::{
-    declaration_engine::{declaration_engine::*, DeclarationId},
+    declaration_engine::declaration_engine::*,
     error::*,
     language::{parsed::*, ty},
     semantic_analysis::*,
@@ -204,19 +204,12 @@ impl ty::TyAstNode {
                                 warnings,
                                 errors
                             );
-                            let mut methods = vec![];
-                            for method_id in &impl_trait.methods {
-                                match de_get_function(method_id.clone(), &impl_trait.span) {
-                                    Ok(method) => methods.push(method),
-                                    Err(err) => errors.push(err),
-                                }
-                            }
                             check!(
                                 ctx.namespace.insert_trait_implementation(
                                     impl_trait.trait_name.clone(),
                                     impl_trait.trait_type_arguments.clone(),
                                     impl_trait.implementing_for_type_id,
-                                    methods,
+                                    &impl_trait.methods,
                                     &impl_trait.span,
                                 ),
                                 return err(warnings, errors),
@@ -232,13 +225,6 @@ impl ty::TyAstNode {
                                 warnings,
                                 errors
                             );
-                            let mut methods = vec![];
-                            for method_id in &impl_trait.methods {
-                                match de_get_function(method_id.clone(), &impl_trait.span) {
-                                    Ok(method) => methods.push(method),
-                                    Err(err) => errors.push(err),
-                                }
-                            }
                             // specifically dont check for conflicting trait definitions
                             // because its totally ok to defined multiple impl selfs for
                             // the same type
@@ -246,7 +232,7 @@ impl ty::TyAstNode {
                                 impl_trait.trait_name.clone(),
                                 impl_trait.trait_type_arguments.clone(),
                                 impl_trait.implementing_for_type_id,
-                                methods,
+                                &impl_trait.methods,
                                 &impl_trait.span,
                             );
                             ty::TyDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
@@ -387,63 +373,6 @@ impl ty::TyAstNode {
 
         ok(node, warnings, errors)
     }
-}
-
-fn type_check_interface_surface(
-    mut ctx: TypeCheckContext,
-    interface_surface: Vec<TraitFn>,
-) -> CompileResult<Vec<DeclarationId>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let mut typed_surface = vec![];
-    for trait_fn in interface_surface.into_iter() {
-        let TraitFn {
-            name,
-            purity,
-            parameters,
-            return_type,
-            return_type_span,
-            ..
-        } = trait_fn;
-
-        // create a namespace for the trait function
-        let mut fn_namespace = ctx.namespace.clone();
-        let mut fn_ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
-
-        // type check the parameters
-        let mut typed_parameters = vec![];
-        for param in parameters.into_iter() {
-            typed_parameters.push(check!(
-                ty::TyFunctionParameter::type_check_interface_parameter(fn_ctx.by_ref(), param),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-
-        // type check the return type
-        let return_type = check!(
-            fn_ctx.resolve_type_with_self(
-                insert_type(return_type),
-                &return_type_span,
-                EnforceTypeArguments::Yes,
-                None
-            ),
-            insert_type(TypeInfo::ErrorRecovery),
-            warnings,
-            errors,
-        );
-
-        typed_surface.push(de_insert_trait_fn(ty::TyTraitFn {
-            name,
-            purity,
-            return_type_span,
-            parameters: typed_parameters,
-            return_type,
-            attributes: trait_fn.attributes,
-        }));
-    }
-    ok(typed_surface, warnings, errors)
 }
 
 pub(crate) fn reassign_storage_subfield(

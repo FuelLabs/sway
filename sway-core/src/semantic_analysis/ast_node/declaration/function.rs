@@ -165,6 +165,106 @@ impl ty::TyFunctionDeclaration {
 
         ok(function_decl, warnings, errors)
     }
+
+    pub(crate) fn type_check_stub(
+        mut ctx: TypeCheckContext,
+        fn_decl: FunctionDeclaration,
+    ) -> CompileResult<ty::TyFunctionDeclaration> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let FunctionDeclaration {
+            name,
+            parameters,
+            return_type,
+            return_type_span,
+            purity,
+            attributes,
+            span,
+            type_parameters,
+            ..
+        } = fn_decl;
+
+        // Warn against non-snake case function names.
+        if !is_snake_case(name.as_str()) {
+            warnings.push(CompileWarning {
+                span: name.span(),
+                warning_content: Warning::NonSnakeCaseFunctionName { name: name.clone() },
+            })
+        }
+
+        // create a namespace for the function
+        let mut fn_namespace = ctx.namespace.clone();
+        let mut fn_ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
+
+        // type check the type parameters, which will also insert them into the namespace
+        let mut new_type_parameters = vec![];
+        for type_parameter in type_parameters.into_iter() {
+            if !type_parameter.trait_constraints.is_empty() {
+                errors.push(CompileError::WhereClauseNotYetSupported {
+                    span: type_parameter.trait_constraints_span,
+                });
+                return err(warnings, errors);
+            }
+            new_type_parameters.push(check!(
+                TypeParameter::type_check(fn_ctx.by_ref(), type_parameter),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+
+        // type check the function parameters, which will also insert them into the namespace
+        let mut new_parameters = vec![];
+        for parameter in parameters.into_iter() {
+            new_parameters.push(check!(
+                ty::TyFunctionParameter::type_check(fn_ctx.by_ref(), parameter, true),
+                continue,
+                warnings,
+                errors
+            ));
+        }
+
+        // type check the return type
+        let initial_return_type = insert_type(return_type);
+        let return_type = check!(
+            fn_ctx.resolve_type_with_self(
+                initial_return_type,
+                &return_type_span,
+                EnforceTypeArguments::Yes,
+                None
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
+
+        let function_decl = ty::TyFunctionDeclaration {
+            purity,
+            name,
+            type_parameters: new_type_parameters,
+            parameters: new_parameters,
+            body: ty::TyCodeBlock { contents: vec![] },
+            attributes,
+            span,
+            return_type,
+            initial_return_type,
+            return_type_span: return_type_span.clone(),
+            visibility: Visibility::Public,
+            is_contract_call: false,
+        };
+
+        // Retrieve the implemented traits for the type of the return type and
+        // insert them in the broader namespace.
+        ctx.namespace.implemented_traits.extend(
+            fn_ctx
+                .namespace
+                .implemented_traits
+                .filter_by_type(function_decl.return_type),
+        );
+
+        ok(function_decl, warnings, errors)
+    }
 }
 
 #[test]
