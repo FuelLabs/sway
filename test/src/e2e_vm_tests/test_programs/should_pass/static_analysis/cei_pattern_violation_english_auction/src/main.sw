@@ -222,7 +222,7 @@ impl EnglishAuction for Contract {
 
         // Make sure the sender still has something to withdraw
         require(sender_deposit.is_some(), UserError::UserHasAlreadyWithdrawn);
-        storage.deposits.insert((sender, auction_id), Option::None());
+        storage.deposits.insert((sender, auction_id), Option::None::<AuctionAsset>());
         let mut withdrawn_asset = sender_deposit.unwrap();
 
         // Withdraw owed assets
