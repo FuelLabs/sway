@@ -20,12 +20,22 @@ use tower_lsp::lsp_types::{self, Position, Url};
 /// Extracts the hover information for a token at the current position.
 pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option<lsp_types::Hover> {
     let (ident, token) = session.token_at_position(&url, position)?;
+    dbg!(&ident, &token);
     let range = get_range_from_span(&ident.span());
-    let decl_ident = session.declared_token_ident(&token)?;
-    let decl_token = session
-        .token_map()
-        .get(&to_ident_key(&decl_ident))
-        .map(|item| item.value().clone())?;
+
+    let (decl_ident, decl_token) = match session.declared_token_ident(&token) {
+        Some(decl_ident) => {
+            let decl_token = session
+                .token_map()
+                .get(&to_ident_key(&decl_ident))
+                .map(|item| item.value().clone())?;
+            (decl_ident, decl_token)
+        }
+        // The `TypeInfo` of the token does not contain an `Ident`. In this case,
+        // we use the `Ident` of the token itself.
+        None => (ident, token),
+    };
+
     let contents = hover_format(&decl_token, &decl_ident);
     Some(lsp_types::Hover {
         contents,
