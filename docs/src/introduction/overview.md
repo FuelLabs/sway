@@ -1,4 +1,4 @@
-# Getting Started
+# Sway Quickstart
 
 Follow this guide to write, test, and deploy a simple smart contract in Sway.
 
