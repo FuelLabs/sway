@@ -155,6 +155,11 @@ impl TransactionBuilderExt for TransactionBuilder {
 
         if !unsigned {
             let signature = if let Some(signing_key) = signing_key {
+                // Safety: `Message::from_bytes_unchecked` is unsafe because
+                // it can't guarantee that the provided bytes will be the product
+                // of a cryptographically secure hash. However, the bytes are
+                // coming from `tx.id()`, which already uses `Hasher::hash()`
+                // to hash it using a secure hash mechanism.
                 let message = unsafe { Message::from_bytes_unchecked(*tx.id()) };
                 Signature::sign(&signing_key, &message)
             } else {
