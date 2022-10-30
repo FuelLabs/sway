@@ -44,7 +44,6 @@ use std::{
 pub fn convert_parse_tree(
     handler: &Handler,
     module: Module,
-    include_test_fns: bool,
 ) -> Result<(TreeType, ParseTree), ErrorEmitted> {
     let tree_type = match module.kind {
         ModuleKind::Script { .. } => TreeType::Script,
@@ -52,14 +51,13 @@ pub fn convert_parse_tree(
         ModuleKind::Predicate { .. } => TreeType::Predicate,
         ModuleKind::Library { ref name, .. } => TreeType::Library { name: name.clone() },
     };
-    let tree = module_to_sway_parse_tree(handler, module, include_test_fns)?;
+    let tree = module_to_sway_parse_tree(handler, module)?;
     Ok((tree_type, tree))
 }
 
 pub fn module_to_sway_parse_tree(
     handler: &Handler,
     module: Module,
-    include_test_fns: bool,
 ) -> Result<ParseTree, ErrorEmitted> {
     let span = module.span();
     let root_nodes = {
@@ -76,10 +74,7 @@ pub fn module_to_sway_parse_tree(
                 .collect()
         };
         for item in module.items {
-            let mut ast_nodes = item_to_ast_nodes(handler, item)?;
-            if !include_test_fns {
-                ast_nodes.retain(|node| !ast_node_is_test_fn(node));
-            }
+            let ast_nodes = item_to_ast_nodes(handler, item)?;
             root_nodes.extend(ast_nodes);
         }
         root_nodes

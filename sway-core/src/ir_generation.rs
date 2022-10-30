@@ -15,8 +15,14 @@ pub(crate) use purity::{check_function_purity, PurityEnv};
 
 use crate::language::ty;
 
-pub fn compile_program(program: ty::TyProgram) -> Result<Context, CompileError> {
-    let test_fns = program.test_fns().collect();
+pub fn compile_program(
+    program: ty::TyProgram,
+    include_tests: bool,
+) -> Result<Context, CompileError> {
+    let test_fns = match include_tests {
+        true => program.test_fns().collect(),
+        false => vec![],
+    };
 
     let ty::TyProgram {
         kind,
