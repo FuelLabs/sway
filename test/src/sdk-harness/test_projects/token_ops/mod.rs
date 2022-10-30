@@ -1,6 +1,4 @@
-use fuel_gql_client::fuel_tx::Receipt;
-use fuels::prelude::*;
-use fuels::tx::AssetId;
+use fuels::{prelude::*, tx::AssetId};
 use std::str::FromStr;
 
 abigen!(
@@ -374,7 +372,7 @@ async fn can_send_message_output_with_data() {
 
     let call_response = fuelcoin_instance
         .methods()
-        .send_message_with_data(Bits256(*recipient_address), amount)
+        .send_message(Bits256(*recipient_address), vec![100, 75, 50], amount)
         .append_message_outputs(1)
         .call()
         .await
@@ -383,7 +381,7 @@ async fn can_send_message_output_with_data() {
     let message_receipt = call_response
         .receipts
         .iter()
-        .find(|&r| matches!(r, Receipt::MessageOut { .. }))
+        .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
         .unwrap();
 
     assert_eq!(*fuelcoin_id, **message_receipt.sender().unwrap());
@@ -417,7 +415,7 @@ async fn can_send_message_output_without_data() {
 
     let call_response = fuelcoin_instance
         .methods()
-        .send_message_without_data(Bits256(*recipient_address), amount)
+        .send_message(Bits256(*recipient_address), Vec::<u64>::new(), amount)
         .append_message_outputs(1)
         .call()
         .await
@@ -426,7 +424,7 @@ async fn can_send_message_output_without_data() {
     let message_receipt = call_response
         .receipts
         .iter()
-        .find(|&r| matches!(r, Receipt::MessageOut { .. }))
+        .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
         .unwrap();
 
     assert_eq!(*fuelcoin_id, **message_receipt.sender().unwrap());
@@ -448,7 +446,7 @@ async fn get_fuelcoin_instance(wallet: WalletUnlocked) -> (TestFuelCoinContract,
     .await
     .unwrap();
 
-    let fuelcoin_instance = TestFuelCoinContract::new(fuelcoin_id.to_string(), wallet);
+    let fuelcoin_instance = TestFuelCoinContract::new(fuelcoin_id.clone(), wallet);
 
     (fuelcoin_instance, fuelcoin_id.into())
 }

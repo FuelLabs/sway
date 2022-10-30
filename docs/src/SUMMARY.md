@@ -4,7 +4,7 @@
 
 - [Introduction](./introduction/index.md)
   - [Installation](./introduction/installation.md)
-  - [Getting Started](./introduction/overview.md)
+  - [Sway Quickstart](./introduction/overview.md)
   - [The Fuel Toolchain](./introduction/fuel-toolchain.md)
   - [A Forc Project](./introduction/forc_project.md)
   - [Standard Library](./introduction/standard_library.md)

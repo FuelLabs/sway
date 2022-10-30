@@ -1,11 +1,15 @@
+use sway_error::error::CompileError;
+use sway_types::{Ident, Span};
+
 use crate::{
+    error::*,
     insert_type,
     language::{ty, CallPath},
     type_system::{look_up_type_id, CopyTypes, TypeId},
-    ReplaceSelfType, TypeInfo, TypeMapping,
+    ReplaceSelfType, TypeArgument, TypeInfo, TypeMapping,
 };
 
-type TraitName = CallPath;
+type TraitName = CallPath<(Ident, Vec<TypeArgument>)>;
 /// Map of function name to [TyFunctionDeclaration](ty::TyFunctionDeclaration)
 type TraitMethods = im::HashMap<String, ty::TyFunctionDeclaration>;
 /// Map of trait name and type to [TraitMethods].
@@ -31,6 +35,81 @@ impl TraitMap {
     /// `(trait_name, type_id)` whenever possible.
     pub(crate) fn insert(
         &mut self,
+        trait_name: CallPath,
+        trait_type_args: Vec<TypeArgument>,
+        type_id: TypeId,
+        methods: Vec<ty::TyFunctionDeclaration>,
+        impl_span: &Span,
+    ) -> CompileResult<()> {
+        let mut errors = vec![];
+
+        // check to see if adding this trait will produce a conflicting definition
+        let trait_type_id = insert_type(TypeInfo::Custom {
+            name: trait_name.suffix.clone(),
+            type_arguments: if trait_type_args.is_empty() {
+                None
+            } else {
+                Some(trait_type_args.clone())
+            },
+        });
+        for (map_trait_name, map_type_id) in self.trait_impls.keys() {
+            let CallPath {
+                suffix: (map_trait_name_suffix, map_trait_type_args),
+                ..
+            } = map_trait_name;
+            let map_trait_type_id = insert_type(TypeInfo::Custom {
+                name: map_trait_name_suffix.clone(),
+                type_arguments: if map_trait_type_args.is_empty() {
+                    None
+                } else {
+                    Some(map_trait_type_args.to_vec())
+                },
+            });
+            let type_info = look_up_type_id(type_id);
+            if look_up_type_id(trait_type_id).is_subset_of(&look_up_type_id(map_trait_type_id))
+                && type_info.is_subset_of(&look_up_type_id(*map_type_id))
+            {
+                let trait_name_str = format!(
+                    "{}{}",
+                    trait_name.suffix,
+                    if trait_type_args.is_empty() {
+                        String::new()
+                    } else {
+                        format!(
+                            "<{}>",
+                            trait_type_args
+                                .iter()
+                                .map(|type_arg| type_arg.to_string())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )
+                    }
+                );
+                errors.push(CompileError::ConflictingImplsForTraitAndType {
+                    trait_name: trait_name_str,
+                    type_implementing_for: type_id.to_string(),
+                    second_impl_span: impl_span.clone(),
+                });
+            }
+        }
+        let trait_name: TraitName = CallPath {
+            prefixes: trait_name.prefixes,
+            suffix: (trait_name.suffix, trait_type_args),
+            is_absolute: trait_name.is_absolute,
+        };
+
+        // even if there is a conflicting definition, add the trait anyway
+        self.insert_inner(trait_name, type_id, methods);
+
+        if errors.is_empty() {
+            ok((), vec![], vec![])
+        } else {
+            err(vec![], errors)
+        }
+    }
+
+    fn insert_inner(
+        &mut self,
         trait_name: TraitName,
         type_id: TypeId,
         methods: Vec<ty::TyFunctionDeclaration>,
@@ -45,8 +124,8 @@ impl TraitMap {
         self.extend(trait_map);
     }
 
-    /// Given a [TypeId] `type_id`, retrieve entries in the [TraitMap] `self`
-    /// for which `type_id` is a subset and re-insert them under `type_id`.
+    /// Given a [TypeId] `type_id`, retrieves entries in the [TraitMap] `self`
+    /// for which `type_id` is a subset and re-inserts them under `type_id`.
     ///
     /// Here is an example of what this means. Imagine we have this Sway code:
     ///
@@ -146,7 +225,7 @@ impl TraitMap {
         }
     }
 
-    /// Filter the entries in `self` with the given [TypeId] `type_id` and
+    /// Filters the entries in `self` with the given [TypeId] `type_id` and
     /// return a new [TraitMap] with all of the entries from `self` for which
     /// `type_id` is a subtype. Additionally, the new [TraitMap] contains the
     /// entries for the inner types of `self`.
@@ -254,9 +333,95 @@ impl TraitMap {
     /// `Data<T, T>: get_second(self) -> T`, and we can create a new [TraitMap]
     /// with those entries for `Data<T, T>`.
     pub(crate) fn filter_by_type(&self, type_id: TypeId) -> TraitMap {
+        // a curried version of the decider protocol to use in the helper functions
+        let decider =
+            |type_info: &TypeInfo, map_type_info: &TypeInfo| type_info.is_subset_of(map_type_info);
         let mut all_types = look_up_type_id(type_id).extract_inner_types();
         all_types.insert(type_id);
-        let mut all_types = all_types.into_iter().collect::<Vec<_>>();
+        let all_types = all_types.into_iter().collect::<Vec<_>>();
+        self.filter_by_type_inner(all_types, decider)
+    }
+
+    /// Filters the entries in `self` with the given [TypeId] `type_id` and
+    /// return a new [TraitMap] with all of the entries from `self` for which
+    /// `type_id` is a subtype or a supertype. Additionally, the new [TraitMap]
+    /// contains the entries for the inner types of `self`.
+    ///
+    /// This is used for handling the case in which we need to import an impl
+    /// block from another module, and the type that that impl block is defined
+    /// for is of the type that we are importing, but in a more concrete form.
+    ///
+    /// Here is some example Sway code that we should expect to compile:
+    ///
+    /// `my_double.sw`:
+    /// ```ignore
+    /// library my_double;
+    ///
+    /// pub trait MyDouble<T> {
+    ///     fn my_double(self, input: T) -> T;
+    /// }
+    /// ```
+    ///
+    /// `my_point.sw`:
+    /// ```ignore
+    /// library my_point;
+    ///
+    /// use ::my_double::MyDouble;
+    ///
+    /// pub struct MyPoint<T> {
+    ///     x: T,
+    ///     y: T,
+    /// }
+    ///
+    /// impl MyDouble<u64> for MyPoint<u64> {
+    ///     fn my_double(self, value: u64) -> u64 {
+    ///         (self.x*2) + (self.y*2) + (value*2)
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// `main.sw`:
+    /// ```ignore
+    /// script;
+    ///
+    /// dep my_double;
+    /// dep my_point;
+    ///
+    /// use my_point::MyPoint;
+    ///
+    /// fn main() -> u64 {  
+    ///     let foo = MyPoint {
+    ///         x: 10u64,
+    ///         y: 10u64,
+    ///     };
+    ///     foo.my_double(100)
+    /// }
+    /// ```
+    ///
+    /// We need to be able to import the trait defined upon `MyPoint<u64>` just
+    /// from seeing `use ::my_double::MyDouble;`.
+    pub(crate) fn filter_by_type_item_import(&self, type_id: TypeId) -> TraitMap {
+        // a curried version of the decider protocol to use in the helper functions
+        let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
+            type_info.is_subset_of(map_type_info)
+                || map_type_info.is_subset_of_for_item_import(type_info)
+        };
+        let mut trait_map = self.filter_by_type_inner(vec![type_id], decider);
+        let all_types = look_up_type_id(type_id)
+            .extract_inner_types()
+            .into_iter()
+            .collect::<Vec<_>>();
+        // a curried version of the decider protocol to use in the helper functions
+        let decider2 =
+            |type_info: &TypeInfo, map_type_info: &TypeInfo| type_info.is_subset_of(map_type_info);
+        trait_map.extend(self.filter_by_type_inner(all_types, decider2));
+        trait_map
+    }
+
+    fn filter_by_type_inner<F>(&self, mut all_types: Vec<TypeId>, decider: F) -> TraitMap
+    where
+        F: Fn(&TypeInfo, &TypeInfo) -> bool,
+    {
         let mut trait_map = TraitMap::default();
         for ((map_trait_name, map_type_id), map_trait_methods) in self.trait_impls.iter() {
             for type_id in all_types.iter_mut() {
@@ -267,8 +432,8 @@ impl TraitMap {
                         .cloned()
                         .into_iter()
                         .collect::<Vec<_>>();
-                    trait_map.insert(map_trait_name.clone(), *type_id, trait_methods);
-                } else if type_info.is_subset_of(&look_up_type_id(*map_type_id)) {
+                    trait_map.insert_inner(map_trait_name.clone(), *type_id, trait_methods);
+                } else if decider(&type_info, &look_up_type_id(*map_type_id)) {
                     let type_mapping =
                         TypeMapping::from_superset_and_subset(*map_type_id, *type_id);
                     let mut trait_methods = map_trait_methods
@@ -276,13 +441,13 @@ impl TraitMap {
                         .cloned()
                         .into_iter()
                         .collect::<Vec<_>>();
+                    let new_self_type = insert_type(TypeInfo::SelfType);
+                    type_id.replace_self_type(new_self_type);
                     trait_methods.iter_mut().for_each(|trait_method| {
                         trait_method.copy_types(&type_mapping);
-                        let new_self_type = insert_type(TypeInfo::SelfType);
-                        type_id.replace_self_type(new_self_type);
                         trait_method.replace_self_type(new_self_type);
                     });
-                    trait_map.insert(map_trait_name.clone(), *type_id, trait_methods);
+                    trait_map.insert_inner(map_trait_name.clone(), *type_id, trait_methods);
                 }
             }
         }

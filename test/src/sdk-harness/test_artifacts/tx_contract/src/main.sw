@@ -72,7 +72,7 @@ impl TxContractTest for Contract {
         tx_receipts_root()
     }
     fn get_tx_script_start_pointer() -> u64 {
-        tx_script_start_pointer().addr()
+        asm(ptr: tx_script_start_pointer()) { ptr: u64 }
     }
     fn get_tx_script_bytecode_hash() -> b256 {
         tx_script_bytecode_hash()

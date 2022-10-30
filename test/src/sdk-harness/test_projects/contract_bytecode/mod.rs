@@ -43,7 +43,7 @@ async fn get_test_contract_instance(
     .await
     .unwrap();
 
-    let instance = ContractBytecodeTest::new(id.to_string(), wallet);
+    let instance = ContractBytecodeTest::new(id.clone(), wallet);
 
     (instance, id)
 }
