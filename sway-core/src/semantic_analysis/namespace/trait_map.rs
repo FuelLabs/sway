@@ -453,7 +453,7 @@ impl TraitMap {
                             let mut decl = de_look_up_decl_id(decl_id.clone());
                             decl.copy_types(&type_mapping);
                             decl.replace_self_type(new_self_type);
-                            (name, de_insert(decl, decl_id.span()))
+                            (name, de_insert(decl, decl_id.span()).with_parent(decl_id))
                         })
                         .collect();
                     trait_map.insert_inner(map_trait_name.clone(), *type_id, trait_methods);

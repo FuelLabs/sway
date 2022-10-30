@@ -177,7 +177,6 @@ impl ty::TyAstNode {
                                 warnings,
                                 errors
                             );
-
                             let name = fn_decl.name.clone();
                             let decl =
                                 ty::TyDeclaration::FunctionDeclaration(de_insert_function(fn_decl));

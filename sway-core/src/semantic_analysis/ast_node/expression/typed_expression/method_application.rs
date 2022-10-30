@@ -424,14 +424,16 @@ pub(crate) fn resolve_method_name(
         }
     };
 
-    println!("before monomorphization: {}", *decl_id);
-
     let mut func_decl = check!(
         CompileResult::from(de_get_function(decl_id.clone(), &decl_id.span())),
         return err(warnings, errors),
         warnings,
         errors
     );
+
+    if func_decl.name.as_str() == "neq" {
+        println!("before monomorphization: {}", *decl_id);
+    }
 
     // monomorphize the function declaration
     check!(

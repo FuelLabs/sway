@@ -1242,14 +1242,16 @@ impl ty::TyExpression {
 
         // Retrieve the interface surface for this abi.
         let mut abi_methods = vec![];
-        for decl_id in interface_surface.iter() {
+        for decl_id in interface_surface.into_iter() {
             let method = check!(
                 CompileResult::from(de_get_trait_fn(decl_id.clone(), &name.span())),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
-            abi_methods.push(de_insert_function(method.to_dummy_func(Mode::ImplAbiFn)));
+            abi_methods.push(
+                de_insert_function(method.to_dummy_func(Mode::ImplAbiFn)).with_parent(decl_id),
+            );
         }
 
         // Retrieve the methods for this abi.

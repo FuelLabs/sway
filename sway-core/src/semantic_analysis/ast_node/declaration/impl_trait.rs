@@ -507,6 +507,7 @@ impl ty::TyImplTrait {
             .iter()
             .map(|d| de_insert_function(d.clone()))
             .collect::<Vec<_>>();
+
         let impl_trait = ty::TyImplTrait {
             impl_type_parameters: new_impl_type_parameters,
             trait_name,
@@ -808,7 +809,7 @@ fn type_check_trait_implementation(
         method.replace_decls(&decl_mapping);
         method.copy_types(&type_mapping);
         method.replace_self_type(ctx.self_type());
-        new_method_ids.push(de_insert_function(method));
+        new_method_ids.push(de_insert_function(method).with_parent(decl_id.clone()));
     }
 
     // check that the implementation checklist is complete

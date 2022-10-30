@@ -64,10 +64,10 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            dummy_interface_surface.push(de_insert_function(
-                method.clone().to_dummy_func(Mode::NonAbi),
-            ));
-            new_interface_surface.push(de_insert_trait_fn(method));
+            let decl_id = de_insert_trait_fn(method.clone());
+            new_interface_surface.push(decl_id.clone());
+            dummy_interface_surface
+                .push(de_insert_function(method.to_dummy_func(Mode::NonAbi)).with_parent(decl_id));
         }
 
         // Recursively handle supertraits: make their interfaces and methods available to this trait
@@ -147,11 +147,11 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let ty::TyTraitDeclaration {
-                    ref interface_surface,
-                    ref methods,
-                    ref supertraits,
-                    ref name,
-                    ref type_parameters,
+                    interface_surface,
+                    methods,
+                    supertraits,
+                    name,
+                    type_parameters,
                     ..
                 } = check!(
                     CompileResult::from(de_get_trait(decl_id.clone(), &supertrait.span())),
@@ -162,15 +162,16 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
 
                 // Retrieve the interface surface for this trait.
                 let mut dummy_interface_surface = vec![];
-                for decl_id in interface_surface.iter() {
+                for decl_id in interface_surface.into_iter() {
                     let method = check!(
                         CompileResult::from(de_get_trait_fn(decl_id.clone(), &name.span())),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
-                    dummy_interface_surface
-                        .push(de_insert_function(method.to_dummy_func(Mode::NonAbi)));
+                    dummy_interface_surface.push(
+                        de_insert_function(method.to_dummy_func(Mode::NonAbi)).with_parent(decl_id),
+                    );
                 }
 
                 // Transform the trait type parameters defined at the trait
@@ -204,14 +205,14 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                     supertrait.name.clone(),
                     type_params_as_type_args,
                     self_type,
-                    methods,
+                    &methods,
                     &supertrait.name.span(),
                 );
 
                 // Recurse to insert versions of interfaces and methods of the
                 // *super* supertraits.
                 check!(
-                    handle_supertraits(ctx.by_ref(), supertraits),
+                    handle_supertraits(ctx.by_ref(), &supertraits),
                     return err(warnings, errors),
                     warnings,
                     errors

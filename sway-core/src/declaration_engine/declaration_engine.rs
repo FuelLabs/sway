@@ -69,10 +69,7 @@ impl DeclarationEngine {
                 }
             }
         }
-        acc_parents
-            .into_iter()
-            .map(|(_, decl_id)| decl_id)
-            .collect()
+        acc_parents.values().cloned().collect()
     }
 
     fn register_parent(&self, index: &DeclarationId, parent: DeclarationId) {
