@@ -1,5 +1,9 @@
 category = "compile"
 
+# check: $()Storage read after external contract interaction in function or method "bid". Consider making all storage reads before calling another contract
+
 # check: $()Storage modification after external contract interaction in function or method "bid". Consider making all storage writes before calling another contract
+
+# check: $()Storage read after external contract interaction in function or method "create". Consider making all storage reads before calling another contract
 
 # check: $()Storage modification after external contract interaction in function or method "create". Consider making all storage writes before calling another contract

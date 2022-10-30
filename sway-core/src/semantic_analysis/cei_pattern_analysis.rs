@@ -2,7 +2,9 @@
 // (effects) occur after calling external contracts (interaction) and issue warnings
 // if it's the case.
 // See this [blog post](https://fravoll.github.io/solidity-patterns/checks_effects_interactions.html)
-// for more detail.
+// for more detail on vulnerabilities in case of storage modification after interaction
+// and this [blog post](https://chainsecurity.com/curve-lp-oracle-manipulation-post-mortem)
+// for more information on storage reads after interaction.
 
 use crate::{
     declaration_engine::DeclarationId,
@@ -13,17 +15,28 @@ use crate::{
 };
 use std::collections::HashSet;
 use sway_error::warning::{CompileWarning, Warning};
-use sway_types::Span;
+use sway_types::{Ident, Span};
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 enum Effect {
     Interaction,  // interaction with external contracts
     StorageWrite, // storage modification
+    StorageRead,  // storage read
 }
 
+// The algorithm that searches for storage operations after interaction
+// is organized as an automaton.
+// After an interaction is found in a code block, we keep looking either for
+// storage reads or writes. After either one is found, we look for the opposite
+// storage operation: e.g. if a read-after-interaction is found we search for a
+// write-after-interaction, but we don't report mutliple violations of the same
+// type per code block.
+// After both kinds of the CEI pattern violation are found, we stop immediately.
 enum CEIAnalysisState {
-    LookingForInteraction,
-    LookingForStorageWrite,
+    LookingForInteraction, // initial state of the automaton
+    LookingForStorageReadOrWrite,
+    FoundWriteLookingForStorageRead, // a storage write is already found
+    FoundReadLookingForStorageWrite, // a storage read is already found
 }
 
 pub(crate) fn analyze_program(prog: &ty::TyProgram) -> Vec<CompileWarning> {
@@ -83,10 +96,7 @@ fn impl_trait_methods<'a>(
 
 // This is the main part of the analysis algorithm:
 // we are looking for state effects after contract interaction
-fn analyze_code_block(
-    code_block: &ty::TyCodeBlock,
-    block_name: &sway_types::Ident,
-) -> Vec<CompileWarning> {
+fn analyze_code_block(code_block: &ty::TyCodeBlock, block_name: &Ident) -> Vec<CompileWarning> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut interaction_span: Span = Span::dummy();
     let mut analysis_state: CEIAnalysisState = CEIAnalysisState::LookingForInteraction;
@@ -95,24 +105,80 @@ fn analyze_code_block(
         match analysis_state {
             CEIAnalysisState::LookingForInteraction => {
                 if effects_of_codeblock_entry(ast_node).contains(&Effect::Interaction) {
-                    analysis_state = CEIAnalysisState::LookingForStorageWrite;
+                    analysis_state = CEIAnalysisState::LookingForStorageReadOrWrite;
                     interaction_span = ast_node.span.clone();
                 }
             }
-            CEIAnalysisState::LookingForStorageWrite => {
+            CEIAnalysisState::LookingForStorageReadOrWrite => {
+                let does_storage_write =
+                    effects_of_codeblock_entry(ast_node).contains(&Effect::StorageWrite);
+                let does_storage_read =
+                    effects_of_codeblock_entry(ast_node).contains(&Effect::StorageRead);
+                if does_storage_read {
+                    warn_on_storage_read(&mut warnings, ast_node, &interaction_span, block_name)
+                };
+                if does_storage_write {
+                    warn_on_storage_write(&mut warnings, ast_node, &interaction_span, block_name)
+                }
+                // compute the next automaton state
+                if does_storage_read && does_storage_write {
+                    // we are done: this statement does both: read and write to storage
+                    return warnings;
+                } else if does_storage_write {
+                    analysis_state = CEIAnalysisState::FoundWriteLookingForStorageRead;
+                } else if does_storage_read {
+                    analysis_state = CEIAnalysisState::FoundReadLookingForStorageWrite;
+                }
+            }
+            CEIAnalysisState::FoundReadLookingForStorageWrite => {
+                // a storage read is already found at this point
                 if effects_of_codeblock_entry(ast_node).contains(&Effect::StorageWrite) {
-                    warnings.push(CompileWarning {
-                        span: Span::join(interaction_span, ast_node.span.clone()),
-                        warning_content: Warning::StorageWriteAfterInteraction {
-                            block_name: block_name.clone(),
-                        },
-                    });
+                    warn_on_storage_write(&mut warnings, ast_node, &interaction_span, block_name);
+                    return warnings;
+                }
+            }
+            CEIAnalysisState::FoundWriteLookingForStorageRead => {
+                // a storage write is already found at this point
+                if effects_of_codeblock_entry(ast_node).contains(&Effect::StorageRead) {
+                    warn_on_storage_read(&mut warnings, ast_node, &interaction_span, block_name);
                     return warnings;
                 }
             }
         }
     }
     warnings
+}
+
+fn warn_on_storage_read(
+    warnings: &mut Vec<CompileWarning>,
+    ast_node: &ty::TyAstNode,
+    interaction_span: &Span,
+    block_name: &Ident,
+) {
+    if effects_of_codeblock_entry(ast_node).contains(&Effect::StorageRead) {
+        warnings.push(CompileWarning {
+            span: Span::join(interaction_span.clone(), ast_node.span.clone()),
+            warning_content: Warning::StorageReadAfterInteraction {
+                block_name: block_name.clone(),
+            },
+        });
+    }
+}
+
+fn warn_on_storage_write(
+    warnings: &mut Vec<CompileWarning>,
+    ast_node: &ty::TyAstNode,
+    interaction_span: &Span,
+    block_name: &Ident,
+) {
+    if effects_of_codeblock_entry(ast_node).contains(&Effect::StorageWrite) {
+        warnings.push(CompileWarning {
+            span: Span::join(interaction_span.clone(), ast_node.span.clone()),
+            warning_content: Warning::StorageWriteAfterInteraction {
+                block_name: block_name.clone(),
+            },
+        });
+    }
 }
 
 fn effects_of_codeblock_entry(ast_node: &ty::TyAstNode) -> HashSet<Effect> {
@@ -143,8 +209,8 @@ fn effects_of_expression(expr: &ty::TyExpression) -> HashSet<Effect> {
         | Continue
         // this type of assignment only mutates local variables and not storage
         | Reassignment(_)
-        | AbiName(_)
-        | StorageAccess(_) => HashSet::new(),
+        | AbiName(_) => HashSet::new(),
+        StorageAccess(_) => HashSet::from([Effect::StorageRead]),
         StorageReassignment(storage_reassign) => {
             let mut effs = HashSet::from([Effect::StorageWrite]);
             effs.extend(effects_of_expression(&storage_reassign.rhs));
@@ -239,14 +305,17 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
     use sway_ast::Intrinsic::*;
     match intr {
         StateStoreWord | StateStoreQuad => HashSet::from([Effect::StorageWrite]),
-        Revert | GetStorageKey | IsReferenceType | SizeOfType | SizeOfVal | Eq | Gtf | AddrOf
-        | StateLoadWord | StateLoadQuad | Log | Add | Sub | Mul | Div => HashSet::new(),
+        StateLoadWord | StateLoadQuad | GetStorageKey => HashSet::from([Effect::StorageRead]),
+        Revert | IsReferenceType | SizeOfType | SizeOfVal | Eq | Gtf | AddrOf | Log | Add | Sub
+        | Mul | Div => HashSet::new(),
     }
 }
 
 fn effects_of_asm_op(op: &AsmOp) -> HashSet<Effect> {
     match op.op_name.as_str().to_lowercase().as_str() {
         "sww" | "swwq" => HashSet::from([Effect::StorageWrite]),
+        "srw" | "srwq" | "bal" => HashSet::from([Effect::StorageRead]),
+        // the rest of the assembly instructions are considered to not have effects
         _ => HashSet::new(),
     }
 }
