@@ -9,6 +9,7 @@ use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
+use regex::{Captures, Regex};
 use std::{fmt::Write, fs, io::Read, path::PathBuf, str::FromStr};
 
 use super::RunConfig;
@@ -119,13 +120,16 @@ pub(crate) fn compile_to_bytes(
     let manifest = PackageManifestFile::from_dir(&PathBuf::from(path)).unwrap();
     let result = forc_pkg::build_package_with_options(
         &manifest,
-        forc_pkg::BuildOptions {
-            path: Some(format!(
-                "{}/src/e2e_vm_tests/test_programs/{}",
-                manifest_dir, file_name
-            )),
-            locked: run_config.locked,
-            terse_mode: !(capture_output || run_config.verbose),
+        forc_pkg::BuildOpts {
+            pkg: forc_pkg::PkgOpts {
+                path: Some(format!(
+                    "{}/src/e2e_vm_tests/test_programs/{}",
+                    manifest_dir, file_name
+                )),
+                locked: run_config.locked,
+                terse: !(capture_output || run_config.verbose),
+                ..Default::default()
+            },
             ..Default::default()
         },
     );
@@ -148,6 +152,17 @@ pub(crate) fn compile_to_bytes(
         // the stdout from the compiler.
         if let Err(ref e) = result {
             write!(output, "\n{}", e).expect("error writing output");
+        }
+
+        if cfg!(windows) {
+            // In windows output error and warning path files start with \\?\
+            // We replace \ by / so tests can check unix paths only
+            let regex = Regex::new(r"\\\\?\\(.*)").unwrap();
+            output = regex
+                .replace_all(output.as_str(), |caps: &Captures| {
+                    caps[1].replace('\\', "/")
+                })
+                .to_string();
         }
     }
 
