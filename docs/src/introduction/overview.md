@@ -172,7 +172,7 @@ This starts a Fuel node with a volatile database that will be cleared when shut 
 ### Deploy `counter_contract` To Your Local Fuel Node
 
 > **Note**
-> If you want to deploy your contract to the testnet instead of to a local Fuel node, check out the [Developer Quickstart](https://fuellabs.github.io/fuel-docs/master/developer-quickstart.html).
+> If you want to deploy your contract to the testnet instead of to a local Fuel node, check out the [Developer Quickstart Guide](https://fuellabs.github.io/fuel-docs/master/developer-quickstart.html).
 
 To deploy `counter_contract` on your local Fuel node, open a new terminal tab and run the following command from the root of the `wallet_contract` directory:
 
