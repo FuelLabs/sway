@@ -23,7 +23,10 @@ pub struct TySubmodule {
 /// Used rather than `impl Iterator` to enable recursive submodule iteration.
 pub struct SubmodulesRecursive<'module> {
     submods: std::slice::Iter<'module, (DepName, TySubmodule)>,
-    current: Option<Box<SubmodulesRecursive<'module>>>,
+    current: Option<(
+        &'module (DepName, TySubmodule),
+        Box<SubmodulesRecursive<'module>>,
+    )>,
 }
 
 impl TyModule {
@@ -56,17 +59,19 @@ impl<'module> Iterator for SubmodulesRecursive<'module> {
     type Item = &'module (DepName, TySubmodule);
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            self.current = match self.current.as_mut() {
+            self.current = match self.current.take() {
                 None => match self.submods.next() {
                     None => return None,
-                    Some((_, submod)) => Some(Box::new(submod.module.submodules_recursive())),
-                },
-                Some(submod) => match submod.next() {
-                    Some(submod) => return Some(submod),
-                    None => {
-                        self.current = None;
-                        continue;
+                    Some(submod) => {
+                        Some((submod, Box::new(submod.1.module.submodules_recursive())))
                     }
+                },
+                Some((submod, mut submods)) => match submods.next() {
+                    Some(next) => {
+                        self.current = Some((submod, submods));
+                        return Some(next);
+                    }
+                    None => return Some(submod),
                 },
             }
         }

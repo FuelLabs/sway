@@ -20,7 +20,7 @@ async fn get_call_frames_instance() -> (CallFramesTestContract, ContractId) {
     )
     .await
     .unwrap();
-    let instance = CallFramesTestContract::new(id.to_string(), wallet);
+    let instance = CallFramesTestContract::new(id.clone(), wallet);
 
     (instance, id.into())
 }
