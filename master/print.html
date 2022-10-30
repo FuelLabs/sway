@@ -229,6 +229,7 @@ forc completions --shell=powershell | Out-String | Invoke-Expression
 <p>Once the completions have been generated and properly installed, close and reopen your terminal for the new completions to take effect.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="sway-quickstart"><a class="header" href="#sway-quickstart">Sway Quickstart</a></h1>
 <p>Follow this guide to write, test, and deploy a simple smart contract in Sway.</p>
+<p>Check out the <a href="https://fuellabs.github.io/fuel-docs/master/developer-quickstart.html">Developer Quickstart Guide</a> for a step-by-step guide on building a fullstack dapp on Fuel. The guide will walk you through writing a smart contract, setting up a wallet, and building a frontend to interact with your contract.</p>
 <h2 id="glossary"><a class="header" href="#glossary">Glossary</a></h2>
 <p>Before we begin, it may be helpful to understand terminology that will used throughout the docs and how they relate to each other:</p>
 <ul>
@@ -340,6 +341,10 @@ $ tree .
 </code></pre>
 <p>This starts a Fuel node with a volatile database that will be cleared when shut down (good for testing purposes).</p>
 <h3 id="deploy-counter_contract-to-your-local-fuel-node"><a class="header" href="#deploy-counter_contract-to-your-local-fuel-node">Deploy <code>counter_contract</code> To Your Local Fuel Node</a></h3>
+<blockquote>
+<p><strong>Note</strong>
+If you want to deploy your contract to the testnet instead of to a local Fuel node, check out the <a href="https://fuellabs.github.io/fuel-docs/master/developer-quickstart.html">Developer Quickstart Guide</a>.</p>
+</blockquote>
 <p>To deploy <code>counter_contract</code> on your local Fuel node, open a new terminal tab and run the following command from the root of the <code>wallet_contract</code> directory:</p>
 <pre><code class="language-sh">forc deploy --unsigned
 </code></pre>
@@ -386,7 +391,9 @@ test can_get_contract_id ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
 </code></pre>
-<p>Congratulations, you've just created and tested your first Sway smart contract 🎉. Now you can build a frontend to interact with your contract using the TypeScript SDK. You can find a step-by-step guide to building a front end for your project <a href="https://fuellabs.github.io/fuels-ts/QUICKSTART.html">here</a>.</p>
+<p>Congratulations, you've just created and tested your first Sway smart contract 🎉.</p>
+<h2 id="next-steps"><a class="header" href="#next-steps">Next Steps</a></h2>
+<p>Now that you've written a smart contract with Sway and deployed it to a local Fuel node, try out building a fullstack dapp deployed to the testnet. A step-by-step guide to write your smart contract, deploy to testnet, set up a wallet, and build a frontend can be found in the <a href="https://fuellabs.github.io/fuel-docs/master/developer-quickstart.html">Developer Quickstart Guide</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="the-fuel-toolchain"><a class="header" href="#the-fuel-toolchain">The Fuel Toolchain</a></h1>
 <p>The Fuel toolchain consists of several components.</p>
 <h2 id="forc-forc"><a class="header" href="#forc-forc">Forc (<code>forc</code>)</a></h2>
