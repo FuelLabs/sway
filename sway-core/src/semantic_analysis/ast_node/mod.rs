@@ -240,9 +240,6 @@ impl ty::TyAstNode {
                                     Err(err) => errors.push(err),
                                 }
                             }
-                            // specifically dont check for conflicting trait definitions
-                            // because its totally ok to defined multiple impl selfs for
-                            // the same type
                             check!(
                                 ctx.namespace.insert_trait_implementation(
                                     impl_trait.trait_name.clone(),
