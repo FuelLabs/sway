@@ -51,6 +51,12 @@ pub enum CompileError {
     },
     #[error("Unimplemented feature: {0}")]
     Unimplemented(&'static str, Span),
+    #[error(
+        "Unimplemented feature: {0}\n\
+         help: {1}.\n\
+         "
+    )]
+    UnimplementedWithHelp(&'static str, &'static str, Span),
     #[error("{0}")]
     TypeError(TypeError),
     #[error("Error parsing input: {err:?}")]
@@ -694,6 +700,7 @@ impl Spanned for CompileError {
             NotAVariable { name, .. } => name.span(),
             NotAFunction { span, .. } => span.clone(),
             Unimplemented(_, span) => span.clone(),
+            UnimplementedWithHelp(_, _, span) => span.clone(),
             TypeError(err) => err.span(),
             ParseError { span, .. } => span.clone(),
             Internal(_, span) => span.clone(),

@@ -43,6 +43,18 @@ impl TraitConstraint {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        // Right now we don't have the ability to support defining a type for a
+        // trait constraint using a callpath directly, so we check to see if the
+        // user has done this and we disallow it.
+        if !self.trait_name.prefixes.is_empty() {
+            errors.push(CompileError::UnimplementedWithHelp(
+                "Using module paths to define trait constraints is not supported yet.",
+                "try importing the trait with a \"use\" statement instead",
+                self.trait_name.span(),
+            ));
+            return err(warnings, errors);
+        }
+
         // Type check the type arguments.
         for type_argument in self.type_arguments.iter_mut() {
             type_argument.type_id = check!(

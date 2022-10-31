@@ -140,6 +140,18 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
     let self_type = ctx.self_type();
 
     for supertrait in supertraits.iter() {
+        // Right now we don't have the ability to support defining a supertrait
+        // using a callpath directly, so we check to see if the user has done
+        // this and we disallow it.
+        if !supertrait.name.prefixes.is_empty() {
+            errors.push(CompileError::UnimplementedWithHelp(
+                "Using module paths to define supertraits is not supported yet.",
+                "try importing the trait with a \"use\" statement instead",
+                supertrait.span(),
+            ));
+            continue;
+        }
+
         match ctx
             .namespace
             .resolve_call_path(&supertrait.name)
@@ -223,5 +235,9 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
         }
     }
 
-    ok((), warnings, errors)
+    if errors.is_empty() {
+        ok((), warnings, errors)
+    } else {
+        err(warnings, errors)
+    }
 }
