@@ -613,7 +613,7 @@ pub(crate) fn unify(
     )
 }
 
-pub fn unify_right_with_self(
+pub(crate) fn unify_right_with_self(
     received: TypeId,
     expected: TypeId,
     self_type: TypeId,

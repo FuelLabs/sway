@@ -22,9 +22,9 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{
     constants::{
-        DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, MATCH_RETURN_VAR_NAME_PREFIX,
-        STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
-        TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
+        DESTRUCTURE_PREFIX, DOC_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME,
+        MATCH_RETURN_VAR_NAME_PREFIX, STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME,
+        STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME, TUPLE_NAME_PREFIX, VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
 };
@@ -419,15 +419,17 @@ fn item_trait_to_trait_declaration(
         item_trait.generics,
         item_trait.where_clause_opt,
     )?;
-    let interface_surface = item_trait
-        .trait_items
-        .into_inner()
-        .into_iter()
-        .map(|(fn_signature, _semicolon_token)| {
-            let attributes = item_attrs_to_map(handler, &fn_signature.attribute_list)?;
-            fn_signature_to_trait_fn(handler, fn_signature.value, attributes)
-        })
-        .collect::<Result<_, _>>()?;
+    let interface_surface = {
+        item_trait
+            .trait_items
+            .into_inner()
+            .into_iter()
+            .map(|(fn_signature, _)| {
+                let attributes = item_attrs_to_map(handler, &fn_signature.attribute_list)?;
+                fn_signature_to_trait_fn(handler, fn_signature.value, attributes)
+            })
+            .collect::<Result<_, _>>()?
+    };
     let methods = match item_trait.trait_defs_opt {
         None => Vec::new(),
         Some(trait_defs) => trait_defs
@@ -3259,6 +3261,7 @@ fn item_attrs_to_map(
         if let Some(attr_kind) = match name {
             DOC_ATTRIBUTE_NAME => Some(AttributeKind::Doc),
             STORAGE_PURITY_ATTRIBUTE_NAME => Some(AttributeKind::Storage),
+            INLINE_ATTRIBUTE_NAME => Some(AttributeKind::Inline),
             TEST_ATTRIBUTE_NAME => Some(AttributeKind::Test),
             _ => None,
         } {

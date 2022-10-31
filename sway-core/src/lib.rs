@@ -16,6 +16,7 @@ pub mod transform;
 pub mod type_system;
 
 use crate::ir_generation::check_function_purity;
+use crate::language::Inline;
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
@@ -27,7 +28,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_ast::Dependency;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_ir::{Context, Function, Instruction, Kind, Module, Value};
+use sway_ir::{call_graph, Context, Function, Instruction, Kind, Module, Value};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -446,14 +447,14 @@ fn promote_to_registers(ir: &mut Context, functions: &[Function]) -> CompileResu
     ok((), Vec::new(), Vec::new())
 }
 
-// Inline function calls based on two conditions:
-// 1. The program we're compiling is a "predicate". Predicates cannot jump backwards which means
-//    that supporting function calls (i.e. without inlining) is not possible. This is a protocl
-//    restriction and not a heuristic.
-// 2. If the program is not a "predicate" then, we rely on some heuristic which is described below
-//    in the `inline_heuristc` closure.
-//
-fn inline_function_calls(
+/// Inline function calls based on two conditions:
+/// 1. The program we're compiling is a "predicate". Predicates cannot jump backwards which means
+///    that supporting function calls (i.e. without inlining) is not possible. This is a protocl
+///    restriction and not a heuristic.
+/// 2. If the program is not a "predicate" then, we rely on some heuristic which is described below
+///    in the `inline_heuristc` closure.
+///
+pub fn inline_function_calls(
     ir: &mut Context,
     functions: &[Function],
     tree_type: &parsed::TreeType,
@@ -476,6 +477,20 @@ fn inline_function_calls(
     };
 
     let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
+        let mut md_mgr = metadata::MetadataManager::default();
+        let attributed_inline = md_mgr.md_to_inline(ctx, func.get_metadata(ctx));
+
+        match attributed_inline {
+            Some(Inline::Always) => {
+                // TODO: check if inlining of function is possible
+                // return true;
+            }
+            Some(Inline::Never) => {
+                return false;
+            }
+            None => {}
+        }
+
         // For now, pending improvements to ASMgen for calls, we must inline any function which has
         // too many args.
         if func.args_iter(ctx).count() as u8
@@ -510,13 +525,16 @@ fn inline_function_calls(
         false
     };
 
+    let cg = call_graph::build_call_graph(ir, functions);
+    let functions = call_graph::callee_first_order(ir, &cg);
+
     for function in functions {
         if let Err(ir_error) = match tree_type {
             parsed::TreeType::Predicate => {
                 // Inline everything for predicates
-                sway_ir::optimize::inline_all_function_calls(ir, function)
+                sway_ir::optimize::inline_all_function_calls(ir, &function)
             }
-            _ => sway_ir::optimize::inline_some_function_calls(ir, function, inline_heuristic),
+            _ => sway_ir::optimize::inline_some_function_calls(ir, &function, inline_heuristic),
         } {
             return err(
                 Vec::new(),
