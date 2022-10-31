@@ -1236,8 +1236,19 @@ impl ty::TyExpression {
         }
 
         functions_buf.append(&mut type_checked_fn_buf);
-        ctx.namespace
-            .insert_trait_implementation(abi_name.clone(), return_type, functions_buf);
+        check!(
+            ctx.namespace.insert_trait_implementation(
+                abi_name.clone(),
+                vec![],
+                return_type,
+                functions_buf,
+                &span,
+                false
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::AbiCast {
                 abi_name,

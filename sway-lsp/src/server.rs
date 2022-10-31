@@ -10,6 +10,7 @@ use crate::{
 };
 use dashmap::DashMap;
 use forc_pkg::manifest::PackageManifestFile;
+use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -22,6 +23,7 @@ use std::{
 use sway_types::Spanned;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
+use tracing::metadata::LevelFilter;
 
 #[derive(Debug)]
 pub struct Backend {
@@ -180,14 +182,25 @@ impl Backend {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
-        tracing::info!("Initializing the Sway Language Server");
-
         if let Some(initialization_options) = &params.initialization_options {
             let mut config = self.config.write();
             *config = serde_json::from_value(initialization_options.clone())
                 .ok()
                 .unwrap_or_default();
         }
+
+        // Initalizing tracing library based on the user's config
+        let config = self.config.read();
+        if config.logging.level != LevelFilter::OFF {
+            let tracing_options = TracingSubscriberOptions {
+                log_level: Some(config.logging.level),
+                writer_mode: Some(TracingWriterMode::Stderr),
+                ..Default::default()
+            };
+            init_tracing_subscriber(tracing_options);
+        }
+
+        tracing::info!("Initializing the Sway Language Server");
 
         Ok(InitializeResult {
             server_info: None,

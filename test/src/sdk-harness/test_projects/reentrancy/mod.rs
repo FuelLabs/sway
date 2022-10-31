@@ -91,7 +91,7 @@ async fn get_attacker_instance(wallet: WalletUnlocked) -> (AttackerContract, Con
     .await
     .unwrap();
 
-    let instance = AttackerContract::new(id.to_string(), wallet);
+    let instance = AttackerContract::new(id.clone(), wallet);
 
     (instance, id.into())
 }
@@ -110,7 +110,7 @@ async fn get_target_instance(wallet: WalletUnlocked) -> (TargetContract, Contrac
     .await
     .unwrap();
 
-    let instance = TargetContract::new(id.to_string(), wallet);
+    let instance = TargetContract::new(id.clone(), wallet);
 
     (instance, id.into())
 }

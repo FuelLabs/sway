@@ -241,7 +241,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.10.1
+        image: ghcr.io/fuellabs/fuel-core:v0.11.2
         ports:
           - 4000:4000
     steps:
@@ -262,7 +262,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.10.1
+        image: ghcr.io/fuellabs/fuel-core:v0.11.2
         ports:
           - 4000:4000
     steps:
@@ -620,6 +620,12 @@ jobs:
           command: install
           args: --profile=release --path ./forc-plugins/forc-client
 
+      - name: Install forc-doc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --profile=release --path ./forc-plugins/forc-doc
+
       - name: Prep Assets
         id: prep_assets
         env:
@@ -630,7 +636,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for binary in forc forc-fmt forc-lsp forc-deploy forc-run; do
+          for binary in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc; do
             cp $(which ${binary}) ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries
