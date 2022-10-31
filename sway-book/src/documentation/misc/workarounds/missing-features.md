@@ -1,5 +1,7 @@
 # Missing Features
 
+> TODO: also copied from the current book (some old version). Needs work
+
 - [Issue: #1182](https://github.com/FuelLabs/sway/issues/1182)
   - Arrays in a storage block are not yet supported. See the [Manual Storage Management](https://fuellabs.github.io/sway/v0.24.5/blockchain-development/storage.html#manual-storage-management) section for details on how to use `store` and `get` from the standard library to manage storage slots directly. Note, however, that `StorageMap<K, V>` does support arbitrary types for `K` and `V` without any limitations.
 - [Issue: #428](https://github.com/FuelLabs/sway/issues/428)

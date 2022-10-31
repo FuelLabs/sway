@@ -4,7 +4,7 @@ The `revert` function is automatically imported into every program from the [pre
 
 The function will behave differently depending on the context in which it is used:
 
-- When used inside a predicate the function will panic and crash the program
+- When used inside a [predicate](../../language/program-types/predicate.md) the function will panic and crash the program
 - Otherwise it will revert the virutal machine
 
 ## Example

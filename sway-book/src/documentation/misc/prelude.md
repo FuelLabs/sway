@@ -13,4 +13,5 @@ The prelude contains the following modules:
 - [`revert`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw): A module containing
   - `require`: A function that reverts and logs a given value if the condition is `false`
   - `revert`: A function that reverts
+- [`StorageMap`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage.sw): A key-value mapping in contract storage
 - [`Vec`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw): A growable, heap-allocated vector

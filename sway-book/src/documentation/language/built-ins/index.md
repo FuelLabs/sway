@@ -21,11 +21,10 @@ Sway has the following primitive types:
 4. [Bytes](b256.md)
    1. `b256` (256 bits / 32 bytes, i.e. a hash)
 
+<!-- TODO: The following sentence does not belong here. We need to convey the default size, including word size, somewhere however not on this page -->
+The default numeric type is `u64`. The FuelVM's word size is 64 bits, and the cases where using a smaller numeric type saves space are minimal.
+
 All other types in Sway are built up of these primitive types, or references to these primitive types. 
-
-You may notice that there are no signed integers - this is by design. In the blockchain domain that Sway occupies, floating-point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.
-
-> The default numeric type is `u64`. The FuelVM's word size is 64 bits, and the cases where using a smaller numeric type saves space are minimal.
 
 ## Compound Types
 

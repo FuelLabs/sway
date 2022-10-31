@@ -8,7 +8,7 @@ Let's take a look at an example where we define an enum called `Color` with a fe
 {{#include ../../../code/language/built-ins/enums/src/basic_enum.sw:definition}}
 ```
 
-We begin by using the `enum` keyword followed by the name for our enumeration. The variants are contained inside `{}` and they are ordered sequentially from top to bottom. Each variant has a name, such as the first `Blue` variant, and a type, which in this case they are all the unit type `()`. 
+We begin by using the `enum` keyword followed by the name for our enumeration. The variants are contained inside `{}` and they are ordered sequentially from top to bottom. Each variant has a name, such as the first `Blue` variant, and a type, which in this case is the unit type `()` for all variants. 
 
 The unit type is a type that does not contain any data however any type can be used.
 
@@ -33,7 +33,3 @@ Similar to structs we can use other enums as types for our variants.
 ```sway
 {{#include ../../../code/language/built-ins/enums/src/enum_of_enums.sw:content}}
 ```
-
-### Enum Memory Layout
-
-Enums do have some memory overhead. To know which variant is being represented, Sway stores a one-word (8-byte) tag for the enum variant. The space reserved after the tag is equivalent to the size of the _largest_ enum variant. So, to calculate the size of an enum in memory, add 8 bytes to the size of the largest variant. For example, in the case of `Color` above, where the variants are all `()`, the size would be 8 bytes since the size of the largest variant is 0 bytes.

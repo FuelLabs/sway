@@ -6,7 +6,7 @@ Having multiple address types enforces type-safety and expands the range of valu
 
 The main types are:
 
-- [`Address`](address.md): Used to identify the UTXO output
+- [`Address`](address.md): Used to identify the UTXO
 - [`ContractId`](contract-id.md): Used to identify a contract
 
 For ease of use there is an [enum](../../language/built-ins/enums.md) wrapper [`Identity`](identity.md) which contains both types.

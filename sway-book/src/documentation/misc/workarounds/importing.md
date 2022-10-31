@@ -12,3 +12,5 @@ This means that the following projects cannot be imported:
 - [predicates](../../language/program-types/predicate.md)
 
 Contracts can be imported however the workaround is to move the `ABI` into an [external library](../../language/program-types/libraries/external.md) and import that library.
+
+> TODO: alter to show new way of importing contracts?

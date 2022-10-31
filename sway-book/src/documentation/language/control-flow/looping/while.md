@@ -1,6 +1,6 @@
 # while
 
-A `while` loop uses the `while` keyword followed by a condition which evaluates to a boolean.
+A `while` loop uses the `while` keyword followed by a condition which evaluates to a [boolean](../../built-ins/boolean.md).
 
 ```sway
 {{#include ../../../../code/language/control_flow/src/lib.sw:single_loop}}

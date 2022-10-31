@@ -1,6 +1,6 @@
 # assert
 
-The `assert` function is automatically imported into every program from the [prelude](../../misc/prelude.md) and it takes an expression which must evaluate to a boolean. If the boolean is `true` then nothing will happen and the code will continue to run otherwise the virtual machine will revert.
+The `assert` function is automatically imported into every program from the [prelude](../../misc/prelude.md) and it takes an expression which must evaluate to a [boolean](../../language/built-ins/boolean.md). If the boolean is `true` then nothing will happen and the code will continue to run otherwise the virtual machine will revert.
 
 ## Example
 

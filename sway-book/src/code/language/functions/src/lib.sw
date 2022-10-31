@@ -57,6 +57,6 @@ impl Foo {
 // ANCHOR_END: associated_impl
 fn associated_usage() {
     // ANCHOR: associated_usage
-    let foo = ~Foo::new(42);
+    let foo = Foo::new(42);
     // ANCHOR_END: associated_usage
 }

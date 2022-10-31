@@ -1,45 +1,28 @@
-# Documentation
+# Setup
 
-## Building From Source
+> TODO: forc plugins etc. need to be added back in
 
-Install `mdbook` and then open a new terminal session in order to run the subsequent commands
+If you wish to alter the documentation presented in this book then follow the instructions.
 
-```sh
-cargo install mdbook
-```
+1. Install [Rust](https://www.rust-lang.org/tools/install) if it's not installed.
+2. Install [mdbook](https://rust-lang.github.io/mdBook/).
 
-To set up and build the book locally, you must also have `mdbook-forc-documenter` preprocessor and relevant forc plugins installed.
+   ```bash
+   cargo install mdbook
+   ```
 
-If you wish to make changes to the `Commands` or `Plugins` chapters, please read the [next section](#generating-documentation-for-forc-commandsplugins) first.
+3. To [build](https://rust-lang.github.io/mdBook/cli/build.html) the book make sure that you are in `/sway/sway-book` and run
 
-From the project root, install `mdbook-forc-documenter`:
+   ```bash
+   mdbook build
+   ```
 
-```sh
-cargo install --path ./scripts/mdbook-forc-documenter
-```
+4. To develop the book in real time, in the browser, run
 
-You must also install forc plugins that are already documented within the book. You can skip plugins that are going to be removed and install plugins that are going to be added to the book:
+   ```bash
+   mdbook serve --open
+   ```
 
-```sh
-cargo install --path ./forc-plugins/forc-fmt
-cargo install --path ./forc-plugins/forc-lsp
-cargo install --path ./forc-plugins/forc-explore
-```
+# How to edit the book
 
-To build book:
-
-```sh
-mdbook build
-```
-
-To build the book on strict mode to check if pages should be removed or added within the Forc Reference:
-
-```sh
-MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs
-```
-
-To serve locally:
-
-```sh
-mdbook serve
-```
+> TODO: specify contributing guidelines to ensure that the quality and conciseness of the book remains high

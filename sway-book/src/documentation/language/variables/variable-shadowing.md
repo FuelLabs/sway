@@ -18,4 +18,4 @@ If we do not want to alter the original variable but we'd like to temporarily re
 {{#include ../../../code/language/variables/src/lib.sw:shadowing}}
 ```
 
-`foo` & `bar` defined inside `{}` only exist inside the `{}` scope therefore the original `foo` & `bar` with the value of `5` maintain their value.
+`foo` & `bar` defined inside the curly brackets `{}` only exist inside the `{}` scope therefore the original `foo` & `bar` with the value of `5` maintain their value.

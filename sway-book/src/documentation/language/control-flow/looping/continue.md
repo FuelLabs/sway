@@ -1,6 +1,6 @@
 # continue
 
-`continue` is a keyword available for use inside of a `while` loop and it is used to skip to the next iteration without executing the code after `continue`.
+`continue` is a keyword available for use inside of a [`while`](while.md) loop and it is used to skip to the next iteration without executing the code after `continue`.
 
 ```sway
 {{#include ../../../../code/language/control_flow/src/lib.sw:continue_example}}

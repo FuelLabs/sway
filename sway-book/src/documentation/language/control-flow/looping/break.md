@@ -1,6 +1,6 @@
 # break
 
-`break` is a keyword available for use inside of a `while` loop and it is used to exit out of the loop before the looping condition is met.
+`break` is a keyword available for use inside of a [`while`](while.md) loop and it is used to exit out of the loop before the looping condition is met.
 
 ```sway
 {{#include ../../../../code/language/control_flow/src/lib.sw:break_example}}

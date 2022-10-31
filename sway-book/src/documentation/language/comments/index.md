@@ -28,7 +28,7 @@ Similarly, the second form continues to the end of the line and it can also be p
 
 ## Documentation Comments
 
-Documentation comments start with three forward slashes `///` and are placed on top of functions or above fields e.g. in a struct. 
+Documentation comments start with three forward slashes `///` and are placed on top of functions or above fields e.g. in a [struct](../built-ins/structs.md). 
 
 Documentation comments are typically used by tools for automatic documentation generation.
 

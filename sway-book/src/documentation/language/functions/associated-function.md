@@ -20,9 +20,7 @@ We start by using the `impl` (implementation) keyword, followed by the name of o
 
 ### Usage
 
-The syntax to call an associated function is unique to Sway. 
-
-When referring to a type directly you preface the type with a tilde `~` and use two colons `::` after the type followed by the name of the associated function.
+To call an associated function on a type we use the following syntax.
 
 ```sway
 {{#include ../../../code/language/functions/src/lib.sw:associated_usage}}

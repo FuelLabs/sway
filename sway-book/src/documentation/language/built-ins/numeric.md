@@ -16,7 +16,7 @@ A signed integer is a whole number which can take the value of zero and both neg
 
 In order to achieve this one _bit_ must be kept for tracking the sign (+ or -) of the value and thus the range of available values is smaller than an unsigned integer.
 
-For those inclined, the range for an n-bit signed integers is -2<sup>n-1</sup> to 2<sup>n-1</sup>-1.
+For those inclined, the range for an n-bit signed integer is -2<sup>n-1</sup> to 2<sup>n-1</sup>-1.
 
 Sway does not natively support signed integers however there is nothing stopping a library from using primitives to create types that act like signed types.
 
@@ -29,7 +29,7 @@ An example of available values is:
 - 0
 - 42
 
-For those inclined, the range for an n-bit unsigned integers is 0 to 2<sup>n</sup>-1.
+For those inclined, the range for an n-bit unsigned integer is 0 to 2<sup>n</sup>-1.
 
 ## Alternative Syntax
 

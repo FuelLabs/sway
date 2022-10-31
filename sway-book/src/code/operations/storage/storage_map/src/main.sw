@@ -1,7 +1,7 @@
 contract;
 
 // ANCHOR: initialization
-use std::{chain::auth::msg_sender, storage::StorageMap};
+use std::chain::auth::msg_sender;
 
 storage {
     // k = Identity, v = u64

@@ -1,6 +1,8 @@
 # Call a Contract
 
-Smart contracts can be _called_ by other contracts or scripts. In the FuelVM, this is done primarily with the [`call`](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/instruction_set.md#call-call-contract) instruction.
+<!-- TODO: ignore, planning on working on this soon, haven't made any adjustments from the current book -->
+
+<!-- Smart contracts can be _called_ by other contracts or scripts. In the FuelVM, this is done primarily with the [`call`](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/instruction_set.md#call-call-contract) instruction.
 
 Sway provides a nice way to manage callable interfaces with its `abi` system. The Fuel ABI specification can be found [here](https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md).
 
@@ -95,4 +97,4 @@ impl ContractB for Contract {
         // do something
     }
 }
-```
+``` -->

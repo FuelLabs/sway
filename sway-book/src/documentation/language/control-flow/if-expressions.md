@@ -12,7 +12,7 @@ In the following example we have a hardcoded variable `number` set to the value 
 
 The conditional checks are performed in the order that they are defined therefore the first check is to see if the `number` is divisible by `3`. 
 
-If the condition evaluates to the boolean value of `true` then we call `function 1` and we move on to the end where the comment `more code here` is written. We do not evaluate the remaining conditions.
+If the condition evaluates to the [boolean](../built-ins/boolean.md) value of `true` then we call `function 1` and we move on to the end where the comment `more code here` is written. We do not evaluate the remaining conditions.
 
 On the other hand if the condition evaluates to `false` then we check the next condition, in this case if the `number` is divisible by `4`. We can have as many `else if` checks as we like as long as they evaluate to a boolean.
 
@@ -25,7 +25,7 @@ In [Conditional Branching](#conditional-branching) we have opted to call some fu
 
 ### if let
 
-In the following example we combine `if` and `let` into `if let` followed by some comparison which must evaluate to a boolean.
+In the following example we combine `if` and `let` into `if let` followed by some comparison which must evaluate to a [boolean](../built-ins/boolean.md).
 
 ```sway
 {{#include ../../../code/language/control_flow/src/lib.sw:if_let_enum}}

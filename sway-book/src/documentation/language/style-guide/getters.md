@@ -5,11 +5,15 @@ Functions that return values typically follow one of two styles:
 - Prepending `get_` to the start of the name
 - Omitting `get_`
 
+## Encouraged
+
 In Sway the encouraged usage is to omit the `get_` prefix.
 
 ```sway
 {{#include ../../../code/language/style-guide/getters/src/lib.sw:use}}
 ```
+
+## Discouraged
 
 That is to say the following is discouraged.
 

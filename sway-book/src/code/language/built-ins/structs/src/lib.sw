@@ -21,11 +21,11 @@ fn hardcoded_instantiation() {
 fn variable_instantiation() {
     // Declare variables and pass them into `Foo`
     let number = 42;
-    let truthness = false;
+    let boolean = false;
 
     let mut foo = Foo {
         bar: number,
-        baz: truthness,
+        baz: boolean,
     };
 
     // Access and write to "baz"

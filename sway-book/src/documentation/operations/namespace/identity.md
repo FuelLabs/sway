@@ -1,6 +1,6 @@
 # Identity
 
-The `Identity` type is an enum that allows for the handling of both `Address` and `ContractId` types. This is useful in cases where either type is accepted, e.g. receiving funds from an identified sender, but not caring if the sender is an address or a contract.
+The `Identity` type is an [enum](../../language/built-ins/enums.md) that allows for the handling of both [`Address`](address.md) and [`ContractId`](contract-id.md) types. This is useful in cases where either type is accepted, e.g. receiving funds from an identified sender, but not caring if the sender is an address or a contract.
 
 An `Identity` is implemented as follows.
 

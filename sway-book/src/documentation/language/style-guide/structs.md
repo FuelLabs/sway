@@ -1,6 +1,6 @@
 # Struct Shorthand
 
-A struct has a shorthand notation for initializing its fields. The shorthand works by passing a variable into a struct with the exact same name and type.
+A [struct](../built-ins/structs.md) has a shorthand notation for initializing its fields. The shorthand works by passing a variable into a struct with the exact same name and type.
 
 The following struct has a field `amount` with type `u64`.
 

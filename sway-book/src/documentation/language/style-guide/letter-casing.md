@@ -4,7 +4,7 @@
 
 ## CapitalCase
 
-Structs, traits, and enums are `CapitalCase` which means each word has a capitalized first letter. The fields inside a struct should be [snake_case](#snake_case) and `CapitalCase` inside an enum.
+[Structs](../built-ins/structs.md), [traits](../traits/index.md), and [enums](../built-ins/enums.md) are `CapitalCase` which means each word has a capitalized first letter. The fields inside a struct should be [snake_case](#snake_case) and `CapitalCase` inside an enum.
 
 ```sway
 {{#include ../../../code/language/style-guide/letter_casing/src/lib.sw:structures}}
@@ -12,7 +12,7 @@ Structs, traits, and enums are `CapitalCase` which means each word has a capital
 
 ## snake_case
 
-Modules, variables, and functions are `snake_case` which means that each word is lowercase and separated by an underscore.
+Modules, [variables](../variables/index.md), and [functions](../functions/index.md) are `snake_case` which means that each word is lowercase and separated by an underscore.
 
 Module name:
 
@@ -28,7 +28,7 @@ Function and variable:
 
 ## SCREAMING_SNAKE_CASE
 
-Constants are `SCREAMING_SNAKE_CASE` which means that each word in capitalized and separated by an underscore.
+[Constants](../variables/const.md) are `SCREAMING_SNAKE_CASE` which means that each word in capitalized and separated by an underscore.
 
 ```sway
 {{#include ../../../code/language/style-guide/letter_casing/src/lib.sw:const}}

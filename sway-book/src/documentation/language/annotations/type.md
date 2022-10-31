@@ -10,4 +10,4 @@ Annotating a variable is done by placing the annotation after the variable name 
 {{#include ../../../code/language/annotations/src/main.sw:example}}
 ```
 
-The compiler will disallow incorrect `type` annotations therefore replacing the `bool` annotation on the variable `baz` with a `u64` would result in a compilation error.
+The compiler will disallow incorrect `type` annotations therefore replacing the `bool` annotation on the variable `baz` with a `u64` will result in a compilation error.

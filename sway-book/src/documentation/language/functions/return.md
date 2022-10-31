@@ -26,7 +26,7 @@ A return expression is typically used at the end of a function however as long a
 
 ## Implicit Return
 
-To return from a function implicitly we do not use the `return` keyword and we omit the ending semi-colon at the end of the line.
+To return from a function implicitly we do not use the `return` keyword and we omit the semi-colon at the end of the line.
 
 ```sway
 {{#include ../../../code/language/functions/src/implicit.sw:main}}

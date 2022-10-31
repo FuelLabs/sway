@@ -1,10 +1,9 @@
 # Summary
 
-[Welcome!](./index.md)
-
 # Introduction
 
-- [Installation]()
+- [Welcome!](./index.md)
+- [Installation](./documentation/introduction/installation.md)
 
 # The Sway Programming Language
 
@@ -53,8 +52,8 @@
   - [Types](./documentation/language/annotations/type.md)
   - [Attributes](./documentation/language/annotations/attributes/index.md)
     - [Storage](./documentation/language/annotations/attributes/storage.md)
-- [Traits]()
-- [Generics]()
+- [Traits](./documentation/language/traits/index.md)
+- [Generics](./documentation/language/generics/index.md)
 - [Style Guide](./documentation/language/style-guide/index.md)
   - [Letter Casing](./documentation/language/style-guide/letter-casing.md)
   - [Type Annotations](./documentation/language/style-guide/annotations.md)
@@ -118,6 +117,9 @@
 - [Software Development Kits](./documentation/misc/sdk/index.md)
   - [Rust SDK](./documentation/misc/sdk/rust.md)
   - [TypeScript SDK](./documentation/misc/sdk/typescript.md)
+- [Advanced Concepts](./documentation/misc/advanced-concepts/index.md)
+  - [Structs](./documentation/misc/advanced-concepts/structs.md)
+  - [Enums](./documentation/misc/advanced-concepts/enums.md)
 - [Known Issues](./documentation/misc/workarounds/index.md)
   - [General](./documentation/misc/workarounds/general.md)
   - [Missing Features](./documentation/misc/workarounds/missing-features.md)
@@ -127,5 +129,9 @@
   - [Predicates](./documentation/misc/workarounds/predicates.md)
   - [Pattern Matching](./documentation/misc/workarounds/pattern-matching.md)
   - [Storage](./documentation/misc/workarounds/storage.md)
+- [Manifest Reference](./documentation/misc/manifest/index.md)
 
 # Fuel Orchestrator (Forc)
+
+- [Commands](./documentation/forc/commands/index.md)
+- [Plugins](./documentation/forc/plugins/index.md)
