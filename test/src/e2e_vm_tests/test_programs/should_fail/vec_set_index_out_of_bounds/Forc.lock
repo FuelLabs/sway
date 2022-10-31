@@ -9,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'vec_set_index_out_of_bounds'
-source = 'root'
+source = 'member'
 dependencies = ['std']

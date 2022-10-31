@@ -1,6 +1,6 @@
 [[package]]
 name = 'bool_and_or'
-source = 'root'
+source = 'member'
 dependencies = ['core']
 
 [[package]]

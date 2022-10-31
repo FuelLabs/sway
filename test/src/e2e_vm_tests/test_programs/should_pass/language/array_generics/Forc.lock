@@ -1,6 +1,6 @@
 [[package]]
 name = 'array_generics'
-source = 'root'
+source = 'member'
 dependencies = ['core']
 
 [[package]]

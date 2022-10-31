@@ -4,7 +4,7 @@ source = 'path+from-root-219CAA2B0E1853AB'
 
 [[package]]
 name = 'ec_recover_test'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

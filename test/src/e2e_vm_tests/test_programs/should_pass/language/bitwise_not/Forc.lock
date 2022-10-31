@@ -1,6 +1,6 @@
 [[package]]
 name = 'bitwise_not'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
