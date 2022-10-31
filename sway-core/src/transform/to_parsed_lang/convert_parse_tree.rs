@@ -515,75 +515,37 @@ fn item_impl_to_declaration(
 
 fn path_type_to_call_path_and_type_arguments(
     handler: &Handler,
-    path_type: PathType,
-) -> Result<(CallPath, Vec<TypeArgument>), ErrorEmitted> {
-    let PathType {
+    PathType {
         root_opt,
         prefix,
         mut suffix,
-    } = path_type;
-
-    let is_absolute = path_root_opt_to_bool(handler, root_opt)?;
-
-    let convert_ty_args = |generics_opt| match generics_opt {
-        Some((_, generic_args)) => generic_args_to_type_arguments(handler, generic_args),
-        None => Ok(vec![]),
+    }: PathType,
+) -> Result<(CallPath, Vec<TypeArgument>), ErrorEmitted> {
+    let (prefixes, suffix) = match suffix.pop() {
+        None => (Vec::new(), prefix),
+        Some((_, last)) => {
+            // Gather the idents of the prefix, i.e. all segments but the last one.
+            let mut before = Vec::with_capacity(suffix.len() + 1);
+            before.push(path_type_segment_to_ident(handler, prefix)?);
+            for (_, seg) in suffix {
+                before.push(path_type_segment_to_ident(handler, seg)?);
+            }
+            (before, last)
+        }
     };
 
-    match suffix.pop() {
-        Some((_, call_path_suffix)) => match suffix.pop() {
-            Some((
-                _,
-                PathTypeSegment {
-                    fully_qualified,
-                    name,
-                    generics_opt,
-                },
-            )) => {
-                let trait_type_arguments = convert_ty_args(generics_opt)?;
-                let mut prefixes = vec![path_type_segment_to_ident(handler, prefix)?];
-                for (_, call_path_prefix) in suffix {
-                    let ident = path_type_segment_to_ident(handler, call_path_prefix)?;
-                    prefixes.push(ident);
-                }
-                if fully_qualified.is_none() {
-                    prefixes.push(name);
-                }
-                Ok((
-                    CallPath {
-                        prefixes,
-                        suffix: call_path_suffix.name,
-                        is_absolute,
-                    },
-                    trait_type_arguments,
-                ))
-            }
-            None => {
-                let trait_type_arguments = convert_ty_args(prefix.generics_opt)?;
-                let prefixes = if prefix.fully_qualified.is_some() {
-                    vec![]
-                } else {
-                    vec![prefix.name]
-                };
-                Ok((
-                    CallPath {
-                        prefixes,
-                        suffix: call_path_suffix.name,
-                        is_absolute,
-                    },
-                    trait_type_arguments,
-                ))
-            }
-        },
-        None => Ok((
-            CallPath {
-                prefixes: vec![],
-                suffix: prefix.name.clone(),
-                is_absolute,
-            },
-            convert_ty_args(prefix.generics_opt)?,
-        )),
-    }
+    let call_path = CallPath {
+        prefixes,
+        suffix: suffix.name,
+        is_absolute: path_root_opt_to_bool(handler, root_opt)?,
+    };
+
+    let ty_args = match suffix.generics_opt {
+        Some((_, generic_args)) => generic_args_to_type_arguments(handler, generic_args)?,
+        None => vec![],
+    };
+
+    Ok((call_path, ty_args))
 }
 
 fn item_abi_to_abi_declaration(
