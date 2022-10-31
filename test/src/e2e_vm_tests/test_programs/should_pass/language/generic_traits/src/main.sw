@@ -142,9 +142,9 @@ fn main() -> u64 {
         value: 1u64
     };
     let g = f.my_add(a.my_add(1u8, 2u8), a.my_add(3u8, 4u8));
-    let h = ~FooBarData::<u64>::my_sub(
-        ~FooBarData::<u8>::my_sub(100, 10),
-        ~FooBarData::<u8>::my_sub(50, 10),
+    let h = FooBarData::<u64>::my_sub(
+        FooBarData::<u8>::my_sub(100, 10),
+        FooBarData::<u8>::my_sub(50, 10),
     );
     let i = OtherData {
         a: true,
@@ -155,10 +155,10 @@ fn main() -> u64 {
         b: 11u32,
     };
     let k = j.my_add(i.my_add(1u8, 2u8), i.my_add(3u8, 4u8));
-    let l = ~FooBarData::<u16>::my_sub(
-        ~FooBarData::<u32>::my_sub(100, 10),
-        ~FooBarData::<u32>::my_sub(50, 10),
-    );    
+    let l = FooBarData::<u16>::my_sub(
+        FooBarData::<u32>::my_sub(100, 10),
+        FooBarData::<u32>::my_sub(50, 10),
+    );
     let m = MyPoint {
         x: 10u64,
         y: 10u64,
@@ -177,7 +177,7 @@ fn main() -> u64 {
         && h == 50
         && k == 10
         && l == 50
-        && n == 240 
+        && n == 240
         && o == 360
         && q == 93 {
         42
