@@ -3,7 +3,7 @@ library u128;
 use ::assert::assert;
 use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
 use ::result::Result;
-use ::math::Exponentiate;
+use ::math::*;
 
 /// The 128-bit unsigned integer type.
 /// Represented as two 64-bit components: `(upper, lower)`, where `value = (upper << 64) + lower`.
@@ -329,5 +329,57 @@ impl Exponentiate for U128 {
             }
         }
         acc
+    }
+}
+
+impl Root for U128 {
+    /// Newton's method as in https://en.wikipedia.org/wiki/Integer_square_root#Algorithm_using_Newton's_method
+    fn sqrt(self) -> Self {
+        let zero = ~U128::from(0, 0);
+        let two = ~U128::from(0, 2);
+        let mut x0 = self / two;
+        let mut s = self;
+
+        if x0 != zero {
+            let mut x1 = (x0 + s / x0) / two;
+
+            while x1 < x0 {
+                x0 = x1;
+                x1 = (x0 + self / x0) / two;
+            }
+
+            return x0;
+        } else {
+            return s;
+        }
+    }
+}
+
+impl BinaryLogarithm for U128 {
+    /// log2 of `x` is the largest `n` such that `2^n <= x < 2^(n+1)`.
+    /// 
+    /// * If `x` is smaller than `2^64`, we could just rely on the `log` method by setting
+    /// the base to 2.
+    /// * Otherwise, we can find the highest non-zero bit by taking the regular log of the upper
+    /// part of the `U128`, and then add 64.
+    fn log2(self) -> Self {
+        let zero = ~U128::from(0, 0);
+        let mut res = zero;
+        // If trying to get a log2(0), panic, as infinity is not a number.
+        assert(self != zero);
+        if self.upper != 0 {
+            res = ~U128::from(0, self.upper.log(2) + 64);
+        } else if self.lower != 0{
+            res = ~U128::from(0, self.lower.log(2));
+        }
+        res
+    }
+}
+
+impl Logarithm for U128 {
+    fn log(self, base: Self) -> Self {
+        let self_log2 = self.log2();
+        let base_log2 = base.log2();
+        self_log2 / base_log2
     }
 }
