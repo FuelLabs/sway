@@ -199,7 +199,14 @@ impl Session {
             }
         })?;
 
-        let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)
+        let workspace_manifests =
+            manifest
+                .manifests()
+                .map_err(|_| DocumentError::ManifestFileNotFound {
+                    dir: format!("{:?}", manifest.dir()),
+                })?;
+
+        let plan = pkg::BuildPlan::from_lock_and_manifest(&workspace_manifests, locked, offline)
             .map_err(LanguageServerError::BuildPlanFailed)?;
 
         // We can convert these destructured elements to a Vec<Diagnostic> later on.

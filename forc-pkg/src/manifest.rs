@@ -13,6 +13,17 @@ use sway_core::{language::parsed::TreeType, parse};
 pub use sway_types::ConfigTimeConstant;
 use sway_utils::constants;
 
+/// The name of a workspace member package.
+pub type MemberName = String;
+/// A manifest for each workspace member, or just one manifest if working with a single package
+pub type MemberManifestFiles = BTreeMap<MemberName, PackageManifestFile>;
+/// MemberManifestFiles packed with an optional WorkspaceManifestFile if the corresponding ManifestFile is
+/// ManifestFile::Workspace.
+pub type ManifestFiles = (
+    BTreeMap<MemberName, PackageManifestFile>,
+    Option<WorkspaceManifestFile>,
+);
+
 pub enum ManifestFile {
     Package(Box<PackageManifestFile>),
     Workspace(WorkspaceManifestFile),
@@ -60,6 +71,38 @@ impl ManifestFile {
         self.path()
             .parent()
             .expect("failed to retrieve manifest directory")
+    }
+
+    /// Returns manifest file map from member name to the corresponding package manifest file
+    pub fn member_manifests(&self) -> Result<MemberManifestFiles> {
+        let mut member_manifest_files = BTreeMap::new();
+        match self {
+            ManifestFile::Package(pkg_manifest_file) => {
+                let member_name = &pkg_manifest_file.project.name;
+                member_manifest_files.insert(member_name.clone(), *pkg_manifest_file.clone());
+            }
+            ManifestFile::Workspace(workspace_manifest_file) => {
+                for (member_name, pkg_manifest_file) in workspace_manifest_file
+                    .members()
+                    .zip(workspace_manifest_file.member_pkg_manifests()?)
+                {
+                    member_manifest_files.insert(member_name.clone(), pkg_manifest_file);
+                }
+            }
+        }
+        Ok(member_manifest_files)
+    }
+
+    /// Returns workspace level manifest with member manifests
+    pub fn manifests(&self) -> Result<ManifestFiles> {
+        let member_manifest_files = self.member_manifests()?;
+        let workspace_manifest = match self {
+            ManifestFile::Package(_) => None,
+            ManifestFile::Workspace(workspace_manifest_file) => {
+                Some(workspace_manifest_file.clone())
+            }
+        };
+        Ok((member_manifest_files, workspace_manifest))
     }
 }
 
