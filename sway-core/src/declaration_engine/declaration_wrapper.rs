@@ -9,7 +9,7 @@ use crate::{
     ReplaceSelfType, TypeId,
 };
 
-use super::{ReplaceDecls, DeclMapping};
+use super::{DeclMapping, ReplaceDecls};
 
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]
 /// as a means of placing all declaration types into the same type.

@@ -133,8 +133,8 @@ impl ty::TyImplTrait {
                         &new_impl_type_parameters,
                         &trait_decl.type_parameters,
                         &trait_type_arguments,
+                        &trait_decl.supertraits,
                         implementing_for_type_id,
-                        &type_implementing_for_span,
                         &trait_decl.interface_surface,
                         &trait_decl.methods,
                         &functions,
@@ -184,8 +184,8 @@ impl ty::TyImplTrait {
                         &[], // this is empty because abi definitions don't support generics,
                         &[], // this is empty because abi definitions don't support generics,
                         &[], // this is empty because abi definitions don't support generics,
+                        &[], // this is empty because abi definitions don't support supertraits,
                         implementing_for_type_id,
-                        &type_implementing_for_span,
                         &abi.interface_surface,
                         &abi.methods,
                         &functions,
@@ -527,8 +527,8 @@ fn type_check_trait_implementation(
     impl_type_parameters: &[TypeParameter],
     trait_type_parameters: &[TypeParameter],
     trait_type_arguments: &[TypeArgument],
+    trait_supertraits: &[Supertrait],
     type_implementing_for: TypeId,
-    type_implementing_for_span: &Span,
     trait_interface_surface: &[DeclarationId],
     trait_methods: &[DeclarationId],
     impl_methods: &[FunctionDeclaration],
@@ -547,6 +547,8 @@ fn type_check_trait_implementation(
 
     let mut errors = vec![];
     let mut warnings = vec![];
+
+    let self_type = ctx.self_type();
 
     // This map keeps track of the remaining functions in the interface surface
     // that still need to be implemented for the trait to be fully implemented.
@@ -569,6 +571,26 @@ fn type_check_trait_implementation(
 
     let mut new_method_ids: Vec<DeclarationId> = vec![];
     let mut processed_methods: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+
+    let (original_supertrait_decl_ids, these_supertrait_decl_ids) = check!(
+        handle_supertraits(ctx.by_ref(), trait_supertraits),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    ctx.namespace.insert_trait_implementation(
+        CallPath {
+            prefixes: vec![],
+            suffix: trait_name.suffix.clone(),
+            is_absolute: false,
+        },
+        trait_type_arguments.to_vec(),
+        self_type,
+        &new_method_ids,
+        block_span,
+        false,
+    );
 
     for impl_method in impl_methods {
         let mut ctx = ctx
@@ -752,40 +774,12 @@ fn type_check_trait_implementation(
     let mut impl_trait_namespace = ctx.namespace.clone();
     let ctx = ctx.scoped(&mut impl_trait_namespace);
 
-    // A trait impl needs access to everything that the trait methods have access to, which is
-    // basically everything in the path where the trait is declared.
-    // First, get the path to where the trait is declared. This is a combination of the path stored
-    // in the symbols map and the path stored in the CallPath.
-    let trait_path = [
-        &trait_name.prefixes[..],
-        ctx.namespace.get_canonical_path(&trait_name.suffix),
-    ]
-    .concat();
-    ctx.namespace.star_import(&trait_path);
-
-    let self_type = ctx.self_type();
-    check!(
-        ctx.namespace.insert_trait_implementation(
-            CallPath {
-                prefixes: vec![],
-                suffix: trait_name.suffix.clone(),
-                is_absolute: false,
-            },
-            trait_type_arguments.to_vec(),
-            self_type,
-            &new_method_ids,
-            block_span,
-            false,
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
     // Retrieve the methods defined on the trait declaration and transform
     // them into the correct typing for this impl block by using the type
     // parameters from the original trait declaration and the type arguments of
-    // the trait name in the current impl block that we are type checking.
+    // the trait name in the current impl block that we are type checking and
+    // using the original decl ids from the interface surface and the new
+    // decl ids from the newly implemented methods.
     let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
         trait_type_parameters
             .iter()
@@ -796,7 +790,11 @@ fn type_check_trait_implementation(
             .map(|type_arg| type_arg.type_id)
             .collect(),
     );
-    let decl_mapping = DeclMapping::from_original_and_new_decl_ids(decl_id_map, processed_methods);
+    let mut original_decl_ids = decl_id_map;
+    original_decl_ids.extend(original_supertrait_decl_ids);
+    let mut new_decl_ids = processed_methods;
+    new_decl_ids.extend(these_supertrait_decl_ids);
+    let decl_mapping = DeclMapping::from_original_and_new_decl_ids(original_decl_ids, new_decl_ids);
     for decl_id in trait_methods.iter() {
         let mut method = check!(
             CompileResult::from(de_get_function(decl_id.clone(), block_span)),
@@ -913,4 +911,93 @@ fn check_for_unconstrained_type_parameters(
     } else {
         err(warnings, errors)
     }
+}
+
+fn handle_supertraits(
+    mut ctx: TypeCheckContext,
+    supertraits: &[Supertrait],
+) -> CompileResult<(
+    BTreeMap<Ident, DeclarationId>,
+    BTreeMap<Ident, DeclarationId>,
+)> {
+    let mut warnings = Vec::new();
+    let mut errors = Vec::new();
+
+    let mut original_supertrait_decl_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    let mut these_supertrait_decl_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+
+    for supertrait in supertraits.iter() {
+        match ctx
+            .namespace
+            .resolve_call_path(&supertrait.name)
+            .ok(&mut warnings, &mut errors)
+            .cloned()
+        {
+            Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
+                let ty::TyTraitDeclaration {
+                    interface_surface,
+                    supertraits,
+                    name,
+                    ..
+                } = check!(
+                    CompileResult::from(de_get_trait(decl_id.clone(), &supertrait.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                // Retrieve the interface surface for this trait.
+                for decl_id in interface_surface.into_iter() {
+                    let method = check!(
+                        CompileResult::from(de_get_trait_fn(decl_id.clone(), &name.span())),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    original_supertrait_decl_ids.insert(method.name, decl_id);
+                }
+
+                // Retrieve the implemented methods for the interface surface
+                // for the supertrait and this type.
+                for decl_id in ctx
+                    .namespace
+                    .get_methods_for_type_and_trait_name(ctx.self_type(), &supertrait.name)
+                    .into_iter()
+                {
+                    let method = check!(
+                        CompileResult::from(de_get_function(decl_id.clone(), &name.span())),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    these_supertrait_decl_ids.insert(method.name, decl_id);
+                }
+
+                let (mut next_original_supertrait_decl_ids, mut next_these_supertrait_decl_ids) = check!(
+                    handle_supertraits(ctx.by_ref(), &supertraits),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                original_supertrait_decl_ids.append(&mut next_original_supertrait_decl_ids);
+                these_supertrait_decl_ids.append(&mut next_these_supertrait_decl_ids);
+            }
+            Some(ty::TyDeclaration::AbiDeclaration(_)) => {
+                errors.push(CompileError::AbiAsSupertrait {
+                    span: supertrait.name.span().clone(),
+                })
+            }
+            _ => errors.push(CompileError::TraitNotFound {
+                name: supertrait.name.to_string(),
+                span: supertrait.name.span(),
+            }),
+        }
+    }
+
+    ok(
+        (original_supertrait_decl_ids, these_supertrait_decl_ids),
+        warnings,
+        errors,
+    )
 }

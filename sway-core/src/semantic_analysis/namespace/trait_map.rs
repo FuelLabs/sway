@@ -510,6 +510,45 @@ impl TraitMap {
         }
         methods
     }
+
+    /// Find the entries in `self` that are equivalent to `type_id` with trait
+    /// name `trait_name`.
+    ///
+    /// Notes:
+    /// - equivalency is defined (1) based on whether the types contains types
+    ///     that are dynamic and can change and (2) whether the types hold
+    ///     equivalency after (1) is fulfilled
+    /// - this method does not translate types from the found entries to the
+    ///     `type_id` (like in `filter_by_type()`). This is because the only
+    ///     entries that qualify as hits are equivalents of `type_id`
+    pub(crate) fn get_methods_for_type_and_trait_name(
+        &self,
+        type_id: TypeId,
+        trait_name: &CallPath,
+    ) -> Vec<DeclarationId> {
+        let mut methods = vec![];
+        // small performance gain in bad case
+        if look_up_type_id(type_id) == TypeInfo::ErrorRecovery {
+            return methods;
+        }
+        for ((map_trait_name, map_type_id), map_trait_methods) in self.trait_impls.iter() {
+            let map_trait_name = CallPath {
+                prefixes: map_trait_name.prefixes.clone(),
+                suffix: map_trait_name.suffix.0.clone(),
+                is_absolute: map_trait_name.is_absolute,
+            };
+            if &map_trait_name == trait_name && are_equal_minus_dynamic_types(type_id, *map_type_id)
+            {
+                let mut trait_methods = map_trait_methods
+                    .values()
+                    .cloned()
+                    .into_iter()
+                    .collect::<Vec<_>>();
+                methods.append(&mut trait_methods);
+            }
+        }
+        methods
+    }
 }
 
 fn are_equal_minus_dynamic_types(left: TypeId, right: TypeId) -> bool {

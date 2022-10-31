@@ -162,15 +162,16 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                 );
 
                 // Retrieve the interface surface for this trait.
-                let mut dummy_interface_surface = vec![];
+                let mut dummy_methods = vec![];
                 for decl_id in interface_surface.into_iter() {
-                    let method = check!(
+                    let mut method = check!(
                         CompileResult::from(de_get_trait_fn(decl_id.clone(), &name.span())),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
-                    dummy_interface_surface.push(
+                    method.replace_self_type(self_type);
+                    dummy_methods.push(
                         de_insert_function(method.to_dummy_func(Mode::NonAbi)).with_parent(decl_id),
                     );
                 }
@@ -186,28 +187,17 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                     })
                     .collect::<Vec<_>>();
 
-                // Insert the interface surface methods of the supertrait into
-                // the namespace. Specifically do not check for conflicting
-                // definitions because this is just a temporary namespace for
-                // type checking and these are not actual impl blocks.
+                dummy_methods.append(&mut methods.clone());
+
+                // Insert the methods of the supertrait into the namespace.
+                // Specifically do not check for conflicting definitions because
+                // this is just a temporary namespace for type checking and
+                // these are not actual impl blocks.
                 ctx.namespace.insert_trait_implementation(
                     supertrait.name.clone(),
                     type_params_as_type_args.clone(),
                     self_type,
-                    &dummy_interface_surface,
-                    &supertrait.name.span(),
-                    false,
-                );
-
-                // Insert the trait methods of the supertrait into the
-                // namespace. Specifically do not check for conflicting
-                // definitions because this is just a temporary namespace for
-                // type checking and these are not actual impl blocks.
-                ctx.namespace.insert_trait_implementation(
-                    supertrait.name.clone(),
-                    type_params_as_type_args,
-                    self_type,
-                    &methods,
+                    &dummy_methods,
                     &supertrait.name.span(),
                     false,
                 );

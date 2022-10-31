@@ -38,16 +38,6 @@ impl CopyTypes for TyTraitDeclaration {
     }
 }
 
-impl MonomorphizeHelper for TyTraitDeclaration {
-    fn name(&self) -> &Ident {
-        &self.name
-    }
-
-    fn type_parameters(&self) -> &[TypeParameter] {
-        &self.type_parameters
-    }
-}
-
 impl ReplaceSelfType for TyTraitDeclaration {
     fn replace_self_type(&mut self, self_type: TypeId) {
         self.type_parameters
@@ -62,5 +52,15 @@ impl ReplaceSelfType for TyTraitDeclaration {
                 function_decl_id.replace_id(*new_decl_id);
             });
         // we don't have to type check the methods because it hasn't been type checked yet
+    }
+}
+
+impl MonomorphizeHelper for TyTraitDeclaration {
+    fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    fn type_parameters(&self) -> &[TypeParameter] {
+        &self.type_parameters
     }
 }

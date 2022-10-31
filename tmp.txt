@@ -619,19 +619,785 @@ func_decl: add, u64
 func_decl: add, u64
 func_decl: eq, bool
 func_decl: eq, bool
-B the type: Unit in main
-if true: Some(
-    Map {
-        iter: IntoIter(
-            [
-                Value(
-                    Index {
-                        index: 617,
-                        generation: 47,
-                    },
-                ),
-            ],
-        ),
-    },
-)
-if false: Some(Map { iter: IntoIter([Value(Index { index: 615, generation: 47 })]) })
+script {
+    fn main() -> bool, !1 {
+        entry():
+        v0 = call simple_break_test_0(), !2
+        v1 = call simple_continue_test_9(), !3
+        v2 = call break_and_continue_test_18(), !4
+        v3 = const bool true, !5
+        ret bool v3
+    }
+
+    fn simple_break_test_0() -> (), !2 {
+        local mut ptr u64 i
+
+        entry():
+        v0 = get_ptr mut ptr u64 i, ptr u64, 0, !6
+        v1 = const u64 0, !7
+        store v1, ptr v0, !6
+        br while()
+
+        while():
+        v2 = const bool true, !8
+        cbr v2, while_body(), end_while()
+
+        while_body():
+        v3 = get_ptr mut ptr u64 i, ptr u64, 0, !9
+        v4 = load ptr v3, !9
+        v5 = const u64 10, !10
+        v6 = call ge_1(v4, v5), !11
+        cbr v6, block0(), block1(), !11
+
+        end_while():
+        v7 = get_ptr mut ptr u64 i, ptr u64, 0, !12
+        v8 = load ptr v7, !12
+        v9 = call eq_8(v8, v5), !13
+        v10 = call assert_5(v9), !15
+        v11 = const unit ()
+        ret () v11
+
+        block0():
+        br end_while()
+
+        block1():
+        v12 = const unit ()
+        br block2(v12)
+
+        block2(v13: ()):
+        v14 = get_ptr mut ptr u64 i, ptr u64, 0, !16
+        v15 = get_ptr mut ptr u64 i, ptr u64, 0, !17
+        v16 = load ptr v15, !17
+        v17 = const u64 1, !18
+        v18 = call add_4(v16, v17), !16
+        store v18, ptr v14, !16
+        br while()
+    }
+
+    fn ge_1(self !20: u64, other !21: u64) -> bool, !22 {
+        entry(self: u64, other: u64):
+        v0 = call gt_2(self, other), !23
+        cbr v0, block1(v0), block0(), !24
+
+        block0():
+        v1 = call eq_3(self, other), !25
+        br block1(v1), !24
+
+        block1(v2: bool):
+        ret bool v2
+    }
+
+    fn gt_2(self !26: u64, other !27: u64) -> bool, !28 {
+        entry(self: u64, other: u64):
+        v0 = asm(r1: self, r2: other, r3) -> bool r3, !29 {
+            gt     r3 r1 r2, !30
+        }
+        ret bool v0
+    }
+
+    fn eq_3(self !31: u64, other !32: u64) -> bool, !33 {
+        entry(self: u64, other: u64):
+        v0 = cmp eq self other
+        ret bool v0
+    }
+
+    fn add_4(self !34: u64, other !35: u64) -> u64, !36 {
+        entry(self: u64, other: u64):
+        v0 = add self, other
+        ret u64 v0
+    }
+
+    fn assert_5(condition !37: bool) -> (), !15 {
+        entry(condition: bool):
+        v0 = call not_6(condition), !38
+        cbr v0, block0(), block1(), !38
+
+        block0():
+        v1 = const u64 0, !39
+        v2 = call revert_7(v1), !41
+        v3 = const unit ()
+        br block2(v3)
+
+        block1():
+        v4 = const unit ()
+        br block2(v4)
+
+        block2(v5: ()):
+        v6 = const unit ()
+        ret () v6
+    }
+
+    fn not_6(self !42: bool) -> bool, !43 {
+        entry(self: bool):
+        v0 = const bool false, !44
+        v1 = cmp eq self v0
+        ret bool v1
+    }
+
+    fn revert_7(code !45: u64) -> (), !41 {
+        entry(code: u64):
+        revert code, !46
+    }
+
+    fn eq_8(self !31: u64, other !32: u64) -> bool, !33 {
+        entry(self: u64, other: u64):
+        v0 = cmp eq self other
+        ret bool v0
+    }
+
+    fn simple_continue_test_9() -> (), !3 {
+        local mut ptr u64 i
+        local mut ptr u64 sum
+
+        entry():
+        v0 = get_ptr mut ptr u64 i, ptr u64, 0, !47
+        v1 = const u64 0, !48
+        store v1, ptr v0, !47
+        v2 = get_ptr mut ptr u64 sum, ptr u64, 0, !49
+        v3 = const u64 0, !50
+        store v3, ptr v2, !49
+        br while()
+
+        while():
+        v4 = get_ptr mut ptr u64 i, ptr u64, 0, !51
+        v5 = load ptr v4, !51
+        v6 = const u64 10, !10
+        v7 = call lt_13(v5, v6), !52
+        cbr v7, while_body(), end_while()
+
+        while_body():
+        v8 = get_ptr mut ptr u64 i, ptr u64, 0, !53
+        v9 = get_ptr mut ptr u64 i, ptr u64, 0, !54
+        v10 = load ptr v9, !54
+        v11 = const u64 1, !55
+        v12 = call add_10(v10, v11), !53
+        store v12, ptr v8, !53
+        v13 = get_ptr mut ptr u64 i, ptr u64, 0, !56
+        v14 = load ptr v13, !56
+        v15 = const u64 2, !57
+        v16 = call modulo_12(v14, v15), !58
+        v17 = const u64 0, !59
+        v18 = call eq_11(v16, v17), !60
+        cbr v18, block0(), block1(), !60
+
+        end_while():
+        v19 = get_ptr mut ptr u64 sum, ptr u64, 0, !61
+        v20 = load ptr v19, !61
+        v21 = const u64 2, !62
+        v22 = call divide_17(v6, v21), !63
+        v23 = call eq_11(v20, v22), !64
+        v24 = call assert_14(v23), !15
+        v25 = const unit ()
+        ret () v25
+
+        block0():
+        br while()
+
+        block1():
+        v26 = const unit ()
+        br block2(v26)
+
+        block2(v27: ()):
+        v28 = get_ptr mut ptr u64 sum, ptr u64, 0, !65
+        v29 = get_ptr mut ptr u64 sum, ptr u64, 0, !66
+        v30 = load ptr v29, !66
+        v31 = const u64 1, !67
+        v32 = call add_10(v30, v31), !65
+        store v32, ptr v28, !65
+        br while()
+    }
+
+    fn add_10(self !34: u64, other !35: u64) -> u64, !36 {
+        entry(self: u64, other: u64):
+        v0 = add self, other
+        ret u64 v0
+    }
+
+    fn eq_11(self !31: u64, other !32: u64) -> bool, !33 {
+        entry(self: u64, other: u64):
+        v0 = cmp eq self other
+        ret bool v0
+    }
+
+    fn modulo_12(self !68: u64, other !69: u64) -> u64, !70 {
+        entry(self: u64, other: u64):
+        v0 = asm(r1: self, r2: other, r3) -> u64 r3, !71 {
+            mod    r3 r1 r2, !72
+        }
+        ret u64 v0
+    }
+
+    fn lt_13(self !73: u64, other !74: u64) -> bool, !75 {
+        entry(self: u64, other: u64):
+        v0 = asm(r1: self, r2: other, r3) -> bool r3, !76 {
+            lt     r3 r1 r2, !77
+        }
+        ret bool v0
+    }
+
+    fn assert_14(condition !37: bool) -> (), !15 {
+        entry(condition: bool):
+        v0 = call not_15(condition), !38
+        cbr v0, block0(), block1(), !38
+
+        block0():
+        v1 = const u64 0, !39
+        v2 = call revert_16(v1), !41
+        v3 = const unit ()
+        br block2(v3)
+
+        block1():
+        v4 = const unit ()
+        br block2(v4)
+
+        block2(v5: ()):
+        v6 = const unit ()
+        ret () v6
+    }
+
+    fn not_15(self !42: bool) -> bool, !43 {
+        entry(self: bool):
+        v0 = const bool false, !44
+        v1 = cmp eq self v0
+        ret bool v1
+    }
+
+    fn revert_16(code !45: u64) -> (), !41 {
+        entry(code: u64):
+        revert code, !46
+    }
+
+    fn divide_17(self !78: u64, other !79: u64) -> u64, !80 {
+        entry(self: u64, other: u64):
+        v0 = div self, other
+        ret u64 v0
+    }
+
+    fn break_and_continue_test_18() -> (), !4 {
+        local mut ptr u64 i
+        local mut ptr u64 j
+        local mut ptr u64 k
+        local mut ptr u64 n
+        local mut ptr u64 sum1
+        local mut ptr u64 sum2
+
+        entry():
+        v0 = get_ptr mut ptr u64 i, ptr u64, 0, !81
+        v1 = const u64 0, !82
+        store v1, ptr v0, !81
+        v2 = get_ptr mut ptr u64 j, ptr u64, 0, !83
+        v3 = const u64 0, !84
+        store v3, ptr v2, !83
+        v4 = get_ptr mut ptr u64 k, ptr u64, 0, !85
+        v5 = const u64 0, !86
+        store v5, ptr v4, !85
+        v6 = get_ptr mut ptr u64 n, ptr u64, 0, !87
+        v7 = const u64 0, !88
+        store v7, ptr v6, !87
+        v8 = get_ptr mut ptr u64 sum1, ptr u64, 0, !89
+        v9 = const u64 0, !90
+        store v9, ptr v8, !89
+        v10 = get_ptr mut ptr u64 sum2, ptr u64, 0, !91
+        v11 = const u64 0, !92
+        store v11, ptr v10, !91
+        br while()
+
+        while():
+        v12 = const bool true, !93
+        cbr v12, while_body(), end_while()
+
+        while_body():
+        v13 = get_ptr mut ptr u64 i, ptr u64, 0, !94
+        v14 = load ptr v13, !94
+        v15 = const u64 10, !10
+        v16 = call ge_19(v14, v15), !95
+        cbr v16, block0(), block1(), !95
+
+        end_while():
+        v17 = get_ptr mut ptr u64 sum1, ptr u64, 0, !96
+        v18 = load ptr v17, !96
+        v19 = const u64 3072, !97
+        v20 = call eq_24(v18, v19), !98
+        v21 = call assert_28(v20), !15
+        v22 = get_ptr mut ptr u64 sum2, ptr u64, 0, !99
+        v23 = load ptr v22, !99
+        v24 = const u64 5, !100
+        v25 = call eq_24(v23, v24), !101
+        v26 = call assert_28(v25), !15
+        v27 = const unit ()
+        ret () v27
+
+        block0():
+        br end_while()
+
+        block1():
+        v28 = const unit ()
+        br block2(v28)
+
+        block2(v29: ()):
+        br while3()
+
+        while3():
+        v30 = const bool true, !102
+        cbr v30, while_body4(), end_while5()
+
+        while_body4():
+        v31 = get_ptr mut ptr u64 j, ptr u64, 0, !103
+        v32 = load ptr v31, !103
+        v33 = call ge_19(v32, v15), !104
+        cbr v33, block6(), block7(), !104
+
+        end_while5():
+        br while18()
+
+        block6():
+        br end_while5()
+
+        block7():
+        v34 = const unit ()
+        br block8(v34)
+
+        block8(v35: ()):
+        v36 = get_ptr mut ptr u64 sum1, ptr u64, 0, !105
+        v37 = get_ptr mut ptr u64 sum1, ptr u64, 0, !106
+        v38 = load ptr v37, !106
+        v39 = get_ptr mut ptr u64 i, ptr u64, 0, !107
+        v40 = load ptr v39, !107
+        v41 = call multiply_23(v40, v15), !108
+        v42 = get_ptr mut ptr u64 j, ptr u64, 0, !109
+        v43 = load ptr v42, !109
+        v44 = call add_22(v41, v43), !110
+        v45 = call add_22(v38, v44), !105
+        store v45, ptr v36, !105
+        v46 = get_ptr mut ptr u64 j, ptr u64, 0, !111
+        v47 = get_ptr mut ptr u64 j, ptr u64, 0, !112
+        v48 = load ptr v47, !112
+        v49 = const u64 1, !113
+        v50 = call add_22(v48, v49), !111
+        store v50, ptr v46, !111
+        v51 = get_ptr mut ptr u64 j, ptr u64, 0, !114
+        v52 = load ptr v51, !114
+        v53 = const u64 2, !115
+        v54 = call modulo_25(v52, v53), !116
+        v55 = const u64 0, !117
+        v56 = call eq_24(v54, v55), !118
+        cbr v56, block9(), block10(), !118
+
+        block9():
+        br while3()
+
+        block10():
+        v57 = const unit ()
+        br block11(v57)
+
+        block11(v58: ()):
+        br while12()
+
+        while12():
+        v59 = get_ptr mut ptr u64 n, ptr u64, 0, !119
+        v60 = load ptr v59, !119
+        v61 = call lt_27(v60, v15), !120
+        cbr v61, while_body13(), end_while14()
+
+        while_body13():
+        v62 = get_ptr mut ptr u64 sum1, ptr u64, 0, !121
+        v63 = get_ptr mut ptr u64 sum1, ptr u64, 0, !122
+        v64 = load ptr v63, !122
+        v65 = get_ptr mut ptr u64 n, ptr u64, 0, !123
+        v66 = load ptr v65, !123
+        v67 = call add_22(v64, v66), !121
+        store v67, ptr v62, !121
+        v68 = get_ptr mut ptr u64 n, ptr u64, 0, !124
+        v69 = get_ptr mut ptr u64 n, ptr u64, 0, !125
+        v70 = load ptr v69, !125
+        v71 = const u64 1, !126
+        v72 = call add_22(v70, v71), !124
+        store v72, ptr v68, !124
+        v73 = get_ptr mut ptr u64 sum1, ptr u64, 0, !127
+        v74 = load ptr v73, !127
+        v75 = const u64 50, !128
+        v76 = call gt_26(v74, v75), !129
+        cbr v76, block15(), block16(), !129
+
+        end_while14():
+        br while3()
+
+        block15():
+        br end_while14()
+
+        block16():
+        v77 = const unit ()
+        br block17(v77)
+
+        block17(v78: ()):
+        br while12()
+
+        while18():
+        v79 = const bool true, !130
+        cbr v79, while_body19(), end_while20()
+
+        while_body19():
+        v80 = get_ptr mut ptr u64 k, ptr u64, 0, !131
+        v81 = load ptr v80, !131
+        v82 = call ge_19(v81, v15), !132
+        cbr v82, block21(), block22(), !132
+
+        end_while20():
+        v83 = get_ptr mut ptr u64 i, ptr u64, 0, !133
+        v84 = get_ptr mut ptr u64 i, ptr u64, 0, !134
+        v85 = load ptr v84, !134
+        v86 = const u64 1, !135
+        v87 = call add_22(v85, v86), !133
+        store v87, ptr v83, !133
+        v88 = get_ptr mut ptr u64 i, ptr u64, 0, !136
+        v89 = load ptr v88, !136
+        v90 = const u64 2, !137
+        v91 = call modulo_25(v89, v90), !138
+        v92 = const u64 0, !139
+        v93 = call eq_24(v91, v92), !140
+        cbr v93, block27(), block28(), !140
+
+        block21():
+        br end_while20()
+
+        block22():
+        v94 = const unit ()
+        br block23(v94)
+
+        block23(v95: ()):
+        v96 = get_ptr mut ptr u64 sum1, ptr u64, 0, !141
+        v97 = get_ptr mut ptr u64 sum1, ptr u64, 0, !142
+        v98 = load ptr v97, !142
+        v99 = get_ptr mut ptr u64 i, ptr u64, 0, !143
+        v100 = load ptr v99, !143
+        v101 = call multiply_23(v100, v15), !144
+        v102 = get_ptr mut ptr u64 k, ptr u64, 0, !145
+        v103 = load ptr v102, !145
+        v104 = call add_22(v101, v103), !146
+        v105 = call add_22(v98, v104), !141
+        store v105, ptr v96, !141
+        v106 = get_ptr mut ptr u64 k, ptr u64, 0, !147
+        v107 = get_ptr mut ptr u64 k, ptr u64, 0, !148
+        v108 = load ptr v107, !148
+        v109 = const u64 1, !149
+        v110 = call add_22(v108, v109), !147
+        store v110, ptr v106, !147
+        v111 = get_ptr mut ptr u64 k, ptr u64, 0, !150
+        v112 = load ptr v111, !150
+        v113 = const u64 2, !151
+        v114 = call modulo_25(v112, v113), !152
+        v115 = const u64 0, !153
+        v116 = call eq_24(v114, v115), !154
+        cbr v116, block24(), block25(), !154
+
+        block24():
+        br while18()
+
+        block25():
+        v117 = const unit ()
+        br block26(v117)
+
+        block26(v118: ()):
+        v119 = get_ptr mut ptr u64 sum1, ptr u64, 0, !155
+        v120 = get_ptr mut ptr u64 sum1, ptr u64, 0, !156
+        v121 = load ptr v120, !156
+        v122 = const u64 2, !157
+        v123 = call multiply_23(v121, v122), !155
+        store v123, ptr v119, !155
+        br while18()
+
+        block27():
+        br while()
+
+        block28():
+        v124 = const unit ()
+        br block29(v124)
+
+        block29(v125: ()):
+        v126 = get_ptr mut ptr u64 sum1, ptr u64, 0, !158
+        v127 = get_ptr mut ptr u64 sum1, ptr u64, 0, !159
+        v128 = load ptr v127, !159
+        v129 = const u64 1, !160
+        v130 = call add_22(v128, v129), !158
+        store v130, ptr v126, !158
+        v131 = get_ptr mut ptr u64 sum2, ptr u64, 0, !161
+        v132 = get_ptr mut ptr u64 sum2, ptr u64, 0, !162
+        v133 = load ptr v132, !162
+        v134 = const u64 1, !163
+        v135 = call add_22(v133, v134), !161
+        store v135, ptr v131, !161
+        br while()
+    }
+
+    fn ge_19(self !20: u64, other !21: u64) -> bool, !22 {
+        entry(self: u64, other: u64):
+        v0 = call gt_20(self, other), !23
+        cbr v0, block1(v0), block0(), !24
+
+        block0():
+        v1 = call eq_21(self, other), !25
+        br block1(v1), !24
+
+        block1(v2: bool):
+        ret bool v2
+    }
+
+    fn gt_20(self !26: u64, other !27: u64) -> bool, !28 {
+        entry(self: u64, other: u64):
+        v0 = asm(r1: self, r2: other, r3) -> bool r3, !29 {
+            gt     r3 r1 r2, !30
+        }
+        ret bool v0
+    }
+
+    fn eq_21(self !31: u64, other !32: u64) -> bool, !33 {
+        entry(self: u64, other: u64):
+        v0 = cmp eq self other
+        ret bool v0
+    }
+
+    fn add_22(self !34: u64, other !35: u64) -> u64, !36 {
+        entry(self: u64, other: u64):
+        v0 = add self, other
+        ret u64 v0
+    }
+
+    fn multiply_23(self !164: u64, other !165: u64) -> u64, !166 {
+        entry(self: u64, other: u64):
+        v0 = mul self, other
+        ret u64 v0
+    }
+
+    fn eq_24(self !31: u64, other !32: u64) -> bool, !33 {
+        entry(self: u64, other: u64):
+        v0 = cmp eq self other
+        ret bool v0
+    }
+
+    fn modulo_25(self !68: u64, other !69: u64) -> u64, !70 {
+        entry(self: u64, other: u64):
+        v0 = asm(r1: self, r2: other, r3) -> u64 r3, !71 {
+            mod    r3 r1 r2, !72
+        }
+        ret u64 v0
+    }
+
+    fn gt_26(self !26: u64, other !27: u64) -> bool, !28 {
+        entry(self: u64, other: u64):
+        v0 = asm(r1: self, r2: other, r3) -> bool r3, !29 {
+            gt     r3 r1 r2, !30
+        }
+        ret bool v0
+    }
+
+    fn lt_27(self !73: u64, other !74: u64) -> bool, !75 {
+        entry(self: u64, other: u64):
+        v0 = asm(r1: self, r2: other, r3) -> bool r3, !76 {
+            lt     r3 r1 r2, !77
+        }
+        ret bool v0
+    }
+
+    fn assert_28(condition !37: bool) -> (), !15 {
+        entry(condition: bool):
+        v0 = call not_29(condition), !38
+        cbr v0, block0(), block1(), !38
+
+        block0():
+        v1 = const u64 0, !39
+        v2 = call revert_30(v1), !41
+        v3 = const unit ()
+        br block2(v3)
+
+        block1():
+        v4 = const unit ()
+        br block2(v4)
+
+        block2(v5: ()):
+        v6 = const unit ()
+        ret () v6
+    }
+
+    fn not_29(self !42: bool) -> bool, !43 {
+        entry(self: bool):
+        v0 = const bool false, !44
+        v1 = cmp eq self v0
+        ret bool v1
+    }
+
+    fn revert_30(code !45: u64) -> (), !41 {
+        entry(code: u64):
+        revert code, !46
+    }
+}
+
+!0 = "/Users/emilyherbert/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/language/break_and_continue/src/main.sw"
+!1 = span !0 1436 1551
+!2 = span !0 66 218
+!3 = span !0 220 429
+!4 = span !0 431 1434
+!5 = span !0 1545 1549
+!6 = span !0 95 109
+!7 = span !0 107 108
+!8 = span !0 120 124
+!9 = span !0 138 139
+!10 = span !0 61 63
+!11 = span !0 138 144
+!12 = span !0 208 209
+!13 = span !0 208 214
+!14 = "/Users/emilyherbert/fuel/sway/sway-lib-std/src/assert.sw"
+!15 = span !14 308 387
+!16 = span !0 184 190
+!17 = span !0 184 185
+!18 = span !0 189 190
+!19 = "/Users/emilyherbert/fuel/sway/sway-lib-core/src/ops.sw"
+!20 = span !19 9462 9466
+!21 = span !19 9468 9473
+!22 = span !19 9456 9537
+!23 = span !19 9499 9513
+!24 = span !19 9499 9531
+!25 = span !19 9517 9531
+!26 = span !19 3853 3857
+!27 = span !19 3859 3864
+!28 = span !19 3847 3982
+!29 = span !19 3890 3976
+!30 = span !19 3933 3944
+!31 = span !19 3015 3019
+!32 = span !19 3021 3026
+!33 = span !19 3009 3075
+!34 = span !19 117 121
+!35 = span !19 123 128
+!36 = span !19 110 178
+!37 = span !14 322 331
+!38 = span !14 348 358
+!39 = span !14 376 377
+!40 = "/Users/emilyherbert/fuel/sway/sway-lib-std/src/revert.sw"
+!41 = span !40 172 219
+!42 = span !19 2706 2710
+!43 = span !19 2699 2753
+!44 = span !19 2741 2746
+!45 = span !40 186 190
+!46 = span !40 203 217
+!47 = span !0 252 266
+!48 = span !0 264 265
+!49 = span !0 271 287
+!50 = span !0 285 286
+!51 = span !0 298 299
+!52 = span !0 298 303
+!53 = span !0 314 320
+!54 = span !0 314 315
+!55 = span !0 319 320
+!56 = span !0 333 334
+!57 = span !0 337 338
+!58 = span !0 333 338
+!59 = span !0 342 343
+!60 = span !0 333 343
+!61 = span !0 413 416
+!62 = span !0 424 425
+!63 = span !0 420 425
+!64 = span !0 413 425
+!65 = span !0 386 394
+!66 = span !0 386 389
+!67 = span !0 393 394
+!68 = span !19 2001 2005
+!69 = span !19 2007 2012
+!70 = span !19 1991 2130
+!71 = span !19 2038 2124
+!72 = span !19 2081 2093
+!73 = span !19 3993 3997
+!74 = span !19 3999 4004
+!75 = span !19 3987 4122
+!76 = span !19 4030 4116
+!77 = span !19 4073 4084
+!78 = span !19 1540 1544
+!79 = span !19 1546 1551
+!80 = span !19 1530 1601
+!81 = span !0 466 480
+!82 = span !0 478 479
+!83 = span !0 485 499
+!84 = span !0 497 498
+!85 = span !0 504 518
+!86 = span !0 516 517
+!87 = span !0 523 537
+!88 = span !0 535 536
+!89 = span !0 542 559
+!90 = span !0 557 558
+!91 = span !0 564 581
+!92 = span !0 579 580
+!93 = span !0 592 596
+!94 = span !0 610 611
+!95 = span !0 610 616
+!96 = span !0 1395 1399
+!97 = span !0 1403 1407
+!98 = span !0 1395 1407
+!99 = span !0 1421 1425
+!100 = span !0 1429 1430
+!101 = span !0 1421 1430
+!102 = span !0 662 666
+!103 = span !0 684 685
+!104 = span !0 684 690
+!105 = span !0 742 759
+!106 = span !0 742 746
+!107 = span !0 750 751
+!108 = span !0 750 755
+!109 = span !0 758 759
+!110 = span !0 750 759
+!111 = span !0 773 779
+!112 = span !0 773 774
+!113 = span !0 778 779
+!114 = span !0 797 798
+!115 = span !0 801 802
+!116 = span !0 797 802
+!117 = span !0 806 807
+!118 = span !0 797 807
+!119 = span !0 869 870
+!120 = span !0 869 874
+!121 = span !0 893 902
+!122 = span !0 893 897
+!123 = span !0 901 902
+!124 = span !0 920 926
+!125 = span !0 920 921
+!126 = span !0 925 926
+!127 = span !0 947 951
+!128 = span !0 954 956
+!129 = span !0 947 956
+!130 = span !0 1043 1047
+!131 = span !0 1065 1066
+!132 = span !0 1065 1071
+!133 = span !0 1273 1279
+!134 = span !0 1273 1274
+!135 = span !0 1278 1279
+!136 = span !0 1293 1294
+!137 = span !0 1297 1298
+!138 = span !0 1293 1298
+!139 = span !0 1302 1303
+!140 = span !0 1293 1303
+!141 = span !0 1123 1140
+!142 = span !0 1123 1127
+!143 = span !0 1131 1132
+!144 = span !0 1131 1136
+!145 = span !0 1139 1140
+!146 = span !0 1131 1140
+!147 = span !0 1154 1160
+!148 = span !0 1154 1155
+!149 = span !0 1159 1160
+!150 = span !0 1178 1179
+!151 = span !0 1182 1183
+!152 = span !0 1178 1183
+!153 = span !0 1187 1188
+!154 = span !0 1178 1188
+!155 = span !0 1244 1253
+!156 = span !0 1244 1248
+!157 = span !0 1252 1253
+!158 = span !0 1347 1356
+!159 = span !0 1347 1351
+!160 = span !0 1355 1356
+!161 = span !0 1366 1375
+!162 = span !0 1366 1370
+!163 = span !0 1374 1375
+!164 = span !19 1061 1065
+!165 = span !19 1067 1072
+!166 = span !19 1049 1122
+
+  Bytecode size is 732 bytes.
+  Script bytecode hash: 0x60fd66bd61e7f519320535bd26eabd72c120ea0376540efd572dc5093d7c4ca4

@@ -444,8 +444,6 @@ pub(crate) fn resolve_method_name(
         errors
     );
 
-    println!("func_decl: {}, {}", func_decl.name, func_decl.return_type);
-
     let decl_id = de_insert_function(func_decl).with_parent(decl_id);
 
     ok(decl_id, warnings, errors)
