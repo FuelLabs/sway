@@ -5,6 +5,7 @@ use crate::{
 use sway_core::language::ty;
 use sway_types::ident::Ident;
 
+/// Insert TypedDeclaration tokens into the TokenMap.
 pub fn handle_declaration(ident: &Ident, declaration: &ty::TyDeclaration, tokens: &TokenMap) {
     let key = to_ident_key(ident);
     let typed_token = TypedAstToken::TypedDeclaration(declaration.clone());
