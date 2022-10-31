@@ -20,7 +20,7 @@ Casting between the `b256` and `Address` types must be done explicitly:
 
 ```sway
 let my_number: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
-let my_address: Address = ~Address::from(my_number);
+let my_address: Address = Address::from(my_number);
 let forty_two: b256 = my_address.into();
 ```
 
@@ -40,7 +40,7 @@ Casting between the `b256` and `ContractId` types must be done explicitly:
 
 ```sway
 let my_number: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
-let my_contract_id: ContractId = ~ContractId::from(my_number);
+let my_contract_id: ContractId = ContractId::from(my_number);
 let forty_two: b256 = my_contract_id.into();
 ```
 
