@@ -148,6 +148,9 @@ URL of the Fuel Client Node</p>
 <p>&lt;<em>SIGNING_KEY</em>&gt;
 Set the key to be used for signing</p>
 <h2 id="options"><a class="header" href="#options">OPTIONS:</a></h2>
+<p><code>--build-profile</code> &lt;<em>BUILD_PROFILE</em>&gt;</p>
+<p>Name of the build profile to use. If it is not specified, forc will use debug build
+profile</p>
 <p><code>--contract</code> &lt;<em>CONTRACT</em>&gt;</p>
 <p>32-byte contract ID that will be called during the transaction</p>
 <p><code>-d</code>, <code>--data</code> &lt;<em>DATA</em>&gt;</p>
@@ -195,6 +198,11 @@ optimisations.</p>
 <p>Print the generated Sway IR (Intermediate Representation)</p>
 <p><code>-r</code>, <code>--pretty-print</code> </p>
 <p>Pretty-print the outputs from the node</p>
+<p><code>--release</code> </p>
+<p>Use release build plan. If a custom release plan is not specified, it is implicitly
+added to the manifest file.</p>
+<p>If --build-profile is also provided, forc omits this flag and uses provided
+build-profile.</p>
 <p><code>--simulate</code> </p>
 <p>Execute the transaction and return the final mutated transaction along with receipts
 (which includes whether the transaction reverted or not). The transaction is not
