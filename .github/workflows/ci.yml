@@ -18,6 +18,8 @@ env:
 
 jobs:
   build-sway-lib-core:
+    paths:
+      - "!**/*.md"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -35,6 +37,8 @@ jobs:
         run: forc build --path sway-lib-core
 
   build-sway-lib-std:
+    paths:
+      - "!**/*.md"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -52,6 +56,8 @@ jobs:
         run: forc build --path sway-lib-std
 
   build-sway-examples:
+    paths:
+      - "!**/*.md"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -77,6 +83,9 @@ jobs:
           args: --bin examples-checker build --all-examples
 
   forc-fmt-check-sway-examples:
+    paths:
+      - "forc-plugins/forc-fmt/**/*"
+      - "examples/**/*.sw"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -102,6 +111,8 @@ jobs:
           args: --bin examples-checker fmt --all-examples
 
   build-mdbook:
+    paths:
+      - "**/*.md"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -141,6 +152,8 @@ jobs:
           fi
 
   build-forc-test-project:
+    paths:
+      - "!**/*.md"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -179,6 +192,8 @@ jobs:
         run: (cd test-proj && cargo test)
 
   cargo-build-workspace:
+    paths:
+      - "!**/*.md"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -196,6 +211,8 @@ jobs:
           RUSTFLAGS: "-D warnings"
 
   cargo-clippy:
+    paths:
+      - "**/*.rs"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -210,6 +227,7 @@ jobs:
           args: --all-features --all-targets -- -D warnings
 
   cargo-toml-fmt-check:
+      - "**/*.toml"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -225,6 +243,7 @@ jobs:
         run: git ls-files | grep Cargo.toml$ | grep -v 'templates/sway-test-rs' | xargs --verbose -n 1 cargo-toml-lint
 
   cargo-fmt-check:
+      - "**/*.rs"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -238,6 +257,8 @@ jobs:
           args: --all -- --check
 
   cargo-run-e2e-test:
+    paths:
+      - "!**/*.md"
     runs-on: ubuntu-latest
     services:
       fuel-core:
@@ -259,6 +280,8 @@ jobs:
 
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
+    paths:
+      - "!**/*.md"
     runs-on: ubuntu-latest
     services:
       fuel-core:
@@ -281,6 +304,8 @@ jobs:
           args: --manifest-path ./test/src/sdk-harness/Cargo.toml -- --test-threads=1 --nocapture
 
   cargo-test-workspace:
+    paths:
+      - "!**/*.md"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -296,6 +321,9 @@ jobs:
           args: --locked
 
   cargo-unused-deps-check:
+    paths:
+      - "!**/*.md"
+      - "!**/*.sw"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
