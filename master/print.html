@@ -546,7 +546,7 @@ use std::{chain::auth::{AuthError, msg_sender}, hash::sha256, logging::log};
 ////////////////////////////////////////
 // Event declarations
 ////////////////////////////////////////
-// 
+//
 // Events allow clients to react to changes in the contract.
 // Unlike Solidity, events are simply structs.
 //
@@ -577,7 +577,7 @@ abi Token {
 // Constants
 ////////////////////////////////////////
 /// Address of contract creator.
-const MINTER = ~Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
+const MINTER = Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
 
 ////////////////////////////////////////
 // Contract storage
@@ -694,7 +694,7 @@ use std::{
 };
 
 use wallet_abi::Wallet;
-const OWNER_ADDRESS = ~Address::from(0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861);
+const OWNER_ADDRESS = Address::from(0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861);
 
 storage {
     balance: u64 = 0,
@@ -840,7 +840,7 @@ fn main() {
     let contract_address = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
     let caller = abi(Wallet, contract_address);
     let amount_to_send = 200;
-    let recipient_address = ~Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
+    let recipient_address = Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
     caller.send_funds {
         gas: 10000,
         coins: 0,
@@ -948,7 +948,7 @@ fn main() {
     let contract_address = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
     let caller = abi(Wallet, contract_address);
     let amount_to_send = 200;
-    let recipient_address = ~Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
+    let recipient_address = Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
     caller.send_funds {
         gas: 10000,
         coins: 0,
@@ -1181,7 +1181,7 @@ let forty_two: b256 = my_contract_id.into();
 </code></pre>
 <p>Casting to an <code>Identity</code> must be done explicitly:</p>
 <pre><code class="language-sway">        let raw_address: b256 = 0xddec0e7e6a9a4a4e3e57d08d080d71a299c628a46bc609aab4627695679421ca;
-        let my_identity: Identity = Identity::Address(~Address::from(raw_address));
+        let my_identity: Identity = Identity::Address(Address::from(raw_address));
 </code></pre>
 <p>A <code>match</code> statement can be used to return to an <code>Address</code> or <code>ContractId</code> as well as handle cases in which their execution differs.</p>
 <pre><code class="language-sway">        let my_contract_id: ContractId = match my_identity {
@@ -1782,12 +1782,12 @@ struct Stats {
 }
 
 fn main() {
-    let zero = ~b256::min();
+    let zero = b256::min();
     // Use the generic sha256 to hash some integers
-    let sha_hashed_u8 = sha256(~u8::max());
-    let sha_hashed_u16 = sha256(~u16::max());
-    let sha_hashed_u32 = sha256(~u32::max());
-    let sha_hashed_u64 = sha256(~u64::max());
+    let sha_hashed_u8 = sha256(u8::max());
+    let sha_hashed_u16 = sha256(u16::max());
+    let sha_hashed_u32 = sha256(u32::max());
+    let sha_hashed_u64 = sha256(u64::max());
 
     // Or hash a b256
     let sha_hashed_b256 = sha256(VALUE_A);
@@ -1835,10 +1835,10 @@ fn main() {
     log(sha_hashed_struct);
 
     // Use the generic keccak256 to hash some integers
-    let keccak_hashed_u8 = keccak256(~u8::max());
-    let keccak_hashed_u16 = keccak256(~u16::max());
-    let keccak_hashed_u32 = keccak256(~u32::max());
-    let keccak_hashed_u64 = keccak256(~u64::max());
+    let keccak_hashed_u8 = keccak256(u8::max());
+    let keccak_hashed_u16 = keccak256(u16::max());
+    let keccak_hashed_u32 = keccak256(u32::max());
+    let keccak_hashed_u64 = keccak256(u64::max());
 
     // Or hash a b256
     let keccak_hashed_b256 = keccak256(VALUE_A);
@@ -1896,7 +1896,7 @@ const MSG_HASH = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4
 fn main() {
     let hi = 0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c;
     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
-    let signature: B512 = ~B512::from(hi, lo);
+    let signature: B512 = B512::from(hi, lo);
 
     // A recovered public key pair.
     let public_key = ec_recover(signature, MSG_HASH);
@@ -2043,7 +2043,7 @@ abi LiquidityPool {
     fn withdraw(recipient: Address);
 }
 
-const BASE_TOKEN = ~ContractId::from(0x9ae5b658754e096e4d681c548daf46354495a437cc61492599e33fc64dcdc30c);
+const BASE_TOKEN = ContractId::from(0x9ae5b658754e096e4d681c548daf46354495a437cc61492599e33fc64dcdc30c);
 
 impl LiquidityPool for Contract {
     fn deposit(recipient: Address) {
@@ -2140,7 +2140,7 @@ abi MyOwnedContract {
     fn receive(field_1: u64) -&gt; bool;
 }
 
-const OWNER = ~Address::from(0x9ae5b658754e096e4d681c548daf46354495a437cc61492599e33fc64dcdc30c);
+const OWNER = Address::from(0x9ae5b658754e096e4d681c548daf46354495a437cc61492599e33fc64dcdc30c);
 
 impl MyOwnedContract for Contract {
     fn receive(field_1: u64) -&gt; bool {
@@ -2541,12 +2541,12 @@ fn main() -&gt; bool {
 <p><code>Vec&lt;T&gt;</code> is included in the <a href="common-collections/../introduction/standard_library.html#standard-library-prelude">standard library prelude</a> which means that there is no need to import it manually.</p>
 <h2 id="creating-a-new-vector"><a class="header" href="#creating-a-new-vector">Creating a New Vector</a></h2>
 <p>To create a new empty vector, we call the <code>Vec::new</code> function, as shown below:</p>
-<pre><code class="language-sway">    let v: Vec&lt;u64&gt; = ~Vec::new();
+<pre><code class="language-sway">    let v: Vec&lt;u64&gt; = Vec::new();
 </code></pre>
 <p>Note that we added a type annotation here. Because we aren’t inserting any values into this vector, the Sway compiler doesn’t know what kind of elements we intend to store. Vectors are implemented using generics which means that the <code>Vec&lt;T&gt;</code> type provided by the standard library can hold any type. When we create a vector to hold a specific type, we can specify the type within angle brackets. In the example above, we’ve told the Sway compiler that the <code>Vec&lt;T&gt;</code> in <code>v</code> will hold elements of the <code>u64</code> type.</p>
 <h2 id="updating-a-vector"><a class="header" href="#updating-a-vector">Updating a Vector</a></h2>
 <p>To create a vector and then add elements to it, we can use the <code>push</code> method, as shown below:</p>
-<pre><code class="language-sway">    let mut v = ~Vec::new();
+<pre><code class="language-sway">    let mut v = Vec::new();
 
     v.push(5);
     v.push(6);
@@ -2582,7 +2582,7 @@ fn main() -&gt; bool {
         Boolean: bool,
     }
 
-    let mut row = ~Vec::new();
+    let mut row = Vec::new();
     row.push(TableCell::Int(3));
     row.push(TableCell::B256(0x0101010101010101010101010101010101010101010101010101010101010101));
     row.push(TableCell::Boolean(true));
@@ -2680,8 +2680,8 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
 <p>To insert key-value pairs into a storage map, we can use the <code>insert</code> method, as shown below:</p>
 <pre><code class="language-sway">    #[storage(write)]
     fn insert_into_storage_map() {
-        let addr1 = ~Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
-        let addr2 = ~Address::from(0x0202020202020202020202020202020202020202020202020202020202020202);
+        let addr1 = Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
+        let addr2 = Address::from(0x0202020202020202020202020202020202020202020202020202020202020202);
 
         storage.map.insert(addr1, 42);
         storage.map.insert(addr2, 77);
@@ -2701,8 +2701,8 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
 <p>We can get a value out of the storage map by providing its <code>key</code> to the <code>get</code> method, as shown below:</p>
 <pre><code class="language-sway">    #[storage(read, write)]
     fn get_from_storage_map() {
-        let addr1 = ~Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
-        let addr2 = ~Address::from(0x0202020202020202020202020202020202020202020202020202020202020202);
+        let addr1 = Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
+        let addr2 = Address::from(0x0202020202020202020202020202020202020202020202020202020202020202);
 
         storage.map.insert(addr1, 42);
         storage.map.insert(addr2, 77);

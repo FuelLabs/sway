@@ -152,8 +152,8 @@
 <p>To insert key-value pairs into a storage map, we can use the <code>insert</code> method, as shown below:</p>
 <pre><code class="language-sway">    #[storage(write)]
     fn insert_into_storage_map() {
-        let addr1 = ~Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
-        let addr2 = ~Address::from(0x0202020202020202020202020202020202020202020202020202020202020202);
+        let addr1 = Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
+        let addr2 = Address::from(0x0202020202020202020202020202020202020202020202020202020202020202);
 
         storage.map.insert(addr1, 42);
         storage.map.insert(addr2, 77);
@@ -173,8 +173,8 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
 <p>We can get a value out of the storage map by providing its <code>key</code> to the <code>get</code> method, as shown below:</p>
 <pre><code class="language-sway">    #[storage(read, write)]
     fn get_from_storage_map() {
-        let addr1 = ~Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
-        let addr2 = ~Address::from(0x0202020202020202020202020202020202020202020202020202020202020202);
+        let addr1 = Address::from(0x0101010101010101010101010101010101010101010101010101010101010101);
+        let addr2 = Address::from(0x0202020202020202020202020202020202020202020202020202020202020202);
 
         storage.map.insert(addr1, 42);
         storage.map.insert(addr2, 77);

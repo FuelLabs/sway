@@ -174,7 +174,7 @@ let forty_two: b256 = my_contract_id.into();
 </code></pre>
 <p>Casting to an <code>Identity</code> must be done explicitly:</p>
 <pre><code class="language-sway">        let raw_address: b256 = 0xddec0e7e6a9a4a4e3e57d08d080d71a299c628a46bc609aab4627695679421ca;
-        let my_identity: Identity = Identity::Address(~Address::from(raw_address));
+        let my_identity: Identity = Identity::Address(Address::from(raw_address));
 </code></pre>
 <p>A <code>match</code> statement can be used to return to an <code>Address</code> or <code>ContractId</code> as well as handle cases in which their execution differs.</p>
 <pre><code class="language-sway">        let my_contract_id: ContractId = match my_identity {

@@ -142,12 +142,12 @@
 <p><code>Vec&lt;T&gt;</code> is included in the <a href="../introduction/standard_library.html#standard-library-prelude">standard library prelude</a> which means that there is no need to import it manually.</p>
 <h2 id="creating-a-new-vector"><a class="header" href="#creating-a-new-vector">Creating a New Vector</a></h2>
 <p>To create a new empty vector, we call the <code>Vec::new</code> function, as shown below:</p>
-<pre><code class="language-sway">    let v: Vec&lt;u64&gt; = ~Vec::new();
+<pre><code class="language-sway">    let v: Vec&lt;u64&gt; = Vec::new();
 </code></pre>
 <p>Note that we added a type annotation here. Because we aren’t inserting any values into this vector, the Sway compiler doesn’t know what kind of elements we intend to store. Vectors are implemented using generics which means that the <code>Vec&lt;T&gt;</code> type provided by the standard library can hold any type. When we create a vector to hold a specific type, we can specify the type within angle brackets. In the example above, we’ve told the Sway compiler that the <code>Vec&lt;T&gt;</code> in <code>v</code> will hold elements of the <code>u64</code> type.</p>
 <h2 id="updating-a-vector"><a class="header" href="#updating-a-vector">Updating a Vector</a></h2>
 <p>To create a vector and then add elements to it, we can use the <code>push</code> method, as shown below:</p>
-<pre><code class="language-sway">    let mut v = ~Vec::new();
+<pre><code class="language-sway">    let mut v = Vec::new();
 
     v.push(5);
     v.push(6);
@@ -183,7 +183,7 @@
         Boolean: bool,
     }
 
-    let mut row = ~Vec::new();
+    let mut row = Vec::new();
     row.push(TableCell::Int(3));
     row.push(TableCell::B256(0x0101010101010101010101010101010101010101010101010101010101010101));
     row.push(TableCell::Boolean(true));
