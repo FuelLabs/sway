@@ -35,6 +35,13 @@ impl Constant {
         }
     }
 
+    pub fn get_undef(ty: Type) -> Self {
+        Constant {
+            ty,
+            value: ConstantValue::Undef,
+        }
+    }
+
     pub fn new_bool(b: bool) -> Self {
         Constant {
             ty: Type::Bool,
