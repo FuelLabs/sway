@@ -149,7 +149,7 @@
 </code></pre>
 <p>Casting between the <code>b256</code> and <code>Address</code> types must be done explicitly:</p>
 <pre><code class="language-sway">let my_number: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
-let my_address: Address = ~Address::from(my_number);
+let my_address: Address = Address::from(my_number);
 let forty_two: b256 = my_address.into();
 </code></pre>
 <h2 id="contractid-type"><a class="header" href="#contractid-type"><code>ContractId</code> Type</a></h2>
@@ -161,7 +161,7 @@ let forty_two: b256 = my_address.into();
 </code></pre>
 <p>Casting between the <code>b256</code> and <code>ContractId</code> types must be done explicitly:</p>
 <pre><code class="language-sway">let my_number: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
-let my_contract_id: ContractId = ~ContractId::from(my_number);
+let my_contract_id: ContractId = ContractId::from(my_number);
 let forty_two: b256 = my_contract_id.into();
 </code></pre>
 <h2 id="identity-type"><a class="header" href="#identity-type"><code>Identity</code> Type</a></h2>

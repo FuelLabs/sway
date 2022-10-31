@@ -197,10 +197,9 @@ For example, let's try to implement the successor function, <code>successor()</c
     where T: Add,
           T: Incrementable
 {
-    argument + ~T::incrementor()
+    argument + T::incrementor()
 }
 </code></pre>
-<p><em>(There's a little bit of new syntax here. When directly referring to a type to execute a method from it, a tilde (<code>~</code>) is used. This may change in the future.)</em></p>
 <h2 id="generic-structs-and-enums"><a class="header" href="#generic-structs-and-enums">Generic Structs and Enums</a></h2>
 <p>Just like functions, structs and enums can be generic. Let's take a look at the standard library version of <code>Option&lt;T&gt;</code>:</p>
 <pre><code class="language-sway">enum Option&lt;T&gt; {

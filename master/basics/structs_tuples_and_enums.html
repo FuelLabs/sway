@@ -297,10 +297,6 @@ fn tuple() {
 <h2 id="enums"><a class="header" href="#enums">Enums</a></h2>
 <p><em>Enumerations</em>, or <em>enums</em>, are also known as <em>sum types</em>. An enum is a type that could be one of several variants. To declare an enum, you enumerate all potential variants.</p>
 <p>Here, we have defined five potential colors. Each enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type <code>()</code>, or unit.</p>
-<blockquote>
-<p><strong>Note</strong>
-enum instantiation does not require the <code>~</code> tilde syntax</p>
-</blockquote>
 <pre><code class="language-sway">library basic_enum;
 
 // Declare the enum

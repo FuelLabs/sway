@@ -1156,7 +1156,7 @@ fn main() {
 </code></pre>
 <p>Casting between the <code>b256</code> and <code>Address</code> types must be done explicitly:</p>
 <pre><code class="language-sway">let my_number: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
-let my_address: Address = ~Address::from(my_number);
+let my_address: Address = Address::from(my_number);
 let forty_two: b256 = my_address.into();
 </code></pre>
 <h2 id="contractid-type"><a class="header" href="#contractid-type"><code>ContractId</code> Type</a></h2>
@@ -1168,7 +1168,7 @@ let forty_two: b256 = my_address.into();
 </code></pre>
 <p>Casting between the <code>b256</code> and <code>ContractId</code> types must be done explicitly:</p>
 <pre><code class="language-sway">let my_number: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
-let my_contract_id: ContractId = ~ContractId::from(my_number);
+let my_contract_id: ContractId = ContractId::from(my_number);
 let forty_two: b256 = my_contract_id.into();
 </code></pre>
 <h2 id="identity-type"><a class="header" href="#identity-type"><code>Identity</code> Type</a></h2>
@@ -1415,10 +1415,6 @@ fn tuple() {
 <h2 id="enums"><a class="header" href="#enums">Enums</a></h2>
 <p><em>Enumerations</em>, or <em>enums</em>, are also known as <em>sum types</em>. An enum is a type that could be one of several variants. To declare an enum, you enumerate all potential variants.</p>
 <p>Here, we have defined five potential colors. Each enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type <code>()</code>, or unit.</p>
-<blockquote>
-<p><strong>Note</strong>
-enum instantiation does not require the <code>~</code> tilde syntax</p>
-</blockquote>
 <pre><code class="language-sway">library basic_enum;
 
 // Declare the enum
@@ -1541,12 +1537,11 @@ impl Foo {
 }
 
 fn main() {
-    let foo = ~Foo::new_foo(42, true);
+    let foo = Foo::new_foo(42, true);
     assert(foo.is_baz_true());
 }
 </code></pre>
-<p>Note the syntax of the associated function call: <code>~Foo::new_foo(42, true);</code>. This bit of syntax is unique to Sway: when referring to a type directly, you preface the type with a tilde (<code>~</code>). To call an associated function, refer to the type and then the function name.
-To call a method, simply use dot syntax: <code>foo.iz_baz_true()</code>.</p>
+<p>To call a method, simply use dot syntax: <code>foo.iz_baz_true()</code>.</p>
 <p>Similarly to <a href="basics/functions.html">free functions</a>, methods and associated functions may accept <code>ref mut</code> parameters. For example:</p>
 <pre><code class="language-sway">struct Coordinates {
     x: u64,
@@ -2334,10 +2329,9 @@ For example, let's try to implement the successor function, <code>successor()</c
     where T: Add,
           T: Incrementable
 {
-    argument + ~T::incrementor()
+    argument + T::incrementor()
 }
 </code></pre>
-<p><em>(There's a little bit of new syntax here. When directly referring to a type to execute a method from it, a tilde (<code>~</code>) is used. This may change in the future.)</em></p>
 <h2 id="generic-structs-and-enums"><a class="header" href="#generic-structs-and-enums">Generic Structs and Enums</a></h2>
 <p>Just like functions, structs and enums can be generic. Let's take a look at the standard library version of <code>Option&lt;T&gt;</code>:</p>
 <pre><code class="language-sway">enum Option&lt;T&gt; {
