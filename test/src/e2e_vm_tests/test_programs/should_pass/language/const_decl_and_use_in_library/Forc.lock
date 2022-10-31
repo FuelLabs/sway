@@ -1,0 +1,8 @@
+[[package]]
+name = 'const_decl_and_use_in_library'
+source = 'root'
+dependencies = ['core']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-4EC691577AD53602'
