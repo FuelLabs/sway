@@ -1,0 +1,13 @@
+category = "fail"
+
+# check: $()fn my_add(self, other: Self) -> Self {
+# check: $()Duplicate definitions for the method "my_add" for type "Data<T>".
+
+# check: $()fn get_value(self) -> u64 {
+# check: $()Duplicate definitions for the method "get_value" for type "Data<u64>".
+
+# check: $()fn my_add(self, other: Self) -> Self {
+# check: $()Duplicate definitions for the method "my_add" for type "Data<u64>".
+
+# check: $()fn my_add(self, other: Self) -> Self {
+# check: $()Duplicate definitions for the method "my_add" for type "Data<u32>".

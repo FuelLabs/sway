@@ -372,7 +372,7 @@ async fn can_send_message_output_with_data() {
 
     let call_response = fuelcoin_instance
         .methods()
-        .send_message_with_data(Bits256(*recipient_address), amount)
+        .send_message(Bits256(*recipient_address), vec![100, 75, 50], amount)
         .append_message_outputs(1)
         .call()
         .await
@@ -415,7 +415,7 @@ async fn can_send_message_output_without_data() {
 
     let call_response = fuelcoin_instance
         .methods()
-        .send_message_without_data(Bits256(*recipient_address), amount)
+        .send_message(Bits256(*recipient_address), Vec::<u64>::new(), amount)
         .append_message_outputs(1)
         .call()
         .await
