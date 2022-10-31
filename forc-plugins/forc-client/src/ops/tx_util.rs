@@ -5,13 +5,16 @@ use async_trait::async_trait;
 use fuel_gql_client::{
     client::FuelClient,
     fuel_crypto::{Message, SecretKey, Signature},
-    fuel_tx::{Address, ContractId, Input, Output, Transaction, TransactionBuilder, Witness},
+    fuel_tx::{Address, ContractId, Input, Output, TransactionBuilder, Witness},
     prelude::SerializableVec,
 };
-use fuel_tx::Buildable;
+use fuel_tx::{field, Buildable};
 use fuels_core::constants::BASE_ASSET_ID;
 use fuels_signers::{provider::Provider, Wallet};
 use fuels_types::bech32::Bech32Address;
+
+/// The maximum time to wait for a transaction to be included in a block by the node
+pub const TX_SUBMIT_TIMEOUT_MS: u64 = 30_000u64;
 
 fn prompt_address() -> Result<Bech32Address> {
     print!("Please provide the address of the wallet you are going to sign this transaction with:");
@@ -57,7 +60,7 @@ impl Default for TxParameters {
 }
 
 #[async_trait]
-pub trait TransactionBuilderExt {
+pub trait TransactionBuilderExt<Tx> {
     fn params(&mut self, params: TxParameters) -> &mut Self;
     fn add_contract(&mut self, contract_id: ContractId) -> &mut Self;
     fn add_contracts(&mut self, contract_ids: Vec<ContractId>) -> &mut Self;
@@ -73,11 +76,13 @@ pub trait TransactionBuilderExt {
         client: FuelClient,
         unsigned: bool,
         signing_key: Option<SecretKey>,
-    ) -> Result<Transaction>;
+    ) -> Result<Tx>;
 }
 
 #[async_trait]
-impl<Tx: Buildable> TransactionBuilderExt for TransactionBuilder<Tx> {
+impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuilderExt<Tx>
+    for TransactionBuilder<Tx>
+{
     fn params(&mut self, params: TxParameters) -> &mut Self {
         self.gas_limit(params.gas_limit).gas_price(params.gas_price)
     }
@@ -136,7 +141,7 @@ impl<Tx: Buildable> TransactionBuilderExt for TransactionBuilder<Tx> {
         client: FuelClient,
         unsigned: bool,
         signing_key: Option<SecretKey>,
-    ) -> Result<Transaction> {
+    ) -> Result<Tx> {
         let mut signature_witness_index = 0u8;
         if !unsigned {
             // Get the address
@@ -177,12 +182,9 @@ pub trait TransactionExt {
     fn replace_witness(&mut self, witness_index: u8, witness: Witness) -> &mut Self;
 }
 
-impl TransactionExt for Transaction {
+impl<T: field::Witnesses> TransactionExt for T {
     fn replace_witness(&mut self, index: u8, witness: Witness) -> &mut Self {
-        let mut witnesses: Vec<Witness> = self.witnesses().to_vec();
-        witnesses[index as usize] = witness;
-        self.set_witnesses(witnesses);
-
+        self.witnesses_mut()[index as usize] = witness;
         self
     }
 }
