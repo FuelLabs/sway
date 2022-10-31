@@ -1,5 +1,9 @@
 script;
 
+// We should definitely implement something like the "fully qualified syntax",
+// but until then, multiple methods with the same name is undefined behavior.
+// https://doc.rust-lang.org/rust-by-example/trait/disambiguating.html
+
 dep my_double;
 dep my_point;
 dep my_triple;
@@ -37,11 +41,11 @@ trait MyAdd<T> {
     fn my_add(self, a: T, b: T) -> T;
 }
 
-impl<T> MyAdd<u8> for FooBarData<T> {
-    fn my_add(self, a: u8, b: u8) -> u8 {
-        a + b
-    }
-}
+// impl<T> MyAdd<u8> for FooBarData<T> {
+//     fn my_add(self, a: u8, b: u8) -> u8 {
+//         a + b
+//     }
+// }
 
 impl<T> MyAdd<u64> for FooBarData<T> {
     fn my_add(self, a: u64, b: u64) -> u64 {
@@ -53,15 +57,15 @@ trait MySub<T> {
     fn my_sub(a: T, b: T) -> T;
 }
 
-impl<T> MySub<u8> for FooBarData<T> {
-    fn my_sub(a: u8, b: u8) -> u8 {
-        if a >= b {
-            a - b
-        } else {
-            b - a
-        }
-    }
-}
+// impl<T> MySub<u8> for FooBarData<T> {
+//     fn my_sub(a: u8, b: u8) -> u8 {
+//         if a >= b {
+//             a - b
+//         } else {
+//             b - a
+//         }
+//     }
+// }
 
 impl<T> MySub<u64> for FooBarData<T> {
     fn my_sub(a: u64, b: u64) -> u64 {
@@ -78,11 +82,11 @@ struct OtherData<T> {
     b: T,
 }
 
-impl<T> MyAdd<u8> for OtherData<T> {
-    fn my_add(self, a: u8, b: u8) -> u8 {
-        a + b
-    }
-}
+// impl<T> MyAdd<u8> for OtherData<T> {
+//     fn my_add(self, a: u8, b: u8) -> u8 {
+//         a + b
+//     }
+// }
 
 impl<T> MyAdd<u64> for OtherData<T> {
     fn my_add(self, a: u64, b: u64) -> u64 {
@@ -90,15 +94,15 @@ impl<T> MyAdd<u64> for OtherData<T> {
     }
 }
 
-impl<T> MySub<u8> for OtherData<T> {
-    fn my_sub(a: u8, b: u8) -> u8 {
-        if a >= b {
-            a - b
-        } else {
-            b - a
-        }
-    }
-}
+// impl<T> MySub<u8> for OtherData<T> {
+//     fn my_sub(a: u8, b: u8) -> u8 {
+//         if a >= b {
+//             a - b
+//         } else {
+//             b - a
+//         }
+//     }
+// }
 
 impl<T> MySub<u64> for OtherData<T> {
     fn my_sub(a: u64, b: u64) -> u64 {
