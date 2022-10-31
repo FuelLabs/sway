@@ -1189,7 +1189,7 @@ fn expr_func_app_to_expression_kind(
         type_arguments: last_ty_args,
     };
     let suffix = AmbiguousSuffix {
-        before: before,
+        before,
         suffix: call_seg.name,
     };
     let call_path = CallPath {
