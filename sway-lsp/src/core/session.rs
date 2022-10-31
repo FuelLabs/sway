@@ -287,14 +287,6 @@ impl Session {
             }
         }
 
-        self.token_map().iter().for_each(|item| {
-            let p = item.pair();
-            let t = p.clone().1.typed.as_ref();
-            if t.is_some() {
-                eprintln!("typed = {:#?}", t);
-            }
-        });
-
         if let ty::TyProgramKind::Script {
             ref main_function, ..
         } = typed_program.kind

@@ -1,13 +1,9 @@
 use crate::{
-    core::token::{SymbolKind, Token, TokenMap, TypeDefinition, TypedAstToken},
-    utils::token::{struct_declaration_of_type_id, to_ident_key},
+    core::token::{SymbolKind, Token, TokenMap, TypedAstToken},
+    utils::token::to_ident_key,
 };
-use sway_core::{
-    declaration_engine::{self, de_get_function},
-    language::ty,
-};
-use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX};
-use sway_types::{ident::Ident, Spanned};
+use sway_core::language::ty;
+use sway_types::ident::Ident;
 
 pub fn handle_declaration(ident: &Ident, declaration: &ty::TyDeclaration, tokens: &TokenMap) {
     let key = to_ident_key(ident);
