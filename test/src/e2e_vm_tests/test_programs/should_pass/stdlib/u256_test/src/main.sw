@@ -1,7 +1,7 @@
 script;
 
 use core::num::*;
-use std::{assert::assert, result::Result, u256::{U256, U256Error}};
+use std::{assert::assert, result::Result, u128::U128, u256::{U256, U256Error}};
 
 fn main() -> bool {
     // test new()
@@ -94,6 +94,35 @@ fn main() -> bool {
     let eleven = U256::from(0, 0, 0, 11);
     let unwrapped = eleven.as_u64().unwrap();
     assert(unwrapped == 11);
+
+    // test as_u128()
+    let err_1 = U256::from(42, 0, 0, 11).as_u128();
+    assert(match err_1 {
+        Result::Err(U256Error::LossOfPrecision) => {
+            true
+        },
+        _ => {
+            false
+        },
+    });
+
+    let err_2 = U256::from(0, 42, 0, 11).as_u128();
+    assert(match err_2 {
+        Result::Err(U256Error::LossOfPrecision) => {
+            true
+        },
+        _ => {
+            false
+        },
+    });
+
+    let elevens = U256::from(0, 0, 11, 11);
+    let unwrapped = elevens.as_u128().unwrap();
+    assert(unwrapped == U128::from(11, 11));
+
+    let eleven = U256::from(0, 0, 0, 11);
+    let unwrapped = eleven.as_u128().unwrap();
+    assert(unwrapped == U128::from(0, 11));
 
     // test bits()
     assert(U256::bits() == 256u32);
