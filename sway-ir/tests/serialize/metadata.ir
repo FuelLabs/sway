@@ -25,13 +25,13 @@ script {
     }
 }
 
-// check: !0 = "a string"
+// check: !0 = "a string\\n"
 // check: !1 = !0
 // check: !2 = a_struct !0 11 22 !1
 // check: !3 = (!1 !2)
 // check: !4 = 12345
 
-!0 = "a string"
+!0 = "a string\\n"
 !1 = !0
 !2 = a_struct !0 11 22 !1
 !3 = (!1 !2)

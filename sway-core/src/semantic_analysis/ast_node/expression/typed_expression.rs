@@ -1243,6 +1243,7 @@ impl ty::TyExpression {
                 return_type,
                 functions_buf,
                 &span,
+                false
             ),
             return err(warnings, errors),
             warnings,
