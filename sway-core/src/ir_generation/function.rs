@@ -675,6 +675,32 @@ impl FnCompiler {
                     .revert(revert_code_val)
                     .add_metadatum(context, span_md_idx))
             }
+            Intrinsic::PtrAdd | Intrinsic::PtrSub => {
+                let op = match kind {
+                    Intrinsic::PtrAdd => BinaryOpKind::Add,
+                    Intrinsic::PtrSub => BinaryOpKind::Sub,
+                    _ => unreachable!(),
+                };
+
+                let len = type_arguments[0].clone();
+                let ir_type = convert_resolved_typeid(context, &len.type_id, &len.span)?;
+                let len_value =
+                    Constant::get_uint(context, 64, ir_type_size_in_bytes(context, &ir_type));
+
+                let lhs = arguments[0].clone();
+                let count = arguments[1].clone();
+                let lhs_value = self.compile_expression(context, md_mgr, lhs)?;
+                let count_value = self.compile_expression(context, md_mgr, count)?;
+                let rhs_value = self.current_block.ins(context).binary_op(
+                    BinaryOpKind::Mul,
+                    len_value,
+                    count_value,
+                );
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .binary_op(op, lhs_value, rhs_value))
+            }
         }
     }
 
