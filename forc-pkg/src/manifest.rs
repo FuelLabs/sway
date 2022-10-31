@@ -687,6 +687,10 @@ impl WorkspaceManifestFile {
             .parent()
             .expect("failed to retrieve manifest directory")
     }
+
+    pub fn is_member_path(&self, path: &Path) -> Result<bool> {
+        Ok(self.member_paths()?.any(|member_path| member_path == path))
+    }
 }
 
 impl WorkspaceManifest {

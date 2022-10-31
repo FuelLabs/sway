@@ -967,7 +967,7 @@ impl fmt::Display for GitReference {
 impl fmt::Display for SourcePinned {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            SourcePinned::Member => write!(f, "root"),
+            SourcePinned::Member => write!(f, "member"),
             SourcePinned::Path(src) => src.fmt(f),
             SourcePinned::Git(src) => src.fmt(f),
             SourcePinned::Registry(_reg) => unimplemented!("pkg registries not yet implemented"),
@@ -1066,7 +1066,9 @@ impl FromStr for SourceGitPinned {
 impl FromStr for SourcePinned {
     type Err = SourcePinnedParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let source = if s == "root" {
+        let source = if s == "root" || s == "member" {
+            // Also check `"root"` to support reading the legacy `Forc.lock` format and to
+            // avoid breaking old projects.
             SourcePinned::Member
         } else if let Ok(src) = SourcePathPinned::from_str(s) {
             SourcePinned::Path(src)
@@ -1890,13 +1892,12 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
                 let workspace_manifest = canonical_path
                     .parent()
                     .and_then(|parent_dir| WorkspaceManifestFile::from_dir(parent_dir).ok());
+
                 if let Some(workspace_manifest) = workspace_manifest {
                     // There is a workspace manifest in the parent directory.
                     //
                     // Check if that manifest declares this path as a member_path
-                    let member_paths: HashSet<PathBuf> =
-                        workspace_manifest.member_paths()?.collect();
-                    if member_paths.contains(&canonical_path) {
+                    if workspace_manifest.is_member_path(&canonical_path)? {
                         // This is a workspace member so the source should be inserted as `Member`
                         Source::Member(canonical_path)
                     } else {
