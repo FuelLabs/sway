@@ -445,6 +445,12 @@ pub enum CompileError {
         type_implementing_for: String,
         second_impl_span: Span,
     },
+    #[error("Duplicate definitions for the method \"{func_name}\" for type \"{type_implementing_for}\".")]
+    DuplicateMethodsDefinedForType {
+        func_name: String,
+        type_implementing_for: String,
+        span: Span,
+    },
     #[error("The function \"{fn_name}\" in {interface_name} is defined with {num_parameters} parameters, but the provided implementation has {provided_parameters} parameters.")]
     IncorrectNumberOfInterfaceSurfaceFunctionParameters {
         fn_name: Ident,
@@ -773,6 +779,7 @@ impl Spanned for CompileError {
             ConflictingImplsForTraitAndType {
                 second_impl_span, ..
             } => second_impl_span.clone(),
+            DuplicateMethodsDefinedForType { span, .. } => span.clone(),
             IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span.clone(),
             ArgumentParameterTypeMismatch { span, .. } => span.clone(),
             RecursiveCall { span, .. } => span.clone(),
