@@ -1,0 +1,13 @@
+[[package]]
+name = 'cei_pattern_violation_more_complex_logic'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-C4D8ECCE530DF143'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-C4D8ECCE530DF143'
+dependencies = ['core']
