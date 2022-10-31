@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
@@ -7,7 +9,7 @@ use crate::{
     insert_type,
     language::CallPath,
     type_system::{look_up_type_id, CopyTypes, TypeId},
-    ReplaceSelfType, TypeArgument, TypeInfo, TypeMapping,
+    ReplaceSelfType, TraitConstraint, TypeArgument, TypeInfo, TypeMapping,
 };
 
 type TraitName = CallPath<(Ident, Vec<TypeArgument>)>;
@@ -548,6 +550,70 @@ impl TraitMap {
             }
         }
         methods
+    }
+
+    pub(crate) fn check_if_trait_constraints_are_satisfied_for_type(
+        &self,
+        type_id: TypeId,
+        constraints: &[TraitConstraint],
+    ) -> CompileResult<()> {
+        let warnings = vec![];
+        let mut errors = vec![];
+
+        let required_traits: BTreeSet<Ident> = constraints
+            .iter()
+            .cloned()
+            .map(|constraint| constraint.trait_name.suffix)
+            .collect();
+        let mut found_traits: BTreeSet<Ident> = BTreeSet::new();
+
+        for constraint in constraints.iter() {
+            let TraitConstraint {
+                trait_name: constraint_trait_name,
+                type_arguments: constraint_type_arguments,
+            } = constraint;
+            let constraint_type_id = insert_type(TypeInfo::Custom {
+                name: constraint_trait_name.suffix.clone(),
+                type_arguments: if constraint_type_arguments.is_empty() {
+                    None
+                } else {
+                    Some(constraint_type_arguments.clone())
+                },
+            });
+            for (map_trait_name, map_type_id) in self.trait_impls.keys() {
+                let CallPath {
+                    suffix: (map_trait_name_suffix, map_trait_type_args),
+                    ..
+                } = map_trait_name;
+                let map_trait_type_id = insert_type(TypeInfo::Custom {
+                    name: map_trait_name_suffix.clone(),
+                    type_arguments: if map_trait_type_args.is_empty() {
+                        None
+                    } else {
+                        Some(map_trait_type_args.to_vec())
+                    },
+                });
+                if are_equal_minus_dynamic_types(type_id, *map_type_id)
+                    && are_equal_minus_dynamic_types(constraint_type_id, map_trait_type_id)
+                {
+                    found_traits.insert(constraint_trait_name.suffix.clone());
+                }
+            }
+        }
+
+        for trait_name in required_traits.difference(&found_traits) {
+            errors.push(CompileError::TraitConstraintNotSatisfied {
+                ty: type_id.to_string(),
+                trait_name: trait_name.to_string(),
+                span: trait_name.span(),
+            });
+        }
+
+        if errors.is_empty() {
+            ok((), warnings, errors)
+        } else {
+            err(warnings, errors)
+        }
     }
 }
 

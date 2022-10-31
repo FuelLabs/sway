@@ -350,6 +350,12 @@ pub enum CompileError {
     UnableToInferGeneric { ty: String, span: Span },
     #[error("The generic type parameter \"{ty}\" is unconstrained.")]
     UnconstrainedGenericParameter { ty: String, span: Span },
+    #[error("The trait constraint \"{ty}\": \"{trait_name}\" is not satisfied.")]
+    TraitConstraintNotSatisfied {
+        ty: String,
+        trait_name: String,
+        span: Span,
+    },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 12-bit immediate spot.")]
@@ -749,6 +755,7 @@ impl Spanned for CompileError {
             UnrecognizedOp { span, .. } => span.clone(),
             UnableToInferGeneric { span, .. } => span.clone(),
             UnconstrainedGenericParameter { span, .. } => span.clone(),
+            TraitConstraintNotSatisfied { span, .. } => span.clone(),
             Immediate06TooLarge { span, .. } => span.clone(),
             Immediate12TooLarge { span, .. } => span.clone(),
             Immediate18TooLarge { span, .. } => span.clone(),

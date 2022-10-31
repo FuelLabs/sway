@@ -37,7 +37,7 @@ impl CollectTypesMetadata for TypeId {
         _ctx: &mut CollectTypesMetadataContext,
     ) -> CompileResult<Vec<TypeMetadata>> {
         let res = match look_up_type_id(*self) {
-            TypeInfo::UnknownGeneric { name } => vec![TypeMetadata::UnresolvedType(name)],
+            TypeInfo::UnknownGeneric { name, .. } => vec![TypeMetadata::UnresolvedType(name)],
             _ => vec![],
         };
         ok(res, vec![], vec![])

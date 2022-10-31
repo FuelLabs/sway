@@ -1,10 +1,7 @@
 mod function_parameter;
 
 pub use function_parameter::*;
-use sway_error::{
-    error::CompileError,
-    warning::{CompileWarning, Warning},
-};
+use sway_error::warning::{CompileWarning, Warning};
 
 use crate::{
     error::*,

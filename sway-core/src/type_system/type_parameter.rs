@@ -41,18 +41,24 @@ impl PartialEq for TypeParameter {
 impl CopyTypes for TypeParameter {
     fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.type_id.copy_types(type_mapping);
-    }
-}
-
-impl Spanned for TypeParameter {
-    fn span(&self) -> Span {
-        self.name_ident.span()
+        self.trait_constraints
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
     }
 }
 
 impl ReplaceSelfType for TypeParameter {
     fn replace_self_type(&mut self, self_type: TypeId) {
         self.type_id.replace_self_type(self_type);
+        self.trait_constraints
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+    }
+}
+
+impl Spanned for TypeParameter {
+    fn span(&self) -> Span {
+        self.name_ident.span()
     }
 }
 
@@ -70,24 +76,49 @@ impl fmt::Debug for TypeParameter {
 
 impl TypeParameter {
     pub(crate) fn type_check(
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         type_parameter: TypeParameter,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         let TypeParameter {
-            type_id,
             initial_type_id,
             name_ident,
-            trait_constraints,
+            mut trait_constraints,
             trait_constraints_span,
+            ..
         } = type_parameter;
 
+        // Type check the trait constraints.
+        for trait_constraint in trait_constraints.iter_mut() {
+            check!(
+                trait_constraint.type_check(ctx.by_ref()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+        }
+
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
+
         let type_id = insert_type(TypeInfo::UnknownGeneric {
             name: name_ident.clone(),
+            trait_constraints: trait_constraints.clone().into_iter().collect(),
         });
+
+        // Insert the trait constraints into the namespace.
+        for trait_constraint in trait_constraints.iter() {
+            check!(
+                TraitConstraint::insert_into_namespace(ctx.by_ref(), type_id, trait_constraint),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+        }
+
+        // Insert the type parameter into the namespace as a dummy type
+        // declaration.
         let type_parameter_decl = ty::TyDeclaration::GenericTypeForFunctionScope {
             name: name_ident.clone(),
             type_id,
@@ -95,6 +126,7 @@ impl TypeParameter {
         ctx.namespace
             .insert_symbol(name_ident.clone(), type_parameter_decl)
             .ok(&mut warnings, &mut errors);
+
         let type_parameter = TypeParameter {
             name_ident,
             type_id,
