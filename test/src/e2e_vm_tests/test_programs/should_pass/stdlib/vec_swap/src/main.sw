@@ -25,7 +25,7 @@ fn main() -> bool {
 }
 
 fn test_vector_swap_u8() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let number0 = 0u8;
     let number1 = 1u8;
@@ -101,7 +101,7 @@ fn test_vector_swap_u8() {
 }
 
 fn test_vector_swap_b256() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let b0 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     let b1 = 0x0000000000000000000000000000000000000000000000000000000000000001;
@@ -177,7 +177,7 @@ fn test_vector_swap_b256() {
 }
 
 fn test_vector_swap_struct() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let number0 = 0u32;
     let number1 = 1u32;
@@ -269,7 +269,7 @@ fn test_vector_swap_struct() {
 }
 
 fn test_vector_swap_enum() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let b0 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     let b1 = 0x0000000000000000000000000000000000000000000000000000000000000001;
@@ -384,7 +384,7 @@ fn test_vector_swap_enum() {
 }
 
 fn test_vector_swap_tuple() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let number0 = 0u16;
     let number1 = 1u16;
@@ -470,7 +470,7 @@ fn test_vector_swap_tuple() {
 }
 
 fn test_vector_swap_string() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let s0 = "fuel";
     let s1 = "john";
@@ -546,7 +546,7 @@ fn test_vector_swap_string() {
 }
 
 fn test_vector_swap_array() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let a0 = [0, 1, 2];
     let a1 = [3, 4, 5];
@@ -634,7 +634,7 @@ fn test_vector_swap_array() {
 }
 
 fn test_vector_swap_same_indexes_noop() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let number0 = 0u8;
     let number1 = 1u8;

@@ -370,7 +370,7 @@ impl Not for u64 {
 
 impl Not for u32 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: ~u32::max(), r4) {
+        asm(r1: self, r2, r3: u32::max(), r4) {
             not r2 r1;
             and r4 r2 r3;
             r4: u32
@@ -380,7 +380,7 @@ impl Not for u32 {
 
 impl Not for u16 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: ~u16::max(), r4) {
+        asm(r1: self, r2, r3: u16::max(), r4) {
             not r2 r1;
             and r4 r2 r3;
             r4: u16
@@ -390,7 +390,7 @@ impl Not for u16 {
 
 impl Not for u8 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: ~u8::max(), r4) {
+        asm(r1: self, r2, r3: u8::max(), r4) {
             not r2 r1;
             and r4 r2 r3;
             r4: u8
