@@ -20,9 +20,7 @@ use tower_lsp::lsp_types::{self, Position, Url};
 /// Extracts the hover information for a token at the current position.
 pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option<lsp_types::Hover> {
     let (ident, token) = session.token_at_position(&url, position)?;
-    dbg!(&ident, &token);
     let range = get_range_from_span(&ident.span());
-
     let (decl_ident, decl_token) = match session.declared_token_ident(&token) {
         Some(decl_ident) => {
             let decl_token = session
@@ -159,6 +157,10 @@ fn hover_format(token: &Token, ident: &Ident) -> lsp_types::HoverContents {
             TypedAstToken::TypedStructField(field) => {
                 Some(format_name_with_type(field.name.as_str(), &field.type_id))
             }
+            TypedAstToken::TypedExpression(expr) => match expr.expression {
+                ty::TyExpressionVariant::Literal { .. } => Some(format!("{}", expr.return_type)),
+                _ => None,
+            },
             _ => None,
         });
 
