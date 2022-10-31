@@ -13,7 +13,7 @@ fn is_ref_type<T>(param: T) -> bool {
 }
 
 fn main() -> bool {
-    let zero = ~b256::min();
+    let zero = b256::min();
     let a: u64 = 1;
     let b: u32 = 1;
     let c: u16 = 1;
