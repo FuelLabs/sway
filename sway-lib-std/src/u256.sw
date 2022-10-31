@@ -82,7 +82,7 @@ impl U256 {
     /// Returns an error if `self > ~128::max()`.
     pub fn as_u128(self) -> Result<U128, U256Error> {
         if self.a == 0 && self.b == 0 {
-            Result::Ok(~U128::from(self.c, self.d))
+            Result::Ok(U128::from(self.c, self.d))
         } else {
             Result::Err(U256Error::LossOfPrecision)
         }
