@@ -36,7 +36,7 @@ pub(crate) fn instantiate_function_application(
 
     // Type check the arguments from the function application and unify them with
     // the arguments from the function application.
-    let typed_arguments = arguments
+    let typed_arguments: Vec<(Ident, ty::TyExpression)> = arguments
         .into_iter()
         .zip(function_decl.parameters.iter())
         .map(|(arg, param)| {
@@ -78,8 +78,15 @@ pub(crate) fn instantiate_function_application(
         })
         .collect();
 
+    // Handle the trait constraints. This includes checking to see if the trait
+    // constraints are satisfied and replacing old decl ids based on the
+    // constraint with new decl ids based on the new type.
     let decl_mapping = check!(
-        handle_trait_constraints(ctx.by_ref(), &function_decl.type_parameters),
+        handle_trait_constraints(
+            ctx.by_ref(),
+            &function_decl.type_parameters,
+            &call_path.span()
+        ),
         return err(warnings, errors),
         warnings,
         errors
@@ -138,6 +145,7 @@ pub(crate) fn check_function_arguments_arity(
 fn handle_trait_constraints(
     ctx: TypeCheckContext,
     type_parameters: &[TypeParameter],
+    access_span: &Span,
 ) -> CompileResult<DeclMapping> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -156,7 +164,11 @@ fn handle_trait_constraints(
         check!(
             ctx.namespace
                 .implemented_traits
-                .check_if_trait_constraints_are_satisfied_for_type(*type_id, trait_constraints),
+                .check_if_trait_constraints_are_satisfied_for_type(
+                    *type_id,
+                    trait_constraints,
+                    access_span
+                ),
             continue,
             warnings,
             errors

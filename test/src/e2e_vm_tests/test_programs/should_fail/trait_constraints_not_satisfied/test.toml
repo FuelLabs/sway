@@ -1,3 +1,4 @@
-category = "run"
-expected_result = { action = "return", value = 42 }
-validate_abi = true
+category = "fail"
+
+# check: $()let baz = add_points(foo, bar);
+# nextln: $()The trait constraint "u64": "MyAdd" is not satisfied.

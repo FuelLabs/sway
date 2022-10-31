@@ -556,6 +556,7 @@ impl TraitMap {
         &self,
         type_id: TypeId,
         constraints: &[TraitConstraint],
+        access_span: &Span,
     ) -> CompileResult<()> {
         let warnings = vec![];
         let mut errors = vec![];
@@ -602,10 +603,11 @@ impl TraitMap {
         }
 
         for trait_name in required_traits.difference(&found_traits) {
+            // TODO: use a better span
             errors.push(CompileError::TraitConstraintNotSatisfied {
                 ty: type_id.to_string(),
                 trait_name: trait_name.to_string(),
-                span: trait_name.span(),
+                span: access_span.clone(),
             });
         }
 
