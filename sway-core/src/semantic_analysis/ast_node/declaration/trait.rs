@@ -100,6 +100,7 @@ impl ty::TyTraitDeclaration {
                     .map(|x| x.to_dummy_func(Mode::NonAbi))
                     .collect(),
                 &span,
+                false
             ),
             return err(warnings, errors),
             warnings,
@@ -189,6 +190,7 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                         .map(|x| x.to_dummy_func(Mode::NonAbi))
                         .collect(),
                     &supertrait.name.span(),
+                    false,
                 );
 
                 // insert dummy versions of the methods of all of the supertraits
@@ -206,6 +208,7 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                     self_type,
                     dummy_funcs,
                     &supertrait.name.span(),
+                    false,
                 );
 
                 // Recurse to insert dummy versions of interfaces and methods of the *super*

@@ -320,17 +320,6 @@ impl Ord for b256 {
     }
 }
 
-impl b256 {
-    fn neq(self, other: Self) -> bool {
-        // Both self and other are addresses of the values, so we can use MEQ.
-        asm(r1: self, r2: other, r3, r4) {
-            addi r3 zero i32;
-            meq r4 r1 r2 r3;
-            r4: bool
-        }.not()
-    }
-}
-
 pub trait BitwiseAnd {
     fn binary_and(self, other: Self) -> Self;
 }
