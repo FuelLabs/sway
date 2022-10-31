@@ -162,7 +162,6 @@ define_token!(
 );
 define_token!(OpenAngleBracketToken, "`<`", [LessThan], []);
 define_token!(CloseAngleBracketToken, "`>`", [GreaterThan], []);
-define_token!(TildeToken, "`~`", [Tilde], []);
 define_token!(EqToken, "`=`", [Equals], [GreaterThan, Equals]);
 define_token!(AddEqToken, "`+=`", [Add, Equals], []);
 define_token!(SubEqToken, "`-=`", [Sub, Equals], []);

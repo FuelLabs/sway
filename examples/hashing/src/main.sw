@@ -27,12 +27,12 @@ struct Stats {
 }
 
 fn main() {
-    let zero = ~b256::min();
+    let zero = b256::min();
     // Use the generic sha256 to hash some integers
-    let sha_hashed_u8 = sha256(~u8::max());
-    let sha_hashed_u16 = sha256(~u16::max());
-    let sha_hashed_u32 = sha256(~u32::max());
-    let sha_hashed_u64 = sha256(~u64::max());
+    let sha_hashed_u8 = sha256(u8::max());
+    let sha_hashed_u16 = sha256(u16::max());
+    let sha_hashed_u32 = sha256(u32::max());
+    let sha_hashed_u64 = sha256(u64::max());
 
     // Or hash a b256
     let sha_hashed_b256 = sha256(VALUE_A);
@@ -80,10 +80,10 @@ fn main() {
     log(sha_hashed_struct);
 
     // Use the generic keccak256 to hash some integers
-    let keccak_hashed_u8 = keccak256(~u8::max());
-    let keccak_hashed_u16 = keccak256(~u16::max());
-    let keccak_hashed_u32 = keccak256(~u32::max());
-    let keccak_hashed_u64 = keccak256(~u64::max());
+    let keccak_hashed_u8 = keccak256(u8::max());
+    let keccak_hashed_u16 = keccak256(u16::max());
+    let keccak_hashed_u32 = keccak256(u32::max());
+    let keccak_hashed_u64 = keccak256(u64::max());
 
     // Or hash a b256
     let keccak_hashed_b256 = keccak256(VALUE_A);

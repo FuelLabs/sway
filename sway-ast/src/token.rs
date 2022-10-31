@@ -24,7 +24,6 @@ pub enum PunctKind {
     Ampersand,
     Caret,
     Pipe,
-    Tilde,
     Underscore,
     Sharp,
 }
@@ -61,7 +60,6 @@ impl PunctKind {
             PunctKind::Ampersand => '&',
             PunctKind::Caret => '^',
             PunctKind::Pipe => '|',
-            PunctKind::Tilde => '~',
             PunctKind::Underscore => '_',
             PunctKind::Sharp => '#',
         }
@@ -280,7 +278,6 @@ impl CharExt for char {
             '&' => Some(PunctKind::Ampersand),
             '^' => Some(PunctKind::Caret),
             '|' => Some(PunctKind::Pipe),
-            '~' => Some(PunctKind::Tilde),
             '_' => Some(PunctKind::Underscore),
             '#' => Some(PunctKind::Sharp),
             _ => None,

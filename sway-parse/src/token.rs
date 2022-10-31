@@ -55,7 +55,6 @@ impl CharExt for char {
             '&' => Some(PunctKind::Ampersand),
             '^' => Some(PunctKind::Caret),
             '|' => Some(PunctKind::Pipe),
-            '~' => Some(PunctKind::Tilde),
             '_' => Some(PunctKind::Underscore),
             '#' => Some(PunctKind::Sharp),
             _ => None,
