@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-137BEA77671D03C2'
+
+[[package]]
+name = 'dep_doc_comment'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-137BEA77671D03C2'
+dependencies = ['core']
