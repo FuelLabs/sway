@@ -27,7 +27,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_ast::Dependency;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_ir::{Context, Function, Instruction, Kind, Module, Value};
+use sway_ir::{call_graph, Context, Function, Instruction, Kind, Module, Value};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -506,13 +506,16 @@ fn inline_function_calls(
         false
     };
 
+    let cg = call_graph::build_call_graph(ir, functions);
+    let functions = call_graph::callee_first_order(ir, &cg);
+
     for function in functions {
         if let Err(ir_error) = match tree_type {
             parsed::TreeType::Predicate => {
                 // Inline everything for predicates
-                sway_ir::optimize::inline_all_function_calls(ir, function)
+                sway_ir::optimize::inline_all_function_calls(ir, &function)
             }
-            _ => sway_ir::optimize::inline_some_function_calls(ir, function, inline_heuristic),
+            _ => sway_ir::optimize::inline_some_function_calls(ir, &function, inline_heuristic),
         } {
             return err(
                 Vec::new(),

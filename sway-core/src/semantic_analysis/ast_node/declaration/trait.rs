@@ -2,7 +2,7 @@ use sway_error::{
     error::CompileError,
     warning::{CompileWarning, Warning},
 };
-use sway_types::{style::is_upper_camel_case, Span, Spanned};
+use sway_types::{style::is_upper_camel_case, Spanned};
 
 use crate::{
     declaration_engine::*,
@@ -38,18 +38,21 @@ impl ty::TyTraitDeclaration {
             })
         }
 
-        if !type_parameters.is_empty() {
-            errors.push(CompileError::Unimplemented(
-                "Generic traits are not yet implemented.",
-                Span::join_all(type_parameters.into_iter().map(|x| x.span())),
-            ));
-            return err(warnings, errors);
-        }
-
         // A temporary namespace for checking within the trait's scope.
         let self_type = insert_type(TypeInfo::SelfType);
         let mut trait_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut trait_namespace).with_self_type(self_type);
+
+        // type check the type parameters, which will insert them into the namespace
+        let mut new_type_parameters = vec![];
+        for type_parameter in type_parameters.into_iter() {
+            new_type_parameters.push(check!(
+                TypeParameter::type_check(ctx.by_ref(), type_parameter),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
 
         // type check the interface surface
         let interface_surface = check!(
@@ -76,17 +79,32 @@ impl ty::TyTraitDeclaration {
 
         // insert placeholder functions representing the interface surface
         // to allow methods to use those functions
-        ctx.namespace.insert_trait_implementation(
-            CallPath {
-                prefixes: vec![],
-                suffix: name.clone(),
-                is_absolute: false,
-            },
-            self_type,
-            trait_fns
-                .iter()
-                .map(|x| x.to_dummy_func(Mode::NonAbi))
-                .collect(),
+        check!(
+            ctx.namespace.insert_trait_implementation(
+                CallPath {
+                    prefixes: vec![],
+                    suffix: name.clone(),
+                    is_absolute: false,
+                },
+                new_type_parameters
+                    .iter()
+                    .map(|type_param| TypeArgument {
+                        type_id: type_param.type_id,
+                        initial_type_id: type_param.initial_type_id,
+                        span: type_param.name_ident.span(),
+                    })
+                    .collect(),
+                self_type,
+                trait_fns
+                    .iter()
+                    .map(|x| x.to_dummy_func(Mode::NonAbi))
+                    .collect(),
+                &span,
+                false
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
         );
 
         // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
@@ -101,6 +119,7 @@ impl ty::TyTraitDeclaration {
 
         let typed_trait_decl = ty::TyTraitDeclaration {
             name,
+            type_parameters: new_type_parameters,
             interface_surface,
             methods,
             supertraits,
@@ -133,6 +152,7 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                     ref methods,
                     ref supertraits,
                     ref name,
+                    ref type_parameters,
                     ..
                 } = check!(
                     CompileResult::from(de_get_trait(decl_id.clone(), &supertrait.span())),
@@ -149,14 +169,28 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                     }
                 }
 
+                let type_params_as_type_args = type_parameters
+                    .iter()
+                    .map(|type_param| TypeArgument {
+                        type_id: type_param.type_id,
+                        initial_type_id: type_param.initial_type_id,
+                        span: type_param.name_ident.span(),
+                    })
+                    .collect::<Vec<_>>();
+
                 // insert dummy versions of the interfaces for all of the supertraits
+                // specifically don't check for conflicting definitions because
+                // these are just dummy definitions
                 ctx.namespace.insert_trait_implementation(
                     supertrait.name.clone(),
+                    type_params_as_type_args.clone(),
                     self_type,
                     trait_fns
                         .iter()
                         .map(|x| x.to_dummy_func(Mode::NonAbi))
                         .collect(),
+                    &supertrait.name.span(),
+                    false,
                 );
 
                 // insert dummy versions of the methods of all of the supertraits
@@ -166,10 +200,15 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                     warnings,
                     errors
                 );
+                // specifically don't check for conflicting definitions because
+                // these are just dummy definitions
                 ctx.namespace.insert_trait_implementation(
                     supertrait.name.clone(),
+                    type_params_as_type_args,
                     self_type,
                     dummy_funcs,
+                    &supertrait.name.span(),
+                    false,
                 );
 
                 // Recurse to insert dummy versions of interfaces and methods of the *super*

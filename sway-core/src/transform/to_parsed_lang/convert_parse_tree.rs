@@ -419,15 +419,17 @@ fn item_trait_to_trait_declaration(
         item_trait.generics,
         item_trait.where_clause_opt,
     )?;
-    let interface_surface = item_trait
-        .trait_items
-        .into_inner()
-        .into_iter()
-        .map(|(fn_signature, _semicolon_token)| {
-            let attributes = item_attrs_to_map(handler, &fn_signature.attribute_list)?;
-            fn_signature_to_trait_fn(handler, fn_signature.value, attributes)
-        })
-        .collect::<Result<_, _>>()?;
+    let interface_surface = {
+        item_trait
+            .trait_items
+            .into_inner()
+            .into_iter()
+            .map(|(fn_signature, _)| {
+                let attributes = item_attrs_to_map(handler, &fn_signature.attribute_list)?;
+                fn_signature_to_trait_fn(handler, fn_signature.value, attributes)
+            })
+            .collect::<Result<_, _>>()?
+    };
     let methods = match item_trait.trait_defs_opt {
         None => Vec::new(),
         Some(trait_defs) => trait_defs
