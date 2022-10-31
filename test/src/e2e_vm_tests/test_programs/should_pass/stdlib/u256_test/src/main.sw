@@ -122,7 +122,7 @@ fn main() -> bool {
 
     let eleven = ~U256::from(0, 0, 0, 11);
     let unwrapped = eleven.as_u128().unwrap();
-    assert(unwrapped == ~U128::from(0, 11);
+    assert(unwrapped == ~U128::from(0, 11));
 
     // test bits()
     assert(~U256::bits() == 256u32);
