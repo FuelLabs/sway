@@ -32,6 +32,11 @@ pub const STORAGE_PURITY_ATTRIBUTE_NAME: &str = "storage";
 pub const STORAGE_PURITY_READ_NAME: &str = "read";
 pub const STORAGE_PURITY_WRITE_NAME: &str = "write";
 
+/// The valid attribute strings related to inline.
+pub const INLINE_ATTRIBUTE_NAME: &str = "inline";
+pub const INLINE_NEVER_NAME: &str = "never";
+pub const INLINE_ALWAYS_NAME: &str = "always";
+
 /// The valid attribute strings related to documentation.
 pub const DOC_ATTRIBUTE_NAME: &str = "doc";
 

@@ -3,11 +3,10 @@ library vec;
 use ::alloc::{alloc, realloc};
 use ::assert::assert;
 use ::intrinsics::size_of;
-use ::mem::{copy, read, write};
 use ::option::Option;
 
 struct RawVec<T> {
-    ptr: u64,
+    ptr: raw_ptr,
     cap: u64,
 }
 
@@ -31,7 +30,7 @@ impl<T> RawVec<T> {
     }
 
     /// Gets the pointer of the allocation.
-    fn ptr(self) -> u64 {
+    fn ptr(self) -> raw_ptr {
         self.ptr
     }
 
@@ -63,7 +62,7 @@ impl<T> Vec<T> {
     /// The vector will not allocate until elements are pushed onto it.
     pub fn new() -> Self {
         Self {
-            buf: ~RawVec::new(),
+            buf: RawVec::new(),
             len: 0,
         }
     }
@@ -77,7 +76,7 @@ impl<T> Vec<T> {
     /// *capacity* specified, the vector will have a zero *length*.
     pub fn with_capacity(capacity: u64) -> Self {
         Self {
-            buf: ~RawVec::with_capacity(capacity),
+            buf: RawVec::with_capacity(capacity),
             len: 0,
         }
     }
@@ -91,10 +90,10 @@ impl<T> Vec<T> {
 
         // Get a pointer to the end of the buffer, where the new element will
         // be inserted.
-        let end = self.buf.ptr() + self.len * size_of::<T>();
+        let end = self.buf.ptr().add(self.len * size_of::<T>());
 
         // Write `value` at pointer `end`
-        write(end, value);
+        end.write(value);
 
         // Increment length.
         self.len += 1;
@@ -122,10 +121,10 @@ impl<T> Vec<T> {
         };
 
         // Get a pointer to the desired element using `index`
-        let ptr = self.buf.ptr() + index * size_of::<T>();
+        let ptr = self.buf.ptr().add(index * size_of::<T>());
 
         // Read from `ptr`
-        Option::Some(read(ptr))
+        Option::Some(ptr.read())
     }
 
     /// Returns the number of elements in the vector, also referred to
@@ -147,16 +146,17 @@ impl<T> Vec<T> {
 
         let val_size = size_of::<T>();
         let buf_start = self.buf.ptr();
-        let mut ptr = buf_start + val_size * index;
 
-        // Read from `ptr`
-        let ret = read(ptr);
+        // Read the value at `index`
+        let ptr = buf_start.add(index * val_size);
+        let ret = ptr.read();
 
         // Shift everything down to fill in that spot.
-        let end = buf_start + val_size * self.len;
-        while ptr < end {
-            copy(ptr + val_size, ptr, val_size);
-            ptr += val_size;
+        let mut i = index;
+        while i < self.len {
+            let ptr = buf_start.add(i * val_size);
+            ptr.add(val_size).copy_to(ptr, val_size);
+            i += 1;
         }
 
         // Decrease length.
@@ -179,17 +179,18 @@ impl<T> Vec<T> {
         let buf_start = self.buf.ptr();
 
         // The spot to put the new value
-        let index_ptr = buf_start + index * val_size;
+        let index_ptr = buf_start.add(index * val_size);
 
         // Shift everything over to make space.
-        let mut curr_ptr = buf_start + self.len * val_size;
-        while curr_ptr > index_ptr {
-            copy(curr_ptr - val_size, curr_ptr, val_size);
-            curr_ptr -= val_size;
+        let mut i = self.len;
+        while i > index {
+            let ptr = buf_start.add(i * val_size);
+            ptr.sub(val_size).copy_to(ptr, val_size);
+            i -= 1;
         }
 
         // Write `element` at pointer `index`
-        write(index_ptr, element);
+        index_ptr.write(element);
 
         // Increment length.
         self.len += 1;
@@ -202,7 +203,7 @@ impl<T> Vec<T> {
             return Option::None;
         }
         self.len -= 1;
-        Option::Some(read(self.buf.ptr() + self.len * size_of::<T>()))
+        Option::Some(self.buf.ptr().add(self.len * size_of::<T>()).read())
     }
 
     /// Swaps two elements.
@@ -225,12 +226,12 @@ impl<T> Vec<T> {
 
         let val_size = size_of::<T>();
 
-        let element1_ptr = self.buf.ptr() + element1_index * val_size;
-        let element2_ptr = self.buf.ptr() + element2_index * val_size;
+        let element1_ptr = self.buf.ptr().add(element1_index * val_size);
+        let element2_ptr = self.buf.ptr().add(element2_index * val_size);
 
-        let element1_val = read(element1_ptr);
-        copy(element2_ptr, element1_ptr, val_size);
-        write(element2_ptr, element1_val);
+        let element1_val = element1_ptr.read();
+        element2_ptr.copy_to(element1_ptr, val_size);
+        element2_ptr.write(element1_val);
     }
 
     /// Updates an element at position `index` with a new element `value`
@@ -246,8 +247,8 @@ impl<T> Vec<T> {
     pub fn set(ref mut self, index: u64, value: T) {
         assert(index < self.len);
 
-        let index_ptr = self.buf.ptr() + index * size_of::<T>();
+        let index_ptr = self.buf.ptr().add(index * size_of::<T>());
 
-        write(index_ptr, value);
+        index_ptr.write(value);
     }
 }

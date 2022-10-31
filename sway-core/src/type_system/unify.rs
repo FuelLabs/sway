@@ -40,6 +40,7 @@ pub(super) fn unify(
         (B256, B256) => (vec![], vec![]),
         (Numeric, Numeric) => (vec![], vec![]),
         (Contract, Contract) => (vec![], vec![]),
+        (RawUntypedPtr, RawUntypedPtr) => (vec![], vec![]),
         (Str(l), Str(r)) => unify::unify_strs(
             received,
             expected,
@@ -145,7 +146,7 @@ pub(super) fn unify(
             // if one address is empty, coerce to the other one
             match type_engine
                 .slab
-                .replace(received, r, look_up_type_id(expected))
+                .replace(received, r, type_engine.slab.get(*expected))
             {
                 None => (vec![], vec![]),
                 Some(_) => unify(
@@ -170,7 +171,7 @@ pub(super) fn unify(
             // if one address is empty, coerce to the other one
             match type_engine
                 .slab
-                .replace(expected, e, look_up_type_id(received))
+                .replace(expected, e, type_engine.slab.get(*received))
             {
                 None => (vec![], vec![]),
                 Some(_) => unify(
@@ -290,6 +291,7 @@ pub(super) fn unify_right(
         (B256, B256) => (vec![], vec![]),
         (Numeric, Numeric) => (vec![], vec![]),
         (Contract, Contract) => (vec![], vec![]),
+        (RawUntypedPtr, RawUntypedPtr) => (vec![], vec![]),
         (Str(l), Str(r)) => unify::unify_strs(received, expected, span, help_text, l, r, false),
         (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
             unify::unify_tuples(help_text, rfs, efs, curried)
@@ -359,7 +361,7 @@ pub(super) fn unify_right(
             // if one address is empty, coerce to the other one
             match type_engine
                 .slab
-                .replace(expected, e, look_up_type_id(received))
+                .replace(expected, e, type_engine.slab.get(*received))
             {
                 None => (vec![], vec![]),
                 Some(_) => unify_right(type_engine, received, expected, span, help_text),

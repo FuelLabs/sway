@@ -4,10 +4,12 @@ use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaratio
 use crate::{
     declaration_engine::*,
     error::*,
-    language::{parsed, ty::*, Purity, Visibility},
+    language::{parsed, ty::*, Inline, Purity, Visibility},
     transform,
     type_system::*,
 };
+
+use sway_types::constants::{INLINE_ALWAYS_NAME, INLINE_NEVER_NAME};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyFunctionDeclaration {
@@ -22,10 +24,10 @@ pub struct TyFunctionDeclaration {
     /// Used for error messages -- the span pointing to the return type
     /// annotation of the function
     pub return_type_span: Span,
-    pub(crate) visibility: Visibility,
+    pub visibility: Visibility,
     /// whether this function exists in another contract and requires a call to it or not
-    pub(crate) is_contract_call: bool,
-    pub(crate) purity: Purity,
+    pub is_contract_call: bool,
+    pub purity: Purity,
 }
 
 impl From<&TyFunctionDeclaration> for TyAstNode {
@@ -69,6 +71,19 @@ impl CopyTypes for TyFunctionDeclaration {
     }
 }
 
+impl ReplaceSelfType for TyFunctionDeclaration {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.type_parameters
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+        self.parameters
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(self_type));
+        self.return_type.replace_self_type(self_type);
+        self.body.replace_self_type(self_type);
+    }
+}
+
 impl Spanned for TyFunctionDeclaration {
     fn span(&self) -> Span {
         self.span.clone()
@@ -82,6 +97,33 @@ impl MonomorphizeHelper for TyFunctionDeclaration {
 
     fn name(&self) -> &Ident {
         &self.name
+    }
+}
+
+impl UnconstrainedTypeParameters for TyFunctionDeclaration {
+    fn type_parameter_is_unconstrained(&self, type_parameter: &TypeParameter) -> bool {
+        let type_parameter_info = look_up_type_id(type_parameter.type_id);
+        if self
+            .type_parameters
+            .iter()
+            .map(|type_param| look_up_type_id(type_param.type_id))
+            .any(|x| x == type_parameter_info)
+        {
+            return false;
+        }
+        if self
+            .parameters
+            .iter()
+            .map(|param| look_up_type_id(param.type_id))
+            .any(|x| x == type_parameter_info)
+        {
+            return true;
+        }
+        if look_up_type_id(self.return_type) == type_parameter_info {
+            return true;
+        }
+
+        false
     }
 }
 
@@ -240,6 +282,39 @@ impl TyFunctionDeclaration {
             },
         }
     }
+
+    /// Whether or not this function is the default entry point.
+    pub fn is_main_entry(&self) -> bool {
+        // NOTE: We may want to make this check more sophisticated or customisable in the future,
+        // but for now this assumption is baked in throughout the compiler.
+        self.name.as_str() == sway_types::constants::DEFAULT_ENTRY_POINT_FN_NAME
+    }
+
+    /// Whether or not this function is a unit test, i.e. decorated with `#[test]`.
+    pub fn is_test(&self) -> bool {
+        self.attributes
+            .contains_key(&transform::AttributeKind::Test)
+    }
+
+    pub fn inline(&self) -> Option<Inline> {
+        match self
+            .attributes
+            .get(&transform::AttributeKind::Inline)?
+            .last()?
+            .args
+            .first()?
+            .as_str()
+        {
+            INLINE_NEVER_NAME => Some(Inline::Never),
+            INLINE_ALWAYS_NAME => Some(Inline::Always),
+            _ => None,
+        }
+    }
+
+    /// Whether or not this function describes a program entry point.
+    pub fn is_entry(&self) -> bool {
+        self.is_main_entry() || self.is_test()
+    }
 }
 
 #[derive(Debug, Clone, Eq)]
@@ -267,6 +342,12 @@ impl PartialEq for TyFunctionParameter {
 impl CopyTypes for TyFunctionParameter {
     fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
         self.type_id.copy_types(type_mapping);
+    }
+}
+
+impl ReplaceSelfType for TyFunctionParameter {
+    fn replace_self_type(&mut self, self_type: TypeId) {
+        self.type_id.replace_self_type(self_type);
     }
 }
 

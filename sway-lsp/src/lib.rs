@@ -1,4 +1,5 @@
 #![recursion_limit = "256"]
+
 use tower_lsp::{LspService, Server};
 
 mod capabilities;

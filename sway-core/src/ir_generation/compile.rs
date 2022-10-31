@@ -41,6 +41,22 @@ pub(super) fn compile_script(
     Ok(module)
 }
 
+pub(super) fn compile_predicate(
+    context: &mut Context,
+    main_function: ty::TyFunctionDeclaration,
+    namespace: &namespace::Module,
+    declarations: Vec<ty::TyDeclaration>,
+) -> Result<Module, CompileError> {
+    let module = Module::new(context, Kind::Predicate);
+    let mut md_mgr = MetadataManager::default();
+
+    compile_constants(context, &mut md_mgr, module, namespace)?;
+    compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
+    compile_function(context, &mut md_mgr, module, main_function, &HashMap::new())?;
+
+    Ok(module)
+}
+
 pub(super) fn compile_contract(
     context: &mut Context,
     abi_entries: Vec<ty::TyFunctionDeclaration>,
@@ -206,6 +222,7 @@ fn compile_fn_with_args(
     selector: Option<[u8; 4]>,
     logged_types_map: &HashMap<TypeId, LogId>,
 ) -> Result<Function, CompileError> {
+    let inline_opt = ast_fn_decl.inline();
     let ty::TyFunctionDeclaration {
         name,
         body,
@@ -239,7 +256,12 @@ fn compile_fn_with_args(
 
     let span_md_idx = md_mgr.span_to_md(context, &span);
     let storage_md_idx = md_mgr.purity_to_md(context, purity);
-    let metadata = md_combine(context, &span_md_idx, &storage_md_idx);
+    let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
+
+    if let Some(inline) = inline_opt {
+        let inline_md_idx = md_mgr.inline_to_md(context, inline);
+        metadata = md_combine(context, &metadata, &inline_md_idx);
+    }
 
     let func = Function::new(
         context,

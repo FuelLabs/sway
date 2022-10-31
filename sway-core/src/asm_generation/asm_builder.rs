@@ -306,9 +306,27 @@ impl<'ir> AsmBuilder<'ir> {
                     reg_name: name.clone()
                 }
             );
-            let arg_reg = initializer
-                .map(|init_val| self.value_to_register(&init_val))
-                .unwrap_or_else(|| self.reg_seqr.next());
+            let arg_reg = match initializer {
+                Some(init_val) => {
+                    let init_val_reg = self.value_to_register(init_val);
+                    match init_val_reg {
+                        VirtualRegister::Virtual(_) => init_val_reg,
+                        VirtualRegister::Constant(_) => {
+                            let const_copy = self.reg_seqr.next();
+                            inline_ops.push(Op {
+                                opcode: Either::Left(VirtualOp::MOVE(
+                                    const_copy.clone(),
+                                    init_val_reg,
+                                )),
+                                comment: "copy const asm init to GP reg".into(),
+                                owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+                            });
+                            const_copy
+                        }
+                    }
+                }
+                None => self.reg_seqr.next(),
+            };
             inline_reg_map.insert(name.as_str(), arg_reg);
         }
 
@@ -589,16 +607,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Index value is the array element index, not byte nor word offset.
         let index_reg = self.value_to_register(index_val);
-        let rel_offset_reg = match index_reg {
-            VirtualRegister::Virtual(_) => {
-                // We can reuse the register.
-                index_reg.clone()
-            }
-            VirtualRegister::Constant(_) => {
-                // We have a constant register, cannot reuse it.
-                self.reg_seqr.next()
-            }
-        };
+        let rel_offset_reg = self.reg_seqr.next();
 
         // We could put the OOB check here, though I'm now thinking it would be too wasteful.
         // See compile_bounds_assertion() in expression/array.rs (or look in Git history).
@@ -897,16 +906,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Index value is the array element index, not byte nor word offset.
         let index_reg = self.value_to_register(index_val);
-        let rel_offset_reg = match index_reg {
-            VirtualRegister::Virtual(_) => {
-                // We can reuse the register.
-                index_reg.clone()
-            }
-            VirtualRegister::Constant(_) => {
-                // We have a constant register, cannot reuse it.
-                self.reg_seqr.next()
-            }
-        };
+        let rel_offset_reg = self.reg_seqr.next();
 
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
 

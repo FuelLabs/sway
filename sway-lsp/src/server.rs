@@ -5,11 +5,12 @@ use crate::{
         config::{Config, Warnings},
         session::Session,
     },
-    error::LanguageServerError,
+    error::{DirectoryError, LanguageServerError},
     utils::{debug, sync},
 };
 use dashmap::DashMap;
 use forc_pkg::manifest::PackageManifestFile;
+use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -22,6 +23,7 @@ use std::{
 use sway_types::Spanned;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
+use tracing::metadata::LevelFilter;
 
 #[derive(Debug)]
 pub struct Backend {
@@ -58,20 +60,12 @@ impl Backend {
         Ok((uri, session))
     }
 
-    async fn log_info_message(&self, message: &str) {
-        self.client.log_message(MessageType::INFO, message).await;
-    }
-
-    async fn log_error_message(&self, message: &str) {
-        self.client.log_message(MessageType::ERROR, message).await;
-    }
-
     async fn parse_project(&self, uri: Url, workspace_uri: Url, session: Arc<Session>) {
         // pass in the temp Url into parse_project, we can now get the updated AST's back.
         let diagnostics = match session.parse_project(&uri) {
             Ok(diagnostics) => diagnostics,
             Err(err) => {
-                self.log_error_message(err.to_string().as_str()).await;
+                tracing::error!("{}", err.to_string().as_str());
                 if let LanguageServerError::FailedToParse { diagnostics } = err {
                     diagnostics
                 } else {
@@ -110,6 +104,7 @@ fn capabilities() -> ServerCapabilities {
         document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
         inlay_hint_provider: Some(OneOf::Left(true)),
+        hover_provider: Some(HoverProviderCapability::Simple(true)),
         ..ServerCapabilities::default()
     }
 }
@@ -127,7 +122,7 @@ impl Backend {
         let manifest_dir = manifest
             .path()
             .parent()
-            .ok_or(LanguageServerError::ManifestDirNotFound)?
+            .ok_or(DirectoryError::ManifestDirNotFound)?
             .to_path_buf();
 
         let session = match self.sessions.get(&manifest_dir) {
@@ -141,11 +136,12 @@ impl Backend {
                     let session = item.value();
                     session.shutdown();
                 });
+                self.sessions.clear();
 
                 // If no session can be found, then we need to call init and inserst a new session into the map
                 self.init(uri)?;
                 self.sessions
-                    .get(&manifest_dir) //
+                    .get(&manifest_dir)
                     .map(|item| item.value().clone())
                     .expect("no session found even though it was just inserted into the map")
             }
@@ -163,15 +159,15 @@ impl Backend {
     ) {
         let diagnostics_res = {
             let debug = &self.config.read().debug;
-            let token_map = session.tokens_for_file(uri);
+            let tokens = session.tokens_for_file(uri);
             match debug.show_collected_tokens_as_warnings {
                 Warnings::Default => diagnostics,
                 // If collected_tokens_as_warnings is Parsed or Typed,
                 // take over the normal error and warning display behavior
                 // and instead show the either the parsed or typed tokens as warnings.
                 // This is useful for debugging the lsp parser.
-                Warnings::Parsed => debug::generate_warnings_for_parsed_tokens(&token_map),
-                Warnings::Typed => debug::generate_warnings_for_typed_tokens(&token_map),
+                Warnings::Parsed => debug::generate_warnings_for_parsed_tokens(tokens),
+                Warnings::Typed => debug::generate_warnings_for_typed_tokens(tokens),
             }
         };
 
@@ -186,17 +182,25 @@ impl Backend {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
-        eprintln!("InitializeParams = {:#?}", params);
-        self.client
-            .log_message(MessageType::INFO, "Initializing the Sway Language Server")
-            .await;
-
         if let Some(initialization_options) = &params.initialization_options {
             let mut config = self.config.write();
             *config = serde_json::from_value(initialization_options.clone())
                 .ok()
                 .unwrap_or_default();
         }
+
+        // Initalizing tracing library based on the user's config
+        let config = self.config.read();
+        if config.logging.level != LevelFilter::OFF {
+            let tracing_options = TracingSubscriberOptions {
+                log_level: Some(config.logging.level),
+                writer_mode: Some(TracingWriterMode::Stderr),
+                ..Default::default()
+            };
+            init_tracing_subscriber(tracing_options);
+        }
+
+        tracing::info!("Initializing the Sway Language Server");
 
         Ok(InitializeResult {
             server_info: None,
@@ -207,13 +211,11 @@ impl LanguageServer for Backend {
 
     // LSP-Server Lifecycle
     async fn initialized(&self, _: InitializedParams) {
-        self.log_info_message("Sway Language Server Initialized")
-            .await;
+        tracing::info!("Sway Language Server Initialized");
     }
 
     async fn shutdown(&self) -> jsonrpc::Result<()> {
-        self.log_info_message("Shutting Down the Sway Language Server")
-            .await;
+        tracing::info!("Shutting Down the Sway Language Server");
 
         let _ = self.sessions.iter().map(|item| {
             let session = item.value();
@@ -387,13 +389,12 @@ impl LanguageServer for Backend {
         &self,
         params: DocumentFormattingParams,
     ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
-        match self.get_uri_and_session(&params.text_document.uri) {
-            Ok((uri, session)) => Ok(session.format_text(&uri)),
-            Err(err) => {
+        self.get_uri_and_session(&params.text_document.uri)
+            .and_then(|(uri, session)| session.format_text(&uri).map(Some))
+            .or_else(|err| {
                 tracing::error!("{}", err.to_string());
                 Ok(None)
-            }
-        }
+            })
     }
 
     async fn rename(&self, params: RenameParams) -> jsonrpc::Result<Option<WorkspaceEdit>> {
@@ -794,16 +795,16 @@ mod tests {
             json!({
                 "contents": {
                     "kind": "markdown",
-                    "value": "```sway\nstruct Data\n```"
+                    "value": " Struct holding:\n\n 1. A `value` of type `NumberOrString`\n 2. An `address` of type `u64`"
                 },
                 "range": {
                     "end": {
-                        "character": 11,
-                        "line": 19
+                        "character": 27,
+                        "line": 44
                     },
                     "start": {
-                        "character": 7,
-                        "line": 19
+                        "character": 23,
+                        "line": 44
                     }
                 }
             }),
@@ -833,8 +834,8 @@ mod tests {
                 "uri": uri,
             },
             "position": {
-                "line": 44,
-                "character": 27
+                "line": 45,
+                "character": 37
             }
         });
         let highlight = build_request_with_id("textDocument/documentHighlight", params, 1);
@@ -842,17 +843,18 @@ mod tests {
         let ok = Response::from_ok(
             1.into(),
             json!([{
-                "range": {
-                    "end": {
-                        "character": 27,
-                        "line": 44
-                    },
-                    "start": {
-                        "character": 23,
-                        "line": 44
+                    "range": {
+                        "end": {
+                            "character": 41,
+                            "line": 45
+                        },
+                        "start": {
+                            "character": 35,
+                            "line": 45
+                        }
                     }
                 }
-            }]),
+            ]),
         );
         assert_eq!(response, Ok(Some(ok)));
         highlight

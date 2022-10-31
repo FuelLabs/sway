@@ -13,45 +13,51 @@ use crate::{
 
 impl ty::TyImplTrait {
     pub(crate) fn type_check_impl_trait(
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         impl_trait: ImplTrait,
-    ) -> CompileResult<(Self, TypeId)> {
+    ) -> CompileResult<Self> {
         let mut errors = vec![];
         let mut warnings = vec![];
 
         let ImplTrait {
             impl_type_parameters,
             trait_name,
-            trait_type_arguments,
+            mut trait_type_arguments,
             type_implementing_for,
             type_implementing_for_span,
             functions,
             block_span,
         } = impl_trait;
 
-        if !trait_type_arguments.is_empty() {
-            errors.push(CompileError::Unimplemented(
-                "Generic traits are not yet implemented.",
-                Span::join_all(trait_type_arguments.into_iter().map(|x| x.span())),
-            ));
-            return err(warnings, errors);
-        }
-
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut impl_namespace);
+        let mut ctx = ctx.by_ref().scoped(&mut impl_namespace);
 
-        // type check the type parameters
-        // insert them into the namespace
-        // TODO: eventually when we support generic traits, we will want to use this
+        // type check the type parameters which also inserts them into the namespace
         let mut new_impl_type_parameters = vec![];
         for type_parameter in impl_type_parameters.into_iter() {
+            if !type_parameter.trait_constraints.is_empty() {
+                errors.push(CompileError::WhereClauseNotYetSupported {
+                    span: type_parameter.trait_constraints_span,
+                });
+                return err(warnings, errors);
+            }
             new_impl_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
                 warnings,
                 errors
             ));
+        }
+
+        // resolve the types of the trait type arguments
+        for type_arg in trait_type_arguments.iter_mut() {
+            type_arg.type_id = check!(
+                ctx.resolve_type_without_self(type_arg.type_id, &type_arg.span, None),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
         }
 
         // type check the type that we are implementing for
@@ -66,10 +72,20 @@ impl ty::TyImplTrait {
             errors
         );
 
+        // check to see if this type is supported in impl blocks
+        check!(
+            look_up_type_id(implementing_for_type_id)
+                .expect_is_supported_in_impl_blocks_self(&type_implementing_for_span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
                 &new_impl_type_parameters,
+                &trait_type_arguments,
                 implementing_for_type_id,
                 &type_implementing_for_span
             ),
@@ -79,7 +95,10 @@ impl ty::TyImplTrait {
         );
 
         // Update the context with the new `self` type.
-        let ctx = ctx.with_self_type(implementing_for_type_id);
+        let mut ctx = ctx
+            .with_self_type(implementing_for_type_id)
+            .with_help_text("")
+            .with_type_annotation(insert_type(TypeInfo::Unknown));
 
         let impl_trait = match ctx
             .namespace
@@ -88,20 +107,37 @@ impl ty::TyImplTrait {
             .cloned()
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
-                let tr = check!(
+                let mut trait_decl = check!(
                     CompileResult::from(de_get_trait(decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
+
+                // monomorphize the trait declaration
+                check!(
+                    ctx.monomorphize(
+                        &mut trait_decl,
+                        &mut trait_type_arguments,
+                        EnforceTypeArguments::Yes,
+                        &trait_name.span()
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
                 let functions_buf = check!(
                     type_check_trait_implementation(
                         ctx,
-                        &tr.interface_surface,
-                        &tr.methods,
+                        &new_impl_type_parameters,
+                        &trait_type_arguments,
+                        implementing_for_type_id,
+                        &type_implementing_for_span,
+                        &trait_decl.interface_surface,
+                        &trait_decl.methods,
                         &functions,
                         &trait_name,
-                        &type_implementing_for_span,
                         &block_span,
                         false,
                     ),
@@ -113,25 +149,15 @@ impl ty::TyImplTrait {
                     .iter()
                     .map(|d| de_insert_function(d.clone()))
                     .collect::<Vec<_>>();
-                let impl_trait = ty::TyImplTrait {
-                    impl_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
-                    trait_name,
-                    trait_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
+                ty::TyImplTrait {
+                    impl_type_parameters: new_impl_type_parameters,
+                    trait_name: trait_name.clone(),
+                    trait_type_arguments,
                     span: block_span,
                     methods: functions_decl_id,
                     implementing_for_type_id,
                     type_implementing_for_span: type_implementing_for_span.clone(),
-                };
-                let implementing_for_type_id = insert_type(
-                    match to_typeinfo(implementing_for_type_id, &type_implementing_for_span) {
-                        Ok(o) => o,
-                        Err(e) => {
-                            errors.push(e.into());
-                            return err(warnings, errors);
-                        }
-                    },
-                );
-                (impl_trait, implementing_for_type_id)
+                }
             }
             Some(ty::TyDeclaration::AbiDeclaration(decl_id)) => {
                 // if you are comparing this with the `impl_trait` branch above, note that
@@ -158,11 +184,14 @@ impl ty::TyImplTrait {
                 let functions_buf = check!(
                     type_check_trait_implementation(
                         ctx,
+                        &[], // this is empty because abi definitions don't support generics,
+                        &[], // this is empty because abi definitions don't support generics,
+                        implementing_for_type_id,
+                        &type_implementing_for_span,
                         &abi.interface_surface,
                         &abi.methods,
                         &functions,
                         &trait_name,
-                        &type_implementing_for_span,
                         &block_span,
                         true
                     ),
@@ -174,16 +203,15 @@ impl ty::TyImplTrait {
                     .iter()
                     .map(|d| de_insert_function(d.clone()))
                     .collect::<Vec<_>>();
-                let impl_trait = ty::TyImplTrait {
-                    impl_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
+                ty::TyImplTrait {
+                    impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
                     trait_name,
-                    trait_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
+                    trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
                     span: block_span,
                     methods: functions_decl_id,
                     implementing_for_type_id,
                     type_implementing_for_span,
-                };
-                (impl_trait, implementing_for_type_id)
+                }
             }
             Some(_) | None => {
                 errors.push(CompileError::UnknownTrait {
@@ -403,11 +431,16 @@ impl ty::TyImplTrait {
             is_absolute: false,
         };
 
-        // type check the type parameters
-        // insert them into the namespace
-        let mut new_type_parameters = vec![];
+        // type check the type parameters which also inserts them into the namespace
+        let mut new_impl_type_parameters = vec![];
         for type_parameter in impl_type_parameters.into_iter() {
-            new_type_parameters.push(check!(
+            if !type_parameter.trait_constraints.is_empty() {
+                errors.push(CompileError::WhereClauseNotYetSupported {
+                    span: type_parameter.trait_constraints_span,
+                });
+                return err(warnings, errors);
+            }
+            new_impl_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
                 warnings,
@@ -427,10 +460,20 @@ impl ty::TyImplTrait {
             errors
         );
 
+        // check to see if this type is supported in impl blocks
+        check!(
+            look_up_type_id(implementing_for_type_id)
+                .expect_is_supported_in_impl_blocks_self(&type_implementing_for_span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
-                &new_type_parameters,
+                &new_impl_type_parameters,
+                &[],
                 implementing_for_type_id,
                 &type_implementing_for_span
             ),
@@ -471,9 +514,9 @@ impl ty::TyImplTrait {
             .map(|d| de_insert_function(d.clone()))
             .collect::<Vec<_>>();
         let impl_trait = ty::TyImplTrait {
-            impl_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
+            impl_type_parameters: new_impl_type_parameters,
             trait_name,
-            trait_type_parameters: vec![], // TODO: this is empty because currently we don't yet support generic traits
+            trait_type_arguments: vec![], // this is empty because impl selfs don't support generics on the "Self" trait,
             span: block_span,
             methods: methods_ids,
             implementing_for_type_id,
@@ -486,11 +529,14 @@ impl ty::TyImplTrait {
 #[allow(clippy::too_many_arguments)]
 fn type_check_trait_implementation(
     mut ctx: TypeCheckContext,
+    impl_type_parameters: &[TypeParameter],
+    trait_type_arguments: &[TypeArgument],
+    type_implementing_for: TypeId,
+    type_implementing_for_span: &Span,
     trait_interface_surface: &[DeclarationId],
     trait_methods: &[FunctionDeclaration],
     functions: &[FunctionDeclaration],
     trait_name: &CallPath,
-    self_type_span: &Span,
     block_span: &Span,
     is_contract: bool,
 ) -> CompileResult<Vec<ty::TyFunctionDeclaration>> {
@@ -520,8 +566,10 @@ fn type_check_trait_implementation(
     // this map keeps track of the remaining functions in the
     // interface surface that still need to be implemented for the
     // trait to be fully implemented
-    let mut function_checklist: std::collections::BTreeMap<&Ident, _> =
-        trait_fns.iter().map(|decl| (&decl.name, decl)).collect();
+    let mut function_checklist: std::collections::BTreeMap<Ident, _> = trait_fns
+        .into_iter()
+        .map(|decl| (decl.name.clone(), decl))
+        .collect();
     for fn_decl in functions {
         let mut ctx = ctx
             .by_ref()
@@ -529,7 +577,7 @@ fn type_check_trait_implementation(
             .with_type_annotation(insert_type(TypeInfo::Unknown));
 
         // type check the function declaration
-        let fn_decl = check!(
+        let mut fn_decl = check!(
             ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl.clone(), true),
             continue,
             warnings,
@@ -545,7 +593,7 @@ fn type_check_trait_implementation(
         }
 
         // remove this function from the "checklist"
-        let fn_signature = match function_checklist.remove(&fn_decl.name) {
+        let mut fn_signature = match function_checklist.remove(&fn_decl.name) {
             Some(trait_fn) => trait_fn,
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
@@ -556,6 +604,11 @@ fn type_check_trait_implementation(
                 return err(warnings, errors);
             }
         };
+
+        // replace instances of `TypeInfo::SelfType` with a fresh
+        // `TypeInfo::SelfType` to avoid replacing types in the original trait
+        // declaration
+        fn_signature.replace_self_type(ctx.self_type());
 
         // ensure this fn decl's parameters and signature lines up with the one
         // in the trait
@@ -579,9 +632,6 @@ fn type_check_trait_implementation(
         {
             // TODO use trait constraints as part of the type here to
             // implement trait constraint solver */
-            let fn_decl_param_type = fn_decl_param.type_id;
-            let fn_signature_param_type = fn_signature_param.type_id;
-
             // check if the mutability of the parameters is incompatible
             if fn_decl_param.is_mutable != fn_signature_param.is_mutable {
                 errors.push(CompileError::ParameterMutabilityMismatch {
@@ -596,8 +646,8 @@ fn type_check_trait_implementation(
             }
 
             let (new_warnings, new_errors) = unify_right_with_self(
-                fn_decl_param_type,
-                fn_signature_param_type,
+                fn_decl_param.type_id,
+                fn_signature_param.type_id,
                 ctx.self_type(),
                 &fn_signature_param.type_span,
                 ctx.help_text(),
@@ -606,8 +656,8 @@ fn type_check_trait_implementation(
                 errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
                     span: fn_decl_param.type_span.clone(),
-                    given: fn_decl_param_type.to_string(),
-                    expected: fn_signature_param_type.to_string(),
+                    given: fn_decl_param.type_id.to_string(),
+                    expected: fn_signature_param.type_id.to_string(),
                 });
                 continue;
             }
@@ -652,6 +702,41 @@ fn type_check_trait_implementation(
             continue;
         }
 
+        // if this method uses a type parameter from its parent's impl type
+        // parameters that is not constrained by the type that we are
+        // implementing for, then we need to add that type parameter to the
+        // method's type parameters so that in-line monomorphization can
+        // complete.
+        //
+        // NOTE: this is a semi-hack that is used to force monomorphization of
+        // trait methods that contain a generic defined in the parent impl...
+        // without stuffing the generic into the method's type parameters, its
+        // not currently possible to monomorphize on that generic at function
+        // application time.
+        //
+        // *This will change* when either https://github.com/FuelLabs/sway/issues/1267
+        // or https://github.com/FuelLabs/sway/issues/2814 goes in.
+        let unconstrained_type_parameters_in_this_function: HashSet<TypeParameter> = fn_decl
+            .unconstrained_type_parameters(impl_type_parameters)
+            .into_iter()
+            .cloned()
+            .collect();
+        let unconstrained_type_parameters_in_the_type: HashSet<TypeParameter> =
+            type_implementing_for
+                .unconstrained_type_parameters(impl_type_parameters)
+                .into_iter()
+                .cloned()
+                .collect::<HashSet<_>>();
+        let mut unconstrained_type_parameters_to_be_added =
+            unconstrained_type_parameters_in_this_function
+                .difference(&unconstrained_type_parameters_in_the_type)
+                .cloned()
+                .into_iter()
+                .collect::<Vec<_>>();
+        fn_decl
+            .type_parameters
+            .append(&mut unconstrained_type_parameters_to_be_added);
+
         functions_buf.push(fn_decl);
     }
 
@@ -671,21 +756,31 @@ fn type_check_trait_implementation(
     .concat();
     ctx.namespace.star_import(&trait_path);
 
-    let self_type_id = insert_type(match to_typeinfo(ctx.self_type(), self_type_span) {
-        Ok(o) => o,
-        Err(e) => {
-            errors.push(e.into());
-            return err(warnings, errors);
-        }
-    });
-    ctx.namespace.insert_trait_implementation(
-        CallPath {
-            prefixes: vec![],
-            suffix: trait_name.suffix.clone(),
-            is_absolute: false,
+    let self_type_id = insert_type(
+        match to_typeinfo(ctx.self_type(), type_implementing_for_span) {
+            Ok(o) => o,
+            Err(e) => {
+                errors.push(e.into());
+                return err(warnings, errors);
+            }
         },
-        self_type_id,
-        functions_buf.clone(),
+    );
+    check!(
+        ctx.namespace.insert_trait_implementation(
+            CallPath {
+                prefixes: vec![],
+                suffix: trait_name.suffix.clone(),
+                is_absolute: false,
+            },
+            trait_type_arguments.to_vec(),
+            self_type_id,
+            functions_buf.clone(),
+            block_span,
+            false,
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
     );
 
     let mut ctx = ctx
@@ -720,38 +815,89 @@ fn type_check_trait_implementation(
     ok(functions_buf, warnings, errors)
 }
 
+/// Given an array of [TypeParameter] `type_parameters`, checks to see if any of
+/// the type parameters are unconstrained on the signature of the impl block.
+///
+/// An type parameter is unconstrained on the signature of the impl block when
+/// it is not used in either the type arguments to the trait name or the type
+/// arguments to the type the trait is implementing for.
+///
+/// Here is an example that would compile:
+///
+/// ```ignore
+/// trait Test<T> {
+///     fn test_it(self, the_value: T) -> T;
+/// }
+///
+/// impl<T, F> Test<T> for FooBarData<F> {
+///     fn test_it(self, the_value: T) -> T {
+///         the_value
+///     }
+/// }
+/// ```
+///
+/// Here is an example that would not compile, as the `T` is unconstrained:
+///
+/// ```ignore
+/// trait Test {
+///     fn test_it<G>(self, the_value: G) -> G;
+/// }
+///
+/// impl<T, F> Test for FooBarData<F> {
+///     fn test_it<G>(self, the_value: G) -> G {
+///         the_value
+///     }
+/// }
+/// ```
 fn check_for_unconstrained_type_parameters(
     type_parameters: &[TypeParameter],
+    trait_type_arguments: &[TypeArgument],
     self_type: TypeId,
     self_type_span: &Span,
 ) -> CompileResult<()> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    // check to see that all of the generics that are defined for
-    // the impl block are actually used in the signature of the block
+    // create a list of defined generics, with the generic and a span
     let mut defined_generics: HashMap<TypeInfo, Span> = HashMap::from_iter(
         type_parameters
             .iter()
             .map(|x| (look_up_type_id(x.type_id), x.span())),
     );
-    let generics_in_use = check!(
+
+    // create a list of the generics in use in the impl signature
+    let mut generics_in_use = HashSet::new();
+    for type_arg in trait_type_arguments.iter() {
+        generics_in_use.extend(check!(
+            look_up_type_id(type_arg.type_id).extract_nested_generics(&type_arg.span),
+            HashSet::new(),
+            warnings,
+            errors
+        ));
+    }
+    generics_in_use.extend(check!(
         look_up_type_id(self_type).extract_nested_generics(self_type_span),
         HashSet::new(),
         warnings,
         errors
-    );
+    ));
+
     // TODO: add a lookup in the trait constraints here and add it to
     // generics_in_use
+
+    // deduct the generics in use from the defined generics
     for generic in generics_in_use.into_iter() {
         defined_generics.remove(&generic);
     }
+
+    // create an error for all of the leftover generics
     for (k, v) in defined_generics.into_iter() {
         errors.push(CompileError::UnconstrainedGenericParameter {
             ty: format!("{}", k),
             span: v,
         });
     }
+
     if errors.is_empty() {
         ok((), warnings, errors)
     } else {

@@ -53,7 +53,7 @@ impl core::ops::Eq for Pointer {
 
 /// Allocates an amount of memory on the heap
 pub fn alloc(size: u64) -> Pointer {
-    ~Pointer::new(asm(size: size, ptr) {
+    Pointer::new(asm(size: size, ptr) {
         aloc size;
         addi ptr hp i1;
         ptr: u64

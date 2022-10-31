@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-7A1B884B71AD4E6C'
-dependencies = []
 
 [[package]]
 name = 'match_expressions_mismatched'

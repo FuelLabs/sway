@@ -439,6 +439,18 @@ pub enum CompileError {
     },
     #[error("An ABI can only be implemented for the `Contract` type, so this implementation of an ABI for type \"{ty}\" is invalid.")]
     ImplAbiForNonContract { span: Span, ty: String },
+    #[error("Conflicting implementations of trait \"{trait_name}\" for type \"{type_implementing_for}\".")]
+    ConflictingImplsForTraitAndType {
+        trait_name: String,
+        type_implementing_for: String,
+        second_impl_span: Span,
+    },
+    #[error("Duplicate definitions for the method \"{func_name}\" for type \"{type_implementing_for}\".")]
+    DuplicateMethodsDefinedForType {
+        func_name: String,
+        type_implementing_for: String,
+        span: Span,
+    },
     #[error("The function \"{fn_name}\" in {interface_name} is defined with {num_parameters} parameters, but the provided implementation has {provided_parameters} parameters.")]
     IncorrectNumberOfInterfaceSurfaceFunctionParameters {
         fn_name: Ident,
@@ -656,6 +668,8 @@ pub enum CompileError {
     ConfigTimeConstantNotALiteral { span: Span },
     #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident },
+    #[error("returning a `raw_ptr` from `main()` is not allowed")]
+    PointerReturnNotAllowedInMain { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -762,6 +776,10 @@ impl Spanned for CompileError {
             InvalidAbiType { span, .. } => span.clone(),
             NotAnAbi { span, .. } => span.clone(),
             ImplAbiForNonContract { span, .. } => span.clone(),
+            ConflictingImplsForTraitAndType {
+                second_impl_span, ..
+            } => second_impl_span.clone(),
+            DuplicateMethodsDefinedForType { span, .. } => span.clone(),
             IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span.clone(),
             ArgumentParameterTypeMismatch { span, .. } => span.clone(),
             RecursiveCall { span, .. } => span.clone(),
@@ -832,6 +850,7 @@ impl Spanned for CompileError {
             ConfigTimeConstantNotAConstDecl { span } => span.clone(),
             ConfigTimeConstantNotALiteral { span } => span.clone(),
             RefMutableNotAllowedInMain { param_name } => param_name.span(),
+            PointerReturnNotAllowedInMain { span } => span.clone(),
         }
     }
 }

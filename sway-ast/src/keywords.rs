@@ -144,6 +144,7 @@ define_token!(
     [Colon]
 );
 define_token!(StarToken, "an asterisk (*)", [Star], [Equals]);
+define_token!(DoubleStarToken, "`**`", [Star, Star], []);
 define_token!(CommaToken, "a comma", [Comma], []);
 define_token!(ColonToken, "a colon", [Colon], [Colon]);
 define_token!(
@@ -161,7 +162,6 @@ define_token!(
 );
 define_token!(OpenAngleBracketToken, "`<`", [LessThan], []);
 define_token!(CloseAngleBracketToken, "`>`", [GreaterThan], []);
-define_token!(TildeToken, "`~`", [Tilde], []);
 define_token!(EqToken, "`=`", [Equals], [GreaterThan, Equals]);
 define_token!(AddEqToken, "`+=`", [Add, Equals], []);
 define_token!(SubEqToken, "`-=`", [Sub, Equals], []);

@@ -3,7 +3,7 @@ use basic_storage_abi::{StoreU64, Quad};
 use std::assert::assert;
 
 fn main() -> u64 {
-    let addr = abi(StoreU64, 0xfa00cd1a7ddd9dcea659fc7474a9d1d9d141c1a6aa8d671c1b993a5b51278c7f);
+    let addr = abi(StoreU64, 0x38cc2a8e447e57c335ffea24407527070d0b9f63c51358aca726fdd47b45a592);
     let key = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     let value = 4242;
 

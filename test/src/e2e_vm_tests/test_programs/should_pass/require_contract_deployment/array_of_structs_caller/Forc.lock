@@ -1,7 +1,6 @@
 [[package]]
 name = 'array_of_structs_abi'
 source = 'path+from-root-40616FC980A839AE'
-dependencies = []
 
 [[package]]
 name = 'array_of_structs_caller'
@@ -14,7 +13,6 @@ dependencies = [
 [[package]]
 name = 'core'
 source = 'path+from-root-40616FC980A839AE'
-dependencies = []
 
 [[package]]
 name = 'std'

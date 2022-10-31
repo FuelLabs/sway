@@ -213,6 +213,12 @@ impl Eq for b256 {
     }
 }
 
+impl Eq for raw_ptr {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
 pub trait Ord {
     fn gt(self, other: Self) -> bool;
     fn lt(self, other: Self) -> bool;
@@ -314,17 +320,6 @@ impl Ord for b256 {
     }
 }
 
-impl b256 {
-    fn neq(self, other: Self) -> bool {
-        // Both self and other are addresses of the values, so we can use MEQ.
-        asm(r1: self, r2: other, r3, r4) {
-            addi r3 zero i32;
-            meq r4 r1 r2 r3;
-            r4: bool
-        }.not()
-    }
-}
-
 pub trait BitwiseAnd {
     fn binary_and(self, other: Self) -> Self;
 }
@@ -375,7 +370,7 @@ impl Not for u64 {
 
 impl Not for u32 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: ~u32::max(), r4) {
+        asm(r1: self, r2, r3: u32::max(), r4) {
             not r2 r1;
             and r4 r2 r3;
             r4: u32
@@ -385,7 +380,7 @@ impl Not for u32 {
 
 impl Not for u16 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: ~u16::max(), r4) {
+        asm(r1: self, r2, r3: u16::max(), r4) {
             not r2 r1;
             and r4 r2 r3;
             r4: u16
@@ -395,7 +390,7 @@ impl Not for u16 {
 
 impl Not for u8 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: ~u8::max(), r4) {
+        asm(r1: self, r2, r3: u8::max(), r4) {
             not r2 r1;
             and r4 r2 r3;
             r4: u8

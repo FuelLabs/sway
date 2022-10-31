@@ -86,6 +86,13 @@ pub enum TypeInfo {
     Storage {
         fields: Vec<ty::TyStructField>,
     },
+    /// Raw untyped pointers.
+    /// These are represented in memory as u64 but are a different type since pointers only make
+    /// sense in the context they were created in. Users can obtain pointers via standard library
+    /// functions such `alloc` or `stack_ptr`. These functions are implemented using asm blocks
+    /// which can create pointers by (eg.) reading logically-pointer-valued registers, using the
+    /// gtf instruction, or manipulating u64s.
+    RawUntypedPtr,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -177,6 +184,9 @@ impl Hash for TypeInfo {
                 look_up_type_id(*elem_ty).hash(state);
                 count.hash(state);
             }
+            TypeInfo::RawUntypedPtr => {
+                state.write_u8(18);
+            }
         }
     }
 }
@@ -256,6 +266,7 @@ impl PartialEq for TypeInfo {
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
                 l_fields == r_fields
             }
+            (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
             _ => false,
         }
     }
@@ -325,8 +336,91 @@ impl fmt::Display for TypeInfo {
             }
             Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty, count),
             Storage { .. } => "contract storage".into(),
+            RawUntypedPtr => "raw untyped ptr".into(),
         };
         write!(f, "{}", s)
+    }
+}
+
+impl UnconstrainedTypeParameters for TypeInfo {
+    fn type_parameter_is_unconstrained(&self, type_parameter: &TypeParameter) -> bool {
+        let type_parameter_info = look_up_type_id(type_parameter.type_id);
+        match self {
+            TypeInfo::UnknownGeneric { .. } => self.clone() == type_parameter_info,
+            TypeInfo::Enum {
+                type_parameters,
+                variant_types,
+                ..
+            } => {
+                let unconstrained_in_type_parameters = type_parameters
+                    .iter()
+                    .map(|type_param| {
+                        type_param
+                            .type_id
+                            .type_parameter_is_unconstrained(type_parameter)
+                    })
+                    .any(|x| x);
+                let unconstrained_in_variants = variant_types
+                    .iter()
+                    .map(|variant| {
+                        variant
+                            .type_id
+                            .type_parameter_is_unconstrained(type_parameter)
+                    })
+                    .any(|x| x);
+                unconstrained_in_type_parameters || unconstrained_in_variants
+            }
+            TypeInfo::Struct {
+                type_parameters,
+                fields,
+                ..
+            } => {
+                let unconstrained_in_type_parameters = type_parameters
+                    .iter()
+                    .map(|type_param| {
+                        type_param
+                            .type_id
+                            .type_parameter_is_unconstrained(type_parameter)
+                    })
+                    .any(|x| x);
+                let unconstrained_in_fields = fields
+                    .iter()
+                    .map(|field| {
+                        field
+                            .type_id
+                            .type_parameter_is_unconstrained(type_parameter)
+                    })
+                    .any(|x| x);
+                unconstrained_in_type_parameters || unconstrained_in_fields
+            }
+            TypeInfo::Tuple(elems) => elems
+                .iter()
+                .map(|elem| elem.type_id.type_parameter_is_unconstrained(type_parameter))
+                .any(|x| x),
+            TypeInfo::Custom { type_arguments, .. } => type_arguments
+                .clone()
+                .unwrap_or_default()
+                .iter()
+                .map(|type_arg| {
+                    type_arg
+                        .type_id
+                        .type_parameter_is_unconstrained(type_parameter)
+                })
+                .any(|x| x),
+            TypeInfo::Array(elem, _, _) => elem.type_parameter_is_unconstrained(type_parameter),
+            TypeInfo::Unknown
+            | TypeInfo::Str(_)
+            | TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Boolean
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::B256
+            | TypeInfo::Numeric
+            | TypeInfo::Contract
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::RawUntypedPtr
+            | TypeInfo::Storage { .. } => false,
+        }
     }
 }
 
@@ -369,8 +463,10 @@ impl TypeInfo {
             }
             Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty.json_abi_str(), count),
             Storage { .. } => "contract storage".into(),
+            RawUntypedPtr => "raw untyped ptr".into(),
         }
     }
+
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(&self, error_msg_span: &Span) -> CompileResult<String> {
         use TypeInfo::*;
@@ -528,6 +624,7 @@ impl TypeInfo {
                 };
                 format!("a[{};{}]", name, size)
             }
+            RawUntypedPtr => "rawptr".to_string(),
             _ => {
                 return err(
                     vec![],
@@ -679,6 +776,7 @@ impl TypeInfo {
             | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Numeric
+            | TypeInfo::RawUntypedPtr
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
             | TypeInfo::Array(_, _, _)
@@ -687,6 +785,145 @@ impl TypeInfo {
                 err(warnings, errors)
             }
         }
+    }
+
+    /// Given a `TypeInfo` `self`, analyze `self` and return all inner
+    /// `TypeId`'s of `self`, not including `self`.
+    pub(crate) fn extract_inner_types(&self) -> HashSet<TypeId> {
+        fn helper(type_id: TypeId) -> HashSet<TypeId> {
+            let mut inner_types = HashSet::new();
+            match look_up_type_id(type_id) {
+                TypeInfo::Enum {
+                    type_parameters,
+                    variant_types,
+                    ..
+                } => {
+                    inner_types.insert(type_id);
+                    for type_param in type_parameters.iter() {
+                        inner_types
+                            .extend(look_up_type_id(type_param.type_id).extract_inner_types());
+                    }
+                    for variant in variant_types.iter() {
+                        inner_types.extend(look_up_type_id(variant.type_id).extract_inner_types());
+                    }
+                }
+                TypeInfo::Struct {
+                    type_parameters,
+                    fields,
+                    ..
+                } => {
+                    inner_types.insert(type_id);
+                    for type_param in type_parameters.iter() {
+                        inner_types
+                            .extend(look_up_type_id(type_param.type_id).extract_inner_types());
+                    }
+                    for field in fields.iter() {
+                        inner_types.extend(look_up_type_id(field.type_id).extract_inner_types());
+                    }
+                }
+                TypeInfo::Custom { type_arguments, .. } => {
+                    inner_types.insert(type_id);
+                    if let Some(type_arguments) = type_arguments {
+                        for type_arg in type_arguments.iter() {
+                            inner_types
+                                .extend(look_up_type_id(type_arg.type_id).extract_inner_types());
+                        }
+                    }
+                }
+                TypeInfo::Array(type_id, _, _) => {
+                    inner_types.insert(type_id);
+                    inner_types.extend(look_up_type_id(type_id).extract_inner_types());
+                }
+                TypeInfo::Tuple(elems) => {
+                    inner_types.insert(type_id);
+                    for elem in elems.iter() {
+                        inner_types.extend(look_up_type_id(elem.type_id).extract_inner_types());
+                    }
+                }
+                TypeInfo::Storage { fields } => {
+                    inner_types.insert(type_id);
+                    for field in fields.iter() {
+                        inner_types.extend(look_up_type_id(field.type_id).extract_inner_types());
+                    }
+                }
+                TypeInfo::Unknown
+                | TypeInfo::UnknownGeneric { .. }
+                | TypeInfo::Str(_)
+                | TypeInfo::UnsignedInteger(_)
+                | TypeInfo::Boolean
+                | TypeInfo::ContractCaller { .. }
+                | TypeInfo::SelfType
+                | TypeInfo::B256
+                | TypeInfo::Numeric
+                | TypeInfo::RawUntypedPtr
+                | TypeInfo::Contract => {
+                    inner_types.insert(type_id);
+                }
+                TypeInfo::ErrorRecovery => {}
+            }
+            inner_types
+        }
+
+        let mut inner_types = HashSet::new();
+        match self {
+            TypeInfo::Enum {
+                type_parameters,
+                variant_types,
+                ..
+            } => {
+                for type_param in type_parameters.iter() {
+                    inner_types.extend(helper(type_param.type_id));
+                }
+                for variant in variant_types.iter() {
+                    inner_types.extend(helper(variant.type_id));
+                }
+            }
+            TypeInfo::Struct {
+                type_parameters,
+                fields,
+                ..
+            } => {
+                for type_param in type_parameters.iter() {
+                    inner_types.extend(helper(type_param.type_id));
+                }
+                for field in fields.iter() {
+                    inner_types.extend(helper(field.type_id));
+                }
+            }
+            TypeInfo::Custom { type_arguments, .. } => {
+                if let Some(type_arguments) = type_arguments {
+                    for type_arg in type_arguments.iter() {
+                        inner_types.extend(helper(type_arg.type_id));
+                    }
+                }
+            }
+            TypeInfo::Array(type_id, _, _) => {
+                inner_types.extend(helper(*type_id));
+            }
+            TypeInfo::Tuple(elems) => {
+                for elem in elems.iter() {
+                    inner_types.extend(helper(elem.type_id));
+                }
+            }
+            TypeInfo::Storage { fields } => {
+                for field in fields.iter() {
+                    inner_types.extend(helper(field.type_id));
+                }
+            }
+            TypeInfo::Unknown
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::Str(_)
+            | TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Boolean
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::B256
+            | TypeInfo::Numeric
+            | TypeInfo::Contract
+            | TypeInfo::RawUntypedPtr
+            | TypeInfo::ErrorRecovery => {}
+        }
+        inner_types
     }
 
     /// Given a `TypeInfo` `self`, check to see if `self` is currently
@@ -707,6 +944,7 @@ impl TypeInfo {
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Numeric => ok((), warnings, errors),
             TypeInfo::Unknown
+            | TypeInfo::RawUntypedPtr
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
             | TypeInfo::SelfType
@@ -717,6 +955,39 @@ impl TypeInfo {
             | TypeInfo::Storage { .. } => {
                 errors.push(CompileError::Unimplemented(
                     "matching on this type is unsupported right now",
+                    span.clone(),
+                ));
+                err(warnings, errors)
+            }
+        }
+    }
+
+    /// Given a `TypeInfo` `self`, check to see if `self` is currently
+    /// supported in `impl` blocks in the "type implementing for" position.
+    pub(crate) fn expect_is_supported_in_impl_blocks_self(&self, span: &Span) -> CompileResult<()> {
+        let warnings = vec![];
+        let mut errors = vec![];
+        match self {
+            TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Enum { .. }
+            | TypeInfo::Struct { .. }
+            | TypeInfo::Boolean
+            | TypeInfo::Tuple(_)
+            | TypeInfo::B256
+            | TypeInfo::RawUntypedPtr
+            | TypeInfo::Custom { .. }
+            | TypeInfo::Str(_)
+            | TypeInfo::Array(_, _, _)
+            | TypeInfo::Contract
+            | TypeInfo::Numeric => ok((), warnings, errors),
+            TypeInfo::Unknown
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::Storage { .. } => {
+                errors.push(CompileError::Unimplemented(
+                    "implementing traits on this type is unsupported right now",
                     span.clone(),
                 ));
                 err(warnings, errors)
@@ -818,6 +1089,7 @@ impl TypeInfo {
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::B256
             | TypeInfo::Numeric
+            | TypeInfo::RawUntypedPtr
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery => {}
             TypeInfo::Custom { .. } | TypeInfo::SelfType => {
@@ -905,6 +1177,8 @@ impl TypeInfo {
     /// }
     /// ```
     ///
+    /// then:
+    ///
     /// | type:             | is subset of:                                | is not a subset of: |
     /// |-------------------|----------------------------------------------|---------------------|
     /// | `Data<T, T>`      | `Data<T, F>`, any generic type               |                     |
@@ -913,9 +1187,22 @@ impl TypeInfo {
     /// | `Data<u8, u8>`    | `Data<T, T>`, `Data<T, F>`, any generic type |                     |
     ///
     pub(crate) fn is_subset_of(&self, other: &TypeInfo) -> bool {
+        // any type is the subset of a generic
+        if let Self::UnknownGeneric { .. } = other {
+            return true;
+        }
+        self.is_subset_inner(other)
+    }
+
+    /// Given two `TypeInfo`'s `self` and `other`, checks to see if `self` is
+    /// unidirectionally a subset of `other`, excluding consideration of generic
+    /// types (like in the `is_subset_of` method).
+    pub(crate) fn is_subset_of_for_item_import(&self, other: &TypeInfo) -> bool {
+        self.is_subset_inner(other)
+    }
+
+    fn is_subset_inner(&self, other: &TypeInfo) -> bool {
         match (self, other) {
-            // any type is the subset of a generic
-            (_, Self::UnknownGeneric { .. }) => true,
             (Self::Array(l0, l1, _), Self::Array(r0, r1, _)) => {
                 look_up_type_id(*l0).is_subset_of(&look_up_type_id(*r0)) && l1 == r1
             }
@@ -1073,6 +1360,35 @@ impl TypeInfo {
                 });
                 err(warnings, errors)
             }
+        }
+    }
+
+    pub(crate) fn can_change(&self) -> bool {
+        // TODO: there might be an optimization here that if the type params hold
+        // only non-dynamic types, then it doesn't matter that there are type params
+        match self {
+            TypeInfo::Enum {
+                type_parameters, ..
+            } => !type_parameters.is_empty(),
+            TypeInfo::Struct {
+                type_parameters, ..
+            } => !type_parameters.is_empty(),
+            TypeInfo::Str(_)
+            | TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Boolean
+            | TypeInfo::B256
+            | TypeInfo::RawUntypedPtr
+            | TypeInfo::ErrorRecovery => false,
+            TypeInfo::Unknown
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::Custom { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::Tuple(_)
+            | TypeInfo::Array(_, _, _)
+            | TypeInfo::Contract
+            | TypeInfo::Storage { .. }
+            | TypeInfo::Numeric => true,
         }
     }
 
@@ -1238,7 +1554,7 @@ fn types_are_subset_of(left: &[TypeInfo], right: &[TypeInfo]) -> bool {
         }
     }
 
-    // invariant 3. The elements of `left` satisfy the trait constraints of `right`
+    // invariant 3. The elements of `left` satisfy the constraints of `right`
     let mut constraints = vec![];
     for i in 0..(right.len() - 1) {
         for j in (i + 1)..right.len() {

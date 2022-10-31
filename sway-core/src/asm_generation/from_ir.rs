@@ -51,7 +51,12 @@ pub fn compile_ir_to_asm(
         println!("{allocated_program}");
     }
 
-    let final_program = allocated_program.into_final_program();
+    let final_program = check!(
+        CompileResult::from(allocated_program.into_final_program()),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     if build_config
         .map(|cfg| cfg.print_finalized_asm)
@@ -110,7 +115,8 @@ fn compile_module_to_asm(
     let kind = match module.get_kind(context) {
         Kind::Contract => ProgramKind::Contract,
         Kind::Script => ProgramKind::Script,
-        Kind::Library | Kind::Predicate => todo!("libraries and predicates coming soon!"),
+        Kind::Predicate => ProgramKind::Predicate,
+        Kind::Library => todo!("libraries coming soon!"),
     };
 
     ok(

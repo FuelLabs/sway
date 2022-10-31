@@ -1,14 +1,17 @@
 use crate::type_system::*;
+use derivative::Derivative;
 use std::{
     fmt,
     hash::{Hash, Hasher},
 };
 use sway_types::{Span, Spanned};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, Derivative)]
+#[derivative(PartialOrd, Ord)]
 pub struct TypeArgument {
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
+    #[derivative(PartialOrd = "ignore", Ord = "ignore")]
     pub span: Span,
 }
 
