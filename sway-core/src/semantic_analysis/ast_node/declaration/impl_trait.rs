@@ -804,9 +804,6 @@ fn type_check_trait_implementation(
             warnings,
             errors
         );
-        if method.name.as_str() == "neq" {
-            println!("{}", decl_mapping);
-        }
         method.replace_decls(&decl_mapping);
         method.copy_types(&type_mapping);
         method.replace_self_type(ctx.self_type());

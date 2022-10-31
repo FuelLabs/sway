@@ -593,9 +593,17 @@ impl ReplaceDecls for TyExpressionVariant {
             Literal(..) => (),
             FunctionApplication {
                 ref mut function_decl_id,
+                ref mut arguments,
                 ..
             } => {
                 function_decl_id.replace_decls(decl_mapping);
+                let new_decl_id = function_decl_id
+                    .clone()
+                    .replace_decls_and_insert_new(decl_mapping);
+                function_decl_id.replace_id(*new_decl_id);
+                for (_, arg) in arguments.iter_mut() {
+                    arg.replace_decls(decl_mapping);
+                }
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).replace_decls(decl_mapping);

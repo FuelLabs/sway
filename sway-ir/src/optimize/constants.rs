@@ -50,7 +50,7 @@ fn combine_cbr(context: &mut Context, function: &Function) -> Result<bool, IrErr
                     true_block,
                     false_block,
                 }) if cond_value.is_constant(context) => {
-                    match cond_value.get_constant(context).unwrap().value {
+                    match &cond_value.get_constant(context).unwrap().value {
                         ConstantValue::Bool(true) => Some(Ok((
                             inst_val,
                             in_block,
@@ -63,7 +63,26 @@ fn combine_cbr(context: &mut Context, function: &Function) -> Result<bool, IrErr
                             false_block.clone(),
                             true_block.clone(),
                         ))),
-                        _ => Some(Err(IrError::VerifyConditionExprNotABool)),
+                        v => {
+                            println!("B the type: {:?} in {}", v, function.get_name(context));
+                            println!(
+                                "if true: {:#?}",
+                                context.blocks.get(true_block.block.0).map(|x| x
+                                    .instructions
+                                    .clone()
+                                    .into_iter()
+                                    .map(|x| { context.values[x.0].value.clone() }))
+                            );
+                            println!(
+                                "if false: {:?}",
+                                context.blocks.get(false_block.block.0).map(|x| x
+                                    .instructions
+                                    .clone()
+                                    .into_iter()
+                                    .map(|x| { context.values[x.0].value.clone() }))
+                            );
+                            Some(Err(IrError::VerifyConditionExprNotABool))
+                        }
                     }
                 }
                 _ => None,

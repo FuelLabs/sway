@@ -9,6 +9,8 @@ use crate::{
     ReplaceSelfType, TypeId,
 };
 
+use super::{ReplaceDecls, DeclMapping};
+
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]
 /// as a means of placing all declaration types into the same type.
 #[derive(Clone, Debug)]
@@ -89,6 +91,14 @@ impl ReplaceSelfType for DeclarationWrapper {
             DeclarationWrapper::Abi(_) => {}
             DeclarationWrapper::Constant(_) => {}
             DeclarationWrapper::Enum(decl) => decl.replace_self_type(self_type),
+        }
+    }
+}
+
+impl ReplaceDecls for DeclarationWrapper {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
+        if let DeclarationWrapper::Function(decl) = self {
+            decl.replace_decls(decl_mapping);
         }
     }
 }

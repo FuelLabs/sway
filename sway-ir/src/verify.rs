@@ -384,6 +384,7 @@ impl<'a> InstructionVerifier<'a> {
         false_block: &BranchToWithArgs,
     ) -> Result<(), IrError> {
         if !matches!(cond_val.get_type(self.context), Some(Type::Bool)) {
+            println!("A the type: {:?}", cond_val.get_type(self.context));
             Err(IrError::VerifyConditionExprNotABool)
         } else if !self.cur_function.blocks.contains(&true_block.block) {
             Err(IrError::VerifyBranchToMissingBlock(

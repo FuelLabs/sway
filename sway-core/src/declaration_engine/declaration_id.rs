@@ -77,23 +77,12 @@ impl ReplaceSelfType for DeclarationId {
 impl ReplaceDecls for DeclarationId {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
         if let Some(new_decl_id) = decl_mapping.find_match(self) {
-            println!("switching {} and {}", self.0, *new_decl_id);
             self.0 = *new_decl_id;
             return;
         }
         let all_parents = de_find_all_parents(self.clone());
-        println!(
-            "self: {}, all_parents: [{}]",
-            **self,
-            all_parents
-                .iter()
-                .map(|x| format!("{}", **x))
-                .collect::<Vec<_>>()
-                .join(", ")
-        );
         for parent in all_parents.into_iter() {
             if let Some(new_decl_id) = decl_mapping.find_match(&parent) {
-                println!("switching {} and {}", self.0, *new_decl_id);
                 self.0 = *new_decl_id;
                 return;
             }
@@ -118,12 +107,18 @@ impl DeclarationId {
     pub(crate) fn copy_types_and_insert_new(&self, type_mapping: &TypeMapping) -> DeclarationId {
         let mut decl = de_look_up_decl_id(self.clone());
         decl.copy_types(type_mapping);
-        de_insert(decl, self.1.clone())
+        de_insert(decl, self.1.clone()).with_parent(self.clone())
     }
 
     pub(crate) fn replace_self_type_and_insert_new(&self, self_type: TypeId) -> DeclarationId {
         let mut decl = de_look_up_decl_id(self.clone());
         decl.replace_self_type(self_type);
-        de_insert(decl, self.1.clone())
+        de_insert(decl, self.1.clone()).with_parent(self.clone())
+    }
+
+    pub(crate) fn replace_decls_and_insert_new(&self, decl_mapping: &DeclMapping) -> DeclarationId {
+        let mut decl = de_look_up_decl_id(self.clone());
+        decl.replace_decls(decl_mapping);
+        de_insert(decl, self.1.clone()).with_parent(self.clone())
     }
 }

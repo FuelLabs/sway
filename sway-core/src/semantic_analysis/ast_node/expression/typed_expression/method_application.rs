@@ -431,10 +431,6 @@ pub(crate) fn resolve_method_name(
         errors
     );
 
-    if func_decl.name.as_str() == "neq" {
-        println!("before monomorphization: {}", *decl_id);
-    }
-
     // monomorphize the function declaration
     check!(
         ctx.monomorphize(
@@ -447,6 +443,8 @@ pub(crate) fn resolve_method_name(
         warnings,
         errors
     );
+
+    println!("func_decl: {}, {}", func_decl.name, func_decl.return_type);
 
     let decl_id = de_insert_function(func_decl).with_parent(decl_id);
 
