@@ -15,7 +15,7 @@ use crate::{
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use parking_lot::RwLock;
-use std::{path::PathBuf, sync::Arc};
+use std::{ops::Deref, path::PathBuf, sync::Arc};
 use sway_core::{
     language::{parsed::ParseProgram, ty},
     CompileResult,
@@ -267,6 +267,31 @@ impl Session {
                 &ast_res.errors,
             ),
         })?;
+
+        for (name, module) in typed_program.root.namespace.submodules() {
+            eprintln!("name = {:?}", name);
+            if name == "std" {
+                for (name, module) in module.submodules() {
+                    eprintln!("sub name = {:?}", name);
+
+                    if name == "address" {
+                        let symbols = module.deref().symbols();
+                        eprintln!("items = {:#?}", &symbols);
+                        for decl in symbols.values() {
+                            traverse_typed_tree::handle_declaration(decl, &self.token_map);
+                        }
+                    }
+                }
+            }
+        }
+
+        self.token_map().iter().for_each(|item| {
+            let p = item.pair();
+            let t = p.clone().1.typed.as_ref();
+            if t.is_some() {
+                eprintln!("typed = {:#?}", t);
+            }
+        });
 
         if let ty::TyProgramKind::Script {
             ref main_function, ..

@@ -34,7 +34,7 @@ pub fn prepare_rename(
     position: Position,
 ) -> Option<PrepareRenameResponse> {
     let (ident, token) = session.token_at_position(&url, position)?;
-    match token.parsed {
+    match token.parsed? {
         AstToken::Reassignment(_) => None,
         _ => Some(PrepareRenameResponse::RangeWithPlaceholder {
             range: get_range_from_span(&ident.span()),

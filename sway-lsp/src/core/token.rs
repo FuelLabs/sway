@@ -22,7 +22,7 @@ pub enum TypeDefinition {
 
 #[derive(Debug, Clone)]
 pub struct Token {
-    pub parsed: AstToken,
+    pub parsed: Option<AstToken>,
     pub typed: Option<TypedAstToken>,
     pub type_def: Option<TypeDefinition>,
     pub kind: SymbolKind,
@@ -31,8 +31,17 @@ pub struct Token {
 impl Token {
     pub fn from_parsed(token: AstToken, kind: SymbolKind) -> Self {
         Self {
-            parsed: token,
+            parsed: Some(token),
             typed: None,
+            type_def: None,
+            kind,
+        }
+    }
+
+    pub fn from_typed(token: TypedAstToken, kind: SymbolKind) -> Self {
+        Self {
+            parsed: None,
+            typed: Some(token),
             type_def: None,
             kind,
         }
