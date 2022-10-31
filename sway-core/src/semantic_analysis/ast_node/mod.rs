@@ -225,13 +225,6 @@ impl ty::TyAstNode {
                                 warnings,
                                 errors
                             );
-                            let mut methods = vec![];
-                            for method_id in &impl_trait.methods {
-                                match de_get_function(method_id.clone(), &impl_trait.span) {
-                                    Ok(method) => methods.push(method),
-                                    Err(err) => errors.push(err),
-                                }
-                            }
                             check!(
                                 ctx.namespace.insert_trait_implementation(
                                     impl_trait.trait_name.clone(),
