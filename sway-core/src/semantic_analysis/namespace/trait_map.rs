@@ -1,5 +1,5 @@
 use sway_error::error::CompileError;
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     error::*,
@@ -40,6 +40,7 @@ impl TraitMap {
         type_id: TypeId,
         methods: Vec<ty::TyFunctionDeclaration>,
         impl_span: &Span,
+        is_impl_self: bool,
     ) -> CompileResult<()> {
         let mut errors = vec![];
 
@@ -52,7 +53,7 @@ impl TraitMap {
                 Some(trait_type_args.clone())
             },
         });
-        for (map_trait_name, map_type_id) in self.trait_impls.keys() {
+        for ((map_trait_name, map_type_id), map_trait_methods) in self.trait_impls.iter() {
             let CallPath {
                 suffix: (map_trait_name_suffix, map_trait_type_args),
                 ..
@@ -65,10 +66,13 @@ impl TraitMap {
                     Some(map_trait_type_args.to_vec())
                 },
             });
-            let type_info = look_up_type_id(type_id);
-            if look_up_type_id(trait_type_id).is_subset_of(&look_up_type_id(map_trait_type_id))
-                && type_info.is_subset_of(&look_up_type_id(*map_type_id))
-            {
+
+            let types_are_subset =
+                look_up_type_id(type_id).is_subset_of(&look_up_type_id(*map_type_id));
+            let traits_are_subset =
+                look_up_type_id(trait_type_id).is_subset_of(&look_up_type_id(map_trait_type_id));
+
+            if types_are_subset && traits_are_subset && !is_impl_self {
                 let trait_name_str = format!(
                     "{}{}",
                     trait_name.suffix,
@@ -90,6 +94,16 @@ impl TraitMap {
                     type_implementing_for: type_id.to_string(),
                     second_impl_span: impl_span.clone(),
                 });
+            } else if types_are_subset {
+                for method in methods.iter() {
+                    if map_trait_methods.get(&method.name.to_string()).is_some() {
+                        errors.push(CompileError::DuplicateMethodsDefinedForType {
+                            func_name: method.name.to_string(),
+                            type_implementing_for: type_id.to_string(),
+                            span: method.name.span(),
+                        })
+                    }
+                }
             }
         }
         let trait_name: TraitName = CallPath {
