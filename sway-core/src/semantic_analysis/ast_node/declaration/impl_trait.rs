@@ -776,6 +776,7 @@ fn type_check_trait_implementation(
             self_type_id,
             functions_buf.clone(),
             block_span,
+            false,
         ),
         return err(warnings, errors),
         warnings,

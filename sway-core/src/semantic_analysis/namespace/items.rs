@@ -140,6 +140,7 @@ impl Items {
         type_id: TypeId,
         methods: Vec<ty::TyFunctionDeclaration>,
         impl_span: &Span,
+        is_impl_self: bool,
     ) -> CompileResult<()> {
         let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
@@ -155,8 +156,14 @@ impl Items {
             suffix: trait_name.suffix,
             is_absolute: trait_name.is_absolute,
         };
-        self.implemented_traits
-            .insert(trait_name, trait_type_args, type_id, methods, impl_span)
+        self.implemented_traits.insert(
+            trait_name,
+            trait_type_args,
+            type_id,
+            methods,
+            impl_span,
+            is_impl_self,
+        )
     }
 
     pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
