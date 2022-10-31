@@ -451,6 +451,23 @@ impl Dependencies {
             ExpressionKind::Subfield(SubfieldExpression { prefix, .. }) => {
                 self.gather_from_expr(prefix)
             }
+            ExpressionKind::AmbiguousPathExpression(e) => {
+                let AmbiguousPathExpression {
+                    call_path_binding,
+                    args,
+                } = &**e;
+                let mut this = self;
+                if call_path_binding.inner.prefixes.is_empty() {
+                    // We have just `Foo::Bar`, and nothing before `Foo`,
+                    // so this could be referring to `Enum::Variant`,
+                    // so we want to depend on `Enum` but not `Variant`.
+                    this.deps.insert(DependentSymbol::Symbol(
+                        call_path_binding.inner.suffix.before.inner.clone(),
+                    ));
+                }
+                this.gather_from_type_arguments(&call_path_binding.type_arguments)
+                    .gather_from_iter(args.iter(), |deps, arg| deps.gather_from_expr(arg))
+            }
             ExpressionKind::DelineatedPath(delineated_path_expression) => {
                 let DelineatedPathExpression {
                     call_path_binding,

@@ -19,11 +19,13 @@ use crate::{
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
+    transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
 };
 
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
+    convert_parse_tree_error::ConvertParseTreeError,
     error::CompileError,
     warning::{CompileWarning, Warning},
 };
@@ -189,6 +191,13 @@ impl ty::TyExpression {
                 index,
                 index_span,
             }) => Self::type_check_tuple_index(ctx.by_ref(), *prefix, index, index_span, span),
+            ExpressionKind::AmbiguousPathExpression(e) => {
+                let AmbiguousPathExpression {
+                    call_path_binding,
+                    args,
+                } = *e;
+                Self::type_check_ambiguous_path(ctx.by_ref(), call_path_binding, span, args)
+            }
             ExpressionKind::DelineatedPath(delineated_path_expression) => {
                 let DelineatedPathExpression {
                     call_path_binding,
@@ -1007,6 +1016,111 @@ impl ty::TyExpression {
             errors
         );
         ok(exp, warnings, errors)
+    }
+
+    fn type_check_ambiguous_path(
+        mut ctx: TypeCheckContext,
+        TypeBinding {
+            inner:
+                CallPath {
+                    prefixes,
+                    suffix: AmbiguousSuffix { before, suffix },
+                    is_absolute,
+                },
+            type_arguments,
+            span: path_span,
+        }: TypeBinding<CallPath<AmbiguousSuffix>>,
+        span: Span,
+        args: Vec<Expression>,
+    ) -> CompileResult<ty::TyExpression> {
+        // Is `path = prefix ++ before` a module?
+        let mut path = Vec::with_capacity(prefixes.len() + 1);
+        path.extend(prefixes.iter().cloned());
+        path.push(before.inner.clone());
+        let not_module = ctx.namespace.check_submodule(&path).value.is_none();
+
+        // Not a module? Not a `Enum::Variant` either?
+        // Type check as an associated function call instead.
+        let is_associated_call = not_module && {
+            let probe_call_path = CallPath {
+                prefixes: prefixes.clone(),
+                suffix: before.inner.clone(),
+                is_absolute,
+            };
+            ctx.namespace
+                .resolve_call_path(&probe_call_path)
+                .flat_map(|decl| decl.expect_enum(&before.inner.span()))
+                .flat_map(|decl| decl.expect_variant_from_name(&suffix).map(drop))
+                .value
+                .is_none()
+        };
+
+        if is_associated_call {
+            let before_span = before.span();
+            let type_name = before.inner;
+            let type_info_span = type_name.span();
+            let type_info = type_name_to_type_info_opt(&type_name).unwrap_or(TypeInfo::Custom {
+                name: type_name,
+                type_arguments: None,
+            });
+
+            let method_name_binding = TypeBinding {
+                inner: MethodName::FromType {
+                    call_path_binding: TypeBinding {
+                        span: before_span,
+                        type_arguments: before.type_arguments,
+                        inner: CallPath {
+                            prefixes,
+                            suffix: (type_info, type_info_span),
+                            is_absolute,
+                        },
+                    },
+                    method_name: suffix,
+                },
+                type_arguments,
+                span: path_span,
+            };
+            type_check_method_application(ctx.by_ref(), method_name_binding, Vec::new(), args, span)
+        } else {
+            let call_path_binding = TypeBinding {
+                inner: CallPath {
+                    prefixes: path,
+                    suffix,
+                    is_absolute,
+                },
+                type_arguments,
+                span: path_span,
+            };
+            let mut res = Self::type_check_delineated_path(ctx, call_path_binding, span, args);
+
+            // In case `before` has type args, this would be e.g., `foo::bar::<TyArgs>::baz(...)`.
+            // So, we would need, but don't have, parametric modules to apply arguments to.
+            // Emit an error and ignore the type args.
+            //
+            // TODO: This also bans `Enum::<TyArgs>::Variant` but there's no good reason to ban that.
+            // Instead, we should allow this but ban `Enum::Variant::<TyArgs>`, which Rust does allow,
+            // but shouldn't, because with GADTs, we could ostensibly have the equivalent of:
+            // ```haskell
+            // {-# LANGUAGE GADTs, RankNTypes #-}
+            // data Foo where Bar :: forall a. Show a => a -> Foo
+            // ```
+            // or to illustrate with Sway-ish syntax:
+            // ```rust
+            // enum Foo {
+            //     Bar<A: Debug>: A, // Let's ignore memory representation, etc.
+            // }
+            // ```
+            if !before.type_arguments.is_empty() {
+                res.errors.push(
+                    ConvertParseTreeError::GenericsNotSupportedHere {
+                        span: Span::join_all(before.type_arguments.iter().map(|t| t.span())),
+                    }
+                    .into(),
+                );
+            }
+
+            res
+        }
     }
 
     fn type_check_delineated_path(
