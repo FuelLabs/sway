@@ -13,7 +13,7 @@ pub(crate) fn e2e_language_dir() -> PathBuf {
 pub(crate) fn e2e_test_dir() -> PathBuf {
     sway_workspace_dir()
         .join(e2e_language_dir())
-        .join("struct_field_access")
+        .join("prelude_access2")
 }
 
 pub(crate) fn sway_example_dir() -> PathBuf {

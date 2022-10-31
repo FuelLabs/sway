@@ -5,12 +5,13 @@ use crate::{
         runnable::{Runnable, RunnableType},
     },
     core::{
+        collect_symbol_map,
         document::TextDocument,
         token::{Token, TokenMap, TypeDefinition},
         {traverse_parse_tree, traverse_typed_tree},
     },
     error::{DocumentError, LanguageServerError},
-    utils::{self, sync::SyncWorkspace},
+    utils::{self, sync::SyncWorkspace, token::to_ident_key},
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
@@ -87,13 +88,10 @@ impl Session {
     pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
         let tokens = self.tokens_for_file(uri);
         match utils::common::ident_at_position(position, tokens) {
-            Some(ident) => self
-                .token_map
-                .get(&utils::token::to_ident_key(&ident))
-                .map(|item| {
-                    let ((ident, _), token) = item.pair();
-                    (ident.clone(), token.clone())
-                }),
+            Some(ident) => self.token_map.get(&to_ident_key(&ident)).map(|item| {
+                let ((ident, _), token) = item.pair();
+                (ident.clone(), token.clone())
+            }),
             None => None,
         }
     }
@@ -268,20 +266,24 @@ impl Session {
             ),
         })?;
 
-        for (name, module) in typed_program.root.namespace.submodules() {
-            eprintln!("name = {:?}", name);
-            if name == "std" {
-                for (name, module) in module.submodules() {
-                    eprintln!("sub name = {:?}", name);
-
-                    if name == "address" {
-                        let symbols = module.deref().symbols();
-                        eprintln!("items = {:#?}", &symbols);
-                        for decl in symbols.values() {
-                            traverse_typed_tree::handle_declaration(decl, &self.token_map);
-                        }
-                    }
+        // Collect tokens from `std` and `core` that have been imported
+        // from the prelude.
+        'outer: for (_, module) in typed_program
+            .root
+            .namespace
+            .submodules()
+            .iter()
+            .flat_map(|(_, module)| module.submodules())
+        {
+            let symbols = module.deref().symbols();
+            for (ident, decl) in symbols {
+                // If an ident is already in our map, skip this part as the
+                // tokens from std and core have already been collected.
+                // We only want to collect these tokens once for efficiency.
+                if self.token_map.contains_key(&to_ident_key(ident)) {
+                    break 'outer;
                 }
+                collect_symbol_map::handle_declaration(ident, decl, &self.token_map);
             }
         }
 
