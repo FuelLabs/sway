@@ -443,13 +443,13 @@ fn promote_to_registers(ir: &mut Context, functions: &[Function]) -> CompileResu
     ok((), Vec::new(), Vec::new())
 }
 
-// Inline function calls based on two conditions:
-// 1. The program we're compiling is a "predicate". Predicates cannot jump backwards which means
-//    that supporting function calls (i.e. without inlining) is not possible. This is a protocl
-//    restriction and not a heuristic.
-// 2. If the program is not a "predicate" then, we rely on some heuristic which is described below
-//    in the `inline_heuristc` closure.
-//
+/// Inline function calls based on two conditions:
+/// 1. The program we're compiling is a "predicate". Predicates cannot jump backwards which means
+///    that supporting function calls (i.e. without inlining) is not possible. This is a protocl
+///    restriction and not a heuristic.
+/// 2. If the program is not a "predicate" then, we rely on some heuristic which is described below
+///    in the `inline_heuristc` closure.
+///
 pub fn inline_function_calls(
     ir: &mut Context,
     functions: &[Function],
@@ -484,7 +484,7 @@ pub fn inline_function_calls(
             Some(Inline::Never) => {
                 return false;
             }
-            _ => {}
+            None => {}
         }
 
         // For now, pending improvements to ASMgen for calls, we must inline any function which has

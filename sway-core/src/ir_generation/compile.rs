@@ -222,6 +222,7 @@ fn compile_fn_with_args(
     selector: Option<[u8; 4]>,
     logged_types_map: &HashMap<TypeId, LogId>,
 ) -> Result<Function, CompileError> {
+    let inline_opt = ast_fn_decl.inline();
     let ty::TyFunctionDeclaration {
         name,
         body,
@@ -231,7 +232,7 @@ fn compile_fn_with_args(
         purity,
         span,
         ..
-    } = ast_fn_decl.clone();
+    } = ast_fn_decl;
 
     let mut args = args
         .into_iter()
@@ -257,7 +258,7 @@ fn compile_fn_with_args(
     let storage_md_idx = md_mgr.purity_to_md(context, purity);
     let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
 
-    if let Some(inline) = ast_fn_decl.inline() {
+    if let Some(inline) = inline_opt {
         let inline_md_idx = md_mgr.inline_to_md(context, inline);
         metadata = md_combine(context, &metadata, &inline_md_idx);
     }

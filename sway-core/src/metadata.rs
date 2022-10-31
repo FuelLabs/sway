@@ -112,6 +112,7 @@ impl MetadataManager {
         })
     }
 
+    /// Gets Inline information from metadata index.
     pub(crate) fn md_to_inline(
         &mut self,
         context: &Context,
@@ -123,18 +124,17 @@ impl MetadataManager {
                 md_idx
                     .get_content(context)
                     .unwrap_struct("inline", 1)
-                    .and_then(|fields| {
-                        fields[0].unwrap_string().and_then(|inline_str| {
-                            let inline = match inline_str {
-                                "always" => Some(Inline::Always),
-                                "never" => Some(Inline::Never),
-                                _otherwise => None,
-                            }?;
+                    .and_then(|fields| fields[0].unwrap_string())
+                    .and_then(|inline_str| {
+                        let inline = match inline_str {
+                            "always" => Some(Inline::Always),
+                            "never" => Some(Inline::Never),
+                            _otherwise => None,
+                        }?;
 
-                            self.md_inline_cache.insert(md_idx, inline);
+                        self.md_inline_cache.insert(md_idx, inline);
 
-                            Some(inline)
-                        })
+                        Some(inline)
                     })
             })
         })
@@ -250,6 +250,7 @@ impl MetadataManager {
         })
     }
 
+    /// Inserts Inline information into metadata.
     pub(crate) fn inline_to_md(
         &mut self,
         context: &mut Context,

@@ -297,18 +297,16 @@ impl TyFunctionDeclaration {
     }
 
     pub fn inline(&self) -> Option<Inline> {
-        match self.attributes.get(&transform::AttributeKind::Inline) {
-            Some(attributes) => match attributes.last() {
-                Some(attribute) => match attribute.args.first() {
-                    Some(arg) => match arg.as_str() {
-                        INLINE_NEVER_NAME => Some(Inline::Never),
-                        INLINE_ALWAYS_NAME => Some(Inline::Always),
-                        _ => None,
-                    },
-                    _ => None,
-                },
-                _ => None,
-            },
+        match self
+            .attributes
+            .get(&transform::AttributeKind::Inline)?
+            .last()?
+            .args
+            .first()?
+            .as_str()
+        {
+            INLINE_NEVER_NAME => Some(Inline::Never),
+            INLINE_ALWAYS_NAME => Some(Inline::Always),
             _ => None,
         }
     }
