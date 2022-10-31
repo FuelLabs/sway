@@ -4,10 +4,12 @@ use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaratio
 use crate::{
     declaration_engine::*,
     error::*,
-    language::{parsed, ty::*, Purity, Visibility},
+    language::{parsed, ty::*, Inline, Purity, Visibility},
     transform,
     type_system::*,
 };
+
+use sway_types::constants::{INLINE_ALWAYS_NAME, INLINE_NEVER_NAME};
 
 #[derive(Clone, Debug, Eq)]
 pub struct TyFunctionDeclaration {
@@ -298,6 +300,21 @@ impl TyFunctionDeclaration {
     pub fn is_test(&self) -> bool {
         self.attributes
             .contains_key(&transform::AttributeKind::Test)
+    }
+
+    pub fn inline(&self) -> Option<Inline> {
+        match self
+            .attributes
+            .get(&transform::AttributeKind::Inline)?
+            .last()?
+            .args
+            .first()?
+            .as_str()
+        {
+            INLINE_NEVER_NAME => Some(Inline::Never),
+            INLINE_ALWAYS_NAME => Some(Inline::Always),
+            _ => None,
+        }
     }
 
     /// Whether or not this function describes a program entry point.
