@@ -374,7 +374,7 @@ impl BuildPlan {
         fetch_graph(member_manifests, offline, &mut graph, &mut manifest_map)?;
         // Validate the graph, since we constructed the graph from scratch the paths will not be a
         // problem but the version check is still needed
-        validate_graph(&graph, member_manifests)?;
+        validate_graph(&graph, manifests)?;
         let compilation_order = compilation_order(&graph)?;
         Ok(Self {
             graph,
@@ -447,7 +447,7 @@ impl BuildPlan {
         // might have edited the `Forc.lock` file when they shouldn't have, a path dependency no
         // longer exists at its specified location, etc. We must first remove all invalid nodes
         // before we can determine what we need to fetch.
-        let invalid_deps = validate_graph(&graph, member_manifests)?;
+        let invalid_deps = validate_graph(&graph, manifests)?;
         let members: HashSet<String> = member_manifests
             .iter()
             .map(|(member_name, _)| member_name.clone())
@@ -456,7 +456,7 @@ impl BuildPlan {
 
         // We know that the remaining nodes have valid paths, otherwise they would have been
         // removed. We can safely produce an initial `manifest_map`.
-        let mut manifest_map = graph_to_manifest_map(member_manifests, &graph)?;
+        let mut manifest_map = graph_to_manifest_map(manifests, &graph)?;
 
         // Attempt to fetch the remainder of the graph.
         let _added = fetch_graph(member_manifests, offline, &mut graph, &mut manifest_map)?;
@@ -600,10 +600,8 @@ fn member_nodes(g: &Graph) -> impl Iterator<Item = NodeIx> + '_ {
 /// Validates the state of the pinned package graph against the given ManifestFile.
 ///
 /// Returns the set of invalid dependency edges.
-fn validate_graph(
-    graph: &Graph,
-    member_manifests: &MemberManifestFiles,
-) -> Result<BTreeSet<EdgeIx>> {
+fn validate_graph(graph: &Graph, manifests: &ManifestFiles) -> Result<BTreeSet<EdgeIx>> {
+    let (member_manifests, _) = manifests;
     let mut member_pkgs: HashMap<&String, &PackageManifestFile> = member_manifests.iter().collect();
     let member_nodes: Vec<_> = member_nodes(graph)
         .filter_map(|n| member_pkgs.remove(&graph[n].name).map(|pkg| (n, pkg)))
@@ -617,7 +615,7 @@ fn validate_graph(
     let mut visited = HashSet::new();
     let edges = member_nodes
         .into_iter()
-        .flat_map(move |(n, pkg_mfst)| validate_deps(graph, n, pkg_mfst, &mut visited))
+        .flat_map(move |(n, _)| validate_deps(graph, n, manifests, &mut visited))
         .collect();
     Ok(edges)
 }
@@ -628,20 +626,20 @@ fn validate_graph(
 fn validate_deps(
     graph: &Graph,
     node: NodeIx,
-    node_manifest: &PackageManifestFile,
+    manifests: &ManifestFiles,
     visited: &mut HashSet<NodeIx>,
 ) -> BTreeSet<EdgeIx> {
     let mut remove = BTreeSet::default();
     for edge in graph.edges_directed(node, Direction::Outgoing) {
         let dep_name = edge.weight();
         let dep_node = edge.target();
-        match validate_dep(graph, node_manifest, dep_name, dep_node) {
+        match validate_dep(graph, manifests, dep_name, dep_node) {
             Err(_) => {
                 remove.insert(edge.id());
             }
-            Ok(dep_manifest) => {
+            Ok(_) => {
                 if visited.insert(dep_node) {
-                    let rm = validate_deps(graph, dep_node, &dep_manifest, visited);
+                    let rm = validate_deps(graph, dep_node, manifests, visited);
                     remove.extend(rm);
                 }
                 continue;
@@ -656,19 +654,24 @@ fn validate_deps(
 /// Returns the `ManifestFile` in the case that the dependency is valid.
 fn validate_dep(
     graph: &Graph,
-    node_manifest: &PackageManifestFile,
+    manifests: &ManifestFiles,
     dep_edge: &Edge,
     dep_node: NodeIx,
 ) -> Result<PackageManifestFile> {
     let dep_name = &dep_edge.name;
+    let (member_manifests, workspace_manifests) = &manifests;
+    let node_manifest = member_manifests
+        .get(dep_name)
+        .ok_or_else(|| anyhow!("Couldn't find manifest file for {}", dep_name))?;
     // Check the validity of the dependency path, including its path root.
-    let dep_path = dep_path(graph, node_manifest, dep_name, dep_node).map_err(|e| {
-        anyhow!(
-            "failed to construct path for dependency {:?}: {}",
-            dep_name,
-            e
-        )
-    })?;
+    let dep_path =
+        dep_path(graph, node_manifest, workspace_manifests.clone(), dep_node).map_err(|e| {
+            anyhow!(
+                "failed to construct path for dependency {:?}: {}",
+                dep_name,
+                e
+            )
+        })?;
 
     // Ensure the manifest is accessible.
     let dep_manifest = PackageManifestFile::from_dir(&dep_path)?;
@@ -726,10 +729,11 @@ fn validate_dep_manifest(
 fn dep_path(
     graph: &Graph,
     node_manifest: &PackageManifestFile,
-    dep_name: &str,
+    workspace_manifest: Option<WorkspaceManifestFile>,
     dep_node: NodeIx,
 ) -> Result<PathBuf> {
     let dep = &graph[dep_node];
+    let dep_name = &dep.name;
     match &dep.source {
         SourcePinned::Git(git) => {
             let repo_path = git_commit_path(&dep.name, &git.source.repo, &git.commit_hash);
@@ -773,14 +777,10 @@ fn dep_path(
         SourcePinned::Registry(_reg) => unreachable!("registry dependencies not yet supported"),
         SourcePinned::Member => {
             // If a node has a root dependency it is a member of the workspace.
-            let parent_workspace_manifest = node_manifest
-                .dir()
-                .parent()
-                .and_then(|path| WorkspaceManifestFile::from_dir(path).ok());
-            if let Some(parent_workspace_manifest) = parent_workspace_manifest {
-                parent_workspace_manifest
+            if let Some(workspace_manifest) = workspace_manifest {
+                workspace_manifest
                     .members()
-                    .zip(parent_workspace_manifest.member_paths()?)
+                    .zip(workspace_manifest.member_paths()?)
                     .find(|(member_name, _)| *member_name == dep_name)
                     .map(|(_, member_path)| member_path)
                     .ok_or_else(|| anyhow!("cannot find dependency in the workspace"))
@@ -1136,13 +1136,12 @@ pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
 /// Given a graph collects ManifestMap while taking in to account that manifest can be a
 /// ManifestFile::Workspace. In the case of a workspace each pkg manifest map is collected and
 /// their added node lists are merged.
-fn graph_to_manifest_map(
-    member_manifests: &MemberManifestFiles,
-    graph: &Graph,
-) -> Result<ManifestMap> {
+fn graph_to_manifest_map(manifests: &ManifestFiles, graph: &Graph) -> Result<ManifestMap> {
     let mut manifest_map = HashMap::new();
+    let (member_manifests, _) = &manifests;
     for pkg_manifest in member_manifests.values() {
-        manifest_map.extend(pkg_graph_to_manifest_map(pkg_manifest, graph)?);
+        let pkg_name = &pkg_manifest.project.name;
+        manifest_map.extend(pkg_graph_to_manifest_map(manifests, pkg_name, graph)?);
     }
     Ok(manifest_map)
 }
@@ -1155,9 +1154,15 @@ fn graph_to_manifest_map(
 /// `pkg_graph_to_manifest_map` starts from each node (which corresponds to the given proj_manifest)
 /// and visits childs to collect their manifest files.
 fn pkg_graph_to_manifest_map(
-    proj_manifest: &PackageManifestFile,
+    manifests: &ManifestFiles,
+    pkg_name: &str,
     graph: &Graph,
 ) -> Result<ManifestMap> {
+    let (member_manifest, workspace_manifest_file) = manifests;
+
+    let proj_manifest = member_manifest
+        .get(pkg_name)
+        .ok_or_else(|| anyhow!("Cannot find manifest for {}", pkg_name))?;
     let mut manifest_map = ManifestMap::new();
 
     // Traverse the graph from the project node.
@@ -1185,7 +1190,13 @@ fn pkg_graph_to_manifest_map(
             })
             .next()
             .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
-        let dep_path = dep_path(graph, parent_manifest, dep_name, dep_node).map_err(|e| {
+        let dep_path = dep_path(
+            graph,
+            parent_manifest,
+            workspace_manifest_file.clone(),
+            dep_node,
+        )
+        .map_err(|e| {
             anyhow!(
                 "failed to construct path for dependency {:?}: {}",
                 dep_name,
