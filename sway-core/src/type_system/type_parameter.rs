@@ -75,23 +75,32 @@ impl TypeParameter {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let TypeParameter {
+            type_id,
+            initial_type_id,
+            name_ident,
+            trait_constraints,
+            trait_constraints_span,
+        } = type_parameter;
+
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
         let type_id = insert_type(TypeInfo::UnknownGeneric {
-            name: type_parameter.name_ident.clone(),
+            name: name_ident.clone(),
         });
         let type_parameter_decl = ty::TyDeclaration::GenericTypeForFunctionScope {
-            name: type_parameter.name_ident.clone(),
+            name: name_ident.clone(),
             type_id,
         };
         ctx.namespace
-            .insert_symbol(type_parameter.name_ident.clone(), type_parameter_decl)
+            .insert_symbol(name_ident.clone(), type_parameter_decl)
             .ok(&mut warnings, &mut errors);
         let type_parameter = TypeParameter {
-            name_ident: type_parameter.name_ident,
+            name_ident,
             type_id,
-            initial_type_id: type_parameter.initial_type_id,
-            trait_constraints: type_parameter.trait_constraints,
-            trait_constraints_span: type_parameter.trait_constraints_span,
+            initial_type_id,
+            trait_constraints,
+            trait_constraints_span,
         };
         ok(type_parameter, warnings, errors)
     }
