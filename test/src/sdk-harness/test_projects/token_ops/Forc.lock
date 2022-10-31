@@ -9,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'token_ops'
-source = 'root'
+source = 'member'
 dependencies = ['std']
