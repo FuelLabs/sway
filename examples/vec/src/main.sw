@@ -4,10 +4,10 @@ use std::logging::log;
 
 fn main() {
     // ANCHOR: vec_new
-    let v: Vec<u64> = ~Vec::new();
+    let v: Vec<u64> = Vec::new();
     // ANCHOR_END: vec_new
     // ANCHOR: vec_push
-    let mut v = ~Vec::new();
+    let mut v = Vec::new();
 
     v.push(5);
     v.push(6);
@@ -39,7 +39,7 @@ fn main() {
         Boolean: bool,
     }
 
-    let mut row = ~Vec::new();
+    let mut row = Vec::new();
     row.push(TableCell::Int(3));
     row.push(TableCell::B256(0x0101010101010101010101010101010101010101010101010101010101010101));
     row.push(TableCell::Boolean(true));

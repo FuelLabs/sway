@@ -1,8 +1,8 @@
 script;
 
-const ETH_ID0 = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
+const ETH_ID0 = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
 fn contract_id_wrapper(b: b256) -> ContractId {
-    ~ContractId::from(b)
+    ContractId::from(b)
 }
 const ETH_ID1 = contract_id_wrapper(0x0000000000000000000000000000000000000000000000000000000000000001);
 
@@ -42,8 +42,8 @@ fn main() -> u64 {
     assert(int1 == INT1 && ZERO_B256 == KEY);
 
     // initialization through function applications.
-    const eth_id0 = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
-    const eth_id1 = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    const eth_id0 = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
+    const eth_id1 = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
     assert(eth_id0 == ETH_ID0 && eth_id1 == ETH_ID1);
 
     // tuples and arrays.

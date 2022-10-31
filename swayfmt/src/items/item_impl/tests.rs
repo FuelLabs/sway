@@ -110,9 +110,9 @@ fmt_test!(  normal_with_generics
     }
     fn to_result(self) -> Result<T> {
         if let Option::Some(value) = self {
-            ~Result::<T>::ok(value)
+            Result::<T>::ok(value)
         } else {
-            ~Result::<T>::err(99u8)
+            Result::<T>::err(99u8)
         }
     }
 }",
@@ -126,9 +126,9 @@ fmt_test!(  normal_with_generics
                 }
                 fn to_result(self) -> Result<T> {
                     if let Option::Some(value) = self {
-                    ~Result::<T>::ok(value)
+                    Result::<T>::ok(value)
                     } else {
-                    ~Result::<T>::err(99u8)
+                    Result::<T>::err(99u8)
                     }
                 }
             }"
