@@ -6,7 +6,6 @@ use crate::{
 
 use sway_ast::{
     expr::{ReassignmentOp, ReassignmentOpVariant},
-    keywords::TildeToken,
     ty::TyTupleDescriptor,
     AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
     CommaToken, Dependency, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField,
@@ -1077,16 +1076,6 @@ fn method_call_fields_to_method_application_expression(
     }))
 }
 
-fn ensure_no_fully_qual(handler: &Handler, fq: &Option<TildeToken>) -> Result<(), ErrorEmitted> {
-    if let Some(tilde_token) = fq {
-        let error = ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere {
-            span: tilde_token.span(),
-        };
-        return Err(handler.emit_err(error.into()));
-    }
-    Ok(())
-}
-
 fn expr_func_app_to_expression_kind(
     handler: &Handler,
     func: Box<Expr>,
@@ -1120,7 +1109,7 @@ fn expr_func_app_to_expression_kind(
         })
     };
 
-    let (prefixes, last, call_suffix) = match suffix.pop() {
+    let (prefixes, last, call_seg) = match suffix.pop() {
         None => (Vec::new(), None, prefix),
         Some((_, call_path_suffix)) => {
             // Gather the idents of the prefix, i.e. all segments but the last one.
@@ -1133,13 +1122,6 @@ fn expr_func_app_to_expression_kind(
             (prefix, Some(last), call_path_suffix)
         }
     };
-    let PathExprSegment {
-        fully_qualified,
-        name: call_name,
-        generics_opt,
-    } = call_suffix;
-
-    ensure_no_fully_qual(handler, &fully_qualified)?;
 
     let arguments = args
         .into_inner()
@@ -1152,10 +1134,10 @@ fn expr_func_app_to_expression_kind(
         None => start,
     };
 
-    let (type_arguments, type_arguments_span) = convert_ty_args(generics_opt)?;
+    let (type_arguments, type_arguments_span) = convert_ty_args(call_seg.generics_opt)?;
 
     // Route intrinsic calls to different AST node.
-    match Intrinsic::try_from_str(call_name.as_str()) {
+    match Intrinsic::try_from_str(call_seg.name.as_str()) {
         Some(intrinsic) if last.is_none() && !is_absolute => {
             return Ok(ExpressionKind::IntrinsicFunction(
                 IntrinsicFunctionExpression {
@@ -1177,7 +1159,7 @@ fn expr_func_app_to_expression_kind(
         None => {
             let call_path = CallPath {
                 prefixes,
-                suffix: call_name,
+                suffix: call_seg.name,
                 is_absolute,
             };
             let span = match type_arguments_span {
@@ -1208,7 +1190,7 @@ fn expr_func_app_to_expression_kind(
     };
     let suffix = AmbiguousSuffix {
         before: before,
-        suffix: call_name,
+        suffix: call_seg.name,
     };
     let call_path = CallPath {
         prefixes,
@@ -1433,7 +1415,6 @@ fn expr_to_expression(handler: &Handler, expr: Expr) -> Result<Expression, Error
                     Expr::Path(path_expr)
                         if path_expr.root_opt.is_none()
                             && path_expr.suffix.is_empty()
-                            && path_expr.prefix.fully_qualified.is_none()
                             && path_expr.prefix.generics_opt.is_none()
                             && path_expr.prefix.name.as_str() == "storage" =>
                     {
@@ -1889,9 +1870,9 @@ fn path_type_to_supertrait(
     } = path_type;
     let is_absolute = path_root_opt_to_bool(handler, root_opt)?;
     let (prefixes, call_path_suffix) = match suffix.pop() {
-        Some((_double_colon_token, call_path_suffix)) => {
+        Some((_, call_path_suffix)) => {
             let mut prefixes = vec![path_type_segment_to_ident(handler, prefix)?];
-            for (_double_colon_token, call_path_prefix) in suffix {
+            for (_, call_path_prefix) in suffix {
                 let ident = path_type_segment_to_ident(handler, call_path_prefix)?;
                 prefixes.push(ident);
             }
@@ -1899,21 +1880,13 @@ fn path_type_to_supertrait(
         }
         None => (Vec::new(), prefix),
     };
-    //let PathTypeSegment { fully_qualified, name, generics_opt } = call_path_suffix;
     let PathTypeSegment {
-        fully_qualified,
-        name,
-        ..
+        name: suffix,
+        generics_opt: _,
     } = call_path_suffix;
-    if let Some(tilde_token) = fully_qualified {
-        let error = ConvertParseTreeError::FullyQualifiedTraitsNotSupported {
-            span: tilde_token.span(),
-        };
-        return Err(handler.emit_err(error.into()));
-    }
     let name = CallPath {
         prefixes,
-        suffix: name,
+        suffix,
         is_absolute,
     };
     /*
@@ -1933,14 +1906,8 @@ fn path_type_to_supertrait(
 
 fn path_type_segment_to_ident(
     handler: &Handler,
-    PathTypeSegment {
-        fully_qualified,
-        name,
-        generics_opt,
-    }: PathTypeSegment,
+    PathTypeSegment { name, generics_opt }: PathTypeSegment,
 ) -> Result<Ident, ErrorEmitted> {
-    ensure_no_fully_qual(handler, &fully_qualified)?;
-
     if let Some((_, generic_args)) = generics_opt {
         let error = ConvertParseTreeError::GenericsNotSupportedHere {
             span: generic_args.span(),
@@ -1954,14 +1921,8 @@ fn path_type_segment_to_ident(
 /// but allows for the item to be either type arguments _or_ an ident.
 fn path_expr_segment_to_ident_or_type_argument(
     handler: &Handler,
-    PathExprSegment {
-        fully_qualified,
-        name,
-        generics_opt,
-    }: PathExprSegment,
+    PathExprSegment { name, generics_opt }: PathExprSegment,
 ) -> Result<(Ident, Vec<TypeArgument>), ErrorEmitted> {
-    ensure_no_fully_qual(handler, &fully_qualified)?;
-
     let type_args = match generics_opt {
         Some((_, x)) => generic_args_to_type_arguments(handler, x)?,
         None => Default::default(),
@@ -1971,14 +1932,8 @@ fn path_expr_segment_to_ident_or_type_argument(
 
 fn path_expr_segment_to_ident(
     handler: &Handler,
-    PathExprSegment {
-        fully_qualified,
-        name,
-        generics_opt,
-    }: &PathExprSegment,
+    PathExprSegment { name, generics_opt }: &PathExprSegment,
 ) -> Result<Ident, ErrorEmitted> {
-    ensure_no_fully_qual(handler, fully_qualified)?;
-
     if let Some((_, generic_args)) = generics_opt {
         let error = ConvertParseTreeError::GenericsNotSupportedHere {
             span: generic_args.span(),
@@ -3055,12 +3010,7 @@ fn path_type_to_type_info(
     let span = path_type.span();
     let PathType {
         root_opt,
-        prefix:
-            PathTypeSegment {
-                fully_qualified,
-                name,
-                generics_opt,
-            },
+        prefix: PathTypeSegment { name, generics_opt },
         suffix,
     } = path_type;
 
@@ -3068,8 +3018,6 @@ fn path_type_to_type_info(
         let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported { span };
         return Err(handler.emit_err(error.into()));
     }
-
-    ensure_no_fully_qual(handler, &fully_qualified)?;
 
     let type_info = match type_name_to_type_info_opt(&name) {
         Some(type_info) => {

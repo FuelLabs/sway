@@ -51,7 +51,6 @@ fn parse_ident(parser: &mut Parser) -> ParseResult<Ident> {
 impl Parse for PathExprSegment {
     fn parse(parser: &mut Parser) -> ParseResult<PathExprSegment> {
         Ok(PathExprSegment {
-            fully_qualified: parser.take(),
             name: parse_ident(parser)?,
             generics_opt: parser.guarded_parse::<(DoubleColonToken, OpenAngleBracketToken), _>()?,
         })
@@ -92,7 +91,6 @@ impl Parse for PathType {
 
 impl Parse for PathTypeSegment {
     fn parse(parser: &mut Parser) -> ParseResult<PathTypeSegment> {
-        let fully_qualified = parser.take();
         let name = parse_ident(parser)?;
         let generics_opt =
             if let Some(generics) = parser.guarded_parse::<OpenAngleBracketToken, _>()? {
@@ -104,11 +102,7 @@ impl Parse for PathTypeSegment {
             } else {
                 None
             };
-        Ok(PathTypeSegment {
-            fully_qualified,
-            name,
-            generics_opt,
-        })
+        Ok(PathTypeSegment { name, generics_opt })
     }
 }
 
@@ -116,10 +110,7 @@ impl Parse for QualifiedPathRoot {
     fn parse(parser: &mut Parser) -> ParseResult<QualifiedPathRoot> {
         let ty = parser.parse()?;
         let as_trait = match parser.take() {
-            Some(as_token) => {
-                let path_type = parser.parse()?;
-                Some((as_token, path_type))
-            }
+            Some(as_token) => Some((as_token, parser.parse()?)),
             None => None,
         };
         Ok(QualifiedPathRoot { ty, as_trait })
