@@ -96,7 +96,7 @@ fn main() -> bool {
     assert(unwrapped == 11);
 
     // test as_u128()
-    let err_1 = ~U256::from(42, 0, 0, 11).as_u128();
+    let err_1 = U256::from(42, 0, 0, 11).as_u128();
     assert(match err_1 {
         Result::Err(U256Error::LossOfPrecision) => {
             true
@@ -106,7 +106,7 @@ fn main() -> bool {
         },
     });
 
-    let err_2 = ~U256::from(0, 42, 0, 11).as_u128();
+    let err_2 = U256::from(0, 42, 0, 11).as_u128();
     assert(match err_2 {
         Result::Err(U256Error::LossOfPrecision) => {
             true
@@ -116,13 +116,13 @@ fn main() -> bool {
         },
     });
 
-    let elevens = ~U256::from(0, 0, 11, 11);
+    let elevens = U256::from(0, 0, 11, 11);
     let unwrapped = elevens.as_u128().unwrap();
-    assert(unwrapped == ~U128::from(11, 11));
+    assert(unwrapped == U128::from(11, 11));
 
-    let eleven = ~U256::from(0, 0, 0, 11);
+    let eleven = U256::from(0, 0, 0, 11);
     let unwrapped = eleven.as_u128().unwrap();
-    assert(unwrapped == ~U128::from(0, 11));
+    assert(unwrapped == U128::from(0, 11));
 
     // test bits()
     assert(U256::bits() == 256u32);
