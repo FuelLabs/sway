@@ -536,9 +536,7 @@ impl BuildPlan {
 /// Given a graph and the known project name retrieved from the manifest, produce an iterator
 /// yielding any nodes from the graph that might potentially be a project node.
 fn potential_proj_nodes<'a>(g: &'a Graph, proj_name: &'a str) -> impl 'a + Iterator<Item = NodeIx> {
-    g.node_indices()
-        .filter(move |&n| g[n].name == proj_name)
-        .filter(move |&n| matches!(g[n].source, SourcePinned::Member))
+    member_nodes(g).filter(move |&n| g[n].name == proj_name)
 }
 
 /// Given a graph, find the project node.

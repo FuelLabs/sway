@@ -19,10 +19,7 @@ pub type MemberName = String;
 pub type MemberManifestFiles = BTreeMap<MemberName, PackageManifestFile>;
 /// MemberManifestFiles packed with an optional WorkspaceManifestFile if the corresponding ManifestFile is
 /// ManifestFile::Workspace.
-pub type ManifestFiles = (
-    BTreeMap<MemberName, PackageManifestFile>,
-    Option<WorkspaceManifestFile>,
-);
+pub type ManifestFiles = (MemberManifestFiles, Option<WorkspaceManifestFile>);
 
 pub enum ManifestFile {
     Package(Box<PackageManifestFile>),
