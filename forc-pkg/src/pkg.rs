@@ -755,9 +755,9 @@ fn dep_path(
         SourcePinned::Member => {
             // If a node has a root dependency it is a member of the workspace.
             manifests
-                .iter()
-                .find(|(_, manifest)| manifest.project.name == *dep_name)
-                .map(|(_, manifest)| manifest.path().to_path_buf())
+                .values()
+                .find(|manifest| manifest.project.name == *dep_name)
+                .map(|manifest| manifest.path().to_path_buf())
                 .ok_or_else(|| anyhow!("cannot find dependency in the workspace"))
         }
     }
