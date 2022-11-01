@@ -71,7 +71,7 @@ pub(crate) async fn runs_on_node(
 pub(crate) fn runs_in_vm(
     script: BuiltPackage,
     script_data: Option<Vec<u8>>,
-) -> (ProgramState, BuiltPackage) {
+) -> (ProgramState, Vec<Receipt>, BuiltPackage) {
     let storage = MemoryStorage::default();
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -92,7 +92,7 @@ pub(crate) fn runs_in_vm(
 
     let mut i = Interpreter::with_storage(storage, Default::default());
     let transition = i.transact(tx).unwrap();
-    (*transition.state(), script)
+    (*transition.state(), transition.receipts().to_vec(), script)
 }
 
 /// Compiles the code and optionally captures the output of forc and the compilation.
@@ -120,13 +120,16 @@ pub(crate) fn compile_to_bytes(
     let manifest = PackageManifestFile::from_dir(&PathBuf::from(path)).unwrap();
     let result = forc_pkg::build_package_with_options(
         &manifest,
-        forc_pkg::BuildOptions {
-            path: Some(format!(
-                "{}/src/e2e_vm_tests/test_programs/{}",
-                manifest_dir, file_name
-            )),
-            locked: run_config.locked,
-            terse_mode: !(capture_output || run_config.verbose),
+        forc_pkg::BuildOpts {
+            pkg: forc_pkg::PkgOpts {
+                path: Some(format!(
+                    "{}/src/e2e_vm_tests/test_programs/{}",
+                    manifest_dir, file_name
+                )),
+                locked: run_config.locked,
+                terse: !(capture_output || run_config.verbose),
+                ..Default::default()
+            },
             ..Default::default()
         },
     );

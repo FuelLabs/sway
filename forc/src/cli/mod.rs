@@ -17,12 +17,13 @@ pub use new::Command as NewCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use plugins::Command as PluginsCommand;
 pub use template::Command as TemplateCommand;
-use test::Command as TestCommand;
+pub use test::Command as TestCommand;
 use tracing::metadata::LevelFilter;
 pub use update::Command as UpdateCommand;
 
 mod commands;
 mod plugin;
+pub mod shared;
 
 #[derive(Debug, Parser)]
 #[clap(name = "forc", about = "Fuel Orchestrator", version)]

@@ -8,7 +8,7 @@ use crate::{Ident, TypeInfo};
 #[derive(Debug, Clone)]
 pub enum MethodName {
     /// Represents a method lookup with a type somewhere in the path
-    /// like a::b::~C::d()
+    /// like `a::b::C::d()` with `C` being the type.
     FromType {
         call_path_binding: TypeBinding<CallPath<(TypeInfo, Span)>>,
         method_name: Ident,

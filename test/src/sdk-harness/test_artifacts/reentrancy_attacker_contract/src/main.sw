@@ -49,7 +49,7 @@ impl Attacker for Contract {
         let result: Result<Identity, AuthError> = msg_sender();
         let id = get_msg_sender_id_or_panic(result);
 
-        let attacker = abi(Attacker, ~ContractId::into(contract_id()));
+        let attacker = abi(Attacker, ContractId::into(contract_id()));
         attacker.launch_attack(id)
     }
 
@@ -57,7 +57,7 @@ impl Attacker for Contract {
         let result: Result<Identity, AuthError> = msg_sender();
         let id = get_msg_sender_id_or_panic(result);
 
-        let attacker = abi(Attacker, ~ContractId::into(contract_id()));
+        let attacker = abi(Attacker, ContractId::into(contract_id()));
         attacker.launch_thwarted_attack_1(id);
         true
     }
@@ -66,7 +66,7 @@ impl Attacker for Contract {
         let result: Result<Identity, AuthError> = msg_sender();
         let id = get_msg_sender_id_or_panic(result);
 
-        let attacker = abi(Attacker, ~ContractId::into(contract_id()));
+        let attacker = abi(Attacker, ContractId::into(contract_id()));
         attacker.launch_thwarted_attack_1(id);
         true
     }

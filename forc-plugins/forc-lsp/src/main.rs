@@ -14,5 +14,7 @@ struct App {}
 
 #[tokio::main]
 async fn main() {
+    App::parse();
+
     sway_lsp::start().await
 }

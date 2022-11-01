@@ -30,12 +30,11 @@ impl Foo {
 }
 
 fn main() {
-    let foo = ~Foo::new_foo(42, true);
+    let foo = Foo::new_foo(42, true);
     assert(foo.is_baz_true());
 }
 ```
 
-Note the syntax of the associated function call: `~Foo::new_foo(42, true);`. This bit of syntax is unique to Sway: when referring to a type directly, you preface the type with a tilde (`~`). To call an associated function, refer to the type and then the function name.
 To call a method, simply use dot syntax: `foo.iz_baz_true()`.
 
 Similarly to [free functions](functions.md), methods and associated functions may accept `ref mut` parameters. For example:
