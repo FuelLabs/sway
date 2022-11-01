@@ -5,7 +5,7 @@ use crate::{
     semantic_analysis::*,
 };
 
-use super::{convert::convert_literal_to_constant, types::*};
+use super::{convert::convert_literal_to_constant, function::FnCompiler, types::*};
 
 use sway_error::error::CompileError;
 use sway_ir::{
@@ -22,6 +22,7 @@ pub(crate) struct LookupEnv<'a> {
     pub(crate) md_mgr: &'a mut MetadataManager,
     pub(crate) module: Module,
     pub(crate) module_ns: Option<&'a namespace::Module>,
+    pub(crate) function_compiler: Option<&'a FnCompiler>,
     pub(crate) lookup: fn(&mut LookupEnv, &Ident) -> Result<Option<Value>, CompileError>,
 }
 
@@ -29,6 +30,28 @@ pub(crate) fn compile_const_decl(
     env: &mut LookupEnv,
     name: &Ident,
 ) -> Result<Option<Value>, CompileError> {
+    // Check if it's a processed local constant.
+    if let Some(fn_compiler) = env.function_compiler {
+        let mut found_local = false;
+        if let Some(ptr) = fn_compiler.get_function_ptr(env.context, name.as_str()) {
+            found_local = true;
+            if let Some(constant) = ptr.get_initializer(env.context) {
+                return Ok(Some(Value::new_constant(env.context, constant.clone())));
+            }
+        }
+
+        if let Some(value) = fn_compiler.get_function_arg(env.context, name.as_str()) {
+            found_local = true;
+            if value.get_constant(env.context).is_some() {
+                return Ok(Some(value));
+            }
+        }
+
+        if found_local {
+            return Ok(None);
+        }
+    }
+
     // Check if it's a processed global constant.
     match (
         env.module.get_global_constant(env.context, name.as_str()),
@@ -52,6 +75,7 @@ pub(crate) fn compile_const_decl(
                     env.md_mgr,
                     env.module,
                     env.module_ns,
+                    env.function_compiler,
                     &value,
                 )?;
                 env.module
@@ -70,12 +94,19 @@ pub(super) fn compile_constant_expression(
     md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: Option<&namespace::Module>,
+    function_compiler: Option<&FnCompiler>,
     const_expr: &ty::TyExpression,
 ) -> Result<Value, CompileError> {
     let span_id_idx = md_mgr.span_to_md(context, &const_expr.span);
 
-    let constant_evaluated =
-        compile_constant_expression_to_constant(context, md_mgr, module, module_ns, const_expr)?;
+    let constant_evaluated = compile_constant_expression_to_constant(
+        context,
+        md_mgr,
+        module,
+        module_ns,
+        function_compiler,
+        const_expr,
+    )?;
     Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
 }
 
@@ -84,6 +115,7 @@ pub(crate) fn compile_constant_expression_to_constant(
     md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: Option<&namespace::Module>,
+    function_compiler: Option<&FnCompiler>,
     const_expr: &ty::TyExpression,
 ) -> Result<Constant, CompileError> {
     let lookup = &mut LookupEnv {
@@ -91,6 +123,7 @@ pub(crate) fn compile_constant_expression_to_constant(
         md_mgr,
         module,
         module_ns,
+        function_compiler,
         lookup: compile_const_decl,
     };
 

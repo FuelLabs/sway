@@ -45,7 +45,14 @@ impl ty::TyStorageField {
         module: Module,
         ix: &StateIndex,
     ) -> Result<Vec<StorageSlot>, CompileError> {
-        compile_constant_expression_to_constant(context, md_mgr, module, None, &self.initializer)
-            .map(|constant| serialize_to_storage_slots(&constant, context, ix, &constant.ty, &[]))
+        compile_constant_expression_to_constant(
+            context,
+            md_mgr,
+            module,
+            None,
+            None,
+            &self.initializer,
+        )
+        .map(|constant| serialize_to_storage_slots(&constant, context, ix, &constant.ty, &[]))
     }
 }
