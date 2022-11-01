@@ -1,5 +1,5 @@
 //! Functions to expose 14 of the reserved FuelVM registers for ease of use.
-//! Ref: https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#semantics
+//! Ref: https://fuellabs.github.io/fuel-specs/master/vm#semantics
 library registers;
 
 /// Contains overflow/underflow of addition, subtraction, and multiplication.
