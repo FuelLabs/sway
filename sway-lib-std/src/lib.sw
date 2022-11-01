@@ -1,6 +1,7 @@
 library std;
 
 dep intrinsics;
+dep error_signals;
 dep logging;
 dep revert;
 dep assert;
