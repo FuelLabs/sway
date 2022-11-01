@@ -24,4 +24,4 @@ Math in the FuelVM is by default safe (i.e. any overflow or exception is a panic
 
 ## No* Code Size Limit
 
-There is no practical code size limit to Sway contracts. The physical limit is governed by the [`VM_MAX_RAM` VM parameter](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#parameters), which at the time of writing is 64 MiB.
+There is no practical code size limit to Sway contracts. The physical limit is governed by the [`VM_MAX_RAM` VM parameter](https://fuellabs.github.io/fuel-specs/master/vm#parameters), which at the time of writing is 64 MiB.
