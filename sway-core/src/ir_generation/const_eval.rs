@@ -36,8 +36,10 @@ pub(crate) fn compile_const_decl(
         let mut found_local = false;
         if let Some(ptr) = fn_compiler.get_function_ptr(env.context, name.as_str()) {
             found_local = true;
-            if let Some(constant) = ptr.get_initializer(env.context) {
-                return Ok(Some(Value::new_constant(env.context, constant.clone())));
+            if !ptr.is_mutable(env.context) {
+                if let Some(constant) = ptr.get_initializer(env.context) {
+                    return Ok(Some(Value::new_constant(env.context, constant.clone())));
+                }
             }
 
             // Check if a constant was stored to the pointer in the current block
