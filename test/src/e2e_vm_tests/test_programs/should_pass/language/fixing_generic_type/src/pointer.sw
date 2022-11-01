@@ -4,14 +4,12 @@ use std::revert::*;
 
 /// A point in memory with unknown type
 pub struct Pointer {
-    val: u64
+    val: u64,
 }
 
 impl Pointer {
     pub fn new(val: u64) -> Self {
-        Pointer {
-            val: val
-        }
+        Pointer { val: val }
     }
 
     /// Creates a new pointer to the given reference-type value
@@ -20,7 +18,7 @@ impl Pointer {
             revert(0);
         };
         Pointer {
-            val: asm(r1: val) { r1: u64 }
+            val: asm(r1: val) { r1: u64 },
         }
     }
 
@@ -31,7 +29,7 @@ impl Pointer {
     /// Returns a new pointer adjusted by the given offset
     pub fn with_offset(self, offset: u64) -> Self {
         Pointer {
-            val: self.val + offset
+            val: self.val + offset,
         }
     }
 
@@ -40,7 +38,10 @@ impl Pointer {
         if __is_reference_type::<T>() {
             asm(r1: self.val) { r1: T }
         } else {
-            asm(r1: self.val) { lw r1 r1 i0; r1: T }
+            asm(r1: self.val, r2) {
+                lw r2 r1 i0;
+                r2: T
+            }
         }
     }
 }

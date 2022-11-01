@@ -5,7 +5,7 @@ use ::pointer::*;
 /// A block of data on the heap
 pub struct Buffer {
     ptr: Pointer,
-    len: u64
+    len: u64,
 }
 
 impl Buffer {
@@ -13,7 +13,7 @@ impl Buffer {
     pub fn new() -> Self {
         Buffer {
             ptr: alloc(0),
-            len: 0
+            len: 0,
         }
     }
 
@@ -21,7 +21,7 @@ impl Buffer {
     pub fn alloc(size: u64) -> Self {
         Buffer {
             ptr: alloc(size),
-            len: size
+            len: size,
         }
     }
 
@@ -34,7 +34,7 @@ impl Buffer {
         };
         Buffer {
             ptr: ptr,
-            len: __size_of::<T>()
+            len: __size_of::<T>(),
         }
     }
 
@@ -59,9 +59,9 @@ impl Buffer {
             let ptr = Pointer::from(val);
             let len = __size_of::<T>();
 
+
             // We can't reference `self.write_unchecked` like this:
             // self.write_unchecked(ptr, len, offset);
-
             // Instead we inline
             copy(self.ptr.with_offset(offset), ptr, len);
         } else {
@@ -96,10 +96,10 @@ impl Buffer {
             realloc(self.ptr, self.len, size)
         };
 
+
         // We don't have a mut ref to self so we can't do the following:
         // self.ptr = new_ptr;
         // self.len = size;
-
         // Instead we just copy what we want into self's memory
         asm(r1: self, r2: (new_ptr, size), r3: __size_of::<Buffer>()) {
             mcp r1 r2 r3;

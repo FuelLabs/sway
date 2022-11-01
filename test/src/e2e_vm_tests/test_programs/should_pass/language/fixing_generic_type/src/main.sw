@@ -9,11 +9,11 @@ use std::assert::assert;
 
 struct TestStruct {
     boo: bool,
-    uwu: u64
+    uwu: u64,
 }
 
 struct Data<T> {
-    value: T
+    value: T,
 }
 
 impl<T> Data<T> {
@@ -24,7 +24,10 @@ impl<T> Data<T> {
 
 fn main() -> bool {
     // Create a struct
-    let foo = TestStruct { boo: true, uwu: 42 };
+    let foo = TestStruct {
+        boo: true,
+        uwu: 42,
+    };
     let foo_len = __size_of::<TestStruct>();
     assert(foo_len == 16);
 

@@ -36,7 +36,7 @@ impl Incrementor for Contract {
     #[storage(read)]
     fn get() -> u64 {
         asm(key: KEY, res) {
-            srw key res;
+            srw res key;
             res: u64
         }
     }
