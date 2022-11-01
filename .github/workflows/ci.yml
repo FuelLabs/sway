@@ -374,307 +374,307 @@ jobs:
             #        env:
             #          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
-  publish:
-    # Only do this job if publishing a release
-    needs:
-      [
-        build-forc-test-project,
-        build-sway-examples,
-        build-sway-lib-core,
-        build-sway-lib-std,
-        cargo-build-workspace,
-        cargo-clippy,
-        cargo-fmt-check,
-        cargo-run-e2e-test,
-        cargo-test-lib-std,
-        cargo-test-workspace,
-        cargo-unused-deps-check,
-      ]
-    if: github.event_name == 'release' && github.event.action == 'published'
-    runs-on: ubuntu-latest
+            #publish:
+            #  # Only do this job if publishing a release
+            #  needs:
+            #    [
+            #      build-forc-test-project,
+            #      build-sway-examples,
+            #      build-sway-lib-core,
+            #      build-sway-lib-std,
+            #      cargo-build-workspace,
+            #      cargo-clippy,
+            #      cargo-fmt-check,
+            #      cargo-run-e2e-test,
+            #      cargo-test-lib-std,
+            #      cargo-test-workspace,
+            #      cargo-unused-deps-check,
+            #    ]
+            #  if: github.event_name == 'release' && github.event.action == 'published'
+            #  runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+            #  steps:
+            #    - name: Checkout repository
+            #      uses: actions/checkout@v2
 
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
+            #    - name: Install toolchain
+            #      uses: actions-rs/toolchain@v1
+            #      with:
+            #        toolchain: stable
+            #        override: true
 
-      - name: Verify tag version
-        run: |
-          cargo install toml-cli
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-client/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-fmt/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-lsp/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-pkg/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-tracing/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-util/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-core/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} swayfmt/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-ir/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-lsp/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-types/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-utils/Cargo.toml
-      - name: Publish crate
-        uses: katyo/publish-crates@v1
-        with:
-          publish-delay: 30000
-          registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+            #    - name: Verify tag version
+            #      run: |
+            #        cargo install toml-cli
+            #        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc/Cargo.toml
+            #        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-client/Cargo.toml
+            #        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-fmt/Cargo.toml
+            #        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-lsp/Cargo.toml
+            #        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-pkg/Cargo.toml
+            #        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-tracing/Cargo.toml
+            #        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-util/Cargo.toml
+            #        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-core/Cargo.toml
+            #        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} swayfmt/Cargo.toml
+            #        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-ir/Cargo.toml
+            #        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-lsp/Cargo.toml
+            #        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-types/Cargo.toml
+            #        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-utils/Cargo.toml
+            #    - name: Publish crate
+            #      uses: katyo/publish-crates@v1
+            #      with:
+            #        publish-delay: 30000
+            #        registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Notify if Job Fails
-        uses: ravsamhq/notify-slack-action@v2
-        if: always()
-        with:
-          status: ${{ job.status }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: "{workflow} has {status_message}"
-          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
-          footer: ""
-          notify_when: "failure"
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
+            #    - name: Notify if Job Fails
+            #      uses: ravsamhq/notify-slack-action@v2
+            #      if: always()
+            #      with:
+            #        status: ${{ job.status }}
+            #        token: ${{ secrets.GITHUB_TOKEN }}
+            #        notification_title: "{workflow} has {status_message}"
+            #        message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
+            #        footer: ""
+            #        notify_when: "failure"
+            #      env:
+            #        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
-  build-publish-master-image:
-    needs:
-      [
-        build-forc-test-project,
-        build-sway-examples,
-        build-sway-lib-core,
-        build-sway-lib-std,
-        cargo-build-workspace,
-        cargo-clippy,
-        cargo-fmt-check,
-        cargo-run-e2e-test,
-        cargo-test-lib-std,
-        cargo-test-workspace,
-        cargo-unused-deps-check,
-      ]
-    if: github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+            #build-publish-master-image:
+            #  needs:
+            #    [
+            #      build-forc-test-project,
+            #      build-sway-examples,
+            #      build-sway-lib-core,
+            #      build-sway-lib-std,
+            #      cargo-build-workspace,
+            #      cargo-clippy,
+            #      cargo-fmt-check,
+            #      cargo-run-e2e-test,
+            #      cargo-test-lib-std,
+            #      cargo-test-workspace,
+            #      cargo-unused-deps-check,
+            #    ]
+            #  if: github.ref == 'refs/heads/master'
+            #  runs-on: ubuntu-latest
+            #  permissions:
+            #    contents: read
+            #    packages: write
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+            #  steps:
+            #    - name: Checkout repository
+            #      uses: actions/checkout@v2
 
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v3
-        with:
-          images: |
-            ghcr.io/fuellabs/forc
-          tags: |
-            type=sha
-            type=ref,event=branch
-            type=ref,event=tag
-          flavor: |
-            latest=${{ github.ref == 'refs/heads/master' }}
-          labels: |
-            org.opencontainers.image.title=forc
-            org.opencontainers.image.description=Fuel Orchestrator.
+            #    - name: Docker meta
+            #      id: meta
+            #      uses: docker/metadata-action@v3
+            #      with:
+            #        images: |
+            #          ghcr.io/fuellabs/forc
+            #        tags: |
+            #          type=sha
+            #          type=ref,event=branch
+            #          type=ref,event=tag
+            #        flavor: |
+            #          latest=${{ github.ref == 'refs/heads/master' }}
+            #        labels: |
+            #          org.opencontainers.image.title=forc
+            #          org.opencontainers.image.description=Fuel Orchestrator.
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+            #    - name: Set up Docker Buildx
+            #      uses: docker/setup-buildx-action@v1
 
-      - name: Log in to the ghcr.io registry
-        uses: docker/login-action@v1
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+            #    - name: Log in to the ghcr.io registry
+            #      uses: docker/login-action@v1
+            #      with:
+            #        registry: ${{ env.REGISTRY }}
+            #        username: ${{ github.repository_owner }}
+            #        password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push the image to ghcr.io
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          file: deployment/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            #    - name: Build and push the image to ghcr.io
+            #      uses: docker/build-push-action@v2
+            #      with:
+            #        context: .
+            #        file: deployment/Dockerfile
+            #        push: true
+            #        tags: ${{ steps.meta.outputs.tags }}
+            #        labels: ${{ steps.meta.outputs.labels }}
+            #        cache-from: type=gha
+            #        cache-to: type=gha,mode=max
 
-      - name: Notify if Job Fails
-        uses: ravsamhq/notify-slack-action@v2
-        if: always()
-        with:
-          status: ${{ job.status }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: "{workflow} has {status_message}"
-          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
-          footer: ""
-          notify_when: "failure"
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
+            #    - name: Notify if Job Fails
+            #      uses: ravsamhq/notify-slack-action@v2
+            #      if: always()
+            #      with:
+            #        status: ${{ job.status }}
+            #        token: ${{ secrets.GITHUB_TOKEN }}
+            #        notification_title: "{workflow} has {status_message}"
+            #        message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
+            #        footer: ""
+            #        notify_when: "failure"
+            #      env:
+            #        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
-  build-publish-release-image:
-    # Build & Publish Docker Image Per Sway Release
-    needs: publish
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+            #build-publish-release-image:
+            #  # Build & Publish Docker Image Per Sway Release
+            #  needs: publish
+            #  runs-on: ubuntu-latest
+            #  permissions:
+            #    contents: read
+            #    packages: write
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+            #  steps:
+            #    - name: Checkout repository
+            #      uses: actions/checkout@v2
 
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v3
-        with:
-          images: |
-            ghcr.io/fuellabs/sway
-          tags: |
-            type=semver,pattern={{raw}}
+            #    - name: Docker meta
+            #      id: meta
+            #      uses: docker/metadata-action@v3
+            #      with:
+            #        images: |
+            #          ghcr.io/fuellabs/sway
+            #        tags: |
+            #          type=semver,pattern={{raw}}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+            #    - name: Set up Docker Buildx
+            #      uses: docker/setup-buildx-action@v1
 
-      - name: Log in to the ghcr.io registry
-        uses: docker/login-action@v1
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+            #    - name: Log in to the ghcr.io registry
+            #      uses: docker/login-action@v1
+            #      with:
+            #        registry: ${{ env.REGISTRY }}
+            #        username: ${{ github.repository_owner }}
+            #        password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push the image to ghcr.io
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          file: deployment/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            #    - name: Build and push the image to ghcr.io
+            #      uses: docker/build-push-action@v2
+            #      with:
+            #        context: .
+            #        file: deployment/Dockerfile
+            #        push: true
+            #        tags: ${{ steps.meta.outputs.tags }}
+            #        labels: ${{ steps.meta.outputs.labels }}
+            #        cache-from: type=gha
+            #        cache-to: type=gha,mode=max
 
-      - name: Notify if Job Fails
-        uses: ravsamhq/notify-slack-action@v2
-        if: always()
-        with:
-          status: ${{ job.status }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: "{workflow} has {status_message}"
-          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
-          footer: ""
-          notify_when: "failure"
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
+            #    - name: Notify if Job Fails
+            #      uses: ravsamhq/notify-slack-action@v2
+            #      if: always()
+            #      with:
+            #        status: ${{ job.status }}
+            #        token: ${{ secrets.GITHUB_TOKEN }}
+            #        notification_title: "{workflow} has {status_message}"
+            #        message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
+            #        footer: ""
+            #        notify_when: "failure"
+            #      env:
+            #        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
-  install-and-upload-forc-binaries:
-    name: Install and upload forc binaries to release
-    runs-on: ${{ matrix.job.os }}
-    if: github.event_name == 'release' && github.event.action == 'published'
-    needs: publish
-    strategy:
-      matrix:
-        job:
-          - os: ubuntu-latest
-            platform: linux
-            target: x86_64-unknown-linux-gnu
-            arch: amd64
-            svm_target_platform: linux-amd64
-          - os: ubuntu-latest
-            platform: linux
-            target: aarch64-unknown-linux-gnu
-            arch: arm64
-            svm_target_platform: linux-aarch64
-          - os: macos-latest
-            platform: darwin
-            target: x86_64-apple-darwin
-            arch: amd64
-            svm_target_platform: macosx-amd64
-          - os: macos-latest
-            platform: darwin
-            target: aarch64-apple-darwin
-            arch: arm64
-            svm_target_platform: macosx-aarch64
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
+            #install-and-upload-forc-binaries:
+            #  name: Install and upload forc binaries to release
+            #  runs-on: ${{ matrix.job.os }}
+            #  if: github.event_name == 'release' && github.event.action == 'published'
+            #  needs: publish
+            #  strategy:
+            #    matrix:
+            #      job:
+            #        - os: ubuntu-latest
+            #          platform: linux
+            #          target: x86_64-unknown-linux-gnu
+            #          arch: amd64
+            #          svm_target_platform: linux-amd64
+            #        - os: ubuntu-latest
+            #          platform: linux
+            #          target: aarch64-unknown-linux-gnu
+            #          arch: arm64
+            #          svm_target_platform: linux-aarch64
+            #        - os: macos-latest
+            #          platform: darwin
+            #          target: x86_64-apple-darwin
+            #          arch: amd64
+            #          svm_target_platform: macosx-amd64
+            #        - os: macos-latest
+            #          platform: darwin
+            #          target: aarch64-apple-darwin
+            #          arch: arm64
+            #          svm_target_platform: macosx-aarch64
+            #  steps:
+            #    - name: Checkout sources
+            #      uses: actions/checkout@v2
 
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          target: ${{ matrix.job.target }}
-          override: true
+            #    - name: Install toolchain
+            #      uses: actions-rs/toolchain@v1
+            #      with:
+            #        profile: minimal
+            #        toolchain: stable
+            #        target: ${{ matrix.job.target }}
+            #        override: true
 
-      - uses: Swatinem/rust-cache@v1
-        with:
-          cache-on-failure: true
+            #    - uses: Swatinem/rust-cache@v1
+            #      with:
+            #        cache-on-failure: true
 
-      - name: Apple M1 setup
-        if: ${{ matrix.job.target == 'aarch64-apple-darwin' }}
-        run: |
-          echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-          echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)" >> $GITHUB_ENV
-      - name: Linux ARM setup
-        if: ${{ matrix.job.target == 'aarch64-unknown-linux-gnu' }}
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+            #    - name: Apple M1 setup
+            #      if: ${{ matrix.job.target == 'aarch64-apple-darwin' }}
+            #      run: |
+            #        echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+            #        echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)" >> $GITHUB_ENV
+            #    - name: Linux ARM setup
+            #      if: ${{ matrix.job.target == 'aarch64-unknown-linux-gnu' }}
+            #      run: |
+            #        sudo apt-get update -y
+            #        sudo apt-get install -y gcc-aarch64-linux-gnu
+            #        echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
 
-      - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc
+            #    - name: Install Forc
+            #      uses: actions-rs/cargo@v1
+            #      with:
+            #        command: install
+            #        args: --profile=release --path ./forc
 
-      - name: Install Forc-Fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-fmt
+            #    - name: Install Forc-Fmt
+            #      uses: actions-rs/cargo@v1
+            #      with:
+            #        command: install
+            #        args: --profile=release --path ./forc-plugins/forc-fmt
 
-      - name: Install Forc-LSP
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-lsp
+            #    - name: Install Forc-LSP
+            #      uses: actions-rs/cargo@v1
+            #      with:
+            #        command: install
+            #        args: --profile=release --path ./forc-plugins/forc-lsp
 
-      - name: Install Forc-Client
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-client
+            #    - name: Install Forc-Client
+            #      uses: actions-rs/cargo@v1
+            #      with:
+            #        command: install
+            #        args: --profile=release --path ./forc-plugins/forc-client
 
-      - name: Install forc-doc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-doc
+            #    - name: Install forc-doc
+            #      uses: actions-rs/cargo@v1
+            #      with:
+            #        command: install
+            #        args: --profile=release --path ./forc-plugins/forc-doc
 
-      - name: Prep Assets
-        id: prep_assets
-        env:
-          PLATFORM_NAME: ${{ matrix.job.platform }}
-          TARGET: ${{ matrix.job.target }}
-          ARCH: ${{ matrix.job.arch }}
-        run: |
-          ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
-          echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
-          mkdir -pv ./forc-binaries
-          for binary in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc; do
-            cp $(which ${binary}) ./forc-binaries
-          done
-          tar -czvf $ZIP_FILE_NAME ./forc-binaries
+            #    - name: Prep Assets
+            #      id: prep_assets
+            #      env:
+            #        PLATFORM_NAME: ${{ matrix.job.platform }}
+            #        TARGET: ${{ matrix.job.target }}
+            #        ARCH: ${{ matrix.job.arch }}
+            #      run: |
+            #        ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
+            #        echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
+            #        mkdir -pv ./forc-binaries
+            #        for binary in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc; do
+            #          cp $(which ${binary}) ./forc-binaries
+            #        done
+            #        tar -czvf $ZIP_FILE_NAME ./forc-binaries
 
-      - name: Archive forc binaries
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./${{ env.ZIP_FILE_NAME }}
-          asset_name: ${{ env.ZIP_FILE_NAME }}
-          asset_content_type: application/gzip
+            #    - name: Archive forc binaries
+            #      uses: actions/upload-release-asset@v1
+            #      env:
+            #        GITHUB_TOKEN: ${{ github.token }}
+            #      with:
+            #        upload_url: ${{ github.event.release.upload_url }}
+            #        asset_path: ./${{ env.ZIP_FILE_NAME }}
+            #        asset_name: ${{ env.ZIP_FILE_NAME }}
+            #        asset_content_type: application/gzip
