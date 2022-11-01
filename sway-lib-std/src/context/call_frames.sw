@@ -25,12 +25,12 @@ const SECOND_PARAMETER_OFFSET: u64 = 592;
 /// **Note !** If called in an external context, this will **not** return a contract ID.
 // @dev If called externally, will actually return a pointer to the transaction ID.
 pub fn contract_id() -> ContractId {
-    ~ContractId::from(asm() { fp: b256 })
+    ContractId::from(asm() { fp: b256 })
 }
 
 /// Get the asset_id of coins being sent from the current call frame.
 pub fn msg_asset_id() -> ContractId {
-    ~ContractId::from(asm(asset_id) {
+    ContractId::from(asm(asset_id) {
         addi asset_id fp i32;
         asset_id: b256
     })
@@ -72,5 +72,5 @@ pub fn get_previous_frame_pointer(frame_pointer: raw_ptr) -> raw_ptr {
 
 /// get the value of `ContractId` from any call frame on the stack.
 pub fn get_contract_id_from_call_frame(frame_pointer: raw_ptr) -> ContractId {
-    ~ContractId::from(asm(res, ptr: frame_pointer) { ptr: b256 })
+    ContractId::from(asm(res, ptr: frame_pointer) { ptr: b256 })
 }

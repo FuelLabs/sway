@@ -5,9 +5,9 @@ use std::u256::U256;
 use core::num::*;
 
 fn main() -> bool {
-    let first = ~U256::from(0, 0, 0, 0);
-    let second = ~U256::from(0, 0, 0, 1);
-    let max_u64 = ~U256::from(0, 0, 0, ~u64::max());
+    let first = U256::from(0, 0, 0, 0);
+    let second = U256::from(0, 0, 0, 1);
+    let max_u64 = U256::from(0, 0, 0, u64::max());
 
     let one = first + second;
 
@@ -28,7 +28,7 @@ fn main() -> bool {
 
     let add_max = max_u64 + max_u64;
     assert(add_max.c == 1);
-    assert(add_max.d == ~u64::max() - 1);
+    assert(add_max.d == u64::max() - 1);
 
     let sub_one = second - first;
     assert(sub_one.c == 0);
@@ -40,9 +40,9 @@ fn main() -> bool {
 
     let sub_max_again = add_of_two - two;
     assert(sub_max_again.c == 0);
-    assert(sub_max_again.d == ~u64::max());
+    assert(sub_max_again.d == u64::max());
 
-    let one_upper = ~U256::from(0, 0, 1, 0);
+    let one_upper = U256::from(0, 0, 1, 0);
 
     let right_shift_one_upper = one_upper >> 1;
     assert(right_shift_one_upper.c == 0);
@@ -55,17 +55,17 @@ fn main() -> bool {
     assert(one_left_shift_64.c == 1);
     assert(one_left_shift_64.d == 0);
 
-    let three_left_shift_one = ~U256::from(0, 0, 0, 3) << 1;
+    let three_left_shift_one = U256::from(0, 0, 0, 3) << 1;
     assert(three_left_shift_one.c == 0);
     assert(three_left_shift_one.d == 6);
 
-    let c_max_left_shift_one = ~U256::from(0, ~u64::max(), 0, 0) >> 1;
+    let c_max_left_shift_one = U256::from(0, u64::max(), 0, 0) >> 1;
 
     assert(c_max_left_shift_one.b == (1 << 63) - 1);
     assert(c_max_left_shift_one.c == 1 << 63);
     assert(c_max_left_shift_one.d == 0);
 
-    let last_left_shift_one = ~U256::from(1, 0, 0, 0) >> 1;
+    let last_left_shift_one = U256::from(1, 0, 0, 0) >> 1;
     assert(last_left_shift_one.a == 0);
     assert(last_left_shift_one.b == 1 << 63);
 

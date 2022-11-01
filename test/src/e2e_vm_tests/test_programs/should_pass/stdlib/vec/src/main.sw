@@ -11,7 +11,7 @@ enum SimpleEnum {
     X: (),
     Y: b256,
     Z: (b256,
-    b256), 
+    b256),
 }
 
 fn main() -> bool {
@@ -27,7 +27,7 @@ fn main() -> bool {
 }
 
 fn test_vector_new_u8() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let number0 = 0u8;
     let number1 = 1u8;
@@ -54,7 +54,7 @@ fn test_vector_new_u8() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number0), Option::None => revert(0),
     }
 
     // Push after get
@@ -64,11 +64,11 @@ fn test_vector_new_u8() {
     vector.push(number8);
 
     match vector.get(4) {
-        Option::Some(val) => assert(val == number4), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number4), Option::None => revert(0),
     }
 
     match vector.get(number6) {
-        Option::Some(val) => assert(val == number6), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number6), Option::None => revert(0),
     }
 
     assert(vector.len() == 9);
@@ -77,11 +77,11 @@ fn test_vector_new_u8() {
 
     // Test after capacity change
     match vector.get(4) {
-        Option::Some(val) => assert(val == number4), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number4), Option::None => revert(0),
     }
 
     match vector.get(6) {
-        Option::Some(val) => assert(val == number6), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number6), Option::None => revert(0),
     }
 
     vector.clear();
@@ -92,7 +92,7 @@ fn test_vector_new_u8() {
     assert(vector.is_empty() == true);
 
     match vector.get(0) {
-        Option::Some(val) => revert(0), Option::None => (), 
+        Option::Some(val) => revert(0), Option::None => (),
     }
 
     // Make sure pushing again after clear() works
@@ -107,12 +107,12 @@ fn test_vector_new_u8() {
     assert(vector.is_empty() == false);
 
     match vector.get(4) {
-        Option::Some(val) => assert(val == number4), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number4), Option::None => revert(0),
     }
 
     // Out of bounds access
     match vector.get(5) {
-        Option::Some(val) => revert(0), Option::None => (), 
+        Option::Some(val) => revert(0), Option::None => (),
     }
 
     // Remove the first
@@ -135,22 +135,22 @@ fn test_vector_new_u8() {
 
     // Check what's left
     match vector.get(0) {
-        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number1), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(val == number3), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number3), Option::None => revert(0),
     }
 
     // Renew a `Vec` instead of `vector.clear()` to test the change of capacity after `insert`
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     // Insert to empty
     vector.insert(0, number2);
     assert(vector.len() == 1);
     assert(vector.capacity() == 1);
     match vector.get(0) {
-        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number2), Option::None => revert(0),
     }
 
     // Insert at the first
@@ -158,11 +158,11 @@ fn test_vector_new_u8() {
     assert(vector.len() == 2);
     assert(vector.capacity() == 2);
     match vector.get(0) {
-        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number0), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number2), Option::None => revert(0),
     }
 
     // Insert at the middle
@@ -170,15 +170,15 @@ fn test_vector_new_u8() {
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
     match vector.get(0) {
-        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number0), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number1), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number2), Option::None => revert(0),
     }
 
     // Insert at the last
@@ -186,19 +186,19 @@ fn test_vector_new_u8() {
     assert(vector.len() == 4);
     assert(vector.capacity() == 4);
     match vector.get(0) {
-        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number0), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number1), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number2), Option::None => revert(0),
     }
 
     match vector.get(3) {
-        Option::Some(val) => assert(val == number3), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number3), Option::None => revert(0),
     }
 
     // Test for `pop`
@@ -209,24 +209,24 @@ fn test_vector_new_u8() {
     assert(vector.capacity() == 4);
 
     match vector.pop() {
-        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number1), Option::None => revert(0),
     }
     assert(vector.len() == 1);
     assert(vector.capacity() == 4);
 
     match vector.pop() {
-        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
-    }
-    assert(vector.len() == 0);
-    assert(vector.capacity() == 4);
-    
-    match vector.pop() {
-        Option::Some(_) => revert(0), Option::None => {}, 
+        Option::Some(val) => assert(val == number0), Option::None => revert(0),
     }
     assert(vector.len() == 0);
     assert(vector.capacity() == 4);
 
-    
+    match vector.pop() {
+        Option::Some(_) => revert(0), Option::None => {},
+    }
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 4);
+
+
     // Test for `set`
     vector.clear();
     vector.push(number0);
@@ -235,15 +235,15 @@ fn test_vector_new_u8() {
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
     match vector.get(0) {
-        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number0), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number1), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number2), Option::None => revert(0),
     }
 
     // Set at first
@@ -252,15 +252,15 @@ fn test_vector_new_u8() {
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
     match vector.get(0) {
-        Option::Some(val) => assert(val == number3), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number3), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(val == number1), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number1), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number2), Option::None => revert(0),
     }
 
     // Set at middle
@@ -268,15 +268,15 @@ fn test_vector_new_u8() {
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
     match vector.get(0) {
-        Option::Some(val) => assert(val == number3), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number3), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(val == number4), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number4), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(val == number2), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number2), Option::None => revert(0),
     }
 
     // Set at last
@@ -284,20 +284,20 @@ fn test_vector_new_u8() {
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
     match vector.get(0) {
-        Option::Some(val) => assert(val == number3), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number3), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(val == number4), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number4), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(val == number5), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number5), Option::None => revert(0),
     }
 }
 
 fn test_vector_new_b256() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let b0 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     let b1 = 0x0000000000000000000000000000000000000000000000000000000000000001;
@@ -324,7 +324,7 @@ fn test_vector_new_b256() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => assert(val == b0), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b0), Option::None => revert(0),
     }
 
     // Push after get
@@ -334,11 +334,11 @@ fn test_vector_new_b256() {
     vector.push(b8);
 
     match vector.get(4) {
-        Option::Some(val) => assert(val == b4), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b4), Option::None => revert(0),
     }
 
     match vector.get(6) {
-        Option::Some(val) => assert(val == b6), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b6), Option::None => revert(0),
     }
 
     assert(vector.len() == 9);
@@ -347,11 +347,11 @@ fn test_vector_new_b256() {
 
     // Test after capacity change
     match vector.get(4) {
-        Option::Some(val) => assert(val == b4), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b4), Option::None => revert(0),
     }
 
     match vector.get(6) {
-        Option::Some(val) => assert(val == b6), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b6), Option::None => revert(0),
     }
 
     vector.clear();
@@ -362,7 +362,7 @@ fn test_vector_new_b256() {
     assert(vector.is_empty() == true);
 
     match vector.get(0) {
-        Option::Some(val) => revert(0), Option::None => (), 
+        Option::Some(val) => revert(0), Option::None => (),
     }
 
     // Make sure pushing again after clear() works
@@ -377,12 +377,12 @@ fn test_vector_new_b256() {
     assert(vector.is_empty() == false);
 
     match vector.get(4) {
-        Option::Some(val) => assert(val == b4), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b4), Option::None => revert(0),
     }
 
     // Out of bounds access
     match vector.get(5) {
-        Option::Some(val) => revert(0), Option::None => (), 
+        Option::Some(val) => revert(0), Option::None => (),
     }
 
     // Remove the first
@@ -405,22 +405,22 @@ fn test_vector_new_b256() {
 
     // Check what's left
     match vector.get(0) {
-        Option::Some(val) => assert(val == b1), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b1), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(val == b3), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b3), Option::None => revert(0),
     }
 
     // Renew a `Vec` instead of `vector.clear()` to test the change of capacity after `insert`
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     // Insert to empty
     vector.insert(0, b2);
     assert(vector.len() == 1);
     assert(vector.capacity() == 1);
     match vector.get(0) {
-        Option::Some(val) => assert(val == b2), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b2), Option::None => revert(0),
     }
 
     // Insert at the first
@@ -428,11 +428,11 @@ fn test_vector_new_b256() {
     assert(vector.len() == 2);
     assert(vector.capacity() == 2);
     match vector.get(0) {
-        Option::Some(val) => assert(val == b0), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b0), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(val == b2), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b2), Option::None => revert(0),
     }
 
     // Insert at the middle
@@ -440,15 +440,15 @@ fn test_vector_new_b256() {
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
     match vector.get(0) {
-        Option::Some(val) => assert(val == b0), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b0), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(val == b1), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b1), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(val == b2), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b2), Option::None => revert(0),
     }
 
     // Insert at the last
@@ -456,19 +456,19 @@ fn test_vector_new_b256() {
     assert(vector.len() == 4);
     assert(vector.capacity() == 4);
     match vector.get(0) {
-        Option::Some(val) => assert(val == b0), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b0), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(val == b1), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b1), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(val == b2), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b2), Option::None => revert(0),
     }
 
     match vector.get(3) {
-        Option::Some(val) => assert(val == b3), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b3), Option::None => revert(0),
     }
 
     // Test for `pop`
@@ -479,19 +479,19 @@ fn test_vector_new_b256() {
     assert(vector.capacity() == 4);
 
     match vector.pop() {
-        Option::Some(val) => assert(val == b1), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b1), Option::None => revert(0),
     }
     assert(vector.len() == 1);
     assert(vector.capacity() == 4);
 
     match vector.pop() {
-        Option::Some(val) => assert(val == b0), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b0), Option::None => revert(0),
     }
     assert(vector.len() == 0);
     assert(vector.capacity() == 4);
-    
+
     match vector.pop() {
-        Option::Some(_) => revert(0), Option::None => {}, 
+        Option::Some(_) => revert(0), Option::None => {},
     }
     assert(vector.len() == 0);
     assert(vector.capacity() == 4);
@@ -504,15 +504,15 @@ fn test_vector_new_b256() {
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
     match vector.get(0) {
-        Option::Some(val) => assert(val == b0), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b0), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(val == b1), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b1), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(val == b2), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b2), Option::None => revert(0),
     }
 
     // Set at first
@@ -520,15 +520,15 @@ fn test_vector_new_b256() {
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
     match vector.get(0) {
-        Option::Some(val) => assert(val == b3), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b3), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(val == b1), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b1), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(val == b2), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b2), Option::None => revert(0),
     }
 
     // Set at middle
@@ -536,15 +536,15 @@ fn test_vector_new_b256() {
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
     match vector.get(0) {
-        Option::Some(val) => assert(val == b3), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b3), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(val == b4), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b4), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(val == b2), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b2), Option::None => revert(0),
     }
 
     // Set at last
@@ -552,20 +552,20 @@ fn test_vector_new_b256() {
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
     match vector.get(0) {
-        Option::Some(val) => assert(val == b3), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b3), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(val == b4), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b4), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(val == b5), Option::None => revert(0), 
+        Option::Some(val) => assert(val == b5), Option::None => revert(0),
     }
 }
 
 fn test_vector_new_struct() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let number0 = 0u32;
     let number1 = 1u32;
@@ -616,7 +616,7 @@ fn test_vector_new_struct() {
             assert(val.x == number0);
             assert(val.y == b0);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     // Push after get
@@ -638,7 +638,7 @@ fn test_vector_new_struct() {
             assert(val.x == number4);
             assert(val.y == b4);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(6) {
@@ -646,7 +646,7 @@ fn test_vector_new_struct() {
             assert(val.x == number6);
             assert(val.y == b6);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     assert(vector.len() == 9);
@@ -659,7 +659,7 @@ fn test_vector_new_struct() {
             assert(val.x == number4);
             assert(val.y == b4);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(6) {
@@ -667,7 +667,7 @@ fn test_vector_new_struct() {
             assert(val.x == number6);
             assert(val.y == b6);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     vector.clear();
@@ -678,7 +678,7 @@ fn test_vector_new_struct() {
     assert(vector.is_empty() == true);
 
     match vector.get(0) {
-        Option::Some(val) => revert(0), Option::None => (), 
+        Option::Some(val) => revert(0), Option::None => (),
     }
 
     // Make sure pushing again after clear() works
@@ -707,12 +707,12 @@ fn test_vector_new_struct() {
             assert(val.x == number4);
             assert(val.y == b4);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     // Out of bounds access
     match vector.get(5) {
-        Option::Some(val) => revert(0), Option::None => (), 
+        Option::Some(val) => revert(0), Option::None => (),
     }
 
     // Remove the first
@@ -741,20 +741,20 @@ fn test_vector_new_struct() {
         Option::Some(val) => {
             assert(val.x == number1);
             assert(val.y == b1);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
         Option::Some(val) => {
             assert(val.x == number3);
             assert(val.y == b3);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Renew a `Vec` instead of `vector.clear()` to test the change of capacity after `insert`
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     // Insert to empty
     vector.insert(0, SimpleStruct{
@@ -767,8 +767,8 @@ fn test_vector_new_struct() {
         Option::Some(val) => {
             assert(val.x == number2);
             assert(val.y == b2);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Insert at the first
@@ -782,16 +782,16 @@ fn test_vector_new_struct() {
         Option::Some(val) => {
             assert(val.x == number0);
             assert(val.y == b0);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
         Option::Some(val) => {
             assert(val.x == number2);
             assert(val.y == b2);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Insert at the middle
@@ -805,24 +805,24 @@ fn test_vector_new_struct() {
         Option::Some(val) => {
             assert(val.x == number0);
             assert(val.y == b0);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
         Option::Some(val) => {
             assert(val.x == number1);
             assert(val.y == b1);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
         Option::Some(val) => {
             assert(val.x == number2);
             assert(val.y == b2);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Insert at the last
@@ -836,32 +836,32 @@ fn test_vector_new_struct() {
         Option::Some(val) => {
             assert(val.x == number0);
             assert(val.y == b0);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
         Option::Some(val) => {
             assert(val.x == number1);
             assert(val.y == b1);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
         Option::Some(val) => {
             assert(val.x == number2);
             assert(val.y == b2);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(3) {
         Option::Some(val) => {
             assert(val.x == number3);
             assert(val.y == b3);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Test for `pop`
@@ -879,8 +879,8 @@ fn test_vector_new_struct() {
         Option::Some(val) => {
             assert(val.x == number1);
             assert(val.y == b1);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
     assert(vector.len() == 1);
     assert(vector.capacity() == 4);
@@ -889,14 +889,14 @@ fn test_vector_new_struct() {
         Option::Some(val) => {
             assert(val.x == number0);
             assert(val.y == b0);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
     assert(vector.len() == 0);
     assert(vector.capacity() == 4);
 
     match vector.pop() {
-        Option::Some(_) => revert(0), Option::None => {}, 
+        Option::Some(_) => revert(0), Option::None => {},
     }
     assert(vector.len() == 0);
     assert(vector.capacity() == 4);
@@ -918,26 +918,26 @@ fn test_vector_new_struct() {
         Option::Some(val) => {
             assert(val.x == number0);
             assert(val.y == b0);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
         Option::Some(val) => {
             assert(val.x == number1);
             assert(val.y == b1);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
         Option::Some(val) => {
             assert(val.x == number2);
             assert(val.y == b2);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
-    
+
     // Set at first
     vector.set(0, SimpleStruct {
         x: number3, y: b3
@@ -948,24 +948,24 @@ fn test_vector_new_struct() {
         Option::Some(val) => {
             assert(val.x == number3);
             assert(val.y == b3);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
         Option::Some(val) => {
             assert(val.x == number1);
             assert(val.y == b1);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
         Option::Some(val) => {
             assert(val.x == number2);
             assert(val.y == b2);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Set at middle
@@ -974,29 +974,29 @@ fn test_vector_new_struct() {
     });
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
-    
+
     match vector.get(0) {
         Option::Some(val) => {
             assert(val.x == number3);
             assert(val.y == b3);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
         Option::Some(val) => {
             assert(val.x == number4);
             assert(val.y == b4);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
         Option::Some(val) => {
             assert(val.x == number2);
             assert(val.y == b2);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Set at last
@@ -1009,29 +1009,29 @@ fn test_vector_new_struct() {
         Option::Some(val) => {
             assert(val.x == number3);
             assert(val.y == b3);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
         Option::Some(val) => {
             assert(val.x == number4);
             assert(val.y == b4);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
         Option::Some(val) => {
             assert(val.x == number5);
             assert(val.y == b5);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 }
 
 fn test_vector_new_enum() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let b0 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     let b1 = 0x0000000000000000000000000000000000000000000000000000000000000001;
@@ -1055,10 +1055,10 @@ fn test_vector_new_enum() {
     match vector.get(0) {
         Option::Some(val) => {
             match val {
-                SimpleEnum::Y(b) => assert(b == b0), _ => revert(0), 
+                SimpleEnum::Y(b) => assert(b == b0), _ => revert(0),
             }
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -1066,10 +1066,10 @@ fn test_vector_new_enum() {
             match val {
                 SimpleEnum::X => {
                 },
-                _ => revert(0), 
+                _ => revert(0),
             }
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -1079,10 +1079,10 @@ fn test_vector_new_enum() {
                     assert(t.0 == b1);
                     assert(t.1 == b2);
                 },
-                _ => revert(0), 
+                _ => revert(0),
             }
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     vector.push(SimpleEnum::Y(b1));
@@ -1123,23 +1123,23 @@ fn test_vector_new_enum() {
             match val {
                 SimpleEnum::X => {
                 },
-                _ => revert(0), 
+                _ => revert(0),
             }
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
         Option::Some(val) => {
             match val {
-                SimpleEnum::Y(b) => assert(b == b1), _ => revert(0), 
+                SimpleEnum::Y(b) => assert(b == b1), _ => revert(0),
             }
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     // Renew a `Vec` instead of `vector.clear()` to test the change of capacity after `insert`
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     // Insert to empty
     vector.insert(0, SimpleEnum::X);
@@ -1151,8 +1151,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::X => {},
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Insert at the first
@@ -1165,8 +1165,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::Y(b) => assert(b == b0),
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -1175,8 +1175,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::X => {},
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Insert at the middle
@@ -1189,8 +1189,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::Y(b) => assert(b == b0),
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -1202,8 +1202,8 @@ fn test_vector_new_enum() {
                 },
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -1212,8 +1212,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::X => {},
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Insert at the last
@@ -1226,8 +1226,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::Y(b) => assert(b == b0),
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -1239,8 +1239,8 @@ fn test_vector_new_enum() {
                 },
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -1249,8 +1249,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::X => {},
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(3) {
@@ -1259,8 +1259,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::X => {},
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Test for `pop`
@@ -1276,8 +1276,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::Y(b) => assert(b == b0),
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
     assert(vector.len() == 1);
     assert(vector.capacity() == 4);
@@ -1288,14 +1288,14 @@ fn test_vector_new_enum() {
                 SimpleEnum::X => {},
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
     assert(vector.len() == 0);
     assert(vector.capacity() == 4);
 
     match vector.pop() {
-        Option::Some(_) => revert(0), Option::None => {}, 
+        Option::Some(_) => revert(0), Option::None => {},
     }
     assert(vector.len() == 0);
     assert(vector.capacity() == 4);
@@ -1313,8 +1313,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::Y(b) => assert(b == b0),
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -1323,8 +1323,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::Y(b) => assert(b == b1),
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -1333,8 +1333,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::Y(b) => assert(b == b2),
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Set at first
@@ -1347,8 +1347,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::X => {},
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -1357,8 +1357,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::Y(b) => assert(b == b1),
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -1367,8 +1367,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::Y(b) => assert(b == b2),
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Set at middle
@@ -1382,8 +1382,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::X => {},
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -1392,8 +1392,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::Y(b) => assert(b == b3),
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -1402,8 +1402,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::Y(b) => assert(b == b2),
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Set at last
@@ -1417,8 +1417,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::X => {},
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -1427,8 +1427,8 @@ fn test_vector_new_enum() {
                 SimpleEnum::Y(b) => assert(b == b3),
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -1440,13 +1440,13 @@ fn test_vector_new_enum() {
                 },
                 _ => revert(0),
             }
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 }
 
 fn test_vector_new_tuple() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let number0 = 0u16;
     let number1 = 1u16;
@@ -1487,7 +1487,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == number0);
             assert(val.1 == b0);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     // Push after get
@@ -1501,7 +1501,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == number4);
             assert(val.1 == b4);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(6) {
@@ -1509,7 +1509,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == number6);
             assert(val.1 == b6);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     assert(vector.len() == 9);
@@ -1522,7 +1522,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == number4);
             assert(val.1 == b4);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(6) {
@@ -1530,7 +1530,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == number6);
             assert(val.1 == b6);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     vector.clear();
@@ -1541,7 +1541,7 @@ fn test_vector_new_tuple() {
     assert(vector.is_empty() == true);
 
     match vector.get(0) {
-        Option::Some(val) => revert(0), Option::None => (), 
+        Option::Some(val) => revert(0), Option::None => (),
     }
 
     // Make sure pushing again after clear() works
@@ -1560,12 +1560,12 @@ fn test_vector_new_tuple() {
             assert(val.0 == number4);
             assert(val.1 == b4);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     // Out of bounds access
     match vector.get(5) {
-        Option::Some(val) => revert(0), Option::None => (), 
+        Option::Some(val) => revert(0), Option::None => (),
     }
 
     // Remove the first
@@ -1594,20 +1594,20 @@ fn test_vector_new_tuple() {
         Option::Some(val) => {
             assert(val.0 == number1);
             assert(val.1 == b1);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
         Option::Some(val) => {
             assert(val.0 == number3);
             assert(val.1 == b3);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Renew a `Vec` instead of `vector.clear()` to test the change of capacity after `insert`
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     // Insert to empty
     vector.insert(0, (number2, b2));
@@ -1617,8 +1617,8 @@ fn test_vector_new_tuple() {
         Option::Some(val) => {
             assert(val.0 == number2);
             assert(val.1 == b2);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Insert at the first
@@ -1629,16 +1629,16 @@ fn test_vector_new_tuple() {
         Option::Some(val) => {
             assert(val.0 == number0);
             assert(val.1 == b0);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
         Option::Some(val) => {
             assert(val.0 == number2);
             assert(val.1 == b2);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Insert at the middle
@@ -1649,24 +1649,24 @@ fn test_vector_new_tuple() {
         Option::Some(val) => {
             assert(val.0 == number0);
             assert(val.1 == b0);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
         Option::Some(val) => {
             assert(val.0 == number1);
             assert(val.1 == b1);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
         Option::Some(val) => {
             assert(val.0 == number2);
             assert(val.1 == b2);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Insert at the last
@@ -1677,32 +1677,32 @@ fn test_vector_new_tuple() {
         Option::Some(val) => {
             assert(val.0 == number0);
             assert(val.1 == b0);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
         Option::Some(val) => {
             assert(val.0 == number1);
             assert(val.1 == b1);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
         Option::Some(val) => {
             assert(val.0 == number2);
             assert(val.1 == b2);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     match vector.get(3) {
         Option::Some(val) => {
             assert(val.0 == number3);
             assert(val.1 == b3);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
 
     // Test for `pop`
@@ -1716,8 +1716,8 @@ fn test_vector_new_tuple() {
         Option::Some(val) => {
             assert(val.0 == number1);
             assert(val.1 == b1);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
     assert(vector.len() == 1);
     assert(vector.capacity() == 4);
@@ -1726,14 +1726,14 @@ fn test_vector_new_tuple() {
         Option::Some(val) => {
             assert(val.0 == number0);
             assert(val.1 == b0);
-        }, 
-        Option::None => revert(0), 
+        },
+        Option::None => revert(0),
     }
     assert(vector.len() == 0);
     assert(vector.capacity() == 4);
-    
+
     match vector.pop() {
-        Option::Some(_) => revert(0), Option::None => {}, 
+        Option::Some(_) => revert(0), Option::None => {},
     }
     assert(vector.len() == 0);
     assert(vector.capacity() == 4);
@@ -1750,7 +1750,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == number0);
             assert(val.1 == b0);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -1758,7 +1758,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == number1);
             assert(val.1 == b1);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -1766,7 +1766,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == number2);
             assert(val.1 == b2);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     // Set at first
@@ -1779,7 +1779,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == number3);
             assert(val.1 == b3);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -1787,7 +1787,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == number1);
             assert(val.1 == b1);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -1795,20 +1795,20 @@ fn test_vector_new_tuple() {
             assert(val.0 == number2);
             assert(val.1 == b2);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     // Set at middle
     vector.set(1, (number4, b4));
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
-    
+
     match vector.get(0) {
         Option::Some(val) => {
             assert(val.0 == number3);
             assert(val.1 == b3);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -1816,7 +1816,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == number4);
             assert(val.1 == b4);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -1824,7 +1824,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == number2);
             assert(val.1 == b2);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     // Set at last
@@ -1837,7 +1837,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == number3);
             assert(val.1 == b3);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -1845,7 +1845,7 @@ fn test_vector_new_tuple() {
             assert(val.0 == number4);
             assert(val.1 == b4);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -1853,12 +1853,12 @@ fn test_vector_new_tuple() {
             assert(val.0 == number5);
             assert(val.1 == b5);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 }
 
 fn test_vector_new_string() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let s0 = "fuel";
     let s1 = "john";
@@ -1884,21 +1884,21 @@ fn test_vector_new_string() {
         Option::Some(val) => {
             assert(sha256(val) == sha256(s0));
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
         Option::Some(val) => {
             assert(sha256(val) == sha256(s1));
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
         Option::Some(val) => {
             assert(sha256(val) == sha256(s2));
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     vector.push(s3);
@@ -1926,22 +1926,22 @@ fn test_vector_new_string() {
 
     // Check what's left
     match vector.get(0) {
-        Option::Some(val) => assert(sha256(val) == sha256(s1)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s1)), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(sha256(val) == sha256(s3)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s3)), Option::None => revert(0),
     }
 
     // Renew a `Vec` instead of `vector.clear()` to test the change of capacity after `insert`
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     // Insert to empty
     vector.insert(0, s2);
     assert(vector.len() == 1);
     assert(vector.capacity() == 1);
     match vector.get(0) {
-        Option::Some(val) => assert(sha256(val) == sha256(s2)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s2)), Option::None => revert(0),
     }
 
     // Insert at the first
@@ -1949,11 +1949,11 @@ fn test_vector_new_string() {
     assert(vector.len() == 2);
     assert(vector.capacity() == 2);
     match vector.get(0) {
-        Option::Some(val) => assert(sha256(val) == sha256(s0)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s0)), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(sha256(val) == sha256(s2)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s2)), Option::None => revert(0),
     }
 
     // Insert at the middle
@@ -1961,15 +1961,15 @@ fn test_vector_new_string() {
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
     match vector.get(0) {
-        Option::Some(val) => assert(sha256(val) == sha256(s0)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s0)), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(sha256(val) == sha256(s1)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s1)), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(sha256(val) == sha256(s2)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s2)), Option::None => revert(0),
     }
 
     // Insert at the last
@@ -1977,19 +1977,19 @@ fn test_vector_new_string() {
     assert(vector.len() == 4);
     assert(vector.capacity() == 4);
     match vector.get(0) {
-        Option::Some(val) => assert(sha256(val) == sha256(s0)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s0)), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(sha256(val) == sha256(s1)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s1)), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(sha256(val) == sha256(s2)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s2)), Option::None => revert(0),
     }
 
     match vector.get(3) {
-        Option::Some(val) => assert(sha256(val) == sha256(s3)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s3)), Option::None => revert(0),
     }
 
     // Test for `pop`
@@ -2000,19 +2000,19 @@ fn test_vector_new_string() {
     assert(vector.capacity() == 4);
 
     match vector.pop() {
-        Option::Some(val) => assert(sha256(val) == sha256(s1)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s1)), Option::None => revert(0),
     }
     assert(vector.len() == 1);
     assert(vector.capacity() == 4);
 
     match vector.pop() {
-        Option::Some(val) => assert(sha256(val) == sha256(s0)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s0)), Option::None => revert(0),
     }
     assert(vector.len() == 0);
     assert(vector.capacity() == 4);
-    
+
     match vector.pop() {
-        Option::Some(_) => revert(0), Option::None => {}, 
+        Option::Some(_) => revert(0), Option::None => {},
     }
     assert(vector.len() == 0);
     assert(vector.capacity() == 4);
@@ -2025,15 +2025,15 @@ fn test_vector_new_string() {
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
     match vector.get(0) {
-        Option::Some(val) => assert(sha256(val) == sha256(s0)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s0)), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(sha256(val) == sha256(s1)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s1)), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(sha256(val) == sha256(s2)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s2)), Option::None => revert(0),
     }
 
     // Set at first
@@ -2042,32 +2042,32 @@ fn test_vector_new_string() {
     assert(vector.capacity() == 4);
 
     match vector.get(0) {
-        Option::Some(val) => assert(sha256(val) == sha256(s3)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s3)), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(sha256(val) == sha256(s1)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s1)), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(sha256(val) == sha256(s2)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s2)), Option::None => revert(0),
     }
 
     // Set at middle
     vector.set(1, s4);
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
-    
+
     match vector.get(0) {
-        Option::Some(val) => assert(sha256(val) == sha256(s3)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s3)), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(sha256(val) == sha256(s4)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s4)), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(sha256(val) == sha256(s2)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s2)), Option::None => revert(0),
     }
 
     // Set at last
@@ -2076,20 +2076,20 @@ fn test_vector_new_string() {
     assert(vector.capacity() == 4);
 
     match vector.get(0) {
-        Option::Some(val) => assert(sha256(val) == sha256(s3)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s3)), Option::None => revert(0),
     }
 
     match vector.get(1) {
-        Option::Some(val) => assert(sha256(val) == sha256(s4)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s4)), Option::None => revert(0),
     }
 
     match vector.get(2) {
-        Option::Some(val) => assert(sha256(val) == sha256(s5)), Option::None => revert(0), 
+        Option::Some(val) => assert(sha256(val) == sha256(s5)), Option::None => revert(0),
     }
 }
 
 fn test_vector_new_array() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let a0 = [0, 1, 2];
     let a1 = [3, 4, 5];
@@ -2117,7 +2117,7 @@ fn test_vector_new_array() {
             assert(val[1] == a0[1]);
             assert(val[2] == a0[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -2126,7 +2126,7 @@ fn test_vector_new_array() {
             assert(val[1] == a1[1]);
             assert(val[2] == a1[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -2135,7 +2135,7 @@ fn test_vector_new_array() {
             assert(val[1] == a2[1]);
             assert(val[2] == a2[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     vector.push(a3);
@@ -2174,7 +2174,7 @@ fn test_vector_new_array() {
             assert(val[1] == a1[1]);
             assert(val[2] == a1[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -2183,11 +2183,11 @@ fn test_vector_new_array() {
             assert(val[1] == a3[1]);
             assert(val[2] == a3[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     // Renew a `Vec` instead of `vector.clear()` to test the change of capacity after `insert`
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     // Insert to empty
     vector.insert(0, a2);
@@ -2199,7 +2199,7 @@ fn test_vector_new_array() {
             assert(val[1] == a2[1]);
             assert(val[2] == a2[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     // Insert at the first
@@ -2212,7 +2212,7 @@ fn test_vector_new_array() {
             assert(val[1] == a0[1]);
             assert(val[2] == a0[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -2221,7 +2221,7 @@ fn test_vector_new_array() {
             assert(val[1] == a2[1]);
             assert(val[2] == a2[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     // Insert at the middle
@@ -2234,7 +2234,7 @@ fn test_vector_new_array() {
             assert(val[1] == a0[1]);
             assert(val[2] == a0[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -2243,7 +2243,7 @@ fn test_vector_new_array() {
             assert(val[1] == a1[1]);
             assert(val[2] == a1[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -2252,7 +2252,7 @@ fn test_vector_new_array() {
             assert(val[1] == a2[1]);
             assert(val[2] == a2[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     // Insert at the last
@@ -2265,7 +2265,7 @@ fn test_vector_new_array() {
             assert(val[1] == a0[1]);
             assert(val[2] == a0[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -2274,7 +2274,7 @@ fn test_vector_new_array() {
             assert(val[1] == a1[1]);
             assert(val[2] == a1[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -2283,7 +2283,7 @@ fn test_vector_new_array() {
             assert(val[1] == a2[1]);
             assert(val[2] == a2[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(3) {
@@ -2292,7 +2292,7 @@ fn test_vector_new_array() {
             assert(val[1] == a3[1]);
             assert(val[2] == a3[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     // Test for `pop`
@@ -2308,7 +2308,7 @@ fn test_vector_new_array() {
             assert(val[1] == a1[1]);
             assert(val[2] == a1[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
     assert(vector.len() == 1);
     assert(vector.capacity() == 4);
@@ -2319,13 +2319,13 @@ fn test_vector_new_array() {
             assert(val[1] == a0[1]);
             assert(val[2] == a0[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
     assert(vector.len() == 0);
     assert(vector.capacity() == 4);
-   
+
     match vector.pop() {
-        Option::Some(_) => revert(0), Option::None => {}, 
+        Option::Some(_) => revert(0), Option::None => {},
     }
     assert(vector.len() == 0);
     assert(vector.capacity() == 4);
@@ -2343,7 +2343,7 @@ fn test_vector_new_array() {
             assert(val[1] == a0[1]);
             assert(val[2] == a0[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -2352,7 +2352,7 @@ fn test_vector_new_array() {
             assert(val[1] == a1[1]);
             assert(val[2] == a1[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -2361,7 +2361,7 @@ fn test_vector_new_array() {
             assert(val[1] == a2[1]);
             assert(val[2] == a2[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     // Set at first
@@ -2375,7 +2375,7 @@ fn test_vector_new_array() {
             assert(val[1] == a3[1]);
             assert(val[2] == a3[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -2384,7 +2384,7 @@ fn test_vector_new_array() {
             assert(val[1] == a1[1]);
             assert(val[2] == a1[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -2393,21 +2393,21 @@ fn test_vector_new_array() {
             assert(val[1] == a2[1]);
             assert(val[2] == a2[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     // Set at middle
     vector.set(1, a4);
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
-    
+
     match vector.get(0) {
         Option::Some(val) => {
             assert(val[0] == a3[0]);
             assert(val[1] == a3[1]);
             assert(val[2] == a3[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -2416,7 +2416,7 @@ fn test_vector_new_array() {
             assert(val[1] == a4[1]);
             assert(val[2] == a4[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -2425,7 +2425,7 @@ fn test_vector_new_array() {
             assert(val[1] == a2[1]);
             assert(val[2] == a2[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     // Set at last
@@ -2439,7 +2439,7 @@ fn test_vector_new_array() {
             assert(val[1] == a3[1]);
             assert(val[2] == a3[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(1) {
@@ -2448,7 +2448,7 @@ fn test_vector_new_array() {
             assert(val[1] == a4[1]);
             assert(val[2] == a4[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 
     match vector.get(2) {
@@ -2457,12 +2457,12 @@ fn test_vector_new_array() {
             assert(val[1] == a5[1]);
             assert(val[2] == a5[2]);
         },
-        Option::None => revert(0), 
+        Option::None => revert(0),
     }
 }
 
 fn test_vector_with_capacity_u64() {
-    let mut vector = ~Vec::with_capacity(8);
+    let mut vector = Vec::with_capacity(8);
 
     let number0 = 0;
     let number1 = 1;
@@ -2489,7 +2489,7 @@ fn test_vector_with_capacity_u64() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number0), Option::None => revert(0),
     }
 
     // Push after get
@@ -2499,11 +2499,11 @@ fn test_vector_with_capacity_u64() {
     vector.push(number8);
 
     match vector.get(4) {
-        Option::Some(val) => assert(val == number4), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number4), Option::None => revert(0),
     }
 
     match vector.get(6) {
-        Option::Some(val) => assert(val == number6), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number6), Option::None => revert(0),
     }
 
     assert(vector.len() == 9);
@@ -2518,7 +2518,7 @@ fn test_vector_with_capacity_u64() {
     assert(vector.is_empty() == true);
 
     match vector.get(0) {
-        Option::Some(val) => revert(0), Option::None => (), 
+        Option::Some(val) => revert(0), Option::None => (),
     }
 
     // Make sure pushing again after clear() works
@@ -2533,11 +2533,11 @@ fn test_vector_with_capacity_u64() {
     assert(vector.is_empty() == false);
 
     match vector.get(4) {
-        Option::Some(val) => assert(val == number4), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number4), Option::None => revert(0),
     }
 
     // Out of bounds access
     match vector.get(5) {
-        Option::Some(val) => revert(0), Option::None => (), 
+        Option::Some(val) => revert(0), Option::None => (),
     }
 }

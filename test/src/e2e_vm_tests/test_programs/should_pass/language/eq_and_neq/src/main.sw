@@ -28,14 +28,14 @@ fn main() -> bool {
     assert(zero != one);
 
     // stdlib types
-    assert(~ContractId::from(zero) == ~ContractId::from(zero));
-    assert(~ContractId::from(zero) != ~ContractId::from(one));
+    assert(ContractId::from(zero) == ContractId::from(zero));
+    assert(ContractId::from(zero) != ContractId::from(one));
 
-    assert(~Address::from(zero) == ~Address::from(zero));
-    assert(~Address::from(zero) != ~Address::from(one));
+    assert(Address::from(zero) == Address::from(zero));
+    assert(Address::from(zero) != Address::from(one));
 
-    assert(~B512::from(zero, zero) == ~B512::from(zero, zero));
-    assert(~B512::from(zero, zero) != ~B512::from(zero, one));
+    assert(B512::from(zero, zero) == B512::from(zero, zero));
+    assert(B512::from(zero, zero) != B512::from(zero, one));
 
-    true 
+    true
 }

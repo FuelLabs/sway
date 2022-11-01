@@ -3,10 +3,10 @@ script;
 use std::math::*;
 
 fn main() -> bool {
-    let max_u64 = ~u64::max();
-    let max_u32 = ~u32::max();
-    let max_u16 = ~u16::max();
-    let max_u8 = ~u8::max();
+    let max_u64 = u64::max();
+    let max_u32 = u32::max();
+    let max_u16 = u16::max();
+    let max_u8 = u8::max();
 
     // u64
     assert(2.log(2) == 1);
@@ -48,6 +48,6 @@ fn main() -> bool {
     assert(max_u8.log(10) == 2);
     assert(max_u8.log(2) == 7);
     assert(max_u8.log2() == 7);
-    
+
     true
 }

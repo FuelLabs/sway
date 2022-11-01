@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+use std::iter;
+
 use crate::{
     core::token::{AstToken, SymbolKind, Token, TokenMap, TypeDefinition},
     utils::token::{desugared_op, to_ident_key, type_info_to_symbol_kind},
@@ -6,10 +8,10 @@ use crate::{
 use sway_core::{
     language::{
         parsed::{
-            AbiCastExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock,
-            Declaration, DelineatedPathExpression, Expression, ExpressionKind,
-            FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
-            IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
+            AbiCastExpression, AmbiguousPathExpression, ArrayIndexExpression, AstNode,
+            AstNodeContent, CodeBlock, Declaration, DelineatedPathExpression, Expression,
+            ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
+            IfExpression, IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
             MethodApplicationExpression, MethodName, ReassignmentTarget, Scrutinee,
             StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
             TraitFn, TupleIndexExpression, WhileLoopExpression,
@@ -502,6 +504,40 @@ fn handle_expression(expression: &Expression, tokens: &TokenMap) {
                 Token::from_parsed(AstToken::Expression(expression.clone()), SymbolKind::Field),
             );
             handle_expression(prefix, tokens);
+        }
+        ExpressionKind::AmbiguousPathExpression(path_expr) => {
+            let AmbiguousPathExpression {
+                call_path_binding,
+                args,
+            } = &**path_expr;
+
+            for ident in call_path_binding
+                .inner
+                .prefixes
+                .iter()
+                .chain(iter::once(&call_path_binding.inner.suffix.before.inner))
+            {
+                tokens.insert(
+                    to_ident_key(ident),
+                    Token::from_parsed(AstToken::Expression(expression.clone()), SymbolKind::Enum),
+                );
+            }
+
+            let token = Token::from_parsed(
+                AstToken::Expression(expression.clone()),
+                SymbolKind::Variant,
+            );
+
+            tokens.insert(
+                to_ident_key(&call_path_binding.inner.suffix.suffix),
+                token.clone(),
+            );
+
+            collect_type_args(&call_path_binding.type_arguments, &token, tokens);
+
+            for exp in args {
+                handle_expression(exp, tokens);
+            }
         }
         ExpressionKind::DelineatedPath(delineated_path_expression) => {
             let DelineatedPathExpression {

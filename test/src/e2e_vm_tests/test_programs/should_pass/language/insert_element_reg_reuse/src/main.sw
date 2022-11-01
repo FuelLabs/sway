@@ -30,7 +30,7 @@ impl core::ops::Eq for Vec<[u64; 2]> {
 }
 
 fn tester1(arg: Vec<[u64; 2]>) {
-    let mut expected = ~Vec::new();
+    let mut expected = Vec::new();
     expected.push([0, 1]);
     expected.push([0, 1]);
 
@@ -38,7 +38,7 @@ fn tester1(arg: Vec<[u64; 2]>) {
 }
 
 fn tester2(arg: Vec<[u64; 2]>) {
-    let mut expected = ~Vec::new();
+    let mut expected = Vec::new();
     expected.push([0, 1]);
     expected.push([0, 1]);
 
@@ -47,12 +47,12 @@ fn tester2(arg: Vec<[u64; 2]>) {
 
 fn main() -> u64 {
 
-  let mut arg1 = ~Vec::new();
+  let mut arg1 = Vec::new();
   arg1.push([0, 1]);
   arg1.push([0, 1]);
   tester1(arg1);
 
-  let mut arg2 = ~Vec::new();
+  let mut arg2 = Vec::new();
   arg2.push([0, 1]);
   arg2.push([0, 2]);
   tester2(arg2);
