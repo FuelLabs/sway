@@ -88,7 +88,7 @@ pub fn input_pointer(index: u64) -> u64 {
 pub fn input_owner(index: u64) -> Option<Address> {
     let type = input_type(index);
     match type {
-        Input::Coin => Option::Some(~Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER))),
+        Input::Coin => Option::Some(Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER))),
         _ => Option::None,
     }
 }

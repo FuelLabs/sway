@@ -63,7 +63,7 @@ impl Target for Contract {
     }
 
     fn intra_contract_call() {
-        let this = abi(Target, ~ContractId::into(contract_id()));
+        let this = abi(Target, ContractId::into(contract_id()));
         this.cross_function_reentrance_denied();
     }
 

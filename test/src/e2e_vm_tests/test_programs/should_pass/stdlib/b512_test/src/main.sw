@@ -19,13 +19,13 @@ fn are_fields_contiguous(big_value: B512) -> bool {
 }
 
 fn main() -> bool {
-    let zero = ~b256::min();
+    let zero = b256::min();
     let hi_bits: b256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE;
     let lo_bits: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
     let modified: b256 = 0x3333333333333333333333333333333333333333333333333333333333333333;
 
     // it allows creation of new empty type:
-    let mut a = ~B512::new();
+    let mut a = B512::new();
     assert(((a.bytes)[0] == zero) && ((a.bytes)[1] == zero));
 
     // it allows reassignment of fields:
@@ -33,7 +33,7 @@ fn main() -> bool {
     assert(((a.bytes)[0] == hi_bits) && ((a.bytes)[1] == lo_bits));
 
     // it allows building from 2 b256's:
-    let mut b = ~B512::from(hi_bits, lo_bits);
+    let mut b = B512::from(hi_bits, lo_bits);
     assert(((b.bytes)[0] == hi_bits) && ((b.bytes)[1] == lo_bits));
 
     // it allows reassignment of fields:
@@ -41,15 +41,15 @@ fn main() -> bool {
     assert(((b.bytes)[0] == modified) && ((b.bytes)[1] == modified));
 
     // it guarantees memory contiguity:
-    let mut c = ~B512::new();
+    let mut c = B512::new();
     c.bytes = [hi_bits, lo_bits];
     assert(are_fields_contiguous(c));
 
     // it allows direct comparison of equality:
-    let one = ~B512::from(hi_bits, modified);
-    let two = ~B512::from(hi_bits, modified);
-    let three = ~B512::from(modified, hi_bits);
-    let four = ~B512::from(lo_bits, modified);
+    let one = B512::from(hi_bits, modified);
+    let two = B512::from(hi_bits, modified);
+    let three = B512::from(modified, hi_bits);
+    let four = B512::from(lo_bits, modified);
     assert(one == two);
     assert(one != three);
     assert(one != four);
