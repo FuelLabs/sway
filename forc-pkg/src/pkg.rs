@@ -231,7 +231,7 @@ pub struct GitSourceIndex {
     pub head_with_time: HeadWithTime,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct PkgOpts {
     /// Path to the project, if not specified, current working directory will be used.
     pub path: Option<String>,
@@ -249,7 +249,7 @@ pub struct PkgOpts {
     pub output_directory: Option<String>,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct PrintOpts {
     /// Print the generated Sway AST (Abstract Syntax Tree).
     pub ast: bool,
@@ -266,7 +266,7 @@ pub struct PrintOpts {
     pub ir: bool,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct MinifyOpts {
     /// By default the JSON for ABIs is formatted for human readability. By using this option JSON
     /// output will be "minified", i.e. all on one line without whitespace.
@@ -277,7 +277,7 @@ pub struct MinifyOpts {
 }
 
 /// The set of options provided to the `build` functions.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct BuildOpts {
     pub pkg: PkgOpts,
     pub print: PrintOpts,
@@ -510,6 +510,33 @@ impl BuildPlan {
     /// The order in which nodes are compiled, determined via a toposort of the package graph.
     pub fn compilation_order(&self) -> &[NodeIx] {
         &self.compilation_order
+    }
+
+    /// Trim graph of the given build plan such that only given member and it's dependencies are
+    /// present in the graph. This will ensure that building the package only builds a part of the
+    /// workspace that belongs to the package itself.
+    pub fn member_plan(&self, member_manifest: &PackageManifest) -> Result<Self> {
+        let mut graph = self.graph().clone();
+        let member_node = self
+            .member_nodes()
+            .find(|node_ix| graph[*node_ix].name == member_manifest.project.name)
+            .ok_or_else(|| {
+                anyhow!(
+                    "{} is not a member node in the dependency graph",
+                    member_manifest.project.name
+                )
+            })?;
+        let bfs = Bfs::new(&graph, member_node);
+        // Collect visitable nodes from the given node in the graph.
+        let visited_nodes: HashSet<NodeIx> = bfs.iter(&graph).collect();
+        graph.retain_nodes(|_, index| visited_nodes.contains(&index));
+        // Since some nodes from the graph is removed we need to reconstruct compilation order.
+        let compilation_order = compilation_order(&graph)?;
+        Ok(Self {
+            graph: graph.clone(),
+            manifest_map: self.manifest_map.clone(),
+            compilation_order,
+        })
     }
 }
 
@@ -2288,8 +2315,15 @@ pub fn build_package_with_options(
     let manifest_file = ManifestFile::Package(Box::new(manifest.clone()));
     let member_manifests = manifest_file.member_manifests()?;
     let lock_path = manifest_file.lock_path()?;
+    // If this package belongs to a workspace, do not build entire build plan as we only need to
+    // build current package.
     let plan =
         BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, pkg.locked, pkg.offline)?;
+    let plan = if manifest.workspace()?.is_some() {
+        plan.member_plan(manifest)?
+    } else {
+        plan
+    };
 
     // Build it!
     let (built_package, source_map) = build(&plan, &profile)?;
@@ -2383,13 +2417,28 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     };
 
     let manifest_file = ManifestFile::from_dir(&this_dir)?;
-    match manifest_file {
+    match &manifest_file {
         ManifestFile::Package(package_manifest) => {
-            let built_package = build_package_with_options(&package_manifest, build_options)?;
+            let built_package = build_package_with_options(package_manifest, build_options)?;
             Ok(Built::Package(built_package))
         }
-        ManifestFile::Workspace(_) => {
-            bail!("Workspace building is not supported")
+        ManifestFile::Workspace(workspace_manifest) => {
+            let lock_path = workspace_manifest.lock_path();
+            let member_manifests = manifest_file.member_manifests()?;
+            let build_plan = BuildPlan::from_lock_and_manifests(
+                &lock_path,
+                &member_manifests,
+                build_options.pkg.locked,
+                build_options.pkg.offline,
+            )?;
+            let manifest_map = build_plan.manifest_map();
+            let graph = build_plan.graph();
+            for member in build_plan.member_nodes() {
+                let pinned = &graph[member];
+                info!("Building {}", pinned.name);
+                build_package_with_options(&manifest_map[&pinned.id()], build_options.clone())?;
+            }
+            Ok(Built::Workspace)
         }
     }
 }
