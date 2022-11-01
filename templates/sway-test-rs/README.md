@@ -1,11 +1,36 @@
 # Rust + Sway integration testing
 
 A cargo-generate template that makes it easy to initialise Rust integration
-testing within an existing Sway project.
+testing within a Sway project.
 
 This template is designed for Rust developers who wish to test integration of
 their Rust application and Sway code.
 
+To use this template with a Sway project:
+- Install [cargo-generate](https://github.com/cargo-generate/cargo-generate)
+- Run the following command to setup a project with the template, in the current directory, entering the project name when prompted:
+```
+cargo generate FuelLabs/sway
+```
+- To initialise a Sway project within the template project just created:
+```
+forc init --path <project name>
+```
+
+Rust integration testing can then be used by:
+- Entering the project
+```
+cd <project name>
+```
+- Building the Sway elements with:
+```
+forc build
+```
+- Running the tests with:
+```
+cargo test
+```
+
 See the "Testing with Rust" chapter of [the Sway
 Book](https://fuellabs.github.io/sway/v0.25.0/) for a thorough guide on how to
-use this template.
+use this template for integration testing.
