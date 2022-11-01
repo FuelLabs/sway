@@ -13,6 +13,7 @@ use sway_ir::{
     context::Context,
     module::Module,
     value::Value,
+    Instruction,
 };
 use sway_types::{ident::Ident, span::Spanned};
 use sway_utils::mapped_stack::MappedStack;
@@ -36,6 +37,29 @@ pub(crate) fn compile_const_decl(
         if let Some(ptr) = fn_compiler.get_function_ptr(env.context, name.as_str()) {
             found_local = true;
             if let Some(constant) = ptr.get_initializer(env.context) {
+                return Ok(Some(Value::new_constant(env.context, constant.clone())));
+            }
+
+            // Check if a constant was stored to the pointer in the current block
+            let mut stored_const_opt: Option<&Constant> = None;
+            for ins in fn_compiler.current_block.instruction_iter(env.context) {
+                if let Some(Instruction::Store {
+                    dst_val,
+                    stored_val,
+                }) = ins.get_instruction(env.context)
+                {
+                    if let Some(Instruction::GetPointer {
+                        base_ptr: base_ptr_2,
+                        ..
+                    }) = dst_val.get_instruction(env.context)
+                    {
+                        if &ptr == base_ptr_2 {
+                            stored_const_opt = stored_val.get_constant(env.context);
+                        }
+                    }
+                }
+            }
+            if let Some(constant) = stored_const_opt {
                 return Ok(Some(Value::new_constant(env.context, constant.clone())));
             }
         }
