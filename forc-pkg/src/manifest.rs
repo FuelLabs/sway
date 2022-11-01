@@ -702,7 +702,7 @@ impl WorkspaceManifestFile {
         Ok(self
             .members
             .iter()
-            .map(|member| self.dir().to_path_buf().join(member)))
+            .map(|member| self.dir().join(member)))
     }
 
     /// Returns an iterator over workspace member package manifests.
