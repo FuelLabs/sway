@@ -15,6 +15,7 @@ pub(crate) use self::{
 };
 
 use crate::{
+    asm_lang::virtual_register::VirtualRegister,
     declaration_engine::declaration_engine::*,
     error::*,
     language::{parsed::*, ty, *},
@@ -31,7 +32,7 @@ use sway_error::{
 };
 use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeSet, HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
 impl ty::TyExpression {
@@ -670,6 +671,7 @@ impl ty::TyExpression {
         // type check the initializers
         let typed_registers = asm
             .registers
+            .clone()
             .into_iter()
             .map(
                 |AsmRegisterDeclaration { name, initializer }| ty::TyAsmRegisterDeclaration {
@@ -689,10 +691,15 @@ impl ty::TyExpression {
                 },
             )
             .collect();
-        // check for any disallowed opcodes
-        for op in &asm.body {
-            check!(disallow_opcode(&op.op_name), continue, warnings, errors)
-        }
+
+        // Make sure that all registers that are initialized are *not* assigned again.
+        check!(
+            disallow_assigning_initialized_registers(&asm),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::AsmExpression {
                 whole_block_span: asm.whole_block_span,
@@ -1920,24 +1927,70 @@ mod tests {
         assert!(comp_res.warnings.is_empty() && comp_res.errors.is_empty());
     }
 }
-fn disallow_opcode(op: &Ident) -> CompileResult<()> {
-    let mut errors = vec![];
 
-    match op.as_str().to_lowercase().as_str() {
-        "ji" => {
-            errors.push(CompileError::DisallowedJi { span: op.span() });
-        }
-        "jnei" => {
-            errors.push(CompileError::DisallowedJnei { span: op.span() });
-        }
-        "jnzi" => {
-            errors.push(CompileError::DisallowedJnzi { span: op.span() });
-        }
-        _ => (),
-    };
-    if errors.is_empty() {
-        ok((), vec![], vec![])
-    } else {
-        err(vec![], errors)
+fn disallow_assigning_initialized_registers(asm: &AsmExpression) -> CompileResult<()> {
+    let mut errors = vec![];
+    let mut warnings = vec![];
+
+    // Collect all registers that have initializers in the list of arguments
+    let initialized_registers = asm
+        .registers
+        .iter()
+        .filter(|reg| reg.initializer.is_some())
+        .map(|reg| VirtualRegister::Virtual(reg.name.to_string()))
+        .collect::<BTreeSet<_>>();
+
+    // Collect all asm block instructions in the form of `VirtualOp`s
+    let mut opcodes = vec![];
+    for op in &asm.body {
+        let registers = op
+            .op_args
+            .iter()
+            .map(|reg_name| VirtualRegister::Virtual(reg_name.to_string()))
+            .collect::<Vec<VirtualRegister>>();
+
+        opcodes.push(check!(
+            crate::asm_lang::Op::parse_opcode(
+                &op.op_name,
+                &registers,
+                &op.immediate,
+                op.span.clone(),
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        ));
     }
+
+    // From the list of `VirtualOp`s, figure out what registers are assigned
+    let assigned_registers: BTreeSet<VirtualRegister> =
+        opcodes.iter().fold(BTreeSet::new(), |mut acc, op| {
+            for u in op.def_registers() {
+                acc.insert(u.clone());
+            }
+            acc
+        });
+
+    // Intersect the list of assigned registers with the list of initialized registers
+    let initialized_and_assigned_registers = assigned_registers
+        .intersection(&initialized_registers)
+        .collect::<BTreeSet<_>>();
+
+    // Form all the compile errors given the violating registers above. Obtain span information
+    // from the original `asm.registers` vector.
+    errors.extend(
+        asm.registers
+            .iter()
+            .filter(|reg| {
+                initialized_and_assigned_registers
+                    .contains(&VirtualRegister::Virtual(reg.name.to_string()))
+            })
+            .map(|reg| CompileError::InitializedRegisterReassignment {
+                name: reg.name.to_string(),
+                span: reg.name.span(),
+            })
+            .collect::<Vec<_>>(),
+    );
+
+    ok((), vec![], errors)
 }

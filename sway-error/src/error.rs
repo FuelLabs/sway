@@ -670,6 +670,11 @@ pub enum CompileError {
     RefMutableNotAllowedInMain { param_name: Ident },
     #[error("returning a `raw_ptr` from `main()` is not allowed")]
     PointerReturnNotAllowedInMain { span: Span },
+    #[error(
+        "Register \"{name}\" is initialized but later assigned which is not allowed. \
+            Consider uninitializing \"{name}\"."
+    )]
+    InitializedRegisterReassignment { name: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -851,6 +856,7 @@ impl Spanned for CompileError {
             ConfigTimeConstantNotALiteral { span } => span.clone(),
             RefMutableNotAllowedInMain { param_name } => param_name.span(),
             PointerReturnNotAllowedInMain { span } => span.clone(),
+            InitializedRegisterReassignment { span, .. } => span.clone(),
         }
     }
 }
