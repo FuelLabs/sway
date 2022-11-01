@@ -63,26 +63,7 @@ fn combine_cbr(context: &mut Context, function: &Function) -> Result<bool, IrErr
                             false_block.clone(),
                             true_block.clone(),
                         ))),
-                        v => {
-                            println!("B the type: {:?} in {}", v, function.get_name(context));
-                            println!(
-                                "if true: {:#?}",
-                                context.blocks.get(true_block.block.0).map(|x| x
-                                    .instructions
-                                    .clone()
-                                    .into_iter()
-                                    .map(|x| { context.values[x.0].value.clone() }))
-                            );
-                            println!(
-                                "if false: {:?}",
-                                context.blocks.get(false_block.block.0).map(|x| x
-                                    .instructions
-                                    .clone()
-                                    .into_iter()
-                                    .map(|x| { context.values[x.0].value.clone() }))
-                            );
-                            Some(Err(IrError::VerifyConditionExprNotABool))
-                        }
+                        _ => Some(Err(IrError::VerifyConditionExprNotABool)),
                     }
                 }
                 _ => None,

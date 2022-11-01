@@ -29,7 +29,7 @@ impl ty::TyAbiDeclaration {
         // so we don't support the case of calling a contract's own interface
         // from itself. This is by design.
 
-        // A temporary namespace for checking within the this scope.
+        // A temporary namespace for checking within this scope.
         let mut abi_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut abi_namespace).with_mode(Mode::ImplAbiFn);
 
