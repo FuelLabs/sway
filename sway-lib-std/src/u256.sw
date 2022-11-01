@@ -78,6 +78,16 @@ impl U256 {
         }
     }
 
+    /// Safely downcast to `u128` without loss of precision.
+    /// Returns an error if `self > U128::max()`.
+    pub fn as_u128(self) -> Result<U128, U256Error> {
+        if self.a == 0 && self.b == 0 {
+            Result::Ok(U128::from(self.c, self.d))
+        } else {
+            Result::Err(U256Error::LossOfPrecision)
+        }
+    }
+
     /// The smallest value that can be represented by this integer type.
     pub fn min() -> U256 {
         U256 {
