@@ -1684,8 +1684,9 @@ impl FnCompiler {
         }?;
 
         // Check for out of bounds if we have a literal index.
-        let (_, count) = aggregate.get_content(context).array_type();
+        let index_expr_span = index_expr.span.clone();
         if let ty::TyExpressionVariant::Literal(Literal::U64(index)) = index_expr.expression {
+            let (_, count) = aggregate.get_content(context).array_type();
             if index >= *count {
                 // XXX Here is a very specific case where we want to return an Error enum
                 // specifically, if not an actual CompileError.  This should be a
@@ -1693,12 +1694,74 @@ impl FnCompiler {
                 return Err(CompileError::ArrayOutOfBounds {
                     index,
                     count: *count,
-                    span: index_expr.span,
+                    span: index_expr_span,
                 });
             }
         }
 
         let index_val = self.compile_expression(context, md_mgr, index_expr)?;
+
+        // The following code detects out of bounds when index_val is a constant
+        // This occurs when index uses a global const
+        if let Some(Constant {
+            value: ConstantValue::Uint(constant_value),
+            ..
+        }) = index_val.get_constant(context)
+        {
+            let (_, count) = aggregate.get_content(context).array_type();
+            if *constant_value >= *count {
+                return Err(CompileError::ArrayOutOfBounds {
+                    index: *constant_value,
+                    count: *count,
+                    span: index_expr_span,
+                });
+            }
+        }
+
+        // The following code detects out of bounds when index_val loads a pointer that was stored
+        // with a const value in the current block.
+        if let Some(Instruction::Load(load_ins)) = index_val.get_instruction(context) {
+            if let Some(Instruction::GetPointer {
+                base_ptr, offset, ..
+            }) = load_ins.get_instruction(context)
+            {
+                let mut stored_const_opt: Option<&Constant> = None;
+                for ins in self.current_block.instruction_iter(context) {
+                    if let Some(Instruction::Store {
+                        dst_val,
+                        stored_val,
+                    }) = ins.get_instruction(context)
+                    {
+                        if let Some(Instruction::GetPointer {
+                            base_ptr: base_ptr_2,
+                            offset: offset_2,
+                            ..
+                        }) = dst_val.get_instruction(context)
+                        {
+                            if base_ptr == base_ptr_2 && offset == offset_2 {
+                                stored_const_opt = stored_val.get_constant(context);
+                            }
+                        }
+                    }
+                }
+
+                if let Some(Constant {
+                    value: ConstantValue::Uint(constant_value),
+                    ..
+                }) = stored_const_opt
+                {
+                    let (_, count) = aggregate.get_content(context).array_type();
+                    if *constant_value >= *count {
+                        return Err(CompileError::ArrayOutOfBounds {
+                            index: *constant_value,
+                            count: *count,
+                            span: index_expr_span,
+                        });
+                    }
+                }
+            }
+        }
+
         if index_val.is_diverging(context) {
             return Ok(index_val);
         }
