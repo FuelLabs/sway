@@ -1,0 +1,13 @@
+[[package]]
+name = 'array_oob_variable_index'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-156A19E3A346ACF0'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-156A19E3A346ACF0'
+dependencies = ['core']
