@@ -68,7 +68,7 @@ pub fn get<T>(key: b256) -> T {
 
             // Move by 32 bytes
             size_left -= 32;
-            current_pointer += 32;
+            current_pointer = current_pointer.add::<b256>(1);
 
             // Generate a new key for each 32 byte chunk TODO Should eventually
             // replace this with `local_key = local_key + 1
