@@ -2,7 +2,7 @@
 name = "{{project-name}}"
 description = "A cargo-generate template for Rust + Sway integration testing."
 version = "0.1.0"
-edition = "2021"
+edition = "2022"
 authors = ["{{authors}}"]
 license = "Apache-2.0"
 
