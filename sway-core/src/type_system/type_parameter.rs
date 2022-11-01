@@ -102,15 +102,25 @@ impl TypeParameter {
 
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
-        let type_id = insert_type(TypeInfo::UnknownGeneric {
+        let type_info = TypeInfo::UnknownGeneric {
             name: name_ident.clone(),
             trait_constraints: trait_constraints.clone().into_iter().collect(),
-        });
+        };
+        let type_id = insert_type(type_info.clone());
+        let type_id_for_trait_map = insert_type(type_info);
 
         // Insert the trait constraints into the namespace.
+        // We insert this type with it's own copy of the type info so that as
+        // types resolve in the type engine, the implemented traits for the
+        // trait constraints don't inadvertently point to the resolved type for
+        // the resolved type parameter.
         for trait_constraint in trait_constraints.iter() {
             check!(
-                TraitConstraint::insert_into_namespace(ctx.by_ref(), type_id, trait_constraint),
+                TraitConstraint::insert_into_namespace(
+                    ctx.by_ref(),
+                    type_id_for_trait_map,
+                    trait_constraint
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors

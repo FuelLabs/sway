@@ -552,6 +552,7 @@ impl TraitMap {
         methods
     }
 
+    /// Checks to see if the trait constraints are satisfied for a given type.
     pub(crate) fn check_if_trait_constraints_are_satisfied_for_type(
         &self,
         type_id: TypeId,
@@ -573,6 +574,7 @@ impl TraitMap {
                 trait_name: constraint_trait_name,
                 type_arguments: constraint_type_arguments,
             } = constraint;
+            println!("checking {}: {}", type_id, constraint_trait_name);
             let constraint_type_id = insert_type(TypeInfo::Custom {
                 name: constraint_trait_name.suffix.clone(),
                 type_arguments: if constraint_type_arguments.is_empty() {
@@ -586,6 +588,7 @@ impl TraitMap {
                     suffix: (map_trait_name_suffix, map_trait_type_args),
                     ..
                 } = map_trait_name;
+                println!("  found {}: {}", map_type_id, map_trait_name_suffix);
                 let map_trait_type_id = insert_type(TypeInfo::Custom {
                     name: map_trait_name_suffix.clone(),
                     type_arguments: if map_trait_type_args.is_empty() {

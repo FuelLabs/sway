@@ -1,4 +1,7 @@
 category = "fail"
 
-# check: $()let baz = add_points(foo, bar);
+# check: $()let c = add_points(a, b);
 # nextln: $()The trait constraint "u64": "MyAdd" is not satisfied.
+
+# check: $()let f = add_points2(d, e);
+# nextln: $()The trait constraint "u8": "MyAdd" is not satisfied.
