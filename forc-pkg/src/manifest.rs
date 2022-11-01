@@ -699,10 +699,7 @@ impl WorkspaceManifestFile {
     ///
     /// This will always return canonical paths.
     pub fn member_paths(&self) -> Result<impl Iterator<Item = PathBuf> + '_> {
-        Ok(self
-            .members
-            .iter()
-            .map(|member| self.dir().join(member)))
+        Ok(self.members.iter().map(|member| self.dir().join(member)))
     }
 
     /// Returns an iterator over workspace member package manifests.
