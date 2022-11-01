@@ -754,16 +754,10 @@ fn dep_path(
         SourcePinned::Registry(_reg) => unreachable!("registry dependencies not yet supported"),
         SourcePinned::Member => {
             // If a node has a root dependency it is a member of the workspace.
-            let member_names = manifests
+            manifests
                 .iter()
-                .map(|(_, pkg_manifest)| pkg_manifest.project.name.clone());
-            let member_paths = manifests
-                .iter()
-                .map(|(_, pkg_manifest)| pkg_manifest.path());
-            member_names
-                .zip(member_paths)
-                .find(|(member_name, _)| member_name == dep_name)
-                .map(|(_, member_path)| member_path.to_path_buf())
+                .find(|(_, manifest)| manifest.project.name == *dep_name)
+                .map(|(_, manifest)| manifest.path().to_path_buf())
                 .ok_or_else(|| anyhow!("cannot find dependency in the workspace"))
         }
     }

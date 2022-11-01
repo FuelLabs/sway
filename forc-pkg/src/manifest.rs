@@ -72,14 +72,11 @@ impl ManifestFile {
         let mut member_manifest_files = BTreeMap::new();
         match self {
             ManifestFile::Package(pkg_manifest_file) => {
-                // Check if this package is in a workspace, if that is the case insert all member
-                // manifests
-                if let Ok(Some(workspace_manifest_file)) = pkg_manifest_file.workspace() {
-                    for (member_name, pkg_manifest_file) in workspace_manifest_file
-                        .members()
-                        .zip(workspace_manifest_file.member_pkg_manifests()?)
-                    {
-                        member_manifest_files.insert(member_name.clone(), pkg_manifest_file);
+                // Check if this package is in a workspace, in that case insert all member manifests
+                if let Some(workspace_manifest_file) = pkg_manifest_file.workspace()? {
+                    for member_manifest in workspace_manifest_file.member_pkg_manifests()? {
+                        member_manifest_files
+                            .insert(member_manifest.project.name.clone(), member_manifest);
                     }
                 } else {
                     let member_name = &pkg_manifest_file.project.name;
@@ -87,11 +84,9 @@ impl ManifestFile {
                 }
             }
             ManifestFile::Workspace(workspace_manifest_file) => {
-                for (member_name, pkg_manifest_file) in workspace_manifest_file
-                    .members()
-                    .zip(workspace_manifest_file.member_pkg_manifests()?)
-                {
-                    member_manifest_files.insert(member_name.clone(), pkg_manifest_file);
+                for member_manifest in workspace_manifest_file.member_pkg_manifests()? {
+                    member_manifest_files
+                        .insert(member_manifest.project.name.clone(), member_manifest);
                 }
             }
         }
@@ -329,24 +324,25 @@ impl PackageManifestFile {
 
     /// Returns the workspace manifest file if this `PackageManifestFile` is one of the members.
     pub fn workspace(&self) -> Result<Option<WorkspaceManifestFile>> {
-        let parent_dir = self
-            .dir()
-            .parent()
-            .ok_or_else(|| anyhow!("Cannot get parent directory"))?;
-        // Only try to read manifest file if it exists so that non existing workspace manifest
-        // files (ex: single package projects) does not return an error.
-        if parent_dir.join("Forc.toml").exists() {
-            // Check if the parent dir contains a parsable workspace manifest file.
-            let workspace_manifest = WorkspaceManifestFile::from_dir(parent_dir)?;
-            // Check if the workspace manifest in the parent dir declares this pkg as a member
-            if workspace_manifest
-                .members()
-                .any(|member| *member == self.project.name)
-            {
-                Ok(Some(workspace_manifest))
-            } else {
-                Ok(None)
+        let parent_dir = match self.dir().parent() {
+            None => return Ok(None),
+            Some(dir) => dir,
+        };
+        let ws_manifest = match WorkspaceManifestFile::from_dir(parent_dir) {
+            Ok(manifest) => manifest,
+            Err(e) => {
+                // Check if the error is missing manifest file and do not return that error if that
+                // is the case as we do not want to return error if this is a single project
+                // without a workspace.
+                if e.to_string().contains("No such file or directory") {
+                    return Ok(None);
+                } else {
+                    return Err(e);
+                }
             }
+        };
+        if ws_manifest.member_paths()?.any(|path| path == self.path()) {
+            Ok(Some(ws_manifest))
         } else {
             Ok(None)
         }
@@ -664,7 +660,7 @@ pub struct WorkspaceManifestFile {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct WorkspaceManifest {
-    pub members: Vec<String>,
+    pub members: Vec<PathBuf>,
 }
 
 impl WorkspaceManifestFile {
@@ -694,18 +690,19 @@ impl WorkspaceManifestFile {
         Self::from_file(path)
     }
 
-    /// Returns an iterator over names of workspace members.
-    pub fn members(&self) -> impl Iterator<Item = &String> + '_ {
+    /// Returns an iterator over relative paths of workspace members.
+    pub fn members(&self) -> impl Iterator<Item = &PathBuf> + '_ {
         self.members.iter()
     }
 
     /// Returns an iterator over workspace member root directories.
+    ///
+    /// This will always return canonical paths.
     pub fn member_paths(&self) -> Result<impl Iterator<Item = PathBuf> + '_> {
-        let parent = self
-            .path
-            .parent()
-            .ok_or_else(|| anyhow!("Cannot get parent dir of {:?}", self.path))?;
-        Ok(self.members.iter().map(|member| parent.join(member)))
+        Ok(self
+            .members
+            .iter()
+            .map(|member| self.dir().to_path_buf().join(member)))
     }
 
     /// Returns an iterator over workspace member package manifests.
