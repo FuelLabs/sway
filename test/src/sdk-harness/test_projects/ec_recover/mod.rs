@@ -105,12 +105,5 @@ async fn can_recover_address() {
         .await
         .unwrap();
 
-    // let first = response.value.0;
-    // let second = response.value.1;
-    // let arrays: [[u8; 32]; 2] = [first.0, second.0];
-    // let joined: Vec<u8> = arrays.into_iter().flat_map(|s| s.into_iter()).collect();
-    // let joined_array: [u8; 64] = joined.try_into().unwrap();
-    // let pubkey = Bytes64::new(joined_array);
-
     assert_eq!(Bech32Address::from(response.value), *wallet.address());
 }
