@@ -471,15 +471,10 @@ impl BuildPlan {
                 );
             }
             info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
-            // if len of the member manifests is 1, this is a standalone project (not a workspace).
-            let name = if manifests.len() == 1 {
-                manifests
-                    .iter()
-                    .next()
-                    .map(|(member_name, _)| member_name.as_str())
-            } else {
-                None
-            };
+            let name = manifests
+                .iter()
+                .next()
+                .map(|(member_name, _)| member_name.as_str());
             crate::lock::print_diff(name, &lock_diff);
             let string = toml::ser::to_string_pretty(&new_lock)
                 .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;

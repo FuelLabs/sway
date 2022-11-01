@@ -333,8 +333,8 @@ impl PackageManifestFile {
             .dir()
             .parent()
             .ok_or_else(|| anyhow!("Cannot get parent directory"))?;
-        // Only check for workspace manifest file parsing errors if the parent dir contains a
-        // manifest file.
+        // Only try to read manifest file if it exists so that non existing workspace manifest
+        // files (ex: single package projects) does not return an error.
         if parent_dir.join("Forc.toml").exists() {
             // Check if the parent dir contains a parsable workspace manifest file.
             let workspace_manifest = WorkspaceManifestFile::from_dir(parent_dir)?;
@@ -353,8 +353,8 @@ impl PackageManifestFile {
     }
 
     /// Returns the location of the lock file for `PackageManifestFile`.
-    /// Checks if this PackageManifestFile corresponds to a workspace member and in that case
-    /// returns the workspace level lock files location.
+    /// Checks if this PackageManifestFile corresponds to a workspace member and if that is the case
+    /// returns the workspace level lock file's location.
     ///
     /// This will always be a canonical path.
     pub fn lock_path(&self) -> Result<PathBuf> {
