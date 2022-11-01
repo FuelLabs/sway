@@ -101,6 +101,14 @@ impl ManifestFile {
         };
         Ok((member_manifest_files, workspace_manifest))
     }
+
+    /// Returns the path of the lock file for the given ManifestFile
+    pub fn lock_path(&self) -> Result<PathBuf> {
+        match self {
+            ManifestFile::Package(pkg_manifest) => pkg_manifest.lock_path(),
+            ManifestFile::Workspace(workspace_manifest) => Ok(workspace_manifest.lock_path()),
+        }
+    }
 }
 
 type PatchMap = BTreeMap<String, Dependency>;
@@ -321,6 +329,46 @@ impl PackageManifestFile {
     /// Getter for the config time constants on the manifest.
     pub fn config_time_constants(&self) -> BTreeMap<String, ConfigTimeConstant> {
         self.constants.as_ref().cloned().unwrap_or_default()
+    }
+
+    /// Returns the workspace manifest file if this `PackageManifestFile` is one of the members.
+    pub fn workspace(&self) -> Result<Option<WorkspaceManifestFile>> {
+        let parent_dir = self
+            .dir()
+            .parent()
+            .ok_or_else(|| anyhow!("Cannot get parent directory"))?;
+        // Only check for workspace manifest file parsing errors if the parent dir contains a
+        // manifest file.
+        if parent_dir.join("Forc.toml").exists() {
+            // Check if the parent dir contains a parsable workspace manifest file.
+            let workspace_manifest = WorkspaceManifestFile::from_dir(parent_dir)?;
+            // Check if the workspace manifest in the parent dir declares this pkg as a member
+            if workspace_manifest
+                .members()
+                .any(|member| *member == self.project.name)
+            {
+                Ok(Some(workspace_manifest))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Returns the location of the lock file for `PackageManifestFile`.
+    /// Checks if this PackageManifestFile corresponds to a workspace member and in that case
+    /// returns the workspace level lock files location.
+    ///
+    /// This will always be a canonical path.
+    pub fn lock_path(&self) -> Result<PathBuf> {
+        // Check if this package is in a workspace
+        let workspace_manifest = self.workspace()?;
+        if let Some(workspace_manifest) = workspace_manifest {
+            Ok(workspace_manifest.lock_path())
+        } else {
+            Ok(self.dir().to_path_buf())
+        }
     }
 }
 
@@ -688,8 +736,16 @@ impl WorkspaceManifestFile {
             .expect("failed to retrieve manifest directory")
     }
 
+    /// Check if given path corresponds to any workspace member's path
     pub fn is_member_path(&self, path: &Path) -> Result<bool> {
         Ok(self.member_paths()?.any(|member_path| member_path == path))
+    }
+
+    /// Returns the location of the lock file for `WorkspaceManifestFile`.
+    ///
+    /// This will always be a canonical path.
+    pub fn lock_path(&self) -> PathBuf {
+        self.dir().to_path_buf()
     }
 }
 
