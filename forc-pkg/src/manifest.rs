@@ -341,7 +341,7 @@ impl PackageManifestFile {
                 }
             }
         };
-        if ws_manifest.member_paths()?.any(|path| path == self.path()) {
+        if ws_manifest.is_member_path(self.dir())? {
             Ok(Some(ws_manifest))
         } else {
             Ok(None)
