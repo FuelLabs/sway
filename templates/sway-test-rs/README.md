@@ -7,6 +7,7 @@ This template is designed for Rust developers who wish to test integration of
 their Rust application and Sway code.
 
 To use this template with a Sway project:
+
 - Install [cargo-generate](https://github.com/cargo-generate/cargo-generate)
 - Create the template project inside the current directory, entering the project name when prompted, with the following command:
 
@@ -21,6 +22,7 @@ forc init --path <project name>
 ```
 
 Rust integration testing can then be used by:
+
 - Entering the project
 
 ```sh
