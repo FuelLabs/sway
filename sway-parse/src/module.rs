@@ -39,8 +39,8 @@ impl ParseToEnd for Module {
                 token_trees = tokens;
                 doc_comment = Some(doc);
             }
-            if let Some((_, _)) = Peeker::with::<DepToken>(token_trees) {
-                if let Some(doc) = doc_comment {
+            if let Some(doc) = doc_comment {
+                if let Some((_, _)) = Peeker::with::<DepToken>(token_trees) {
                     return Err(parser
                         .emit_error_with_span(ParseErrorKind::CannotDocCommentDepToken, doc.span));
                 }
