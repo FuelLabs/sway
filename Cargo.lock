@@ -1758,15 +1758,16 @@ dependencies = [
 
 [[package]]
 name = "fuel-gql-client"
-version = "0.13.0"
-source = "git+https://github.com/FuelLabs/fuel-core#4b2bc255c342dbd7c070d863fe37f56d5e5a2c12"
+version = "0.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f46c4d55ac2b320aa8c536b2742cadf30c2d670da8df2158d2cfd0333fb9662c"
 dependencies = [
  "anyhow",
  "chrono",
  "clap 3.2.23",
  "cynic",
  "derive_more",
- "fuel-vm 0.22.2",
+ "fuel-vm 0.22.3",
  "futures",
  "futures-timer",
  "hex",
@@ -1864,8 +1865,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-vm"
-version = "0.22.2"
-source = "git+https://github.com/FuelLabs/fuel-vm#300919483da11acfd7439e8ead5cbc9f23c36622"
+version = "0.22.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98e685e7f73195d470bb54de69ff14570a835c97ed42dd32c395aba3c09dc8f9"
 dependencies = [
  "fuel-asm 0.10.0",
  "fuel-crypto",
@@ -1884,8 +1886,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-core"
-version = "0.27.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=Voxelot/fuel-core-0.13#65af1ddcbe99fc412de03c6bdaea626c60f23474"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "945f8db68436a9b18986251fd82f59243e66a64dcf5615db5e5673f69e80f70d"
 dependencies = [
  "Inflector",
  "anyhow",
@@ -1910,8 +1913,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-signers"
-version = "0.27.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=Voxelot/fuel-core-0.13#65af1ddcbe99fc412de03c6bdaea626c60f23474"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0b59a21402f946ce745750ba232913a74b010a6399d829f083b61dbf4d544b1"
 dependencies = [
  "async-trait",
  "bytes",
@@ -1932,8 +1936,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-types"
-version = "0.27.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=Voxelot/fuel-core-0.13#65af1ddcbe99fc412de03c6bdaea626c60f23474"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d2f7024e8268d77d7bf6fca26353edbf6303891b2a54eb9e78d70ea126e8412"
 dependencies = [
  "anyhow",
  "bech32 0.9.1",
@@ -4434,7 +4439,7 @@ dependencies = [
  "derivative",
  "dirs 3.0.2",
  "either",
- "fuel-vm 0.22.2",
+ "fuel-vm 0.22.3",
  "hex",
  "im",
  "itertools",
@@ -4689,7 +4694,7 @@ dependencies = [
  "forc-client",
  "forc-pkg",
  "forc-tracing",
- "fuel-vm 0.22.2",
+ "fuel-vm 0.22.3",
  "futures",
  "gag",
  "hex",
@@ -5638,13 +5643,3 @@ dependencies = [
  "syn",
  "synstructure",
 ]
-
-[[patch.unused]]
-name = "fuel-core"
-version = "0.13.0"
-source = "git+https://github.com/FuelLabs/fuel-core#4b2bc255c342dbd7c070d863fe37f56d5e5a2c12"
-
-[[patch.unused]]
-name = "fuel-core-interfaces"
-version = "0.13.0"
-source = "git+https://github.com/FuelLabs/fuel-core#4b2bc255c342dbd7c070d863fe37f56d5e5a2c12"
