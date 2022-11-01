@@ -471,11 +471,11 @@ impl BuildPlan {
                 );
             }
             info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
-            let name = manifests
+            let member_names = manifests
                 .iter()
-                .next()
-                .map(|(member_name, _)| member_name.as_str());
-            crate::lock::print_diff(name, &lock_diff);
+                .map(|(_, manifest)| manifest.project.name.clone())
+                .collect();
+            crate::lock::print_diff(&member_names, &lock_diff);
             let string = toml::ser::to_string_pretty(&new_lock)
                 .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
             fs::write(&lock_path, &string)

@@ -359,7 +359,7 @@ impl PackageManifestFile {
         if let Some(workspace_manifest) = workspace_manifest {
             Ok(workspace_manifest.lock_path())
         } else {
-            Ok(self.dir().to_path_buf().join("Forc.lock"))
+            Ok(self.dir().to_path_buf().join(constants::LOCK_FILE_NAME))
         }
     }
 }
@@ -738,7 +738,7 @@ impl WorkspaceManifestFile {
     ///
     /// This will always be a canonical path.
     pub fn lock_path(&self) -> PathBuf {
-        self.dir().to_path_buf().join("Forc.lock")
+        self.dir().to_path_buf().join(constants::LOCK_FILE_NAME)
     }
 }
 
