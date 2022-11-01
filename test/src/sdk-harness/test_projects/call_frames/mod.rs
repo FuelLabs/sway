@@ -48,7 +48,7 @@ async fn can_get_first_param() {
     let function_name = "get_first_param()";
     hasher.update(function_name);
     let function_name_hash = hasher.finalize();
-    // Grab the first 4 bytes of the hash per https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md#function-selector-encoding
+    // Grab the first 4 bytes of the hash per https://fuellabs.github.io/fuel-specs/master/protocol/abi#function-selector-encoding
     let function_name_hash = &function_name_hash[0..4];
     // Convert the bytes to decimal value
     let selector = function_name_hash[3] as u64
