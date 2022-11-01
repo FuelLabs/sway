@@ -21,14 +21,14 @@ fn main() -> bool {
 
     // Get the expected EVM address
     let pubkeyhash = 0xe4eab8f844a8d11b205fd137a1b7ea5ede26f651909505d99cf8b5c0d4c8e9c1;
-    let evm_address = ~EvmAddress::from(pubkeyhash);
+    let evm_address = EvmAddress::from(pubkeyhash);
 
     let msg_hash = 0x8ddb13a2ab58f413bd3121e1ddc8b83a328f3b830d19a7c471f0be652d23bb0e;
 
     // create a signature:
     let sig_hi = 0x82115ed208d8fe8dd522d88ca77812b34d270d6bb6326ff511297766a3af1166;
     let sig_lo = 0xc07204f554a00e49a2ee69f0979dc4feef07f7dba8d779d388fb2a53bc9bcde4;
-    let signature: B512 = ~B512::from(sig_hi, sig_lo);
+    let signature: B512 = B512::from(sig_hi, sig_lo);
 
     // recover the address:
     let result: Result<EvmAddress, EcRecoverError> = ec_recover_evm_address(signature, msg_hash);

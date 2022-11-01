@@ -222,6 +222,7 @@ fn compile_fn_with_args(
     selector: Option<[u8; 4]>,
     logged_types_map: &HashMap<TypeId, LogId>,
 ) -> Result<Function, CompileError> {
+    let inline_opt = ast_fn_decl.inline();
     let ty::TyFunctionDeclaration {
         name,
         body,
@@ -255,7 +256,12 @@ fn compile_fn_with_args(
 
     let span_md_idx = md_mgr.span_to_md(context, &span);
     let storage_md_idx = md_mgr.purity_to_md(context, purity);
-    let metadata = md_combine(context, &span_md_idx, &storage_md_idx);
+    let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
+
+    if let Some(inline) = inline_opt {
+        let inline_md_idx = md_mgr.inline_to_md(context, inline);
+        metadata = md_combine(context, &metadata, &inline_md_idx);
+    }
 
     let func = Function::new(
         context,
@@ -271,12 +277,17 @@ fn compile_fn_with_args(
     let mut compiler = FnCompiler::new(context, module, func, returns_by_ref, logged_types_map);
     let mut ret_val = compiler.compile_code_block(context, md_mgr, body)?;
 
-    // Special case: if the return type is unit but the return value type is not, then we have an
-    // implicit return from the last expression in the code block having a semi-colon.  This isn't
-    // codified in the AST explicitly so we need to make a unit to return here.
-    if ret_type.eq(context, &Type::Unit) && !matches!(ret_val.get_type(context), Some(Type::Unit)) {
-        ret_val = Constant::get_unit(context);
-    }
+    // Special case: sometimes the returned value at the end of the function block is hacked
+    // together and is invalid.  This can happen with diverging control flow or with implicit
+    // returns.  We can double check here and make sure the return value type is correct.
+    ret_val = match ret_val.get_type(context) {
+        Some(ret_val_type) if ret_type.eq(context, &ret_val_type.strip_ptr_type(context)) => {
+            ret_val
+        }
+
+        // Mismatched or unavailable type.  Set ret_val to a correctly typed Undef.
+        _otherwise => Value::new_constant(context, Constant::get_undef(ret_type)),
+    };
 
     // Another special case: if the last expression in a function is a return then we don't want to
     // add another implicit return instruction here, as `ret_val` will be unit regardless of the

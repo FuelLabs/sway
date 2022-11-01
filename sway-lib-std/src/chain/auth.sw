@@ -27,7 +27,7 @@ pub fn caller_is_external() -> bool {
 /// If caller is internal, returns the contract ID of the caller.
 /// Otherwise, undefined behavior.
 pub fn caller_contract_id() -> ContractId {
-    ~ContractId::from(asm(r1) {
+    ContractId::from(asm(r1) {
         gm r1 i2;
         r1: b256
     })
