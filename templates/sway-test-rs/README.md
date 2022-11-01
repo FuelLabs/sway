@@ -8,7 +8,7 @@ their Rust application and Sway code.
 
 To use this template with a Sway project:
 - Install [cargo-generate](https://github.com/cargo-generate/cargo-generate)
-- Run the following command to setup a project with the template, in the current directory, entering the project name when prompted:
+- Create the template project inside the current directory, entering the project name when prompted, with the following command:
 ```
 cargo generate FuelLabs/sway
 ```
