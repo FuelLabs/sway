@@ -3,6 +3,7 @@ use crate::{block::Block, BranchToWithArgs, Context, Function};
 /// The algorithms implemented here are from the paper
 // "A Simple, Fast Dominance Algorithm" -- Keith D. Cooper, Timothy J. Harvey, and Ken Kennedy.
 use rustc_hash::{FxHashMap, FxHashSet};
+use std::fmt::Write;
 
 /// Represents a node in the dominator tree.
 pub struct DomTreeNode {
@@ -186,11 +187,12 @@ pub fn print_dot(context: &Context, func_name: &str, dom_tree: &DomTree) -> Stri
     let mut res = format!("digraph {} {{\n", func_name);
     for (b, idom) in dom_tree.iter() {
         if let Some(idom) = idom.parent {
-            res += &(format!(
-                "\t{} -> {}\n",
+            let _ = writeln!(
+                res,
+                "\t{} -> {}",
                 idom.get_label(context),
                 b.get_label(context)
-            ))
+            );
         }
     }
     res += "}\n";
