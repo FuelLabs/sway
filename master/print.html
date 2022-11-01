@@ -746,7 +746,7 @@ impl Wallet for Contract {
 <li><a href="sway-program-types/./predicates.html">Predicates</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="what-is-a-smart-contract"><a class="header" href="#what-is-a-smart-contract">What is a Smart Contract?</a></h1>
-<p>A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md">transaction</a>. The main features of a smart contract that differentiate it from scripts or predicates are that it is <em>callable</em> and <em>stateful</em>. Put another way, a smart contract is analogous to a deployed API with some database state. The interface of a smart contract, also just called a contract, must be defined strictly with an <a href="sway-program-types/smart_contracts.html#the-abi-declaration">ABI declaration</a>. See <a href="sway-program-types/../examples/subcurrency.html">this contract</a> for an example.</p>
+<p>A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a <a href="https://fuellabs.github.io/fuel-specs/master/protocol/tx_format">transaction</a>. The main features of a smart contract that differentiate it from scripts or predicates are that it is <em>callable</em> and <em>stateful</em>. Put another way, a smart contract is analogous to a deployed API with some database state. The interface of a smart contract, also just called a contract, must be defined strictly with an <a href="sway-program-types/smart_contracts.html#the-abi-declaration">ABI declaration</a>. See <a href="sway-program-types/../examples/subcurrency.html">this contract</a> for an example.</p>
 <h2 id="syntax-of-a-smart-contract"><a class="header" href="#syntax-of-a-smart-contract">Syntax of a Smart Contract</a></h2>
 <p>As with any Sway program, the program starts with a declaration of what <a href="sway-program-types/./index.html">program type</a> it is. A contract must also either define or import an <a href="sway-program-types/smart_contracts.html#the-abi-declaration">ABI declaration</a> and implement it. It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract. Let's take a look at an ABI declaration in a library:</p>
 <pre><code class="language-sway">library wallet_abi;
@@ -856,7 +856,7 @@ fn main() {
 </ol>
 <p>Each special parameter is optional and assumes a default value when skipped:</p>
 <ol>
-<li>The default value for <code>gas</code> is the context gas (i.e. the content of the special register <code>$cgas</code>). Refer to the <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md">FuelVM specifications</a> for more information about context gas.</li>
+<li>The default value for <code>gas</code> is the context gas (i.e. the content of the special register <code>$cgas</code>). Refer to the <a href="https://fuellabs.github.io/fuel-specs/master/vm">FuelVM specifications</a> for more information about context gas.</li>
 <li>The default value for <code>coins</code> is 0.</li>
 <li>The default value for <code>asset_id</code> is <code>ZERO_B256</code>.</li>
 </ol>
@@ -2009,7 +2009,7 @@ fn increment_amount(increment: u64) -&gt; u64 {
 <li>Sway addresses are 32 bytes long (instead of 20)</li>
 <li>Sway addresses are computed with the SHA-256 hash of the public key instead of the keccak-256 hash.</li>
 </ol>
-<p>Contracts, on the other hand, are uniquely identified with a contract ID rather than an address. A contract's ID is also 32 bytes long and is calculated <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id">here</a>.</p>
+<p>Contracts, on the other hand, are uniquely identified with a contract ID rather than an address. A contract's ID is also 32 bytes long and is calculated <a href="https://fuellabs.github.io/fuel-specs/master/protocol/id/contract">here</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="native-support-for-multiple-asset-types"><a class="header" href="#native-support-for-multiple-asset-types">Native Support for Multiple Asset Types</a></h1>
 <p>The FuelVM has built-in support for working with multiple assets.</p>
 <p>What does this mean in practice?</p>
@@ -2171,8 +2171,8 @@ impl MyOwnedContract for Contract {
     }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="calling-contracts"><a class="header" href="#calling-contracts">Calling Contracts</a></h1>
-<p>Smart contracts can be <em>called</em> by other contracts or scripts. In the FuelVM, this is done primarily with the <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/instruction_set.md#call-call-contract"><code>call</code></a> instruction.</p>
-<p>Sway provides a nice way to manage callable interfaces with its <code>abi</code> system. The Fuel ABI specification can be found <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md">here</a>.</p>
+<p>Smart contracts can be <em>called</em> by other contracts or scripts. In the FuelVM, this is done primarily with the <a href="https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#call-call-contract"><code>call</code></a> instruction.</p>
+<p>Sway provides a nice way to manage callable interfaces with its <code>abi</code> system. The Fuel ABI specification can be found <a href="https://fuellabs.github.io/fuel-specs/master/protocol/abi">here</a>.</p>
 <h2 id="example-1"><a class="header" href="#example-1">Example</a></h2>
 <p>Here is an example of a contract calling another contract in Sway. A script can call a contract in the same way.</p>
 <pre><code class="language-sway">// ./contract_a.sw
@@ -2517,8 +2517,8 @@ fn main() -&gt; bool {
 <p>An important note is that the <code>ji</code> and <code>jnei</code> opcodes are not available within an <code>asm</code> block. For those looking to introduce control flow to <code>asm</code> blocks, it is recommended to surround smaller chunks of <code>asm</code> with control flow (<code>if</code>, <code>else</code>, and <code>while</code>).</p>
 <h2 id="helpful-links"><a class="header" href="#helpful-links">Helpful Links</a></h2>
 <p>For examples of assembly in action, check out the <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">Sway standard library</a>.</p>
-<p>For a complete list of all instructions supported in the FuelVM: <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/instruction_set.md">Instructions</a>.</p>
-<p>And to learn more about the FuelVM semantics: <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#semantics">Semantics</a>.</p>
+<p>For a complete list of all instructions supported in the FuelVM: <a href="https://fuellabs.github.io/fuel-specs/master/vm/instruction_set">Instructions</a>.</p>
+<p>And to learn more about the FuelVM semantics: <a href="https://fuellabs.github.io/fuel-specs/master/vm#semantics">Semantics</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="common-collections"><a class="header" href="#common-collections">Common Collections</a></h1>
 <p>Sway’s standard library includes a number of very useful data structures called collections. Most other data types represent one specific value, but collections can contain multiple values. Unlike the built-in array and tuple types which are allocated on the &quot;stack&quot; and cannot grow in size, the data these collections point to is stored either on the &quot;heap&quot; or in contract &quot;storage&quot;, which means the amount of data does not need to be known at compile time and can grow as the program runs. Each kind of collection has different capabilities and costs, and choosing an appropriate one for your current situation is a skill you’ll develop over time. In this chapter, we’ll discuss three collections that are used very often in Sway programs:</p>
 <p>A vector on the heap allows you to store a variable number of values next to each other.</p>
@@ -3041,7 +3041,7 @@ ABI.</p>
 <h2 id="default-safe-math"><a class="header" href="#default-safe-math">Default Safe Math</a></h2>
 <p>Math in the FuelVM is by default safe (i.e. any overflow or exception is a panic). Safety checks are performed natively in the VM implementation, rather than at the bytecode level like <a href="https://docs.soliditylang.org/en/latest/080-breaking-changes.html#silent-changes-of-the-semantics">Solidity's default safe math</a>.</p>
 <h2 id="no-code-size-limit"><a class="header" href="#no-code-size-limit">No* Code Size Limit</a></h2>
-<p>There is no practical code size limit to Sway contracts. The physical limit is governed by the <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#parameters"><code>VM_MAX_RAM</code> VM parameter</a>, which at the time of writing is 64 MiB.</p>
+<p>There is no practical code size limit to Sway contracts. The physical limit is governed by the <a href="https://fuellabs.github.io/fuel-specs/master/vm#parameters"><code>VM_MAX_RAM</code> VM parameter</a>, which at the time of writing is 64 MiB.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="differences-from-rust"><a class="header" href="#differences-from-rust">Differences From Rust</a></h1>
 <p>Sway shares a lot with Rust, especially its syntax. Because they are so similar, you may be surprised or caught off guard when they differ. This page serves to outline, from a high level, some of the syntactic <em>gotchas</em> that you may encounter.</p>
 <h2 id="enum-variant-syntax"><a class="header" href="#enum-variant-syntax">Enum Variant Syntax</a></h2>
