@@ -52,8 +52,8 @@ impl<T: Spanned> Spanned for CallPath<T> {
 }
 
 impl CallPath {
-    /// shifts the last prefix into the suffix and removes the old suffix
-    /// noop if prefixes are empty
+    /// Shifts the last prefix into the suffix, and removes the old suffix.
+    /// Does nothing if prefixes are empty.
     pub fn rshift(&self) -> CallPath {
         if self.prefixes.is_empty() {
             self.clone()

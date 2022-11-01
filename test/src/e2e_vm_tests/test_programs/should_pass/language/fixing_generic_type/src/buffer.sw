@@ -28,9 +28,9 @@ impl Buffer {
     /// Creates a new buffer from the given value
     pub fn from<T>(val: T) -> Self {
         let ptr = if __is_reference_type::<T>() {
-            ~Pointer::from(val)
+            Pointer::from(val)
         } else {
-            ~Pointer::from((val))
+            Pointer::from((val))
         };
         Buffer {
             ptr: ptr,
@@ -56,7 +56,7 @@ impl Buffer {
     /// Writes the given value into the buffer
     pub fn write<T>(self, val: T, offset: u64) {
         if __is_reference_type::<T>() {
-            let ptr = ~Pointer::from(val);
+            let ptr = Pointer::from(val);
             let len = __size_of::<T>();
 
             // We can't reference `self.write_unchecked` like this:

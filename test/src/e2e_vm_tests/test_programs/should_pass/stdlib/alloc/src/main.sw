@@ -39,7 +39,7 @@ fn main() -> bool {
     assert(val == 0);
 
     // Write to it
-    let val = ~u64::max();
+    let val = u64::max();
     sw(ptr, val);
     assert(lw(ptr) == val);
 
@@ -50,7 +50,7 @@ fn main() -> bool {
     assert(heap_ptr() == hp.sub(16));
 
     // Make sure that reallocating an old allocation of size 0 does not cause a
-    // panic. 
+    // panic.
     let hp = heap_ptr();
     let ptr = alloc(0);
     let ptr = realloc(ptr, 0, 16);

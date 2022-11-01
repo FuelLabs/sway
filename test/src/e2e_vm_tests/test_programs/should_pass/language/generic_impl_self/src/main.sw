@@ -54,7 +54,7 @@ impl DoubleIdentity<u8, u8> {
 }
 
 fn double_identity2<T, F>(x: T, y: F) -> DoubleIdentity<T, F> {
-  ~DoubleIdentity::<T, F>::new(x, y)
+  DoubleIdentity::<T, F>::new(x, y)
 }
 
 fn double_identity<T, F>(x: T, y: F) -> DoubleIdentity<T, F> {
@@ -106,9 +106,9 @@ impl<T> Option<T> {
 
   fn to_result(self) -> Result<T> {
     if let Option::Some(value) = self {
-      ~Result::<T>::ok(value)
+      Result::<T>::ok(value)
     } else {
-      ~Result::<T>::err(99u8)
+      Result::<T>::err(99u8)
     }
   }
 }
@@ -125,11 +125,11 @@ fn main() -> u32 {
   let e = d.get_second();
   let f: DoubleIdentity<bool, bool> = double_identity(true, true);
   let g: DoubleIdentity<u32, u64> = double_identity(10u32, 43u64);
-  let h = ~DoubleIdentity::<u64, bool>::new(3u64, false);
+  let h = DoubleIdentity::<u64, bool>::new(3u64, false);
   let i = crazy(7u8, 10u8);
   let j = 10u8 + 11u8;
   let k = d.add();
-  let l = ~Data::<bool>::new(false);
+  let l = Data::<bool>::new(false);
   let m: DoubleIdentity<Data<u8>, Data<u64>> = DoubleIdentity {
     first: Data {
       value: 1u8
@@ -139,14 +139,14 @@ fn main() -> u32 {
     },
     third: 1u64
   };
-  let n = ~DoubleIdentity::<Data<u8>, Data<u8>>::new(~Data::<u8>::new(3u8), ~Data::<u8>::new(4u8));
+  let n = DoubleIdentity::<Data<u8>, Data<u8>>::new(Data::<u8>::new(3u8), Data::<u8>::new(4u8));
   let o: DoubleIdentity<bool, bool> = double_identity(true, true);
   let p = Option::Some::<bool>(false);
   let q = Option::Some::<()>(());
-  let r = ~Option::<u32>::some(5u32);
+  let r = Option::<u32>::some(5u32);
   let s = Option::Some(0u8);
-  let t = ~Option::<u64>::none();
-  let u = ~DoubleIdentity::<Data<u8>, Data<u8>>::new(~Data::<u8>::new(3u8), ~Data::<u8>::new(4u8));
+  let t = Option::<u64>::none();
+  let u = DoubleIdentity::<Data<u8>, Data<u8>>::new(Data::<u8>::new(3u8), Data::<u8>::new(4u8));
 
   b.get_first()
 }
