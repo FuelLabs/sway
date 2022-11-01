@@ -2,7 +2,7 @@
 
 When dealing with storage we have two options, we can either read from or write to storage. In both cases we must use a [storage annotation](../../language/annotations/attributes/storage.md) to indicate the purity of the function.
 
-When referencing a variable in storage we must explicitly indicate that the variable comes from storage and not a local scope. 
+When referencing a variable in storage we must explicitly indicate that the variable comes from storage and not a local scope.
 
 This is done via the syntax `storage.variable_name` e.g. `storage.counter`.
 

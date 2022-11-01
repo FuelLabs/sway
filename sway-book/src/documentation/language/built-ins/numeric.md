@@ -8,7 +8,7 @@ Broadly speaking there are two types of integers:
 
 ## Signed Integers
 
-A signed integer is a whole number which can take the value of zero and both negative and positive values. This means that a signed integer can take values such as: 
+A signed integer is a whole number which can take the value of zero and both negative and positive values. This means that a signed integer can take values such as:
 
 - -42
 - 0

@@ -13,7 +13,7 @@ In the example above we use two conditions.
 
 As long as both those conditions are `true` then the loop will iterate. In this case the loop will finish iterating once `counter` reaches the value of `6` because `condition` will be set to `false`.
 
-### Nested loops
+## Nested loops
 
 Sway also allows nested `while` loops.
 

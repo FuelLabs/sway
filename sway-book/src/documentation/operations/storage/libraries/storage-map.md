@@ -1,6 +1,6 @@
 # StorageMap
 
-A `StorageMap`, a.k.a. a hash table, is a structure which associates a value `v` with a key `k`. The key is used to find the position in the table (memory) where the value is stored. 
+A `StorageMap`, a.k.a. a hash table, is a structure which associates a value `v` with a key `k`. The key is used to find the position in the table (memory) where the value is stored.
 
 The benefit of a hash table is that no matter where the value is in the table the computation required to find the location of that value is constant i.e. it has an order of 1 `O(1)`.
 

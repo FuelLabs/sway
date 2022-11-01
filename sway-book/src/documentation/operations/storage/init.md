@@ -1,6 +1,6 @@
 # Initialization
 
-Storage is declared through the use of the `storage` keyword. 
+Storage is declared through the use of the `storage` keyword.
 
 Inside the `storage` block each variable is named, associated with a type and a default value.
 

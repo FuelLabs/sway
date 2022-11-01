@@ -10,7 +10,7 @@ In the following example we have a hardcoded variable `number` set to the value 
 {{#include ../../../code/language/control_flow/src/lib.sw:conditional}}
 ```
 
-The conditional checks are performed in the order that they are defined therefore the first check is to see if the `number` is divisible by `3`. 
+The conditional checks are performed in the order that they are defined therefore the first check is to see if the `number` is divisible by `3`.
 
 If the condition evaluates to the [boolean](../built-ins/boolean.md) value of `true` then we call `function 1` and we move on to the end where the comment `more code here` is written. We do not evaluate the remaining conditions.
 
@@ -21,7 +21,6 @@ At the end there is a special case which is known as a `catch all` case i.e. the
 ## Using if & let together
 
 In [Conditional Branching](#conditional-branching) we have opted to call some functions depending on which condition is met however that is not the only thing that we can do. Since `if`'s are expressions in Sway we can use them to match on a pattern.
-
 
 ### if let
 

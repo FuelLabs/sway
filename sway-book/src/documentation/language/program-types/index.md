@@ -2,7 +2,7 @@
 
 A Sway program is a file ending with the extension `.sw`, e.g. `main.sw`, and the first line of the file is a decleration of the _type_ of program that it is.
 
-A Sway program can be one of four types: 
+A Sway program can be one of four types:
 
 - [contract](contract.md)
   - Primarily used for protocols or systems that operate within a fixed set of rules e.g. staking contracts, decentralized exchanges
@@ -15,7 +15,7 @@ A Sway program can be one of four types:
 
 ## Sway Project Types
 
-A project type in Sway refers to which program type is in the main file of the project. 
+A project type in Sway refers to which program type is in the main file of the project.
 
 This means that there are four types of projects:
 
@@ -28,7 +28,7 @@ All four projects can contain multiple library files in the `src` directory.
 
 There is a caveat when it comes to _contracts_, _scripts_ and _predicates_ and it's as follows:
 
-- A project can at most contain *any one* of a contract, script or predicate.
+- A project can at most contain _any one_ of a contract, script or predicate.
 
 This means that a project cannot contain more than one contract, one script, one predicate and it cannot mix them together.
 

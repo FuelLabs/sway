@@ -24,11 +24,11 @@ Sway has the following primitive types:
 <!-- TODO: The following sentence does not belong here. We need to convey the default size, including word size, somewhere however not on this page -->
 The default numeric type is `u64`. The FuelVM's word size is 64 bits, and the cases where using a smaller numeric type saves space are minimal.
 
-All other types in Sway are built up of these primitive types, or references to these primitive types. 
+All other types in Sway are built up of these primitive types, or references to these primitive types.
 
 ## Compound Types
 
-Compound types are types that group multiple values into one type. 
+Compound types are types that group multiple values into one type.
 
 Sway has the following compound types:
 

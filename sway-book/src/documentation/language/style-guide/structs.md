@@ -19,4 +19,3 @@ The shorthand is encouraged because it is a cleaner alternative to the following
 ```sway
 {{#include ../../../code/language/style-guide/struct_shorthand/src/lib.sw:struct_shorthand_avoid}}
 ```
-

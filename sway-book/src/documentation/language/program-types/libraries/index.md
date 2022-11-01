@@ -1,6 +1,6 @@
 # Library
 
-A library is used to contain code that performs common operations in order to prevent code duplication. 
+A library is used to contain code that performs common operations in order to prevent code duplication.
 
 ## Definition
 

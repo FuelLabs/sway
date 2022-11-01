@@ -2,7 +2,7 @@
 
 In the UTXO model each output has an address.
 
-The `Address` type is a struct containing a value of a `b256` type. 
+The `Address` type is a struct containing a value of a `b256` type.
 
 ```sway
 {{#include ../../../code/operations/namespace/src/lib.sw:address}}

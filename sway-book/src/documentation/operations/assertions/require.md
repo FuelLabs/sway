@@ -4,7 +4,7 @@ The `require` function is automatically imported into every program from the [pr
 
 ## Example
 
-Here we have a function which takes two `u64` arguments and subtracts them. A `u64` cannot be negative therefore the assertion enforces that `b` must be less than or equal to `a`. 
+Here we have a function which takes two `u64` arguments and subtracts them. A `u64` cannot be negative therefore the assertion enforces that `b` must be less than or equal to `a`.
 
 If the condition is not met then the message `b is too large` will be logged and the virtual machine will revert.
 

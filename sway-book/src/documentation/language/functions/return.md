@@ -32,7 +32,7 @@ To return from a function implicitly we do not use the `return` keyword and we o
 {{#include ../../../code/language/functions/src/implicit.sw:main}}
 ```
 
-Similarly to the explicit usage of a `return` this will typically be used at the end of a function but it can also be used anywhere. 
+Similarly to the explicit usage of a `return` this will typically be used at the end of a function but it can also be used anywhere.
 
 ```sway
 {{#include ../../../code/language/functions/src/implicit.sw:return_data}}

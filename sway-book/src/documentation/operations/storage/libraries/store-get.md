@@ -12,7 +12,7 @@ To use `store()` & `get()` we must import them however we are not required to de
 
 ## Store
 
-To store a generic value `T` we must provide a key of type `b256`. 
+To store a generic value `T` we must provide a key of type `b256`.
 
 In this example we store some number of type `u64`.
 

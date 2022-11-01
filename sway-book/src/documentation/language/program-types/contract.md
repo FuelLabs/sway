@@ -16,7 +16,7 @@ The `ABI` is a structure which defines the endpoints that a contract exposes for
 
 The following example demonstrates an interface for a wallet which is able to receive and send funds.
 
-The structure begins by using the keyword `abi` followed by the name of the contract. 
+The structure begins by using the keyword `abi` followed by the name of the contract.
 
 Inside the declaration are function signatures, annotations denoting the interaction with storage and documentation comments outlining the functionality.
 
