@@ -365,7 +365,7 @@ impl BuildPlan {
     /// Create a new build plan for the project by fetching and pinning all dependenies.
     ///
     /// To account for an existing lock file, use `from_lock_and_manifest` instead.
-    pub fn from_manifest(manifests: &MemberManifestFiles, offline: bool) -> Result<Self> {
+    pub fn from_manifests(manifests: &MemberManifestFiles, offline: bool) -> Result<Self> {
         // Check toolchain version
         validate_version(manifests)?;
         let mut graph = Graph::default();
@@ -398,7 +398,7 @@ impl BuildPlan {
     // probably should not be the role of the `BuildPlan` constructor - instead, we should return
     // the manifest alongside some lock diff type that can be used to optionally write the updated
     // lock file and print the diff.
-    pub fn from_lock_and_manifest(
+    pub fn from_lock_and_manifests(
         lock_path: &Path,
         manifests: &MemberManifestFiles,
         locked: bool,
@@ -2289,7 +2289,7 @@ pub fn build_package_with_options(
     let member_manifests = manifest_file.member_manifests()?;
     let lock_path = manifest_file.lock_path()?;
     let plan =
-        BuildPlan::from_lock_and_manifest(&lock_path, &member_manifests, pkg.locked, pkg.offline)?;
+        BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, pkg.locked, pkg.offline)?;
 
     // Build it!
     let (built_package, source_map) = build(&plan, &profile)?;
@@ -2717,7 +2717,7 @@ fn test_root_pkg_order() {
     let member_manifests = manifest_file.member_manifests().unwrap();
     let lock_path = manifest_file.lock_path().unwrap();
     let build_plan =
-        BuildPlan::from_lock_and_manifest(&lock_path, &member_manifests, false, false).unwrap();
+        BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false).unwrap();
     let graph = build_plan.graph();
     let order: Vec<String> = build_plan
         .member_nodes()

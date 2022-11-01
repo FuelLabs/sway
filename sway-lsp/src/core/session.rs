@@ -213,7 +213,7 @@ impl Session {
             })?;
 
         let plan =
-            pkg::BuildPlan::from_lock_and_manifest(&lock_path, &member_manifests, locked, offline)
+            pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)
                 .map_err(LanguageServerError::BuildPlanFailed)?;
 
         // We can convert these destructured elements to a Vec<Diagnostic> later on.

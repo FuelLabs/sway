@@ -53,7 +53,7 @@ pub fn main() -> Result<()> {
     let member_manifests = manifest.member_manifests()?;
     let lock_path = manifest.lock_path()?;
     let plan =
-        pkg::BuildPlan::from_lock_and_manifest(&lock_path, &member_manifests, locked, offline)?;
+        pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
     let compilation = pkg::check(&plan, silent)?;
     let raw_docs: Documentation = Document::from_ty_program(&compilation, no_deps)?;
     // render docs to HTML
