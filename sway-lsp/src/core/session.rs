@@ -206,11 +206,12 @@ impl Session {
                     dir: uri.path().into(),
                 })?;
 
-        let lock_path = manifest
-            .lock_path()
-            .map_err(|_| DocumentError::MemberManifestsFailed {
-                dir: uri.path().into(),
-            })?;
+        let lock_path =
+            manifest
+                .lock_path()
+                .map_err(|_| DocumentError::ManifestsLockPathFailed {
+                    dir: uri.path().into(),
+                })?;
 
         let plan =
             pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)

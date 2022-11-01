@@ -331,10 +331,10 @@ impl PackageManifestFile {
         let ws_manifest = match WorkspaceManifestFile::from_dir(parent_dir) {
             Ok(manifest) => manifest,
             Err(e) => {
-                // Check if the error is missing manifest file and do not return that error if that
+                // Check if the error is missing workspace manifest file. Do not return that error if that
                 // is the case as we do not want to return error if this is a single project
                 // without a workspace.
-                if e.to_string().contains("No such file or directory") {
+                if e.to_string().contains("could not find") {
                     return Ok(None);
                 } else {
                     return Err(e);
