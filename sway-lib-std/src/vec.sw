@@ -62,7 +62,7 @@ impl<T> Vec<T> {
     /// The vector will not allocate until elements are pushed onto it.
     pub fn new() -> Self {
         Self {
-            buf: ~RawVec::new(),
+            buf: RawVec::new(),
             len: 0,
         }
     }
@@ -76,7 +76,7 @@ impl<T> Vec<T> {
     /// *capacity* specified, the vector will have a zero *length*.
     pub fn with_capacity(capacity: u64) -> Self {
         Self {
-            buf: ~RawVec::with_capacity(capacity),
+            buf: RawVec::with_capacity(capacity),
             len: 0,
         }
     }
