@@ -19,8 +19,10 @@ pub fn check(command: CheckCommand) -> Result<CompileResult<ty::TyProgram>> {
         std::env::current_dir()?
     };
     let manifest_file = ManifestFile::from_dir(&this_dir)?;
+    let member_manifests = manifest_file.member_manifests()?;
+    let lock_path = manifest_file.lock_path()?;
     let plan =
-        pkg::BuildPlan::from_lock_and_manifest(&manifest_file.manifests()?, locked, offline)?;
+        pkg::BuildPlan::from_lock_and_manifest(&lock_path, &member_manifests, locked, offline)?;
 
     Ok(pkg::check(&plan, terse_mode)?.flat_map(|(_, tp)| CompileResult::new(tp, vec![], vec![])))
 }

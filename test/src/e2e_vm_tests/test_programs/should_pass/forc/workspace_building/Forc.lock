@@ -9,7 +9,7 @@ dependencies = ['core']
 
 [[package]]
 name = 'test_contract'
-source = 'root'
+source = 'member'
 dependencies = [
     'std',
     'test_lib',
@@ -17,10 +17,10 @@ dependencies = [
 
 [[package]]
 name = 'test_lib'
-source = 'root'
+source = 'member'
 
 [[package]]
 name = 'test_script'
-source = 'root'
+source = 'member'
 dependencies = ['test_lib']
 contract-dependencies = ['test_contract']

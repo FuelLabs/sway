@@ -1,8 +1,8 @@
 use crate::{
     lock::Lock,
     manifest::{
-        BuildProfile, ConfigTimeConstant, Dependency, ManifestFile, ManifestFiles,
-        MemberManifestFiles, PackageManifest, PackageManifestFile,
+        BuildProfile, ConfigTimeConstant, Dependency, ManifestFile, MemberManifestFiles,
+        PackageManifest, PackageManifestFile,
     },
     WorkspaceManifestFile, CORE, PRELUDE, STD,
 };
@@ -365,13 +365,12 @@ impl BuildPlan {
     /// Create a new build plan for the project by fetching and pinning all dependenies.
     ///
     /// To account for an existing lock file, use `from_lock_and_manifest` instead.
-    pub fn from_manifest(manifests: &ManifestFiles, offline: bool) -> Result<Self> {
-        let (member_manifests, _) = manifests;
+    pub fn from_manifest(manifests: &MemberManifestFiles, offline: bool) -> Result<Self> {
         // Check toolchain version
-        validate_version(member_manifests)?;
+        validate_version(manifests)?;
         let mut graph = Graph::default();
         let mut manifest_map = ManifestMap::default();
-        fetch_graph(member_manifests, offline, &mut graph, &mut manifest_map)?;
+        fetch_graph(manifests, offline, &mut graph, &mut manifest_map)?;
         // Validate the graph, since we constructed the graph from scratch the paths will not be a
         // problem but the version check is still needed
         validate_graph(&graph, manifests)?;
@@ -400,34 +399,18 @@ impl BuildPlan {
     // the manifest alongside some lock diff type that can be used to optionally write the updated
     // lock file and print the diff.
     pub fn from_lock_and_manifest(
-        manifests: &ManifestFiles,
+        lock_path: &Path,
+        manifests: &MemberManifestFiles,
         locked: bool,
         offline: bool,
     ) -> Result<Self> {
-        let (member_manifests, workspace_manifest) = manifests;
         // Check toolchain version
-        validate_version(member_manifests)?;
+        validate_version(manifests)?;
         // Keep track of the cause for the new lock file if it turns out we need one.
         let mut new_lock_cause = None;
 
         // First, attempt to load the lock.
-        //
-        // If we have a workspace level manifest, try to find the lock file from its directory
-        // otherwise use the first (and only) manifest file's path.
-        let lock_path: PathBuf = match workspace_manifest {
-            Some(workspace_manifest) => {
-                let path = workspace_manifest.dir();
-                forc_util::lock_path(path)
-            }
-            None => {
-                let (_, manifest) = member_manifests
-                    .iter()
-                    .next()
-                    .ok_or_else(|| anyhow!("Couldn't find manifest file"))?;
-                forc_util::lock_path(manifest.dir())
-            }
-        };
-        let lock = Lock::from_path(&lock_path).unwrap_or_else(|e| {
+        let lock = Lock::from_path(lock_path).unwrap_or_else(|e| {
             new_lock_cause = if e.to_string().contains("No such file or directory") {
                 Some(anyhow!("lock file did not exist"))
             } else {
@@ -448,7 +431,7 @@ impl BuildPlan {
         // longer exists at its specified location, etc. We must first remove all invalid nodes
         // before we can determine what we need to fetch.
         let invalid_deps = validate_graph(&graph, manifests)?;
-        let members: HashSet<String> = member_manifests
+        let members: HashSet<String> = manifests
             .iter()
             .map(|(member_name, _)| member_name.clone())
             .collect();
@@ -459,7 +442,7 @@ impl BuildPlan {
         let mut manifest_map = graph_to_manifest_map(manifests, &graph)?;
 
         // Attempt to fetch the remainder of the graph.
-        let _added = fetch_graph(member_manifests, offline, &mut graph, &mut manifest_map)?;
+        let _added = fetch_graph(manifests, offline, &mut graph, &mut manifest_map)?;
 
         // Determine the compilation order.
         let compilation_order = compilation_order(&graph)?;
@@ -488,12 +471,14 @@ impl BuildPlan {
                 );
             }
             info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
-            let name = match workspace_manifest {
-                Some(_) => None,
-                None => member_manifests
+            // if len of the member manifests is 1, this is a standalone project (not a workspace).
+            let name = if manifests.len() == 1 {
+                manifests
                     .iter()
                     .next()
-                    .map(|(member_name, _)| member_name.as_str()),
+                    .map(|(member_name, _)| member_name.as_str())
+            } else {
+                None
             };
             crate::lock::print_diff(name, &lock_diff);
             let string = toml::ser::to_string_pretty(&new_lock)
@@ -600,9 +585,8 @@ fn member_nodes(g: &Graph) -> impl Iterator<Item = NodeIx> + '_ {
 /// Validates the state of the pinned package graph against the given ManifestFile.
 ///
 /// Returns the set of invalid dependency edges.
-fn validate_graph(graph: &Graph, manifests: &ManifestFiles) -> Result<BTreeSet<EdgeIx>> {
-    let (member_manifests, _) = manifests;
-    let mut member_pkgs: HashMap<&String, &PackageManifestFile> = member_manifests.iter().collect();
+fn validate_graph(graph: &Graph, manifests: &MemberManifestFiles) -> Result<BTreeSet<EdgeIx>> {
+    let mut member_pkgs: HashMap<&String, &PackageManifestFile> = manifests.iter().collect();
     let member_nodes: Vec<_> = member_nodes(graph)
         .filter_map(|n| member_pkgs.remove(&graph[n].name).map(|pkg| (n, pkg)))
         .collect();
@@ -626,7 +610,7 @@ fn validate_graph(graph: &Graph, manifests: &ManifestFiles) -> Result<BTreeSet<E
 fn validate_deps(
     graph: &Graph,
     node: NodeIx,
-    manifests: &ManifestFiles,
+    manifests: &MemberManifestFiles,
     visited: &mut HashSet<NodeIx>,
 ) -> BTreeSet<EdgeIx> {
     let mut remove = BTreeSet::default();
@@ -654,24 +638,22 @@ fn validate_deps(
 /// Returns the `ManifestFile` in the case that the dependency is valid.
 fn validate_dep(
     graph: &Graph,
-    manifests: &ManifestFiles,
+    manifests: &MemberManifestFiles,
     dep_edge: &Edge,
     dep_node: NodeIx,
 ) -> Result<PackageManifestFile> {
     let dep_name = &dep_edge.name;
-    let (member_manifests, workspace_manifests) = &manifests;
-    let node_manifest = member_manifests
+    let node_manifest = manifests
         .get(dep_name)
         .ok_or_else(|| anyhow!("Couldn't find manifest file for {}", dep_name))?;
     // Check the validity of the dependency path, including its path root.
-    let dep_path =
-        dep_path(graph, node_manifest, workspace_manifests.clone(), dep_node).map_err(|e| {
-            anyhow!(
-                "failed to construct path for dependency {:?}: {}",
-                dep_name,
-                e
-            )
-        })?;
+    let dep_path = dep_path(graph, node_manifest, dep_node, manifests).map_err(|e| {
+        anyhow!(
+            "failed to construct path for dependency {:?}: {}",
+            dep_name,
+            e
+        )
+    })?;
 
     // Ensure the manifest is accessible.
     let dep_manifest = PackageManifestFile::from_dir(&dep_path)?;
@@ -729,8 +711,8 @@ fn validate_dep_manifest(
 fn dep_path(
     graph: &Graph,
     node_manifest: &PackageManifestFile,
-    workspace_manifest: Option<WorkspaceManifestFile>,
     dep_node: NodeIx,
+    manifests: &MemberManifestFiles,
 ) -> Result<PathBuf> {
     let dep = &graph[dep_node];
     let dep_name = &dep.name;
@@ -777,16 +759,17 @@ fn dep_path(
         SourcePinned::Registry(_reg) => unreachable!("registry dependencies not yet supported"),
         SourcePinned::Member => {
             // If a node has a root dependency it is a member of the workspace.
-            if let Some(workspace_manifest) = workspace_manifest {
-                workspace_manifest
-                    .members()
-                    .zip(workspace_manifest.member_paths()?)
-                    .find(|(member_name, _)| *member_name == dep_name)
-                    .map(|(_, member_path)| member_path)
-                    .ok_or_else(|| anyhow!("cannot find dependency in the workspace"))
-            } else {
-                bail!("a node cannot depend on a root node if it is not a member of a workspace")
-            }
+            let member_names = manifests
+                .iter()
+                .map(|(_, pkg_manifest)| pkg_manifest.project.name.clone());
+            let member_paths = manifests
+                .iter()
+                .map(|(_, pkg_manifest)| pkg_manifest.path());
+            member_names
+                .zip(member_paths)
+                .find(|(member_name, _)| member_name == dep_name)
+                .map(|(_, member_path)| member_path.to_path_buf())
+                .ok_or_else(|| anyhow!("cannot find dependency in the workspace"))
         }
     }
 }
@@ -1138,10 +1121,9 @@ pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
 /// Given a graph collects ManifestMap while taking in to account that manifest can be a
 /// ManifestFile::Workspace. In the case of a workspace each pkg manifest map is collected and
 /// their added node lists are merged.
-fn graph_to_manifest_map(manifests: &ManifestFiles, graph: &Graph) -> Result<ManifestMap> {
+fn graph_to_manifest_map(manifests: &MemberManifestFiles, graph: &Graph) -> Result<ManifestMap> {
     let mut manifest_map = HashMap::new();
-    let (member_manifests, _) = &manifests;
-    for pkg_manifest in member_manifests.values() {
+    for pkg_manifest in manifests.values() {
         let pkg_name = &pkg_manifest.project.name;
         manifest_map.extend(pkg_graph_to_manifest_map(manifests, pkg_name, graph)?);
     }
@@ -1156,13 +1138,11 @@ fn graph_to_manifest_map(manifests: &ManifestFiles, graph: &Graph) -> Result<Man
 /// `pkg_graph_to_manifest_map` starts from each node (which corresponds to the given proj_manifest)
 /// and visits childs to collect their manifest files.
 fn pkg_graph_to_manifest_map(
-    manifests: &ManifestFiles,
+    manifests: &MemberManifestFiles,
     pkg_name: &str,
     graph: &Graph,
 ) -> Result<ManifestMap> {
-    let (member_manifest, workspace_manifest_file) = manifests;
-
-    let proj_manifest = member_manifest
+    let proj_manifest = manifests
         .get(pkg_name)
         .ok_or_else(|| anyhow!("Cannot find manifest for {}", pkg_name))?;
     let mut manifest_map = ManifestMap::new();
@@ -1192,13 +1172,7 @@ fn pkg_graph_to_manifest_map(
             })
             .next()
             .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
-        let dep_path = dep_path(
-            graph,
-            parent_manifest,
-            workspace_manifest_file.clone(),
-            dep_node,
-        )
-        .map_err(|e| {
+        let dep_path = dep_path(graph, parent_manifest, dep_node, manifests).map_err(|e| {
             anyhow!(
                 "failed to construct path for dependency {:?}: {}",
                 dep_name,
@@ -2323,8 +2297,10 @@ pub fn build_package_with_options(
     profile.include_tests |= tests;
 
     let manifest_file = ManifestFile::Package(Box::new(manifest.clone()));
+    let member_manifests = manifest_file.member_manifests()?;
+    let lock_path = manifest_file.lock_path()?;
     let plan =
-        BuildPlan::from_lock_and_manifest(&manifest_file.manifests()?, pkg.locked, pkg.offline)?;
+        BuildPlan::from_lock_and_manifest(&lock_path, &member_manifests, pkg.locked, pkg.offline)?;
 
     // Build it!
     let (built_package, source_map) = build(&plan, &profile)?;
@@ -2749,9 +2725,10 @@ fn test_root_pkg_order() {
         .unwrap()
         .join("test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building/");
     let manifest_file = ManifestFile::from_dir(&manifest_dir).unwrap();
+    let member_manifests = manifest_file.member_manifests().unwrap();
+    let lock_path = manifest_file.lock_path().unwrap();
     let build_plan =
-        BuildPlan::from_lock_and_manifest(&manifest_file.manifests().unwrap(), false, false)
-            .unwrap();
+        BuildPlan::from_lock_and_manifest(&lock_path, &member_manifests, false, false).unwrap();
     let graph = build_plan.graph();
     let order: Vec<String> = build_plan
         .member_nodes()

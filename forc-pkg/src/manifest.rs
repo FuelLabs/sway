@@ -17,9 +17,6 @@ use sway_utils::constants;
 pub type MemberName = String;
 /// A manifest for each workspace member, or just one manifest if working with a single package
 pub type MemberManifestFiles = BTreeMap<MemberName, PackageManifestFile>;
-/// MemberManifestFiles packed with an optional WorkspaceManifestFile if the corresponding ManifestFile is
-/// ManifestFile::Workspace.
-pub type ManifestFiles = (MemberManifestFiles, Option<WorkspaceManifestFile>);
 
 pub enum ManifestFile {
     Package(Box<PackageManifestFile>),
@@ -88,18 +85,6 @@ impl ManifestFile {
             }
         }
         Ok(member_manifest_files)
-    }
-
-    /// Returns workspace level manifest with member manifests
-    pub fn manifests(&self) -> Result<ManifestFiles> {
-        let member_manifest_files = self.member_manifests()?;
-        let workspace_manifest = match self {
-            ManifestFile::Package(_) => None,
-            ManifestFile::Workspace(workspace_manifest_file) => {
-                Some(workspace_manifest_file.clone())
-            }
-        };
-        Ok((member_manifest_files, workspace_manifest))
     }
 
     /// Returns the path of the lock file for the given ManifestFile
@@ -367,7 +352,7 @@ impl PackageManifestFile {
         if let Some(workspace_manifest) = workspace_manifest {
             Ok(workspace_manifest.lock_path())
         } else {
-            Ok(self.dir().to_path_buf())
+            Ok(self.dir().to_path_buf().join("Forc.lock"))
         }
     }
 }
@@ -745,7 +730,7 @@ impl WorkspaceManifestFile {
     ///
     /// This will always be a canonical path.
     pub fn lock_path(&self) -> PathBuf {
-        self.dir().to_path_buf()
+        self.dir().to_path_buf().join("Forc.lock")
     }
 }
 

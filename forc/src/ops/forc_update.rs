@@ -37,7 +37,8 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
     let lock_path = lock_path(manifest.dir());
     let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
     let offline = false;
-    let new_plan = pkg::BuildPlan::from_manifest(&manifest.manifests()?, offline)?;
+    let member_manifests = manifest.member_manifests()?;
+    let new_plan = pkg::BuildPlan::from_manifest(&member_manifests, offline)?;
     let new_lock = Lock::from_graph(new_plan.graph());
     let diff = new_lock.diff(&old_lock);
     let name = if let ManifestFile::Package(pkg_manifest) = &manifest {
