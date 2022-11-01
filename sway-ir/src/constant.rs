@@ -77,6 +77,13 @@ impl Constant {
         }
     }
 
+    pub fn get_undef(ty: Type) -> Self {
+        Constant {
+            ty,
+            value: ConstantValue::Undef,
+        }
+    }
+
     pub fn get_unit(context: &mut Context) -> Value {
         Value::new_constant(context, Constant::new_unit())
     }
