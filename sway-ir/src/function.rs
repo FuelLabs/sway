@@ -7,6 +7,7 @@
 //! existing in the function scope.
 
 use std::collections::{BTreeMap, HashMap};
+use std::fmt::Write;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -473,11 +474,12 @@ impl Function {
             let n = worklist.pop().unwrap();
             visited.insert(n);
             for BranchToWithArgs { block: n_succ, .. } in n.successors(context) {
-                res += &(format!(
+                let _ = writeln!(
+                    res,
                     "\t{} -> {}\n",
                     n.get_label(context),
                     n_succ.get_label(context)
-                ));
+                );
                 if !visited.contains(&n_succ) {
                     worklist.push(n_succ);
                 }
