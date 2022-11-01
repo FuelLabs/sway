@@ -23,6 +23,6 @@ If you wish to alter the documentation presented in this book then follow the in
    mdbook serve --open
    ```
 
-# How to edit the book
+## How to edit the book
 
 > TODO: specify contributing guidelines to ensure that the quality and conciseness of the book remains high

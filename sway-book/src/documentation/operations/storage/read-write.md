@@ -26,7 +26,7 @@ When dealing with a [built-in](../../language/built-ins/index.md) type we can up
 {{#include ../../../code/operations/storage/reading_writing_to_storage/src/main.sw:write}}
 ```
 
-## Reading & Writing
+## Read & Write
 
 We can read and write to storage by using both keywords in the attribute.
 

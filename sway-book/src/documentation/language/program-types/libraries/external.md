@@ -33,15 +33,19 @@ $ tree
 
 ### my_library
 
-To be able to use `quix()` inside `my_library` there are two steps to take:
+To be able to use `quix()` inside `my_library` there are two steps to take.
 
-1. Use the `use` keyword to selectively import our code from `my_other_library`
+#### Import
+
+Use the `use` keyword to selectively import our code from `my_other_library`
 
 ```sway
 {{#include ../../../../code/language/program-types/libraries/external/my_library/src/lib.sw}}
 ```
 
-2. Add `my_other_library` as a dependency under the `[dependencies]` section of the `my_library` `Forc.toml` file.
+#### Add to Dependencies
+
+Add `my_other_library` as a dependency under the `[dependencies]` section of the `my_library` `Forc.toml` file.
 
 ```bash
 {{#include ../../../../code/language/program-types/libraries/external/my_library/Forc.toml}}
