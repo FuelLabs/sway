@@ -72,8 +72,19 @@ impl ManifestFile {
         let mut member_manifest_files = BTreeMap::new();
         match self {
             ManifestFile::Package(pkg_manifest_file) => {
-                let member_name = &pkg_manifest_file.project.name;
-                member_manifest_files.insert(member_name.clone(), *pkg_manifest_file.clone());
+                // Check if this package is in a workspace, if that is the case insert all member
+                // manifests
+                if let Ok(Some(workspace_manifest_file)) = pkg_manifest_file.workspace() {
+                    for (member_name, pkg_manifest_file) in workspace_manifest_file
+                        .members()
+                        .zip(workspace_manifest_file.member_pkg_manifests()?)
+                    {
+                        member_manifest_files.insert(member_name.clone(), pkg_manifest_file);
+                    }
+                } else {
+                    let member_name = &pkg_manifest_file.project.name;
+                    member_manifest_files.insert(member_name.clone(), *pkg_manifest_file.clone());
+                }
             }
             ManifestFile::Workspace(workspace_manifest_file) => {
                 for (member_name, pkg_manifest_file) in workspace_manifest_file
