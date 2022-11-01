@@ -1,12 +1,10 @@
-// use fuel_vm::fuel_tx::ConsensusParameters;
 use fuel_types::Bytes64;
 use fuels::{
     prelude::*,
-    signers::fuel_crypto::{Hasher, Message, PublicKey, SecretKey, Signature},
-    tx::{Bytes32, ContractId},
+    signers::fuel_crypto::{Message, PublicKey, SecretKey, Signature},
+    tx::Bytes32,
 };
 use rand::{rngs::StdRng, Rng, SeedableRng};
-use std::str::FromStr;
 
 abigen!(
     EcRecoverContract,
@@ -67,7 +65,7 @@ async fn setup_env() -> Result<
 
 #[tokio::test]
 async fn can_recover_public_key() {
-    let (contract, secret, public_key, wallet, msg, sig_bytes) = setup_env().await.unwrap();
+    let (contract, _secret, public_key, _wallet, msg, sig_bytes) = setup_env().await.unwrap();
     let sig_r = &sig_bytes[..32];
     let sig_v_s = &sig_bytes[32..];
     let response = contract
@@ -93,7 +91,7 @@ async fn can_recover_public_key() {
 
 #[tokio::test]
 async fn can_recover_address() {
-    let (contract, secret, public_key, wallet, msg, sig_bytes) = setup_env().await.unwrap();
+    let (contract, _secret, _public_key, wallet, msg, sig_bytes) = setup_env().await.unwrap();
     let sig_r = &sig_bytes[..32];
     let sig_v_s = &sig_bytes[32..];
     let response = contract
