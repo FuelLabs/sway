@@ -241,7 +241,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.11.2
+        image: ghcr.io/fuellabs/fuel-core:v0.13.2
         ports:
           - 4000:4000
     steps:
@@ -260,11 +260,6 @@ jobs:
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
     runs-on: ubuntu-latest
-    services:
-      fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.11.2
-        ports:
-          - 4000:4000
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -278,7 +273,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --manifest-path ./test/src/sdk-harness/Cargo.toml -- --test-threads=1 --nocapture
+          args: --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   cargo-test-workspace:
     runs-on: ubuntu-latest
