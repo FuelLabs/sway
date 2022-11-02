@@ -266,26 +266,20 @@ impl Session {
             ),
         })?;
 
-        // Collect tokens from `std` and `core` that have been imported
-        // from the prelude.
-        'outer: for (_, module) in typed_program
+        // Collect tokens from `std` & `core` imported from the prelude.
+        typed_program
             .root
             .namespace
             .submodules()
             .iter()
             .flat_map(|(_, module)| module.submodules())
-        {
-            let symbols = module.deref().symbols();
-            for (ident, decl) in symbols {
-                // If an ident is already in our map, skip this part as the
-                // tokens from std and core have already been collected.
-                // We only want to collect these tokens once for efficiency.
-                if self.token_map.contains_key(&to_ident_key(ident)) {
-                    break 'outer;
-                }
-                collect_symbol_map::handle_declaration(ident, decl, &self.token_map);
-            }
-        }
+            .flat_map(|(_, module)| module.deref().symbols())
+            // For efficiency, skip the rest once an ident is in our map,
+            // as the tokens from std and core have already been collected.
+            .take_while(|(ident, _)| !self.token_map.contains_key(&to_ident_key(ident)))
+            .for_each(|(ident, decl)| {
+                collect_symbol_map::handle_declaration(ident, decl, &self.token_map)
+            });
 
         if let ty::TyProgramKind::Script {
             ref main_function, ..

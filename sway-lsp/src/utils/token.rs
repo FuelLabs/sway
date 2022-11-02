@@ -17,7 +17,7 @@ pub fn is_initial_declaration(token_type: &Token) -> bool {
         None => {
             matches!(
                 token_type.parsed,
-                Some(AstToken::Declaration(_)) | Some(AstToken::FunctionDeclaration(_))
+                Some(AstToken::Declaration(_) | AstToken::FunctionDeclaration(_))
             )
         }
     }
