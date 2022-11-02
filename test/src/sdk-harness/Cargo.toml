@@ -24,6 +24,3 @@ name = "integration_tests"
 path = "test_projects/harness.rs"
 
 [workspace]
-
-[profile.bench]
-debug = true
