@@ -260,11 +260,6 @@ jobs:
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
     runs-on: ubuntu-latest
-    services:
-      fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.13.2
-        ports:
-          - 4000:4000
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
