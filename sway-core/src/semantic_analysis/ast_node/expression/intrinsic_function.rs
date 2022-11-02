@@ -671,6 +671,103 @@ impl ty::TyIntrinsicFunctionKind {
                                                     // available
                 )
             }
+            Intrinsic::PtrAdd | Intrinsic::PtrSub => {
+                if arguments.len() != 2 {
+                    errors.push(CompileError::IntrinsicIncorrectNumArgs {
+                        name: kind.to_string(),
+                        expected: 2,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                if type_arguments.len() != 1 {
+                    errors.push(CompileError::IntrinsicIncorrectNumTArgs {
+                        name: kind.to_string(),
+                        expected: 1,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                let targ = type_arguments[0].clone();
+                let initial_type_info = check!(
+                    CompileResult::from(
+                        to_typeinfo(targ.type_id, &targ.span).map_err(CompileError::from)
+                    ),
+                    TypeInfo::ErrorRecovery,
+                    warnings,
+                    errors
+                );
+                let initial_type_id = insert_type(initial_type_info);
+                let type_id = check!(
+                    ctx.resolve_type_with_self(
+                        initial_type_id,
+                        &targ.span,
+                        EnforceTypeArguments::No,
+                        None
+                    ),
+                    insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                );
+
+                let mut ctx = ctx
+                    .by_ref()
+                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+
+                let lhs = arguments[0].clone();
+                let lhs = check!(
+                    ty::TyExpression::type_check(ctx.by_ref(), lhs),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                // Check for supported argument types
+                let lhs_ty = check!(
+                    CompileResult::from(
+                        to_typeinfo(lhs.return_type, &lhs.span).map_err(CompileError::from)
+                    ),
+                    TypeInfo::ErrorRecovery,
+                    warnings,
+                    errors
+                );
+                if !matches!(lhs_ty, TypeInfo::RawUntypedPtr) {
+                    errors.push(CompileError::IntrinsicUnsupportedArgType {
+                        name: kind.to_string(),
+                        span: lhs.span,
+                        hint: Hint::empty(),
+                    });
+                    return err(warnings, errors);
+                }
+
+                let rhs = arguments[1].clone();
+                let ctx = ctx
+                    .by_ref()
+                    .with_help_text("Incorrect argument type")
+                    .with_type_annotation(insert_type(TypeInfo::UnsignedInteger(
+                        IntegerBits::SixtyFour,
+                    )));
+                let rhs = check!(
+                    ty::TyExpression::type_check(ctx, rhs),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                (
+                    ty::TyIntrinsicFunctionKind {
+                        kind,
+                        arguments: vec![lhs, rhs],
+                        type_arguments: vec![TypeArgument {
+                            type_id,
+                            initial_type_id,
+                            span: targ.span,
+                        }],
+                        span,
+                    },
+                    insert_type(lhs_ty),
+                )
+            }
         };
         ok((intrinsic_function, return_type), warnings, errors)
     }

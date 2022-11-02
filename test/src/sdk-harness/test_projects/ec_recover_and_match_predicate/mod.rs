@@ -36,7 +36,6 @@ async fn ec_recover_and_match_predicate_test() -> Result<(), Error> {
         all_coins,
         vec![],
         Some(Config {
-            predicates: true,
             utxo_validation: true,
             ..Config::local_node()
         }),

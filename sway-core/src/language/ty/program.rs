@@ -1,10 +1,10 @@
-use fuel_tx::StorageSlot;
 use sway_error::error::CompileError;
 use sway_types::*;
 
 use crate::{
     declaration_engine::*,
     error::*,
+    fuel_prelude::fuel_tx::StorageSlot,
     language::{parsed, ty::*, Purity},
     semantic_analysis::storage_only_types,
     type_system::*,
