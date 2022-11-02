@@ -6,11 +6,9 @@ use std::{
         AuthError,
         msg_sender,
     },
+    call_frames::msg_asset_id,
     constants::BASE_ASSET_ID,
-    context::{
-        call_frames::msg_asset_id,
-        msg_amount,
-    },
+    context::msg_amount,
     token::transfer_to_address,
 };
 
