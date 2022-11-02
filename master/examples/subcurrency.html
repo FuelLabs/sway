@@ -142,7 +142,7 @@
 <p>Being a ledger-based token, this example does not use Fuel's <a href="../blockchain-development/native_assets.html">native asset system</a>. It is not recommended to actually use ledger-based tokens in production; this example is here purely for illustrative purposes.</p>
 <pre><code class="language-sway">contract;
 
-use std::{chain::auth::{AuthError, msg_sender}, hash::sha256, logging::log};
+use std::{auth::{AuthError, msg_sender}, hash::sha256, logging::log};
 
 ////////////////////////////////////////
 // Event declarations

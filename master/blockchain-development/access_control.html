@@ -143,7 +143,7 @@
 <p>To deliver an experience akin to the EVM's access control, the <code>std</code> library provides a <code>msg_sender</code> function, which identifies a unique caller based upon the call and/or transaction input data.</p>
 <pre><code class="language-sway">contract;
 
-use std::chain::auth::{AuthError, msg_sender};
+use std::auth::{AuthError, msg_sender};
 
 abi MyOwnedContract {
     fn receive(field_1: u64) -&gt; bool;

@@ -541,7 +541,7 @@ impl TestContract for Contract {
 <p>Being a ledger-based token, this example does not use Fuel's <a href="examples/../blockchain-development/native_assets.html">native asset system</a>. It is not recommended to actually use ledger-based tokens in production; this example is here purely for illustrative purposes.</p>
 <pre><code class="language-sway">contract;
 
-use std::{chain::auth::{AuthError, msg_sender}, hash::sha256, logging::log};
+use std::{auth::{AuthError, msg_sender}, hash::sha256, logging::log};
 
 ////////////////////////////////////////
 // Event declarations
@@ -681,15 +681,13 @@ abi Wallet {
 <pre><code class="language-sway">contract;
 
 use std::{
-    chain::auth::{
+    auth::{
         AuthError,
         msg_sender,
     },
+    call_frames::msg_asset_id,
     constants::BASE_ASSET_ID,
-    context::{
-        call_frames::msg_asset_id,
-        msg_amount,
-    },
+    context::msg_amount,
     token::transfer_to_address,
 };
 
@@ -2022,7 +2020,7 @@ fn increment_amount(increment: u64) -&gt; u64 {
 <pre><code class="language-sway">contract;
 
 use std::{
-    context::call_frames::{
+    call_frames::{
         contract_id,
         msg_asset_id,
     },
@@ -2129,7 +2127,7 @@ impl NativeAssetToken for Contract {
 <p>To deliver an experience akin to the EVM's access control, the <code>std</code> library provides a <code>msg_sender</code> function, which identifies a unique caller based upon the call and/or transaction input data.</p>
 <pre><code class="language-sway">contract;
 
-use std::chain::auth::{AuthError, msg_sender};
+use std::auth::{AuthError, msg_sender};
 
 abi MyOwnedContract {
     fn receive(field_1: u64) -&gt; bool;
