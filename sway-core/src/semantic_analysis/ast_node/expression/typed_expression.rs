@@ -87,7 +87,7 @@ impl ty::TyExpression {
             warnings,
             errors
         );
-        let return_type = method.return_type.clone();
+        let return_type = method.return_type;
         let args_and_names = method
             .parameters
             .into_iter()
