@@ -1,7 +1,5 @@
 //! Functionality for accessing context-specific information about the current contract or message.
 library context;
-dep registers;
-dep call_frames;
 
 use ::contract_id::ContractId;
 use ::call_frames::contract_id;

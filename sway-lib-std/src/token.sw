@@ -2,7 +2,7 @@
 library token;
 
 use ::address::Address;
-use ::context::call_frames::contract_id;
+use ::call_frames::contract_id;
 use ::contract_id::ContractId;
 use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
 use ::identity::Identity;
