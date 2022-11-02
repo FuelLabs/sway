@@ -23,16 +23,40 @@ impl Format for ItemTrait {
         // `trait name`
         write!(
             formatted_code,
-            "{} {}",
+            "{} {} ",
             self.trait_token.span().as_str(),
             self.name.span().as_str()
         )?;
+        // `<T>`
+        if let Some(generics) = &self.generics {
+            // For optional generics remove the space before `<T>` part as it is added after
+            // trait name. Remove it from the beginning and add it afterwards so that there is a
+            // space before `{` even in the case of no other optional fields present after this
+            // check.
+            formatted_code.pop();
+            generics.format(formatted_code, formatter)?;
+            write!(formatted_code, " ")?;
+        }
+        // `where`
+        if let Some(where_clause) = &self.where_clause_opt {
+            // For optional where clause remove the space before `where` token as it can be added
+            // after trait name or in optional generics check. Remove it from the beginning and add
+            // it afterwards so that there is a space before `{` even in the case of no other optional
+            // fields present after this check.
+            formatted_code.pop();
+            writeln!(formatted_code)?;
+            where_clause.format(formatted_code, formatter)?;
+        }
         // `: super_trait + super_trait`
         if let Some((colon_token, traits)) = &self.super_traits {
+            // For optional super trait, remove the space before `:` as it can either be added after
+            // trait name or in other optional fields such as generics or where clause. Remove it
+            // from the beginning and add it afterwards so that there is a space before `{`.
+            formatted_code.pop();
             write!(formatted_code, "{} ", colon_token.ident().as_str())?;
             traits.format(formatted_code, formatter)?;
+            write!(formatted_code, " ")?;
         }
-        write!(formatted_code, " ")?;
         Self::open_curly_brace(formatted_code, formatter)?;
         for (fn_signature, semicolon_token) in self.trait_items.get() {
             // format `Annotated<FnSignature>`
