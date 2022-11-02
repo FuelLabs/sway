@@ -107,7 +107,7 @@ impl MyContract for Contract {
                 agility: 9,
             },
             alive: true,
-            random_b256: ~b256::min(),
+            random_b256: b256::min(),
         })
     }
 
@@ -169,7 +169,7 @@ impl MyContract for Contract {
                 agility: 9,
             },
             alive: true,
-            random_b256: ~b256::min(),
+            random_b256: b256::min(),
         })
     }
 }

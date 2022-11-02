@@ -1,6 +1,6 @@
 contract;
 
-use std::chain::auth::*;
+use std::auth::*;
 use auth_testing_abi::*;
 
 impl AuthTesting for Contract {

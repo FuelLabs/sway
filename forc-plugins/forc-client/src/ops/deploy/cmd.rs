@@ -1,5 +1,5 @@
 use clap::Parser;
-use fuel_crypto::SecretKey;
+use fuel_gql_client::fuel_crypto::SecretKey;
 
 #[derive(Debug, Default, Parser)]
 #[clap(bin_name = "forc deploy", version)]

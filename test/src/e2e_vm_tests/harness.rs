@@ -5,6 +5,7 @@ use forc_client::ops::{
 };
 use forc_pkg::{BuiltPackage, PackageManifestFile};
 use fuel_tx::TransactionBuilder;
+use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
@@ -71,7 +72,7 @@ pub(crate) async fn runs_on_node(
 pub(crate) fn runs_in_vm(
     script: BuiltPackage,
     script_data: Option<Vec<u8>>,
-) -> (ProgramState, BuiltPackage) {
+) -> (ProgramState, Vec<Receipt>, BuiltPackage) {
     let storage = MemoryStorage::default();
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -92,7 +93,7 @@ pub(crate) fn runs_in_vm(
 
     let mut i = Interpreter::with_storage(storage, Default::default());
     let transition = i.transact(tx).unwrap();
-    (*transition.state(), script)
+    (*transition.state(), transition.receipts().to_vec(), script)
 }
 
 /// Compiles the code and optionally captures the output of forc and the compilation.

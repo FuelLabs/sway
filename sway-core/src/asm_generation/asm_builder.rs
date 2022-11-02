@@ -8,6 +8,7 @@ use super::{
 use crate::{
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
     error::*,
+    fuel_prelude::fuel_crypto::Hasher,
     metadata::MetadataManager,
     size_bytes_in_words, size_bytes_round_up_to_word_alignment,
 };
@@ -15,8 +16,6 @@ use sway_error::warning::CompileWarning;
 use sway_error::{error::CompileError, warning::Warning};
 use sway_ir::*;
 use sway_types::{span::Span, Spanned};
-
-use fuel_crypto::Hasher;
 
 use either::Either;
 use std::{collections::HashMap, sync::Arc};
@@ -607,16 +606,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Index value is the array element index, not byte nor word offset.
         let index_reg = self.value_to_register(index_val);
-        let rel_offset_reg = match index_reg {
-            VirtualRegister::Virtual(_) => {
-                // We can reuse the register.
-                index_reg.clone()
-            }
-            VirtualRegister::Constant(_) => {
-                // We have a constant register, cannot reuse it.
-                self.reg_seqr.next()
-            }
-        };
+        let rel_offset_reg = self.reg_seqr.next();
 
         // We could put the OOB check here, though I'm now thinking it would be too wasteful.
         // See compile_bounds_assertion() in expression/array.rs (or look in Git history).
@@ -915,16 +905,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Index value is the array element index, not byte nor word offset.
         let index_reg = self.value_to_register(index_val);
-        let rel_offset_reg = match index_reg {
-            VirtualRegister::Virtual(_) => {
-                // We can reuse the register.
-                index_reg.clone()
-            }
-            VirtualRegister::Constant(_) => {
-                // We have a constant register, cannot reuse it.
-                self.reg_seqr.next()
-            }
-        };
+        let rel_offset_reg = self.reg_seqr.next();
 
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
 
@@ -1484,10 +1465,23 @@ impl<'ir> AsmBuilder<'ir> {
             _ => unreachable!("Unexpected storage locations for key and val"),
         };
 
+        // capture the status of whether the slot was set before calling this instruction
+        let was_slot_set_reg = self.reg_seqr.next();
+
         self.cur_bytecode.push(Op {
             opcode: Either::Left(match access_type {
-                StateAccessType::Read => VirtualOp::SRWQ(val_reg, key_reg),
-                StateAccessType::Write => VirtualOp::SWWQ(key_reg, val_reg),
+                StateAccessType::Read => VirtualOp::SRWQ(
+                    val_reg,
+                    was_slot_set_reg,
+                    key_reg,
+                    ConstantRegister::One.into(),
+                ),
+                StateAccessType::Write => VirtualOp::SWWQ(
+                    key_reg,
+                    was_slot_set_reg,
+                    val_reg,
+                    ConstantRegister::One.into(),
+                ),
             }),
             comment: "quad word state access".into(),
             owning_span,
@@ -1514,6 +1508,10 @@ impl<'ir> AsmBuilder<'ir> {
 
         let load_reg = self.reg_seqr.next();
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
+        // capture the status of whether the slot was set before calling this instruction
+        let was_slot_set_reg = self.reg_seqr.next();
+
         match self.ptr_map.get(&key_ptr) {
             Some(Storage::Stack(key_offset)) => {
                 let base_reg = self.locals_base_reg().clone();
@@ -1522,7 +1520,11 @@ impl<'ir> AsmBuilder<'ir> {
                 let key_reg = self.offset_reg(&base_reg, key_offset_in_bytes, owning_span.clone());
 
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::SRW(load_reg.clone(), key_reg)),
+                    opcode: Either::Left(VirtualOp::SRW(
+                        load_reg.clone(),
+                        was_slot_set_reg,
+                        key_reg,
+                    )),
                     comment: "single word state access".into(),
                     owning_span,
                 });
@@ -1560,6 +1562,9 @@ impl<'ir> AsmBuilder<'ir> {
         }
         let (key_ptr, ptr_ty, offset) = key_ptr.value.unwrap();
 
+        // capture the status of whether the slot was set before calling this instruction
+        let was_slot_set_reg = self.reg_seqr.next();
+
         // Not expecting an offset here nor a pointer cast
         assert!(offset == 0);
         assert!(ptr_ty.get_type(self.context).eq(self.context, &Type::B256));
@@ -1573,7 +1578,7 @@ impl<'ir> AsmBuilder<'ir> {
                 let key_reg = self.offset_reg(&base_reg, key_offset_in_bytes, owning_span.clone());
 
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::SWW(key_reg, store_reg)),
+                    opcode: Either::Left(VirtualOp::SWW(key_reg, was_slot_set_reg, store_reg)),
                     comment: "single word state access".into(),
                     owning_span,
                 });

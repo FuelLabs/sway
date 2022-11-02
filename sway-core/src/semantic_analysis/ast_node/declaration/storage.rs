@@ -1,12 +1,12 @@
 use crate::{
     error::*,
+    fuel_prelude::fuel_tx::StorageSlot,
     ir_generation::{
         const_eval::compile_constant_expression_to_constant, storage::serialize_to_storage_slots,
     },
     language::ty,
     metadata::MetadataManager,
 };
-use fuel_tx::StorageSlot;
 use sway_error::error::CompileError;
 use sway_ir::{Context, Module};
 use sway_types::state::StateIndex;

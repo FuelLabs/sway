@@ -8,6 +8,8 @@ use crate::{FilterConfig, RunConfig};
 use anyhow::{anyhow, bail, Result};
 use assert_matches::assert_matches;
 use colored::*;
+use core::fmt;
+use fuel_vm::fuel_tx;
 use fuel_vm::prelude::*;
 use regex::Regex;
 use std::{
@@ -29,12 +31,23 @@ enum TestCategory {
     Disabled,
 }
 
-#[derive(Debug)]
+#[derive(PartialEq)]
 enum TestResult {
     Result(Word),
     Return(u64),
-    ReturnData(Bytes32),
+    ReturnData(Vec<u8>),
     Revert(u64),
+}
+
+impl fmt::Debug for TestResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TestResult::Result(result) => write!(f, "Result({})", result),
+            TestResult::Return(code) => write!(f, "Return({})", code),
+            TestResult::ReturnData(data) => write!(f, "ReturnData(0x{})", hex::encode(data)),
+            TestResult::Revert(code) => write!(f, "Revert({})", code),
+        }
+    }
 }
 
 struct TestDescription {
@@ -83,9 +96,9 @@ impl TestContext {
         match category {
             TestCategory::Runs => {
                 let res = match expected_result {
-                    Some(TestResult::Return(v)) => ProgramState::Return(v),
-                    Some(TestResult::ReturnData(bytes)) => ProgramState::ReturnData(bytes),
-                    Some(TestResult::Revert(v)) => ProgramState::Revert(v),
+                    Some(TestResult::Return(_))
+                    | Some(TestResult::ReturnData(_))
+                    | Some(TestResult::Revert(_)) => expected_result.unwrap(),
 
                     _ => panic!(
                         "For {name}:\n\
@@ -97,10 +110,24 @@ impl TestContext {
                 assert_matches!(result, Ok(_));
                 let compiled = result.unwrap();
 
-                let result = harness::runs_in_vm(compiled, script_data);
-                assert_eq!(result.0, res);
+                let (state, receipts, pkg) = harness::runs_in_vm(compiled, script_data);
+                let result = match state {
+                    ProgramState::Return(v) => TestResult::Return(v),
+                    ProgramState::ReturnData(digest) => {
+                        // Find the ReturnData receipt matching the digest
+                        let receipt = receipts
+                            .iter()
+                            .find(|r| r.digest() == Some(&digest))
+                            .unwrap();
+                        // Get the data from the receipt
+                        let data = receipt.data().unwrap().to_vec();
+                        TestResult::ReturnData(data)
+                    }
+                    ProgramState::Revert(v) => TestResult::Revert(v),
+                };
+                assert_eq!(result, res);
                 if validate_abi {
-                    assert_matches!(harness::test_json_abi(&name, &result.1), Ok(_));
+                    assert_matches!(harness::test_json_abi(&name, &pkg), Ok(_));
                 }
                 Ok(())
             }
@@ -454,41 +481,9 @@ fn get_expected_result(toml_content: &toml::Value) -> Result<TestResult> {
             (Some("result"), toml::Value::Integer(v)) => Ok(TestResult::Result(*v as Word)),
 
             // A bytes32 value.
-            (Some("return_data"), toml::Value::Array(ary)) => ary
-                .iter()
-                .map(|byte_val| {
-                    byte_val.as_integer().ok_or_else(|| {
-                        anyhow!(
-                            "Return data must only contain integer values; \
-                                                    found {byte_val}."
-                        )
-                    })
-                })
-                .collect::<Result<Vec<_>, _>>()
-                .and_then(|bytes| {
-                    if bytes.iter().any(|byte| *byte < 0 || *byte > 255) {
-                        Err(anyhow!("Return data byte values must be less than 256."))
-                    } else if bytes.len() != 32 {
-                        Err(anyhow!(
-                            "Return data must be a 32 byte array; \
-                                                found {} values.",
-                            bytes.len()
-                        ))
-                    } else {
-                        Ok(bytes.iter().map(|byte| *byte as u8).collect())
-                    }
-                })
-                .map(|bytes: Vec<u8>| {
-                    let fixed_byte_array =
-                        bytes
-                            .iter()
-                            .enumerate()
-                            .fold([0_u8; 32], |mut ary, (idx, byte)| {
-                                ary[idx] = *byte;
-                                ary
-                            });
-                    TestResult::ReturnData(Bytes32::from(fixed_byte_array))
-                }),
+            (Some("return_data"), toml::Value::String(v)) => hex::decode(v)
+                .map(TestResult::ReturnData)
+                .map_err(|e| anyhow!("Invalid hex value for 'return_data': {}", e)),
 
             // Revert with a specific code.
             (Some("revert"), toml::Value::Integer(v)) => Ok(TestResult::Revert(*v as u64)),
