@@ -16,18 +16,18 @@ abi Incrementor {
 impl Incrementor for Contract {
     #[storage(write)]
     fn initialize(initial_value: u64) -> u64 {
-        asm(key: KEY, v: initial_value) {
-            sww key v;
+        asm(key: KEY, is_set, v: initial_value) {
+            sww key is_set v;
         }
         initial_value
     }
 
     #[storage(read, write)]
     fn increment(increment_by: u64) -> u64 {
-        let new_val = asm(key: KEY, i: increment_by, res) {
-            srw res key;
+        let new_val = asm(key: KEY, is_set, i: increment_by, res) {
+            srw res is_set key;
             add res res i;
-            sww key res;
+            sww key is_set res;
             res: u64
         };
         new_val
@@ -35,8 +35,8 @@ impl Incrementor for Contract {
 
     #[storage(read)]
     fn get() -> u64 {
-        asm(key: KEY, res) {
-            srw res key;
+        asm(key: KEY, is_set, res) {
+            srw res is_set key;
             res: u64
         }
     }
