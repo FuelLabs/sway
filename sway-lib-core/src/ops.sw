@@ -623,8 +623,7 @@ fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
 
 /// Extract a single 64 bit word from a b256 value using the specified offset.
 fn get_word_from_b256(val: b256, offset: u64) -> u64 {
-    let mut empty: u64 = 0;
-    asm(r1: val, offset: offset, r2, res: empty) {
+    asm(r1: val, offset: offset, r2, res) {
         add r2 r1 offset;
         lw res r2 i0;
         res: u64
