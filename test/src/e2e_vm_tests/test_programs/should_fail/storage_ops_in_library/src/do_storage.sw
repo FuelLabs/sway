@@ -4,8 +4,8 @@ const KEY: b256 = 0xfafafafafafafafafafafafafafafafafafafafafafafafafafafafafafa
 
 #[storage(read, write)]
 pub fn side_effects() {
-    asm(key: KEY, v) {
-        srw v key;
-        sww key v;
+    asm(key: KEY, is_set, v) {
+        srw v is_set key;
+        sww key is_set v;
     }
 }
