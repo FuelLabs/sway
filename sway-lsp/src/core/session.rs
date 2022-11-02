@@ -289,7 +289,7 @@ impl Session {
     }
 
     /// Get a reference to the `TyProgram` AST.
-    fn compile_res_to_typed_program<'a>(
+    pub fn compile_res_to_typed_program<'a>(
         &'a self,
         ast_res: &'a CompileResult<ty::TyProgram>,
     ) -> Result<&'a ty::TyProgram, LanguageServerError> {
