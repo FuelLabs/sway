@@ -9,7 +9,7 @@ fn main() -> bool {
 
     let balance_test_contract = abi(BalanceTest, balance_test_contract_id);
     let number = balance_test_contract.get_42 {
-        gas: 1000
+        gas: u64::max()
     }
     ();
 

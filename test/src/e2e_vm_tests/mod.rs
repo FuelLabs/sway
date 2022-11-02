@@ -9,6 +9,7 @@ use anyhow::{anyhow, bail, Result};
 use assert_matches::assert_matches;
 use colored::*;
 use core::fmt;
+use fuel_vm::fuel_tx;
 use fuel_vm::prelude::*;
 use regex::Regex;
 use std::{

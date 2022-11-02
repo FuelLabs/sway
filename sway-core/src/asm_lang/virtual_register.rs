@@ -1,3 +1,4 @@
+use crate::fuel_prelude::fuel_asm;
 use std::fmt;
 
 /// Represents virtual registers that have yet to be allocated.
@@ -12,6 +13,12 @@ pub enum VirtualRegister {
 impl From<&VirtualRegister> for VirtualRegister {
     fn from(register: &VirtualRegister) -> VirtualRegister {
         register.clone()
+    }
+}
+
+impl From<ConstantRegister> for VirtualRegister {
+    fn from(constant_register: ConstantRegister) -> Self {
+        VirtualRegister::Constant(constant_register)
     }
 }
 
