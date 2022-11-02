@@ -166,5 +166,5 @@ fn hover_format(token: &Token, ident: &Ident) -> lsp_types::HoverContents {
 
     let content = Markup::new().maybe_add_sway_block(value).text(&doc_comment);
 
-    lsp_types::HoverContents::Markup(markup_content(content.into()))
+    lsp_types::HoverContents::Markup(markup_content(content))
 }

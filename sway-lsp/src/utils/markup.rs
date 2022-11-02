@@ -30,6 +30,7 @@ impl fmt::Display for Markup {
 }
 
 impl Markup {
+    /// Creates a new empty `Markup`.
     pub fn new() -> Self {
         Self {
             text: String::new(),
@@ -45,15 +46,18 @@ impl Markup {
 
     /// Contents will be formatted with sway syntax highlighting.
     pub fn fenced_sway_block(mut self, contents: &impl fmt::Display) -> Self {
-        self.text.push_str(&format!("```sway\n{}\n```", contents));
+        let code_block = format!("```sway\n{}\n```", contents);
+        self.text.push_str(&code_block);
         self
     }
 
+    /// Add a new line.
     pub fn line_sperator(mut self) -> Self {
         self.text.push_str("\n---\n");
         self
     }
 
+    /// Add text to the markup.
     pub fn text(mut self, contents: &str) -> Self {
         self.text.push_str(contents);
         self
