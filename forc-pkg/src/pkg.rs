@@ -518,6 +518,8 @@ impl BuildPlan {
     /// Trim graph of the given build plan such that only given member and it's dependencies are
     /// present in the graph. This will ensure that building the package only builds a part of the
     /// workspace that belongs to the package itself.
+    ///
+    /// Returns the given build plan with the trimmed graph.
     pub fn member_plan(&self, member_manifest: &PackageManifest) -> Result<Self> {
         let mut graph = self.graph().clone();
         let member_node = self
@@ -533,7 +535,7 @@ impl BuildPlan {
         // Collect visitable nodes from the given node in the graph.
         let visited_nodes: HashSet<NodeIx> = bfs.iter(&graph).collect();
         graph.retain_nodes(|_, index| visited_nodes.contains(&index));
-        // Since some nodes from the graph is removed we need to reconstruct compilation order.
+        // Since some nodes are removed from the graph, compilation order needs to be reconstructed.
         let compilation_order = compilation_order(&graph)?;
         Ok(Self {
             graph: graph.clone(),
