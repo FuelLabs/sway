@@ -87,11 +87,12 @@ impl ty::TyExpression {
             warnings,
             errors
         );
+        let return_type = method.return_type.clone();
         let args_and_names = method
             .parameters
-            .iter()
+            .into_iter()
             .zip(arguments.into_iter())
-            .map(|(param, arg)| (param.name.clone(), arg))
+            .map(|(param, arg)| (param.name, arg))
             .collect::<Vec<(_, _)>>();
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::FunctionApplication {
@@ -102,7 +103,7 @@ impl ty::TyExpression {
                 self_state_idx: None,
                 selector: None,
             },
-            return_type: method.return_type,
+            return_type,
             span,
         };
         ok(exp, warnings, errors)
