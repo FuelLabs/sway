@@ -29,6 +29,9 @@ pub struct Token {
 }
 
 impl Token {
+    /// Create a new token with the given SymbolKind.
+    /// This function is intended to be used during traversal of the
+    /// `ParseProgram` AST.
     pub fn from_parsed(token: AstToken, kind: SymbolKind) -> Self {
         Self {
             parsed: Some(token),
@@ -38,6 +41,9 @@ impl Token {
         }
     }
 
+    /// Create a new token with the given SymbolKind.
+    /// This function is only intended to be used when collecting
+    /// tokens from dependencies.
     pub fn from_typed(token: TypedAstToken, kind: SymbolKind) -> Self {
         Self {
             parsed: None,

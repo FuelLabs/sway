@@ -21,7 +21,7 @@ pub fn traverse_node(node: &ty::TyAstNode, tokens: &TokenMap) {
     };
 }
 
-pub fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
+fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
     match declaration {
         ty::TyDeclaration::VariableDeclaration(variable) => {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&variable.name)) {
