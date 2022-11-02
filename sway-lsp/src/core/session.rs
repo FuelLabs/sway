@@ -236,6 +236,7 @@ impl Session {
                 diagnostics =
                     capabilities::diagnostic::get_diagnostics(&ast_res.warnings, &ast_res.errors);
             } else {
+                // Collect tokens from dependencies and the standard library prelude.
                 self.parse_ast_to_typed_tokens(
                     &typed_program,
                     collect_symbol_map::collect_declaration,
@@ -311,21 +312,6 @@ impl Session {
         typed_program: &ty::TyProgram,
         f: impl Fn(&ty::TyAstNode, &TokenMap),
     ) {
-        // Collect tokens from `std` & `core` imported from the prelude.
-        // typed_program
-        //     .root
-        //     .namespace
-        //     .submodules()
-        //     .iter()
-        //     .flat_map(|(_, module)| module.submodules())
-        //     .flat_map(|(_, module)| module.deref().symbols())
-        //     // For efficiency, skip the rest once an ident is in our map,
-        //     // as the tokens from std and core have already been collected.
-        //     .take_while(|(ident, _)| !self.token_map.contains_key(&to_ident_key(ident)))
-        //     .for_each(|(ident, decl)| {
-        //         collect_symbol_map::handle_declaration(ident, decl, &self.token_map)
-        //     });
-
         let root_nodes = typed_program.root.all_nodes.iter();
         let sub_nodes = typed_program
             .root

@@ -31,7 +31,7 @@ pub(super) type UseAliases = im::HashMap<String, Ident>;
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Items {
     /// An ordered map from `Ident`s to their associated typed declarations.
-    pub symbols: SymbolMap,
+    pub(crate) symbols: SymbolMap,
     pub(crate) implemented_traits: TraitMap,
     /// Represents the absolute path from which a symbol was imported.
     ///

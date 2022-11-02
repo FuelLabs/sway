@@ -2491,72 +2491,9 @@ fn update_json_type_declaration(
     }
 }
 
-// /// Compile the entire forc package and return a typed program, if any.
-// pub fn check_vec(
-//     plan: &BuildPlan,
-//     terse_mode: bool,
-// ) -> anyhow::Result<CompileResult<Vec<(ParseProgram, Option<ty::TyProgram>)>>> {
-//     //TODO remove once type engine isn't global anymore.
-//     sway_core::clear_lazy_statics();
-//     let mut lib_namespace_map = Default::default();
-//     let mut source_map = SourceMap::new();
-//     // During `check`, we don't compile so this stays empty.
-//     let compiled_contract_deps = HashMap::new();
-
-//     let mut results = vec![];
-//     for &node in plan.compilation_order.iter() {
-//         let pkg = &plan.graph[node];
-//         let manifest = &plan.manifest_map()[&pkg.id()];
-//         let constants = manifest.config_time_constants();
-//         let dep_namespace = dependency_namespace(
-//             &lib_namespace_map,
-//             &compiled_contract_deps,
-//             &plan.graph,
-//             node,
-//             constants,
-//         )
-//         .expect("failed to create dependency namespace");
-//         let CompileResult {
-//             value,
-//             mut warnings,
-//             mut errors,
-//         } = parse(manifest, terse_mode)?;
-
-//         let parse_program = match value {
-//             None => return Ok(CompileResult::new(None, warnings, errors)),
-//             Some(program) => program,
-//         };
-
-//         let ast_result = sway_core::parsed_to_ast(&parse_program, dep_namespace);
-//         warnings.extend(ast_result.warnings);
-//         errors.extend(ast_result.errors);
-
-//         let typed_program = match ast_result.value {
-//             None => {
-//                 let value = Some(vec![(parse_program, None)]);
-//                 return Ok(CompileResult::new(value, warnings, errors));
-//             }
-//             Some(typed_program) => typed_program,
-//         };
-
-//         if let TreeType::Library { .. } = typed_program.kind.tree_type() {
-//             lib_namespace_map.insert(node, typed_program.root.namespace.clone());
-//         }
-
-//         source_map.insert_dependency(manifest.dir());
-
-//         let value = Some((parse_program, Some(typed_program)));
-//         results.push(CompileResult::new(value, warnings, errors));
-//     }
-
-//     if results.is_empty() {
-//         bail!("unable to check sway program: build plan contains no packages")
-//     }
-
-//     Ok(results)
-// }
-
-/// Compile the entire forc package and return a typed program, if any.
+/// Compile the entire forc package and return the parse and typed programs
+/// of the dependancies and project.
+/// The final item in the returned vector is the project.
 pub fn check(
     plan: &BuildPlan,
     terse_mode: bool,

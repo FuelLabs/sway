@@ -23,7 +23,7 @@ pub fn check(command: CheckCommand) -> Result<CompileResult<ty::TyProgram>> {
     let mut v = pkg::check(&plan, terse_mode)?;
     let res = v
         .pop()
-        .unwrap()
+        .expect("there is guaranteed to be at least one elem in the vector")
         .flat_map(|(_, tp)| CompileResult::new(tp, vec![], vec![]));
     Ok(res)
 }
