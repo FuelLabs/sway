@@ -41,7 +41,7 @@ pub struct TxParameters {
 
 impl TxParameters {
     pub const DEFAULT: Self = Self {
-        gas_limit: fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx,
+        gas_limit: 1_000_000_000,
         gas_price: 0,
     };
 
