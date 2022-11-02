@@ -11,9 +11,11 @@
 
 use super::DataId;
 use super::*;
-use crate::asm_generation::DataSection;
+use crate::{
+    asm_generation::DataSection,
+    fuel_prelude::fuel_asm::{self, Opcode as VmOp},
+};
 use either::Either;
-use fuel_asm::Opcode as VmOp;
 use std::fmt::{self, Write};
 use sway_types::span::Span;
 
@@ -151,10 +153,20 @@ pub(crate) enum AllocatedOpcode {
     ),
     MINT(AllocatedRegister),
     RVRT(AllocatedRegister),
-    SRW(AllocatedRegister, AllocatedRegister),
-    SRWQ(AllocatedRegister, AllocatedRegister),
-    SWW(AllocatedRegister, AllocatedRegister),
-    SWWQ(AllocatedRegister, AllocatedRegister),
+    SRW(AllocatedRegister, AllocatedRegister, AllocatedRegister),
+    SRWQ(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+    ),
+    SWW(AllocatedRegister, AllocatedRegister, AllocatedRegister),
+    SWWQ(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+    ),
     TIME(AllocatedRegister, AllocatedRegister),
     TR(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     TRO(
@@ -245,10 +257,10 @@ impl AllocatedOpcode {
             LOGD(_r1, _r2, _r3, _r4) => vec![],
             MINT(_r1) => vec![],
             RVRT(_r1) => vec![],
-            SRW(r1, _r2) => vec![r1],
-            SRWQ(_r1, _r2) => vec![],
-            SWW(_r1, _r2) => vec![],
-            SWWQ(_r1, _r2) => vec![],
+            SRW(r1, r2, _r3) => vec![r1, r2],
+            SRWQ(_r1, r2, _r3, _r4) => vec![r2],
+            SWW(_r1, r2, _r3) => vec![r2],
+            SWWQ(_r1, r2, _r3, _r4) => vec![r2],
             TIME(r1, _r2) => vec![r1],
             TR(_r1, _r2, _r3) => vec![],
             TRO(_r1, _r2, _r3, _r4) => vec![],
@@ -339,10 +351,10 @@ impl fmt::Display for AllocatedOpcode {
             LOGD(a, b, c, d) => write!(fmtr, "logd {} {} {} {}", a, b, c, d),
             MINT(a) => write!(fmtr, "mint {}", a),
             RVRT(a) => write!(fmtr, "rvrt {}", a),
-            SRW(a, b) => write!(fmtr, "srw  {} {}", a, b),
-            SRWQ(a, b) => write!(fmtr, "srwq {} {}", a, b),
-            SWW(a, b) => write!(fmtr, "sww  {} {}", a, b),
-            SWWQ(a, b) => write!(fmtr, "swwq {} {}", a, b),
+            SRW(a, b, c) => write!(fmtr, "srw  {} {} {}", a, b, c),
+            SRWQ(a, b, c, d) => write!(fmtr, "srwq {} {} {} {}", a, b, c, d),
+            SWW(a, b, c) => write!(fmtr, "sww  {} {} {}", a, b, c),
+            SWWQ(a, b, c, d) => write!(fmtr, "swwq {} {} {} {}", a, b, c, d),
             TIME(a, b) => write!(fmtr, "time {} {}", a, b),
             TR(a, b, c) => write!(fmtr, "tr   {} {} {}", a, b, c),
             TRO(a, b, c, d) => write!(fmtr, "tro  {} {} {} {}", a, b, c, d),
@@ -466,10 +478,10 @@ impl AllocatedOp {
             LOGD(a, b, c, d)=> VmOp::LOGD(a.to_register_id(), b.to_register_id(), c.to_register_id(), d.to_register_id()),
             MINT(a)         => VmOp::MINT(a.to_register_id()),
             RVRT(a)         => VmOp::RVRT(a.to_register_id()),
-            SRW (a, b)      => VmOp::SRW (a.to_register_id(), b.to_register_id()),
-            SRWQ(a, b)      => VmOp::SRWQ(a.to_register_id(), b.to_register_id()),
-            SWW (a, b)      => VmOp::SWW (a.to_register_id(), b.to_register_id()),
-            SWWQ(a, b)      => VmOp::SWWQ(a.to_register_id(), b.to_register_id()),
+            SRW (a, b, c)      => VmOp::SRW (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            SRWQ(a, b, c, d)      => VmOp::SRWQ(a.to_register_id(), b.to_register_id(), c.to_register_id(), d.to_register_id()),
+            SWW (a, b, c)      => VmOp::SWW (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            SWWQ(a, b, c, d)      => VmOp::SWWQ(a.to_register_id(), b.to_register_id(), c.to_register_id(), d.to_register_id()),
             TIME(a, b)      => VmOp::TIME(a.to_register_id(), b.to_register_id()),
             TR  (a, b, c)   => VmOp::TR  (a.to_register_id(), b.to_register_id(), c.to_register_id()),
             TRO (a, b, c, d)=> VmOp::TRO (a.to_register_id(), b.to_register_id(), c.to_register_id(), d.to_register_id()),

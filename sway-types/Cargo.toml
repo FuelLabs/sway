@@ -9,8 +9,8 @@ repository = "https://github.com/FuelLabs/sway"
 description = "Sway core types."
 
 [dependencies]
-fuel-asm = "0.9"
+fuel-asm = "0.10"
 fuel-crypto = "0.6"
-fuel-tx = "0.20"
+fuel-tx = "0.23"
 lazy_static = "1.4"
 serde = { version = "1.0", features = ["derive"] }
