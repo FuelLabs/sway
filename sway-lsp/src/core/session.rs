@@ -5,7 +5,7 @@ use crate::{
         runnable::{Runnable, RunnableType},
     },
     core::{
-        collect_symbol_map,
+        dependancy,
         document::TextDocument,
         token::{Token, TokenMap, TypeDefinition},
         {traverse_parse_tree, traverse_typed_tree},
@@ -220,6 +220,7 @@ impl Session {
             let ast_res = CompileResult::new(typed, warnings.clone(), errors.clone());
             let typed_program = self.compile_res_to_typed_program(&ast_res)?;
 
+            // The final element in the results is the main program.
             if i == results_len - 1 {
                 let parsed_res = CompileResult::new(parsed, warnings, errors);
                 let parse_program = self.compile_res_to_parse_program(&parsed_res)?;
@@ -239,13 +240,14 @@ impl Session {
                 // Collect tokens from dependencies and the standard library prelude.
                 self.parse_ast_to_typed_tokens(
                     &typed_program,
-                    collect_symbol_map::collect_declaration,
+                    dependancy::collect_declaration,
                 );
             }
         }
         Ok(diagnostics)
     }
 
+    /// Parse the `ParseProgram` AST to populate the token map with parsed AST nodes.
     fn parse_ast_to_tokens(&self, parse_program: &ParseProgram) {
         for node in &parse_program.root.tree.root_nodes {
             traverse_parse_tree::traverse_node(node, &self.token_map);
@@ -258,7 +260,25 @@ impl Session {
         }
     }
 
-    fn compile_res_to_parse_program<'a>(
+    /// Parse the `TyProgram` AST to populate the token map with typed AST nodes.
+    pub fn parse_ast_to_typed_tokens(
+        &self,
+        typed_program: &ty::TyProgram,
+        f: impl Fn(&ty::TyAstNode, &TokenMap),
+    ) {
+        let root_nodes = typed_program.root.all_nodes.iter();
+        let sub_nodes = typed_program
+            .root
+            .submodules
+            .iter()
+            .flat_map(|(_, submodule)| &submodule.module.all_nodes);
+        root_nodes
+            .chain(sub_nodes)
+            .for_each(|node| f(node, &self.token_map));
+    }
+
+    /// Get a reference to the `ParseProgram` AST.
+    pub fn compile_res_to_parse_program<'a>(
         &'a self,
         parsed_result: &'a CompileResult<ParseProgram>,
     ) -> Result<&'a ParseProgram, LanguageServerError> {
@@ -271,6 +291,7 @@ impl Session {
         })
     }
 
+    /// Get a reference to the `TyProgram` AST.
     fn compile_res_to_typed_program<'a>(
         &'a self,
         ast_res: &'a CompileResult<ty::TyProgram>,
@@ -286,7 +307,8 @@ impl Session {
             })
     }
 
-    fn create_runnables(&self, typed_program: &ty::TyProgram) {
+    /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
+    pub fn create_runnables(&self, typed_program: &ty::TyProgram) {
         if let ty::TyProgramKind::Script {
             ref main_function, ..
         } = typed_program.kind
@@ -297,30 +319,16 @@ impl Session {
         }
     }
 
-    fn save_parse_program(&self, parse_program: ParseProgram) {
+    /// Save the `ParseProgram` AST in the session.
+    pub fn save_parse_program(&self, parse_program: ParseProgram) {
         let mut program = self.compiled_program.write();
         program.parsed = Some(parse_program);
     }
 
-    fn save_typed_program(&self, typed_program: ty::TyProgram) {
+    /// Save the `TyProgram` AST in the session.
+    pub fn save_typed_program(&self, typed_program: ty::TyProgram) {
         let mut program = self.compiled_program.write();
         program.typed = Some(typed_program);
-    }
-
-    fn parse_ast_to_typed_tokens(
-        &self,
-        typed_program: &ty::TyProgram,
-        f: impl Fn(&ty::TyAstNode, &TokenMap),
-    ) {
-        let root_nodes = typed_program.root.all_nodes.iter();
-        let sub_nodes = typed_program
-            .root
-            .submodules
-            .iter()
-            .flat_map(|(_, submodule)| &submodule.module.all_nodes);
-        root_nodes
-            .chain(sub_nodes)
-            .for_each(|node| f(node, &self.token_map));
     }
 
     pub fn contains_sway_file(&self, url: &Url) -> bool {
