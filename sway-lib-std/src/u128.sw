@@ -279,7 +279,7 @@ impl core::ops::Divide for U128 {
         while true {
             quotient <<= 1;
             remainder <<= 1;
-            remainder.lower = remainder.lower | ((self.lower >> i) & 1);
+            remainder.lower = remainder.lower | (self >> i).lower & 1;
             // TODO use >= once OrdEq can be implemented.
             if remainder > divisor || remainder == divisor {
                 remainder -= divisor;

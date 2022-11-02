@@ -347,11 +347,11 @@ impl core::ops::Divide for U256 {
             remainder <<= 1;
 
             let m = self & (one << i);
-            remainder = remainder | ((self & (one << i)) >> i);
+            remainder.d = remainder.d | (self >> i).d & 1;
             // TODO use >= once OrdEq can be implemented.
             if remainder > divisor || remainder == divisor {
                 remainder -= divisor;
-                quotient = quotient | one;
+                quotient.d = quotient.d | 1;
             }
 
             if i == 0 {
