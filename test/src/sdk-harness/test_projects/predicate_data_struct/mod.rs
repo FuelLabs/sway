@@ -54,7 +54,7 @@ async fn create_predicate(
     let mut tx = Transaction::script(
         1,
         1000000,
-        1,
+        0,
         Opcode::RET(REG_ONE).to_bytes().to_vec(),
         vec![],
         wallet_coins,
