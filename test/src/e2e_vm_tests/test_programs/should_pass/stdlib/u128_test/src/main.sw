@@ -5,9 +5,9 @@ use std::result::*;
 use std::u128::*;
 
 fn main() -> bool {
-    let first = U128::from(0, 0);
-    let second = U128::from(0, 1);
-    let max_u64 = U128::from(0, u64::max());
+    let first = U128::from((0, 0));
+    let second = U128::from((0, 1));
+    let max_u64 = U128::from((0, u64::max()));
 
     let one = first + second;
     assert(one.upper == 0);
@@ -61,7 +61,7 @@ fn main() -> bool {
     assert(mul_max.upper == u64::max() - 1);
     assert(mul_max.lower == 1);
 
-    let one_upper = U128::from(1, 0);
+    let one_upper = U128::from((1, 0));
 
     let right_shift_one_upper = one_upper >> 1;
     assert(right_shift_one_upper.upper == 0);
@@ -74,16 +74,16 @@ fn main() -> bool {
     assert(one_left_shift_64.upper == 1);
     assert(one_left_shift_64.lower == 0);
 
-    let three_left_shift_one = U128::from(0, 3) << 1;
+    let three_left_shift_one = U128::from((0, 3)) << 1;
     assert(three_left_shift_one.upper == 0);
     assert(three_left_shift_one.lower == 6);
 
     // test as_u64()
-    let eleven = U128::from(0, 11);
+    let eleven = U128::from((0, 11));
     let unwrapped = eleven.as_u64().unwrap();
     assert(unwrapped == 11);
 
-    let err_1 = U128::from(42, 11).as_u64();
+    let err_1 = U128::from((42, 11)).as_u64();
     assert(match err_1 {
         Result::Err(U128Error::LossOfPrecision) => {
             true
@@ -93,7 +93,7 @@ fn main() -> bool {
         },
     });
 
-    let err_1 = U128::from(42, 0).as_u64();
+    let err_1 = U128::from((42, 0)).as_u64();
     assert(match err_1 {
         Result::Err(U128Error::LossOfPrecision) => {
             true
