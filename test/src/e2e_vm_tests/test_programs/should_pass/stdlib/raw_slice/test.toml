@@ -1,0 +1,4 @@
+category = "run"
+script_data = "000000000000000000000000000000100000000000000001000000000000002a"
+expected_result = { action = "return_data", value = "0000000000000001000000000000002a" }
+validate_abi = true

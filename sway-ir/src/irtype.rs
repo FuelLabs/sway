@@ -22,6 +22,7 @@ pub enum Type {
     Union(Aggregate),
     Struct(Aggregate),
     Pointer(Pointer),
+    Slice,
 }
 
 impl Type {
@@ -63,6 +64,7 @@ impl Type {
                 format!("{{ {} }}", sep_types_str(agg_content, ", "))
             }
             Type::Pointer(ptr) => ptr.as_string(context, None),
+            Type::Slice => "slice".into(),
         }
     }
 
@@ -88,6 +90,7 @@ impl Type {
                 .any(|field_ty| r.eq(context, field_ty)),
 
             (Type::Pointer(l), Type::Pointer(r)) => l.is_equivalent(context, r),
+            (Type::Slice, Type::Slice) => true,
             _ => false,
         }
     }

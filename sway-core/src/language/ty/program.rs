@@ -180,7 +180,7 @@ impl TyProgram {
                         name: mains.last().unwrap().name.clone(),
                     });
                 }
-                // A script must not return a `raw_ptr`
+                // A script must not return a `raw_ptr` or any type containing a `raw_slice`.
                 let main_func = mains.remove(0);
                 let nested_types = check!(
                     look_up_type_id(main_func.return_type)
@@ -194,6 +194,17 @@ impl TyProgram {
                     .any(|ty| matches!(ty, TypeInfo::RawUntypedPtr))
                 {
                     errors.push(CompileError::PointerReturnNotAllowedInMain {
+                        span: main_func.return_type_span.clone(),
+                    });
+                }
+                if !matches!(
+                    look_up_type_id(main_func.return_type),
+                    TypeInfo::RawUntypedSlice
+                ) && nested_types
+                    .iter()
+                    .any(|ty| matches!(ty, TypeInfo::RawUntypedSlice))
+                {
+                    errors.push(CompileError::NestedSliceReturnNotAllowedInMain {
                         span: main_func.return_type_span.clone(),
                     });
                 }

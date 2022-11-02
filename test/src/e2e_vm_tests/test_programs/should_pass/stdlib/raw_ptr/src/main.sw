@@ -32,7 +32,7 @@ fn main() -> bool {
     assert(foo_ptr_2 == foo_ptr);
 
     // Copy the struct into a buffer
-    let buf_ptr = alloc::<u64>(2);
+    let buf_ptr = alloc::<u64>(2).ptr();
     foo_ptr.copy_to::<u64>(buf_ptr, 2);
     assert(asm(r1: buf_ptr, r2: foo_ptr, r3: foo_len, res) {
         meq res r1 r2 r3;
@@ -53,7 +53,7 @@ fn main() -> bool {
     assert(boo == true);
 
     // Write values into a buffer
-    let buf_ptr = alloc::<u64>(2);
+    let buf_ptr = alloc::<u64>(2).ptr();
     buf_ptr.write(true);
     buf_ptr.add::<bool>(1).write(42);
     let foo: TestStruct = buf_ptr.read();
@@ -61,7 +61,7 @@ fn main() -> bool {
     assert(foo.uwu == 42);
 
     // Write structs into a buffer
-    let buf_ptr = alloc::<u64>(4);
+    let buf_ptr = alloc::<u64>(4).ptr();
     buf_ptr.write(foo);
     buf_ptr.add::<TestStruct>(1).write(foo);
     let bar: ExtendedTestStruct = buf_ptr.read();
@@ -72,7 +72,7 @@ fn main() -> bool {
 
     // Make sure that reading a memory location into a variable and then
     // overriding the same memory location does not change the variable read.
-    let buf_ptr = alloc::<u64>(1);
+    let buf_ptr = alloc::<u64>(1).ptr();
     let small_string_1 = "fuel";
     let small_string_2 = "labs";
     buf_ptr.write(small_string_1);
@@ -82,7 +82,7 @@ fn main() -> bool {
     assert(sha256(small_string_1) == sha256(read_small_string_1));
     assert(sha256(small_string_2) == sha256(read_small_string_2));
 
-    let buf_ptr = alloc::<u64>(2);
+    let buf_ptr = alloc::<u64>(2).ptr();
     let large_string_1 = "fuelfuelfuel";
     let large_string_2 = "labslabslabs";
     buf_ptr.write(large_string_1);

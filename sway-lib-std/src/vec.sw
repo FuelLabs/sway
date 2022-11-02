@@ -6,16 +6,14 @@ use ::intrinsics::size_of;
 use ::option::Option;
 
 struct RawVec<T> {
-    ptr: raw_ptr,
-    cap: u64,
+    slice: raw_slice,
 }
 
 impl<T> RawVec<T> {
     /// Create a new `RawVec` with zero capacity.
     fn new() -> Self {
         Self {
-            ptr: alloc::<T>(0),
-            cap: 0,
+            slice: alloc::<T>(0),
         }
     }
 
@@ -24,29 +22,31 @@ impl<T> RawVec<T> {
     /// `capacity` is `0`.
     fn with_capacity(capacity: u64) -> Self {
         Self {
-            ptr: alloc::<T>(capacity),
-            cap: capacity,
+            slice: alloc::<T>(capacity),
         }
     }
 
     /// Gets the pointer of the allocation.
     fn ptr(self) -> raw_ptr {
-        self.ptr
+        self.slice.ptr()
     }
 
     /// Gets the capacity of the allocation.
     fn capacity(self) -> u64 {
-        self.cap
+        self.slice.len()
     }
 
     /// Grow the capacity of the vector by doubling its current capacity. The
     /// `realloc` function / allocates memory on the heap and copies the data
     /// from the old allocation to the new allocation
     fn grow(ref mut self) {
-        let new_cap = if self.cap == 0 { 1 } else { 2 * self.cap };
+        let new_cap = if self.slice.len() == 0 {
+            1
+        } else {
+            2 * self.slice.len()
+        };
 
-        self.ptr = realloc::<T>(self.ptr, self.cap, new_cap);
-        self.cap = new_cap;
+        self.slice = realloc::<T>(self.slice, new_cap);
     }
 }
 
@@ -54,6 +54,13 @@ impl<T> RawVec<T> {
 pub struct Vec<T> {
     buf: RawVec<T>,
     len: u64,
+}
+
+impl<T> AsRawSlice for Vec<T> {
+    /// Returns a slice to all of the elements in the vector.
+    fn as_slice(self) -> raw_slice {
+        raw_slice::from_raw_parts(self.buf.ptr(), self.len * size_of::<T>())
+    }
 }
 
 impl<T> Vec<T> {
@@ -101,7 +108,7 @@ impl<T> Vec<T> {
 
     /// Gets the capacity of the allocation.
     pub fn capacity(self) -> u64 {
-        self.buf.cap
+        self.buf.capacity()
     }
 
     /// Clears the vector, removing all values.
@@ -170,7 +177,7 @@ impl<T> Vec<T> {
         assert(index <= self.len);
 
         // If there is insufficient capacity, grow the buffer.
-        if self.len == self.buf.cap {
+        if self.len == self.buf.capacity() {
             self.buf.grow();
         }
 

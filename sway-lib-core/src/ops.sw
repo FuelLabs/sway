@@ -219,6 +219,14 @@ impl Eq for raw_ptr {
     }
 }
 
+impl Eq for raw_slice {
+    fn eq(self, other: Self) -> bool {
+        let _self = asm(ptr: self) { ptr: (raw_ptr, u64) };
+        let _other = asm(ptr: other) { ptr: (raw_ptr, u64) };
+        __eq(_self.0, _other.0) && __eq(_self.1, _other.1)
+    }
+}
+
 pub trait Ord {
     fn gt(self, other: Self) -> bool;
     fn lt(self, other: Self) -> bool;

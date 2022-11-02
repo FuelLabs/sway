@@ -446,6 +446,10 @@ impl<'ir> AsmBuilder<'ir> {
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
                         stack_base += 1;
                     }
+                    Type::Slice => {
+                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
+                        stack_base += 2;
+                    }
                     Type::B256 => {
                         // XXX Like strings, should we just reserve space for a pointer?
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));

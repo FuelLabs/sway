@@ -59,7 +59,7 @@ pub fn get<T>(key: b256) -> T {
 
         // Allocate a buffer for the result.  It needs to be a multiple of 32 bytes so we can make
         // 'quad' storage reads without overflowing.
-        let result_ptr = alloc::<u64>(((size_left + 31) & 0xffffffe0) / 8);
+        let result_ptr = alloc::<u64>(((size_left + 31) & 0xffffffe0) / 8).ptr();
 
         let mut current_pointer = result_ptr;
         while size_left > 32 {

@@ -95,7 +95,8 @@ pub fn is_small_fn(
             | Type::Uint(_)
             | Type::B256
             | Type::String(_)
-            | Type::Pointer(_) => 1,
+            | Type::Pointer(_)
+            | Type::Slice => 1,
             Type::Array(aggregate) => {
                 let (ty, sz) = context.aggregates[aggregate.0].array_type();
                 count_type_elements(context, ty) * *sz as usize

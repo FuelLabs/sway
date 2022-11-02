@@ -519,6 +519,7 @@ fn are_equal_minus_dynamic_types(left: TypeId, right: TypeId) -> bool {
         (TypeInfo::Str(l), TypeInfo::Str(r)) => l == r,
         (TypeInfo::UnsignedInteger(l), TypeInfo::UnsignedInteger(r)) => l == r,
         (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
+        (TypeInfo::RawUntypedSlice, TypeInfo::RawUntypedSlice) => true,
 
         // these cases may contain dynamic types
         (

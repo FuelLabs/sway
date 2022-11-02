@@ -2164,6 +2164,10 @@ impl FnCompiler {
                         "Pointers in storage have not been implemented yet.",
                         Span::dummy(),
                     )),
+                    Type::Slice => Err(CompileError::Internal(
+                        "Slices in storage have not been implemented yet.",
+                        Span::dummy(),
+                    )),
                     Type::B256 => self.compile_b256_storage_read(
                         context,
                         ix,
@@ -2280,6 +2284,10 @@ impl FnCompiler {
                     )),
                     Type::Pointer(_) => Err(CompileError::Internal(
                         "Pointers in storage have not been implemented yet.",
+                        Span::dummy(),
+                    )),
+                    Type::Slice => Err(CompileError::Internal(
+                        "Slices in storage have not been implemented yet.",
                         Span::dummy(),
                     )),
                     Type::B256 => self.compile_b256_storage_write(

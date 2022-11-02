@@ -116,6 +116,7 @@ fn convert_resolved_type(
             }
         }
         TypeInfo::RawUntypedPtr => Type::Uint(64),
+        TypeInfo::RawUntypedSlice => Type::Slice,
 
         // Unsupported types which shouldn't exist in the AST after type checking and
         // monomorphisation.
