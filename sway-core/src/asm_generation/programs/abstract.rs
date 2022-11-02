@@ -122,7 +122,7 @@ impl AbstractProgram {
 
     /// Builds the contract switch statement based on the first argument to a contract call: the
     /// 'selector'.
-    /// See https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#call-frames which
+    /// See https://fuellabs.github.io/fuel-specs/master/vm#call-frames which
     /// describes the first argument to be at word offset 73.
     fn build_contract_abi_switch(&mut self, asm_buf: &mut AllocatedAbstractInstructionSet) {
         const SELECTOR_WORD_OFFSET: u64 = 73;

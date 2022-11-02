@@ -2,6 +2,7 @@ library std;
 
 dep convert;
 dep intrinsics;
+dep error_signals;
 dep logging;
 dep revert;
 dep assert;
