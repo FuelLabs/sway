@@ -11,7 +11,6 @@ use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
     print_on_failure, print_on_success, print_on_success_library,
 };
-use fuel_tx::{Contract, ContractId, StorageSlot};
 use petgraph::{
     self,
     visit::{Bfs, Dfs, EdgeRef, Walker},
@@ -25,6 +24,10 @@ use std::{
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
+};
+use sway_core::fuel_prelude::{
+    fuel_crypto,
+    fuel_tx::{self, Contract, ContractId, StorageSlot},
 };
 use sway_core::{
     language::{

@@ -2,13 +2,12 @@
 library token;
 
 use ::address::Address;
-use ::context::call_frames::contract_id;
+use ::call_frames::contract_id;
 use ::contract_id::ContractId;
+use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
 use ::identity::Identity;
 use ::revert::revert;
 use ::outputs::{Output, output_amount, output_count, output_type};
-
-const FAILED_TRANSFER_TO_ADDRESS_SIGNAL = 0xffff_ffff_ffff_0001;
 
 /// Mint `amount` coins of the current contract's `asset_id` and transfer them
 /// to `to` by calling either force_transfer_to_contract() or

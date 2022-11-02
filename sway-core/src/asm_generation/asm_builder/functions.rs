@@ -10,11 +10,10 @@ use crate::{
         VirtualOp,
     },
     error::*,
+    fuel_prelude::fuel_asm::GTFArgs,
 };
 
 use sway_ir::*;
-
-use fuel_asm::GTFArgs;
 
 use either::Either;
 
