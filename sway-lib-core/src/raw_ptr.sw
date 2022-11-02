@@ -3,22 +3,18 @@ library raw_ptr;
 impl raw_ptr {
     /// Returns `true` if the pointer is null.
     pub fn is_null(self) -> bool {
-        let addr = asm(ptr: self) { ptr: u64 };
-        __eq(addr, 0)
+        let null_ptr = asm() { zero: raw_ptr };
+        __eq(self, null_ptr)
     }
 
     /// Calculates the offset from the pointer.
-    pub fn add(self, count: u64) -> raw_ptr {
-        let addr = asm(ptr: self) { ptr: u64 };
-        let addr = __add(addr, count);
-        asm(ptr: addr) { ptr: raw_ptr }
+    pub fn add<T>(self, count: u64) -> raw_ptr {
+        __ptr_add::<T>(self, count)
     }
 
     /// Calculates the offset from the pointer.
-    pub fn sub(self, count: u64) -> raw_ptr {
-        let addr = asm(ptr: self) { ptr: u64 };
-        let addr = __sub(addr, count);
-        asm(ptr: addr) { ptr: raw_ptr }
+    pub fn sub<T>(self, count: u64) -> raw_ptr {
+        __ptr_sub::<T>(self, count)
     }
 
     /// Reads the given type of value from the address.
@@ -32,11 +28,12 @@ impl raw_ptr {
             }
         }
     }
-    
-    /// Copies `size` bytes from `self` to `dst`.
-    pub fn copy_to(self, dst: raw_ptr, count: u64) {
-        asm(dst: dst, src: self, count: count) {
-            mcp dst src count;
+
+    /// Copies `count * size_of<T>` bytes from `self` to `dst`.
+    pub fn copy_to<T>(self, dst: raw_ptr, count: u64) {
+        let len = __mul(count, __size_of::<T>());
+        asm(dst: dst, src: self, len: len) {
+            mcp dst src len;
         };
     }
 

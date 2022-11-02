@@ -28,7 +28,7 @@ pub fn store<T>(key: b256, value: T) {
             __state_store_quad(local_key, ptr_to_value);
 
             // Move by 32 bytes
-            ptr_to_value = ptr_to_value.add(32);
+            ptr_to_value = ptr_to_value.add::<b256>(1);
             size_left -= 32;
 
             // Generate a new key for each 32 byte chunk TODO Should eventually
@@ -59,7 +59,7 @@ pub fn get<T>(key: b256) -> T {
 
         // Allocate a buffer for the result.  It needs to be a multiple of 32 bytes so we can make
         // 'quad' storage reads without overflowing.
-        let result_ptr = alloc((size_left + 31) & 0xffffffe0);
+        let result_ptr = alloc::<u64>(((size_left + 31) & 0xffffffe0) / 8);
 
         let mut current_pointer = result_ptr;
         while size_left > 32 {
@@ -68,7 +68,7 @@ pub fn get<T>(key: b256) -> T {
 
             // Move by 32 bytes
             size_left -= 32;
-            current_pointer += 32;
+            current_pointer = current_pointer.add::<b256>(1);
 
             // Generate a new key for each 32 byte chunk TODO Should eventually
             // replace this with `local_key = local_key + 1
