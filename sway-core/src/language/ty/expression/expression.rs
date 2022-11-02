@@ -1,6 +1,6 @@
 use std::fmt;
 
-use sway_types::Span;
+use sway_types::{Span, Spanned};
 
 use crate::{
     declaration_engine::{de_get_function, DeclMapping, ReplaceDecls},
@@ -76,8 +76,10 @@ impl CollectTypesMetadata for TyExpression {
             FunctionApplication {
                 arguments,
                 function_decl_id,
+                call_path,
                 ..
             } => {
+                ctx.set_call_site_span(Some(call_path.span()));
                 for arg in arguments.iter() {
                     res.append(&mut check!(
                         arg.1.collect_types_metadata(ctx),
@@ -98,6 +100,7 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
+                ctx.set_call_site_span(None);
             }
             Tuple { fields } => {
                 for field in fields.iter() {
@@ -244,8 +247,10 @@ impl CollectTypesMetadata for TyExpression {
             EnumInstantiation {
                 enum_decl,
                 contents,
+                enum_instantiation_span,
                 ..
             } => {
+                ctx.set_call_site_span(Some(enum_instantiation_span.clone()));
                 if let Some(contents) = contents {
                     res.append(&mut check!(
                         contents.collect_types_metadata(ctx),
@@ -270,6 +275,7 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
+                ctx.set_call_site_span(None);
             }
             AbiCast { address, .. } => {
                 res.append(&mut check!(

@@ -4,7 +4,7 @@
 //! that is not the case.
 
 use crate::{type_system::TypeId, CompileResult};
-use sway_types::Ident;
+use sway_types::{Ident, Span};
 
 /// If any types contained by this node are unresolved or have yet to be inferred, throw an
 /// error to signal to the user that more type information is needed.
@@ -26,7 +26,8 @@ impl LogId {
 }
 
 pub enum TypeMetadata {
-    UnresolvedType(Ident),
+    // UnresolvedType receives the Ident of the type and a call site span.
+    UnresolvedType(Ident, Option<Span>),
     // A log with a unique log ID and the type ID of the type of the value being logged
     LoggedType(LogId, TypeId),
 }
@@ -36,6 +37,8 @@ pub struct CollectTypesMetadataContext {
     // Consume this and update it via the methods implemented for CollectTypesMetadataContext to
     // obtain a unique ID for a given log instance.
     log_id_counter: usize,
+
+    call_site_span: Option<Span>,
 }
 
 impl CollectTypesMetadataContext {
@@ -47,8 +50,19 @@ impl CollectTypesMetadataContext {
         &mut self.log_id_counter
     }
 
+    pub fn call_site_span(&self) -> Option<Span> {
+        self.call_site_span.clone()
+    }
+
+    pub fn set_call_site_span(&mut self, span: Option<Span>) {
+        self.call_site_span = span;
+    }
+
     pub fn new() -> Self {
-        Self { log_id_counter: 0 }
+        Self {
+            log_id_counter: 0,
+            call_site_span: None,
+        }
     }
 }
 
