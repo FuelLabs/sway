@@ -1,6 +1,6 @@
 contract;
 
-use std::{chain::auth::*, context::call_frames::contract_id};
+use std::{auth::*, context::call_frames::contract_id};
 
 use reentrancy_target_abi::Target;
 use reentrancy_attacker_abi::Attacker;
