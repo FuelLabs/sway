@@ -33,6 +33,10 @@ impl Format for WhereClause {
             // `CommaToken`
             writeln!(formatted_code, "{}", pair.1.span().as_str())?;
         }
+        if let Some(final_value) = &self.bounds.final_value_opt {
+            final_value.format(formatted_code, formatter)?;
+            writeln!(formatted_code)?;
+        }
         // reset indent
         formatter.shape.block_unindent(&formatter.config);
         Ok(())
