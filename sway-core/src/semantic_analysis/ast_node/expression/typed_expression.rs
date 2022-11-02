@@ -32,7 +32,9 @@ use sway_error::{
 };
 use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
 
-use std::collections::{BTreeSet, HashMap, VecDeque};
+use rustc_hash::FxHashSet;
+
+use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
 impl ty::TyExpression {
@@ -1938,7 +1940,7 @@ fn disallow_assigning_initialized_registers(asm: &AsmExpression) -> CompileResul
         .iter()
         .filter(|reg| reg.initializer.is_some())
         .map(|reg| VirtualRegister::Virtual(reg.name.to_string()))
-        .collect::<BTreeSet<_>>();
+        .collect::<FxHashSet<_>>();
 
     // Collect all asm block instructions in the form of `VirtualOp`s
     let mut opcodes = vec![];
@@ -1963,8 +1965,8 @@ fn disallow_assigning_initialized_registers(asm: &AsmExpression) -> CompileResul
     }
 
     // From the list of `VirtualOp`s, figure out what registers are assigned
-    let assigned_registers: BTreeSet<VirtualRegister> =
-        opcodes.iter().fold(BTreeSet::new(), |mut acc, op| {
+    let assigned_registers: FxHashSet<VirtualRegister> =
+        opcodes.iter().fold(FxHashSet::default(), |mut acc, op| {
             for u in op.def_registers() {
                 acc.insert(u.clone());
             }
@@ -1974,7 +1976,7 @@ fn disallow_assigning_initialized_registers(asm: &AsmExpression) -> CompileResul
     // Intersect the list of assigned registers with the list of initialized registers
     let initialized_and_assigned_registers = assigned_registers
         .intersection(&initialized_registers)
-        .collect::<BTreeSet<_>>();
+        .collect::<FxHashSet<_>>();
 
     // Form all the compile errors given the violating registers above. Obtain span information
     // from the original `asm.registers` vector.

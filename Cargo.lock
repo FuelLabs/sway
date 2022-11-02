@@ -4399,6 +4399,7 @@ dependencies = [
  "itertools",
  "lazy_static",
  "petgraph",
+ "rustc-hash",
  "serde",
  "sha2 0.9.9",
  "smallvec",
