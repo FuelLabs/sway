@@ -5,6 +5,7 @@ mod block;
 mod call_frames;
 mod context;
 mod contract_bytecode;
+mod ec_recover;
 mod ec_recover_and_match_predicate;
 mod evm;
 mod exponentiation;
