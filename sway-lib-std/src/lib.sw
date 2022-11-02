@@ -1,5 +1,6 @@
 library std;
 
+dep convert;
 dep intrinsics;
 dep logging;
 dep revert;
