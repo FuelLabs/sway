@@ -34,8 +34,8 @@ fn main() -> bool {
     assert(Address::from(zero) == Address::from(zero));
     assert(Address::from(zero) != Address::from(one));
 
-    assert(B512::from(zero, zero) == B512::from(zero, zero));
-    assert(B512::from(zero, zero) != B512::from(zero, one));
+    assert(B512::from((zero, zero)) == B512::from((zero, zero)));
+    assert(B512::from((zero, zero)) != B512::from((zero, one)));
 
     true
 }
