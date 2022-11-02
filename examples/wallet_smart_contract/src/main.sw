@@ -2,7 +2,7 @@
 contract;
 
 use std::{
-    chain::auth::{
+    auth::{
         AuthError,
         msg_sender,
     },

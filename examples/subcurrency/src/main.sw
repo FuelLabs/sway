@@ -1,7 +1,7 @@
 // ANCHOR: body
 contract;
 
-use std::{chain::auth::{AuthError, msg_sender}, hash::sha256, logging::log};
+use std::{auth::{AuthError, msg_sender}, hash::sha256, logging::log};
 
 ////////////////////////////////////////
 // Event declarations
