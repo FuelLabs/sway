@@ -1,6 +1,6 @@
 # Smart Contracts
 
-A smart contract is a piece of bytecode that can be deployed to a blockchain via a [transaction](https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md).
+A smart contract is a piece of bytecode that can be deployed to a blockchain via a [transaction](https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/index.md).
 
 It can be called in the same way that an API may be called to perform computation and store and retrieve data from a database.
 

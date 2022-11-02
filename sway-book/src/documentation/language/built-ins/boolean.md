@@ -11,7 +11,7 @@ Using the unary operator `!` the boolean value can be changed:
 
 ## Example
 
-The following example creates two boolean [variables](../variables/index.md), performs a comparison using the unary operator and [implicitly](../functions/return.md) returns the result.
+The following example creates two boolean [variables](../variables/index.md), performs a comparison using the unary operator `!` and [implicitly](../functions/return.md) returns the result.
 
 ```sway
 {{#include ../../../code/language/built-ins/booleans/src/lib.sw:syntax}}

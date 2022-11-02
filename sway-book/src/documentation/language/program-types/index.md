@@ -6,7 +6,7 @@ A Sway program can be one of four types:
 
 - [contract](contract.md)
   - Primarily used for protocols or systems that operate within a fixed set of rules e.g. staking contracts, decentralized exchanges
-- [library](library.md)
+- [library](libraries/index.md)
   - Reusable code for handling common operations
 - [script](script.md)
   - Used for complex, multi-step, on-chain interactions that won't persist e.g. using a decentralized exchange to create a leveraged position (borrow, swap, re-collateralize, borrow)
@@ -38,4 +38,4 @@ An entry point is the starting point of execution for a program.
 
 Since a library is not directly deployable to the blockchain it does not have an entry point and instead its code is exported for use within other programs.
 
-Unlike the library the contract, script and predicate all have an entry point. The contract exposes an `Application Binary Interface (ABI)` while the script and predicate expose a `main()` function for entry.
+Unlike the library; the contract, script and predicate all have an entry point. The contract exposes an `Application Binary Interface (ABI)` while the script and predicate expose a `main()` function for entry.
