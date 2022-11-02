@@ -273,7 +273,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --manifest-path ./test/src/sdk-harness/Cargo.toml -- --test-threads=1 --nocapture
+          args: --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   cargo-test-workspace:
     runs-on: ubuntu-latest
