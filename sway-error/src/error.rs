@@ -668,8 +668,13 @@ pub enum CompileError {
     ConfigTimeConstantNotALiteral { span: Span },
     #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident },
-    #[error("returning a `raw_ptr` from `main()` is not allowed")]
+    #[error("Returning a `raw_ptr` from `main()` is not allowed.")]
     PointerReturnNotAllowedInMain { span: Span },
+    #[error(
+        "Returning a type containing `raw_slice` from `main()` is not allowed. \
+            Consider converting it into a flat `raw_slice` first."
+    )]
+    NestedSliceReturnNotAllowedInMain { span: Span },
     #[error(
         "Register \"{name}\" is initialized and later reassigned which is not allowed. \
             Consider assigning to a different register inside the ASM block."
@@ -856,6 +861,7 @@ impl Spanned for CompileError {
             ConfigTimeConstantNotALiteral { span } => span.clone(),
             RefMutableNotAllowedInMain { param_name } => param_name.span(),
             PointerReturnNotAllowedInMain { span } => span.clone(),
+            NestedSliceReturnNotAllowedInMain { span } => span.clone(),
             InitializedRegisterReassignment { span, .. } => span.clone(),
         }
     }

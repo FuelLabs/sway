@@ -41,6 +41,7 @@ pub(super) fn unify(
         (Numeric, Numeric) => (vec![], vec![]),
         (Contract, Contract) => (vec![], vec![]),
         (RawUntypedPtr, RawUntypedPtr) => (vec![], vec![]),
+        (RawUntypedSlice, RawUntypedSlice) => (vec![], vec![]),
         (Str(l), Str(r)) => unify::unify_strs(
             received,
             expected,
@@ -292,6 +293,7 @@ pub(super) fn unify_right(
         (Numeric, Numeric) => (vec![], vec![]),
         (Contract, Contract) => (vec![], vec![]),
         (RawUntypedPtr, RawUntypedPtr) => (vec![], vec![]),
+        (RawUntypedSlice, RawUntypedSlice) => (vec![], vec![]),
         (Str(l), Str(r)) => unify::unify_strs(received, expected, span, help_text, l, r, false),
         (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
             unify::unify_tuples(help_text, rfs, efs, curried)

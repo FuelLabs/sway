@@ -383,6 +383,7 @@ impl TypeMapping {
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery => None,
         }

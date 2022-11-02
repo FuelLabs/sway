@@ -853,6 +853,7 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "unit" => Some(TypeInfo::Tuple(Vec::new())),
         "b256" => Some(TypeInfo::B256),
         "raw_ptr" => Some(TypeInfo::RawUntypedPtr),
+        "raw_slice" => Some(TypeInfo::RawUntypedSlice),
         "Self" | "self" => Some(TypeInfo::SelfType),
         "Contract" => Some(TypeInfo::Contract),
         _other => None,
