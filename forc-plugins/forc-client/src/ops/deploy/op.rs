@@ -1,14 +1,19 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
-use fuel_gql_client::client::FuelClient;
-use fuel_tx::{Output, Salt, TransactionBuilder};
-use fuel_vm::prelude::*;
+use fuel_gql_client::client::types::TransactionStatus;
+use fuel_gql_client::{
+    client::FuelClient,
+    fuel_tx::{Output, Salt, TransactionBuilder},
+    fuel_vm::prelude::*,
+};
+use futures::FutureExt;
 use std::path::PathBuf;
+use std::time::Duration;
 use sway_core::language::parsed::TreeType;
 use sway_utils::constants::DEFAULT_NODE_URL;
 use tracing::info;
 
-use crate::ops::tx_util::{TransactionBuilderExt, TxParameters};
+use crate::ops::tx_util::{TransactionBuilderExt, TxParameters, TX_SUBMIT_TIMEOUT_MS};
 
 use super::cmd::DeployCommand;
 
@@ -46,13 +51,40 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         .finalize_signed(client.clone(), command.unsigned, command.signing_key)
         .await?;
 
-    match client.submit(&tx).await {
-        Ok(logs) => {
-            info!("Logs:\n{:?}", logs);
-            Ok(contract_id)
-        }
+    let tx = Transaction::from(tx);
+
+    let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
+        Ok(logs) => match logs {
+            TransactionStatus::Submitted { .. } => {
+                bail!("contract {} deployment timed out", &contract_id);
+            }
+            TransactionStatus::Success { block_id, .. } => {
+                info!("contract {} deployed in block {}", &contract_id, &block_id);
+                Ok(contract_id)
+            }
+            TransactionStatus::Failure { reason, .. } => {
+                bail!(
+                    "contract {} failed to deploy due to an error: {}",
+                    &contract_id,
+                    reason
+                )
+            }
+        },
         Err(e) => bail!("{e}"),
-    }
+    });
+
+    // submit contract deployment with a timeout
+    tokio::time::timeout(
+        Duration::from_millis(TX_SUBMIT_TIMEOUT_MS),
+        deployment_request,
+    )
+    .await
+    .with_context(|| {
+        format!(
+            "Timed out waiting for contract {} to deploy. The transaction may have been dropped.",
+            &contract_id
+        )
+    })?
 }
 
 fn build_opts_from_cmd(cmd: &DeployCommand) -> pkg::BuildOpts {

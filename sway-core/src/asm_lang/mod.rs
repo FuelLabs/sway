@@ -850,40 +850,40 @@ impl Op {
                     VirtualOp::RVRT(r1)
                 }
                 "srw" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
+                    let (r1, r2, r3) = check!(
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
-                    VirtualOp::SRW(r1, r2)
+                    VirtualOp::SRW(r1, r2, r3)
                 }
                 "srwq" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
+                    let (r1, r2, r3, r4) = check!(
+                        four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
-                    VirtualOp::SRWQ(r1, r2)
+                    VirtualOp::SRWQ(r1, r2, r3, r4)
                 }
                 "sww" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
+                    let (r1, r2, r3) = check!(
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
-                    VirtualOp::SWW(r1, r2)
+                    VirtualOp::SWW(r1, r2, r3)
                 }
                 "swwq" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
+                    let (r1, r2, r3, r4) = check!(
+                        four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
-                    VirtualOp::SWWQ(r1, r2)
+                    VirtualOp::SWWQ(r1, r2, r3, r4)
                 }
                 "time" => {
                     let (r1, r2) = check!(
@@ -1440,10 +1440,10 @@ impl fmt::Display for VirtualOp {
             LOGD(a, b, c, d) => write!(fmtr, "logd {} {} {} {}", a, b, c, d),
             MINT(a) => write!(fmtr, "mint {}", a),
             RVRT(a) => write!(fmtr, "rvrt {}", a),
-            SRW(a, b) => write!(fmtr, "srw {} {}", a, b),
-            SRWQ(a, b) => write!(fmtr, "srwq {} {}", a, b),
-            SWW(a, b) => write!(fmtr, "sww {} {}", a, b),
-            SWWQ(a, b) => write!(fmtr, "swwq {} {}", a, b),
+            SRW(a, b, c) => write!(fmtr, "srw {} {} {}", a, b, c),
+            SRWQ(a, b, c, d) => write!(fmtr, "srwq {} {} {} {}", a, b, c, d),
+            SWW(a, b, c) => write!(fmtr, "sww {} {} {}", a, b, c),
+            SWWQ(a, b, c, d) => write!(fmtr, "swwq {} {} {} {}", a, b, c, d),
             TIME(a, b) => write!(fmtr, "time {} {}", a, b),
             TR(a, b, c) => write!(fmtr, "tr {} {} {}", a, b, c),
             TRO(a, b, c, d) => write!(fmtr, "tro {} {} {} {}", a, b, c, d),
