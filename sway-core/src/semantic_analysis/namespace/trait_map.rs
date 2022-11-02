@@ -485,6 +485,26 @@ impl TraitMap {
         trait_map
     }
 
+    /// Filters the contents of `self` to exclude elements that are superset
+    /// types of the given `type_id`. This function is used when handling trait
+    /// constraints and is coupled with `filter_by_type` and
+    /// `filter_by_type_item_import`.
+    pub(crate) fn filter_against_type(&mut self, type_id: TypeId) {
+        // this collect is actually needed and causes an error if removed
+        #[allow(clippy::needless_collect)]
+        let filtered_keys = self
+            .trait_impls
+            .keys()
+            .cloned()
+            .filter(|(_, map_type_id)| {
+                look_up_type_id(type_id).is_subset_of(&look_up_type_id(*map_type_id))
+            })
+            .collect::<Vec<_>>();
+        for key in filtered_keys.into_iter() {
+            self.trait_impls.remove(&key);
+        }
+    }
+
     /// Find the entries in `self` that are equivalent to `type_id`.
     ///
     /// Notes:
@@ -574,7 +594,6 @@ impl TraitMap {
                 trait_name: constraint_trait_name,
                 type_arguments: constraint_type_arguments,
             } = constraint;
-            println!("checking {}: {}", type_id, constraint_trait_name);
             let constraint_type_id = insert_type(TypeInfo::Custom {
                 name: constraint_trait_name.suffix.clone(),
                 type_arguments: if constraint_type_arguments.is_empty() {
@@ -588,7 +607,6 @@ impl TraitMap {
                     suffix: (map_trait_name_suffix, map_trait_type_args),
                     ..
                 } = map_trait_name;
-                println!("  found {}: {}", map_type_id, map_trait_name_suffix);
                 let map_trait_type_id = insert_type(TypeInfo::Custom {
                     name: map_trait_name_suffix.clone(),
                     type_arguments: if map_trait_type_args.is_empty() {

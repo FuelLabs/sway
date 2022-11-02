@@ -19,6 +19,12 @@ impl MyAdd for u8 {
     }
 }
 
+impl MyAdd for u16 {
+    fn my_add(self, other: Self) -> Self {
+        self + other
+    }
+}
+
 impl MyAdd for u64 {
     fn my_add(self, other: Self) -> Self {
         self + other
@@ -90,8 +96,8 @@ fn main() -> u64 {
     assert(c.y == 6u64);
 
     let d = MyPoint {
-        x: true,
-        y: false,
+        x: 99u16,
+        y: 99u16,
     };
     let e = MyPoint {
         x: 100u8,
