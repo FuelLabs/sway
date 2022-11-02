@@ -83,6 +83,18 @@ async fn generics_bool() -> Result<(), Error> {
         assert_eq!(result, arg1);
     }
     {
+        // struct that has the generic in a tuple
+        let arg1 = StructWDiffTupleGeneric { a: (1, false) };
+
+        let result = contract_methods
+            .struct_w_diff_generic_in_tuple(arg1.clone())
+            .call()
+            .await?
+            .value;
+
+        assert_eq!(result, arg1);
+    }
+    {
         // struct with generic in variant
         let arg1 = EnumWGeneric::b(10);
         let result = contract_methods
