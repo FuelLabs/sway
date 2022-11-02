@@ -19,7 +19,6 @@ async fn setup() -> (Vec<u8>, Address, WalletUnlocked, u64, AssetId) {
     let wallets = launch_custom_provider_and_get_wallets(
         WalletsConfig::default(),
         Some(Config {
-            predicates: true,
             utxo_validation: true,
             ..Config::local_node()
         }),

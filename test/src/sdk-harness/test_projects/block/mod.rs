@@ -47,7 +47,7 @@ async fn can_get_timestamp() {
 
     // This should really be zero in most cases, but be conservative to guarantee the stability of
     // the test
-    assert!(now.as_secs() - block_0_time.value <= 1);
+    assert!(now.as_millis() as u64 - block_0_time.value <= 1);
 
     // Wait 1 seconds and request another block
     sleep(Duration::from_secs(1)).await;
