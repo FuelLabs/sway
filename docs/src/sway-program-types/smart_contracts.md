@@ -1,6 +1,6 @@
 # What is a Smart Contract?
 
-A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a [transaction](https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md). The main features of a smart contract that differentiate it from scripts or predicates are that it is _callable_ and _stateful_. Put another way, a smart contract is analogous to a deployed API with some database state. The interface of a smart contract, also just called a contract, must be defined strictly with an [ABI declaration](#the-abi-declaration). See [this contract](../examples/subcurrency.md) for an example.
+A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a [transaction](https://fuellabs.github.io/fuel-specs/master/protocol/tx_format). The main features of a smart contract that differentiate it from scripts or predicates are that it is _callable_ and _stateful_. Put another way, a smart contract is analogous to a deployed API with some database state. The interface of a smart contract, also just called a contract, must be defined strictly with an [ABI declaration](#the-abi-declaration). See [this contract](../examples/subcurrency.md) for an example.
 
 ## Syntax of a Smart Contract
 
@@ -81,6 +81,6 @@ The main new concept is the _abi cast_: `abi(AbiName, contract_address)`. This r
 
 Each special parameter is optional and assumes a default value when skipped:
 
-1. The default value for `gas` is the context gas (i.e. the content of the special register `$cgas`). Refer to the [FuelVM specifications](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md) for more information about context gas.
+1. The default value for `gas` is the context gas (i.e. the content of the special register `$cgas`). Refer to the [FuelVM specifications](https://fuellabs.github.io/fuel-specs/master/vm) for more information about context gas.
 2. The default value for `coins` is 0.
 3. The default value for `asset_id` is `ZERO_B256`.
