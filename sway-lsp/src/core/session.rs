@@ -16,7 +16,7 @@ use crate::{
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use parking_lot::RwLock;
-use std::{ops::Deref, path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 use sway_core::{
     language::{parsed::ParseProgram, ty},
     CompileResult,
@@ -199,41 +199,53 @@ impl Session {
         let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)
             .map_err(LanguageServerError::BuildPlanFailed)?;
 
-        // We can convert these destructured elements to a Vec<Diagnostic> later on.
-        let CompileResult {
-            value,
-            warnings,
-            errors,
-        } = pkg::check(&plan, true).map_err(LanguageServerError::FailedToCompile)?;
+        let mut diagnostics = Vec::new();
+        let results = pkg::check(&plan, true).map_err(LanguageServerError::FailedToCompile)?;
+        let results_len = results.len();
+        for (i, res) in results.into_iter().enumerate() {
+            // We can convert these destructured elements to a Vec<Diagnostic> later on.
+            let CompileResult {
+                value,
+                warnings,
+                errors,
+            } = res;
 
-        // FIXME(Centril): Refactor parse_ast_to_tokens + parse_ast_to_typed_tokens
-        // due to the new API.g
-        let (parsed, typed) = match value {
-            None => (None, None),
-            Some((pp, tp)) => (Some(pp), tp),
-        };
+            // FIXME(Centril): Refactor parse_ast_to_tokens + parse_ast_to_typed_tokens
+            // due to the new API.g
+            let (parsed, typed) = match value {
+                None => (None, None),
+                Some((pp, tp)) => (Some(pp), tp),
+            };
 
-        // First, populate our token_map with un-typed ast nodes.
-        let parsed_res = CompileResult::new(parsed, warnings.clone(), errors.clone());
-        let _ = self.parse_ast_to_tokens(parsed_res);
-        // Next, populate our token_map with typed ast nodes.
-        let ast_res = CompileResult::new(typed, warnings, errors);
+            let ast_res = CompileResult::new(typed, warnings.clone(), errors.clone());
+            let typed_program = self.compile_res_to_typed_program(&ast_res)?;
 
-        self.parse_ast_to_typed_tokens(ast_res)
+            if i == results_len - 1 {
+                let parsed_res = CompileResult::new(parsed, warnings, errors);
+                let parse_program = self.compile_res_to_parse_program(&parsed_res)?;
+                // First, populate our token_map with un-typed ast nodes.
+                self.parse_ast_to_tokens(&parse_program);
+
+                // Next, create runnables and populate our token_map with typed ast nodes.
+                self.create_runnables(&typed_program);
+                self.parse_ast_to_typed_tokens(&typed_program, traverse_typed_tree::traverse_node);
+
+                self.save_parse_program(parse_program.to_owned().clone());
+                self.save_typed_program(typed_program.to_owned().clone());
+
+                diagnostics =
+                    capabilities::diagnostic::get_diagnostics(&ast_res.warnings, &ast_res.errors);
+            } else {
+                self.parse_ast_to_typed_tokens(
+                    &typed_program,
+                    collect_symbol_map::collect_declaration,
+                );
+            }
+        }
+        Ok(diagnostics)
     }
 
-    fn parse_ast_to_tokens(
-        &self,
-        parsed_result: CompileResult<ParseProgram>,
-    ) -> Result<Vec<Diagnostic>, LanguageServerError> {
-        let parse_program = parsed_result.value.ok_or_else(|| {
-            let diagnostics = capabilities::diagnostic::get_diagnostics(
-                &parsed_result.warnings,
-                &parsed_result.errors,
-            );
-            LanguageServerError::FailedToParse { diagnostics }
-        })?;
-
+    fn parse_ast_to_tokens(&self, parse_program: &ParseProgram) {
         for node in &parse_program.root.tree.root_nodes {
             traverse_parse_tree::traverse_node(node, &self.token_map);
         }
@@ -243,44 +255,37 @@ impl Session {
                 traverse_parse_tree::traverse_node(node, &self.token_map);
             }
         }
-
-        {
-            let mut program = self.compiled_program.write();
-            program.parsed = Some(parse_program);
-        }
-
-        Ok(capabilities::diagnostic::get_diagnostics(
-            &parsed_result.warnings,
-            &parsed_result.errors,
-        ))
     }
 
-    fn parse_ast_to_typed_tokens(
-        &self,
-        ast_res: CompileResult<ty::TyProgram>,
-    ) -> Result<Vec<Diagnostic>, LanguageServerError> {
-        let typed_program = ast_res.value.ok_or(LanguageServerError::FailedToParse {
-            diagnostics: capabilities::diagnostic::get_diagnostics(
-                &ast_res.warnings,
-                &ast_res.errors,
-            ),
-        })?;
+    fn compile_res_to_parse_program<'a>(
+        &'a self,
+        parsed_result: &'a CompileResult<ParseProgram>,
+    ) -> Result<&'a ParseProgram, LanguageServerError> {
+        parsed_result.value.as_ref().ok_or_else(|| {
+            let diagnostics = capabilities::diagnostic::get_diagnostics(
+                &parsed_result.warnings,
+                &parsed_result.errors,
+            );
+            LanguageServerError::FailedToParse { diagnostics }
+        })
+    }
 
-        // Collect tokens from `std` & `core` imported from the prelude.
-        typed_program
-            .root
-            .namespace
-            .submodules()
-            .iter()
-            .flat_map(|(_, module)| module.submodules())
-            .flat_map(|(_, module)| module.deref().symbols())
-            // For efficiency, skip the rest once an ident is in our map,
-            // as the tokens from std and core have already been collected.
-            .take_while(|(ident, _)| !self.token_map.contains_key(&to_ident_key(ident)))
-            .for_each(|(ident, decl)| {
-                collect_symbol_map::handle_declaration(ident, decl, &self.token_map)
-            });
+    fn compile_res_to_typed_program<'a>(
+        &'a self,
+        ast_res: &'a CompileResult<ty::TyProgram>,
+    ) -> Result<&'a ty::TyProgram, LanguageServerError> {
+        ast_res
+            .value
+            .as_ref()
+            .ok_or(LanguageServerError::FailedToParse {
+                diagnostics: capabilities::diagnostic::get_diagnostics(
+                    &ast_res.warnings,
+                    &ast_res.errors,
+                ),
+            })
+    }
 
+    fn create_runnables(&self, typed_program: &ty::TyProgram) {
         if let ty::TyProgramKind::Script {
             ref main_function, ..
         } = typed_program.kind
@@ -289,6 +294,37 @@ impl Session {
             let runnable = Runnable::new(main_fn_location, typed_program.kind.tree_type());
             self.runnables.insert(RunnableType::MainFn, runnable);
         }
+    }
+
+    fn save_parse_program(&self, parse_program: ParseProgram) {
+        let mut program = self.compiled_program.write();
+        program.parsed = Some(parse_program);
+    }
+
+    fn save_typed_program(&self, typed_program: ty::TyProgram) {
+        let mut program = self.compiled_program.write();
+        program.typed = Some(typed_program);
+    }
+
+    fn parse_ast_to_typed_tokens(
+        &self,
+        typed_program: &ty::TyProgram,
+        f: impl Fn(&ty::TyAstNode, &TokenMap),
+    ) {
+        // Collect tokens from `std` & `core` imported from the prelude.
+        // typed_program
+        //     .root
+        //     .namespace
+        //     .submodules()
+        //     .iter()
+        //     .flat_map(|(_, module)| module.submodules())
+        //     .flat_map(|(_, module)| module.deref().symbols())
+        //     // For efficiency, skip the rest once an ident is in our map,
+        //     // as the tokens from std and core have already been collected.
+        //     .take_while(|(ident, _)| !self.token_map.contains_key(&to_ident_key(ident)))
+        //     .for_each(|(ident, decl)| {
+        //         collect_symbol_map::handle_declaration(ident, decl, &self.token_map)
+        //     });
 
         let root_nodes = typed_program.root.all_nodes.iter();
         let sub_nodes = typed_program
@@ -298,17 +334,7 @@ impl Session {
             .flat_map(|(_, submodule)| &submodule.module.all_nodes);
         root_nodes
             .chain(sub_nodes)
-            .for_each(|node| traverse_typed_tree::traverse_node(node, &self.token_map));
-
-        {
-            let mut program = self.compiled_program.write();
-            program.typed = Some(typed_program);
-        }
-
-        Ok(capabilities::diagnostic::get_diagnostics(
-            &ast_res.warnings,
-            &ast_res.errors,
-        ))
+            .for_each(|node| f(node, &self.token_map));
     }
 
     pub fn contains_sway_file(&self, url: &Url) -> bool {

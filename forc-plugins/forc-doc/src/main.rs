@@ -45,7 +45,9 @@ pub fn main() -> Result<()> {
 
     // compile the program and extract the docs
     let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
-    let compilation = pkg::check(&plan, silent)?;
+    let compilation = pkg::check(&plan, silent)?
+        .pop()
+        .expect("there is guaranteed to be at least one elem in the vector");
     let raw_docs: Documentation = Document::from_ty_program(&compilation, no_deps)?;
     // render docs to HTML
     let rendered_docs: RenderedDocumentation =

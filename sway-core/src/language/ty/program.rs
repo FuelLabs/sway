@@ -10,7 +10,7 @@ use crate::{
     type_system::*,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TyProgram {
     pub kind: TyProgramKind,
     pub root: TyModule,
