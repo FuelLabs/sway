@@ -21,8 +21,8 @@ library alloc;
 ///
 /// See: https://fuellabs.github.io/fuel-specs/master/vm#vm-initialization
 /// See: https://fuellabs.github.io/fuel-specs/master/vm/instruction_set.html#aloc-allocate-memory
-pub fn alloc(size: u64) -> raw_ptr {
-    asm(size: size, ptr) {
+pub fn alloc<T>(count: u64) -> raw_ptr {
+    asm(size: __size_of::<T>() * count, ptr) {
         aloc size;
         // `$hp` points to unallocated space and heap grows downward so
         // our newly allocated space will be right after it
@@ -32,11 +32,11 @@ pub fn alloc(size: u64) -> raw_ptr {
 }
 
 /// Reallocates the given area of memory
-pub fn realloc(ptr: raw_ptr, size: u64, new_size: u64) -> raw_ptr {
-    if new_size > size {
-        let new_ptr = alloc(new_size);
-        if size > 0 {
-            ptr.copy_to(new_ptr, size);
+pub fn realloc<T>(ptr: raw_ptr, count: u64, new_count: u64) -> raw_ptr {
+    if new_count > count {
+        let new_ptr = alloc::<T>(new_count);
+        if count > 0 {
+            ptr.copy_to::<T>(new_ptr, count);
         }
         new_ptr
     } else {
