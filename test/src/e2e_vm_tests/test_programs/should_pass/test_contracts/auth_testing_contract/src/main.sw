@@ -1,5 +1,5 @@
 contract;
-use std::chain::auth::caller_is_external;
+use std::auth::caller_is_external;
 use auth_testing_abi::AuthTesting;
 
 impl AuthTesting for Contract {

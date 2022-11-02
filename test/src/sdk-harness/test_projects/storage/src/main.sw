@@ -1,6 +1,6 @@
 contract;
 
-use std::{context::registers::stack_ptr, storage::{get, store}};
+use std::{registers::stack_ptr, storage::{get, store}};
 
 pub enum MediumEnum {
     One: u64,

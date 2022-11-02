@@ -1,5 +1,6 @@
 library std;
 
+dep convert;
 dep intrinsics;
 dep error_signals;
 dep logging;
@@ -11,6 +12,8 @@ dep alloc;
 dep contract_id;
 dep constants;
 dep external;
+dep registers;
+dep call_frames;
 dep context;
 dep hash;
 dep r#storage;
@@ -20,7 +23,7 @@ dep identity;
 dep tx;
 dep inputs;
 dep outputs;
-dep chain;
+dep auth;
 dep math;
 dep block;
 dep token;
