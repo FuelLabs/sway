@@ -7,7 +7,7 @@ use abi::IdentityExample;
 use errors::MyError;
 
 use std::{
-    chain::auth::{
+    auth::{
         AuthError,
         msg_sender,
     },

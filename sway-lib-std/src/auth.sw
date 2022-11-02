@@ -16,7 +16,7 @@ pub enum AuthError {
 
 /// Returns `true` if the caller is external (i.e. a script).
 /// Otherwise, returns `false`.
-/// ref: https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md#gm-get-metadata
+/// ref: https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#gm-get-metadata
 pub fn caller_is_external() -> bool {
     asm(r1) {
         gm r1 i1;

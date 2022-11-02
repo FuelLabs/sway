@@ -1,0 +1,18 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-773F5D8CD6B5DB48'
+
+[[package]]
+<<<<<<< HEAD:test/src/e2e_vm_tests/test_programs/should_pass/stdlib/ec_recover_test/Forc.lock
+name = 'ec_recover_test'
+source = 'member'
+=======
+name = 'ec_recover'
+source = 'root'
+>>>>>>> master:test/src/sdk-harness/test_projects/ec_recover/Forc.lock
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-773F5D8CD6B5DB48'
+dependencies = ['core']

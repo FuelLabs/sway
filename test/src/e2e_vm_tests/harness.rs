@@ -5,6 +5,7 @@ use forc_client::ops::{
 };
 use forc_pkg::{BuiltPackage, PackageManifestFile};
 use fuel_tx::TransactionBuilder;
+use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
 use rand::rngs::StdRng;

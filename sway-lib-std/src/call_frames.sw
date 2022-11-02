@@ -1,22 +1,22 @@
 //! Helper functions for accessing data from call frames.
 //! Call frames store metadata across untrusted inter-contract calls:
-//! https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#call-frames
+//! https://fuellabs.github.io/fuel-specs/master/vm#call-frames
 library call_frames;
 
-use ::context::registers::frame_ptr;
+use ::registers::frame_ptr;
 use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
 
 // Note that everything when serialized is padded to word length.
 //
-// Call Frame        :  saved registers offset         = 8*WORD_SIZE = 8*8 = 64
-// Reserved Registers:  previous frame pointer offset  = 6*WORD_SIZE = 6*8 = 48
-const SAVED_REGISTERS_OFFSET: u64 = 64;
-const PREV_FRAME_POINTER_OFFSET: u64 = 48;
-/// Where 584 is the current offset in bytes from the start of the call frame.
-const FIRST_PARAMETER_OFFSET: u64 = 584;
-/// Where 592 (584 + 8) is the current offset in bytes from the start of the call frame.
-const SECOND_PARAMETER_OFFSET: u64 = 592;
+// Call Frame        :  saved registers offset         = 8
+// Reserved Registers:  previous frame pointer offset  = 6
+const SAVED_REGISTERS_OFFSET: u64 = 8;
+const PREV_FRAME_POINTER_OFFSET: u64 = 6;
+/// Where 73 is the current offset in words from the start of the call frame.
+const FIRST_PARAMETER_OFFSET: u64 = 73;
+/// Where 74 (73 + 1) is the current offset in words from the start of the call frame.
+const SECOND_PARAMETER_OFFSET: u64 = 74;
 
 ///////////////////////////////////////////////////////////
 //  Accessing the current call frame
@@ -46,15 +46,15 @@ pub fn code_size() -> u64 {
 
 /// Get the first parameter from the current call frame.
 pub fn first_param() -> u64 {
-    frame_ptr().add(FIRST_PARAMETER_OFFSET).read()
+    frame_ptr().add::<u64>(FIRST_PARAMETER_OFFSET).read()
 }
 
 /// Get the second parameter from the current call frame.
 pub fn second_param<T>() -> T {
     if !is_reference_type::<T>() {
-        frame_ptr().add(SECOND_PARAMETER_OFFSET).read::<T>()
+        frame_ptr().add::<u64>(SECOND_PARAMETER_OFFSET).read::<T>()
     } else {
-        frame_ptr().add(SECOND_PARAMETER_OFFSET).read::<raw_ptr>().read::<T>()
+        frame_ptr().add::<u64>(SECOND_PARAMETER_OFFSET).read::<raw_ptr>().read::<T>()
     }
 }
 
@@ -63,7 +63,7 @@ pub fn second_param<T>() -> T {
 ///////////////////////////////////////////////////////////
 /// get a pointer to the previous (relative to the 'frame_pointer' param) call frame using offsets from a pointer.
 pub fn get_previous_frame_pointer(frame_pointer: raw_ptr) -> raw_ptr {
-    let offset = frame_pointer.add(SAVED_REGISTERS_OFFSET + PREV_FRAME_POINTER_OFFSET);
+    let offset = frame_pointer.add::<u64>(SAVED_REGISTERS_OFFSET + PREV_FRAME_POINTER_OFFSET);
     asm(res, ptr: offset) {
         lw res ptr i0;
         res: raw_ptr
