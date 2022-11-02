@@ -671,8 +671,8 @@ pub enum CompileError {
     #[error("returning a `raw_ptr` from `main()` is not allowed")]
     PointerReturnNotAllowedInMain { span: Span },
     #[error(
-        "Register \"{name}\" is initialized but later assigned which is not allowed. \
-            Consider uninitializing \"{name}\"."
+        "Register \"{name}\" is initialized and later reassigned which is not allowed. \
+            Consider assigning to a different register inside the ASM block."
     )]
     InitializedRegisterReassignment { name: String, span: Span },
 }
