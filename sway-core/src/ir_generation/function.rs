@@ -8,6 +8,7 @@ use super::{
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     declaration_engine::declaration_engine,
+    fuel_prelude::fuel_types,
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
     },
