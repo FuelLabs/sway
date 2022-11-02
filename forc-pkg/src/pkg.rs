@@ -2491,13 +2491,13 @@ fn update_json_type_declaration(
     }
 }
 
+/// A `CompileResult` thats type is a tuple containing a `ParseProgram` and `Option<ty::TyProgram>`
+type ParseAndTypedPrograms = CompileResult<(ParseProgram, Option<ty::TyProgram>)>;
+
 /// Compile the entire forc package and return the parse and typed programs
 /// of the dependancies and project.
 /// The final item in the returned vector is the project.
-pub fn check(
-    plan: &BuildPlan,
-    terse_mode: bool,
-) -> anyhow::Result<Vec<CompileResult<(ParseProgram, Option<ty::TyProgram>)>>> {
+pub fn check(plan: &BuildPlan, terse_mode: bool) -> anyhow::Result<Vec<ParseAndTypedPrograms>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
     let mut lib_namespace_map = Default::default();

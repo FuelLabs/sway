@@ -225,11 +225,11 @@ impl Session {
                 let parsed_res = CompileResult::new(parsed, warnings, errors);
                 let parse_program = self.compile_res_to_parse_program(&parsed_res)?;
                 // First, populate our token_map with un-typed ast nodes.
-                self.parse_ast_to_tokens(&parse_program);
+                self.parse_ast_to_tokens(parse_program);
 
                 // Next, create runnables and populate our token_map with typed ast nodes.
-                self.create_runnables(&typed_program);
-                self.parse_ast_to_typed_tokens(&typed_program, traverse_typed_tree::traverse_node);
+                self.create_runnables(typed_program);
+                self.parse_ast_to_typed_tokens(typed_program, traverse_typed_tree::traverse_node);
 
                 self.save_parse_program(parse_program.to_owned().clone());
                 self.save_typed_program(typed_program.to_owned().clone());
@@ -238,10 +238,7 @@ impl Session {
                     capabilities::diagnostic::get_diagnostics(&ast_res.warnings, &ast_res.errors);
             } else {
                 // Collect tokens from dependencies and the standard library prelude.
-                self.parse_ast_to_typed_tokens(
-                    &typed_program,
-                    dependancy::collect_declaration,
-                );
+                self.parse_ast_to_typed_tokens(typed_program, dependancy::collect_declaration);
             }
         }
         Ok(diagnostics)
