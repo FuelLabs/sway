@@ -1,7 +1,7 @@
 library ecr;
 
 use ::b512::B512;
-use ::context::registers::error;
+use ::registers::error;
 use ::ecr::{ec_recover, EcRecoverError};
 use ::hash::keccak256;
 use ::result::Result;
