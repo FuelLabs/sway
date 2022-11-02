@@ -47,7 +47,7 @@ async fn can_get_timestamp() {
 
     // This should really be zero in most cases, but be conservative to guarantee the stability of
     // the test
-    assert!(now.as_secs() - block_0_time.value <= 1);
+    assert!(now.as_millis() as u64 - block_0_time.value <= 1000);
 
     // Wait 1 seconds and request another block
     sleep(Duration::from_secs(1)).await;
@@ -56,8 +56,8 @@ async fn can_get_timestamp() {
     // The difference should be 1 second in most cases, but be conservative to guarantee the
     // stability of the test
     assert!(
-        1 <= block_1_time.value - block_0_time.value
-            && block_1_time.value - block_0_time.value <= 2
+        1000 <= block_1_time.value - block_0_time.value
+            && block_1_time.value - block_0_time.value <= 2000
     );
     // Wait 2 seconds and request another block
     sleep(Duration::from_secs(2)).await;
@@ -66,8 +66,8 @@ async fn can_get_timestamp() {
     // The difference should be 2 seconds in most cases, but be conservative to guarantee the
     // stability of the test
     assert!(
-        2 <= block_2_time.value - block_1_time.value
-            && block_2_time.value - block_1_time.value <= 3
+        2000 <= block_2_time.value - block_1_time.value
+            && block_2_time.value - block_1_time.value <= 3000
     );
 }
 

@@ -8,18 +8,16 @@ async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>, fuels::prelud
 
     let wallet = launch_provider_and_get_wallet().await;
 
-    let mut tx = Transaction::Script {
-        gas_price: 0,
-        gas_limit: ConsensusParameters::DEFAULT.max_gas_per_tx,
-        maturity: 0,
-        receipts_root: Default::default(),
-        script: bin.unwrap(),
+    let mut tx = Transaction::script(
+        0,
+        ConsensusParameters::DEFAULT.max_gas_per_tx,
+        0,
+        bin.unwrap(),
         script_data,
-        inputs: vec![],
-        outputs: vec![],
-        witnesses: vec![],
-        metadata: None,
-    };
+        vec![],
+        vec![],
+        vec![],
+    );
 
     wallet.sign_transaction(&mut tx).await.unwrap();
 

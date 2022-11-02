@@ -27,7 +27,7 @@ fn main() -> bool {
     assert(u_128_100.log(u_128_10) == u_128_2);
     assert(u_128_100.log(u_128_2) == u_128_6);
     assert(u_128_100.log(u_128_9) == u_128_2);
-    assert(u_128_max.log(u_128_2) == u_128_128);
+    assert(u_128_max.log(u_128_2) == u_128_127);
     assert(u_128_max.log(u_128_9) == u_128_42);
     assert(u_128_max_div_2.log(u_128_2) == u_128_64);
     assert(u_128_max_div_2.log(u_128_9) == u_128_21);
