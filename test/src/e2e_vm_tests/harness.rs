@@ -82,12 +82,13 @@ pub(crate) fn runs_in_vm(
     let params = &ConsensusParameters {
         // The default max length is 1MB which isn't enough for the bigger tests.
         max_script_length: 64 * 1024 * 1024,
+        max_gas_per_tx: 1_000_000_000,
         ..ConsensusParameters::DEFAULT
     };
 
     let tx = TransactionBuilder::script(script.bytecode.clone(), script_data)
         .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
-        .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
+        .gas_limit(params.max_gas_per_tx)
         .maturity(maturity)
         .finalize_checked(block_height as Word, params);
 
