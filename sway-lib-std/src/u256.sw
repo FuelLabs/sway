@@ -51,14 +51,14 @@ impl From<(u64, u64, u64, u64)> for U256 {
 }
 
 impl core::ops::Eq for U256 {
-    /// Function for comparing 2 U256s for equality
+    /// Function for comparing 2 `U256`s for equality
     fn eq(self, other: Self) -> bool {
         self.a == other.a && self.b == other.b && self.c == other.c && self.d == other.d
     }
 }
 
 impl U256 {
-    /// Initializes a new, zeroed U256.
+    /// Initializes a new, zeroed `U256`.
     pub fn new() -> U256 {
         U256 {
             a: 0,
@@ -114,7 +114,7 @@ impl U256 {
         256
     }
 
-    /// Get 4 64 bit words from a single U256 value.
+    /// Get 4 64 bit words from a single `U256` value.
     fn decompose(self) -> (u64, u64, u64, u64) {
         (self.a, self.b, self.c, self.d)
     }
@@ -237,7 +237,7 @@ impl core::ops::Shiftable for U256 {
 }
 
 impl core::ops::Add for U256 {
-    /// Add a U256 to a U256. Panics on overflow.
+    /// Add a `U256` to a `U256`. Panics on overflow.
     fn add(self, other: Self) -> Self {
         let (word_1, word_2, word_3, word_4) = self.decompose();
         let (other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
@@ -264,7 +264,7 @@ impl core::ops::Add for U256 {
 }
 
 impl core::ops::Subtract for U256 {
-    /// Subtract a U256 from a U256. Panics of overflow.
+    /// Subtract a `U256` from a `U256`. Panics of overflow.
     fn subtract(self, other: Self) -> Self {
         // If trying to subtract a larger number, panic.
         assert(!(self < other));
@@ -303,7 +303,7 @@ impl core::ops::Subtract for U256 {
 }
 
 impl core::ops::Multiply for U256 {
-    /// Multiply a U256 with a U256. Panics on overflow.
+    /// Multiply a `U256` with a `U256`. Panics on overflow.
     fn multiply(self, other: Self) -> Self {
         let zero = U256::from((0, 0, 0, 0));
         let one = U256::from((0, 0, 0, 1));
@@ -330,7 +330,7 @@ impl core::ops::Multiply for U256 {
 }
 
 impl core::ops::Divide for U256 {
-    /// Divide a U256 by a U256. Panics if divisor is zero.
+    /// Divide a `U256` by a `U256`. Panics if divisor is zero.
     fn divide(self, divisor: Self) -> Self {
         let zero = U256::from((0, 0, 0, 0));
         let one = U256::from((0, 0, 0, 1));

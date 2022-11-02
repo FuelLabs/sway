@@ -94,7 +94,7 @@ impl u64 {
 }
 
 impl U128 {
-    /// Initializes a new, zeroed U128.
+    /// Initializes a new, zeroed `U128`.
     pub fn new() -> U128 {
         U128 {
             upper: 0,
@@ -222,7 +222,7 @@ impl core::ops::Add for U128 {
 }
 
 impl core::ops::Subtract for U128 {
-    /// Subtract a U128 from a U128. Panics of overflow.
+    /// Subtract a `U128` from a `U128`. Panics of overflow.
     fn subtract(self, other: Self) -> Self {
         // If trying to subtract a larger number, panic.
         assert(!(self < other));
@@ -242,7 +242,7 @@ impl core::ops::Subtract for U128 {
     }
 }
 impl core::ops::Multiply for U128 {
-    /// Multiply a U128 with a U128. Panics of overflow.
+    /// Multiply a `U128` with a `U128`. Panics of overflow.
     fn multiply(self, other: Self) -> Self {
         let zero = U128::from((0, 0));
         let one = U128::from((0, 1));
@@ -267,7 +267,7 @@ impl core::ops::Multiply for U128 {
 }
 
 impl core::ops::Divide for U128 {
-    /// Divide a U128 by a U128. Panics if divisor is zero.
+    /// Divide a `U128` by a `U128`. Panics if divisor is zero.
     fn divide(self, divisor: Self) -> Self {
         let zero = U128::from((0, 0));
         let one = U128::from((0, 1));
