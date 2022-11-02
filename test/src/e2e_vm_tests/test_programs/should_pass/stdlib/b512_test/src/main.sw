@@ -33,7 +33,7 @@ fn main() -> bool {
     assert(((a.bytes)[0] == hi_bits) && ((a.bytes)[1] == lo_bits));
 
     // it allows building from 2 b256's:
-    let mut b = B512::from(hi_bits, lo_bits);
+    let mut b = B512::from((hi_bits, lo_bits));
     assert(((b.bytes)[0] == hi_bits) && ((b.bytes)[1] == lo_bits));
 
     // it allows reassignment of fields:
@@ -46,10 +46,10 @@ fn main() -> bool {
     assert(are_fields_contiguous(c));
 
     // it allows direct comparison of equality:
-    let one = B512::from(hi_bits, modified);
-    let two = B512::from(hi_bits, modified);
-    let three = B512::from(modified, hi_bits);
-    let four = B512::from(lo_bits, modified);
+    let one = B512::from((hi_bits, modified));
+    let two = B512::from((hi_bits, modified));
+    let three = B512::from((modified, hi_bits));
+    let four = B512::from((lo_bits, modified));
     assert(one == two);
     assert(one != three);
     assert(one != four);
