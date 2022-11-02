@@ -16,7 +16,7 @@ fn main() -> bool {
     let u_128_42: U128 = U128::from((0, 42));
     let u_128_64: U128 = U128::from((0, 64));
     let u_128_100: U128 = U128::from((0, 100));
-    let u_128_128: U128 = U128::from((0, 128));
+    let u_128_127: U128 = U128::from((0, 127));
     let u_128_max_div_2: U128 = U128::from((1, 0));
     let u_128_max: U128 = U128::max();
 
