@@ -4,8 +4,7 @@ use ::alloc::alloc;
 use ::outputs::{Output, output_count, output_type};
 use ::revert::revert;
 use ::vec::Vec;
-
-const FAILED_SEND_MESSAGE_SIGNAL = 0xffff_ffff_ffff_0002;
+use ::error_signals::FAILED_SEND_MESSAGE_SIGNAL;
 
 /// Sends a message to `recipient` of length `msg_len` through `output` with amount of `coins`
 ///
@@ -18,8 +17,8 @@ pub fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
     let mut recipient_heap_buffer = __addr_of(recipient);
     let mut size = 0;
 
-    // If msg_data is empty, we just ignore it and pass `smo` a pointer to the inner value of recipient. 
-    // Otherwise, we allocate adjacent space on the heap for the data and the recipient and copy the 
+    // If msg_data is empty, we just ignore it and pass `smo` a pointer to the inner value of recipient.
+    // Otherwise, we allocate adjacent space on the heap for the data and the recipient and copy the
     // data and recipient values there
     if !msg_data.is_empty() {
         size = msg_data.len();

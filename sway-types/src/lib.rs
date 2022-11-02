@@ -360,7 +360,7 @@ impl Context {
 ///
 /// Fuel ABI representation in JSON, originally specified here:
 ///
-/// https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md
+/// https://fuellabs.github.io/fuel-specs/master/protocol/abi
 ///
 /// This type may be used by compilers (e.g. Sway) and related tooling to convert an ABI
 /// representation into native Rust structs and vice-versa.

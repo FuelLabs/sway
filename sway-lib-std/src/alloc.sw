@@ -19,8 +19,8 @@ library alloc;
 /// ... 00 00 00 00 00 00 00 00 FF FF FF FF FF FF FF FF |
 ///                       $hp^  ^ptr                    ^VM_MAX_RAM
 ///
-/// See: https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#vm-initialization
-/// See: https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md#aloc-allocate-memory
+/// See: https://fuellabs.github.io/fuel-specs/master/vm#vm-initialization
+/// See: https://fuellabs.github.io/fuel-specs/master/vm/instruction_set.html#aloc-allocate-memory
 pub fn alloc<T>(count: u64) -> raw_ptr {
     asm(size: __size_of::<T>() * count, ptr) {
         aloc size;
