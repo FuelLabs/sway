@@ -19,6 +19,7 @@ im = "15.0"
 itertools = "0.10"
 lazy_static = "1.4"
 petgraph = "0.6"
+rustc-hash = "1.1.0"
 serde = { version = "1.0", features = ["derive"] }
 sha2 = "0.9"
 smallvec = "1.7"
