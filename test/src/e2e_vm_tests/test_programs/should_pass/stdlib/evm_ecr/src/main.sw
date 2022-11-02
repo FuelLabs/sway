@@ -28,7 +28,7 @@ fn main() -> bool {
     // create a signature:
     let sig_hi = 0x82115ed208d8fe8dd522d88ca77812b34d270d6bb6326ff511297766a3af1166;
     let sig_lo = 0xc07204f554a00e49a2ee69f0979dc4feef07f7dba8d779d388fb2a53bc9bcde4;
-    let signature: B512 = B512::from(sig_hi, sig_lo);
+    let signature: B512 = B512::from((sig_hi, sig_lo));
 
     // recover the address:
     let result: Result<EvmAddress, EcRecoverError> = ec_recover_evm_address(signature, msg_hash);

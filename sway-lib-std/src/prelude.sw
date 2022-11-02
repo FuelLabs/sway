@@ -17,3 +17,6 @@ use ::assert::assert;
 use ::option::Option;
 use ::result::Result;
 use ::revert::{require, revert};
+
+/* Convert */
+use ::convert::From;

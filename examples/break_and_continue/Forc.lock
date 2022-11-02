@@ -6,4 +6,3 @@ dependencies = ['core']
 [[package]]
 name = 'core'
 source = 'path+from-root-8D1D783DB6BEC173'
-dependencies = []
