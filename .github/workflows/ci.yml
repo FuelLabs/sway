@@ -207,7 +207,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-features --all-targets -- -D warnings
+          args: --all-features --all-targets -- -D warnings --allow clippy::result_large_err
 
   cargo-toml-fmt-check:
     runs-on: ubuntu-latest
