@@ -453,7 +453,7 @@ impl AllocatedOp {
         data_section: &mut DataSection,
     ) -> Either<Vec<fuel_asm::Opcode>, DoubleWideData> {
         use AllocatedOpcode::*;
-        let fuel_op = Either::Left(vec![match &self.opcode {
+        Either::Left(vec![match &self.opcode {
             /* Arithmetica/Logic (ALU) Instructions */
             ADD(a, b, c) => VmOp::ADD(a.to_register_id(), b.to_register_id(), c.to_register_id()),
             ADDI(a, b, c) => VmOp::ADDI(a.to_register_id(), b.to_register_id(), c.value),
@@ -610,8 +610,7 @@ impl AllocatedOp {
                 return Either::Left(realize_lw(a, b, data_section, offset_to_data_section))
             }
             Undefined => VmOp::Undefined,
-        }]);
-        fuel_op
+        }])
     }
 }
 
