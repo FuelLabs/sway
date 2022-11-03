@@ -10,8 +10,8 @@ description = "A library for building and running Sway unit tests within Forc pa
 
 [dependencies]
 anyhow = "1"
-forc-pkg = { version = "0.28.1", path = "../forc-pkg" }
-fuel-tx = { version = "0.20", features = ["builder"] }
-fuel-vm = { version = "0.18", features = ["random"] }
+forc-pkg = { version = "0.30.0", path = "../forc-pkg" }
+fuel-tx = { version = "0.23", features = ["builder"] }
+fuel-vm = { version = "0.22", features = ["random"] }
 rand = "0.8"
-sway-core = { version = "0.28.1", path = "../sway-core" }
+sway-core = { version = "0.30.0", path = "../sway-core" }

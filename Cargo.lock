@@ -1636,12 +1636,12 @@ dependencies = [
 
 [[package]]
 name = "forc-test"
-version = "0.28.1"
+version = "0.30.0"
 dependencies = [
  "anyhow",
  "forc-pkg",
- "fuel-tx",
- "fuel-vm",
+ "fuel-tx 0.23.1",
+ "fuel-vm 0.22.3",
  "rand 0.8.5",
  "sway-core",
 ]
