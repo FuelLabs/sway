@@ -1,4 +1,8 @@
-use std::fmt;
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    fmt,
+    sync::RwLock,
+};
 
 use lazy_static::lazy_static;
 use sway_error::error::CompileError;
@@ -16,6 +20,7 @@ lazy_static! {
 #[derive(Debug, Default)]
 pub struct DeclarationEngine {
     slab: ConcurrentSlab<DeclarationWrapper>,
+    parents: RwLock<HashMap<usize, Vec<DeclarationId>>>,
 }
 
 impl fmt::Display for DeclarationEngine {
@@ -27,6 +32,8 @@ impl fmt::Display for DeclarationEngine {
 impl DeclarationEngine {
     fn clear(&self) {
         self.slab.clear();
+        let mut parents = self.parents.write().unwrap();
+        parents.clear();
     }
 
     fn look_up_decl_id(&self, index: DeclarationId) -> DeclarationWrapper {
@@ -39,6 +46,42 @@ impl DeclarationEngine {
 
     fn insert(&self, declaration_wrapper: DeclarationWrapper, span: Span) -> DeclarationId {
         DeclarationId::new(self.slab.insert(declaration_wrapper), span)
+    }
+
+    /// Given a [DeclarationId] `index`, finds all the parents of `index` and
+    /// all the recursive parents of those parents, and so on. Does not perform
+    /// duplicated computation---if the parents of a [DeclarationId] have
+    /// already been found, we do not find them again.
+    #[allow(clippy::map_entry)]
+    fn find_all_parents(&self, index: DeclarationId) -> Vec<DeclarationId> {
+        let parents = self.parents.read().unwrap();
+        let mut acc_parents: HashMap<usize, DeclarationId> = HashMap::new();
+        let mut already_checked: HashSet<usize> = HashSet::new();
+        let mut left_to_check: VecDeque<DeclarationId> = VecDeque::from([index]);
+        while let Some(curr) = left_to_check.pop_front() {
+            if !already_checked.insert(*curr) {
+                continue;
+            }
+            if let Some(curr_parents) = parents.get(&*curr) {
+                for curr_parent in curr_parents.iter() {
+                    if !acc_parents.contains_key(&**curr_parent) {
+                        acc_parents.insert(**curr_parent, curr_parent.clone());
+                    }
+                    if !left_to_check.contains(curr_parent) {
+                        left_to_check.push_back(curr_parent.clone());
+                    }
+                }
+            }
+        }
+        acc_parents.values().cloned().collect()
+    }
+
+    fn register_parent(&self, index: &DeclarationId, parent: DeclarationId) {
+        let mut parents = self.parents.write().unwrap();
+        parents
+            .entry(**index)
+            .and_modify(|e| e.push(parent.clone()))
+            .or_insert_with(|| vec![parent]);
     }
 
     fn insert_function(&self, function: ty::TyFunctionDeclaration) -> DeclarationId {
@@ -180,8 +223,16 @@ pub(crate) fn de_replace_decl_id(index: DeclarationId, wrapper: DeclarationWrapp
     DECLARATION_ENGINE.replace_decl_id(index, wrapper)
 }
 
-pub(super) fn de_insert(declaration_wrapper: DeclarationWrapper, span: Span) -> DeclarationId {
+pub(crate) fn de_insert(declaration_wrapper: DeclarationWrapper, span: Span) -> DeclarationId {
     DECLARATION_ENGINE.insert(declaration_wrapper, span)
+}
+
+pub(super) fn de_find_all_parents(index: DeclarationId) -> Vec<DeclarationId> {
+    DECLARATION_ENGINE.find_all_parents(index)
+}
+
+pub(super) fn de_register_parent(index: &DeclarationId, parent: DeclarationId) {
+    DECLARATION_ENGINE.register_parent(index, parent);
 }
 
 pub(crate) fn de_insert_function(function: ty::TyFunctionDeclaration) -> DeclarationId {

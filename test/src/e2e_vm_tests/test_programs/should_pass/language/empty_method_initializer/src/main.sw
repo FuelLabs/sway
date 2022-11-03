@@ -1,6 +1,10 @@
 script;
 
-use std::b512::B512;
+use std::{
+    b512::B512,
+    assert::assert,
+    logging::log
+};
 
 fn main() -> bool {
     let hi_bits: b256 = 0x7777777777777777777777777777777777777777777777777777777777777777;

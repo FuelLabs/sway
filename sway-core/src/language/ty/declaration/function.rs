@@ -84,6 +84,12 @@ impl ReplaceSelfType for TyFunctionDeclaration {
     }
 }
 
+impl ReplaceDecls for TyFunctionDeclaration {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
+        self.body.replace_decls(decl_mapping);
+    }
+}
+
 impl Spanned for TyFunctionDeclaration {
     fn span(&self) -> Span {
         self.span.clone()
@@ -128,8 +134,8 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
 }
 
 impl TyFunctionDeclaration {
-    /// Used to create a stubbed out function when the function fails to compile, preventing cascading
-    /// namespace errors
+    /// Used to create a stubbed out function when the function fails to
+    /// compile, preventing cascading namespace errors.
     pub(crate) fn error(decl: parsed::FunctionDeclaration) -> TyFunctionDeclaration {
         let parsed::FunctionDeclaration {
             name,

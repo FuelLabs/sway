@@ -2,7 +2,11 @@ use std::borrow::Cow;
 
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
-use crate::{language::ty::*, type_system::*};
+use crate::{
+    declaration_engine::{DeclMapping, ReplaceDecls},
+    language::ty::*,
+    type_system::*,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TyReassignment {
@@ -25,6 +29,12 @@ impl ReplaceSelfType for TyReassignment {
     fn replace_self_type(&mut self, self_type: TypeId) {
         self.rhs.replace_self_type(self_type);
         self.lhs_type.replace_self_type(self_type);
+    }
+}
+
+impl ReplaceDecls for TyReassignment {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
+        self.rhs.replace_decls(decl_mapping);
     }
 }
 
