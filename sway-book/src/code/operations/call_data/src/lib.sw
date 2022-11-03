@@ -1,3 +1,14 @@
 library call_data;
 
-// anything `pub` here will be exported as a part of this library's API
+// ANCHOR: import
+use std::auth::msg_sender;
+// ANCHOR_END: import
+
+// ANCHOR: access_control
+const OWNER = Identity::Address(Address::from(ADMIN));
+
+fn update() {
+    require(msg_sender().unwrap() == OWNER, "Owner Only");
+    // code
+}
+// ANCHOR_END: access_control

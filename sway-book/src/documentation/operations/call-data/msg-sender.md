@@ -1,21 +1,21 @@
 # Message Sender
 
-<!-- TODO: ignore, planning on working on this soon, haven't made any adjustments from the current book -->
+The [standard library](https://github.com/FuelLabs/sway/tree/master/sway-lib-std) provides a function [`msg_sender()`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/auth.sw) which retrieves the [Identity](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/identity.sw) of the caller.
 
-<!-- To deliver an experience akin to the EVM's access control, the `std` library provides a `msg_sender` function, which identifies a unique caller based upon the call and/or transaction input data.
+The identity can be used for a variety of reasons however a common application is access control i.e. restricting functionality for non-privileged users (non-admins).
+
+## Example
+
+To use `msg_sender()` we must import it from the standard library.
 
 ```sway
-{{#include ../../../../examples/msg_sender/src/main.sw}}
+{{#include ../../../code/operations/call_data/src/lib.sw:import}}
 ```
 
-The `msg_sender` function works as follows:
+We can implement access control by specifying that only the owner can call a function. 
 
-- If the caller is a contract, then `Result::Ok(Sender)` is returned with the `ContractId` sender variant.
-- If the caller is external (i.e. from a script), then all coin input owners in the transaction are checked. If all owners are the same, then `Result::Ok(Sender)` is returned with the `Address` sender variant.
-- If the caller is external and coin input owners are different, then the caller cannot be determined and a `Result::Err(AuthError)` is returned.
-
----
+In the following snippet we accomplish this by comparing the caller `msg_sender()` to the `OWNER`. If a regular user calls the function then it will revert otherwise it will continue to run when called by the `OWNER`.
 
 ```sway
-{{#include ../../../code/operations/call_data/src/lib.sw:msg_sender}}
-``` -->
+{{#include ../../../code/operations/call_data/src/lib.sw:access_control}}
+```

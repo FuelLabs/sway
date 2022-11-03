@@ -4,4 +4,7 @@ entry = "lib.sw"
 license = "Apache-2.0"
 name = "call_data"
 
+[constants]
+ADMIN = { type = "b256", value = "0x0000000000000000000000000000000000000000000000000000000000000000" }
+
 [dependencies]
