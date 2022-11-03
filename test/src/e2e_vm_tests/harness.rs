@@ -170,8 +170,8 @@ pub(crate) fn compile_to_bytes(
     (result, output)
 }
 
-/// Compiles the code and optionally captures the output of forc and the compilation.
-/// Returns a tuple with the result of the compilation, as well as the output.
+/// Compiles the project's unit tests, then runs all unit tests.
+/// Returns the tested package result.
 pub(crate) fn compile_and_run_unit_tests(
     file_name: &str,
     run_config: &RunConfig,
@@ -189,7 +189,7 @@ pub(crate) fn compile_and_run_unit_tests(
     ]
     .iter()
     .collect();
-    let res = forc_test::test(forc_test::Opts {
+    let built_tests = forc_test::build(forc_test::Opts {
         pkg: forc_pkg::PkgOpts {
             path: Some(path.to_string_lossy().into_owned()),
             locked: run_config.locked,
@@ -197,14 +197,14 @@ pub(crate) fn compile_and_run_unit_tests(
             ..Default::default()
         },
         ..Default::default()
-    });
-
-    res.map(|tested| match tested {
-        forc_test::Tested::Package(tested_pkg) => tested_pkg,
+    })?;
+    let tested = built_tests.run()?;
+    match tested {
+        forc_test::Tested::Package(tested_pkg) => Ok(tested_pkg),
         forc_test::Tested::Workspace => {
-            unimplemented!("testing full workspaces not yet implemented")
+            bail!("testing full workspaces not yet implemented")
         }
-    })
+    }
 }
 
 pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {

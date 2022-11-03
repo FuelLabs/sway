@@ -3,7 +3,7 @@ name = 'core'
 source = 'path+from-root-064254D1F5F62D46'
 
 [[package]]
-name = 'single_lib_test'
+name = 'lib_multi_test'
 source = 'root'
 dependencies = ['std']
 
