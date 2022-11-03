@@ -282,6 +282,7 @@ impl Op {
         let mut errors = vec![];
         ok(
             match name.as_str() {
+                /* Arithmetica/Logic (ALU) Instructions */
                 "add" => {
                     let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
@@ -372,15 +373,6 @@ impl Op {
                     );
                     VirtualOp::GT(r1, r2, r3)
                 }
-                "gtf" => {
-                    let (r1, r2, imm) = check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::GTF(r1, r2, imm)
-                }
                 "lt" => {
                     let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
@@ -398,15 +390,6 @@ impl Op {
                         errors
                     );
                     VirtualOp::MLOG(r1, r2, r3)
-                }
-                "mroo" => {
-                    let (r1, r2, r3) = check!(
-                        three_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::MROO(r1, r2, r3)
                 }
                 "mod" => {
                     let (r1, r2, r3) = check!(
@@ -444,6 +427,15 @@ impl Op {
                     );
                     VirtualOp::MOVI(r1, imm)
                 }
+                "mroo" => {
+                    let (r1, r2, r3) = check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MROO(r1, r2, r3)
+                }
                 "mul" => {
                     let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
@@ -462,6 +454,7 @@ impl Op {
                     );
                     VirtualOp::MULI(r1, r2, imm)
                 }
+                "noop" => VirtualOp::NOOP,
                 "not" => {
                     let (r1, r2) = check!(
                         two_regs(args, immediate, whole_op_span),
@@ -506,15 +499,6 @@ impl Op {
                         errors
                     );
                     VirtualOp::SLLI(r1, r2, imm)
-                }
-                "smo" => {
-                    let (r1, r2, r3, r4) = check!(
-                        four_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::SMO(r1, r2, r3, r4)
                 }
                 "srl" => {
                     let (r1, r2, r3) = check!(
@@ -570,6 +554,17 @@ impl Op {
                     );
                     VirtualOp::XORI(r1, r2, imm)
                 }
+
+                /* Control Flow Instructions */
+                "jmp" => {
+                    let r1 = check!(
+                        single_reg(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::JMP(r1)
+                }
                 "ji" => {
                     let imm = check!(
                         single_imm_24(args, immediate, whole_op_span),
@@ -578,6 +573,15 @@ impl Op {
                         errors
                     );
                     VirtualOp::JI(imm)
+                }
+                "jne" => {
+                    let (r1, r2, r3) = check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::JNE(r1, r2, r3)
                 }
                 "jnei" => {
                     let (r1, r2, imm) = check!(
@@ -606,14 +610,16 @@ impl Op {
                     );
                     VirtualOp::RET(r1)
                 }
-                "retd" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
+
+                /* Memory Instructions */
+                "aloc" => {
+                    let r1 = check!(
+                        single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
-                    VirtualOp::RETD(r1, r2)
+                    VirtualOp::ALOC(r1)
                 }
                 "cfei" => {
                     let imm = check!(
@@ -650,15 +656,6 @@ impl Op {
                         errors
                     );
                     VirtualOp::LW(r1, r2, imm)
-                }
-                "aloc" => {
-                    let r1 = check!(
-                        single_reg(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::ALOC(r1)
                 }
                 "mcl" => {
                     let (r1, r2) = check!(
@@ -723,6 +720,8 @@ impl Op {
                     );
                     VirtualOp::SW(r1, r2, imm)
                 }
+
+                /* Contract Instructions */
                 "bal" => {
                     let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
@@ -732,15 +731,6 @@ impl Op {
                     );
                     VirtualOp::BAL(r1, r2, r3)
                 }
-                "bhsh" => {
-                    let (r1, r2) = check!(
-                        two_regs(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::BHSH(r1, r2)
-                }
                 "bhei" => {
                     let r1 = check!(
                         single_reg(args, immediate, whole_op_span),
@@ -749,6 +739,15 @@ impl Op {
                         errors
                     );
                     VirtualOp::BHEI(r1)
+                }
+                "bhsh" => {
+                    let (r1, r2) = check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::BHSH(r1, r2)
                 }
                 "burn" => {
                     let r1 = check!(
@@ -767,6 +766,15 @@ impl Op {
                         errors
                     );
                     VirtualOp::CALL(r1, r2, r3, r4)
+                }
+                "cb" => {
+                    let r1 = check!(
+                        single_reg(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CB(r1)
                 }
                 "ccp" => {
                     let (r1, r2, r3, r4) = check!(
@@ -795,15 +803,7 @@ impl Op {
                     );
                     VirtualOp::CSIZ(r1, r2)
                 }
-                "cb" => {
-                    let r1 = check!(
-                        single_reg(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::CB(r1)
-                }
+
                 "ldc" => {
                     let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
@@ -840,6 +840,15 @@ impl Op {
                     );
                     VirtualOp::MINT(r1)
                 }
+                "retd" => {
+                    let (r1, r2) = check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::RETD(r1, r2)
+                }
                 "rvrt" => {
                     let r1 = check!(
                         single_reg(args, immediate, whole_op_span),
@@ -848,6 +857,24 @@ impl Op {
                         errors
                     );
                     VirtualOp::RVRT(r1)
+                }
+                "smo" => {
+                    let (r1, r2, r3, r4) = check!(
+                        four_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SMO(r1, r2, r3, r4)
+                }
+                "scwq" => {
+                    let (r1, r2, r3) = check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SCWQ(r1, r2, r3)
                 }
                 "srw" => {
                     let (r1, r2, r3) = check!(
@@ -912,6 +939,8 @@ impl Op {
                     );
                     VirtualOp::TRO(r1, r2, r3, r4)
                 }
+
+                /* Cryptographic Instructions */
                 "ecr" => {
                     let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
@@ -939,16 +968,8 @@ impl Op {
                     );
                     VirtualOp::S256(r1, r2, r3)
                 }
-                "noop" => VirtualOp::NOOP,
-                "blob" => {
-                    let imm = check!(
-                        single_imm_24(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::BLOB(imm)
-                }
+
+                /* Other Instructions */
                 "flag" => {
                     let r1 = check!(
                         single_reg(args, immediate, whole_op_span),
@@ -966,6 +987,26 @@ impl Op {
                         errors
                     );
                     VirtualOp::GM(r1, imm)
+                }
+                "gtf" => {
+                    let (r1, r2, imm) = check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::GTF(r1, r2, imm)
+                }
+
+                /* Non-VM Instructions */
+                "blob" => {
+                    let imm = check!(
+                        single_imm_24(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::BLOB(imm)
                 }
                 _ => {
                     errors.push(CompileError::UnrecognizedOp {
@@ -1375,6 +1416,7 @@ impl fmt::Display for VirtualOp {
     fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
         use VirtualOp::*;
         match self {
+            /* Arithmetica/Logic (ALU) Instructions */
             ADD(a, b, c) => write!(fmtr, "add {} {} {}", a, b, c),
             ADDI(a, b, c) => write!(fmtr, "addi {} {} {}", a, b, c),
             AND(a, b, c) => write!(fmtr, "and {} {} {}", a, b, c),
@@ -1385,40 +1427,42 @@ impl fmt::Display for VirtualOp {
             EXP(a, b, c) => write!(fmtr, "exp {} {} {}", a, b, c),
             EXPI(a, b, c) => write!(fmtr, "expi {} {} {}", a, b, c),
             GT(a, b, c) => write!(fmtr, "gt {} {} {}", a, b, c),
-            GTF(a, b, c) => write!(fmtr, "gtf {} {} {}", a, b, c),
             LT(a, b, c) => write!(fmtr, "lt {} {} {}", a, b, c),
             MLOG(a, b, c) => write!(fmtr, "mlog {} {} {}", a, b, c),
-            MROO(a, b, c) => write!(fmtr, "mroo {} {} {}", a, b, c),
             MOD(a, b, c) => write!(fmtr, "mod {} {} {}", a, b, c),
             MODI(a, b, c) => write!(fmtr, "modi {} {} {}", a, b, c),
             MOVE(a, b) => write!(fmtr, "move {} {}", a, b),
             MOVI(a, b) => write!(fmtr, "movi {} {}", a, b),
+            MROO(a, b, c) => write!(fmtr, "mroo {} {} {}", a, b, c),
             MUL(a, b, c) => write!(fmtr, "mul {} {} {}", a, b, c),
             MULI(a, b, c) => write!(fmtr, "muli {} {} {}", a, b, c),
+            NOOP => Ok(()),
             NOT(a, b) => write!(fmtr, "not {} {}", a, b),
             OR(a, b, c) => write!(fmtr, "or {} {} {}", a, b, c),
             ORI(a, b, c) => write!(fmtr, "ori {} {} {}", a, b, c),
             SLL(a, b, c) => write!(fmtr, "sll {} {} {}", a, b, c),
             SLLI(a, b, c) => write!(fmtr, "slli {} {} {}", a, b, c),
-            SMO(a, b, c, d) => write!(fmtr, "smo {} {} {} {}", a, b, c, d),
             SRL(a, b, c) => write!(fmtr, "srl {} {} {}", a, b, c),
             SRLI(a, b, c) => write!(fmtr, "srli {} {} {}", a, b, c),
             SUB(a, b, c) => write!(fmtr, "sub {} {} {}", a, b, c),
             SUBI(a, b, c) => write!(fmtr, "subi {} {} {}", a, b, c),
             XOR(a, b, c) => write!(fmtr, "xor {} {} {}", a, b, c),
             XORI(a, b, c) => write!(fmtr, "xori {} {} {}", a, b, c),
+
+            /* Control Flow Instructions */
             JMP(a) => write!(fmtr, "jmp {}", a),
             JI(a) => write!(fmtr, "ji {}", a),
+            JNE(a, b, c) => write!(fmtr, "jne {} {} {}", a, b, c),
             JNEI(a, b, c) => write!(fmtr, "jnei {} {} {}", a, b, c),
             JNZI(a, b) => write!(fmtr, "jnzi {} {}", a, b),
             RET(a) => write!(fmtr, "ret {}", a),
-            RETD(a, b) => write!(fmtr, "retd {} {}", a, b),
+
+            /* Memory Instructions */
+            ALOC(a) => write!(fmtr, "aloc {}", a),
             CFEI(a) => write!(fmtr, "cfei {}", a),
             CFSI(a) => write!(fmtr, "cfsi {}", a),
             LB(a, b, c) => write!(fmtr, "lb {} {} {}", a, b, c),
-            LWDataId(a, b) => write!(fmtr, "lw {} {}", a, b),
             LW(a, b, c) => write!(fmtr, "lw {} {} {}", a, b, c),
-            ALOC(a) => write!(fmtr, "aloc {}", a),
             MCL(a, b) => write!(fmtr, "mcl {} {}", a, b),
             MCLI(a, b) => write!(fmtr, "mcli {} {}", a, b),
             MCP(a, b, c) => write!(fmtr, "mcp {} {} {}", a, b, c),
@@ -1426,20 +1470,25 @@ impl fmt::Display for VirtualOp {
             MEQ(a, b, c, d) => write!(fmtr, "meq {} {} {} {}", a, b, c, d),
             SB(a, b, c) => write!(fmtr, "sb {} {} {}", a, b, c),
             SW(a, b, c) => write!(fmtr, "sw {} {} {}", a, b, c),
+
+            /* Contract Instructions */
             BAL(a, b, c) => write!(fmtr, "bal {} {} {}", a, b, c),
-            BHSH(a, b) => write!(fmtr, "bhsh {} {}", a, b),
             BHEI(a) => write!(fmtr, "bhei {}", a),
+            BHSH(a, b) => write!(fmtr, "bhsh {} {}", a, b),
             BURN(a) => write!(fmtr, "burn {}", a),
             CALL(a, b, c, d) => write!(fmtr, "call {} {} {} {}", a, b, c, d),
+            CB(a) => write!(fmtr, "cb {}", a),
             CCP(a, b, c, d) => write!(fmtr, "ccp {} {} {} {}", a, b, c, d),
             CROO(a, b) => write!(fmtr, "croo {} {}", a, b),
             CSIZ(a, b) => write!(fmtr, "csiz {} {}", a, b),
-            CB(a) => write!(fmtr, "cb {}", a),
             LDC(a, b, c) => write!(fmtr, "ldc {} {} {}", a, b, c),
             LOG(a, b, c, d) => write!(fmtr, "log {} {} {} {}", a, b, c, d),
             LOGD(a, b, c, d) => write!(fmtr, "logd {} {} {} {}", a, b, c, d),
             MINT(a) => write!(fmtr, "mint {}", a),
+            RETD(a, b) => write!(fmtr, "retd {} {}", a, b),
             RVRT(a) => write!(fmtr, "rvrt {}", a),
+            SMO(a, b, c, d) => write!(fmtr, "smo {} {} {} {}", a, b, c, d),
+            SCWQ(a, b, c) => write!(fmtr, "scwq {} {} {}", a, b, c),
             SRW(a, b, c) => write!(fmtr, "srw {} {} {}", a, b, c),
             SRWQ(a, b, c, d) => write!(fmtr, "srwq {} {} {} {}", a, b, c, d),
             SWW(a, b, c) => write!(fmtr, "sww {} {} {}", a, b, c),
@@ -1447,20 +1496,25 @@ impl fmt::Display for VirtualOp {
             TIME(a, b) => write!(fmtr, "time {} {}", a, b),
             TR(a, b, c) => write!(fmtr, "tr {} {} {}", a, b, c),
             TRO(a, b, c, d) => write!(fmtr, "tro {} {} {} {}", a, b, c, d),
+
+            /* Cryptographic Instructions */
             ECR(a, b, c) => write!(fmtr, "ecr {} {} {}", a, b, c),
             K256(a, b, c) => write!(fmtr, "k256 {} {} {}", a, b, c),
             S256(a, b, c) => write!(fmtr, "s256 {} {} {}", a, b, c),
-            NOOP => Ok(()),
-            BLOB(a) => write!(fmtr, "blob {a}"),
+
+            /* Other Instructions */
             FLAG(a) => write!(fmtr, "flag {}", a),
             GM(a, b) => write!(fmtr, "gm {} {}", a, b),
+            GTF(a, b, c) => write!(fmtr, "gtf {} {} {}", a, b, c),
 
-            Undefined => write!(fmtr, "undefined op"),
-
+            /* Non-VM Instructions */
+            BLOB(a) => write!(fmtr, "blob {a}"),
             DataSectionOffsetPlaceholder => write!(fmtr, "data section offset placeholder"),
             DataSectionRegisterLoadPlaceholder => {
                 write!(fmtr, "data section register load placeholder")
             }
+            LWDataId(a, b) => write!(fmtr, "lw {} {}", a, b),
+            Undefined => write!(fmtr, "undefined op"),
         }
     }
 }
