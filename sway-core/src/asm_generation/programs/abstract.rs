@@ -44,7 +44,7 @@ impl AbstractProgram {
         let entries = self
             .entries
             .iter()
-            .map(|entry| (entry.label, entry.name.clone()))
+            .map(|entry| (entry.selector, entry.label, entry.name.clone()))
             .collect();
 
         // Allocate the registers for each function.

@@ -86,7 +86,7 @@ impl BuiltTests {
         self.built_pkg
             .entries
             .iter()
-            .filter(|e| is_test(&e.fn_name))
+            .filter(|e| e.is_test())
             .count()
     }
 
@@ -94,11 +94,6 @@ impl BuiltTests {
     pub fn run(self) -> anyhow::Result<Tested> {
         run_tests(self)
     }
-}
-
-// TODO: Should have a more formal way of only selecting tests.
-fn is_test(entry_name: &str) -> bool {
-    entry_name != "main"
 }
 
 /// First builds the package or workspace, ready for execution.
@@ -129,7 +124,7 @@ fn run_tests(built: BuiltTests) -> anyhow::Result<Tested> {
     let tests = built_pkg
         .entries
         .iter()
-        .filter(|entry| is_test(&entry.fn_name))
+        .filter(|entry| entry.is_test())
         .map(|entry| {
             let offset = u32::try_from(entry.imm).expect("test instruction offset out of range");
             let name = entry.fn_name.clone();

@@ -9,6 +9,10 @@ use super::{
 
 use crate::asm_lang::Label;
 
+type SelectorOpt = Option<[u8; 4]>;
+type FnName = String;
+type ImmOffset = u64;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProgramKind {
     Contract,
@@ -32,10 +36,10 @@ pub(super) struct AbstractProgram {
 
 /// The entry point of an abstract program.
 pub(super) struct AbstractEntry {
-    pub(super) selector: Option<[u8; 4]>,
+    pub(super) selector: SelectorOpt,
     pub(super) label: Label,
     pub(super) ops: AbstractInstructionSet,
-    pub(super) name: String,
+    pub(super) name: FnName,
 }
 
 /// An AllocatedProgram represents code which has allocated registers but still has abstract
@@ -45,7 +49,7 @@ pub(super) struct AllocatedProgram {
     data_section: DataSection,
     prologue: AllocatedAbstractInstructionSet,
     functions: Vec<AllocatedAbstractInstructionSet>,
-    entries: Vec<(Label, String)>,
+    entries: Vec<(SelectorOpt, Label, FnName)>,
 }
 
 /// A FinalProgram represents code which may be serialized to VM bytecode.
@@ -53,5 +57,5 @@ pub(super) struct FinalProgram {
     kind: ProgramKind,
     data_section: DataSection,
     ops: InstructionSet,
-    entries: Vec<(u64, String)>,
+    entries: Vec<(SelectorOpt, ImmOffset, FnName)>,
 }

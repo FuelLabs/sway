@@ -26,11 +26,22 @@ pub struct FinalizedEntry {
     pub fn_name: String,
     /// The immediate instruction offset at which the entry function begins.
     pub imm: u64,
+    /// The function selector (only `Some` for contract ABI methods).
+    pub selector: Option<[u8; 4]>,
 }
 
 impl FinalizedAsm {
     pub(crate) fn to_bytecode_mut(&mut self, source_map: &mut SourceMap) -> CompileResult<Vec<u8>> {
         to_bytecode_mut(&self.program_section, &mut self.data_section, source_map)
+    }
+}
+
+impl FinalizedEntry {
+    /// We assume the entry point is for a test function in the case it is neither an ABI method
+    /// (no selector) or it is not "main".
+    pub fn is_test(&self) -> bool {
+        self.selector.is_none()
+            && self.fn_name != sway_types::constants::DEFAULT_ENTRY_POINT_FN_NAME
     }
 }
 
