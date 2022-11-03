@@ -37,6 +37,7 @@ impl Markup {
         }
     }
 
+    /// If contents is `Some`, format the contents within a sway code block.
     pub fn maybe_add_sway_block(self, contents: Option<String>) -> Self {
         match contents {
             Some(contents) => self.fenced_sway_block(&contents).line_sperator(),
