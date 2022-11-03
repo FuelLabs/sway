@@ -1,7 +1,8 @@
 category = "fail"
 
 # check: $()let c = add_points(a, b);
-# nextln: $()The trait constraint "u64": "MyAdd" is not satisfied.
+# check: $()Trait "MyAdd" is not implemented for type "u64".
 
 # check: $()let f = add_points2(d, e);
-# nextln: $()The trait constraint "u8": "MyAdd" is not satisfied.
+# check: $()Trait "MyAdd" is not implemented for type "u64".
+# check: $()Trait "MyAdd" is not implemented for type "u8".

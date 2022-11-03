@@ -3,23 +3,23 @@ script;
 use std::assert::assert;
 
 trait MyAdd {
-	fn my_add(self, other: Self) -> Self;
+    fn my_add(self, other: Self) -> Self;
 }
 
 trait MyMul {
-	fn my_mul(self, other: Self) -> Self;
+    fn my_mul(self, other: Self) -> Self;
 }
 
 trait MyMath: MyAdd + MyMul {
 
 } {
-	fn my_double(self) -> Self {
-		self.my_add(self)
-	}
+    fn my_double(self) -> Self {
+        self.my_add(self)
+    }
 
-	fn my_exp(self) -> Self {
-		self.my_mul(self)
-	}
+    fn my_exp(self) -> Self {
+        self.my_mul(self)
+    }
 }
 
 struct Data {

@@ -168,7 +168,7 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                     ..
                 } = check!(
                     CompileResult::from(de_get_trait(decl_id.clone(), &supertrait.span())),
-                    return err(warnings, errors),
+                    break,
                     warnings,
                     errors
                 );
@@ -218,7 +218,7 @@ fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> 
                 // *super* supertraits.
                 check!(
                     handle_supertraits(ctx.by_ref(), &supertraits),
-                    return err(warnings, errors),
+                    break,
                     warnings,
                     errors
                 );

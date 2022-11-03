@@ -1,6 +1,6 @@
 script;
 
-use std::{assert::assert, hash::sha256, option::Option, revert::revert, u128::{From, U128}, vec::Vec};
+use std::hash::sha256;
 
 enum SimpleEnum {
     A: b256,
@@ -143,7 +143,6 @@ fn test_vector_swap_b256() {
     }
 
     vector.swap(0, 2);
-
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
     assert(vector.is_empty() == false);
@@ -188,13 +187,16 @@ fn test_vector_swap_struct() {
     let b2 = 0x0000000000000000000000000000000000000000000000000000000000000002;
 
     vector.push(SimpleStruct {
-        x: number0, y: b0
+        x: number0,
+        y: b0,
     });
     vector.push(SimpleStruct {
-        x: number1, y: b1
+        x: number1,
+        y: b1,
     });
     vector.push(SimpleStruct {
-        x: number2, y: b2
+        x: number2,
+        y: b2,
     });
 
     assert(vector.len() == 3);
@@ -317,8 +319,7 @@ fn test_vector_swap_enum() {
     match vector.get(2) {
         Option::Some(val) => {
             match val {
-                SimpleEnum::B => {
-                },
+                SimpleEnum::B => {},
                 _ => {
                     revert(0)
                 },
@@ -338,8 +339,7 @@ fn test_vector_swap_enum() {
     match vector.get(0) {
         Option::Some(val) => {
             match val {
-                SimpleEnum::B => {
-                },
+                SimpleEnum::B => {},
                 _ => {
                     revert(0)
                 },

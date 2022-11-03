@@ -48,6 +48,10 @@ impl DeclarationEngine {
         DeclarationId::new(self.slab.insert(declaration_wrapper), span)
     }
 
+    /// Given a [DeclarationId] `index`, finds all the parents of `index` and
+    /// all the recursive parents of those parents, and so on. Does not perform
+    /// duplicated computation---if the parents of a [DeclarationId] have
+    /// already been found, we do not find them again.
     #[allow(clippy::map_entry)]
     fn find_all_parents(&self, index: DeclarationId) -> Vec<DeclarationId> {
         let parents = self.parents.read().unwrap();

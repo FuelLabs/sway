@@ -60,8 +60,8 @@ fn main() -> u64 {
     assert(c.y == 6u64);
 
     let d = MyPoint {
-        x: true,
-        y: false,
+        x: 7u64,
+        y: 9u64,
     };
     let e = MyPoint {
         x: 100u8,

@@ -2,7 +2,7 @@ library ecr;
 
 use ::address::Address;
 use ::b512::B512;
-use ::context::registers::error;
+use ::registers::error;
 use ::hash::sha256;
 use ::result::Result;
 
