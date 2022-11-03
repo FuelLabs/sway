@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-EE49CDD50FD361DD'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-EE49CDD50FD361DD'
+dependencies = ['core']
+
+[[package]]
+name = 'supertraits_with_trait_methods'
+source = 'root'
+dependencies = ['std']
