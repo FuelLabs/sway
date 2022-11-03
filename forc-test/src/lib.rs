@@ -103,6 +103,8 @@ fn is_test(entry_name: &str) -> bool {
 
 /// First builds the package or workspace, ready for execution.
 pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
+    use sway_core::language::parsed::TreeType;
+
     let build_opts = opts.into_build_opts();
 
     let built_pkg = match pkg::build_with_options(build_opts)? {
@@ -110,11 +112,9 @@ pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
         pkg::Built::Workspace => todo!("run all tests in all workspace members"),
     };
 
-    if !matches!(
-        built_pkg.tree_type,
-        sway_core::language::parsed::TreeType::Library { .. }
-    ) {
-        anyhow::bail!("Unit testing only supports tests in libraries for now");
+    match built_pkg.tree_type {
+        TreeType::Library { .. } | TreeType::Script => {}
+        tt => anyhow::bail!("Unit testing not yet supported in {:?}s", tt),
     }
 
     Ok(BuiltTests { built_pkg })
