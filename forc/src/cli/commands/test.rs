@@ -29,34 +29,11 @@ use tracing::info;
 pub struct Command {
     #[clap(flatten)]
     pub build: cli::shared::Build,
-    /// Enable the incomplete, unstable unit testing support. Warning: May create a black hole!
-    ///
-    /// This is purely for Sway devs to test the unit testing functionality until it stabilises,
-    /// and will be removed upon stabilisation of the command.
-    #[clap(long)]
-    pub unstable: bool,
     /// When specified, only tests containing the given string will be executed.
     pub filter: Option<String>,
 }
 
 pub(crate) fn exec(cmd: Command) -> Result<()> {
-    if !cmd.unstable {
-        bail!(
-            r#"
-Sway unit testing is not yet implemented. Track progress at the following link:
-
-https://github.com/FuelLabs/sway/issues/1832
-
-NOTE: Previously this command was used to support Rust integration testing,
-however the provided behaviour served no benefit over running `cargo test`
-directly. The proposal to change the behaviour to support unit testing can be
-found at the following link:
-
-https://github.com/FuelLabs/sway/issues/1833
-"#
-        );
-    }
-
     if let Some(ref _filter) = cmd.filter {
         bail!("unit test filter not yet supported");
     }
