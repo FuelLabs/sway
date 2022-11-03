@@ -3,9 +3,9 @@ use crate::{
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
-use std::collections::{hash_map::RandomState, HashMap, VecDeque};
+use std::collections::HashMap;
 use sway_error::error::CompileError;
-use sway_types::{state::StateIndex, Spanned};
+use sway_types::Spanned;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
@@ -79,56 +79,20 @@ pub(crate) fn instantiate_function_application(
         .collect();
 
     let span = function_decl.span.clone();
-    let exp = instantiate_function_application_inner(
-        call_path,
-        HashMap::new(),
-        typed_arguments,
-        function_decl,
-        None,
-        None,
+
+    let exp = ty::TyExpression {
+        expression: ty::TyExpressionVariant::FunctionApplication {
+            call_path,
+            contract_call_params: HashMap::new(),
+            arguments: typed_arguments,
+            function_decl_id: de_insert_function(function_decl.clone()),
+            self_state_idx: None,
+            selector: None,
+        },
+        return_type: function_decl.return_type,
         span,
-    );
+    };
 
-    ok(exp, warnings, errors)
-}
-
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn instantiate_function_application_simple(
-    call_path: CallPath,
-    contract_call_params: HashMap<String, ty::TyExpression, RandomState>,
-    arguments: VecDeque<ty::TyExpression>,
-    function_decl: ty::TyFunctionDeclaration,
-    selector: Option<ty::ContractCallParams>,
-    self_state_idx: Option<StateIndex>,
-    span: Span,
-) -> CompileResult<ty::TyExpression> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
-    // check that the number of parameters and the number of the arguments is the same
-    check!(
-        check_function_arguments_arity(arguments.len(), &function_decl, &call_path),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    let args_and_names = function_decl
-        .parameters
-        .iter()
-        .zip(arguments.into_iter())
-        .map(|(param, arg)| (param.name.clone(), arg))
-        .collect::<Vec<(_, _)>>();
-
-    let exp = instantiate_function_application_inner(
-        call_path,
-        contract_call_params,
-        args_and_names,
-        function_decl,
-        selector,
-        self_state_idx,
-        span,
-    );
     ok(exp, warnings, errors)
 }
 
@@ -159,29 +123,5 @@ pub(crate) fn check_function_arguments_arity(
             });
             err(warnings, errors)
         }
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn instantiate_function_application_inner(
-    call_path: CallPath,
-    contract_call_params: HashMap<String, ty::TyExpression, RandomState>,
-    arguments: Vec<(Ident, ty::TyExpression)>,
-    function_decl: ty::TyFunctionDeclaration,
-    selector: Option<ty::ContractCallParams>,
-    self_state_idx: Option<StateIndex>,
-    span: Span,
-) -> ty::TyExpression {
-    ty::TyExpression {
-        expression: ty::TyExpressionVariant::FunctionApplication {
-            call_path,
-            contract_call_params,
-            arguments,
-            function_decl_id: de_insert_function(function_decl.clone()),
-            self_state_idx,
-            selector,
-        },
-        return_type: function_decl.return_type,
-        span,
     }
 }

@@ -50,7 +50,7 @@ fn combine_cbr(context: &mut Context, function: &Function) -> Result<bool, IrErr
                     true_block,
                     false_block,
                 }) if cond_value.is_constant(context) => {
-                    match cond_value.get_constant(context).unwrap().value {
+                    match &cond_value.get_constant(context).unwrap().value {
                         ConstantValue::Bool(true) => Some(Ok((
                             inst_val,
                             in_block,
