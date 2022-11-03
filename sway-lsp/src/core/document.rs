@@ -16,7 +16,7 @@ pub struct TextDocument {
 
 impl TextDocument {
     pub fn build_from_path(path: &str) -> Result<Self, DocumentError> {
-        std::fs::read_to_string(&path)
+        std::fs::read_to_string(path)
             .map(|content| Self {
                 language_id: "sway".into(),
                 version: 1,

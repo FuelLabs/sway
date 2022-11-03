@@ -192,7 +192,7 @@ pub(super) fn compile_function(
             None,
             logged_types_map,
         )
-        .map(&Some)
+        .map(Some)
     }
 }
 

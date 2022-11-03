@@ -1297,11 +1297,7 @@ mod ir_builder {
         context: &mut Context,
         ir_metadata: Vec<(MdIdxRef, IrMetadatum)>,
     ) -> HashMap<MdIdxRef, MetadataIndex> {
-        fn convert_md(
-            context: &mut Context,
-            md: IrMetadatum,
-            md_map: &mut HashMap<MdIdxRef, MetadataIndex>,
-        ) -> Metadatum {
+        fn convert_md(md: IrMetadatum, md_map: &mut HashMap<MdIdxRef, MetadataIndex>) -> Metadatum {
             match md {
                 IrMetadatum::Integer(i) => Metadatum::Integer(i),
                 IrMetadatum::Index(idx) => Metadatum::Index(
@@ -1314,7 +1310,7 @@ mod ir_builder {
                 IrMetadatum::Struct(tag, els) => Metadatum::Struct(
                     tag,
                     els.into_iter()
-                        .map(|el_md| convert_md(context, el_md, md_map))
+                        .map(|el_md| convert_md(el_md, md_map))
                         .collect(),
                 ),
                 IrMetadatum::List(idcs) => Metadatum::List(
@@ -1333,7 +1329,7 @@ mod ir_builder {
         let mut md_map = HashMap::new();
 
         for (ir_idx, ir_md) in ir_metadata {
-            let md = convert_md(context, ir_md, &mut md_map);
+            let md = convert_md(ir_md, &mut md_map);
             let md_idx = MetadataIndex(context.metadata.insert(md));
             md_map.insert(ir_idx, md_idx);
         }
