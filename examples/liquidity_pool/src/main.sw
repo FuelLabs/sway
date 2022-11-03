@@ -1,7 +1,7 @@
 contract;
 
 use std::{
-    context::call_frames::{
+    call_frames::{
         contract_id,
         msg_asset_id,
     },

@@ -3,7 +3,7 @@
 //! https://fuellabs.github.io/fuel-specs/master/vm#call-frames
 library call_frames;
 
-use ::context::registers::frame_ptr;
+use ::registers::frame_ptr;
 use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
 
