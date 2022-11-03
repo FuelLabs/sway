@@ -168,10 +168,9 @@ impl AbstractProgram {
             };
 
             // Put the selector in the data section.
-            let data_label = self.data_section.insert_data_value(Entry::new_word(
-                u32::from_be_bytes(selector) as u64,
-                None,
-            ));
+            let data_label = self
+                .data_section
+                .insert_data_value(Entry::new_word(u32::from_be_bytes(selector) as u64, None));
 
             // Load the data into a register for comparison.
             asm_buf.ops.push(AllocatedAbstractOp {
