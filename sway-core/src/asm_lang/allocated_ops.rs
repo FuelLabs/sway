@@ -12,7 +12,7 @@
 use super::DataId;
 use super::*;
 use crate::{
-    asm_generation::{compiler_constants::*, DataSection},
+    asm_generation::{compiler_constants::DATA_SECTION_REGISTER, DataSection},
     fuel_prelude::fuel_asm::{self, Opcode as VmOp},
 };
 use either::Either;
