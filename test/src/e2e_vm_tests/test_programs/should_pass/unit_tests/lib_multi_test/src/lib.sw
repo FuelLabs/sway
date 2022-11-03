@@ -1,7 +1,5 @@
 library lib_multi_test;
 
-use std::assert::assert;
-
 fn pow2(x: u64) -> u64 {
     x * x
 }
