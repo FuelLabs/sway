@@ -113,7 +113,7 @@ pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
     };
 
     match built_pkg.tree_type {
-        TreeType::Library { .. } | TreeType::Script => {}
+        TreeType::Library { .. } | TreeType::Predicate | TreeType::Script => {}
         tt => anyhow::bail!("Unit testing not yet supported in {:?}s", tt),
     }
 
