@@ -1,7 +1,7 @@
 use std::fmt;
 
 use derivative::Derivative;
-use sway_types::Span;
+use sway_types::{Ident, Span};
 
 use crate::{
     declaration_engine::{de_get_function, DeclMapping, ReplaceDecls},
@@ -10,6 +10,10 @@ use crate::{
     type_system::*,
     types::DeterministicallyAborts,
 };
+
+pub trait GetDeclIdent {
+    fn get_decl_ident(&self) -> Option<Ident>;
+}
 
 #[derive(Clone, Debug, Eq, Derivative)]
 #[derivative(PartialEq)]
@@ -86,6 +90,12 @@ impl DeterministicallyAborts for TyAstNode {
             Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(),
             SideEffect => false,
         }
+    }
+}
+
+impl GetDeclIdent for TyAstNode {
+    fn get_decl_ident(&self) -> Option<Ident> {
+        self.content.get_decl_ident()
     }
 }
 
@@ -190,6 +200,17 @@ impl CollectTypesMetadata for TyAstNodeContent {
             Expression(expr) => expr.collect_types_metadata(ctx),
             ImplicitReturnExpression(expr) => expr.collect_types_metadata(ctx),
             SideEffect => ok(vec![], vec![], vec![]),
+        }
+    }
+}
+
+impl GetDeclIdent for TyAstNodeContent {
+    fn get_decl_ident(&self) -> Option<Ident> {
+        match self {
+            TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(),
+            TyAstNodeContent::Expression(_expr) => None, //expr.get_decl_ident(),
+            TyAstNodeContent::ImplicitReturnExpression(_expr) => None, //expr.get_decl_ident(),
+            TyAstNodeContent::SideEffect => None,
         }
     }
 }

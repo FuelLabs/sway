@@ -1,4 +1,4 @@
-use crate::{span::Span, Spanned};
+use crate::{span::Span, IdentUnique, Spanned};
 
 use std::{
     cmp::{Ord, Ordering},
@@ -54,6 +54,16 @@ impl fmt::Display for Ident {
     }
 }
 
+impl From<&IdentUnique> for Ident {
+    fn from(item: &IdentUnique) -> Self {
+        Ident {
+            name_override_opt: item.name_override_opt(),
+            span: item.span(),
+            is_raw_ident: item.is_raw_ident(),
+        }
+    }
+}
+
 impl Ident {
     pub fn as_str(&self) -> &str {
         self.name_override_opt.unwrap_or_else(|| self.span.as_str())
@@ -61,6 +71,10 @@ impl Ident {
 
     pub fn is_raw_ident(&self) -> bool {
         self.is_raw_ident
+    }
+
+    pub fn name_override_opt(&self) -> Option<&'static str> {
+        self.name_override_opt
     }
 
     pub fn new(span: Span) -> Ident {
