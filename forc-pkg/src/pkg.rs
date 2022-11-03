@@ -36,7 +36,7 @@ use sway_core::{
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
-    CompileResult, CompiledBytecode,
+    CompileResult, CompiledBytecode, FinalizedEntry,
 };
 use sway_error::error::CompileError;
 use sway_types::{Ident, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
@@ -78,11 +78,12 @@ pub struct BuiltPackage {
     pub json_abi_program: JsonABIProgram,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
+    pub entries: Vec<FinalizedEntry>,
     pub tree_type: TreeType,
 }
 
 pub enum Built {
-    Package(BuiltPackage),
+    Package(Box<BuiltPackage>),
     Workspace,
 }
 
@@ -2072,6 +2073,11 @@ pub fn compile(
         "compile ast to asm",
         sway_core::ast_to_asm(ast_res, &sway_build_config)
     );
+    let entries = asm_res
+        .value
+        .as_ref()
+        .map(|asm| asm.0.entries.clone())
+        .unwrap_or_default();
     let bc_res = time_expr!(
         "compile asm to bytecode",
         sway_core::asm_to_bytecode(asm_res, source_map)
@@ -2086,6 +2092,7 @@ pub fn compile(
                 storage_slots,
                 bytecode,
                 tree_type,
+                entries,
             };
             Ok((built_package, namespace))
         }
@@ -2256,7 +2263,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     match manifest_file {
         ManifestFile::Package(package_manifest) => {
             let built_package = build_package_with_options(&package_manifest, build_options)?;
-            Ok(Built::Package(built_package))
+            Ok(Built::Package(Box::new(built_package)))
         }
         ManifestFile::Workspace(_) => bail!("Workspace building is not supported"),
     }
@@ -2287,15 +2294,8 @@ pub fn build(
 
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
-    let mut json_abi_program = JsonABIProgram {
-        types: vec![],
-        functions: vec![],
-        logged_types: vec![],
-    };
-    let mut storage_slots = vec![];
-    let mut bytecode = vec![];
-    let mut tree_type = None;
     let mut compiled_contract_deps = HashMap::new();
+    let mut last_pkg = None;
     for &node in &plan.compilation_order {
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
@@ -2326,32 +2326,15 @@ pub fn build(
         if let TreeType::Library { .. } = built_package.tree_type {
             lib_namespace_map.insert(node, namespace.into());
         }
-        json_abi_program
-            .types
-            .extend(built_package.json_abi_program.types);
-        json_abi_program
-            .functions
-            .extend(built_package.json_abi_program.functions);
-        json_abi_program
-            .logged_types
-            .extend(built_package.json_abi_program.logged_types);
-        storage_slots.extend(built_package.storage_slots);
-        bytecode = built_package.bytecode;
-        tree_type = Some(built_package.tree_type);
+        last_pkg = Some(built_package);
         source_map.insert_dependency(manifest.dir());
     }
 
-    standardize_json_abi_types(&mut json_abi_program);
+    let mut built_pkg =
+        last_pkg.ok_or_else(|| anyhow!("build plan must contain at least one package"))?;
+    standardize_json_abi_types(&mut built_pkg.json_abi_program);
 
-    let tree_type =
-        tree_type.ok_or_else(|| anyhow!("build plan must contain at least one package"))?;
-    let built_package = BuiltPackage {
-        bytecode,
-        json_abi_program,
-        storage_slots,
-        tree_type,
-    };
-    Ok((built_package, source_map))
+    Ok((built_pkg, source_map))
 }
 
 /// Standardize the JSON ABI data structure by eliminating duplicate types. This is an iterative
