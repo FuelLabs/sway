@@ -635,12 +635,7 @@ impl ty::TyExpression {
 
         // check to see if the match expression is exhaustive and if all match arms are reachable
         let (witness_report, arms_reachability) = check!(
-            check_match_expression_usefulness(
-                ctx.namespace,
-                type_id,
-                typed_scrutinees,
-                span.clone()
-            ),
+            check_match_expression_usefulness(type_id, typed_scrutinees, span.clone()),
             return err(warnings, errors),
             warnings,
             errors
