@@ -1,7 +1,9 @@
 use crate::cli;
+use ansi_term::Colour;
 use anyhow::{bail, Result};
 use clap::Parser;
 use forc_pkg as pkg;
+use tracing::info;
 
 /// Run the Sway unit tests for the current project.
 ///
@@ -60,10 +62,43 @@ https://github.com/FuelLabs/sway/issues/1833
     }
 
     let opts = opts_from_cmd(cmd);
-    let tested = forc_test::test(opts)?;
+    let built_tests = forc_test::build(opts)?;
+    let start = std::time::Instant::now();
+    info!("   Running {} tests", built_tests.test_count());
+    let tested = built_tests.run()?;
+    let duration = start.elapsed();
 
     // Eventually we'll print this in a fancy manner, but this will do for testing.
-    dbg!(&tested);
+    match tested {
+        forc_test::Tested::Workspace => unimplemented!(),
+        forc_test::Tested::Package(pkg) => {
+            let succeeded = pkg.tests.iter().filter(|t| t.passed()).count();
+            let failed = pkg.tests.len() - succeeded;
+            for test in &pkg.tests {
+                let (state, color) = match test.passed() {
+                    true => ("ok", Colour::Green),
+                    false => ("FAILED", Colour::Red),
+                };
+                info!(
+                    "      test {} ... {} ({:?})",
+                    test.name,
+                    color.paint(state),
+                    test.duration
+                );
+            }
+            let (state, color) = match succeeded == pkg.tests.len() {
+                true => ("OK", Colour::Green),
+                false => ("FAILED", Colour::Red),
+            };
+            info!(
+                "   Result: {}. {} passed. {} failed. Finished in {:?}.",
+                color.paint(state),
+                succeeded,
+                failed,
+                duration
+            );
+        }
+    }
 
     Ok(())
 }

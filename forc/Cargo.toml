@@ -18,6 +18,7 @@ path = "src/main.rs"
 
 [dependencies]
 annotate-snippets = { version = "0.9", features = ["color"] }
+ansi_term = "0.12"
 anyhow = "1.0.41"
 clap = { version = "3.1", features = ["cargo", "derive", "env"] }
 clap_complete = "3.1"

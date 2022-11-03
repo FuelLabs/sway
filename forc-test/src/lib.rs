@@ -1,6 +1,6 @@
 use forc_pkg as pkg;
 use fuel_tx as tx;
-use fuel_vm as vm;
+use fuel_vm::{self as vm, prelude::Opcode};
 use rand::{Rng, SeedableRng};
 
 /// The result of a `forc test` invocation.
@@ -13,7 +13,7 @@ pub enum Tested {
 /// The result of testing a specific package.
 #[derive(Debug)]
 pub struct TestedPackage {
-    pub built: pkg::BuiltPackage,
+    pub built: Box<pkg::BuiltPackage>,
     /// The resulting `ProgramState` after executing the test.
     pub tests: Vec<TestResult>,
 }
@@ -22,8 +22,17 @@ pub struct TestedPackage {
 // TODO: This should include the function path, span and expected result.
 #[derive(Debug)]
 pub struct TestResult {
+    /// The name of the function.
+    pub name: String,
     /// The resulting state after executing the test function.
     pub state: vm::state::ProgramState,
+    /// The time taken for the test to execute.
+    pub duration: std::time::Duration,
+}
+
+/// A package that has been built, ready for test execution.
+pub struct BuiltTests {
+    built_pkg: Box<pkg::BuiltPackage>,
 }
 
 /// The set of options provided to the `test` function.
@@ -64,8 +73,36 @@ impl Opts {
     }
 }
 
-/// Build the the given package and run its tests, returning the results.
-pub fn test(opts: Opts) -> anyhow::Result<Tested> {
+impl TestResult {
+    /// Whether or not the test passed.
+    pub fn passed(&self) -> bool {
+        !matches!(self.state, vm::state::ProgramState::Revert(_))
+    }
+}
+
+impl BuiltTests {
+    /// The total number of tests.
+    pub fn test_count(&self) -> usize {
+        self.built_pkg
+            .entries
+            .iter()
+            .filter(|e| is_test(&e.fn_name))
+            .count()
+    }
+
+    /// Run all built tests, return the result.
+    pub fn run(self) -> anyhow::Result<Tested> {
+        run_tests(self)
+    }
+}
+
+// TODO: Should have a more formal way of only selecting tests.
+fn is_test(entry_name: &str) -> bool {
+    entry_name != "main"
+}
+
+/// First builds the package or workspace, ready for execution.
+pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
     let build_opts = opts.into_build_opts();
 
     let built_pkg = match pkg::build_with_options(build_opts)? {
@@ -77,29 +114,94 @@ pub fn test(opts: Opts) -> anyhow::Result<Tested> {
         built_pkg.tree_type,
         sway_core::language::parsed::TreeType::Library { .. }
     ) {
-        anyhow::bail!("Unstable unit testing only supports tests in libraries for now");
+        anyhow::bail!("Unit testing only supports tests in libraries for now");
     }
 
-    // TODO: Execute each test function within an interpreter instance.
-    // For now we are just executing it as though it were a normal script until we can work out how
-    // to iterate over and enter via test function entry points.
+    Ok(BuiltTests { built_pkg })
+}
+
+/// Build the the given package and run its tests, returning the results.
+fn run_tests(built: BuiltTests) -> anyhow::Result<Tested> {
+    let BuiltTests { built_pkg } = built;
+
+    // Run all tests and collect their results.
+    // TODO: We can easily parallelise this, but let's wait until testing is stable first.
+    let tests = built_pkg
+        .entries
+        .iter()
+        .filter(|entry| is_test(&entry.fn_name))
+        .map(|entry| {
+            let offset = u32::try_from(entry.imm).expect("test instruction offset out of range");
+            let name = entry.fn_name.clone();
+            let (state, duration) = exec_test(&built_pkg.bytecode, offset);
+            TestResult {
+                name,
+                state,
+                duration,
+            }
+        })
+        .collect();
+
+    let built = built_pkg;
+    let tested_pkg = TestedPackage { built, tests };
+    let tested = Tested::Package(Box::new(tested_pkg));
+    Ok(tested)
+}
+
+/// Given some bytecode and an instruction offset for some test's desired entry point, patch the
+/// bytecode with a `JI` (jump) instruction to jump to the desired test.
+///
+/// We want to splice in the `JI` only after the initial data section setup is complete, and only
+/// if the entry point doesn't begin exactly after the data section setup.
+///
+/// The following is how the beginning of the bytecode is laid out:
+///
+/// ```ignore
+/// [0] ji   i4                       ; Jumps to the data section setup.
+/// [1] noop
+/// [2] DATA_SECTION_OFFSET[0..32]
+/// [3] DATA_SECTION_OFFSET[32..64]
+/// [4] lw   $ds $is 1                ; The data section setup, i.e. where the first ji lands.
+/// [5] add  $$ds $$ds $is
+/// [6] <first-entry-point>           ; This is where we want to jump from to our test code!
+/// ```
+fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u8]> {
+    // TODO: Standardize this or add metadata to bytecode.
+    const PROGRAM_START_INST_OFFSET: u32 = 6;
+    const PROGRAM_START_BYTE_OFFSET: usize = PROGRAM_START_INST_OFFSET as usize * Opcode::LEN;
+
+    // If our desired entry point is the program start, no need to jump.
+    if test_offset == PROGRAM_START_INST_OFFSET {
+        return std::borrow::Cow::Borrowed(bytecode);
+    }
+
+    // Create the jump instruction and splice it into the bytecode.
+    let ji = Opcode::JI(test_offset);
+    let ji_bytes = ji.to_bytes();
+    let start = PROGRAM_START_BYTE_OFFSET;
+    let end = start + ji_bytes.len();
+    let mut patched = bytecode.to_vec();
+    patched.splice(start..end, ji_bytes);
+    std::borrow::Cow::Owned(patched)
+}
+
+// Execute the test whose entry point is at the given instruction offset as if it were a script.
+fn exec_test(bytecode: &[u8], test_offset: u32) -> (vm::state::ProgramState, std::time::Duration) {
+    // Patch the bytecode to jump to the relevant test.
+    let bytecode = patch_test_bytecode(bytecode, test_offset).into_owned();
 
     // Create a transaction to execute the test function.
     let script_input_data = vec![];
-    let mut rng = rand::rngs::StdRng::seed_from_u64(0x54A9u64);
+    let mut rng = rand::rngs::StdRng::seed_from_u64(0x7E57u64);
     let maturity = 1;
     let block_height = (u32::MAX >> 1) as u64;
-    let params = tx::ConsensusParameters {
-        // The default max length is 1MB which isn't enough for bigger tests.
-        max_script_length: 64 * 1024 * 1024,
-        ..tx::ConsensusParameters::DEFAULT
-    };
     let secret_key = rng.gen();
     let utxo_id = rng.gen();
     let amount = 1;
     let asset_id = Default::default();
     let tx_ptr = rng.gen();
-    let tx = tx::TransactionBuilder::script(built_pkg.bytecode.clone(), script_input_data)
+    let params = tx::ConsensusParameters::default();
+    let tx = tx::TransactionBuilder::script(bytecode, script_input_data)
         .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_ptr, 0)
         .gas_limit(tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
         .maturity(maturity)
@@ -108,14 +210,11 @@ pub fn test(opts: Opts) -> anyhow::Result<Tested> {
     // Setup the interpreter.
     let storage = vm::storage::MemoryStorage::default();
     let mut interpreter = vm::interpreter::Interpreter::with_storage(storage, params);
-    let transition = interpreter.transact(tx).unwrap();
 
-    // Return the results.
+    // Execute and return the result.
+    let start = std::time::Instant::now();
+    let transition = interpreter.transact(tx).unwrap();
+    let duration = start.elapsed();
     let state = *transition.state();
-    let result = TestResult { state };
-    let built = built_pkg;
-    let tests = vec![result];
-    let tested_pkg = TestedPackage { built, tests };
-    let tested = Tested::Package(Box::new(tested_pkg));
-    Ok(tested)
+    (state, duration)
 }
