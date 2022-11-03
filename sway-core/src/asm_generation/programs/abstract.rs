@@ -159,15 +159,17 @@ impl AbstractProgram {
             owning_span: None,
         });
 
-        // Add a 'case' entry for each selector.
+        // Add a 'case' for each entry with a selector.
         for entry in &self.entries {
+            let selector = match entry.selector {
+                Some(sel) => sel,
+                // Skip entries that don't have a selector - they're probably tests.
+                None => continue,
+            };
+
             // Put the selector in the data section.
             let data_label = self.data_section.insert_data_value(Entry::new_word(
-                u32::from_be_bytes(
-                    entry
-                        .selector
-                        .expect("Entries for contracts must have a selector."),
-                ) as u64,
+                u32::from_be_bytes(selector) as u64,
                 None,
             ));
 

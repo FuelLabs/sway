@@ -98,20 +98,11 @@ impl BuiltTests {
 
 /// First builds the package or workspace, ready for execution.
 pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
-    use sway_core::language::parsed::TreeType;
-
     let build_opts = opts.into_build_opts();
-
     let built_pkg = match pkg::build_with_options(build_opts)? {
         pkg::Built::Package(pkg) => pkg,
-        pkg::Built::Workspace => todo!("run all tests in all workspace members"),
+        pkg::Built::Workspace => anyhow::bail!("testing workspaces not yet supported"),
     };
-
-    match built_pkg.tree_type {
-        TreeType::Library { .. } | TreeType::Predicate | TreeType::Script => {}
-        tt => anyhow::bail!("Unit testing not yet supported in {:?}s", tt),
-    }
-
     Ok(BuiltTests { built_pkg })
 }
 
