@@ -8,6 +8,10 @@ use std::auth::msg_sender;
 use std::{call_frames::msg_asset_id, constants::BASE_ASSET_ID};
 // ANCHOR_END: import_asset
 
+// ANCHOR: import_amount
+use std::context::msg_amount;
+// ANCHOR_END: import_amount
+
 // ANCHOR: access_control
 const OWNER = Identity::Address(Address::from(ADMIN));
 
@@ -26,3 +30,10 @@ fn deposit() {
     }
 }
 // ANCHOR_END: deposit
+
+// ANCHOR: deposit_amount
+fn purchase() {
+    require(msg_amount() == 100_000_000, "Incorrect amount sent");
+    // code
+}
+// ANCHOR_END: deposit_amount
