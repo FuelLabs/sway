@@ -96,9 +96,9 @@ fn convert_resolved_type(
                 .collect::<Vec<_>>()
                 .as_slice(),
         )
-        .map(&Type::Struct)?,
+        .map(Type::Struct)?,
         TypeInfo::Enum { variant_types, .. } => {
-            create_enum_aggregate(context, variant_types.clone()).map(&Type::Struct)?
+            create_enum_aggregate(context, variant_types.clone()).map(Type::Struct)?
         }
         TypeInfo::Array(elem_type_id, count, _) => {
             let elem_type = convert_resolved_typeid(context, elem_type_id, span)?;
