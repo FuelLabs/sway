@@ -17,6 +17,15 @@ pub struct FinalizedAsm {
     pub data_section: DataSection,
     pub program_section: InstructionSet,
     pub program_kind: ProgramKind,
+    pub entries: Vec<FinalizedEntry>,
+}
+
+#[derive(Clone, Debug)]
+pub struct FinalizedEntry {
+    /// The original entry point function name.
+    pub fn_name: String,
+    /// The immediate instruction offset at which the entry function begins.
+    pub imm: u64,
 }
 
 impl FinalizedAsm {

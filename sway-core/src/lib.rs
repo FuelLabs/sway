@@ -20,6 +20,7 @@ use crate::language::Inline;
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
+pub use asm_generation::FinalizedEntry;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;

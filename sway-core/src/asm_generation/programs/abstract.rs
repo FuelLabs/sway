@@ -1,4 +1,4 @@
-use super::{AbstractProgram, AllocatedProgram, ProgramKind};
+use super::{AbstractEntry, AbstractProgram, AllocatedProgram, ProgramKind};
 
 use crate::{
     asm_generation::{
@@ -7,7 +7,7 @@ use crate::{
     },
     asm_lang::{
         allocated_ops::{AllocatedOpcode, AllocatedRegister},
-        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, VirtualImmediate12,
+        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, VirtualImmediate12,
         VirtualImmediate18,
     },
 };
@@ -18,7 +18,7 @@ impl AbstractProgram {
     pub(crate) fn new(
         kind: ProgramKind,
         data_section: DataSection,
-        entries: Vec<(Option<[u8; 4]>, Label, AbstractInstructionSet)>,
+        entries: Vec<AbstractEntry>,
         non_entries: Vec<AbstractInstructionSet>,
         reg_seqr: RegisterSequencer,
     ) -> Self {
@@ -40,11 +40,18 @@ impl AbstractProgram {
             self.build_contract_abi_switch(&mut prologue);
         }
 
+        // Keep track of the labels (and names) that represent program entry points.
+        let entries = self
+            .entries
+            .iter()
+            .map(|entry| (entry.label, entry.name.clone()))
+            .collect();
+
         // Allocate the registers for each function.
-        let functions = self
+        let functions: Vec<_> = self
             .entries
             .into_iter()
-            .map(|(_, _, fn_ops)| fn_ops)
+            .map(|entry| entry.ops)
             .chain(self.non_entries.into_iter())
             .map(AbstractInstructionSet::optimize)
             .map(|fn_ops| fn_ops.allocate_registers(&mut self.reg_seqr))
@@ -58,6 +65,7 @@ impl AbstractProgram {
             data_section: self.data_section,
             prologue,
             functions,
+            entries,
         }
     }
 
@@ -152,11 +160,13 @@ impl AbstractProgram {
         });
 
         // Add a 'case' entry for each selector.
-        for (opt_selector, label, _) in &self.entries {
+        for entry in &self.entries {
             // Put the selector in the data section.
             let data_label = self.data_section.insert_data_value(Entry::new_word(
                 u32::from_be_bytes(
-                    opt_selector.expect("Entries for contracts must have a selector."),
+                    entry
+                        .selector
+                        .expect("Entries for contracts must have a selector."),
                 ) as u64,
                 None,
             ));
@@ -182,7 +192,7 @@ impl AbstractProgram {
             // Jump to the function label if the selector was equal.
             asm_buf.ops.push(AllocatedAbstractOp {
                 // If the comparison result is _not_ equal to 0, then it was indeed equal.
-                opcode: Either::Right(ControlFlowOp::JumpIfNotZero(CMP_RESULT_REG, *label)),
+                opcode: Either::Right(ControlFlowOp::JumpIfNotZero(CMP_RESULT_REG, entry.label)),
                 comment: "jump to selected function".into(),
                 owning_span: None,
             });
@@ -212,8 +222,8 @@ impl AbstractProgram {
 
 impl std::fmt::Display for AbstractProgram {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (_, _, func) in &self.entries {
-            writeln!(f, "{func}")?;
+        for entry in &self.entries {
+            writeln!(f, "{}", entry.ops)?;
         }
         for func in &self.non_entries {
             writeln!(f, "{func}")?;

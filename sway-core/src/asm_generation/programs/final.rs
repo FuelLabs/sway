@@ -1,6 +1,6 @@
 use super::FinalProgram;
 
-use crate::FinalizedAsm;
+use crate::{FinalizedAsm, FinalizedEntry};
 
 impl FinalProgram {
     pub(crate) fn finalize(self) -> FinalizedAsm {
@@ -8,6 +8,11 @@ impl FinalProgram {
             data_section: self.data_section,
             program_section: self.ops,
             program_kind: self.kind,
+            entries: self
+                .entries
+                .into_iter()
+                .map(|(imm, fn_name)| FinalizedEntry { imm, fn_name })
+                .collect(),
         }
     }
 }

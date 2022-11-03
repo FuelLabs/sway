@@ -2,7 +2,7 @@ use super::{
     asm_builder::AsmBuilder,
     checks::check_invalid_opcodes,
     finalized_asm::FinalizedAsm,
-    programs::{AbstractProgram, ProgramKind},
+    programs::{AbstractEntry, AbstractProgram, ProgramKind},
     register_sequencer::RegisterSequencer,
     DataId, DataSection,
 };
@@ -109,7 +109,13 @@ fn compile_module_to_asm(
         .into_iter()
         .map(|(func, label, ops)| {
             let selector = func.get_selector(context);
-            (selector, label, ops)
+            let name = func.get_name(context).to_string();
+            AbstractEntry {
+                selector,
+                label,
+                ops,
+                name,
+            }
         })
         .collect();
     let kind = match module.get_kind(context) {

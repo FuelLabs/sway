@@ -25,9 +25,17 @@ pub enum ProgramKind {
 pub(super) struct AbstractProgram {
     kind: ProgramKind,
     data_section: DataSection,
-    entries: Vec<(Option<[u8; 4]>, Label, AbstractInstructionSet)>,
+    entries: Vec<AbstractEntry>,
     non_entries: Vec<AbstractInstructionSet>,
     reg_seqr: RegisterSequencer,
+}
+
+/// The entry point of an abstract program.
+pub(super) struct AbstractEntry {
+    pub(super) selector: Option<[u8; 4]>,
+    pub(super) label: Label,
+    pub(super) ops: AbstractInstructionSet,
+    pub(super) name: String,
 }
 
 /// An AllocatedProgram represents code which has allocated registers but still has abstract
@@ -37,6 +45,7 @@ pub(super) struct AllocatedProgram {
     data_section: DataSection,
     prologue: AllocatedAbstractInstructionSet,
     functions: Vec<AllocatedAbstractInstructionSet>,
+    entries: Vec<(Label, String)>,
 }
 
 /// A FinalProgram represents code which may be serialized to VM bytecode.
@@ -44,4 +53,5 @@ pub(super) struct FinalProgram {
     kind: ProgramKind,
     data_section: DataSection,
     ops: InstructionSet,
+    entries: Vec<(u64, String)>,
 }
