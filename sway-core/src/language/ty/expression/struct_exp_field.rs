@@ -1,6 +1,10 @@
 use sway_types::Ident;
 
-use crate::{language::ty::*, type_system::*};
+use crate::{
+    declaration_engine::{DeclMapping, ReplaceDecls},
+    language::ty::*,
+    type_system::*,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TyStructExpressionField {
@@ -17,5 +21,11 @@ impl CopyTypes for TyStructExpressionField {
 impl ReplaceSelfType for TyStructExpressionField {
     fn replace_self_type(&mut self, self_type: TypeId) {
         self.value.replace_self_type(self_type);
+    }
+}
+
+impl ReplaceDecls for TyStructExpressionField {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
+        self.value.replace_decls(decl_mapping);
     }
 }
