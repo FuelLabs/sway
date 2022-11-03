@@ -3,7 +3,7 @@ use crate::core::token::{AstToken, Token};
 use sway_core::{language::parsed::Declaration, transform};
 
 pub(crate) fn attributes_map(token: &Token) -> Option<&transform::AttributesMap> {
-    match &token.parsed.as_ref()? {
+    match &token.parsed {
         AstToken::Declaration(declaration) => match declaration {
             Declaration::EnumDeclaration(decl) => Some(&decl.attributes),
             Declaration::FunctionDeclaration(decl) => Some(&decl.attributes),

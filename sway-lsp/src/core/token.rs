@@ -22,7 +22,7 @@ pub enum TypeDefinition {
 
 #[derive(Debug, Clone)]
 pub struct Token {
-    pub parsed: Option<AstToken>,
+    pub parsed: AstToken,
     pub typed: Option<TypedAstToken>,
     pub type_def: Option<TypeDefinition>,
     pub kind: SymbolKind,
@@ -34,20 +34,8 @@ impl Token {
     /// `ParseProgram` AST.
     pub fn from_parsed(token: AstToken, kind: SymbolKind) -> Self {
         Self {
-            parsed: Some(token),
+            parsed: token,
             typed: None,
-            type_def: None,
-            kind,
-        }
-    }
-
-    /// Create a new token with the given SymbolKind.
-    /// This function is only intended to be used when collecting
-    /// tokens from dependencies.
-    pub fn from_typed(token: TypedAstToken, kind: SymbolKind) -> Self {
-        Self {
-            parsed: None,
-            typed: Some(token),
             type_def: None,
             kind,
         }

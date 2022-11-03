@@ -18,7 +18,10 @@ use forc_pkg::{self as pkg};
 use parking_lot::RwLock;
 use std::{path::PathBuf, sync::Arc};
 use sway_core::{
-    language::{parsed::ParseProgram, ty},
+    language::{
+        parsed::{AstNode, ParseProgram},
+        ty,
+    },
     CompileResult,
 };
 use sway_types::{Ident, Span, Spanned};
@@ -217,15 +220,16 @@ impl Session {
                 Some((pp, tp)) => (Some(pp), tp),
             };
 
-            let ast_res = CompileResult::new(typed, warnings.clone(), errors.clone());
+            let parsed_res = CompileResult::new(parsed, warnings.clone(), errors.clone());
+            let ast_res = CompileResult::new(typed, warnings, errors);
+
+            let parse_program = self.compile_res_to_parse_program(&parsed_res)?;
             let typed_program = self.compile_res_to_typed_program(&ast_res)?;
 
             // The final element in the results is the main program.
             if i == results_len - 1 {
-                let parsed_res = CompileResult::new(parsed, warnings, errors);
-                let parse_program = self.compile_res_to_parse_program(&parsed_res)?;
                 // First, populate our token_map with un-typed ast nodes.
-                self.parse_ast_to_tokens(parse_program);
+                self.parse_ast_to_tokens(parse_program, traverse_parse_tree::traverse_node);
 
                 // Next, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
@@ -238,23 +242,29 @@ impl Session {
                     capabilities::diagnostic::get_diagnostics(&ast_res.warnings, &ast_res.errors);
             } else {
                 // Collect tokens from dependencies and the standard library prelude.
-                self.parse_ast_to_typed_tokens(typed_program, dependancy::collect_declaration);
+                self.parse_ast_to_tokens(parse_program, dependancy::collect_parsed_declaration);
+
+                self.parse_ast_to_typed_tokens(
+                    typed_program,
+                    dependancy::collect_typed_declaration,
+                );
             }
         }
         Ok(diagnostics)
     }
 
     /// Parse the `ParseProgram` AST to populate the token map with parsed AST nodes.
-    fn parse_ast_to_tokens(&self, parse_program: &ParseProgram) {
-        for node in &parse_program.root.tree.root_nodes {
-            traverse_parse_tree::traverse_node(node, &self.token_map);
-        }
+    fn parse_ast_to_tokens(&self, parse_program: &ParseProgram, f: impl Fn(&AstNode, &TokenMap)) {
+        let root_nodes = parse_program.root.tree.root_nodes.iter();
+        let sub_nodes = parse_program
+            .root
+            .submodules
+            .iter()
+            .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes);
 
-        for (_, submodule) in &parse_program.root.submodules {
-            for node in &submodule.module.tree.root_nodes {
-                traverse_parse_tree::traverse_node(node, &self.token_map);
-            }
-        }
+        root_nodes
+            .chain(sub_nodes)
+            .for_each(|node| f(node, &self.token_map));
     }
 
     /// Parse the `TyProgram` AST to populate the token map with typed AST nodes.
@@ -269,6 +279,7 @@ impl Session {
             .submodules
             .iter()
             .flat_map(|(_, submodule)| &submodule.module.all_nodes);
+
         root_nodes
             .chain(sub_nodes)
             .for_each(|node| f(node, &self.token_map));
