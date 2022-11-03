@@ -308,24 +308,18 @@ impl core::ops::Multiply for U256 {
         let zero = U256::from((0, 0, 0, 0));
         let one = U256::from((0, 0, 0, 1));
 
-        let mut total = zero;
-
-        let mut i = 256 - 1;
-
-        while true {
-            total <<= 1;
-            if (other & (one << i)) != zero {
-                total = total + self;
+        let mut x = self;
+        let mut y = other;
+        let mut result = U256::new();
+        while y != zero {
+            if (y & one).d != 0 {
+                result += x;
             }
-
-            if i == 0 {
-                break;
-            }
-
-            i -= 1;
+            x <<= 1;
+            y >>= 1;
         }
 
-        total
+        result
     }
 }
 

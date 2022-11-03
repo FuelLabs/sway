@@ -247,22 +247,18 @@ impl core::ops::Multiply for U128 {
         let zero = U128::from((0, 0));
         let one = U128::from((0, 1));
 
-        let mut total = U128::new();
-        let mut i = 128 - 1;
-        while true {
-            total <<= 1;
-            if (other & (one << i)) != zero {
-                total = total + self;
+        let mut x = self;
+        let mut y = other;
+        let mut result = U128::new();
+        while y != zero {
+            if (y & one).lower != 0 {
+                result += x;
             }
-
-            if i == 0 {
-                break;
-            }
-
-            i -= 1;
+            x <<= 1;
+            y >>= 1;
         }
 
-        total
+        result
     }
 }
 
