@@ -971,7 +971,7 @@ impl MetadataNamer {
     }
 
     fn to_doc(&self, context: &Context) -> Doc {
-        fn md_to_string(context: &Context, md_namer: &MetadataNamer, md: &Metadatum) -> String {
+        fn md_to_string(md_namer: &MetadataNamer, md: &Metadatum) -> String {
             match md {
                 Metadatum::Integer(i) => i.to_string(),
                 Metadatum::Index(idx) => format!(
@@ -985,7 +985,7 @@ impl MetadataNamer {
                     format!(
                         "{tag} {}",
                         els.iter()
-                            .map(|el_md| md_to_string(context, md_namer, el_md))
+                            .map(|el_md| md_to_string(md_namer, el_md))
                             .collect::<Vec<_>>()
                             .join(" ")
                     )
@@ -1012,7 +1012,7 @@ impl MetadataNamer {
             .map(|(ref_idx, md_idx)| {
                 Doc::text_line(format!(
                     "!{ref_idx} = {}",
-                    md_to_string(context, self, &context.metadata[md_idx.0])
+                    md_to_string(self, &context.metadata[md_idx.0])
                 ))
             })
             .collect::<Vec<_>>();
