@@ -140,7 +140,11 @@ impl TraitConstraint {
                 // Recursively make the interface surfaces and methods of the
                 // supertraits available to this trait.
                 check!(
-                    insert_supertraits_into_namespace(ctx.by_ref(), &trait_decl.supertraits),
+                    insert_supertraits_into_namespace(
+                        ctx.by_ref(),
+                        type_id,
+                        &trait_decl.supertraits
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors

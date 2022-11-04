@@ -1,9 +1,6 @@
 use std::collections::BTreeMap;
 
-use sway_error::{
-    error::CompileError,
-    warning::{CompileWarning, Warning},
-};
+use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{style::is_upper_camel_case, Ident, Spanned};
 
 use crate::{
@@ -59,7 +56,7 @@ impl ty::TyTraitDeclaration {
         // Recursively make the interface surfaces and methods of the
         // supertraits available to this trait.
         check!(
-            insert_supertraits_into_namespace(ctx.by_ref(), &supertraits),
+            insert_supertraits_into_namespace(ctx.by_ref(), self_type, &supertraits),
             return err(warnings, errors),
             warnings,
             errors

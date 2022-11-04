@@ -6,19 +6,18 @@ use crate::{
     error::*,
     language::{parsed, ty},
     semantic_analysis::TypeCheckContext,
-    EnforceTypeArguments,
+    EnforceTypeArguments, TypeId,
 };
 
 /// Recursively insert the interface surfaces and methods from supertraits to
 /// the given namespace.
 pub(crate) fn insert_supertraits_into_namespace(
     mut ctx: TypeCheckContext,
+    type_id: TypeId,
     supertraits: &[parsed::Supertrait],
 ) -> CompileResult<()> {
     let mut warnings = vec![];
     let mut errors = vec![];
-
-    let self_type = ctx.self_type();
 
     for supertrait in supertraits.iter() {
         // Right now we don't have the ability to support defining a supertrait
@@ -80,7 +79,7 @@ pub(crate) fn insert_supertraits_into_namespace(
                         ctx.by_ref(),
                         &supertrait.name,
                         &type_arguments,
-                        self_type
+                        type_id
                     ),
                     continue,
                     warnings,
@@ -90,7 +89,11 @@ pub(crate) fn insert_supertraits_into_namespace(
                 // Recurse to insert versions of interfaces and methods of the
                 // *super* supertraits.
                 check!(
-                    insert_supertraits_into_namespace(ctx.by_ref(), &trait_decl.supertraits),
+                    insert_supertraits_into_namespace(
+                        ctx.by_ref(),
+                        type_id,
+                        &trait_decl.supertraits
+                    ),
                     continue,
                     warnings,
                     errors
