@@ -112,32 +112,32 @@ fn do_math2<T, F>(a: MyPoint<T>, b: MyPoint<F>) -> MyPoint<F> where T: MyAdd + M
     }
 }
 
-// trait MyMath: MyAdd + MyMul {
+trait MyMath: MyAdd + MyMul {
 
-// } {
-//     fn my_double(self) -> Self {
-//         self.my_add(self)
-//     }
+} {
+    fn my_double(self) -> Self {
+        self.my_add(self)
+    }
 
-//     fn my_pow_2(self) -> Self {
-//         self.my_mul(self)
-//     }
-// }
+    fn my_pow_2(self) -> Self {
+        self.my_mul(self)
+    }
+}
 
-// impl MyMath for u8 {}
+impl MyMath for u8 {}
 
-// impl MyMath for u16 {}
+impl MyMath for u16 {}
 
-// impl MyMath for u32 {}
+impl MyMath for u32 {}
 
-// impl MyMath for u64 {}
+impl MyMath for u64 {}
 
-// fn do_math3<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: MyMath {
-//     MyPoint {
-//         x: a.x.my_double().my_mul(b.x.my_double()),
-//         y: a.y.my_pow_2().my_add(b.y.my_pow_2()),
-//     }
-// }
+fn do_math3<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: MyMath {
+    MyPoint {
+        x: a.x.my_double().my_mul(b.x.my_double()),
+        y: a.y.my_pow_2().my_add(b.y.my_pow_2()),
+    }
+}
 
 fn main() -> u64 {
     let a = MyPoint {
@@ -194,9 +194,9 @@ fn main() -> u64 {
     assert(l.x == 18u16);
     assert(l.y == 144u16);
 
-    // let m = do_math3(a, b);
-    // assert(m.x == 12u64);
-    // assert(m.y == 20u64);
+    let m = do_math3(a, b);
+    assert(m.x == 12u64);
+    assert(m.y == 20u64);
 
     42
 }

@@ -2,10 +2,10 @@ use sway_error::error::CompileError;
 use sway_types::Spanned;
 
 use crate::{
-    declaration_engine::{de_get_trait, de_get_trait_fn, de_insert_function},
+    declaration_engine::*,
     error::*,
     language::{parsed::Supertrait, ty, CallPath},
-    semantic_analysis::{Mode, TypeCheckContext},
+    semantic_analysis::{declaration::insert_supertraits_into_namespace, TypeCheckContext},
     type_system::*,
     CompileResult,
 };
@@ -82,7 +82,7 @@ impl TraitConstraint {
     }
 
     pub(crate) fn insert_into_namespace(
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         type_id: TypeId,
         trait_constraint: &TraitConstraint,
     ) -> CompileResult<()> {
@@ -94,6 +94,8 @@ impl TraitConstraint {
             type_arguments,
         } = trait_constraint;
 
+        let mut type_arguments = type_arguments.clone();
+
         match ctx
             .namespace
             .resolve_call_path(trait_name)
@@ -101,60 +103,47 @@ impl TraitConstraint {
             .cloned()
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
-                let ty::TyTraitDeclaration {
-                    interface_surface,
-                    methods,
-                    name,
-                    type_parameters,
-                    ..
-                } = check!(
+                let mut trait_decl = check!(
                     CompileResult::from(de_get_trait(decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
 
-                // Retrieve the trait methods for this trait. Transform them
-                // into the correct typing for this impl block by using the
-                // type parameters from the original trait declaration and the
-                // type arguments of the trait constraint.
-                let mut trait_methods = vec![];
-                let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
-                    type_parameters
-                        .iter()
-                        .map(|type_param| type_param.type_id)
-                        .collect(),
-                    type_arguments
-                        .iter()
-                        .map(|type_arg| type_arg.type_id)
-                        .collect(),
+                // Monomorphize the trait declaration.
+                check!(
+                    ctx.monomorphize(
+                        &mut trait_decl,
+                        &mut type_arguments,
+                        EnforceTypeArguments::Yes,
+                        &trait_name.span()
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
                 );
-                for decl_id in interface_surface.into_iter() {
-                    let mut method = check!(
-                        CompileResult::from(de_get_trait_fn(decl_id.clone(), &name.span())),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    method.replace_self_type(type_id);
-                    method.copy_types(&type_mapping);
-                    trait_methods.push(
-                        de_insert_function(method.to_dummy_func(Mode::NonAbi)).with_parent(decl_id),
-                    );
-                }
-                trait_methods.extend(methods);
 
-                // Insert the methods of the supertrait into the namespace.
-                // Specifically do not check for conflicting definitions because
-                // this is just a temporary namespace for type checking and
-                // these are not actual impl blocks.
-                ctx.namespace.insert_trait_implementation(
-                    trait_name.clone(),
-                    type_arguments.clone(),
-                    type_id,
-                    &trait_methods,
-                    &trait_name.span(),
-                    false,
+                // Insert the interface surface and methods from this trait into
+                // the namespace.
+                check!(
+                    trait_decl.insert_interface_surface_and_methods_into_namespace(
+                        ctx.by_ref(),
+                        trait_name,
+                        &type_arguments,
+                        type_id
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                // Recursively make the interface surfaces and methods of the
+                // supertraits available to this trait.
+                check!(
+                    insert_supertraits_into_namespace(ctx.by_ref(), &trait_decl.supertraits),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
                 );
             }
             Some(ty::TyDeclaration::AbiDeclaration(_)) => {

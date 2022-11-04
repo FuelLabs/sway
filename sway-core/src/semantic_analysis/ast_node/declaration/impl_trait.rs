@@ -151,7 +151,7 @@ impl ty::TyImplTrait {
                     trait_type_arguments,
                     span: block_span,
                     methods: new_methods,
-                    implementing_for_type_id: ctx.self_type(),
+                    implementing_for_type_id,
                     type_implementing_for_span: type_implementing_for_span.clone(),
                 }
             }
@@ -201,7 +201,7 @@ impl ty::TyImplTrait {
                     trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
                     span: block_span,
                     methods: new_methods,
-                    implementing_for_type_id: ctx.self_type(),
+                    implementing_for_type_id,
                     type_implementing_for_span,
                 }
             }
@@ -944,6 +944,16 @@ fn handle_supertraits(
                     warnings,
                     errors
                 );
+
+                // Right now we don't parse type arguments for supertraits, so
+                // we should give this error message to users.
+                if !trait_decl.type_parameters.is_empty() {
+                    errors.push(CompileError::Unimplemented(
+                        "Using generic traits as supertraits is not supported yet.",
+                        supertrait.name.span(),
+                    ));
+                    continue;
+                }
 
                 // Retrieve the interface surface and implemented method ids for
                 // this trait.

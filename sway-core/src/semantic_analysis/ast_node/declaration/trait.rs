@@ -10,7 +10,7 @@ use crate::{
     declaration_engine::*,
     error::*,
     language::{parsed::*, ty, CallPath},
-    semantic_analysis::{Mode, TypeCheckContext},
+    semantic_analysis::{declaration::insert_supertraits_into_namespace, Mode, TypeCheckContext},
     type_system::*,
 };
 
@@ -56,9 +56,10 @@ impl ty::TyTraitDeclaration {
             ));
         }
 
-        // Recursively handle supertraits: make their interfaces and methods available to this trait
+        // Recursively make the interface surfaces and methods of the
+        // supertraits available to this trait.
         check!(
-            handle_supertraits(ctx.by_ref(), &supertraits),
+            insert_supertraits_into_namespace(ctx.by_ref(), &supertraits),
             return err(warnings, errors),
             warnings,
             errors
@@ -158,8 +159,7 @@ impl ty::TyTraitDeclaration {
             interface_surface_method_ids.insert(method.name, decl_id.clone());
         }
 
-        // Retrieve the implemented methods for the interface surface for the
-        // supertrait and this type.
+        // Retrieve the implemented methods for this type.
         for decl_id in ctx
             .namespace
             .get_methods_for_type_and_trait_name(type_id, call_path)
@@ -180,113 +180,81 @@ impl ty::TyTraitDeclaration {
             errors,
         )
     }
-}
 
-/// Recursively handle supertraits by adding all their interfaces and methods to some namespace
-/// which is meant to be the namespace of the subtrait in question
-fn handle_supertraits(mut ctx: TypeCheckContext, supertraits: &[Supertrait]) -> CompileResult<()> {
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
+    pub(crate) fn insert_interface_surface_and_methods_into_namespace(
+        &self,
+        ctx: TypeCheckContext,
+        trait_name: &CallPath,
+        type_arguments: &[TypeArgument],
+        type_id: TypeId,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
 
-    let self_type = ctx.self_type();
+        let ty::TyTraitDeclaration {
+            interface_surface,
+            methods,
+            type_parameters,
+            ..
+        } = self;
 
-    for supertrait in supertraits.iter() {
-        // Right now we don't have the ability to support defining a supertrait
-        // using a callpath directly, so we check to see if the user has done
-        // this and we disallow it.
-        if !supertrait.name.prefixes.is_empty() {
-            errors.push(CompileError::UnimplementedWithHelp(
-                "Using module paths to define supertraits is not supported yet.",
-                "try importing the trait with a \"use\" statement instead",
-                supertrait.span(),
-            ));
-            continue;
+        let mut all_methods = vec![];
+
+        // Retrieve the trait methods for this trait. Transform them into the
+        // correct typing for this impl block by using the type parameters from
+        // the original trait declaration and the given type arguments.
+        let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
+            type_parameters
+                .iter()
+                .map(|type_param| type_param.type_id)
+                .collect(),
+            type_arguments
+                .iter()
+                .map(|type_arg| type_arg.type_id)
+                .collect(),
+        );
+        for decl_id in interface_surface.iter() {
+            let mut method = check!(
+                CompileResult::from(de_get_trait_fn(decl_id.clone(), &trait_name.span())),
+                continue,
+                warnings,
+                errors
+            );
+            method.replace_self_type(type_id);
+            method.copy_types(&type_mapping);
+            all_methods.push(
+                de_insert_function(method.to_dummy_func(Mode::NonAbi)).with_parent(decl_id.clone()),
+            );
+        }
+        for decl_id in methods.iter() {
+            let mut method = check!(
+                CompileResult::from(de_get_function(decl_id.clone(), &trait_name.span())),
+                continue,
+                warnings,
+                errors
+            );
+            method.replace_self_type(type_id);
+            method.copy_types(&type_mapping);
+            all_methods.push(de_insert_function(method).with_parent(decl_id.clone()));
         }
 
-        match ctx
-            .namespace
-            .resolve_call_path(&supertrait.name)
-            .ok(&mut warnings, &mut errors)
-            .cloned()
-        {
-            Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
-                let ty::TyTraitDeclaration {
-                    interface_surface,
-                    methods,
-                    supertraits,
-                    name,
-                    type_parameters,
-                    ..
-                } = check!(
-                    CompileResult::from(de_get_trait(decl_id.clone(), &supertrait.span())),
-                    break,
-                    warnings,
-                    errors
-                );
+        // Insert the methods of the trait into the namespace.
+        // Specifically do not check for conflicting definitions because
+        // this is just a temporary namespace for type checking and
+        // these are not actual impl blocks.
+        ctx.namespace.insert_trait_implementation(
+            trait_name.clone(),
+            type_arguments.to_vec(),
+            type_id,
+            &all_methods,
+            &trait_name.span(),
+            false,
+        );
 
-                // Right now we don't parse type arguments for supertraits, so
-                // we should give this error message to users.
-                if !type_parameters.is_empty() {
-                    errors.push(CompileError::Unimplemented(
-                        "Using generic traits as supertraits is not supported yet.",
-                        supertrait.name.span(),
-                    ));
-                    continue;
-                }
-
-                let mut all_methods = methods;
-
-                // Retrieve the interface surface for this trait.
-                for decl_id in interface_surface.into_iter() {
-                    let mut method = check!(
-                        CompileResult::from(de_get_trait_fn(decl_id.clone(), &name.span())),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    method.replace_self_type(self_type);
-                    all_methods.push(
-                        de_insert_function(method.to_dummy_func(Mode::NonAbi)).with_parent(decl_id),
-                    );
-                }
-
-                // Insert the methods of the supertrait into the namespace.
-                // Specifically do not check for conflicting definitions because
-                // this is just a temporary namespace for type checking and
-                // these are not actual impl blocks.
-                ctx.namespace.insert_trait_implementation(
-                    supertrait.name.clone(),
-                    type_parameters.iter().map(|x| x.into()).collect(),
-                    self_type,
-                    &all_methods,
-                    &supertrait.name.span(),
-                    false,
-                );
-
-                // Recurse to insert versions of interfaces and methods of the
-                // *super* supertraits.
-                check!(
-                    handle_supertraits(ctx.by_ref(), &supertraits),
-                    break,
-                    warnings,
-                    errors
-                );
-            }
-            Some(ty::TyDeclaration::AbiDeclaration(_)) => {
-                errors.push(CompileError::AbiAsSupertrait {
-                    span: supertrait.name.span().clone(),
-                })
-            }
-            _ => errors.push(CompileError::TraitNotFound {
-                name: supertrait.name.to_string(),
-                span: supertrait.name.span(),
-            }),
+        if errors.is_empty() {
+            ok((), warnings, errors)
+        } else {
+            err(warnings, errors)
         }
-    }
-
-    if errors.is_empty() {
-        ok((), warnings, errors)
-    } else {
-        err(warnings, errors)
     }
 }

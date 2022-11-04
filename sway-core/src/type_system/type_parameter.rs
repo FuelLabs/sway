@@ -108,10 +108,6 @@ impl TypeParameter {
         });
 
         // Insert the trait constraints into the namespace.
-        // We insert this type with it's own copy of the type info so that as
-        // types resolve in the type engine, the implemented traits for the
-        // trait constraints don't inadvertently point to the resolved type for
-        // the resolved type parameter.
         for trait_constraint in trait_constraints.iter() {
             check!(
                 TraitConstraint::insert_into_namespace(ctx.by_ref(), type_id, trait_constraint),
