@@ -1,6 +1,6 @@
 [[package]]
 name = 'auth_caller_script'
-source = 'root'
+source = 'member'
 dependencies = [
     'auth_testing_abi',
     'std',

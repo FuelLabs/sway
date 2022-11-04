@@ -4,7 +4,7 @@ use super::ParseTree;
 use sway_types::Ident;
 
 /// A module and its submodules in the form of a tree.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParseModule {
     /// The content of this module in the form of a `ParseTree`.
     pub tree: ParseTree,
@@ -15,7 +15,7 @@ pub struct ParseModule {
 /// A library module that was declared as a `dep` of another module.
 ///
 /// Only submodules are guaranteed to be a `library` and have a `library_name`.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParseSubmodule {
     /// The name of a submodule, parsed from the `library` declaration within the module itself.
     pub library_name: Ident,

@@ -1,6 +1,6 @@
 [[package]]
 name = 'block_test_abi'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

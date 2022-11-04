@@ -4,7 +4,7 @@ source = 'path+from-root-239143CAFD6AF819'
 
 [[package]]
 name = 'script_data'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

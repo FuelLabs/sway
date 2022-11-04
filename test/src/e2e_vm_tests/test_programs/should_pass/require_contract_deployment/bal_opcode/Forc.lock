@@ -1,6 +1,6 @@
 [[package]]
 name = 'bal_opcode'
-source = 'root'
+source = 'member'
 dependencies = [
     'balance_test_abi',
     'std',

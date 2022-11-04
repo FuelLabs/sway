@@ -1,6 +1,6 @@
 [[package]]
 name = 'chained_if_let'
-source = 'root'
+source = 'member'
 dependencies = ['core']
 
 [[package]]

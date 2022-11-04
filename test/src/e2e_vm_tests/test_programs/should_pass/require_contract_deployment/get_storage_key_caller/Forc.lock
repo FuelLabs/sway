@@ -8,7 +8,7 @@ source = 'path+from-root-B3844A485BCDB5F7'
 
 [[package]]
 name = 'get_storage_key_caller'
-source = 'root'
+source = 'member'
 dependencies = [
     'get_storage_key_abi',
     'std',

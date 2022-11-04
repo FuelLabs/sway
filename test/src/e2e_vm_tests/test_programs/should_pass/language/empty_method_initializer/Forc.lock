@@ -4,7 +4,7 @@ source = 'path+from-root-5A54E336CA715EAA'
 
 [[package]]
 name = 'empty_method_initializer'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

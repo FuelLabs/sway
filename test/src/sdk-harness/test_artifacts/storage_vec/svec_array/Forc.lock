@@ -9,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'svec_array'
-source = 'root'
+source = 'member'
 dependencies = ['std']

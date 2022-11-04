@@ -4,7 +4,7 @@ source = 'path+from-root-6BF9CEE717879469'
 
 [[package]]
 name = 'script_multi_test'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

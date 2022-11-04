@@ -9,7 +9,7 @@ dependencies = ['core']
 
 [[package]]
 name = 'nested_struct_args_contract'
-source = 'root'
+source = 'member'
 dependencies = [
     'nested_struct_args_abi',
     'std',

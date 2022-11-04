@@ -9,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'supertraits'
-source = 'root'
+source = 'member'
 dependencies = ['std']

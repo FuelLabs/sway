@@ -5,19 +5,24 @@ use crate::{
         runnable::{Runnable, RunnableType},
     },
     core::{
+        dependency,
         document::TextDocument,
         token::{Token, TokenMap, TypeDefinition},
         {traverse_parse_tree, traverse_typed_tree},
     },
     error::{DocumentError, LanguageServerError},
-    utils::{self, sync::SyncWorkspace},
+    utils::{self, sync::SyncWorkspace, token::to_ident_key},
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use parking_lot::RwLock;
+use pkg::manifest::ManifestFile;
 use std::{path::PathBuf, sync::Arc};
 use sway_core::{
-    language::{parsed::ParseProgram, ty},
+    language::{
+        parsed::{AstNode, ParseProgram},
+        ty,
+    },
     CompileResult,
 };
 use sway_types::{Ident, Span, Spanned};
@@ -87,13 +92,10 @@ impl Session {
     pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
         let tokens = self.tokens_for_file(uri);
         match utils::common::ident_at_position(position, tokens) {
-            Some(ident) => self
-                .token_map
-                .get(&utils::token::to_ident_key(&ident))
-                .map(|item| {
-                    let ((ident, _), token) = item.pair();
-                    (ident.clone(), token.clone())
-                }),
+            Some(ident) => self.token_map.get(&to_ident_key(&ident)).map(|item| {
+                let ((ident, _), token) = item.pair();
+                (ident.clone(), token.clone())
+            }),
             None => None,
         }
     }
@@ -192,82 +194,145 @@ impl Session {
         let locked = false;
         let offline = false;
 
-        let manifest = pkg::PackageManifestFile::from_dir(&manifest_dir).map_err(|_| {
+        let manifest = ManifestFile::from_dir(&manifest_dir).map_err(|_| {
             DocumentError::ManifestFileNotFound {
                 dir: uri.path().into(),
             }
         })?;
 
-        let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)
-            .map_err(LanguageServerError::BuildPlanFailed)?;
+        let member_manifests =
+            manifest
+                .member_manifests()
+                .map_err(|_| DocumentError::MemberManifestsFailed {
+                    dir: uri.path().into(),
+                })?;
 
-        // We can convert these destructured elements to a Vec<Diagnostic> later on.
-        let CompileResult {
-            value,
-            warnings,
-            errors,
-        } = pkg::check(&plan, true).map_err(LanguageServerError::FailedToCompile)?;
+        let lock_path =
+            manifest
+                .lock_path()
+                .map_err(|_| DocumentError::ManifestsLockPathFailed {
+                    dir: uri.path().into(),
+                })?;
 
-        // FIXME(Centril): Refactor parse_ast_to_tokens + parse_ast_to_typed_tokens
-        // due to the new API.g
-        let (parsed, typed) = match value {
-            None => (None, None),
-            Some((pp, tp)) => (Some(pp), tp),
-        };
+        let plan =
+            pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)
+                .map_err(LanguageServerError::BuildPlanFailed)?;
 
-        // First, populate our token_map with un-typed ast nodes.
-        let parsed_res = CompileResult::new(parsed, warnings.clone(), errors.clone());
-        let _ = self.parse_ast_to_tokens(parsed_res);
-        // Next, populate our token_map with typed ast nodes.
-        let ast_res = CompileResult::new(typed, warnings, errors);
+        let mut diagnostics = Vec::new();
+        let results = pkg::check(&plan, true).map_err(LanguageServerError::FailedToCompile)?;
+        let results_len = results.len();
+        for (i, res) in results.into_iter().enumerate() {
+            // We can convert these destructured elements to a Vec<Diagnostic> later on.
+            let CompileResult {
+                value,
+                warnings,
+                errors,
+            } = res;
 
-        self.parse_ast_to_typed_tokens(ast_res)
+            // FIXME(Centril): Refactor parse_ast_to_tokens + parse_ast_to_typed_tokens
+            // due to the new API.g
+            let (parsed, typed) = match value {
+                None => (None, None),
+                Some((pp, tp)) => (Some(pp), tp),
+            };
+
+            let parsed_res = CompileResult::new(parsed, warnings.clone(), errors.clone());
+            let ast_res = CompileResult::new(typed, warnings, errors);
+
+            let parse_program = self.compile_res_to_parse_program(&parsed_res)?;
+            let typed_program = self.compile_res_to_typed_program(&ast_res)?;
+
+            // The final element in the results is the main program.
+            if i == results_len - 1 {
+                // First, populate our token_map with un-typed ast nodes.
+                self.parse_ast_to_tokens(parse_program, traverse_parse_tree::traverse_node);
+
+                // Next, create runnables and populate our token_map with typed ast nodes.
+                self.create_runnables(typed_program);
+                self.parse_ast_to_typed_tokens(typed_program, traverse_typed_tree::traverse_node);
+
+                self.save_parse_program(parse_program.to_owned().clone());
+                self.save_typed_program(typed_program.to_owned().clone());
+
+                diagnostics =
+                    capabilities::diagnostic::get_diagnostics(&ast_res.warnings, &ast_res.errors);
+            } else {
+                // Collect tokens from dependencies and the standard library prelude.
+                self.parse_ast_to_tokens(parse_program, dependency::collect_parsed_declaration);
+
+                self.parse_ast_to_typed_tokens(
+                    typed_program,
+                    dependency::collect_typed_declaration,
+                );
+            }
+        }
+        Ok(diagnostics)
     }
 
-    fn parse_ast_to_tokens(
+    /// Parse the `ParseProgram` AST to populate the token map with parsed AST nodes.
+    fn parse_ast_to_tokens(&self, parse_program: &ParseProgram, f: impl Fn(&AstNode, &TokenMap)) {
+        let root_nodes = parse_program.root.tree.root_nodes.iter();
+        let sub_nodes = parse_program
+            .root
+            .submodules
+            .iter()
+            .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes);
+
+        root_nodes
+            .chain(sub_nodes)
+            .for_each(|node| f(node, &self.token_map));
+    }
+
+    /// Parse the `TyProgram` AST to populate the token map with typed AST nodes.
+    pub fn parse_ast_to_typed_tokens(
         &self,
-        parsed_result: CompileResult<ParseProgram>,
-    ) -> Result<Vec<Diagnostic>, LanguageServerError> {
-        let parse_program = parsed_result.value.ok_or_else(|| {
+        typed_program: &ty::TyProgram,
+        f: impl Fn(&ty::TyAstNode, &TokenMap),
+    ) {
+        let root_nodes = typed_program.root.all_nodes.iter();
+        let sub_nodes = typed_program
+            .root
+            .submodules
+            .iter()
+            .flat_map(|(_, submodule)| &submodule.module.all_nodes);
+
+        root_nodes
+            .chain(sub_nodes)
+            .for_each(|node| f(node, &self.token_map));
+    }
+
+    /// Get a reference to the `ParseProgram` AST.
+    pub fn compile_res_to_parse_program<'a>(
+        &'a self,
+        parsed_result: &'a CompileResult<ParseProgram>,
+    ) -> Result<&'a ParseProgram, LanguageServerError> {
+        parsed_result.value.as_ref().ok_or_else(|| {
             let diagnostics = capabilities::diagnostic::get_diagnostics(
                 &parsed_result.warnings,
                 &parsed_result.errors,
             );
             LanguageServerError::FailedToParse { diagnostics }
-        })?;
-
-        for node in &parse_program.root.tree.root_nodes {
-            traverse_parse_tree::traverse_node(node, &self.token_map);
-        }
-
-        for (_, submodule) in &parse_program.root.submodules {
-            for node in &submodule.module.tree.root_nodes {
-                traverse_parse_tree::traverse_node(node, &self.token_map);
-            }
-        }
-
-        {
-            let mut program = self.compiled_program.write();
-            program.parsed = Some(parse_program);
-        }
-
-        Ok(capabilities::diagnostic::get_diagnostics(
-            &parsed_result.warnings,
-            &parsed_result.errors,
-        ))
+        })
     }
 
-    fn parse_ast_to_typed_tokens(
-        &self,
-        ast_res: CompileResult<ty::TyProgram>,
-    ) -> Result<Vec<Diagnostic>, LanguageServerError> {
-        let typed_program = ast_res.value.ok_or(LanguageServerError::FailedToParse {
-            diagnostics: capabilities::diagnostic::get_diagnostics(
-                &ast_res.warnings,
-                &ast_res.errors,
-            ),
-        })?;
+    /// Get a reference to the `TyProgram` AST.
+    pub fn compile_res_to_typed_program<'a>(
+        &'a self,
+        ast_res: &'a CompileResult<ty::TyProgram>,
+    ) -> Result<&'a ty::TyProgram, LanguageServerError> {
+        ast_res
+            .value
+            .as_ref()
+            .ok_or(LanguageServerError::FailedToParse {
+                diagnostics: capabilities::diagnostic::get_diagnostics(
+                    &ast_res.warnings,
+                    &ast_res.errors,
+                ),
+            })
+    }
 
+    /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
+    pub fn create_runnables(&self, typed_program: &ty::TyProgram) {
         if let ty::TyProgramKind::Script {
             ref main_function, ..
         } = typed_program.kind
@@ -276,26 +341,18 @@ impl Session {
             let runnable = Runnable::new(main_fn_location, typed_program.kind.tree_type());
             self.runnables.insert(RunnableType::MainFn, runnable);
         }
+    }
 
-        let root_nodes = typed_program.root.all_nodes.iter();
-        let sub_nodes = typed_program
-            .root
-            .submodules
-            .iter()
-            .flat_map(|(_, submodule)| &submodule.module.all_nodes);
-        root_nodes
-            .chain(sub_nodes)
-            .for_each(|node| traverse_typed_tree::traverse_node(node, &self.token_map));
+    /// Save the `ParseProgram` AST in the session.
+    pub fn save_parse_program(&self, parse_program: ParseProgram) {
+        let mut program = self.compiled_program.write();
+        program.parsed = Some(parse_program);
+    }
 
-        {
-            let mut program = self.compiled_program.write();
-            program.typed = Some(typed_program);
-        }
-
-        Ok(capabilities::diagnostic::get_diagnostics(
-            &ast_res.warnings,
-            &ast_res.errors,
-        ))
+    /// Save the `TyProgram` AST in the session.
+    pub fn save_typed_program(&self, typed_program: ty::TyProgram) {
+        let mut program = self.compiled_program.write();
+        program.typed = Some(typed_program);
     }
 
     pub fn contains_sway_file(&self, url: &Url) -> bool {

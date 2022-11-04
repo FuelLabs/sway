@@ -4,5 +4,5 @@ source = 'path+from-root-4F875AA377BDB49F'
 
 [[package]]
 name = 'enum_destructuring'
-source = 'root'
+source = 'member'
 dependencies = ['core']

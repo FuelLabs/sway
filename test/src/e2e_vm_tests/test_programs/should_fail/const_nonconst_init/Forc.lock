@@ -1,6 +1,6 @@
 [[package]]
 name = 'const_nonconst_init'
-source = 'root'
+source = 'member'
 dependencies = ['core']
 
 [[package]]

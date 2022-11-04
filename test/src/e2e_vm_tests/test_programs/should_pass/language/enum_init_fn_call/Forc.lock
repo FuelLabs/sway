@@ -4,7 +4,7 @@ source = 'path+from-root-9ED436919AA602B8'
 
 [[package]]
 name = 'enum_init_fn_call'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

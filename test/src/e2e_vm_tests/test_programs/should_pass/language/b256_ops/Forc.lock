@@ -1,6 +1,6 @@
 [[package]]
 name = 'b256_ops'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

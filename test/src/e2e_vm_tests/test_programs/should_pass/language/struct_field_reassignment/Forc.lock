@@ -4,5 +4,5 @@ source = 'path+from-root-53919E193550072B'
 
 [[package]]
 name = 'struct_field_reassignment'
-source = 'root'
+source = 'member'
 dependencies = ['core']

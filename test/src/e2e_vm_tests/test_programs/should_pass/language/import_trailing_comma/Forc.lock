@@ -4,7 +4,7 @@ source = 'path+from-root-4A56ACA38DD902C5'
 
 [[package]]
 name = 'import_trailing_comma'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
