@@ -1,0 +1,16 @@
+script {
+    // check: foo() -> u64
+    entry fn foo() -> u64 {
+        entry():
+    }
+
+    // check: bar() -> u64
+    pub entry fn bar() -> u64 {
+        entry():
+    }
+
+    // check: baz() -> u64
+    pub fn baz() -> u64 {
+        entry():
+    }
+}

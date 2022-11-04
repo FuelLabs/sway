@@ -9,7 +9,7 @@ use crate::{
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
-    print_on_failure, print_on_success, print_on_success_library,
+    print_on_failure, print_on_success,
 };
 use petgraph::{
     self,
@@ -36,7 +36,7 @@ use sway_core::{
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
-    CompileResult, CompiledBytecode,
+    CompileResult, CompiledBytecode, FinalizedEntry,
 };
 use sway_error::error::CompileError;
 use sway_types::{Ident, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
@@ -78,11 +78,12 @@ pub struct BuiltPackage {
     pub json_abi_program: JsonABIProgram,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
+    pub entries: Vec<FinalizedEntry>,
     pub tree_type: TreeType,
 }
 
 pub enum Built {
-    Package(BuiltPackage),
+    Package(Box<BuiltPackage>),
     Workspace,
 }
 
@@ -2009,7 +2010,7 @@ pub fn compile(
     build_profile: &BuildProfile,
     namespace: namespace::Module,
     source_map: &mut SourceMap,
-) -> Result<(BuiltPackage, Option<namespace::Root>)> {
+) -> Result<(BuiltPackage, namespace::Root)> {
     // Time the given expression and print the result if `build_config.time_phases` is true.
     macro_rules! time_expr {
         ($description:expr, $expression:expr) => {{
@@ -2061,33 +2062,22 @@ pub fn compile(
 
     let storage_slots = typed_program.storage_slots.clone();
     let tree_type = typed_program.kind.tree_type();
-    match tree_type {
-        // On errors, do not proceed to compiling bytecode, as semantic analysis did not pass.
-        _ if !ast_res.errors.is_empty() => {
-            return fail(&ast_res.warnings, &ast_res.errors);
-        }
-        // If we're compiling a library, we don't need to compile any further.
-        // Instead, we update the namespace with the library's top-level module.
-        TreeType::Library { .. } => {
-            print_on_success_library(terse_mode, &pkg.name, &ast_res.warnings);
-            let bytecode = vec![];
-            let lib_namespace = typed_program.root.namespace.clone();
-            let built_package = BuiltPackage {
-                json_abi_program,
-                storage_slots,
-                bytecode,
-                tree_type,
-            };
-            return Ok((built_package, Some(lib_namespace.into())));
-        }
-        // For all other program types, we'll compile the bytecode.
-        TreeType::Contract | TreeType::Predicate | TreeType::Script => {}
+
+    let namespace = typed_program.root.namespace.clone().into();
+
+    if !ast_res.errors.is_empty() {
+        return fail(&ast_res.warnings, &ast_res.errors);
     }
 
     let asm_res = time_expr!(
         "compile ast to asm",
         sway_core::ast_to_asm(ast_res, &sway_build_config)
     );
+    let entries = asm_res
+        .value
+        .as_ref()
+        .map(|asm| asm.0.entries.clone())
+        .unwrap_or_default();
     let bc_res = time_expr!(
         "compile asm to bytecode",
         sway_core::asm_to_bytecode(asm_res, source_map)
@@ -2102,8 +2092,9 @@ pub fn compile(
                 storage_slots,
                 bytecode,
                 tree_type,
+                entries,
             };
-            Ok((built_package, None))
+            Ok((built_package, namespace))
         }
         _ => fail(&bc_res.warnings, &bc_res.errors),
     }
@@ -2272,7 +2263,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     match manifest_file {
         ManifestFile::Package(package_manifest) => {
             let built_package = build_package_with_options(&package_manifest, build_options)?;
-            Ok(Built::Package(built_package))
+            Ok(Built::Package(Box::new(built_package)))
         }
         ManifestFile::Workspace(_) => bail!("Workspace building is not supported"),
     }
@@ -2303,15 +2294,8 @@ pub fn build(
 
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
-    let mut json_abi_program = JsonABIProgram {
-        types: vec![],
-        functions: vec![],
-        logged_types: vec![],
-    };
-    let mut storage_slots = vec![];
-    let mut bytecode = vec![];
-    let mut tree_type = None;
     let mut compiled_contract_deps = HashMap::new();
+    let mut last_pkg = None;
     for &node in &plan.compilation_order {
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
@@ -2330,7 +2314,7 @@ pub fn build(
             }
         };
         let res = compile(pkg, manifest, profile, dep_namespace, &mut source_map)?;
-        let (built_package, maybe_namespace) = res;
+        let (built_package, namespace) = res;
         // If the current node is a contract dependency, collect the contract_id
         if plan
             .graph()
@@ -2339,35 +2323,18 @@ pub fn build(
         {
             compiled_contract_deps.insert(node, built_package.clone());
         }
-        if let Some(namespace) = maybe_namespace {
+        if let TreeType::Library { .. } = built_package.tree_type {
             lib_namespace_map.insert(node, namespace.into());
         }
-        json_abi_program
-            .types
-            .extend(built_package.json_abi_program.types);
-        json_abi_program
-            .functions
-            .extend(built_package.json_abi_program.functions);
-        json_abi_program
-            .logged_types
-            .extend(built_package.json_abi_program.logged_types);
-        storage_slots.extend(built_package.storage_slots);
-        bytecode = built_package.bytecode;
-        tree_type = Some(built_package.tree_type);
+        last_pkg = Some(built_package);
         source_map.insert_dependency(manifest.dir());
     }
 
-    standardize_json_abi_types(&mut json_abi_program);
+    let mut built_pkg =
+        last_pkg.ok_or_else(|| anyhow!("build plan must contain at least one package"))?;
+    standardize_json_abi_types(&mut built_pkg.json_abi_program);
 
-    let tree_type =
-        tree_type.ok_or_else(|| anyhow!("build plan must contain at least one package"))?;
-    let built_package = BuiltPackage {
-        bytecode,
-        json_abi_program,
-        storage_slots,
-        tree_type,
-    };
-    Ok((built_package, source_map))
+    Ok((built_pkg, source_map))
 }
 
 /// Standardize the JSON ABI data structure by eliminating duplicate types. This is an iterative

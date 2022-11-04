@@ -170,6 +170,43 @@ pub(crate) fn compile_to_bytes(
     (result, output)
 }
 
+/// Compiles the project's unit tests, then runs all unit tests.
+/// Returns the tested package result.
+pub(crate) fn compile_and_run_unit_tests(
+    file_name: &str,
+    run_config: &RunConfig,
+    capture_output: bool,
+) -> Result<Box<forc_test::TestedPackage>> {
+    tracing::info!(" Testing {}", file_name);
+
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let path: PathBuf = [
+        manifest_dir,
+        "src",
+        "e2e_vm_tests",
+        "test_programs",
+        file_name,
+    ]
+    .iter()
+    .collect();
+    let built_tests = forc_test::build(forc_test::Opts {
+        pkg: forc_pkg::PkgOpts {
+            path: Some(path.to_string_lossy().into_owned()),
+            locked: run_config.locked,
+            terse: !(capture_output || run_config.verbose),
+            ..Default::default()
+        },
+        ..Default::default()
+    })?;
+    let tested = built_tests.run()?;
+    match tested {
+        forc_test::Tested::Package(tested_pkg) => Ok(tested_pkg),
+        forc_test::Tested::Workspace => {
+            bail!("testing full workspaces not yet implemented")
+        }
+    }
+}
+
 pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
     emit_json_abi(file_name, built_package)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
