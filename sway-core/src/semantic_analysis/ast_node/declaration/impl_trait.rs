@@ -534,6 +534,11 @@ fn type_check_trait_implementation(
     is_contract: bool,
 ) -> CompileResult<Vec<DeclarationId>> {
     use sway_error::error::InterfaceName;
+
+    let mut errors = vec![];
+    let mut warnings = vec![];
+
+    let self_type = ctx.self_type();
     let interface_name = || -> InterfaceName {
         if is_contract {
             InterfaceName::Abi(trait_name.suffix.clone())
@@ -542,12 +547,8 @@ fn type_check_trait_implementation(
         }
     };
 
-    let mut errors = vec![];
-    let mut warnings = vec![];
-
     // Check to see if the type that we are implementing for implements the
     // supertraits of this trait.
-    let self_type = ctx.self_type();
     check!(
         ctx.namespace
             .implemented_traits
@@ -562,6 +563,31 @@ fn type_check_trait_implementation(
         return err(warnings, errors),
         warnings,
         errors
+    );
+
+    // Gather the supertrait "original_method_ids" and "impld_method_ids".
+    let (supertrait_original_method_ids, supertrait_impld_method_ids) = check!(
+        handle_supertraits(ctx.by_ref(), trait_supertraits),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // Insert the implemented methods for the supertraits into this namespace
+    // so that the methods defined in the impl block can use them.
+    //
+    // We purposefully do not check for errors here because this is a temporary
+    // namespace and not a real impl block defined by the user.
+    ctx.namespace.insert_trait_implementation(
+        trait_name.clone(),
+        trait_type_arguments.to_vec(),
+        self_type,
+        &supertrait_impld_method_ids
+            .values()
+            .cloned()
+            .collect::<Vec<_>>(),
+        &trait_name.span(),
+        false,
     );
 
     // This map keeps track of the remaining functions in the interface surface
@@ -587,13 +613,6 @@ fn type_check_trait_implementation(
         method_checklist.insert(name.clone(), method);
         original_method_ids.insert(name, decl_id.clone());
     }
-
-    let (original_supertrait_decl_ids, these_supertrait_decl_ids) = check!(
-        handle_supertraits(ctx.by_ref(), trait_supertraits),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
 
     for impl_method in impl_methods {
         let mut ctx = ctx
@@ -771,11 +790,6 @@ fn type_check_trait_implementation(
         impld_method_ids.insert(name, decl_id);
     }
 
-    // // This name space is temporary! It is used only so that the below methods
-    // // can reference functions from the interface
-    // let mut impl_trait_namespace = ctx.namespace.clone();
-    // let ctx = ctx.scoped(&mut impl_trait_namespace);
-
     let mut all_method_ids: Vec<DeclarationId> = impld_method_ids.values().cloned().collect();
 
     // Retrieve the methods defined on the trait declaration and transform
@@ -794,8 +808,8 @@ fn type_check_trait_implementation(
             .map(|type_arg| type_arg.type_id)
             .collect(),
     );
-    original_method_ids.extend(original_supertrait_decl_ids);
-    impld_method_ids.extend(these_supertrait_decl_ids);
+    original_method_ids.extend(supertrait_original_method_ids);
+    impld_method_ids.extend(supertrait_impld_method_ids);
     let decl_mapping =
         DeclMapping::from_original_and_new_decl_ids(original_method_ids, impld_method_ids);
     for decl_id in trait_methods.iter() {
@@ -931,6 +945,18 @@ fn handle_supertraits(
     let self_type = ctx.self_type();
 
     for supertrait in supertraits.iter() {
+        // Right now we don't have the ability to support defining a supertrait
+        // using a callpath directly, so we check to see if the user has done
+        // this and we disallow it.
+        if !supertrait.name.prefixes.is_empty() {
+            errors.push(CompileError::UnimplementedWithHelp(
+                "Using module paths to define supertraits is not supported yet.",
+                "try importing the trait with a \"use\" statement instead",
+                supertrait.span(),
+            ));
+            continue;
+        }
+
         match ctx
             .namespace
             .resolve_call_path(&supertrait.name)
