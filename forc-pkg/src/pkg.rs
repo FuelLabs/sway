@@ -2417,7 +2417,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     let manifest_file = ManifestFile::from_dir(&this_dir)?;
     match &manifest_file {
         ManifestFile::Package(package_manifest) => {
-            let built_package = build_package_with_options(&package_manifest, build_options)?;
+            let built_package = build_package_with_options(package_manifest, build_options)?;
             Ok(Built::Package(Box::new(built_package)))
         }
         ManifestFile::Workspace(workspace_manifest) => {
