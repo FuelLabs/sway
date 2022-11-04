@@ -21,17 +21,12 @@
           "name": "key",
           "type": 1,
           "typeArguments": null
-        },
-        {
-          "name": "value",
-          "type": 3,
-          "typeArguments": null
         }
       ],
-      "name": "store_u64",
+      "name": "intrinsic_load_quad",
       "output": {
         "name": "",
-        "type": 0,
+        "type": 2,
         "typeArguments": null
       }
     },
@@ -47,6 +42,26 @@
       "output": {
         "name": "",
         "type": 3,
+        "typeArguments": null
+      }
+    },
+    {
+      "inputs": [
+        {
+          "name": "key",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "value",
+          "type": 2,
+          "typeArguments": null
+        }
+      ],
+      "name": "intrinsic_store_quad",
+      "output": {
+        "name": "",
+        "type": 0,
         "typeArguments": null
       }
     },
@@ -76,29 +91,14 @@
           "name": "key",
           "type": 1,
           "typeArguments": null
-        }
-      ],
-      "name": "intrinsic_load_quad",
-      "output": {
-        "name": "",
-        "type": 2,
-        "typeArguments": null
-      }
-    },
-    {
-      "inputs": [
-        {
-          "name": "key",
-          "type": 1,
-          "typeArguments": null
         },
         {
           "name": "value",
-          "type": 2,
+          "type": 3,
           "typeArguments": null
         }
       ],
-      "name": "intrinsic_store_quad",
+      "name": "store_u64",
       "output": {
         "name": "",
         "type": 0,

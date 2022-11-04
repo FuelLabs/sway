@@ -118,7 +118,7 @@ impl TraitConstraint {
                 // into the correct typing for this impl block by using the
                 // type parameters from the original trait declaration and the
                 // type arguments of the trait constraint.
-                let mut trait_methods = methods;
+                let mut trait_methods = vec![];
                 let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
                     type_parameters
                         .iter()
@@ -142,6 +142,7 @@ impl TraitConstraint {
                         de_insert_function(method.to_dummy_func(Mode::NonAbi)).with_parent(decl_id),
                     );
                 }
+                trait_methods.extend(methods);
 
                 // Insert the methods of the supertrait into the namespace.
                 // Specifically do not check for conflicting definitions because
