@@ -1516,10 +1516,12 @@ name = "forc"
 version = "0.30.0"
 dependencies = [
  "annotate-snippets",
+ "ansi_term",
  "anyhow",
  "clap 3.2.23",
  "clap_complete",
  "forc-pkg",
+ "forc-test",
  "forc-tracing",
  "forc-util",
  "fs_extra",
@@ -1630,6 +1632,18 @@ dependencies = [
  "url",
  "vec1",
  "walkdir",
+]
+
+[[package]]
+name = "forc-test"
+version = "0.30.0"
+dependencies = [
+ "anyhow",
+ "forc-pkg",
+ "fuel-tx 0.23.1",
+ "fuel-vm 0.22.3",
+ "rand 0.8.5",
+ "sway-core",
 ]
 
 [[package]]
@@ -4407,6 +4421,7 @@ dependencies = [
  "forc",
  "forc-client",
  "forc-pkg",
+ "forc-test",
  "forc-tracing",
  "fuel-vm 0.22.3",
  "futures",
