@@ -9,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'u256_div_test'
-source = 'root'
+source = 'member'
 dependencies = ['std']
