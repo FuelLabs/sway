@@ -1,22 +1,22 @@
-use super::{FinalProgram, ProgramKind};
+use super::FinalProgram;
 
-use crate::FinalizedAsm;
+use crate::{FinalizedAsm, FinalizedEntry};
 
 impl FinalProgram {
     pub(crate) fn finalize(self) -> FinalizedAsm {
-        match self.kind {
-            ProgramKind::Script => FinalizedAsm::ScriptMain {
-                data_section: self.data_section,
-                program_section: self.ops,
-            },
-            ProgramKind::Predicate => FinalizedAsm::PredicateMain {
-                data_section: self.data_section,
-                program_section: self.ops,
-            },
-            ProgramKind::Contract => FinalizedAsm::ContractAbi {
-                data_section: self.data_section,
-                program_section: self.ops,
-            },
+        FinalizedAsm {
+            data_section: self.data_section,
+            program_section: self.ops,
+            program_kind: self.kind,
+            entries: self
+                .entries
+                .into_iter()
+                .map(|(selector, imm, fn_name)| FinalizedEntry {
+                    imm,
+                    fn_name,
+                    selector,
+                })
+                .collect(),
         }
     }
 }
