@@ -5,7 +5,7 @@ use crate::{
         runnable::{Runnable, RunnableType},
     },
     core::{
-        dependancy,
+        dependency,
         document::TextDocument,
         token::{Token, TokenMap, TypeDefinition},
         {traverse_parse_tree, traverse_typed_tree},
@@ -242,11 +242,11 @@ impl Session {
                     capabilities::diagnostic::get_diagnostics(&ast_res.warnings, &ast_res.errors);
             } else {
                 // Collect tokens from dependencies and the standard library prelude.
-                self.parse_ast_to_tokens(parse_program, dependancy::collect_parsed_declaration);
+                self.parse_ast_to_tokens(parse_program, dependency::collect_parsed_declaration);
 
                 self.parse_ast_to_typed_tokens(
                     typed_program,
-                    dependancy::collect_typed_declaration,
+                    dependency::collect_typed_declaration,
                 );
             }
         }
