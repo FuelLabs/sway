@@ -91,7 +91,7 @@ fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
     lsp_types::MarkupContent { kind, value }
 }
 
-fn hover_format(token: &Token, ident: &Ident) -> Option<lsp_types::HoverContents> {
+fn hover_format(token: &Token, ident: &Ident) -> lsp_types::HoverContents {
     let token_name: String = ident.as_str().into();
     let doc_comment = format_doc_attributes(token);
 
