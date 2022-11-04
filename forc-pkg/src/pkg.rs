@@ -2458,18 +2458,22 @@ fn update_json_type_declaration(
     }
 }
 
-/// Compile the entire forc package and return a typed program, if any.
-pub fn check(
-    plan: &BuildPlan,
-    terse_mode: bool,
-) -> anyhow::Result<CompileResult<(ParseProgram, Option<ty::TyProgram>)>> {
+/// A `CompileResult` thats type is a tuple containing a `ParseProgram` and `Option<ty::TyProgram>`
+type ParseAndTypedPrograms = CompileResult<(ParseProgram, Option<ty::TyProgram>)>;
+
+/// Compile the entire forc package and return the parse and typed programs
+/// of the dependancies and project.
+/// The final item in the returned vector is the project.
+pub fn check(plan: &BuildPlan, terse_mode: bool) -> anyhow::Result<Vec<ParseAndTypedPrograms>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     // During `check`, we don't compile so this stays empty.
     let compiled_contract_deps = HashMap::new();
-    for (i, &node) in plan.compilation_order.iter().enumerate() {
+
+    let mut results = vec![];
+    for &node in plan.compilation_order.iter() {
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
         let constants = manifest.config_time_constants();
@@ -2488,7 +2492,10 @@ pub fn check(
         } = parse(manifest, terse_mode)?;
 
         let parse_program = match value {
-            None => return Ok(CompileResult::new(None, warnings, errors)),
+            None => {
+                results.push(CompileResult::new(None, warnings, errors));
+                return Ok(results);
+            }
             Some(program) => program,
         };
 
@@ -2499,7 +2506,8 @@ pub fn check(
         let typed_program = match ast_result.value {
             None => {
                 let value = Some((parse_program, None));
-                return Ok(CompileResult::new(value, warnings, errors));
+                results.push(CompileResult::new(value, warnings, errors));
+                return Ok(results);
             }
             Some(typed_program) => typed_program,
         };
@@ -2510,13 +2518,15 @@ pub fn check(
 
         source_map.insert_dependency(manifest.dir());
 
-        // We only need to return the final `TypedProgram`.
-        if i == plan.compilation_order.len() - 1 {
-            let value = Some((parse_program, Some(typed_program)));
-            return Ok(CompileResult::new(value, warnings, errors));
-        }
+        let value = Some((parse_program, Some(typed_program)));
+        results.push(CompileResult::new(value, warnings, errors));
     }
-    bail!("unable to check sway program: build plan contains no packages")
+
+    if results.is_empty() {
+        bail!("unable to check sway program: build plan contains no packages")
+    }
+
+    Ok(results)
 }
 
 /// Returns a parsed AST from the supplied [PackageManifestFile]
