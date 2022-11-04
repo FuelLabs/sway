@@ -4,7 +4,7 @@ source = 'path+from-root-5A0A8AEC06508E21'
 
 [[package]]
 name = 'many_stack_variables'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

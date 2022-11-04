@@ -56,7 +56,8 @@ mod ir_builder {
                 }
 
             rule fn_decl() -> IrAstFnDecl
-                = "pub fn" _ name:id() _ selector:selector_id()? _ "(" _
+                = is_public:is_public() _ is_entry:is_entry() _ "fn" _
+                        name:id() _ selector:selector_id()? _ "(" _
                         args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
                             metadata:comma_metadata_idx()? "{" _
                         locals:fn_local()*
@@ -66,30 +67,22 @@ mod ir_builder {
                         name,
                         args,
                         ret_type,
-                        is_public: true,
+                        is_public,
                         metadata,
                         locals,
                         blocks,
-                        selector
+                        selector,
+                        is_entry
                     }
                 }
-                / "fn" _ name:id() _ selector:selector_id()? _ "(" _
-                        args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
-                            metadata:comma_metadata_idx()? "{" _
-                        locals:fn_local()*
-                        blocks:block_decl()*
-                    "}" _ {
-                    IrAstFnDecl {
-                        name,
-                        args,
-                        ret_type,
-                        is_public: false,
-                        metadata,
-                        locals,
-                        blocks,
-                        selector
-                    }
-                }
+
+            rule is_public() -> bool
+                = "pub" _ { true }
+                / "" _ { false }
+
+            rule is_entry() -> bool
+                = "entry" _ { true }
+                / "" _ { false }
 
             rule selector_id() -> [u8; 4]
                 = "<" _ s:$(['0'..='9' | 'a'..='f' | 'A'..='F']*<8>) _ ">" _ {
@@ -625,6 +618,7 @@ mod ir_builder {
         locals: Vec<(IrAstTy, String, bool, Option<IrAstOperation>)>,
         blocks: Vec<IrAstBlock>,
         selector: Option<[u8; 4]>,
+        is_entry: bool,
     }
 
     #[derive(Debug)]
@@ -884,6 +878,7 @@ mod ir_builder {
                 ret_type,
                 fn_decl.selector,
                 fn_decl.is_public,
+                fn_decl.is_entry,
                 convert_md_idx(&fn_decl.metadata),
             );
 

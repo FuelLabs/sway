@@ -4,7 +4,7 @@ source = 'path+from-root-01ECD3B6EBEB3EFB'
 
 [[package]]
 name = 'reentrancy_attacker_abi'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

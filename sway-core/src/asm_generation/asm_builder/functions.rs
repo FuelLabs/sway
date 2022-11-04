@@ -141,9 +141,7 @@ impl<'ir> AsmBuilder<'ir> {
             )));
         }
 
-        let func_has_selector = function.has_selector(self.context);
-        let func_is_main = function.get_name(self.context) == "main";
-        let func_is_entry = func_has_selector || func_is_main;
+        let func_is_entry = function.is_entry(self.context);
 
         // Insert a function label.
         let (start_label, end_label) = self.func_to_labels(&function);
@@ -170,6 +168,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         if func_is_entry {
             // Read the args from VM/transaction memory.
+            let func_is_main = function.get_name(self.context) == "main";
             self.compile_external_args(function, func_is_main)
         } else {
             // Make copies of the arg registers.

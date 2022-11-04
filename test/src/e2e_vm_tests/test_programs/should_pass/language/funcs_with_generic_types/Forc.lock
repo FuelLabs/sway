@@ -4,5 +4,5 @@ source = 'path+from-root-EE30911CC58544F9'
 
 [[package]]
 name = 'funcs_with_generic_types'
-source = 'root'
+source = 'member'
 dependencies = ['core']

@@ -289,29 +289,29 @@ fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {
     Ok((Some(dep_name), pkg_str))
 }
 
-pub fn print_diff(proj_name: &str, diff: &Diff) {
-    print_removed_pkgs(proj_name, diff.removed.iter().cloned());
-    print_added_pkgs(proj_name, diff.added.iter().cloned());
+pub fn print_diff(member_names: &HashSet<String>, diff: &Diff) {
+    print_removed_pkgs(member_names, diff.removed.iter().cloned());
+    print_added_pkgs(member_names, diff.added.iter().cloned());
 }
 
-pub fn print_removed_pkgs<'a, I>(proj_name: &str, removed: I)
+pub fn print_removed_pkgs<'a, I>(member_names: &HashSet<String>, removed: I)
 where
     I: IntoIterator<Item = &'a PkgLock>,
 {
     for pkg in removed {
-        if pkg.name != proj_name {
+        if !member_names.contains(&pkg.name) {
             let name = name_or_git_unique_string(pkg);
             println_red(&format!("  Removing {}", name));
         }
     }
 }
 
-pub fn print_added_pkgs<'a, I>(proj_name: &str, removed: I)
+pub fn print_added_pkgs<'a, I>(member_names: &HashSet<String>, removed: I)
 where
     I: IntoIterator<Item = &'a PkgLock>,
 {
     for pkg in removed {
-        if pkg.name != proj_name {
+        if !member_names.contains(&pkg.name) {
             let name = name_or_git_unique_string(pkg);
             println_green(&format!("    Adding {}", name));
         }

@@ -4,7 +4,7 @@ source = 'path+from-root-C52D55288A4557F3'
 
 [[package]]
 name = 'match_expressions_inside_generic_functions'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

@@ -4,7 +4,7 @@ source = 'path+from-root-CD761B243EFCCAC4'
 
 [[package]]
 name = 'nested_structs'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

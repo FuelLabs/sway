@@ -24,9 +24,9 @@ fn prompt_address() -> Result<Bech32Address> {
     Bech32Address::from_str(buf.trim()).map_err(Error::msg)
 }
 
-fn prompt_signature(message: Message) -> Result<Signature> {
-    println!("Message to sign: {}", message);
-    print!("Please provide the signed message:");
+fn prompt_signature(tx_id: fuel_tx::Bytes32) -> Result<Signature> {
+    println!("Transaction id to sign: {}", tx_id);
+    print!("Please provide the signature:");
     std::io::stdout().flush()?;
     let mut buf = String::new();
     std::io::stdin().read_line(&mut buf)?;
@@ -163,11 +163,16 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
         let mut tx = self._finalize_without_signature();
 
         if !unsigned {
-            let message = Message::new(tx.to_bytes());
             let signature = if let Some(signing_key) = signing_key {
+                // Safety: `Message::from_bytes_unchecked` is unsafe because
+                // it can't guarantee that the provided bytes will be the product
+                // of a cryptographically secure hash. However, the bytes are
+                // coming from `tx.id()`, which already uses `Hasher::hash()`
+                // to hash it using a secure hash mechanism.
+                let message = unsafe { Message::from_bytes_unchecked(*tx.id()) };
                 Signature::sign(&signing_key, &message)
             } else {
-                prompt_signature(message)?
+                prompt_signature(tx.id())?
             };
 
             let witness = Witness::from(signature.as_ref());

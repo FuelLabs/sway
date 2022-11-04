@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-6FF6432D2813E4FB'
+
+[[package]]
+name = 'if_type_revert'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-6FF6432D2813E4FB'
+dependencies = ['core']
