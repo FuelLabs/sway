@@ -1,7 +1,7 @@
 script;
 use basic_storage_abi::{Quad, StoreU64};
 use std::assert::assert;
-ues std::logging::log;
+use std::logging::log;
 
 fn main() -> u64 {
     let addr = abi(StoreU64, 0x50fbab9b6ccf751161e13b83e74de9893f935bc6f66a18bd0f64b66d24c098de);
