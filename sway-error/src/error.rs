@@ -675,6 +675,8 @@ pub enum CompileError {
             Consider assigning to a different register inside the ASM block."
     )]
     InitializedRegisterReassignment { name: String, span: Span },
+    #[error("Control flow VM instructions are not allowed in assembly blocks.")]
+    DisallowedControlFlowInstruction { name: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -857,6 +859,7 @@ impl Spanned for CompileError {
             RefMutableNotAllowedInMain { param_name } => param_name.span(),
             PointerReturnNotAllowedInMain { span } => span.clone(),
             InitializedRegisterReassignment { span, .. } => span.clone(),
+            DisallowedControlFlowInstruction { span, .. } => span.clone(),
         }
     }
 }
