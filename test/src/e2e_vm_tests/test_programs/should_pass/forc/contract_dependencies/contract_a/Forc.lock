@@ -1,6 +1,6 @@
 [[package]]
 name = 'contract_a'
-source = 'root'
+source = 'member'
 contract-dependencies = [
     'contract_b',
     'contract_c',

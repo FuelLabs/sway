@@ -4,7 +4,7 @@ source = 'path+from-root-FEF54F47A769A309'
 
 [[package]]
 name = 'predicate_multi_test'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

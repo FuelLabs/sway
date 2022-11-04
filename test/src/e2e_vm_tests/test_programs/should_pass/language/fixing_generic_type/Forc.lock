@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-C2C00FC9DC812272'
+
+[[package]]
+name = 'fixing_generic_type'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-C2C00FC9DC812272'
+dependencies = ['core']

@@ -1,6 +1,6 @@
 [[package]]
 name = 'contract_multi_test'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

@@ -16,6 +16,7 @@ use crate::{
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use parking_lot::RwLock;
+use pkg::manifest::ManifestFile;
 use std::{path::PathBuf, sync::Arc};
 use sway_core::{
     language::{
@@ -193,14 +194,29 @@ impl Session {
         let locked = false;
         let offline = false;
 
-        let manifest = pkg::PackageManifestFile::from_dir(&manifest_dir).map_err(|_| {
+        let manifest = ManifestFile::from_dir(&manifest_dir).map_err(|_| {
             DocumentError::ManifestFileNotFound {
                 dir: uri.path().into(),
             }
         })?;
 
-        let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)
-            .map_err(LanguageServerError::BuildPlanFailed)?;
+        let member_manifests =
+            manifest
+                .member_manifests()
+                .map_err(|_| DocumentError::MemberManifestsFailed {
+                    dir: uri.path().into(),
+                })?;
+
+        let lock_path =
+            manifest
+                .lock_path()
+                .map_err(|_| DocumentError::ManifestsLockPathFailed {
+                    dir: uri.path().into(),
+                })?;
+
+        let plan =
+            pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)
+                .map_err(LanguageServerError::BuildPlanFailed)?;
 
         let mut diagnostics = Vec::new();
         let results = pkg::check(&plan, true).map_err(LanguageServerError::FailedToCompile)?;

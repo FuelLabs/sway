@@ -1,6 +1,6 @@
 [[package]]
 name = 'basic_storage'
-source = 'root'
+source = 'member'
 dependencies = [
     'basic_storage_abi',
     'std',

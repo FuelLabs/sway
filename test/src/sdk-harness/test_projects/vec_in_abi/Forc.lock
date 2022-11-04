@@ -9,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'vec_in_abi'
-source = 'root'
+source = 'member'
 dependencies = ['std']
