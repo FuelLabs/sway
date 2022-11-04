@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-773F5D8CD6B5DB48'
+
+[[package]]
+name = 'ec_recover'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-773F5D8CD6B5DB48'
+dependencies = ['core']

@@ -138,7 +138,7 @@ impl Items {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
-        methods: Vec<ty::TyFunctionDeclaration>,
+        methods: &[DeclarationId],
         impl_span: &Span,
         is_impl_self: bool,
     ) -> CompileResult<()> {
@@ -170,19 +170,17 @@ impl Items {
         self.implemented_traits.insert_for_type(type_id);
     }
 
-    pub(crate) fn get_methods_for_type(
-        &self,
-        implementing_for_type_id: TypeId,
-    ) -> Vec<ty::TyFunctionDeclaration> {
-        self.implemented_traits
-            .get_methods_for_type(implementing_for_type_id)
+    pub(crate) fn get_methods_for_type(&self, type_id: TypeId) -> Vec<DeclarationId> {
+        self.implemented_traits.get_methods_for_type(type_id)
     }
 
-    pub(crate) fn get_canonical_path(&self, symbol: &Ident) -> &[Ident] {
-        self.use_synonyms
-            .get(symbol)
-            .map(|v| &v.0[..])
-            .unwrap_or(&[])
+    pub(crate) fn get_methods_for_type_and_trait_name(
+        &self,
+        type_id: TypeId,
+        trait_name: &CallPath,
+    ) -> Vec<DeclarationId> {
+        self.implemented_traits
+            .get_methods_for_type_and_trait_name(type_id, trait_name)
     }
 
     pub(crate) fn has_storage_declared(&self) -> bool {

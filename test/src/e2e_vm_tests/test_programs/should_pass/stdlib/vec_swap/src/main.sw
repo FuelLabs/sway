@@ -1,6 +1,6 @@
 script;
 
-use std::{assert::assert, hash::sha256, option::Option, revert::revert, u128::{From, U128}, vec::Vec};
+use std::hash::sha256;
 
 enum SimpleEnum {
     A: b256,
@@ -25,7 +25,7 @@ fn main() -> bool {
 }
 
 fn test_vector_swap_u8() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let number0 = 0u8;
     let number1 = 1u8;
@@ -101,7 +101,7 @@ fn test_vector_swap_u8() {
 }
 
 fn test_vector_swap_b256() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let b0 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     let b1 = 0x0000000000000000000000000000000000000000000000000000000000000001;
@@ -143,7 +143,6 @@ fn test_vector_swap_b256() {
     }
 
     vector.swap(0, 2);
-
     assert(vector.len() == 3);
     assert(vector.capacity() == 4);
     assert(vector.is_empty() == false);
@@ -177,7 +176,7 @@ fn test_vector_swap_b256() {
 }
 
 fn test_vector_swap_struct() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let number0 = 0u32;
     let number1 = 1u32;
@@ -188,13 +187,16 @@ fn test_vector_swap_struct() {
     let b2 = 0x0000000000000000000000000000000000000000000000000000000000000002;
 
     vector.push(SimpleStruct {
-        x: number0, y: b0
+        x: number0,
+        y: b0,
     });
     vector.push(SimpleStruct {
-        x: number1, y: b1
+        x: number1,
+        y: b1,
     });
     vector.push(SimpleStruct {
-        x: number2, y: b2
+        x: number2,
+        y: b2,
     });
 
     assert(vector.len() == 3);
@@ -269,7 +271,7 @@ fn test_vector_swap_struct() {
 }
 
 fn test_vector_swap_enum() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let b0 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     let b1 = 0x0000000000000000000000000000000000000000000000000000000000000001;
@@ -317,8 +319,7 @@ fn test_vector_swap_enum() {
     match vector.get(2) {
         Option::Some(val) => {
             match val {
-                SimpleEnum::B => {
-                },
+                SimpleEnum::B => {},
                 _ => {
                     revert(0)
                 },
@@ -338,8 +339,7 @@ fn test_vector_swap_enum() {
     match vector.get(0) {
         Option::Some(val) => {
             match val {
-                SimpleEnum::B => {
-                },
+                SimpleEnum::B => {},
                 _ => {
                     revert(0)
                 },
@@ -384,7 +384,7 @@ fn test_vector_swap_enum() {
 }
 
 fn test_vector_swap_tuple() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let number0 = 0u16;
     let number1 = 1u16;
@@ -470,7 +470,7 @@ fn test_vector_swap_tuple() {
 }
 
 fn test_vector_swap_string() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let s0 = "fuel";
     let s1 = "john";
@@ -546,7 +546,7 @@ fn test_vector_swap_string() {
 }
 
 fn test_vector_swap_array() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let a0 = [0, 1, 2];
     let a1 = [3, 4, 5];
@@ -634,7 +634,7 @@ fn test_vector_swap_array() {
 }
 
 fn test_vector_swap_same_indexes_noop() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let number0 = 0u8;
     let number1 = 1u8;

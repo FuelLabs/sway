@@ -264,10 +264,30 @@ define_op_codes!(
         "sldc",
         (contract: reg, addr: reg, size: reg)
     ),
-    (Srw, SrwOpcode, "srw", (ret: reg, state_addr: reg)),
-    (Srwq, SrwqOpcode, "srwq", (addr: reg, state_addr: reg)),
-    (Sww, SwwOpcode, "sww", (state_addr: reg, value: reg)),
-    (Swwq, SwwqOpcode, "swwq", (state_addr: reg, addr: reg)),
+    (
+        Srw,
+        SrwOpcode,
+        "srw",
+        (ret: reg, is_set: reg, state_addr: reg)
+    ),
+    (
+        Srwq,
+        SrwqOpcode,
+        "srwq",
+        (addr: reg, is_set: reg, state_addr: reg, count: reg)
+    ),
+    (
+        Sww,
+        SwwOpcode,
+        "sww",
+        (state_addr: reg, is_set: reg, value: reg)
+    ),
+    (
+        Swwq,
+        SwwqOpcode,
+        "swwq",
+        (state_addr: reg, is_set: reg, addr: reg, count: reg)
+    ),
     (Time, TimeOpcode, "time", (ret: reg, height: reg)),
     (Tr, TrOpcode, "tr", (contract: reg, coins: reg, asset: reg)),
     (

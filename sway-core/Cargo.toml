@@ -1,6 +1,6 @@
 [package]
 name = "sway-core"
-version = "0.28.1"
+version = "0.30.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -13,25 +13,22 @@ clap = { version = "3.1", features = ["derive"], optional = true }
 derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
-fuel-asm = "0.9"
-fuel-crypto = "0.6"
-fuel-tx = "0.20"
-fuel-types = "0.5"
-fuel-vm = "0.18"
+fuel-vm = { version = "0.22", features = ["serde"] }
 hex = { version = "0.4", optional = true }
 im = "15.0"
 itertools = "0.10"
 lazy_static = "1.4"
 petgraph = "0.6"
+rustc-hash = "1.1.0"
 serde = { version = "1.0", features = ["derive"] }
 sha2 = "0.9"
 smallvec = "1.7"
-sway-ast = { version = "0.28.1", path = "../sway-ast" }
-sway-error = { version = "0.28.1", path = "../sway-error" }
-sway-ir = { version = "0.28.1", path = "../sway-ir" }
-sway-parse = { version = "0.28.1", path = "../sway-parse" }
-sway-types = { version = "0.28.1", path = "../sway-types" }
-sway-utils = { version = "0.28.1", path = "../sway-utils" }
+sway-ast = { version = "0.30.0", path = "../sway-ast" }
+sway-error = { version = "0.30.0", path = "../sway-error" }
+sway-ir = { version = "0.30.0", path = "../sway-ir" }
+sway-parse = { version = "0.30.0", path = "../sway-parse" }
+sway-types = { version = "0.30.0", path = "../sway-types" }
+sway-utils = { version = "0.30.0", path = "../sway-utils" }
 thiserror = "1.0"
 tracing = "0.1"
 uint = "0.9"

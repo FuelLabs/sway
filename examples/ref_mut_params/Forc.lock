@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-B06EABDDBFB4812D'
-dependencies = []
 
 [[package]]
 name = 'mut_ref_params'

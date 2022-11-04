@@ -1,8 +1,9 @@
 library u256;
 
+use ::assert::assert;
+use ::convert::From;
 use ::result::Result;
 use ::u128::U128;
-use ::assert::assert;
 
 /// Left shift a u64 and preserve the overflow amount if any
 fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
@@ -33,15 +34,14 @@ pub enum U256Error {
     LossOfPrecision: (),
 }
 
-pub trait From {
-    /// Function for creating a U256 from its u64 components.
-    fn from(a: u64, b: u64, c: u64, d: u64) -> Self;
-    fn into(self) -> (u64, u64, u64, u64);
-}
-
-impl From for U256 {
-    fn from(a: u64, b: u64, c: u64, d: u64) -> U256 {
-        U256 { a, b, c, d }
+impl From<(u64, u64, u64, u64)> for U256 {
+    fn from(components: (u64, u64, u64, u64)) -> U256 {
+        U256 {
+            a: components.0,
+            b: components.1,
+            c: components.2,
+            d: components.3,
+        }
     }
 
     /// Function for extracting 4 u64s from a U256.
@@ -51,14 +51,14 @@ impl From for U256 {
 }
 
 impl core::ops::Eq for U256 {
-    /// Function for comparing 2 U256s for equality
+    /// Function for comparing 2 `U256`s for equality
     fn eq(self, other: Self) -> bool {
         self.a == other.a && self.b == other.b && self.c == other.c && self.d == other.d
     }
 }
 
 impl U256 {
-    /// Initializes a new, zeroed U256.
+    /// Initializes a new, zeroed `U256`.
     pub fn new() -> U256 {
         U256 {
             a: 0,
@@ -69,10 +69,20 @@ impl U256 {
     }
 
     /// Safely downcast to `u64` without loss of precision.
-    /// Returns Err if the number > ~u64::max()
+    /// Returns Err if the number > u64::max()
     pub fn as_u64(self) -> Result<u64, U256Error> {
         if self.a == 0 && self.b == 0 && self.c == 0 {
             Result::Ok(self.d)
+        } else {
+            Result::Err(U256Error::LossOfPrecision)
+        }
+    }
+
+    /// Safely downcast to `u128` without loss of precision.
+    /// Returns an error if `self > U128::max()`.
+    pub fn as_u128(self) -> Result<U128, U256Error> {
+        if self.a == 0 && self.b == 0 {
+            Result::Ok(U128::from((self.c, self.d)))
         } else {
             Result::Err(U256Error::LossOfPrecision)
         }
@@ -92,10 +102,10 @@ impl U256 {
     /// 2<sup>256</sup> - 1.
     pub fn max() -> U256 {
         U256 {
-            a: ~u64::max(),
-            b: ~u64::max(),
-            c: ~u64::max(),
-            d: ~u64::max(),
+            a: u64::max(),
+            b: u64::max(),
+            c: u64::max(),
+            d: u64::max(),
         }
     }
 
@@ -104,7 +114,7 @@ impl U256 {
         256
     }
 
-    /// Get 4 64 bit words from a single U256 value.
+    /// Get 4 64 bit words from a single `U256` value.
     fn decompose(self) -> (u64, u64, u64, u64) {
         (self.a, self.b, self.c, self.d)
     }
@@ -128,7 +138,7 @@ impl core::ops::BitwiseAnd for U256 {
         let word_2 = value_word_2 & other_word_2;
         let word_3 = value_word_3 & other_word_3;
         let word_4 = value_word_4 & other_word_4;
-        ~U256::from(word_1, word_2, word_3, word_4)
+        U256::from((word_1, word_2, word_3, word_4))
     }
 }
 
@@ -140,7 +150,7 @@ impl core::ops::BitwiseOr for U256 {
         let word_2 = value_word_2 | other_word_2;
         let word_3 = value_word_3 | other_word_3;
         let word_4 = value_word_4 | other_word_4;
-        ~U256::from(word_1, word_2, word_3, word_4)
+        U256::from((word_1, word_2, word_3, word_4))
     }
 }
 
@@ -152,7 +162,7 @@ impl core::ops::BitwiseXor for U256 {
         let word_2 = value_word_2 ^ other_word_2;
         let word_3 = value_word_3 ^ other_word_3;
         let word_4 = value_word_4 ^ other_word_4;
-        ~U256::from(word_1, word_2, word_3, word_4)
+        U256::from((word_1, word_2, word_3, word_4))
     }
 }
 
@@ -188,7 +198,7 @@ impl core::ops::Shiftable for U256 {
             w1 = word_4 << b;
         }
 
-        ~U256::from(w1, w2, w3, w4)
+        U256::from((w1, w2, w3, w4))
     }
 
     fn rsh(self, shift_amount: u64) -> Self {
@@ -222,39 +232,39 @@ impl core::ops::Shiftable for U256 {
             w4 = word_1 >> b;
         };
 
-        ~U256::from(w1, w2, w3, w4)
+        U256::from((w1, w2, w3, w4))
     }
 }
 
 impl core::ops::Add for U256 {
-    /// Add a U256 to a U256. Panics on overflow.
+    /// Add a `U256` to a `U256`. Panics on overflow.
     fn add(self, other: Self) -> Self {
         let (word_1, word_2, word_3, word_4) = self.decompose();
         let (other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
 
         let mut overflow = 0;
-        let mut local_res = ~U128::from(0, word_4) + ~U128::from(0, other_word_4);
+        let mut local_res = U128::from((0, word_4)) + U128::from((0, other_word_4));
         let result_d = local_res.lower;
         overflow = local_res.upper;
 
-        local_res = ~U128::from(0, word_3) + ~U128::from(0, other_word_3) + ~U128::from(0, overflow);
+        local_res = U128::from((0, word_3)) + U128::from((0, other_word_3)) + U128::from((0, overflow));
         let result_c = local_res.lower;
         overflow = local_res.upper;
 
-        local_res = ~U128::from(0, word_2) + ~U128::from(0, other_word_2) + ~U128::from(0, overflow);
+        local_res = U128::from((0, word_2)) + U128::from((0, other_word_2)) + U128::from((0, overflow));
         let result_b = local_res.lower;
         overflow = local_res.upper;
 
-        local_res = ~U128::from(0, word_1) + ~U128::from(0, other_word_1) + ~U128::from(0, overflow);
+        local_res = U128::from((0, word_1)) + U128::from((0, other_word_1)) + U128::from((0, overflow));
         let result_a = local_res.lower;
         // panic on overflow
         assert(local_res.upper == 0);
-        ~U256::from(result_a, result_b, result_c, result_d)
+        U256::from((result_a, result_b, result_c, result_d))
     }
 }
 
 impl core::ops::Subtract for U256 {
-    /// Subtract a U256 from a U256. Panics of overflow.
+    /// Subtract a `U256` from a `U256`. Panics of overflow.
     fn subtract(self, other: Self) -> Self {
         // If trying to subtract a larger number, panic.
         assert(!(self < other));
@@ -266,7 +276,7 @@ impl core::ops::Subtract for U256 {
 
         let mut result_b = 0;
         if word_2 < other_word_2 {
-            result_b = ~u64::max() - (other_word_2 - word_2 - 1);
+            result_b = u64::max() - (other_word_2 - word_2 - 1);
             result_a -= 1;
         } else {
             result_b = word_2 - other_word_2;
@@ -274,7 +284,7 @@ impl core::ops::Subtract for U256 {
 
         let mut result_c = 0;
         if word_3 < other_word_3 {
-            result_c = ~u64::max() - (other_word_3 - word_3 - 1);
+            result_c = u64::max() - (other_word_3 - word_3 - 1);
             result_b -= 1;
         } else {
             result_c = word_3 - other_word_3;
@@ -282,21 +292,21 @@ impl core::ops::Subtract for U256 {
 
         let mut result_d = 0;
         if word_4 < other_word_4 {
-            result_d = ~u64::max() - (other_word_4 - word_4 - 1);
+            result_d = u64::max() - (other_word_4 - word_4 - 1);
             result_c -= 1;
         } else {
             result_d = word_4 - other_word_4;
         }
 
-        ~U256::from(result_a, result_b, result_c, result_d)
+        U256::from((result_a, result_b, result_c, result_d))
     }
 }
 
 impl core::ops::Multiply for U256 {
-    /// Multiply a U256 with a U256. Panics on overflow.
+    /// Multiply a `U256` with a `U256`. Panics on overflow.
     fn multiply(self, other: Self) -> Self {
-        let zero = ~U256::from(0, 0, 0, 0);
-        let one = ~U256::from(0, 0, 0, 1);
+        let zero = U256::from((0, 0, 0, 0));
+        let one = U256::from((0, 0, 0, 1));
 
         let mut total = zero;
 
@@ -320,15 +330,15 @@ impl core::ops::Multiply for U256 {
 }
 
 impl core::ops::Divide for U256 {
-    /// Divide a U256 by a U256. Panics if divisor is zero.
+    /// Divide a `U256` by a `U256`. Panics if divisor is zero.
     fn divide(self, divisor: Self) -> Self {
-        let zero = ~U256::from(0, 0, 0, 0);
-        let one = ~U256::from(0, 0, 0, 1);
+        let zero = U256::from((0, 0, 0, 0));
+        let one = U256::from((0, 0, 0, 1));
 
         assert(divisor != zero);
 
-        let mut quotient = ~U256::from(0, 0, 0, 0);
-        let mut remainder = ~U256::from(0, 0, 0, 0);
+        let mut quotient = U256::from((0, 0, 0, 0));
+        let mut remainder = U256::from((0, 0, 0, 0));
 
         let mut i = 256 - 1;
 

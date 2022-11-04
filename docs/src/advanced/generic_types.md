@@ -84,11 +84,9 @@ fn successor<T>(argument: T)
     where T: Add,
           T: Incrementable
 {
-    argument + ~T::incrementor()
+    argument + T::incrementor()
 }
 ```
-
-_(There's a little bit of new syntax here. When directly referring to a type to execute a method from it, a tilde (`~`) is used. This may change in the future.)_
 
 ## Generic Structs and Enums
 

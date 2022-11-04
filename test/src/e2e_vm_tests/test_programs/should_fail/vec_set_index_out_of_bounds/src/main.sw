@@ -1,7 +1,7 @@
 script;
 
 fn main() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let number0 = 0u8;
     let number1 = 1u8;

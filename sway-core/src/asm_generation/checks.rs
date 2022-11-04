@@ -1,7 +1,7 @@
 //! Various checks and heuristics that are naively run on sequences of opcodes.
 //!
 //! This is _not_ the place for optimization passes.
-use crate::asm_generation::FinalizedAsm;
+use crate::asm_generation::{FinalizedAsm, ProgramKind};
 use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
 use crate::asm_lang::*;
 use crate::error::*;
@@ -12,14 +12,11 @@ use sway_error::error::CompileError;
 /// i.e., if this is a script or predicate, we can't use certain contract opcodes.
 /// See https://github.com/FuelLabs/sway/issues/350 for details.
 pub fn check_invalid_opcodes(asm: &FinalizedAsm) -> CompileResult<()> {
-    match asm {
-        FinalizedAsm::ContractAbi { .. } | FinalizedAsm::Library => ok((), vec![], vec![]),
-        FinalizedAsm::ScriptMain {
-            program_section, ..
-        } => check_for_contract_opcodes(&program_section.ops[..]),
-        FinalizedAsm::PredicateMain {
-            program_section, ..
-        } => check_for_contract_opcodes(&program_section.ops[..]),
+    match asm.program_kind {
+        ProgramKind::Contract | ProgramKind::Library => ok((), vec![], vec![]),
+        ProgramKind::Script | ProgramKind::Predicate => {
+            check_for_contract_opcodes(&asm.program_section.ops[..])
+        }
     }
 }
 

@@ -4,7 +4,8 @@
 library reentrancy;
 
 use ::assert::assert;
-use ::context::{call_frames::*, registers::frame_ptr};
+use ::call_frames::*;
+use ::registers::frame_ptr;
 
 pub fn reentrancy_guard() {
     assert(!is_reentrant());

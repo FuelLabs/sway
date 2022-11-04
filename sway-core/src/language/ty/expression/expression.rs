@@ -3,7 +3,7 @@ use std::fmt;
 use sway_types::Span;
 
 use crate::{
-    declaration_engine::de_get_function,
+    declaration_engine::{de_get_function, DeclMapping, ReplaceDecls},
     error::*,
     language::{ty::*, Literal},
     type_system::*,
@@ -38,6 +38,12 @@ impl ReplaceSelfType for TyExpression {
     fn replace_self_type(&mut self, self_type: TypeId) {
         self.return_type.replace_self_type(self_type);
         self.expression.replace_self_type(self_type);
+    }
+}
+
+impl ReplaceDecls for TyExpression {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
+        self.expression.replace_decls(decl_mapping);
     }
 }
 

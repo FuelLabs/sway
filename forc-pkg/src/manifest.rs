@@ -630,7 +630,7 @@ impl WorkspaceManifest {
     /// This checks if the listed members in the `WorkspaceManifest` are indeed in the given `Forc.toml`'s directory.
     pub fn validate(&self, path: &Path) -> Result<()> {
         for member in self.members.iter() {
-            let member_path = path.join(&member).join("Forc.toml");
+            let member_path = path.join(member).join("Forc.toml");
             if !member_path.exists() {
                 bail!(
                     "{:?} is listed as a member of the workspace but {:?} does not exists",

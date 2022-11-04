@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-A779871B261C194D'
-dependencies = []
 
 [[package]]
 name = 'native_token'
