@@ -1,0 +1,17 @@
+[package]
+name = "forc-test"
+version = "0.30.0"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "A library for building and running Sway unit tests within Forc packages."
+
+[dependencies]
+anyhow = "1"
+forc-pkg = { version = "0.30.0", path = "../forc-pkg" }
+fuel-tx = { version = "0.23", features = ["builder"] }
+fuel-vm = { version = "0.22", features = ["random"] }
+rand = "0.8"
+sway-core = { version = "0.30.0", path = "../sway-core" }

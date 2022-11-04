@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-6BF9CEE717879469'
+
+[[package]]
+name = 'script_multi_test'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-6BF9CEE717879469'
+dependencies = ['core']
