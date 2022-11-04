@@ -4,5 +4,5 @@ source = 'path+from-root-086E35205BD410DF'
 
 [[package]]
 name = 'zero_field_types'
-source = 'root'
+source = 'member'
 dependencies = ['core']

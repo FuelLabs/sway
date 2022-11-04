@@ -4,5 +4,5 @@ source = 'path+from-root-818C6EA3A80B47C0'
 
 [[package]]
 name = 'fix_opcode_bug'
-source = 'root'
+source = 'member'
 dependencies = ['core']

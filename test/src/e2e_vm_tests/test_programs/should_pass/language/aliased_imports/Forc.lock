@@ -1,6 +1,6 @@
 [[package]]
 name = 'aliased_imports'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

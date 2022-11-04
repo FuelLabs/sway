@@ -8,7 +8,7 @@ source = 'path+from-root-051EC93A63B1E039'
 
 [[package]]
 name = 'methods_contract'
-source = 'root'
+source = 'member'
 dependencies = [
     'methods_abi',
     'std',

@@ -4,5 +4,5 @@ source = 'path+from-root-FA2A8FF2F74B6948'
 
 [[package]]
 name = 'main_returns_unit'
-source = 'root'
+source = 'member'
 dependencies = ['core']

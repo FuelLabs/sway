@@ -4,7 +4,7 @@ source = 'path+from-root-DF52F43C9B324936'
 
 [[package]]
 name = 'option_in_abi'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

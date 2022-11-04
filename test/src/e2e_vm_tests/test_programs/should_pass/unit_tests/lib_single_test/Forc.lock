@@ -4,7 +4,7 @@ source = 'path+from-root-C54FB40A1F27C16D'
 
 [[package]]
 name = 'lib_single_test'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

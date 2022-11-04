@@ -1,6 +1,6 @@
 [[package]]
 name = 'basic_func_decl'
-source = 'root'
+source = 'member'
 dependencies = ['core']
 
 [[package]]

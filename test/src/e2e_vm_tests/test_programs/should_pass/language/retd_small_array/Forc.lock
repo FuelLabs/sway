@@ -4,5 +4,5 @@ source = 'path+from-root-D892E29A6FC98019'
 
 [[package]]
 name = 'retd_small_array'
-source = 'root'
+source = 'member'
 dependencies = ['core']
