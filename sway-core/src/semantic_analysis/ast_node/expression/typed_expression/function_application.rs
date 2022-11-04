@@ -143,15 +143,15 @@ pub(crate) fn check_function_arguments_arity(
 }
 
 fn handle_trait_constraints(
-    ctx: TypeCheckContext,
+    mut ctx: TypeCheckContext,
     type_parameters: &[TypeParameter],
     access_span: &Span,
 ) -> CompileResult<DeclMapping> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let mut original_decl_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
-    let mut new_decl_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    let mut original_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
 
     for type_param in type_parameters.iter() {
         let TypeParameter {
@@ -187,80 +187,22 @@ fn handle_trait_constraints(
                 .cloned()
             {
                 Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
-                    let ty::TyTraitDeclaration {
-                        interface_surface: trait_interface_surface,
-                        type_parameters: trait_type_parameters,
-                        methods: trait_methods,
-                        ..
-                    } = check!(
+                    let trait_decl = check!(
                         CompileResult::from(de_get_trait(decl_id.clone(), &trait_name.span())),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
 
-                    let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
-                        trait_type_parameters
-                            .iter()
-                            .map(|type_param| type_param.type_id)
-                            .collect(),
-                        trait_type_arguments
-                            .iter()
-                            .map(|type_arg| type_arg.type_id)
-                            .collect(),
+                    let (trait_original_method_ids, trait_method_ids, trait_impld_method_ids) = check!(
+                        trait_decl.retrieve_interface_surface_and_methods_and_implemented_methods_for_type(ctx.by_ref(), *type_id, trait_name, trait_type_arguments),
+                        continue,
+                        warnings,
+                        errors
                     );
-
-                    // Retrieve the interface surface for this trait.
-                    for decl_id in trait_interface_surface.into_iter() {
-                        let method = check!(
-                            CompileResult::from(de_get_trait_fn(
-                                decl_id.clone(),
-                                &trait_name.span()
-                            )),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        original_decl_ids.insert(method.name, decl_id);
-                    }
-
-                    // Retrieve the trait methods for this trait.
-                    for decl_id in trait_methods.into_iter() {
-                        let method = check!(
-                            CompileResult::from(de_get_function(
-                                decl_id.clone(),
-                                &trait_name.span()
-                            )),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        original_decl_ids.insert(method.name, decl_id);
-                    }
-
-                    // Retrieve the implemented methods for this trait and this
-                    // type. This includes the interface surface methods and the
-                    // trait methods.
-                    for decl_id in ctx
-                        .namespace
-                        .get_methods_for_type_and_trait_name(*type_id, trait_name)
-                        .into_iter()
-                    {
-                        let mut method = check!(
-                            CompileResult::from(de_get_function(
-                                decl_id.clone(),
-                                &trait_name.span()
-                            )),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        method.copy_types(&type_mapping);
-                        new_decl_ids.insert(
-                            method.name.clone(),
-                            de_insert_function(method).with_parent(decl_id),
-                        );
-                    }
+                    original_method_ids.extend(trait_original_method_ids);
+                    original_method_ids.extend(trait_method_ids);
+                    impld_method_ids.extend(trait_impld_method_ids);
 
                     // TODO: handle supertraits
 
@@ -283,7 +225,7 @@ fn handle_trait_constraints(
 
     if errors.is_empty() {
         let decl_mapping =
-            DeclMapping::from_original_and_new_decl_ids(original_decl_ids, new_decl_ids);
+            DeclMapping::from_original_and_new_decl_ids(original_method_ids, impld_method_ids);
         ok(decl_mapping, warnings, errors)
     } else {
         err(warnings, errors)

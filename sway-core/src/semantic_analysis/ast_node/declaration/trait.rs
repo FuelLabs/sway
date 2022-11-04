@@ -11,6 +11,8 @@ use crate::{
     type_system::*,
 };
 
+type MethodMap = BTreeMap<Ident, DeclarationId>;
+
 impl ty::TyTraitDeclaration {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
@@ -129,15 +131,12 @@ impl ty::TyTraitDeclaration {
         ctx: TypeCheckContext,
         type_id: TypeId,
         call_path: &CallPath,
-    ) -> CompileResult<(
-        BTreeMap<Ident, DeclarationId>,
-        BTreeMap<Ident, DeclarationId>,
-    )> {
+    ) -> CompileResult<(MethodMap, MethodMap)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let mut interface_surface_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
-        let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+        let mut interface_surface_method_ids: MethodMap = BTreeMap::new();
+        let mut impld_method_ids: MethodMap = BTreeMap::new();
 
         let ty::TyTraitDeclaration {
             interface_surface,
@@ -173,6 +172,87 @@ impl ty::TyTraitDeclaration {
 
         ok(
             (interface_surface_method_ids, impld_method_ids),
+            warnings,
+            errors,
+        )
+    }
+
+    /// Retrieves the interface surface, methods, and implemented methods for
+    /// this trait.
+    pub(crate) fn retrieve_interface_surface_and_methods_and_implemented_methods_for_type(
+        &self,
+        ctx: TypeCheckContext,
+        type_id: TypeId,
+        call_path: &CallPath,
+        type_arguments: &[TypeArgument],
+    ) -> CompileResult<(MethodMap, MethodMap, MethodMap)> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let mut interface_surface_method_ids: MethodMap = BTreeMap::new();
+        let mut method_ids: MethodMap = BTreeMap::new();
+        let mut impld_method_ids: MethodMap = BTreeMap::new();
+
+        let ty::TyTraitDeclaration {
+            interface_surface,
+            methods,
+            type_parameters,
+            ..
+        } = self;
+
+        // Retrieve the interface surface for this trait.
+        for decl_id in interface_surface.iter() {
+            let method = check!(
+                CompileResult::from(de_get_trait_fn(decl_id.clone(), &call_path.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            interface_surface_method_ids.insert(method.name, decl_id.clone());
+        }
+
+        // Retrieve the trait methods for this trait.
+        for decl_id in methods.iter() {
+            let method = check!(
+                CompileResult::from(de_get_function(decl_id.clone(), &call_path.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            method_ids.insert(method.name, decl_id.clone());
+        }
+
+        // Retrieve the implemented methods for this type.
+        let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
+            type_parameters
+                .iter()
+                .map(|type_param| type_param.type_id)
+                .collect(),
+            type_arguments
+                .iter()
+                .map(|type_arg| type_arg.type_id)
+                .collect(),
+        );
+        for decl_id in ctx
+            .namespace
+            .get_methods_for_type_and_trait_name(type_id, call_path)
+            .into_iter()
+        {
+            let mut method = check!(
+                CompileResult::from(de_get_function(decl_id.clone(), &call_path.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            method.copy_types(&type_mapping);
+            impld_method_ids.insert(
+                method.name.clone(),
+                de_insert_function(method).with_parent(decl_id),
+            );
+        }
+
+        ok(
+            (interface_surface_method_ids, method_ids, impld_method_ids),
             warnings,
             errors,
         )
