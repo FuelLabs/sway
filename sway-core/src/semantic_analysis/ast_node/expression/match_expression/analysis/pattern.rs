@@ -4,7 +4,7 @@ use std::fmt::Write;
 use sway_error::error::CompileError;
 use sway_types::Span;
 
-use crate::{error::*, language::ty, language::Literal, Namespace, TypeInfo};
+use crate::{error::*, language::ty, language::Literal, TypeInfo};
 
 use super::{patstack::PatStack, range::Range};
 
@@ -112,10 +112,7 @@ pub(crate) enum Pattern {
 
 impl Pattern {
     /// Converts a `Scrutinee` to a `Pattern`.
-    pub(crate) fn from_scrutinee(
-        namespace: &Namespace,
-        scrutinee: ty::TyScrutinee,
-    ) -> CompileResult<Self> {
+    pub(crate) fn from_scrutinee(scrutinee: ty::TyScrutinee) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let pat = match scrutinee.variant {
@@ -128,7 +125,7 @@ impl Pattern {
                 for field in fields.into_iter() {
                     let f = match field.scrutinee {
                         Some(scrutinee) => check!(
-                            Pattern::from_scrutinee(namespace, scrutinee),
+                            Pattern::from_scrutinee(scrutinee),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -146,7 +143,7 @@ impl Pattern {
                 let mut new_elems = PatStack::empty();
                 for elem in elems.into_iter() {
                     new_elems.push(check!(
-                        Pattern::from_scrutinee(namespace, elem),
+                        Pattern::from_scrutinee(elem),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -163,7 +160,7 @@ impl Pattern {
                     enum_name,
                     variant_name,
                     value: Box::new(check!(
-                        Pattern::from_scrutinee(namespace, *value),
+                        Pattern::from_scrutinee(*value),
                         return err(warnings, errors),
                         warnings,
                         errors

@@ -314,7 +314,7 @@ fn inline_instruction(
                     .iter()
                     .map(|AsmArg { name, initializer }| AsmArg {
                         name: name.clone(),
-                        initializer: initializer.map(&map_value),
+                        initializer: initializer.map(map_value),
                     })
                     .collect();
 

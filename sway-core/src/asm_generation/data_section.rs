@@ -80,7 +80,7 @@ impl Entry {
         // Not a tagged union, no trickiness required.
         match &constant.value {
             ConstantValue::Undef | ConstantValue::Unit => Entry::new_word(0, size),
-            ConstantValue::Bool(b) => Entry::new_word(if *b { 1 } else { 0 }, size),
+            ConstantValue::Bool(b) => Entry::new_word(u64::from(*b), size),
             ConstantValue::Uint(u) => Entry::new_word(*u, size),
 
             ConstantValue::B256(bs) => Entry::new_byte_array(bs.to_vec(), size),

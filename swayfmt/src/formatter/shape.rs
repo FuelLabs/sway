@@ -60,7 +60,7 @@ impl Indent {
         if num_tabs == 0 && num_chars + offset <= INDENT_BUFFER_LEN {
             Ok(Cow::from(&INDENT_BUFFER[offset..=num_chars]))
         } else {
-            let mut indent = String::with_capacity(num_chars + if offset == 0 { 1 } else { 0 });
+            let mut indent = String::with_capacity(num_chars + usize::from(offset == 0));
             if offset == 0 {
                 writeln!(indent)?;
             }

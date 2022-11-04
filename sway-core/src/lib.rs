@@ -526,7 +526,7 @@ pub fn inline_function_calls(
     };
 
     let cg = call_graph::build_call_graph(ir, functions);
-    let functions = call_graph::callee_first_order(ir, &cg);
+    let functions = call_graph::callee_first_order(&cg);
 
     for function in functions {
         if let Err(ir_error) = match tree_type {

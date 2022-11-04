@@ -331,7 +331,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         let realize_register = |reg_name: &str| {
             inline_reg_map.get(reg_name).cloned().or_else(|| {
-                ConstantRegister::parse_register_name(reg_name).map(&VirtualRegister::Constant)
+                ConstantRegister::parse_register_name(reg_name).map(VirtualRegister::Constant)
             })
         };
 

@@ -764,27 +764,27 @@ fn connect_expression(
             r#else,
         } => {
             let condition_expr = connect_expression(
-                &(*condition).expression,
+                &condition.expression,
                 graph,
                 leaves,
                 exit_node,
                 "",
                 tree_type,
-                (*condition).span.clone(),
+                condition.span.clone(),
             )?;
             let then_expr = connect_expression(
-                &(*then).expression,
+                &then.expression,
                 graph,
                 leaves,
                 exit_node,
                 "then branch",
                 tree_type,
-                (*then).span.clone(),
+                then.span.clone(),
             )?;
 
             let else_expr = if let Some(else_expr) = r#else {
                 connect_expression(
-                    &(*else_expr).expression,
+                    &else_expr.expression,
                     graph,
                     leaves,
                     exit_node,
@@ -1147,7 +1147,7 @@ fn connect_intrinsic_function(
     let mut result = vec![node];
     let _ = arguments.iter().try_fold(&mut result, |accum, exp| {
         let mut res = connect_expression(
-            &(*exp).expression,
+            &exp.expression,
             graph,
             leaves,
             exit_node,

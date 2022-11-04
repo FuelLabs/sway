@@ -2070,7 +2070,7 @@ impl FnCompiler {
     fn compile_storage_read(
         &mut self,
         context: &mut Context,
-        md_mgr: &mut MetadataManager,
+        _md_mgr: &mut MetadataManager,
         ix: &StateIndex,
         indices: &[u64],
         ty: &Type,
@@ -2102,7 +2102,7 @@ impl FnCompiler {
 
                     let val_to_insert = self.compile_storage_read(
                         context,
-                        md_mgr,
+                        _md_mgr,
                         ix,
                         &new_indices,
                         &field_type,
@@ -2200,7 +2200,7 @@ impl FnCompiler {
     fn compile_storage_write(
         &mut self,
         context: &mut Context,
-        md_mgr: &mut MetadataManager,
+        _md_mgr: &mut MetadataManager,
         ix: &StateIndex,
         indices: &[u64],
         ty: &Type,
@@ -2226,7 +2226,7 @@ impl FnCompiler {
 
                     self.compile_storage_write(
                         context,
-                        md_mgr,
+                        _md_mgr,
                         ix,
                         &new_indices,
                         &field_type,
