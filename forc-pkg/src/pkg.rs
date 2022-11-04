@@ -482,7 +482,7 @@ impl BuildPlan {
             crate::lock::print_diff(&member_names, &lock_diff);
             let string = toml::ser::to_string_pretty(&new_lock)
                 .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
-            fs::write(&lock_path, &string)
+            fs::write(lock_path, &string)
                 .map_err(|e| anyhow!("failed to write lock file: {}", e))?;
             info!("   Created new lock file at {}", lock_path.display());
         }
