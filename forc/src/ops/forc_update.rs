@@ -41,11 +41,10 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
     let new_plan = pkg::BuildPlan::from_manifests(&member_manifests, offline)?;
     let new_lock = Lock::from_graph(new_plan.graph());
     let diff = new_lock.diff(&old_lock);
-    let member_names = 
-        member_manifests
-            .iter()
-            .map(|(_, manifest)| manifest.project.name.clone())
-            .collect();
+    let member_names = member_manifests
+        .iter()
+        .map(|(_, manifest)| manifest.project.name.clone())
+        .collect();
     lock::print_diff(&member_names, &diff);
 
     // If we're not only `check`ing, write the updated lock file.
