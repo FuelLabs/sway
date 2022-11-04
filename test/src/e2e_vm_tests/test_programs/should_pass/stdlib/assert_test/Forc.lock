@@ -1,6 +1,6 @@
 [[package]]
 name = 'assert_test'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

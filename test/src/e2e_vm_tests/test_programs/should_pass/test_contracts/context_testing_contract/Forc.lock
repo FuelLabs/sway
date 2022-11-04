@@ -5,7 +5,7 @@ dependencies = ['std']
 
 [[package]]
 name = 'context_testing_contract'
-source = 'root'
+source = 'member'
 dependencies = [
     'context_testing_abi',
     'std',

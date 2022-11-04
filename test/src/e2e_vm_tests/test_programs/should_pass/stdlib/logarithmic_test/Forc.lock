@@ -4,7 +4,7 @@ source = 'path+from-root-69347707506DB9FA'
 
 [[package]]
 name = 'logarithmic_test'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

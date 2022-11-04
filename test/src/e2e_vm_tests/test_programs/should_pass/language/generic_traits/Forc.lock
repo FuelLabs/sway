@@ -4,5 +4,5 @@ source = 'path+from-root-76AB13CEA923F433'
 
 [[package]]
 name = 'generic_traits'
-source = 'root'
+source = 'member'
 dependencies = ['core']
