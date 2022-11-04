@@ -515,30 +515,28 @@ impl BuildPlan {
         &self.compilation_order
     }
 
-    /// Trim graph of the given build plan such that only given member and it's dependencies are
-    /// present in the graph. This will ensure that building the package only builds a part of the
-    /// workspace that belongs to the package itself.
-    ///
-    /// Returns the given build plan with the trimmed graph.
-    pub fn member_plan(&self, member_manifest: &PackageManifest) -> Result<Self> {
-        let mut graph = self.graph().clone();
-        let member_node = self
-            .member_nodes()
-            .find(|node_ix| graph[*node_ix].name == member_manifest.project.name)
-            .ok_or_else(|| {
-                anyhow!(
-                    "{} is not a member node in the dependency graph",
-                    member_manifest.project.name
-                )
-            })?;
-        let bfs = Bfs::new(&graph, member_node);
+    /// Produce the node index of the member with the given name.
+    pub fn find_member_index(&self, member_name: &str) -> Option<NodeIx> {
+        self.member_nodes()
+            .find(|node_ix| self.graph[*node_ix].name == member_name)
+    }
+
+    /// Produce an iterator yielding indices for the given node and its dependencies in BFS order.
+    pub fn node_deps(&self, n: NodeIx) -> impl '_ + Iterator<Item = NodeIx> {
+        let bfs = Bfs::new(&self.graph, n);
         // Collect visitable nodes from the given node in the graph.
-        let visited_nodes: HashSet<NodeIx> = bfs.iter(&graph).collect();
-        graph.retain_nodes(|_, index| visited_nodes.contains(&index));
+        bfs.iter(&self.graph)
+    }
+
+    // Produce a new build plan with only the packages required to build the given node.
+    pub fn node_plan(&self, n: NodeIx) -> Result<Self> {
+        let mut graph = self.graph().clone();
+        let node_deps: HashSet<NodeIx> = self.node_deps(n).collect();
+        graph.retain_nodes(|_, index| node_deps.contains(&index));
         // Since some nodes are removed from the graph, compilation order needs to be reconstructed.
         let compilation_order = compilation_order(&graph)?;
         Ok(Self {
-            graph: graph.clone(),
+            graph,
             manifest_map: self.manifest_map.clone(),
             compilation_order,
         })
@@ -2325,7 +2323,15 @@ pub fn build_package_with_options(
     let plan =
         BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, pkg.locked, pkg.offline)?;
     let plan = if manifest.workspace()?.is_some() {
-        plan.member_plan(manifest)?
+        let pkg_node = plan
+            .find_member_index(&manifest.project.name)
+            .ok_or_else(|| {
+                anyhow!(
+                    "{} is declared as a workspace member but it is not part of the build plan",
+                    manifest.project.name
+                )
+            })?;
+        plan.node_plan(pkg_node)?
     } else {
         plan
     };
