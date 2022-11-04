@@ -9,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'storage_conflict'
-source = 'root'
+source = 'member'
 dependencies = ['std']

@@ -1,15 +1,15 @@
 use crate::{
     lock::Lock,
     manifest::{
-        BuildProfile, ConfigTimeConstant, Dependency, ManifestFile, PackageManifest,
-        PackageManifestFile,
+        BuildProfile, ConfigTimeConstant, Dependency, ManifestFile, MemberManifestFiles,
+        PackageManifest, PackageManifestFile,
     },
-    CORE, PRELUDE, STD,
+    WorkspaceManifestFile, CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
-    print_on_failure, print_on_success, print_on_success_library,
+    print_on_failure, print_on_success,
 };
 use petgraph::{
     self,
@@ -36,7 +36,7 @@ use sway_core::{
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
-    CompileResult, CompiledBytecode,
+    CompileResult, CompiledBytecode, FinalizedEntry,
 };
 use sway_error::error::CompileError;
 use sway_types::{Ident, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
@@ -78,11 +78,12 @@ pub struct BuiltPackage {
     pub json_abi_program: JsonABIProgram,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
+    pub entries: Vec<FinalizedEntry>,
     pub tree_type: TreeType,
 }
 
 pub enum Built {
-    Package(BuiltPackage),
+    Package(Box<BuiltPackage>),
     Workspace,
 }
 
@@ -112,7 +113,7 @@ pub struct Pinned {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum Source {
     /// Used to refer to the root project.
-    Root(PathBuf),
+    Member(PathBuf),
     /// A git repo with a `Forc.toml` manifest at its root.
     Git(SourceGit),
     /// A path to a directory with a `Forc.toml` manifest at its root.
@@ -189,14 +190,14 @@ pub struct SourceRegistryPinned {
 /// pinned version or commit is updated upon creation of the lock file and on `forc update`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub enum SourcePinned {
-    Root,
+    Member,
     Git(SourceGitPinned),
     Path(SourcePathPinned),
     Registry(SourceRegistryPinned),
 }
 
 /// Represents the full build plan for a project.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BuildPlan {
     graph: Graph,
     manifest_map: ManifestMap,
@@ -368,15 +369,15 @@ impl BuildPlan {
     /// Create a new build plan for the project by fetching and pinning all dependenies.
     ///
     /// To account for an existing lock file, use `from_lock_and_manifest` instead.
-    pub fn from_manifest(manifest: &PackageManifestFile, offline: bool) -> Result<Self> {
+    pub fn from_manifests(manifests: &MemberManifestFiles, offline: bool) -> Result<Self> {
         // Check toolchain version
-        validate_version(manifest)?;
+        validate_version(manifests)?;
         let mut graph = Graph::default();
         let mut manifest_map = ManifestMap::default();
-        fetch_graph(manifest, offline, &mut graph, &mut manifest_map)?;
+        fetch_graph(manifests, offline, &mut graph, &mut manifest_map)?;
         // Validate the graph, since we constructed the graph from scratch the paths will not be a
         // problem but the version check is still needed
-        validate_graph(&graph, manifest);
+        validate_graph(&graph, manifests)?;
         let compilation_order = compilation_order(&graph)?;
         Ok(Self {
             graph,
@@ -401,19 +402,19 @@ impl BuildPlan {
     // probably should not be the role of the `BuildPlan` constructor - instead, we should return
     // the manifest alongside some lock diff type that can be used to optionally write the updated
     // lock file and print the diff.
-    pub fn from_lock_and_manifest(
-        manifest: &PackageManifestFile,
+    pub fn from_lock_and_manifests(
+        lock_path: &Path,
+        manifests: &MemberManifestFiles,
         locked: bool,
         offline: bool,
     ) -> Result<Self> {
         // Check toolchain version
-        validate_version(manifest)?;
+        validate_version(manifests)?;
         // Keep track of the cause for the new lock file if it turns out we need one.
         let mut new_lock_cause = None;
 
         // First, attempt to load the lock.
-        let lock_path = forc_util::lock_path(manifest.dir());
-        let lock = Lock::from_path(&lock_path).unwrap_or_else(|e| {
+        let lock = Lock::from_path(lock_path).unwrap_or_else(|e| {
             new_lock_cause = if e.to_string().contains("No such file or directory") {
                 Some(anyhow!("lock file did not exist"))
             } else {
@@ -433,15 +434,19 @@ impl BuildPlan {
         // might have edited the `Forc.lock` file when they shouldn't have, a path dependency no
         // longer exists at its specified location, etc. We must first remove all invalid nodes
         // before we can determine what we need to fetch.
-        let invalid_deps = validate_graph(&graph, manifest);
-        remove_deps(&mut graph, &manifest.project.name, &invalid_deps);
+        let invalid_deps = validate_graph(&graph, manifests)?;
+        let members: HashSet<String> = manifests
+            .iter()
+            .map(|(member_name, _)| member_name.clone())
+            .collect();
+        remove_deps(&mut graph, &members, &invalid_deps);
 
         // We know that the remaining nodes have valid paths, otherwise they would have been
         // removed. We can safely produce an initial `manifest_map`.
-        let mut manifest_map = graph_to_manifest_map(manifest.clone(), &graph)?;
+        let mut manifest_map = graph_to_manifest_map(manifests, &graph)?;
 
         // Attempt to fetch the remainder of the graph.
-        let _added = fetch_graph(manifest, offline, &mut graph, &mut manifest_map)?;
+        let _added = fetch_graph(manifests, offline, &mut graph, &mut manifest_map)?;
 
         // Determine the compilation order.
         let compilation_order = compilation_order(&graph)?;
@@ -470,15 +475,30 @@ impl BuildPlan {
                 );
             }
             info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
-            crate::lock::print_diff(&manifest.project.name, &lock_diff);
+            let member_names = manifests
+                .iter()
+                .map(|(_, manifest)| manifest.project.name.clone())
+                .collect();
+            crate::lock::print_diff(&member_names, &lock_diff);
             let string = toml::ser::to_string_pretty(&new_lock)
                 .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
-            fs::write(&lock_path, &string)
+            fs::write(lock_path, &string)
                 .map_err(|e| anyhow!("failed to write lock file: {}", e))?;
             info!("   Created new lock file at {}", lock_path.display());
         }
 
         Ok(plan)
+    }
+
+    /// Produce an iterator yielding all workspace member nodes in order of compilation.
+    ///
+    /// In the case that this `BuildPlan` was constructed for a single package,
+    /// only that package's node will be yielded.
+    pub fn member_nodes(&self) -> impl Iterator<Item = NodeIx> + '_ {
+        self.compilation_order()
+            .iter()
+            .cloned()
+            .filter(|&n| self.graph[n].source == SourcePinned::Member)
     }
 
     /// View the build plan's compilation graph.
@@ -498,11 +518,9 @@ impl BuildPlan {
 }
 
 /// Given a graph and the known project name retrieved from the manifest, produce an iterator
-/// yielding any nodes from the graph that might potentially be the project node.
+/// yielding any nodes from the graph that might potentially be a project node.
 fn potential_proj_nodes<'a>(g: &'a Graph, proj_name: &'a str) -> impl 'a + Iterator<Item = NodeIx> {
-    g.node_indices()
-        .filter(|&n| g.edges_directed(n, Direction::Incoming).next().is_none())
-        .filter(move |&n| g[n].name == proj_name)
+    member_nodes(g).filter(move |&n| g[n].name == proj_name)
 }
 
 /// Given a graph, find the project node.
@@ -522,11 +540,22 @@ fn find_proj_node(graph: &Graph, proj_name: &str) -> Result<NodeIx> {
     }
 }
 
-/// Check minimum forc version given in the manifest file and the current toolchain version
+/// Checks if the toolchain version is in compliance with minimum implied by `manifest`.
+///
+/// If the `manifest` is a ManifestFile::Workspace, check all members of the workspace for version
+/// validation. Otherwise only the given package is checked.
+fn validate_version(member_manifests: &MemberManifestFiles) -> Result<()> {
+    for member_pkg_manifest in member_manifests.values() {
+        validate_pkg_version(member_pkg_manifest)?;
+    }
+    Ok(())
+}
+
+/// Check minimum forc version given in the package manifest file
 ///
 /// If required minimum forc version is higher than current forc version return an error with
 /// upgrade instructions
-fn validate_version(pkg_manifest: &PackageManifestFile) -> Result<()> {
+fn validate_pkg_version(pkg_manifest: &PackageManifestFile) -> Result<()> {
     match &pkg_manifest.project.forc_version {
         Some(min_forc_version) => {
             // Get the current version of the toolchain
@@ -543,23 +572,35 @@ fn validate_version(pkg_manifest: &PackageManifestFile) -> Result<()> {
             }
         }
         None => {}
-    }
+    };
     Ok(())
 }
 
-/// Validates the state of the pinned package graph against the given project manifest.
+fn member_nodes(g: &Graph) -> impl Iterator<Item = NodeIx> + '_ {
+    g.node_indices()
+        .filter(|&n| g[n].source == SourcePinned::Member)
+}
+
+/// Validates the state of the pinned package graph against the given ManifestFile.
 ///
 /// Returns the set of invalid dependency edges.
-fn validate_graph(graph: &Graph, proj_manifest: &PackageManifestFile) -> BTreeSet<EdgeIx> {
-    // If we don't have a project node, remove everything as we can't validate dependencies
-    // without knowing where to start.
-    let proj_node = match find_proj_node(graph, &proj_manifest.project.name) {
-        Ok(node) => node,
-        Err(_) => return graph.edge_indices().collect(),
-    };
-    // Collect all invalid dependency nodes.
+fn validate_graph(graph: &Graph, manifests: &MemberManifestFiles) -> Result<BTreeSet<EdgeIx>> {
+    let mut member_pkgs: HashMap<&String, &PackageManifestFile> = manifests.iter().collect();
+    let member_nodes: Vec<_> = member_nodes(graph)
+        .filter_map(|n| member_pkgs.remove(&graph[n].name).map(|pkg| (n, pkg)))
+        .collect();
+
+    // If no member nodes, the graph is either empty or corrupted. Remove all edges.
+    if member_nodes.is_empty() {
+        return Ok(graph.edge_indices().collect());
+    }
+
     let mut visited = HashSet::new();
-    validate_deps(graph, proj_node, proj_manifest, &mut visited)
+    let edges = member_nodes
+        .into_iter()
+        .flat_map(move |(n, _)| validate_deps(graph, n, manifests, &mut visited))
+        .collect();
+    Ok(edges)
 }
 
 /// Recursively validate all dependencies of the given `node`.
@@ -568,20 +609,20 @@ fn validate_graph(graph: &Graph, proj_manifest: &PackageManifestFile) -> BTreeSe
 fn validate_deps(
     graph: &Graph,
     node: NodeIx,
-    node_manifest: &PackageManifestFile,
+    manifests: &MemberManifestFiles,
     visited: &mut HashSet<NodeIx>,
 ) -> BTreeSet<EdgeIx> {
     let mut remove = BTreeSet::default();
     for edge in graph.edges_directed(node, Direction::Outgoing) {
         let dep_name = edge.weight();
         let dep_node = edge.target();
-        match validate_dep(graph, node_manifest, dep_name, dep_node) {
+        match validate_dep(graph, manifests, dep_name, dep_node) {
             Err(_) => {
                 remove.insert(edge.id());
             }
-            Ok(dep_manifest) => {
+            Ok(_) => {
                 if visited.insert(dep_node) {
-                    let rm = validate_deps(graph, dep_node, &dep_manifest, visited);
+                    let rm = validate_deps(graph, dep_node, manifests, visited);
                     remove.extend(rm);
                 }
                 continue;
@@ -596,13 +637,16 @@ fn validate_deps(
 /// Returns the `ManifestFile` in the case that the dependency is valid.
 fn validate_dep(
     graph: &Graph,
-    node_manifest: &PackageManifestFile,
+    manifests: &MemberManifestFiles,
     dep_edge: &Edge,
     dep_node: NodeIx,
 ) -> Result<PackageManifestFile> {
     let dep_name = &dep_edge.name;
+    let node_manifest = manifests
+        .get(dep_name)
+        .ok_or_else(|| anyhow!("Couldn't find manifest file for {}", dep_name))?;
     // Check the validity of the dependency path, including its path root.
-    let dep_path = dep_path(graph, node_manifest, dep_name, dep_node).map_err(|e| {
+    let dep_path = dep_path(graph, node_manifest, dep_node, manifests).map_err(|e| {
         anyhow!(
             "failed to construct path for dependency {:?}: {}",
             dep_name,
@@ -654,7 +698,7 @@ fn validate_dep_manifest(
             dep_manifest.project.name,
         );
     }
-    validate_version(dep_manifest)?;
+    validate_pkg_version(dep_manifest)?;
     Ok(())
 }
 
@@ -665,10 +709,11 @@ fn validate_dep_manifest(
 fn dep_path(
     graph: &Graph,
     node_manifest: &PackageManifestFile,
-    dep_name: &str,
     dep_node: NodeIx,
+    manifests: &MemberManifestFiles,
 ) -> Result<PathBuf> {
     let dep = &graph[dep_node];
+    let dep_name = &dep.name;
     match &dep.source {
         SourcePinned::Git(git) => {
             let repo_path = git_commit_path(&dep.name, &git.source.repo, &git.commit_hash);
@@ -710,23 +755,29 @@ fn dep_path(
             )
         }
         SourcePinned::Registry(_reg) => unreachable!("registry dependencies not yet supported"),
-        SourcePinned::Root => unreachable!("a `Root` node cannot be a dependency"),
+        SourcePinned::Member => {
+            // If a node has a root dependency it is a member of the workspace.
+            manifests
+                .values()
+                .find(|manifest| manifest.project.name == *dep_name)
+                .map(|manifest| manifest.path().to_path_buf())
+                .ok_or_else(|| anyhow!("cannot find dependency in the workspace"))
+        }
     }
 }
 
 /// Remove the given set of dependency edges from the `graph`.
 ///
-/// Also removes all nodes that are no longer connected to the project node as a result.
-fn remove_deps(graph: &mut Graph, proj_name: &str, edges_to_remove: &BTreeSet<EdgeIx>) {
-    // Retrieve the project node.
-    let proj_node = match find_proj_node(graph, proj_name) {
-        Ok(node) => node,
-        Err(_) => {
-            // If it fails, invalidate everything.
-            graph.clear();
-            return;
-        }
-    };
+/// Also removes all nodes that are no longer connected to any root node as a result.
+fn remove_deps(
+    graph: &mut Graph,
+    member_names: &HashSet<String>,
+    edges_to_remove: &BTreeSet<EdgeIx>,
+) {
+    // Retrieve the project nodes for workspace members.
+    let member_nodes: HashSet<_> = member_nodes(graph)
+        .filter(|&n| member_names.contains(&graph[n].name))
+        .collect();
 
     // Before removing edges, sort the nodes in order of dependency for the node removal pass.
     let node_removal_order = match petgraph::algo::toposort(&*graph, None) {
@@ -743,12 +794,10 @@ fn remove_deps(graph: &mut Graph, proj_name: &str, edges_to_remove: &BTreeSet<Ed
         graph.remove_edge(edge);
     }
 
-    // Remove all nodes that are no longer connected to the project node as a result.
-    // Skip iteration over the project node.
-    let mut nodes = node_removal_order.into_iter();
-    assert_eq!(nodes.next(), Some(proj_node));
+    // Remove all nodes that are no longer connected to any project node as a result.
+    let nodes = node_removal_order.into_iter();
     for node in nodes {
-        if !has_parent(graph, node) {
+        if !has_parent(graph, node) && !member_nodes.contains(&node) {
             graph.remove_node(node);
         }
     }
@@ -823,7 +872,7 @@ impl Pinned {
     /// Retrieve the unpinned version of this source.
     pub fn unpinned(&self, path: &Path) -> Pkg {
         let source = match &self.source {
-            SourcePinned::Root => Source::Root(path.to_owned()),
+            SourcePinned::Member => Source::Member(path.to_owned()),
             SourcePinned::Git(git) => Source::Git(git.source.clone()),
             SourcePinned::Path(_) => Source::Path(path.to_owned()),
             SourcePinned::Registry(reg) => Source::Registry(reg.source.clone()),
@@ -893,7 +942,7 @@ impl fmt::Display for GitReference {
 impl fmt::Display for SourcePinned {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            SourcePinned::Root => write!(f, "root"),
+            SourcePinned::Member => write!(f, "member"),
             SourcePinned::Path(src) => src.fmt(f),
             SourcePinned::Git(src) => src.fmt(f),
             SourcePinned::Registry(_reg) => unimplemented!("pkg registries not yet implemented"),
@@ -992,8 +1041,10 @@ impl FromStr for SourceGitPinned {
 impl FromStr for SourcePinned {
     type Err = SourcePinnedParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let source = if s == "root" {
-            SourcePinned::Root
+        let source = if s == "root" || s == "member" {
+            // Also check `"root"` to support reading the legacy `Forc.lock` format and to
+            // avoid breaking old projects.
+            SourcePinned::Member
         } else if let Ok(src) = SourcePathPinned::from_str(s) {
             SourcePinned::Path(src)
         } else if let Ok(src) = SourceGitPinned::from_str(s) {
@@ -1059,11 +1110,33 @@ pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
     })
 }
 
+/// Given a graph collects ManifestMap while taking in to account that manifest can be a
+/// ManifestFile::Workspace. In the case of a workspace each pkg manifest map is collected and
+/// their added node lists are merged.
+fn graph_to_manifest_map(manifests: &MemberManifestFiles, graph: &Graph) -> Result<ManifestMap> {
+    let mut manifest_map = HashMap::new();
+    for pkg_manifest in manifests.values() {
+        let pkg_name = &pkg_manifest.project.name;
+        manifest_map.extend(pkg_graph_to_manifest_map(manifests, pkg_name, graph)?);
+    }
+    Ok(manifest_map)
+}
+
 /// Given a graph of pinned packages and the project manifest, produce a map containing the
 /// manifest of for every node in the graph.
 ///
 /// Assumes the given `graph` only contains valid dependencies (see `validate_graph`).
-fn graph_to_manifest_map(proj_manifest: PackageManifestFile, graph: &Graph) -> Result<ManifestMap> {
+///
+/// `pkg_graph_to_manifest_map` starts from each node (which corresponds to the given proj_manifest)
+/// and visits childs to collect their manifest files.
+fn pkg_graph_to_manifest_map(
+    manifests: &MemberManifestFiles,
+    pkg_name: &str,
+    graph: &Graph,
+) -> Result<ManifestMap> {
+    let proj_manifest = manifests
+        .get(pkg_name)
+        .ok_or_else(|| anyhow!("Cannot find manifest for {}", pkg_name))?;
     let mut manifest_map = ManifestMap::new();
 
     // Traverse the graph from the project node.
@@ -1072,7 +1145,7 @@ fn graph_to_manifest_map(proj_manifest: PackageManifestFile, graph: &Graph) -> R
         Err(_) => return Ok(manifest_map),
     };
     let proj_id = graph[proj_node].id();
-    manifest_map.insert(proj_id, proj_manifest);
+    manifest_map.insert(proj_id, proj_manifest.clone());
 
     // Resolve all parents before their dependencies as we require the parent path to construct the
     // dependency path. Skip the already added project node at the beginning of traversal.
@@ -1091,7 +1164,7 @@ fn graph_to_manifest_map(proj_manifest: PackageManifestFile, graph: &Graph) -> R
             })
             .next()
             .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
-        let dep_path = dep_path(graph, parent_manifest, dep_name, dep_node).map_err(|e| {
+        let dep_path = dep_path(graph, parent_manifest, dep_node, manifests).map_err(|e| {
             anyhow!(
                 "failed to construct path for dependency {:?}: {}",
                 dep_name,
@@ -1139,7 +1212,7 @@ fn find_path_root(graph: &Graph, mut node: NodeIx) -> Result<NodeIx> {
                     })?;
                 node = parent;
             }
-            SourcePinned::Git(_) | SourcePinned::Registry(_) | SourcePinned::Root => {
+            SourcePinned::Git(_) | SourcePinned::Registry(_) | SourcePinned::Member => {
                 return Ok(node);
             }
         }
@@ -1157,6 +1230,29 @@ pub fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
     hasher.finish()
 }
 
+/// Given an empty or partially completed `graph`, complete the graph.
+///
+/// If the given `manifest` is of type ManifestFile::Workspace resulting graph will have multiple
+/// root nodes, each representing a member of the workspace. Otherwise resulting graph will only
+/// have a single root node, representing the package that is described by the ManifestFile::Package
+fn fetch_graph(
+    member_manifests: &MemberManifestFiles,
+    offline: bool,
+    graph: &mut Graph,
+    manifest_map: &mut ManifestMap,
+) -> Result<HashSet<NodeIx>> {
+    let mut added_nodes = HashSet::default();
+    for member_pkg_manifest in member_manifests.values() {
+        added_nodes.extend(&fetch_pkg_graph(
+            member_pkg_manifest,
+            offline,
+            graph,
+            manifest_map,
+        )?);
+    }
+    Ok(added_nodes)
+}
+
 /// Given an empty or partially completed package `graph`, complete the graph.
 ///
 /// The given `graph` may be empty, partially complete, or fully complete. All existing nodes
@@ -1170,7 +1266,7 @@ pub fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
 /// `graph` and will `panic!` otherwise.
 ///
 /// Upon success, returns the set of nodes that were added to the graph during traversal.
-fn fetch_graph(
+fn fetch_pkg_graph(
     proj_manifest: &PackageManifestFile,
     offline: bool,
     graph: &mut Graph,
@@ -1181,7 +1277,7 @@ fn fetch_graph(
         Ok(proj_node) => proj_node,
         Err(_) => {
             let name = proj_manifest.project.name.clone();
-            let source = SourcePinned::Root;
+            let source = SourcePinned::Member;
             let pkg = Pinned { name, source };
             let pkg_id = pkg.id();
             manifest_map.insert(pkg_id, proj_manifest.clone());
@@ -1282,7 +1378,7 @@ fn fetch_deps(
         })?;
 
         let path_root = match dep_pinned.source {
-            SourcePinned::Root | SourcePinned::Git(_) | SourcePinned::Registry(_) => dep_pkg_id,
+            SourcePinned::Member | SourcePinned::Git(_) | SourcePinned::Registry(_) => dep_pkg_id,
             SourcePinned::Path(_) => path_root,
         };
 
@@ -1445,8 +1541,8 @@ fn pin_pkg(
 ) -> Result<Pinned> {
     let name = pkg.name.clone();
     let pinned = match &pkg.source {
-        Source::Root(path) => {
-            let source = SourcePinned::Root;
+        Source::Member(path) => {
+            let source = SourcePinned::Member;
             let pinned = Pinned { name, source };
             let id = pinned.id();
             let manifest = PackageManifestFile::from_dir(path)?;
@@ -1758,7 +1854,17 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
                 let canonical_path = path.canonicalize().map_err(|e| {
                     anyhow!("Failed to canonicalize dependency path {:?}: {}", path, e)
                 })?;
-                Source::Path(canonical_path)
+                // Check if path is a member of a workspace.
+                let workspace_manifest = canonical_path
+                    .parent()
+                    .and_then(|parent_dir| WorkspaceManifestFile::from_dir(parent_dir).ok());
+
+                match workspace_manifest {
+                    Some(ws) if ws.is_member_path(&canonical_path)? => {
+                        Source::Member(canonical_path)
+                    }
+                    _ => Source::Path(canonical_path),
+                }
             }
             (_, _, Some(repo)) => {
                 let reference = match (&det.branch, &det.tag, &det.rev) {
@@ -2009,7 +2115,7 @@ pub fn compile(
     build_profile: &BuildProfile,
     namespace: namespace::Module,
     source_map: &mut SourceMap,
-) -> Result<(BuiltPackage, Option<namespace::Root>)> {
+) -> Result<(BuiltPackage, namespace::Root)> {
     // Time the given expression and print the result if `build_config.time_phases` is true.
     macro_rules! time_expr {
         ($description:expr, $expression:expr) => {{
@@ -2061,33 +2167,22 @@ pub fn compile(
 
     let storage_slots = typed_program.storage_slots.clone();
     let tree_type = typed_program.kind.tree_type();
-    match tree_type {
-        // On errors, do not proceed to compiling bytecode, as semantic analysis did not pass.
-        _ if !ast_res.errors.is_empty() => {
-            return fail(&ast_res.warnings, &ast_res.errors);
-        }
-        // If we're compiling a library, we don't need to compile any further.
-        // Instead, we update the namespace with the library's top-level module.
-        TreeType::Library { .. } => {
-            print_on_success_library(terse_mode, &pkg.name, &ast_res.warnings);
-            let bytecode = vec![];
-            let lib_namespace = typed_program.root.namespace.clone();
-            let built_package = BuiltPackage {
-                json_abi_program,
-                storage_slots,
-                bytecode,
-                tree_type,
-            };
-            return Ok((built_package, Some(lib_namespace.into())));
-        }
-        // For all other program types, we'll compile the bytecode.
-        TreeType::Contract | TreeType::Predicate | TreeType::Script => {}
+
+    let namespace = typed_program.root.namespace.clone().into();
+
+    if !ast_res.errors.is_empty() {
+        return fail(&ast_res.warnings, &ast_res.errors);
     }
 
     let asm_res = time_expr!(
         "compile ast to asm",
         sway_core::ast_to_asm(ast_res, &sway_build_config)
     );
+    let entries = asm_res
+        .value
+        .as_ref()
+        .map(|asm| asm.0.entries.clone())
+        .unwrap_or_default();
     let bc_res = time_expr!(
         "compile asm to bytecode",
         sway_core::asm_to_bytecode(asm_res, source_map)
@@ -2102,8 +2197,9 @@ pub fn compile(
                 storage_slots,
                 bytecode,
                 tree_type,
+                entries,
             };
-            Ok((built_package, None))
+            Ok((built_package, namespace))
         }
         _ => fail(&bc_res.warnings, &bc_res.errors),
     }
@@ -2175,7 +2271,11 @@ pub fn build_package_with_options(
     profile.time_phases |= time_phases;
     profile.include_tests |= tests;
 
-    let plan = BuildPlan::from_lock_and_manifest(manifest, pkg.locked, pkg.offline)?;
+    let manifest_file = ManifestFile::Package(Box::new(manifest.clone()));
+    let member_manifests = manifest_file.member_manifests()?;
+    let lock_path = manifest_file.lock_path()?;
+    let plan =
+        BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, pkg.locked, pkg.offline)?;
 
     // Build it!
     let (built_package, source_map) = build(&plan, &profile)?;
@@ -2272,9 +2372,11 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     match manifest_file {
         ManifestFile::Package(package_manifest) => {
             let built_package = build_package_with_options(&package_manifest, build_options)?;
-            Ok(Built::Package(built_package))
+            Ok(Built::Package(Box::new(built_package)))
         }
-        ManifestFile::Workspace(_) => bail!("Workspace building is not supported"),
+        ManifestFile::Workspace(_) => {
+            bail!("Workspace building is not supported")
+        }
     }
 }
 
@@ -2303,15 +2405,8 @@ pub fn build(
 
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
-    let mut json_abi_program = JsonABIProgram {
-        types: vec![],
-        functions: vec![],
-        logged_types: vec![],
-    };
-    let mut storage_slots = vec![];
-    let mut bytecode = vec![];
-    let mut tree_type = None;
     let mut compiled_contract_deps = HashMap::new();
+    let mut last_pkg = None;
     for &node in &plan.compilation_order {
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
@@ -2330,7 +2425,7 @@ pub fn build(
             }
         };
         let res = compile(pkg, manifest, profile, dep_namespace, &mut source_map)?;
-        let (built_package, maybe_namespace) = res;
+        let (built_package, namespace) = res;
         // If the current node is a contract dependency, collect the contract_id
         if plan
             .graph()
@@ -2339,35 +2434,18 @@ pub fn build(
         {
             compiled_contract_deps.insert(node, built_package.clone());
         }
-        if let Some(namespace) = maybe_namespace {
+        if let TreeType::Library { .. } = built_package.tree_type {
             lib_namespace_map.insert(node, namespace.into());
         }
-        json_abi_program
-            .types
-            .extend(built_package.json_abi_program.types);
-        json_abi_program
-            .functions
-            .extend(built_package.json_abi_program.functions);
-        json_abi_program
-            .logged_types
-            .extend(built_package.json_abi_program.logged_types);
-        storage_slots.extend(built_package.storage_slots);
-        bytecode = built_package.bytecode;
-        tree_type = Some(built_package.tree_type);
+        last_pkg = Some(built_package);
         source_map.insert_dependency(manifest.dir());
     }
 
-    standardize_json_abi_types(&mut json_abi_program);
+    let mut built_pkg =
+        last_pkg.ok_or_else(|| anyhow!("build plan must contain at least one package"))?;
+    standardize_json_abi_types(&mut built_pkg.json_abi_program);
 
-    let tree_type =
-        tree_type.ok_or_else(|| anyhow!("build plan must contain at least one package"))?;
-    let built_package = BuiltPackage {
-        bytecode,
-        json_abi_program,
-        storage_slots,
-        tree_type,
-    };
-    Ok((built_package, source_map))
+    Ok((built_pkg, source_map))
 }
 
 /// Standardize the JSON ABI data structure by eliminating duplicate types. This is an iterative
@@ -2491,18 +2569,22 @@ fn update_json_type_declaration(
     }
 }
 
-/// Compile the entire forc package and return a typed program, if any.
-pub fn check(
-    plan: &BuildPlan,
-    terse_mode: bool,
-) -> anyhow::Result<CompileResult<(ParseProgram, Option<ty::TyProgram>)>> {
+/// A `CompileResult` thats type is a tuple containing a `ParseProgram` and `Option<ty::TyProgram>`
+type ParseAndTypedPrograms = CompileResult<(ParseProgram, Option<ty::TyProgram>)>;
+
+/// Compile the entire forc package and return the parse and typed programs
+/// of the dependancies and project.
+/// The final item in the returned vector is the project.
+pub fn check(plan: &BuildPlan, terse_mode: bool) -> anyhow::Result<Vec<ParseAndTypedPrograms>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     // During `check`, we don't compile so this stays empty.
     let compiled_contract_deps = HashMap::new();
-    for (i, &node) in plan.compilation_order.iter().enumerate() {
+
+    let mut results = vec![];
+    for &node in plan.compilation_order.iter() {
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
         let constants = manifest.config_time_constants();
@@ -2521,7 +2603,10 @@ pub fn check(
         } = parse(manifest, terse_mode)?;
 
         let parse_program = match value {
-            None => return Ok(CompileResult::new(None, warnings, errors)),
+            None => {
+                results.push(CompileResult::new(None, warnings, errors));
+                return Ok(results);
+            }
             Some(program) => program,
         };
 
@@ -2532,7 +2617,8 @@ pub fn check(
         let typed_program = match ast_result.value {
             None => {
                 let value = Some((parse_program, None));
-                return Ok(CompileResult::new(value, warnings, errors));
+                results.push(CompileResult::new(value, warnings, errors));
+                return Ok(results);
             }
             Some(typed_program) => typed_program,
         };
@@ -2543,13 +2629,15 @@ pub fn check(
 
         source_map.insert_dependency(manifest.dir());
 
-        // We only need to return the final `TypedProgram`.
-        if i == plan.compilation_order.len() - 1 {
-            let value = Some((parse_program, Some(typed_program)));
-            return Ok(CompileResult::new(value, warnings, errors));
-        }
+        let value = Some((parse_program, Some(typed_program)));
+        results.push(CompileResult::new(value, warnings, errors));
     }
-    bail!("unable to check sway program: build plan contains no packages")
+
+    if results.is_empty() {
+        bail!("unable to check sway program: build plan contains no packages")
+    }
+
+    Ok(results)
 }
 
 /// Returns a parsed AST from the supplied [PackageManifestFile]
@@ -2588,6 +2676,26 @@ pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
 /// The same as [find_within], but returns the package's project directory.
 pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     find_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
+}
+
+#[test]
+fn test_root_pkg_order() {
+    let current_dir = env!("CARGO_MANIFEST_DIR");
+    let manifest_dir = PathBuf::from(current_dir)
+        .parent()
+        .unwrap()
+        .join("test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building/");
+    let manifest_file = ManifestFile::from_dir(&manifest_dir).unwrap();
+    let member_manifests = manifest_file.member_manifests().unwrap();
+    let lock_path = manifest_file.lock_path().unwrap();
+    let build_plan =
+        BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false).unwrap();
+    let graph = build_plan.graph();
+    let order: Vec<String> = build_plan
+        .member_nodes()
+        .map(|order| graph[order].name.clone())
+        .collect();
+    assert_eq!(order, vec!["test_lib", "test_contract", "test_script"])
 }
 
 #[test]

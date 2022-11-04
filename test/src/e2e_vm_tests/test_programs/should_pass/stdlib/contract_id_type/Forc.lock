@@ -1,6 +1,6 @@
 [[package]]
 name = 'contract_id_type'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

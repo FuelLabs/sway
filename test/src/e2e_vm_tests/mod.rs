@@ -28,6 +28,7 @@ enum TestCategory {
     FailsToCompile,
     Runs,
     RunsWithContract,
+    UnitTestsPass,
     Disabled,
 }
 
@@ -189,6 +190,31 @@ impl TestContext {
                 assert_matches!(result[result.len() - 2], fuel_tx::Receipt::Return { .. });
                 assert_eq!(result[result.len() - 2].val().unwrap(), val);
 
+                Ok(())
+            }
+
+            TestCategory::UnitTestsPass => {
+                let result = harness::compile_and_run_unit_tests(&name, &context.run_config, false);
+                let tested_pkg = result.expect("failed to compile and run unit tests");
+                let failed: Vec<String> = tested_pkg
+                    .tests
+                    .into_iter()
+                    .enumerate()
+                    .filter_map(|(ix, test)| match test.state {
+                        ProgramState::Revert(code) => {
+                            Some(format!("Test {ix} failed with revert {code}\n"))
+                        }
+                        _ => None,
+                    })
+                    .collect();
+
+                if !failed.is_empty() {
+                    panic!(
+                        "For {name}\n{} tests failed:\n{}",
+                        failed.len(),
+                        failed.into_iter().collect::<String>()
+                    );
+                }
                 Ok(())
             }
 
@@ -383,6 +409,7 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
             Some("fail") => Ok(TestCategory::FailsToCompile),
             Some("compile") => Ok(TestCategory::Compiles),
             Some("disabled") => Ok(TestCategory::Disabled),
+            Some("unit_tests_pass") => Ok(TestCategory::UnitTestsPass),
             None => Err(anyhow!(
                 "Malformed category '{category_val}', should be a string."
             )),
@@ -408,14 +435,20 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
                 _ => None,
             }
         }
-        TestCategory::Compiles | TestCategory::FailsToCompile | TestCategory::Disabled => None,
+        TestCategory::Compiles
+        | TestCategory::FailsToCompile
+        | TestCategory::UnitTestsPass
+        | TestCategory::Disabled => None,
     };
 
     let expected_result = match &category {
         TestCategory::Runs | TestCategory::RunsWithContract => {
             Some(get_expected_result(&toml_content)?)
         }
-        TestCategory::Compiles | TestCategory::FailsToCompile | TestCategory::Disabled => None,
+        TestCategory::Compiles
+        | TestCategory::FailsToCompile
+        | TestCategory::UnitTestsPass
+        | TestCategory::Disabled => None,
     };
 
     let contract_paths = match toml_content.get("contracts") {

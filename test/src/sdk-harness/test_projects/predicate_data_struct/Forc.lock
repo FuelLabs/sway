@@ -4,7 +4,7 @@ source = 'path+from-root-025C6DF1C548A897'
 
 [[package]]
 name = 'predicate_data_struct'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

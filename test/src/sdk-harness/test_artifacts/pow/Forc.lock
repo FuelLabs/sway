@@ -4,7 +4,7 @@ source = 'path+from-root-CD2E393B1D6B5576'
 
 [[package]]
 name = 'pow'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

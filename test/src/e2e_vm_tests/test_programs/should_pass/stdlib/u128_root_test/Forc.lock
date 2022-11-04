@@ -9,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'u128_root_test'
-source = 'root'
+source = 'member'
 dependencies = ['std']

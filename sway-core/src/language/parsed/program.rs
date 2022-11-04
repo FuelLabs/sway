@@ -4,7 +4,7 @@ use sway_types::Ident;
 /// A parsed, but not yet type-checked, Sway program.
 ///
 /// Includes all modules in the form of a `ParseModule` tree accessed via the `root`.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParseProgram {
     pub kind: TreeType,
     pub root: ParseModule,
