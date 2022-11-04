@@ -200,7 +200,7 @@ impl SyncWorkspace {
     }
 
     fn url_from_path(&self, path: &PathBuf) -> Result<Url, DirectoryError> {
-        Url::from_file_path(&path).map_err(|_| DirectoryError::UrlFromPathFailed {
+        Url::from_file_path(path).map_err(|_| DirectoryError::UrlFromPathFailed {
             path: path.to_string_lossy().to_string(),
         })
     }

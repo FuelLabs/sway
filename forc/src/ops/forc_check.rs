@@ -24,5 +24,10 @@ pub fn check(command: CheckCommand) -> Result<CompileResult<ty::TyProgram>> {
     let plan =
         pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
 
-    Ok(pkg::check(&plan, terse_mode)?.flat_map(|(_, tp)| CompileResult::new(tp, vec![], vec![])))
+    let mut v = pkg::check(&plan, terse_mode)?;
+    let res = v
+        .pop()
+        .expect("there is guaranteed to be at least one elem in the vector")
+        .flat_map(|(_, tp)| CompileResult::new(tp, vec![], vec![]));
+    Ok(res)
 }

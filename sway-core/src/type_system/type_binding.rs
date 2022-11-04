@@ -159,7 +159,7 @@ impl TypeBinding<CallPath> {
             ty::TyDeclaration::FunctionDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
-                    CompileResult::from(de_get_function(original_id, &self.span())),
+                    CompileResult::from(de_get_function(original_id.clone(), &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -179,7 +179,7 @@ impl TypeBinding<CallPath> {
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = de_insert_function(new_copy);
+                let new_id = de_insert_function(new_copy).with_parent(original_id);
 
                 ty::TyDeclaration::FunctionDeclaration(new_id)
             }

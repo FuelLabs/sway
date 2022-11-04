@@ -138,7 +138,7 @@ impl PkgLock {
 impl Lock {
     /// Load the `Lock` structure from the TOML `Forc.lock` file at the specified path.
     pub fn from_path(path: &Path) -> Result<Self> {
-        let string = fs::read_to_string(&path)
+        let string = fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read {}: {}", path.display(), e))?;
         toml::de::from_str(&string).map_err(|e| anyhow!("failed to parse lock file: {}", e))
     }

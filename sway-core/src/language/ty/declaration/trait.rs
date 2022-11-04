@@ -14,12 +14,7 @@ pub struct TyTraitDeclaration {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
     pub interface_surface: Vec<DeclarationId>,
-    // NOTE: deriving partialeq and hash on this element may be important in the
-    // future, but I am not sure. For now, adding this would 2x the amount of
-    // work, so I am just going to exclude it
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub methods: Vec<parsed::FunctionDeclaration>,
+    pub methods: Vec<DeclarationId>,
     pub supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
     pub attributes: transform::AttributesMap,
@@ -43,16 +38,6 @@ impl CopyTypes for TyTraitDeclaration {
     }
 }
 
-impl MonomorphizeHelper for TyTraitDeclaration {
-    fn name(&self) -> &Ident {
-        &self.name
-    }
-
-    fn type_parameters(&self) -> &[TypeParameter] {
-        &self.type_parameters
-    }
-}
-
 impl ReplaceSelfType for TyTraitDeclaration {
     fn replace_self_type(&mut self, self_type: TypeId) {
         self.type_parameters
@@ -67,5 +52,15 @@ impl ReplaceSelfType for TyTraitDeclaration {
                 function_decl_id.replace_id(*new_decl_id);
             });
         // we don't have to type check the methods because it hasn't been type checked yet
+    }
+}
+
+impl MonomorphizeHelper for TyTraitDeclaration {
+    fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    fn type_parameters(&self) -> &[TypeParameter] {
+        &self.type_parameters
     }
 }

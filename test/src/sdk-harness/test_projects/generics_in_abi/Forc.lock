@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-F564E36389FF1B47'
+
+[[package]]
+name = 'generics_in_abi'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-F564E36389FF1B47'
+dependencies = ['core']

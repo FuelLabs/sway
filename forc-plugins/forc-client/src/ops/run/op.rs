@@ -113,7 +113,7 @@ fn format_hex_data(data: &str) -> &str {
 }
 
 fn print_receipt_output(receipts: &Vec<fuel_tx::Receipt>, pretty_print: bool) -> Result<()> {
-    let mut receipt_to_json_array = serde_json::to_value(&receipts)?;
+    let mut receipt_to_json_array = serde_json::to_value(receipts)?;
     for (rec_index, receipt) in receipts.iter().enumerate() {
         let rec_value = receipt_to_json_array.get_mut(rec_index).ok_or_else(|| {
             anyhow!(

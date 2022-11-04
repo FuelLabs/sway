@@ -1,7 +1,7 @@
 use crate::{
     core::{
         session::Session,
-        token::{AstToken, Token, TypedAstToken},
+        token::{Token, TypedAstToken},
     },
     utils::{
         attributes::doc_attributes, common::get_range_from_span, markdown, markup::Markup,
@@ -11,7 +11,8 @@ use crate::{
 use std::sync::Arc;
 use sway_core::{
     declaration_engine,
-    language::{parsed::Declaration, ty, Visibility},
+    language::{ty, Visibility},
+    TypeId,
 };
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{self, Position, Url};
@@ -20,11 +21,19 @@ use tower_lsp::lsp_types::{self, Position, Url};
 pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option<lsp_types::Hover> {
     let (ident, token) = session.token_at_position(&url, position)?;
     let range = get_range_from_span(&ident.span());
-    let decl_ident = session.declared_token_ident(&token)?;
-    let decl_token = session
-        .token_map()
-        .get(&to_ident_key(&decl_ident))
-        .map(|item| item.value().clone())?;
+    let (decl_ident, decl_token) = match session.declared_token_ident(&token) {
+        Some(decl_ident) => {
+            let decl_token = session
+                .token_map()
+                .get(&to_ident_key(&decl_ident))
+                .map(|item| item.value().clone())?;
+            (decl_ident, decl_token)
+        }
+        // The `TypeInfo` of the token does not contain an `Ident`. In this case,
+        // we use the `Ident` of the token itself.
+        None => (ident, token),
+    };
+
     let contents = hover_format(&decl_token, &decl_ident);
     Some(lsp_types::Hover {
         contents,
@@ -35,7 +44,7 @@ pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option
 fn visibility_as_str(visibility: &Visibility) -> &'static str {
     match visibility {
         Visibility::Private => "",
-        Visibility::Public => "pub",
+        Visibility::Public => "pub ",
     }
 }
 
@@ -59,6 +68,23 @@ fn format_doc_attributes(token: &Token) -> String {
     doc_comment
 }
 
+fn format_visibility_hover(visibility: Visibility, decl_name: &str, token_name: &str) -> String {
+    format!(
+        "{}{} {}",
+        visibility_as_str(&visibility),
+        decl_name,
+        token_name
+    )
+}
+
+fn format_variable_hover(is_mutable: bool, type_name: &str, token_name: &str) -> String {
+    let mutability = match is_mutable {
+        false => "",
+        true => " mut",
+    };
+    format!("let{} {}: {}", mutability, token_name, type_name)
+}
+
 fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
     let kind = lsp_types::MarkupKind::Markdown;
     let value = markdown::format_docs(markup.as_str());
@@ -69,78 +95,76 @@ fn hover_format(token: &Token, ident: &Ident) -> lsp_types::HoverContents {
     let token_name: String = ident.as_str().into();
     let doc_comment = format_doc_attributes(token);
 
-    let format_visibility_hover = |visibility: Visibility, decl_name: &str| -> String {
-        format!(
-            "{}{} {}",
-            visibility_as_str(&visibility),
-            decl_name,
-            token_name
-        )
+    let format_name_with_type = |name: &str, type_id: &TypeId| -> String {
+        let type_name = format!("{}", type_id);
+        format!("{}: {}", name, type_name)
     };
 
-    let format_variable_hover = |is_mutable: bool, type_name: String| -> String {
-        let mutability = match is_mutable {
-            false => "",
-            true => " mut",
-        };
-        format!("let{} {}: {}", mutability, token_name, type_name,)
-    };
-
-    // TODO implement this properly in a future PR
-    let _value = match &token.typed {
-        Some(typed_token) => match typed_token {
+    let value = token
+        .typed
+        .as_ref()
+        .and_then(|typed_token| match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {
                 ty::TyDeclaration::VariableDeclaration(var_decl) => {
                     let type_name = format!("{}", var_decl.type_ascription);
-                    format_variable_hover(var_decl.mutability.is_mutable(), type_name)
+                    Some(format_variable_hover(
+                        var_decl.mutability.is_mutable(),
+                        &type_name,
+                        &token_name,
+                    ))
                 }
-                ty::TyDeclaration::FunctionDeclaration(func) => extract_fn_signature(&func.span()),
                 ty::TyDeclaration::StructDeclaration(decl_id) => {
                     declaration_engine::de_get_struct(decl_id.clone(), &decl.span())
                         .map(|struct_decl| {
-                            format_visibility_hover(struct_decl.visibility, decl.friendly_name())
+                            format_visibility_hover(
+                                struct_decl.visibility,
+                                decl.friendly_name(),
+                                &token_name,
+                            )
                         })
-                        .unwrap_or(token_name)
+                        .ok()
                 }
                 ty::TyDeclaration::TraitDeclaration(ref decl_id) => {
                     declaration_engine::de_get_trait(decl_id.clone(), &decl.span())
                         .map(|trait_decl| {
-                            format_visibility_hover(trait_decl.visibility, decl.friendly_name())
+                            format_visibility_hover(
+                                trait_decl.visibility,
+                                decl.friendly_name(),
+                                &token_name,
+                            )
                         })
-                        .unwrap_or(token_name)
+                        .ok()
                 }
                 ty::TyDeclaration::EnumDeclaration(decl_id) => {
                     declaration_engine::de_get_enum(decl_id.clone(), &decl.span())
                         .map(|enum_decl| {
-                            format_visibility_hover(enum_decl.visibility, decl.friendly_name())
+                            format_visibility_hover(
+                                enum_decl.visibility,
+                                decl.friendly_name(),
+                                &token_name,
+                            )
                         })
-                        .unwrap_or(token_name)
+                        .ok()
                 }
-                _ => token_name,
+                _ => None,
             },
-            _ => token_name,
-        },
-        None => match &token.parsed {
-            AstToken::Declaration(decl) => match decl {
-                Declaration::VariableDeclaration(var_decl) => {
-                    let type_name = format!("{}", var_decl.type_ascription);
-                    format_variable_hover(var_decl.is_mutable, type_name)
-                }
-                Declaration::FunctionDeclaration(func) => extract_fn_signature(&func.span),
-                Declaration::StructDeclaration(struct_decl) => {
-                    format_visibility_hover(struct_decl.visibility, "struct")
-                }
-                Declaration::TraitDeclaration(trait_decl) => {
-                    format_visibility_hover(trait_decl.visibility, "trait")
-                }
-                Declaration::EnumDeclaration(enum_decl) => {
-                    format_visibility_hover(enum_decl.visibility, "enum")
-                }
-                _ => token_name,
+            TypedAstToken::TypedFunctionDeclaration(func) => {
+                Some(extract_fn_signature(&func.span()))
+            }
+            TypedAstToken::TypedFunctionParameter(param) => {
+                Some(format_name_with_type(param.name.as_str(), &param.type_id))
+            }
+            TypedAstToken::TypedStructField(field) => {
+                Some(format_name_with_type(field.name.as_str(), &field.type_id))
+            }
+            TypedAstToken::TypedExpression(expr) => match expr.expression {
+                ty::TyExpressionVariant::Literal { .. } => Some(format!("{}", expr.return_type)),
+                _ => None,
             },
-            _ => token_name,
-        },
-    };
+            _ => None,
+        });
 
-    lsp_types::HoverContents::Markup(markup_content(Markup::from(doc_comment)))
+    let content = Markup::new().maybe_add_sway_block(value).text(&doc_comment);
+
+    lsp_types::HoverContents::Markup(markup_content(content))
 }
