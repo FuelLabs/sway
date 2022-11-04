@@ -14,15 +14,14 @@ use sway_error::error::CompileError;
 pub fn check_invalid_opcodes(asm: &FinalizedAsm) -> CompileResult<()> {
     match asm.program_kind {
         ProgramKind::Contract | ProgramKind::Library => ok((), vec![], vec![]),
-        ProgramKind::Script | ProgramKind::Predicate => {
-            check_for_contract_opcodes(&asm.program_section.ops[..])
-        }
+        ProgramKind::Script => check_script_opcodes(&asm.program_section.ops[..]),
+        ProgramKind::Predicate => check_predicate_opcodes(&asm.program_section.ops[..]),
     }
 }
 
-/// Checks if an opcode is one that can only be executed from within a contract. If so, throw an
-/// error.
-fn check_for_contract_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
+/// Checks if an opcode is one that cannot be executed from within a script.
+/// If so, throw an error.
+fn check_script_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
     use AllocatedOpcode::*;
     let default_span =
         sway_types::span::Span::new("no span found for opcode".into(), 0, 1, None).unwrap();
@@ -62,6 +61,61 @@ fn check_for_contract_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
                 });
             }
             _ => (),
+        }
+    }
+
+    if errors.is_empty() {
+        ok((), vec![], errors)
+    } else {
+        err(vec![], errors)
+    }
+}
+
+/// Checks if an opcode is one that cannot be executed from within a predicate.
+/// If so, throw an error.
+fn check_predicate_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
+    use AllocatedOpcode::*;
+    let default_span =
+        sway_types::span::Span::new("no span found for opcode".into(), 0, 1, None).unwrap();
+    let mut errors = vec![];
+    for op in ops {
+        let invalid_opcode_opt = match op.opcode {
+            BAL(..) => Some("BAL"),
+            BHEI(..) => Some("BHEI"),
+            BHSH(..) => Some("BHSN"),
+            BURN(..) => Some("BURN"),
+            CALL(..) => Some("CALL"),
+            CB(..) => Some("CB"),
+            CCP(..) => Some("CCP"),
+            CROO(..) => Some("CROO"),
+            CSIZ(..) => Some("CSIZ"),
+            GM(_, VirtualImmediate18 { value: 1 }) | GM(_, VirtualImmediate18 { value: 2 }) => {
+                Some("GM")
+            }
+            LDC(..) => Some("LDC"),
+            LOG(..) => Some("LOG"),
+            LOGD(..) => Some("LOGD"),
+            MINT(..) => Some("MINT"),
+            RETD(..) => Some("RETD"),
+            //RVRT(..) => Some("RVRT"),
+            SMO(..) => Some("SMO"),
+            SRW(..) => Some("SRW"),
+            SRWQ(..) => Some("SRWQ"),
+            SWW(..) => Some("SWW"),
+            SWWQ(..) => Some("SWWQ"),
+            TIME(..) => Some("TIME"),
+            TR(..) => Some("TR"),
+            TRO(..) => Some("TRO"),
+            _ => None,
+        };
+        if let Some(invalid_opcode) = invalid_opcode_opt {
+            errors.push(CompileError::InvalidOpcodeFromPredicate {
+                opcode: invalid_opcode.to_string(),
+                span: op
+                    .owning_span
+                    .clone()
+                    .unwrap_or_else(|| default_span.clone()),
+            });
         }
     }
 
