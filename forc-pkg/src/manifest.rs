@@ -58,7 +58,7 @@ impl ManifestFile {
         }
     }
 
-    /// The path to the directory containing the `Forc.toml` from which this manfiest was loaded.
+    /// The path to the directory containing the `Forc.toml` from which this manifest was loaded.
     ///
     /// This will always be a canonical path.
     pub fn dir(&self) -> &Path {
