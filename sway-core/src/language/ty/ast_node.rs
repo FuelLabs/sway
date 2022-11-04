@@ -4,7 +4,7 @@ use derivative::Derivative;
 use sway_types::Span;
 
 use crate::{
-    declaration_engine::de_get_function,
+    declaration_engine::{de_get_function, DeclMapping, ReplaceDecls},
     error::*,
     language::{parsed, ty::*},
     type_system::*,
@@ -51,6 +51,19 @@ impl ReplaceSelfType for TyAstNode {
             }
             TyAstNodeContent::Declaration(ref mut decl) => decl.replace_self_type(self_type),
             TyAstNodeContent::Expression(ref mut expr) => expr.replace_self_type(self_type),
+            TyAstNodeContent::SideEffect => (),
+        }
+    }
+}
+
+impl ReplaceDecls for TyAstNode {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
+        match self.content {
+            TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
+                exp.replace_decls(decl_mapping)
+            }
+            TyAstNodeContent::Declaration(_) => {}
+            TyAstNodeContent::Expression(ref mut expr) => expr.replace_decls(decl_mapping),
             TyAstNodeContent::SideEffect => (),
         }
     }

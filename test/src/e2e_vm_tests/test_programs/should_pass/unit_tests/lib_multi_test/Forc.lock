@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-D93BBB0E505905C0'
+
+[[package]]
+name = 'lib_multi_test'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-D93BBB0E505905C0'
+dependencies = ['core']

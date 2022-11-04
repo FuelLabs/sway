@@ -15,12 +15,13 @@ mod programs;
 pub(crate) mod register_allocator;
 mod register_sequencer;
 
-pub use finalized_asm::FinalizedAsm;
+pub use finalized_asm::{FinalizedAsm, FinalizedEntry};
 
 use abstract_instruction_set::*;
 use allocated_abstract_instruction_set::*;
 pub(crate) use data_section::*;
 use instruction_set::*;
+pub(crate) use programs::ProgramKind;
 use register_sequencer::*;
 
 // Initially, the bytecode will have a lot of individual registers being used. Each register will

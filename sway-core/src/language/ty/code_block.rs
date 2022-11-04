@@ -1,4 +1,9 @@
-use crate::{language::ty::*, type_system::*, types::DeterministicallyAborts};
+use crate::{
+    declaration_engine::{DeclMapping, ReplaceDecls},
+    language::ty::*,
+    type_system::*,
+    types::DeterministicallyAborts,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TyCodeBlock {
@@ -18,6 +23,14 @@ impl ReplaceSelfType for TyCodeBlock {
         self.contents
             .iter_mut()
             .for_each(|x| x.replace_self_type(self_type));
+    }
+}
+
+impl ReplaceDecls for TyCodeBlock {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
+        self.contents
+            .iter_mut()
+            .for_each(|x| x.replace_decls(decl_mapping));
     }
 }
 

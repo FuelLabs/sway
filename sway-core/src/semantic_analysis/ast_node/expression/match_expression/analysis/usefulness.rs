@@ -5,7 +5,7 @@ use crate::{
     error::{err, ok},
     language::ty,
     type_system::TypeId,
-    CompileResult, Namespace,
+    CompileResult,
 };
 
 use super::{
@@ -198,7 +198,6 @@ use super::{
 /// exhaustive if the imaginary additional wildcard pattern has an empty
 /// `WitnessReport`.
 pub(crate) fn check_match_expression_usefulness(
-    namespace: &Namespace,
     type_id: TypeId,
     scrutinees: Vec<ty::TyScrutinee>,
     span: Span,
@@ -215,7 +214,7 @@ pub(crate) fn check_match_expression_usefulness(
     );
     for scrutinee in scrutinees.into_iter() {
         let pat = check!(
-            Pattern::from_scrutinee(namespace, scrutinee.clone()),
+            Pattern::from_scrutinee(scrutinee.clone()),
             return err(warnings, errors),
             warnings,
             errors
