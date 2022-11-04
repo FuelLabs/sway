@@ -4,7 +4,7 @@ use sway_types::Spanned;
 use crate::{
     declaration_engine::{de_get_trait, de_get_trait_fn, de_insert_function},
     error::*,
-    language::{ty, CallPath},
+    language::{parsed::Supertrait, ty, CallPath},
     semantic_analysis::{Mode, TypeCheckContext},
     type_system::*,
     CompileResult,
@@ -35,6 +35,15 @@ impl ReplaceSelfType for TraitConstraint {
         self.type_arguments
             .iter_mut()
             .for_each(|x| x.replace_self_type(self_type));
+    }
+}
+
+impl From<&Supertrait> for TraitConstraint {
+    fn from(supertrait: &Supertrait) -> Self {
+        TraitConstraint {
+            trait_name: supertrait.name.clone(),
+            type_arguments: vec![],
+        }
     }
 }
 

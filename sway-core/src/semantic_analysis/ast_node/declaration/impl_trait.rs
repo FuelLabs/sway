@@ -129,12 +129,11 @@ impl ty::TyImplTrait {
 
                 let new_methods = check!(
                     type_check_trait_implementation(
-                        ctx,
+                        ctx.by_ref(),
                         &new_impl_type_parameters,
                         &trait_decl.type_parameters,
                         &trait_type_arguments,
                         &trait_decl.supertraits,
-                        implementing_for_type_id,
                         &trait_decl.interface_surface,
                         &trait_decl.methods,
                         &functions,
@@ -152,7 +151,7 @@ impl ty::TyImplTrait {
                     trait_type_arguments,
                     span: block_span,
                     methods: new_methods,
-                    implementing_for_type_id,
+                    implementing_for_type_id: ctx.self_type(),
                     type_implementing_for_span: type_implementing_for_span.clone(),
                 }
             }
@@ -176,16 +175,15 @@ impl ty::TyImplTrait {
                     });
                 }
 
-                let ctx = ctx.with_mode(Mode::ImplAbiFn);
+                let mut ctx = ctx.with_mode(Mode::ImplAbiFn);
 
                 let new_methods = check!(
                     type_check_trait_implementation(
-                        ctx,
+                        ctx.by_ref(),
                         &[], // this is empty because abi definitions don't support generics,
                         &[], // this is empty because abi definitions don't support generics,
                         &[], // this is empty because abi definitions don't support generics,
                         &[], // this is empty because abi definitions don't support supertraits,
-                        implementing_for_type_id,
                         &abi.interface_surface,
                         &abi.methods,
                         &functions,
@@ -203,7 +201,7 @@ impl ty::TyImplTrait {
                     trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
                     span: block_span,
                     methods: new_methods,
-                    implementing_for_type_id,
+                    implementing_for_type_id: ctx.self_type(),
                     type_implementing_for_span,
                 }
             }
@@ -528,7 +526,6 @@ fn type_check_trait_implementation(
     trait_type_parameters: &[TypeParameter],
     trait_type_arguments: &[TypeArgument],
     trait_supertraits: &[Supertrait],
-    type_implementing_for: TypeId,
     trait_interface_surface: &[DeclarationId],
     trait_methods: &[DeclarationId],
     impl_methods: &[FunctionDeclaration],
@@ -548,7 +545,24 @@ fn type_check_trait_implementation(
     let mut errors = vec![];
     let mut warnings = vec![];
 
+    // Check to see if the type that we are implementing for implements the
+    // supertraits of this trait.
     let self_type = ctx.self_type();
+    check!(
+        ctx.namespace
+            .implemented_traits
+            .check_if_trait_constraints_are_satisfied_for_type(
+                self_type,
+                &trait_supertraits
+                    .iter()
+                    .map(|x| x.into())
+                    .collect::<Vec<_>>(),
+                block_span
+            ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     // This map keeps track of the remaining functions in the interface surface
     // that still need to be implemented for the trait to be fully implemented.
@@ -577,19 +591,6 @@ fn type_check_trait_implementation(
         return err(warnings, errors),
         warnings,
         errors
-    );
-
-    ctx.namespace.insert_trait_implementation(
-        CallPath {
-            prefixes: vec![],
-            suffix: trait_name.suffix.clone(),
-            is_absolute: false,
-        },
-        trait_type_arguments.to_vec(),
-        self_type,
-        &new_method_ids,
-        block_span,
-        false,
     );
 
     for impl_method in impl_methods {
@@ -747,12 +748,12 @@ fn type_check_trait_implementation(
             .into_iter()
             .cloned()
             .collect();
-        let unconstrained_type_parameters_in_the_type: HashSet<TypeParameter> =
-            type_implementing_for
-                .unconstrained_type_parameters(impl_type_parameters)
-                .into_iter()
-                .cloned()
-                .collect::<HashSet<_>>();
+        let unconstrained_type_parameters_in_the_type: HashSet<TypeParameter> = ctx
+            .self_type()
+            .unconstrained_type_parameters(impl_type_parameters)
+            .into_iter()
+            .cloned()
+            .collect::<HashSet<_>>();
         let mut unconstrained_type_parameters_to_be_added =
             unconstrained_type_parameters_in_this_function
                 .difference(&unconstrained_type_parameters_in_the_type)

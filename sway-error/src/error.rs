@@ -594,12 +594,6 @@ pub enum CompileError {
     AsteriskWithAlias { span: Span },
     #[error("A trait cannot be a subtrait of an ABI.")]
     AbiAsSupertrait { span: Span },
-    #[error("The trait \"{supertrait_name}\" is not implemented for type \"{type_name}\"")]
-    SupertraitImplMissing {
-        supertrait_name: String,
-        type_name: String,
-        span: Span,
-    },
     #[error(
         "Implementation of trait \"{supertrait_name}\" is required by this bound in \"{trait_name}\""
     )]
@@ -840,7 +834,6 @@ impl Spanned for CompileError {
             IntegerContainsInvalidDigit { span, .. } => span.clone(),
             AsteriskWithAlias { span, .. } => span.clone(),
             AbiAsSupertrait { span, .. } => span.clone(),
-            SupertraitImplMissing { span, .. } => span.clone(),
             SupertraitImplRequired { span, .. } => span.clone(),
             IfLetNonEnum { span, .. } => span.clone(),
             ContractCallParamRepeated { span, .. } => span.clone(),
