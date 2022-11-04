@@ -4,7 +4,7 @@ source = 'path+from-root-6FF6432D2813E4FB'
 
 [[package]]
 name = 'if_type_revert'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
