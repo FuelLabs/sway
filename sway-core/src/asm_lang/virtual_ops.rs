@@ -23,7 +23,7 @@ use std::fmt;
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Clone, Debug)]
 pub(crate) enum VirtualOp {
-    /* Arithmetica/Logic (ALU) Instructions */
+    /* Arithmetic/Logic (ALU) Instructions */
     ADD(VirtualRegister, VirtualRegister, VirtualRegister),
     ADDI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     AND(VirtualRegister, VirtualRegister, VirtualRegister),
@@ -175,7 +175,7 @@ impl VirtualOp {
     pub(crate) fn registers(&self) -> BTreeSet<&VirtualRegister> {
         use VirtualOp::*;
         (match self {
-            /* Arithmetica/Logic (ALU) Instructions */
+            /* Arithmetic/Logic (ALU) Instructions */
             ADD(r1, r2, r3) => vec![r1, r2, r3],
             ADDI(r1, r2, _i) => vec![r1, r2],
             AND(r1, r2, r3) => vec![r1, r2, r3],
@@ -284,7 +284,7 @@ impl VirtualOp {
     pub(crate) fn use_registers(&self) -> BTreeSet<&VirtualRegister> {
         use VirtualOp::*;
         (match self {
-            /* Arithmetica/Logic (ALU) Instructions */
+            /* Arithmetic/Logic (ALU) Instructions */
             ADD(_r1, r2, r3) => vec![r2, r3],
             ADDI(_r1, r2, _i) => vec![r2],
             AND(_r1, r2, r3) => vec![r2, r3],
@@ -393,7 +393,7 @@ impl VirtualOp {
     pub(crate) fn def_registers(&self) -> BTreeSet<&VirtualRegister> {
         use VirtualOp::*;
         (match self {
-            /* Arithmetica/Logic (ALU) Instructions */
+            /* Arithmetic/Logic (ALU) Instructions */
             ADD(r1, _r2, _r3) => vec![r1],
             ADDI(r1, _r2, _i) => vec![r1],
             AND(r1, _r2, _r3) => vec![r1],
@@ -524,7 +524,7 @@ impl VirtualOp {
     ) -> Self {
         use VirtualOp::*;
         match self {
-            /* Arithmetica/Logic (ALU) Instructions */
+            /* Arithmetic/Logic (ALU) Instructions */
             ADD(r1, r2, r3) => Self::ADD(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -944,7 +944,7 @@ impl VirtualOp {
 
         use VirtualOp::*;
         match self {
-            /* Arithmetica/Logic (ALU) Instructions */
+            /* Arithmetic/Logic (ALU) Instructions */
             ADD(reg1, reg2, reg3) => AllocatedOpcode::ADD(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),

@@ -145,7 +145,7 @@ macro_rules! define_op_codes (
 );
 
 define_op_codes!(
-    /* Arithmetica/Logic (ALU) Instructions */
+    /* Arithmetic/Logic (ALU) Instructions */
     (Add, AddOpcode, "add", (ret: reg, lhs: reg, rhs: reg)),
     (Addi, AddiOpcode, "addi", (ret: reg, lhs: reg, rhs: imm)),
     (And, AndOpcode, "and", (ret: reg, lhs: reg, rhs: reg)),
