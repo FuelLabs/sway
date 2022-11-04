@@ -698,8 +698,7 @@ fn validate_dep_manifest(
             dep_manifest.project.name,
         );
     }
-    let dep_manifests = BTreeMap::from([(dep_manifest.project.name.clone(), dep_manifest.clone())]);
-    validate_version(&dep_manifests)?;
+    validate_pkg_version(dep_manifest)?;
     Ok(())
 }
 
@@ -1860,14 +1859,11 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
                     .parent()
                     .and_then(|parent_dir| WorkspaceManifestFile::from_dir(parent_dir).ok());
 
-                if let Some(workspace_manifest) = workspace_manifest {
-                    if workspace_manifest.is_member_path(&canonical_path)? {
+                match workspace_manifest {
+                    Some(ws) if ws.is_member_path(&canonical_path)? => {
                         Source::Member(canonical_path)
-                    } else {
-                        Source::Path(canonical_path)
                     }
-                } else {
-                    Source::Path(canonical_path)
+                    _ => Source::Path(canonical_path),
                 }
             }
             (_, _, Some(repo)) => {

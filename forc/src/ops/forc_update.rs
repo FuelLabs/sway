@@ -3,7 +3,7 @@ use anyhow::{anyhow, Result};
 use forc_pkg::{self as pkg, lock, Lock};
 use forc_util::lock_path;
 use pkg::manifest::ManifestFile;
-use std::{collections::HashSet, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 use tracing::info;
 
 /// Running `forc update` will check for updates for the entire dependency graph and commit new
@@ -41,14 +41,11 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
     let new_plan = pkg::BuildPlan::from_manifests(&member_manifests, offline)?;
     let new_lock = Lock::from_graph(new_plan.graph());
     let diff = new_lock.diff(&old_lock);
-    let member_names = if let ManifestFile::Package(pkg_manifest) = &manifest {
-        HashSet::from([pkg_manifest.project.name.clone()])
-    } else {
+    let member_names = 
         member_manifests
             .iter()
             .map(|(_, manifest)| manifest.project.name.clone())
-            .collect()
-    };
+            .collect();
     lock::print_diff(&member_names, &diff);
 
     // If we're not only `check`ing, write the updated lock file.
