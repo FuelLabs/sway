@@ -282,7 +282,7 @@ impl Op {
         let mut errors = vec![];
         ok(
             match name.as_str() {
-                /* Arithmetica/Logic (ALU) Instructions */
+                /* Arithmetic/Logic (ALU) Instructions */
                 "add" => {
                     let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
@@ -1416,7 +1416,7 @@ impl fmt::Display for VirtualOp {
     fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
         use VirtualOp::*;
         match self {
-            /* Arithmetica/Logic (ALU) Instructions */
+            /* Arithmetic/Logic (ALU) Instructions */
             ADD(a, b, c) => write!(fmtr, "add {} {} {}", a, b, c),
             ADDI(a, b, c) => write!(fmtr, "addi {} {} {}", a, b, c),
             AND(a, b, c) => write!(fmtr, "and {} {} {}", a, b, c),

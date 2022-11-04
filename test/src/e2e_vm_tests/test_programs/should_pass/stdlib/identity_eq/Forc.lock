@@ -4,7 +4,7 @@ source = 'path+from-root-E7BBED1900347958'
 
 [[package]]
 name = 'identity_eq'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

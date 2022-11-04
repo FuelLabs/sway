@@ -1,0 +1,26 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-6A09A1886494359D'
+
+[[package]]
+name = 'std'
+source = 'git+https://github.com/fuellabs/sway?tag=v0.30.0#37deaee8fccf5804d78a003cf64f14fac654fc41'
+dependencies = ['core']
+
+[[package]]
+name = 'test_contract'
+source = 'member'
+dependencies = [
+    'std',
+    'test_lib',
+]
+
+[[package]]
+name = 'test_lib'
+source = 'member'
+
+[[package]]
+name = 'test_script'
+source = 'member'
+dependencies = ['test_lib']
+contract-dependencies = ['test_contract']

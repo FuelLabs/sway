@@ -57,7 +57,7 @@ impl AllocatedRegister {
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Clone, Debug)]
 pub(crate) enum AllocatedOpcode {
-    /* Arithmetica/Logic (ALU) Instructions */
+    /* Arithmetic/Logic (ALU) Instructions */
     ADD(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     ADDI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     AND(AllocatedRegister, AllocatedRegister, AllocatedRegister),
@@ -205,7 +205,7 @@ impl AllocatedOpcode {
     pub(crate) fn def_registers(&self) -> BTreeSet<&AllocatedRegister> {
         use AllocatedOpcode::*;
         (match self {
-            /* Arithmetica/Logic (ALU) Instructions */
+            /* Arithmetic/Logic (ALU) Instructions */
             ADD(r1, _r2, _r3) => vec![r1],
             ADDI(r1, _r2, _i) => vec![r1],
             AND(r1, _r2, _r3) => vec![r1],
@@ -314,7 +314,7 @@ impl fmt::Display for AllocatedOpcode {
     fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
         use AllocatedOpcode::*;
         match self {
-            /* Arithmetica/Logic (ALU) Instructions */
+            /* Arithmetic/Logic (ALU) Instructions */
             ADD(a, b, c) => write!(fmtr, "add  {} {} {}", a, b, c),
             ADDI(a, b, c) => write!(fmtr, "addi {} {} {}", a, b, c),
             AND(a, b, c) => write!(fmtr, "and  {} {} {}", a, b, c),
@@ -454,7 +454,7 @@ impl AllocatedOp {
     ) -> Either<Vec<fuel_asm::Opcode>, DoubleWideData> {
         use AllocatedOpcode::*;
         Either::Left(vec![match &self.opcode {
-            /* Arithmetica/Logic (ALU) Instructions */
+            /* Arithmetic/Logic (ALU) Instructions */
             ADD(a, b, c) => VmOp::ADD(a.to_register_id(), b.to_register_id(), c.to_register_id()),
             ADDI(a, b, c) => VmOp::ADDI(a.to_register_id(), b.to_register_id(), c.value),
             AND(a, b, c) => VmOp::AND(a.to_register_id(), b.to_register_id(), c.to_register_id()),

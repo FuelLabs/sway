@@ -4,5 +4,5 @@ source = 'path+from-root-BC4E87DB22234D76'
 
 [[package]]
 name = 'repeated_storage_field'
-source = 'root'
+source = 'member'
 dependencies = ['core']

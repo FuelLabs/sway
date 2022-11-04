@@ -4,5 +4,5 @@ source = 'path+from-root-8222DC735DC134D4'
 
 [[package]]
 name = 'tuple_types'
-source = 'root'
+source = 'member'
 dependencies = ['core']

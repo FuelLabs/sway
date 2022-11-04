@@ -4,7 +4,7 @@ source = 'path+from-root-139A28EAD4E475CB'
 
 [[package]]
 name = 'parsing_logs'
-source = 'root'
+source = 'member'
 dependencies = [
     'parsing_logs_test_abi',
     'std',

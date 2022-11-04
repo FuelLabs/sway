@@ -1,6 +1,6 @@
 [[package]]
 name = 'addrof_intrinsic'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

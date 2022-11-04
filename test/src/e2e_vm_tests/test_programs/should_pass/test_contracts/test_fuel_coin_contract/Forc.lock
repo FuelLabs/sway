@@ -14,7 +14,7 @@ dependencies = ['std']
 
 [[package]]
 name = 'test_fuel_coin_contract'
-source = 'root'
+source = 'member'
 dependencies = [
     'std',
     'test_fuel_coin_abi',
