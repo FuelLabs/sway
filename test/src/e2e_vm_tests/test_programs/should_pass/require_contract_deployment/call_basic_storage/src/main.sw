@@ -1,7 +1,6 @@
 script;
 use basic_storage_abi::{Quad, StoreU64};
 use std::assert::assert;
-use std::logging::log;
 
 fn main() -> u64 {
     let addr = abi(StoreU64, 0x50fbab9b6ccf751161e13b83e74de9893f935bc6f66a18bd0f64b66d24c098de);
@@ -11,8 +10,6 @@ fn main() -> u64 {
     addr.store_u64(key, value);
 
     let res = addr.get_u64(key);
-    log(res);
-    log(value);
     assert(res == value);
 
     let key = 0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
