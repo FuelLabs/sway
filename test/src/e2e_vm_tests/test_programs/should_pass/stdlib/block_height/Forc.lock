@@ -1,6 +1,6 @@
 [[package]]
 name = 'block_height'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

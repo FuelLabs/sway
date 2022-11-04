@@ -4,7 +4,7 @@ source = 'path+from-root-4947D78C815C1154'
 
 [[package]]
 name = 'evm'
-source = 'root'
+source = 'member'
 dependencies = [
     'evm_test_abi',
     'std',

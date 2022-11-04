@@ -9,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'u128_mul_test_pass'
-source = 'root'
+source = 'member'
 dependencies = ['std']

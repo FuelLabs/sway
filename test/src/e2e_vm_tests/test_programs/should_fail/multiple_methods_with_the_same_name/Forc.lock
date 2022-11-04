@@ -4,5 +4,5 @@ source = 'path+from-root-C42B3A5463177F2D'
 
 [[package]]
 name = 'multiple_methods_with_the_same_name'
-source = 'root'
+source = 'member'
 dependencies = ['core']

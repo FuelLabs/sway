@@ -9,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'where_clause_functions'
-source = 'root'
+source = 'member'
 dependencies = ['std']

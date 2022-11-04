@@ -76,7 +76,7 @@ impl Instruction {
         // than 32 bytes
         iter.map(Self::to_bytes)
             .fold::<Vec<u8>, _>(vec![], |mut v, b| {
-                v.extend(&b);
+                v.extend(b);
 
                 v
             })
