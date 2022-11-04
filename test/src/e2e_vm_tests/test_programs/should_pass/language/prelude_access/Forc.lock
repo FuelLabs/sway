@@ -4,7 +4,7 @@ source = 'path+from-root-24E795B40E4736EB'
 
 [[package]]
 name = 'prelude_access'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

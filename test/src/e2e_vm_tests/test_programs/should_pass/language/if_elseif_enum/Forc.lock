@@ -4,5 +4,5 @@ source = 'path+from-root-D01E1B7A46372E9A'
 
 [[package]]
 name = 'if_elseif_enum'
-source = 'root'
+source = 'member'
 dependencies = ['core']

@@ -4,7 +4,7 @@ source = 'path+from-root-0F8B93B33FD67819'
 
 [[package]]
 name = 'evm_ecr'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

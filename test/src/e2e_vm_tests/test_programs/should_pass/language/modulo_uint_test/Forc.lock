@@ -4,7 +4,7 @@ source = 'path+from-root-281118E0AC5E0D35'
 
 [[package]]
 name = 'modulo_uint_test'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
