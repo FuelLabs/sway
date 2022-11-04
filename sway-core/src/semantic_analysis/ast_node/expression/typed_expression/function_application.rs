@@ -1,10 +1,10 @@
 use crate::{
-    declaration_engine::{DeclMapping, DeclarationId, ReplaceDecls},
+    declaration_engine::ReplaceDecls,
     error::*,
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use sway_error::error::CompileError;
 use sway_types::Spanned;
 
@@ -82,7 +82,7 @@ pub(crate) fn instantiate_function_application(
     // constraints are satisfied and replacing old decl ids based on the
     // constraint with new decl ids based on the new type.
     let decl_mapping = check!(
-        handle_trait_constraints(
+        TypeParameter::gather_decl_mapping_from_trait_constraints(
             ctx.by_ref(),
             &function_decl.type_parameters,
             &call_path.span()
@@ -139,95 +139,5 @@ pub(crate) fn check_function_arguments_arity(
             });
             err(warnings, errors)
         }
-    }
-}
-
-fn handle_trait_constraints(
-    mut ctx: TypeCheckContext,
-    type_parameters: &[TypeParameter],
-    access_span: &Span,
-) -> CompileResult<DeclMapping> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
-    let mut original_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
-    let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
-
-    for type_param in type_parameters.iter() {
-        let TypeParameter {
-            type_id,
-            trait_constraints,
-            ..
-        } = type_param;
-
-        // Check to see if the trait constraints are satisfied.
-        check!(
-            ctx.namespace
-                .implemented_traits
-                .check_if_trait_constraints_are_satisfied_for_type(
-                    *type_id,
-                    trait_constraints,
-                    access_span
-                ),
-            continue,
-            warnings,
-            errors
-        );
-
-        for trait_constraint in trait_constraints.iter() {
-            let TraitConstraint {
-                trait_name,
-                type_arguments: trait_type_arguments,
-            } = trait_constraint;
-
-            match ctx
-                .namespace
-                .resolve_call_path(trait_name)
-                .ok(&mut warnings, &mut errors)
-                .cloned()
-            {
-                Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
-                    let trait_decl = check!(
-                        CompileResult::from(de_get_trait(decl_id.clone(), &trait_name.span())),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-
-                    let (trait_original_method_ids, trait_method_ids, trait_impld_method_ids) = check!(
-                        trait_decl.retrieve_interface_surface_and_methods_and_implemented_methods_for_type(ctx.by_ref(), *type_id, trait_name, trait_type_arguments),
-                        continue,
-                        warnings,
-                        errors
-                    );
-                    original_method_ids.extend(trait_original_method_ids);
-                    original_method_ids.extend(trait_method_ids);
-                    impld_method_ids.extend(trait_impld_method_ids);
-
-                    // TODO: handle supertraits
-
-                    // TODO: handle the recursive case
-                    //
-                    // let next_decl_mapping = check!(
-                    //     handle_trait_constraints(ctx.by_ref(), &trait_type_parameters),
-                    //     return err(warnings, errors),
-                    //     warnings,
-                    //     errors
-                    // );
-                }
-                _ => errors.push(CompileError::TraitNotFound {
-                    name: trait_name.to_string(),
-                    span: trait_name.span(),
-                }),
-            }
-        }
-    }
-
-    if errors.is_empty() {
-        let decl_mapping =
-            DeclMapping::from_original_and_new_decl_ids(original_method_ids, impld_method_ids);
-        ok(decl_mapping, warnings, errors)
-    } else {
-        err(warnings, errors)
     }
 }
