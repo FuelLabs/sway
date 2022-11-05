@@ -198,5 +198,11 @@ fn main() -> u64 {
     assert(m.x == 12u64);
     assert(m.y == 20u64);
 
+    let o = Data {
+        value: false,
+    };
+    set_it(o, true);
+    assert(o.value);
+
     42
 }

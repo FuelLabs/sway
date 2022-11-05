@@ -1,5 +1,5 @@
 use sway_error::error::CompileError;
-use sway_types::Spanned;
+use sway_types::{Span, Spanned};
 
 use crate::{
     declaration_engine::*,
@@ -60,6 +60,30 @@ impl TraitConstraint {
                 "Using module paths to define trait constraints is not supported yet.",
                 "try importing the trait with a \"use\" statement instead",
                 self.trait_name.span(),
+            ));
+            return err(warnings, errors);
+        }
+
+        // Right now we aren't supporting generic traits in trait constraints
+        // because of how we type check trait constraints.
+        // Essentially type checking trait constraints with generic traits
+        // creates a chicken and an egg problem where, in order to type check
+        // the type arguments to the generic traits, we must first type check
+        // all of the type parameters, but we cannot finish type checking one
+        // type parameter until we type check the trait constraints for that
+        // type parameter. This is not an unsolvable problem, it will just
+        // require some hacking.
+        //
+        // TODO: implement a fix for the above in a future PR
+        if !self.type_arguments.is_empty() {
+            errors.push(CompileError::Unimplemented(
+                "Using generic traits in trait constraints is not supported yet.",
+                Span::join_all(
+                    self.type_arguments
+                        .iter()
+                        .map(|x| x.span())
+                        .collect::<Vec<_>>(),
+                ),
             ));
             return err(warnings, errors);
         }
