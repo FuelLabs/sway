@@ -87,7 +87,7 @@
   - [Amount of Asset Sent](./documentation/operations/call-data/msg-asset-amount.md)
 - [Logging](./documentation/operations/log.md)
 - [Calling Contracts](./documentation/operations/contract-call.md)
-- [Reentrancy](./documentation/operations/reentrancy.md)
+- [Re-entrancy](./documentation/operations/reentrancy.md)
 - [Asset Operations](./documentation/operations/asset/index.md)
   - [Minting](./documentation/operations/asset/mint.md)
   - [Burning](./documentation/operations/asset/burn.md)
