@@ -1525,7 +1525,7 @@ dependencies = [
  "forc-tracing",
  "forc-util",
  "fs_extra",
- "fuel-asm 0.9.1",
+ "fuel-asm 0.10.0",
  "hex",
  "serde",
  "serde_json",
@@ -1553,7 +1553,7 @@ dependencies = [
  "forc-pkg",
  "forc-tracing",
  "forc-util",
- "fuel-gql-client",
+ "fuel-gql-client 0.14.0",
  "fuel-tx 0.23.1",
  "fuels-core",
  "fuels-signers",
@@ -1758,6 +1758,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-gql-client"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fc69b6c0260e4ed8044dbb337976101f7c25aa131b9d6d11143ed2fa97e3cf7"
+dependencies = [
+ "anyhow",
+ "clap 3.2.23",
+ "cynic",
+ "derive_more",
+ "fuel-vm 0.22.3",
+ "futures",
+ "futures-timer",
+ "hex",
+ "itertools",
+ "serde",
+ "serde_json",
+ "surf",
+ "tai64",
+ "thiserror",
+]
+
+[[package]]
 name = "fuel-merkle"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1865,9 +1887,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-core"
-version = "0.28.0"
+version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "945f8db68436a9b18986251fd82f59243e66a64dcf5615db5e5673f69e80f70d"
+checksum = "9498ab7b91411ad81bcdfa6aea5b46a51f0ddea5605dbb381023a049d40fe925"
 dependencies = [
  "Inflector",
  "anyhow",
@@ -1892,16 +1914,16 @@ dependencies = [
 
 [[package]]
 name = "fuels-signers"
-version = "0.28.0"
+version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0b59a21402f946ce745750ba232913a74b010a6399d829f083b61dbf4d544b1"
+checksum = "78af429d772ccda1079961d9721346150992ec824dd2476d9112740aeba7bf2d"
 dependencies = [
  "async-trait",
  "bytes",
  "elliptic-curve 0.11.12",
  "eth-keystore",
  "fuel-crypto",
- "fuel-gql-client",
+ "fuel-gql-client 0.13.2",
  "fuel-types",
  "fuels-core",
  "fuels-types",
@@ -1915,9 +1937,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-types"
-version = "0.28.0"
+version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d2f7024e8268d77d7bf6fca26353edbf6303891b2a54eb9e78d70ea126e8412"
+checksum = "119e8cb3e126c9740d527d9eec8bf3c7df9f9d834af9be71a25c013eb157f024"
 dependencies = [
  "anyhow",
  "bech32 0.9.1",
@@ -4346,6 +4368,9 @@ name = "tai64"
 version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed7401421025f4132e6c1f7af5e7f8287383969f36e6628016cd509b8d3da9dc"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "taplo"
