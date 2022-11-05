@@ -2425,7 +2425,6 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     };
     // Build it!
     let built_packages_with_source_map = build(&build_plan, &build_profile, &outputs)?;
-    let mut built_packages = Vec::new();
     let output_dir = build_options
         .clone()
         .pkg
@@ -2433,23 +2432,25 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         .map(PathBuf::from);
     for (node_ix, (built_package, source_map)) in built_packages_with_source_map.iter() {
         let pinned = &graph[*node_ix];
-        // If the pkg is not std or core output artifacts
-        if pinned.name != STD && pinned.name != CORE {
-            let pkg_manifest = manifest_map
-                .get(&pinned.id())
-                .ok_or_else(|| anyhow!("Couldn't find member manifest for {}", pinned.name))?;
-            let output_dir = output_dir.clone().unwrap_or_else(|| {
-                default_output_directory(pkg_manifest.dir()).join(&profile_name)
-            });
-            built_package.output_artifacts(
-                source_map,
-                build_options.clone(),
-                pkg_manifest,
-                &output_dir,
-            )?;
-            built_packages.push(built_package.clone());
-        }
+        let pkg_manifest = manifest_map
+            .get(&pinned.id())
+            .ok_or_else(|| anyhow!("Couldn't find member manifest for {}", pinned.name))?;
+        let output_dir = output_dir
+            .clone()
+            .unwrap_or_else(|| default_output_directory(pkg_manifest.dir()).join(&profile_name));
+        built_package.output_artifacts(
+            source_map,
+            build_options.clone(),
+            pkg_manifest,
+            &output_dir,
+        )?;
     }
+
+    let built_packages: Vec<BuiltPackage> = built_packages_with_source_map
+        .iter()
+        .map(|(_, (built_package, _))| built_package)
+        .cloned()
+        .collect();
 
     match manifest_file {
         ManifestFile::Package(_) => {
