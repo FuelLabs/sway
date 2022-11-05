@@ -3,6 +3,11 @@
 //! as the IR assumes all types are well-formed and will throw an ICE (internal compiler error) if
 //! that is not the case.
 
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
+
 use crate::{type_system::TypeId, CompileResult};
 use sway_types::{Ident, Span};
 
@@ -38,7 +43,7 @@ pub struct CollectTypesMetadataContext {
     // obtain a unique ID for a given log instance.
     log_id_counter: usize,
 
-    call_site_span: Option<Span>,
+    call_site_spans: Vec<Arc<Mutex<HashMap<TypeId, Span>>>>,
 }
 
 impl CollectTypesMetadataContext {
@@ -50,19 +55,41 @@ impl CollectTypesMetadataContext {
         &mut self.log_id_counter
     }
 
-    pub fn call_site_span(&self) -> Option<Span> {
-        self.call_site_span.clone()
+    pub fn call_site_push(&mut self) {
+        self.call_site_spans
+            .push(Arc::new(Mutex::new(HashMap::new())));
     }
 
-    pub fn set_call_site_span(&mut self, span: Option<Span>) {
-        self.call_site_span = span;
+    pub fn call_site_pop(&mut self) {
+        self.call_site_spans.pop();
+    }
+
+    pub fn call_site_insert(&mut self, type_id: TypeId, span: Span) {
+        self.call_site_spans
+            .last()
+            .and_then(|h| h.lock().ok())
+            .and_then(|mut l| l.insert(type_id, span));
+    }
+
+    pub fn call_site_get(&mut self, type_id: &TypeId) -> Option<Span> {
+        for lock in self.call_site_spans.iter() {
+            if let Some(hash_map) = lock.lock().ok() {
+                let opt = hash_map.get(type_id).cloned();
+                if opt.is_some() {
+                    return opt;
+                }
+            }
+        }
+        None
     }
 
     pub fn new() -> Self {
-        Self {
+        let mut ctx = Self {
             log_id_counter: 0,
-            call_site_span: None,
-        }
+            call_site_spans: vec![],
+        };
+        ctx.call_site_push();
+        ctx
     }
 }
 

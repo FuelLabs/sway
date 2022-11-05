@@ -79,7 +79,6 @@ impl CollectTypesMetadata for TyExpression {
                 call_path,
                 ..
             } => {
-                ctx.set_call_site_span(Some(call_path.span()));
                 for arg in arguments.iter() {
                     res.append(&mut check!(
                         arg.1.collect_types_metadata(ctx),
@@ -92,6 +91,12 @@ impl CollectTypesMetadata for TyExpression {
                     Ok(decl) => decl,
                     Err(e) => return err(vec![], vec![e]),
                 };
+
+                ctx.call_site_push();
+                for type_parameter in function_decl.type_parameters {
+                    ctx.call_site_insert(type_parameter.type_id, call_path.span())
+                }
+
                 for content in function_decl.body.contents.iter() {
                     res.append(&mut check!(
                         content.collect_types_metadata(ctx),
@@ -100,7 +105,7 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
-                ctx.set_call_site_span(None);
+                ctx.call_site_pop();
             }
             Tuple { fields } => {
                 for field in fields.iter() {
@@ -124,7 +129,15 @@ impl CollectTypesMetadata for TyExpression {
                     }
                 }
             }
-            StructExpression { fields, .. } => {
+            StructExpression { fields, span, .. } => {
+                if let TypeInfo::Struct {
+                    type_parameters, ..
+                } = look_up_type_id(self.return_type.clone())
+                {
+                    for type_parameter in type_parameters {
+                        ctx.call_site_insert(type_parameter.type_id, span.clone());
+                    }
+                }
                 for field in fields.iter() {
                     res.append(&mut check!(
                         field.value.collect_types_metadata(ctx),
@@ -250,7 +263,9 @@ impl CollectTypesMetadata for TyExpression {
                 enum_instantiation_span,
                 ..
             } => {
-                ctx.set_call_site_span(Some(enum_instantiation_span.clone()));
+                for type_param in enum_decl.type_parameters.iter() {
+                    ctx.call_site_insert(type_param.type_id, enum_instantiation_span.clone())
+                }
                 if let Some(contents) = contents {
                     res.append(&mut check!(
                         contents.collect_types_metadata(ctx),
@@ -275,7 +290,6 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
-                ctx.set_call_site_span(None);
             }
             AbiCast { address, .. } => {
                 res.append(&mut check!(
