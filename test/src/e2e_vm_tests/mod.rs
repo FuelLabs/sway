@@ -109,7 +109,12 @@ impl TestContext {
 
                 let (result, ..) = harness::compile_to_bytes(&name, &context.run_config, false);
                 assert_matches!(result, Ok(_));
-                let compiled = result.unwrap();
+                let compiled = match result.unwrap() {
+                    forc_pkg::Built::Package(built_pkg) => *built_pkg,
+                    forc_pkg::Built::Workspace(_) => {
+                        panic!("workspaces are not supported in the test suite yet")
+                    }
+                };
 
                 let (state, receipts, pkg) = harness::runs_in_vm(compiled, script_data);
                 let result = match state {
@@ -136,7 +141,12 @@ impl TestContext {
             TestCategory::Compiles => {
                 let (result, output) = harness::compile_to_bytes(&name, &context.run_config, true);
                 assert_matches!(result, Ok(_));
-                let compiled = result.unwrap();
+                let compiled = match result.unwrap() {
+                    forc_pkg::Built::Package(built_pkg) => *built_pkg,
+                    forc_pkg::Built::Workspace(_) => {
+                        panic!("workspaces are not supported in the test suite yet")
+                    }
+                };
                 check_file_checker(checker, &name, &output);
 
                 if validate_abi {
