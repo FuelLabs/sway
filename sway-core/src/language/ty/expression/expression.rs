@@ -132,7 +132,7 @@ impl CollectTypesMetadata for TyExpression {
             StructExpression { fields, span, .. } => {
                 if let TypeInfo::Struct {
                     type_parameters, ..
-                } = look_up_type_id(self.return_type.clone())
+                } = look_up_type_id(self.return_type)
                 {
                     for type_parameter in type_parameters {
                         ctx.call_site_insert(type_parameter.type_id, span.clone());
