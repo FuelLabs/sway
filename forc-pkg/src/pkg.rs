@@ -2430,7 +2430,10 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         .pkg
         .output_directory
         .map(PathBuf::from);
-    for (node_ix, (built_package, source_map)) in built_packages_with_source_map.iter() {
+    for (node_ix, (built_package, source_map)) in built_packages_with_source_map
+        .iter()
+        .filter(|(node_ix, _)| outputs.contains(node_ix))
+    {
         let pinned = &graph[*node_ix];
         let pkg_manifest = manifest_map
             .get(&pinned.id())
