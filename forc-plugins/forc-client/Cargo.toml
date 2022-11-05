@@ -17,9 +17,9 @@ forc-tracing = { version = "0.30.1", path = "../../forc-tracing" }
 forc-util = { version = "0.30.1", path = "../../forc-util" }
 fuel-gql-client = { version = "0.14", default-features = false }
 fuel-tx = { version = "0.23", features = ["builder"] }
-fuels-core = "0.29"
-fuels-signers = "0.29"
-fuels-types = "0.29"
+fuels-core = "0.30"
+fuels-signers = "0.30"
+fuels-types = "0.30"
 futures = "0.3"
 hex = "0.4.3"
 serde = "1.0"

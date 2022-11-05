@@ -609,7 +609,6 @@ dependencies = [
  "js-sys",
  "num-integer",
  "num-traits",
- "serde",
  "time 0.1.44",
  "wasm-bindgen",
  "winapi",
@@ -1553,7 +1552,7 @@ dependencies = [
  "forc-pkg",
  "forc-tracing",
  "forc-util",
- "fuel-gql-client 0.14.0",
+ "fuel-gql-client",
  "fuel-tx 0.23.1",
  "fuels-core",
  "fuels-signers",
@@ -1737,28 +1736,6 @@ dependencies = [
 
 [[package]]
 name = "fuel-gql-client"
-version = "0.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f46c4d55ac2b320aa8c536b2742cadf30c2d670da8df2158d2cfd0333fb9662c"
-dependencies = [
- "anyhow",
- "chrono",
- "clap 3.2.23",
- "cynic",
- "derive_more",
- "fuel-vm 0.22.3",
- "futures",
- "futures-timer",
- "hex",
- "itertools",
- "serde",
- "serde_json",
- "surf",
- "thiserror",
-]
-
-[[package]]
-name = "fuel-gql-client"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fc69b6c0260e4ed8044dbb337976101f7c25aa131b9d6d11143ed2fa97e3cf7"
@@ -1887,9 +1864,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-core"
-version = "0.29.0"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9498ab7b91411ad81bcdfa6aea5b46a51f0ddea5605dbb381023a049d40fe925"
+checksum = "50d452cdff8ed838f79c610fbffa2aec749607223678fef5a4cd3397c27ffe03"
 dependencies = [
  "Inflector",
  "anyhow",
@@ -1914,16 +1891,16 @@ dependencies = [
 
 [[package]]
 name = "fuels-signers"
-version = "0.29.0"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78af429d772ccda1079961d9721346150992ec824dd2476d9112740aeba7bf2d"
+checksum = "84c73f64cd88283e64bcf9ea793b559db09fd1bccfe7edaf7b3af3d3592defb4"
 dependencies = [
  "async-trait",
  "bytes",
  "elliptic-curve 0.11.12",
  "eth-keystore",
  "fuel-crypto",
- "fuel-gql-client 0.13.2",
+ "fuel-gql-client",
  "fuel-types",
  "fuels-core",
  "fuels-types",
@@ -1937,9 +1914,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-types"
-version = "0.29.0"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "119e8cb3e126c9740d527d9eec8bf3c7df9f9d834af9be71a25c013eb157f024"
+checksum = "721fa9b7c071ac61e2aafea3e02e7442bef94665843258f795b2dc0658e9f9bb"
 dependencies = [
  "anyhow",
  "bech32 0.9.1",
