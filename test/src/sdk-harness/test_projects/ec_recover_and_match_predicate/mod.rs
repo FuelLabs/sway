@@ -39,6 +39,7 @@ async fn ec_recover_and_match_predicate_test() -> Result<(), Error> {
             utxo_validation: true,
             ..Config::local_node()
         }),
+        None,
     )
     .await;
 
