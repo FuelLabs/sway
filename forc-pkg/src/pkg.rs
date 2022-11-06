@@ -409,7 +409,7 @@ impl BuiltPackage {
                 res?;
             }
             TreeType::Predicate => {
-                // get the root hash of the bytecode for predicates and store the result in a file in the output directory
+                // Get the root hash of the bytecode for predicates and store the result in a file in the output directory
                 let root = format!("0x{}", Contract::root_from_code(&self.bytecode));
                 let root_file_name =
                     format!("{}{}", &pkg_manifest.project.name, SWAY_BIN_ROOT_SUFFIX);
@@ -618,7 +618,7 @@ impl BuildPlan {
     /// Produce an iterator yielding indices for the given node and its dependencies in BFS order.
     pub fn node_deps(&self, n: NodeIx) -> impl '_ + Iterator<Item = NodeIx> {
         let bfs = Bfs::new(&self.graph, n);
-        // Collect visitable nodes from the given node in the graph.
+        // Return an iterator yielding visitable nodes from the given node.
         bfs.iter(&self.graph)
     }
 
@@ -2330,7 +2330,7 @@ pub const SWAY_BIN_HASH_SUFFIX: &str = "-bin-hash";
 /// when predicates are built_package.
 pub const SWAY_BIN_ROOT_SUFFIX: &str = "-bin-root";
 
-/// Returns the implied build profile by the build opts
+/// Selects the build profile from all available build profiles in the workspace using build_opts.
 fn build_profile_from_opts(
     build_profiles: &HashMap<String, BuildProfile>,
     build_options: &BuildOpts,
@@ -2458,7 +2458,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         ManifestFile::Package(pkg_manifest) => {
             let built_pkg = built_workspaces
                 .get(&pkg_manifest.project.name)
-                .ok_or_else(|| anyhow!("Couldn't find any built package"))?;
+                .ok_or_else(|| anyhow!("Couldn't find the built package"))?;
             Ok(Built::Package(Box::new(built_pkg.clone())))
         }
         ManifestFile::Workspace(_) => Ok(Built::Workspace(built_workspaces)),
