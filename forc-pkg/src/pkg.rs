@@ -82,10 +82,13 @@ pub struct BuiltPackage {
     pub tree_type: TreeType,
 }
 
+/// The result of successfully compiling a workspace.
+pub type BuiltWorkspace = HashMap<String, BuiltPackage>;
+
 #[derive(Debug)]
 pub enum Built {
     Package(Box<BuiltPackage>),
-    Workspace(Vec<BuiltPackage>),
+    Workspace(BuiltWorkspace),
 }
 
 /// A package uniquely identified by name along with its source.
@@ -2424,6 +2427,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         ManifestFile::Workspace(_) => build_plan.member_nodes().collect(),
     };
     // Build it!
+    let mut built_workspaces = HashMap::new();
     let built_packages_with_source_map = build(&build_plan, &build_profile, &outputs)?;
     let output_dir = build_options
         .clone()
@@ -2447,22 +2451,17 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
             pkg_manifest,
             &output_dir,
         )?;
+        built_workspaces.insert(pinned.name.clone(), built_package.clone());
     }
 
-    let built_packages: Vec<BuiltPackage> = built_packages_with_source_map
-        .iter()
-        .map(|(_, (built_package, _))| built_package)
-        .cloned()
-        .collect();
-
     match manifest_file {
-        ManifestFile::Package(_) => {
-            let built_pkg = built_packages
-                .last()
+        ManifestFile::Package(pkg_manifest) => {
+            let built_pkg = built_workspaces
+                .get(&pkg_manifest.project.name)
                 .ok_or_else(|| anyhow!("Couldn't find any built package"))?;
             Ok(Built::Package(Box::new(built_pkg.clone())))
         }
-        ManifestFile::Workspace(_) => Ok(Built::Workspace(built_packages)),
+        ManifestFile::Workspace(_) => Ok(Built::Workspace(built_workspaces)),
     }
 }
 
