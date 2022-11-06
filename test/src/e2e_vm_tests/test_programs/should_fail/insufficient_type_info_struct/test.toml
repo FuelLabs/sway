@@ -1,4 +1,4 @@
 category = "fail"
 
-# check: foo()
+# check: let s = S {};
 # nextln: $()Cannot infer type for type parameter "T". Insufficient type information provided. Try annotating its type.
