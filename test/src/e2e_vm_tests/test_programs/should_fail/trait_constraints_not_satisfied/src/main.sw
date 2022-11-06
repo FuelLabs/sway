@@ -9,6 +9,8 @@ trait MyAdd {
     fn my_add(self, other: Self) -> Self;
 }
 
+// this commented out code causes the trait constraints to not be satisfied
+
 // impl MyAdd for u8 {
 //     fn my_add(self, other: Self) -> Self {
 //         self + other
