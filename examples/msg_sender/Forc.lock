@@ -4,7 +4,7 @@ source = 'path+from-root-8AE06FACEC4CD701'
 
 [[package]]
 name = 'msg_sender'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
