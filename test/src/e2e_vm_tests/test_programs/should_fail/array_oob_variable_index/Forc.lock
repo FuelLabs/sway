@@ -1,6 +1,6 @@
 [[package]]
 name = 'array_oob_variable_index'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
