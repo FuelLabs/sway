@@ -1,7 +1,7 @@
 use crate::cli::TemplateCommand;
 use anyhow::{anyhow, Context, Result};
 use forc_pkg::{
-    fetch_git, fetch_id, find_dir_within, git_commit_path, pin_git, PackageManifest, SourceGit,
+    fetch_git, fetch_id, find_dir_within, git_commit_root, pin_git, PackageManifest, SourceGit,
 };
 use forc_util::validate_name;
 use fs_extra::dir::{copy, CopyOptions};
@@ -34,7 +34,7 @@ pub fn init(command: TemplateCommand) -> Result<()> {
     info!("Resolving the HEAD of {}", source.repo);
     let git_source = pin_git(fetch_id, &local_repo_name, source)?;
 
-    let repo_path = git_commit_path(
+    let repo_path = git_commit_root(
         &local_repo_name,
         &git_source.source.repo,
         &git_source.commit_hash,
@@ -54,10 +54,10 @@ pub fn init(command: TemplateCommand) -> Result<()> {
         })?,
         None => {
             let manifest_path = repo_path.join(constants::MANIFEST_FILE_NAME);
-            if PackageManifest::from_file(&manifest_path).is_err() {
+            if PackageManifest::from_file(manifest_path.as_ref()).is_err() {
                 anyhow::bail!("failed to find a template in {}", command.url);
             }
-            repo_path
+            repo_path.as_ref().to_path_buf()
         }
     };
 

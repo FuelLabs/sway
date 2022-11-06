@@ -7,6 +7,7 @@ use crate::{
     CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
+use forc_fs::Filesystem;
 use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
     print_on_failure, print_on_success, print_on_success_library,
@@ -671,7 +672,7 @@ fn dep_path(
     let dep = &graph[dep_node];
     match &dep.source {
         SourcePinned::Git(git) => {
-            let repo_path = git_commit_path(&dep.name, &git.source.repo, &git.commit_hash);
+            let repo_path = git_commit_root(&dep.name, &git.source.repo, &git.commit_hash);
             find_dir_within(&repo_path, &dep.name).ok_or_else(|| {
                 anyhow!(
                     "failed to find package `{}` in {}",
@@ -1325,7 +1326,7 @@ fn hash_url(url: &Url) -> u64 {
 /// A unique `fetch_id` may be specified to avoid contention over the git repo directory in the
 /// case that multiple processes or threads may be building different projects that may require
 /// fetching the same dependency.
-fn tmp_git_repo_dir(fetch_id: u64, name: &str, repo: &Url) -> PathBuf {
+fn tmp_git_repo_dir(fetch_id: u64, name: &str, repo: &Url) -> Filesystem {
     let repo_dir_name = format!("{:x}-{}", fetch_id, git_repo_dir_name(name, repo));
     git_checkouts_directory().join("tmp").join(repo_dir_name)
 }
@@ -1378,8 +1379,17 @@ where
 {
     // Clear existing temporary directory if it exists.
     let repo_dir = tmp_git_repo_dir(fetch_id, name, &source.repo);
+    println!("with tmp git repo");
     if repo_dir.exists() {
-        let _ = std::fs::remove_dir_all(&repo_dir);
+        match repo_dir.open_rw(".forc-lock") {
+            Ok(_) => {
+                println!("remove dir all");
+                let _ = std::fs::remove_dir_all(&repo_dir);
+            }
+            Err(_) => {
+                println!("Waiting on .forc-lock");
+            }
+        };
     }
 
     // Initialise the repository.
@@ -1488,7 +1498,7 @@ fn pin_pkg(
                 // newer commit.
                 let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
                 let repo_path =
-                    git_commit_path(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
+                    git_commit_root(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
                 (pinned_git, repo_path)
             } else {
                 // If we are in online mode and the reference is to a specific commit (tag or
@@ -1505,7 +1515,7 @@ fn pin_pkg(
                         // If the checkout we are looking for does not exists locally or an
                         // error happened during the search fetch it
                         let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
-                        let repo_path = git_commit_path(
+                        let repo_path = git_commit_root(
                             &name,
                             &pinned_git.source.repo,
                             &pinned_git.commit_hash,
@@ -1561,7 +1571,7 @@ fn pin_pkg(
 /// ```
 ///
 /// where `<repo_url_hash>` is a hash of the source repository URL.
-pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
+pub fn git_commit_root(name: &str, repo: &Url, commit_hash: &str) -> Filesystem {
     let repo_dir_name = git_repo_dir_name(name, repo);
     git_checkouts_directory()
         .join(repo_dir_name)
@@ -1571,21 +1581,21 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 /// Fetch the repo at the given git package's URL and checkout the pinned commit.
 ///
 /// Returns the location of the checked out commit.
-pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
-    let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
+pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<Filesystem> {
+    let root = git_commit_root(name, &pinned.source.repo, &pinned.commit_hash);
     // Checkout the pinned hash to the path.
     with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
-        if path.exists() {
-            let _ = std::fs::remove_dir_all(&path);
-        }
-        std::fs::create_dir_all(&path)?;
+        if root.exists() {
+            let _ = std::fs::remove_dir_all(&root);
+        };
+        std::fs::create_dir_all(&root)?;
 
         // Checkout HEAD to the target directory.
         let mut checkout = git2::build::CheckoutBuilder::new();
-        checkout.force().target_dir(&path);
+        checkout.force().target_dir(root.as_ref());
         repo.checkout_head(Some(&mut checkout))?;
 
         // Fetch HEAD time and create an index
@@ -1601,12 +1611,12 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         );
         // Write the index file
         fs::write(
-            path.join(".forc_index"),
+            root.join(".forc_index"),
             serde_json::to_string(&source_index)?,
         )?;
         Ok(())
     })?;
-    Ok(path)
+    Ok(root)
 }
 
 /// Search local checkout dir for git sources, for non-branch git references tries to find the
@@ -1614,7 +1624,7 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
 fn search_git_source_locally(
     name: &str,
     git_source: &SourceGit,
-) -> Result<Option<(PathBuf, String)>> {
+) -> Result<Option<(Filesystem, String)>> {
     // In the checkouts dir iterate over dirs whose name starts with `name`
     let checkouts_dir = git_checkouts_directory();
     match &git_source.reference {
@@ -1634,10 +1644,10 @@ fn search_git_source_locally(
 
 /// Search and collect repos from checkouts_dir that are from given branch and for the given package
 fn collect_local_repos_with_branch(
-    checkouts_dir: PathBuf,
+    checkouts_dir: Filesystem,
     package_name: &str,
     branch_name: &str,
-) -> Result<Vec<(PathBuf, HeadWithTime)>> {
+) -> Result<Vec<(Filesystem, HeadWithTime)>> {
     let mut list_of_repos = Vec::new();
     with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
         // Check if the repo's HEAD commit to verify it is from desired branch
@@ -1653,10 +1663,10 @@ fn collect_local_repos_with_branch(
 
 /// Search an exact reference in locally available repos
 fn find_exact_local_repo_with_reference(
-    checkouts_dir: PathBuf,
+    checkouts_dir: Filesystem,
     package_name: &str,
     git_reference: &GitReference,
-) -> Result<Option<(PathBuf, String)>> {
+) -> Result<Option<(Filesystem, String)>> {
     let mut found_local_repo = None;
     if let GitReference::Tag(tag) = git_reference {
         found_local_repo = find_repo_with_tag(tag, package_name, checkouts_dir)?;
@@ -1670,8 +1680,8 @@ fn find_exact_local_repo_with_reference(
 fn find_repo_with_tag(
     tag: &str,
     package_name: &str,
-    checkouts_dir: PathBuf,
-) -> Result<Option<(PathBuf, String)>> {
+    checkouts_dir: Filesystem,
+) -> Result<Option<(Filesystem, String)>> {
     let mut found_local_repo = None;
     with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
         // Get current head of the repo
@@ -1690,8 +1700,8 @@ fn find_repo_with_tag(
 fn find_repo_with_rev(
     rev: &str,
     package_name: &str,
-    checkouts_dir: PathBuf,
-) -> Result<Option<(PathBuf, String)>> {
+    checkouts_dir: Filesystem,
+) -> Result<Option<(Filesystem, String)>> {
     let mut found_local_repo = None;
     with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
         // Get current head of the repo
@@ -1708,9 +1718,9 @@ fn find_repo_with_rev(
 
 /// Search local checkouts directory and apply the given function. This is used for iterating over
 /// possible options of a given package.
-fn with_search_checkouts<F>(checkouts_dir: PathBuf, package_name: &str, mut f: F) -> Result<()>
+fn with_search_checkouts<F>(checkouts_dir: Filesystem, package_name: &str, mut f: F) -> Result<()>
 where
-    F: FnMut(GitSourceIndex, PathBuf) -> Result<()>,
+    F: FnMut(GitSourceIndex, Filesystem) -> Result<()>,
 {
     for entry in fs::read_dir(checkouts_dir)? {
         let entry = entry?;
@@ -1727,11 +1737,11 @@ where
                     .map_err(|e| anyhow!("Cannot find local repo at checkouts dir {}", e))?;
                 if repo_dir.file_type()?.is_dir() {
                     // Get the path of the current repo
-                    let repo_dir_path = repo_dir.path();
+                    let repo_dir_root = Filesystem::new(repo_dir.path());
                     // Get the index file from the found path
-                    if let Ok(index_file) = fs::read_to_string(repo_dir_path.join(".forc_index")) {
+                    if let Ok(index_file) = fs::read_to_string(repo_dir_root.join(".forc_index")) {
                         let index = serde_json::from_str(&index_file)?;
-                        f(index, repo_dir_path)?;
+                        f(index, repo_dir_root)?;
                     }
                 }
             }
@@ -2569,7 +2579,7 @@ pub fn parse(
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.
 ///
 /// Returns the path to the package on success, or `None` in the case it could not be found.
-pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
+pub fn find_within(dir: &Filesystem, pkg_name: &str) -> Option<PathBuf> {
     walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_map(Result::ok)
@@ -2586,7 +2596,7 @@ pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
 }
 
 /// The same as [find_within], but returns the package's project directory.
-pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
+pub fn find_dir_within(dir: &Filesystem, pkg_name: &str) -> Option<PathBuf> {
     find_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
 }
 

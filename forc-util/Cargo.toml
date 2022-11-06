@@ -14,6 +14,7 @@ ansi_term = "0.12"
 anyhow = "1"
 dirs = "3.0.2"
 forc-tracing = { version = "0.29.0", path = "../forc-tracing" }
+forc-fs = { version = "0.29.0", path = "../forc-fs" }
 sway-core = { version = "0.29.0", path = "../sway-core" }
 sway-error = { version = "0.29.0", path = "../sway-error" }
 sway-types = { version = "0.29.0", path = "../sway-types" }
