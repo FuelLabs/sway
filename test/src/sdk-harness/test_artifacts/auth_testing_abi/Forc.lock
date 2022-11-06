@@ -1,6 +1,6 @@
 [[package]]
 name = 'auth_testing_abi'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

@@ -4,7 +4,7 @@ source = 'path+from-root-C2C00FC9DC812272'
 
 [[package]]
 name = 'fixing_generic_type'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

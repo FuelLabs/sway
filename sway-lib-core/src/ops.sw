@@ -370,7 +370,7 @@ impl Not for u64 {
 
 impl Not for u32 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: ~u32::max(), r4) {
+        asm(r1: self, r2, r3: u32::max(), r4) {
             not r2 r1;
             and r4 r2 r3;
             r4: u32
@@ -380,7 +380,7 @@ impl Not for u32 {
 
 impl Not for u16 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: ~u16::max(), r4) {
+        asm(r1: self, r2, r3: u16::max(), r4) {
             not r2 r1;
             and r4 r2 r3;
             r4: u16
@@ -390,7 +390,7 @@ impl Not for u16 {
 
 impl Not for u8 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: ~u8::max(), r4) {
+        asm(r1: self, r2, r3: u8::max(), r4) {
             not r2 r1;
             and r4 r2 r3;
             r4: u8
@@ -623,8 +623,7 @@ fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
 
 /// Extract a single 64 bit word from a b256 value using the specified offset.
 fn get_word_from_b256(val: b256, offset: u64) -> u64 {
-    let mut empty: u64 = 0;
-    asm(r1: val, offset: offset, r2, res: empty) {
+    asm(r1: val, offset: offset, r2, res) {
         add r2 r1 offset;
         lw res r2 i0;
         res: u64

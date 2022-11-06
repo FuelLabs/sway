@@ -495,7 +495,8 @@ where
 trait Person{ fn name( self )->String;fn age( self )->usize; }
 trait Student:Person {fn university(self) -> String;}
 trait Programmer {fn fav_language(self) -> String;}
-trait CompSciStudent: Programmer+Student {fn git_username(self) -> String;}"#;
+trait CompSciStudent: Programmer+Student {fn git_username(self) -> String;}
+trait TraitWithGenerics<T> where T: String {fn from(b: T) -> Self;}"#;
         let correct_sway_code = r#"library traits;
 
 trait Person {
@@ -510,6 +511,12 @@ trait Programmer {
 }
 trait CompSciStudent: Programmer + Student {
     fn git_username(self) -> String;
+}
+trait TraitWithGenerics<T>
+where
+    T: String
+{
+    fn from(b: T) -> Self;
 }
 "#;
         let mut formatter = Formatter::default();
@@ -529,9 +536,9 @@ struct Opts {
 }
 
 fn  main(       ) -> bool{
-    let default_gas  = 1_000_000_000_000           ;let fuelcoin_id = ~ContractId::from(0x018f59fe434b323a5054e7bb41de983f4926a3c5d3e4e1f9f33b5f0f0e611889);
+    let default_gas  = 1_000_000_000_000           ;let fuelcoin_id = ContractId::from(0x018f59fe434b323a5054e7bb41de983f4926a3c5d3e4e1f9f33b5f0f0e611889);
 
-    let balance_test_id = ~ContractId :: from( 0x597e5ddb1a6bec92a96a73e4f0bc6f6e3e7b21f5e03e1c812cd63cffac480463 ) ;
+    let balance_test_id = ContractId :: from( 0x597e5ddb1a6bec92a96a73e4f0bc6f6e3e7b21f5e03e1c812cd63cffac480463 ) ;
 
     let fuel_coin = abi(    TestFuelCoin, fuelcoin_id.into(       ) ) ;
 
@@ -577,9 +584,9 @@ struct Opts {
 
 fn main() -> bool {
     let default_gas = 1_000_000_000_000;
-    let fuelcoin_id = ~ContractId::from(0x018f59fe434b323a5054e7bb41de983f4926a3c5d3e4e1f9f33b5f0f0e611889);
+    let fuelcoin_id = ContractId::from(0x018f59fe434b323a5054e7bb41de983f4926a3c5d3e4e1f9f33b5f0f0e611889);
 
-    let balance_test_id = ~ContractId::from(0x597e5ddb1a6bec92a96a73e4f0bc6f6e3e7b21f5e03e1c812cd63cffac480463);
+    let balance_test_id = ContractId::from(0x597e5ddb1a6bec92a96a73e4f0bc6f6e3e7b21f5e03e1c812cd63cffac480463);
 
     let fuel_coin = abi(TestFuelCoin, fuelcoin_id.into());
 
@@ -1131,7 +1138,6 @@ fn struct_destructuring() {
         assert_eq!(correct_sway_code, formatted_sway_code);
         assert!(test_stability(formatted_sway_code, formatter));
     }
-
     #[test]
     fn test_multiline_collections() {
         let sway_code_to_format = r#"library test_multiline_collections;

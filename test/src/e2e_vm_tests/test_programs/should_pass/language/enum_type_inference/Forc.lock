@@ -4,5 +4,5 @@ source = 'path+from-root-6ADF79A3BE26848E'
 
 [[package]]
 name = 'enum_type_inference'
-source = 'root'
+source = 'member'
 dependencies = ['core']

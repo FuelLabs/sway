@@ -4,5 +4,5 @@ source = 'path+from-root-E679204875B87008'
 
 [[package]]
 name = 'struct_field_access'
-source = 'root'
+source = 'member'
 dependencies = ['core']

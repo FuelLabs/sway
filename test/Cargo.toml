@@ -14,10 +14,9 @@ filecheck = "0.5"
 forc = { path = "../forc", features = ["test"], default-features = false }
 forc-client = { path = "../forc-plugins/forc-client" }
 forc-pkg = { path = "../forc-pkg" }
+forc-test = { path = "../forc-test" }
 forc-tracing = { path = "../forc-tracing" }
-fuel-asm = "0.9"
-fuel-tx = { version = "0.20", features = ["builder"]}
-fuel-vm = { version = "0.18", features = ["random"] }
+fuel-vm = { version = "0.22", features = ["random"] }
 futures = "0.3.24"
 gag = "1.0"
 hex = "0.4.3"

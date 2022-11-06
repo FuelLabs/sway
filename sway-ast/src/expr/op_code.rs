@@ -145,6 +145,7 @@ macro_rules! define_op_codes (
 );
 
 define_op_codes!(
+    /* Arithmetic/Logic (ALU) Instructions */
     (Add, AddOpcode, "add", (ret: reg, lhs: reg, rhs: reg)),
     (Addi, AddiOpcode, "addi", (ret: reg, lhs: reg, rhs: imm)),
     (And, AndOpcode, "and", (ret: reg, lhs: reg, rhs: reg)),
@@ -155,12 +156,6 @@ define_op_codes!(
     (Exp, ExpOpcode, "exp", (ret: reg, base: reg, power: reg)),
     (Expi, ExpiOpcode, "expi", (ret: reg, base: reg, power: imm)),
     (Gt, GtOpcode, "gt", (ret: reg, lhs: reg, rhs: reg)),
-    (
-        Gtf,
-        GtfOpcode,
-        "gtf",
-        (ret: reg, index: reg, tx_field_id: imm)
-    ),
     (Lt, LtOpcode, "lt", (ret: reg, lhs: reg, rhs: reg)),
     (Mlog, MlogOpcode, "mlog", (ret: reg, arg: reg, base: reg)),
     (Mod, ModOpcode, "mod", (ret: reg, lhs: reg, rhs: reg)),
@@ -171,33 +166,25 @@ define_op_codes!(
     (Mul, MulOpcode, "mul", (ret: reg, lhs: reg, rhs: reg)),
     (Muli, MuliOpcode, "muli", (ret: reg, lhs: reg, rhs: imm)),
     (Noop, NoopOpcode, "noop", ()),
-    (Blob, BlobOpcode, "blob", (size: imm)),
     (Not, NotOpcode, "not", (ret: reg, arg: reg)),
     (Or, OrOpcode, "or", (ret: reg, lhs: reg, rhs: reg)),
     (Ori, OriOpcode, "ori", (ret: reg, lhs: reg, rhs: imm)),
     (Sll, SllOpcode, "sll", (ret: reg, lhs: reg, rhs: reg)),
     (Slli, SlliOpcode, "slli", (ret: reg, lhs: reg, rhs: imm)),
-    (
-        Smo,
-        SmoOpcode,
-        "smo",
-        (addr: reg, len: reg, output: reg, coins: reg)
-    ),
     (Srl, SrlOpcode, "srl", (ret: reg, lhs: reg, rhs: reg)),
     (Srli, SrliOpcode, "srli", (ret: reg, lhs: reg, rhs: imm)),
     (Sub, SubOpcode, "sub", (ret: reg, lhs: reg, rhs: reg)),
     (Subi, SubiOpcode, "subi", (ret: reg, lhs: reg, rhs: imm)),
     (Xor, XorOpcode, "xor", (ret: reg, lhs: reg, rhs: reg)),
     (Xori, XoriOpcode, "xori", (ret: reg, lhs: reg, rhs: imm)),
-    (
-        Cimv,
-        CimvOpcode,
-        "cimv",
-        (ret: reg, input: reg, maturity: reg)
-    ),
-    (Ctmv, CtmvOpcode, "ctmv", (ret: reg, maturity: reg)),
-    (Ji, JiOpcode, "ji", (offset: imm)),
-    (Jnei, JneiOpcode, "jnei", (lhs: reg, rhs: reg, offset: imm)),
+    /* Control Flow Instructions */
+    // (Jmp, JmpOpcode, "jmp", (offset: imm)),
+    // (Ji, JiOpcode, "ji", (offset: imm)),
+    // (JNE, JneOpcode, "jne", (lhs: reg, rhs: reg, offset: imm)),
+    // (Jnei, JneiOpcode, "jnei", (lhs: reg, rhs: reg, offset: imm)),
+    // (JNZI, JnziOpcode, "jnzi", (arg: reg, offset: imm)),
+    // (RET, RetOpcode, "ret", (value: reg)),
+    /* Memory Instructions */
     (Aloc, AlocOpcode, "aloc", (size: reg)),
     (Cfei, CfeiOpcode, "cfei", (size: imm)),
     (Cfsi, CfsiOpcode, "cfsi", (size: imm)),
@@ -225,6 +212,7 @@ define_op_codes!(
     ),
     (Sb, SbOpcode, "sb", (addr: reg, value: reg, offset: imm)),
     (Sw, SwOpcode, "sw", (addr: reg, value: reg, offset: imm)),
+    /* Contract Instructions */
     (Bal, BalOpcode, "bal", (ret: reg, asset: reg, contract: reg)),
     (Bhei, BheiOpcode, "bhei", (ret: reg)),
     (Bhsh, BhshOpcode, "bhsh", (addr: reg, height: reg)),
@@ -258,16 +246,39 @@ define_op_codes!(
         (reg_a: reg, reg_b: reg, addr: reg, size: reg)
     ),
     (Mint, MintOpcode, "mint", (coins: reg)),
+    // (Retd, RetdOpcode, "retd", (addr: reg, size: reg)),
+    // (Rvrt, RvrtOpcode, "rvrt", (value: reg)),
     (
-        Sldc,
-        SldcOpcode,
-        "sldc",
-        (contract: reg, addr: reg, size: reg)
+        Smo,
+        SmoOpcode,
+        "smo",
+        (addr: reg, len: reg, output: reg, coins: reg)
     ),
-    (Srw, SrwOpcode, "srw", (ret: reg, state_addr: reg)),
-    (Srwq, SrwqOpcode, "srwq", (addr: reg, state_addr: reg)),
-    (Sww, SwwOpcode, "sww", (state_addr: reg, value: reg)),
-    (Swwq, SwwqOpcode, "swwq", (state_addr: reg, addr: reg)),
+    (Scwq, ScwqOpcode, "scwq", (addr: reg, is_set: reg, len: reg)),
+    (
+        Srw,
+        SrwOpcode,
+        "srw",
+        (ret: reg, is_set: reg, state_addr: reg)
+    ),
+    (
+        Srwq,
+        SrwqOpcode,
+        "srwq",
+        (addr: reg, is_set: reg, state_addr: reg, count: reg)
+    ),
+    (
+        Sww,
+        SwwOpcode,
+        "sww",
+        (state_addr: reg, is_set: reg, value: reg)
+    ),
+    (
+        Swwq,
+        SwwqOpcode,
+        "swwq",
+        (state_addr: reg, is_set: reg, addr: reg, count: reg)
+    ),
     (Time, TimeOpcode, "time", (ret: reg, height: reg)),
     (Tr, TrOpcode, "tr", (contract: reg, coins: reg, asset: reg)),
     (
@@ -276,9 +287,19 @@ define_op_codes!(
         "tro",
         (addr: reg, output: reg, coins: reg, asset: reg)
     ),
+    /* Cryptographic Instructions */
     (Ecr, EcrOpcode, "ecr", (addr: reg, sig: reg, hash: reg)),
     (K256, K256Opcode, "k256", (addr: reg, data: reg, size: reg)),
     (S256, S256Opcode, "s256", (addr: reg, data: reg, size: reg)),
+    /* Other Instructions */
     (Flag, FlagOpcode, "flag", (value: reg)),
     (Gm, GmOpcode, "gm", (ret: reg, op: imm)),
+    (
+        Gtf,
+        GtfOpcode,
+        "gtf",
+        (ret: reg, index: reg, tx_field_id: imm)
+    ),
+    /* Non-VM Instructions */
+    (Blob, BlobOpcode, "blob", (size: imm)),
 );

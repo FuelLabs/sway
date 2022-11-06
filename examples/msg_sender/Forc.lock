@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-8AE06FACEC4CD701'
-dependencies = []
 
 [[package]]
 name = 'msg_sender'

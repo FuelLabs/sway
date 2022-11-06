@@ -7,6 +7,7 @@
 //! existing in the function scope.
 
 use std::collections::{BTreeMap, HashMap};
+use std::fmt::Write;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -35,6 +36,7 @@ pub struct FunctionContent {
     pub return_type: Type,
     pub blocks: Vec<Block>,
     pub is_public: bool,
+    pub is_entry: bool,
     pub selector: Option<[u8; 4]>,
     pub metadata: Option<MetadataIndex>,
 
@@ -60,6 +62,7 @@ impl Function {
         return_type: Type,
         selector: Option<[u8; 4]>,
         is_public: bool,
+        is_entry: bool,
         metadata: Option<MetadataIndex>,
     ) -> Function {
         let content = FunctionContent {
@@ -70,6 +73,7 @@ impl Function {
             return_type,
             blocks: Vec::new(),
             is_public,
+            is_entry,
             selector,
             metadata,
             local_storage: BTreeMap::new(),
@@ -259,6 +263,12 @@ impl Function {
     /// Return the function selector, if it has one.
     pub fn get_selector(&self, context: &Context) -> Option<[u8; 4]> {
         context.functions[self.0].selector
+    }
+
+    /// Whether or not the function is a program entry point, i.e. `main`, `#[test]` fns or abi
+    /// methods.
+    pub fn is_entry(&self, context: &Context) -> bool {
+        context.functions[self.0].is_entry
     }
 
     // Get the function return type.
@@ -473,11 +483,12 @@ impl Function {
             let n = worklist.pop().unwrap();
             visited.insert(n);
             for BranchToWithArgs { block: n_succ, .. } in n.successors(context) {
-                res += &(format!(
+                let _ = writeln!(
+                    res,
                     "\t{} -> {}\n",
                     n.get_label(context),
                     n_succ.get_label(context)
-                ));
+                );
                 if !visited.contains(&n_succ) {
                     worklist.push(n_succ);
                 }

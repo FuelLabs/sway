@@ -1,8 +1,7 @@
 library revert;
 
 use ::logging::log;
-
-const FAILED_REQUIRE_SIGNAL = 42;
+use ::error_signals::FAILED_REQUIRE_SIGNAL;
 
 /// Context-dependent:
 /// will panic if used in a predicate

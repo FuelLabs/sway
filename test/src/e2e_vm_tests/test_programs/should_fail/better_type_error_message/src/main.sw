@@ -1,6 +1,6 @@
 script;
 
-use std::chain::auth::*;
+use std::auth::*;
 use std::identity::*;
 //use std::b512::*;
 

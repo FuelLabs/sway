@@ -4,7 +4,7 @@ source = 'path+from-root-40616FC980A839AE'
 
 [[package]]
 name = 'array_of_structs_caller'
-source = 'root'
+source = 'member'
 dependencies = [
     'array_of_structs_abi',
     'std',
