@@ -6,7 +6,23 @@ use ::hash::sha256;
 use ::option::Option;
 use ::result::Result;
 
-/// Store a stack variable in storage.
+/// Store a stack value in storage. Will not work for heap values.
+/// 
+/// # Arguments
+///
+/// * `key` - The storage slot at which the variable will be stored
+/// * `value` - The value to be stored
+///
+/// # Examples
+/// 
+/// ```
+/// use std::{storage::{store, get}, constants::ZERO_B256};
+///
+/// let five = 5_u64;
+/// store(ZERO_B256, five);
+/// let stored_five = get::<u64>(ZERO_B256);
+/// assert(five == stored_five);
+/// ```
 #[storage(write)]
 pub fn store<T>(key: b256, value: T) {
     if !__is_reference_type::<T>() {
@@ -41,10 +57,25 @@ pub fn store<T>(key: b256, value: T) {
     };
 }
 
-/// Load a variable from storage.
+/// Load a value from storage.
 ///
 /// If the value size is larger than 8 bytes it is read to a heap buffer which is leaked for the
 /// duration of the program.
+///
+/// # Arguments
+///
+/// * `key` - The storage slot to load the value from
+///
+/// # Examples
+/// 
+/// ```
+/// use std::{storage::{store, get}, constants::ZERO_B256};
+///
+/// let five = 5_u64;
+/// store(ZERO_B256, five);
+/// let stored_five = get::<u64>(ZERO_B256);
+/// assert(five == stored_five);
+/// ```
 #[storage(read)]
 pub fn get<T>(key: b256) -> T {
     if !__is_reference_type::<T>() {
@@ -83,15 +114,59 @@ pub fn get<T>(key: b256) -> T {
     }
 }
 
+/// A persistent key-value pair mapping struct
 pub struct StorageMap<K, V> {}
 
 impl<K, V> StorageMap<K, V> {
+    /// Inserts a key-value pair into the map.
+    /// 
+    /// # Arguments
+    ///
+    /// * `key` - The key to which the value is paired
+    /// * `value` - The value to be stored
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// storage {
+    ///     map: StorageMap = StorageMap {} 
+    /// }
+    /// 
+    /// fn foo() {
+    ///     let key = 5_u64;
+    ///     let value = true;
+    ///     storage.map.insert(key, value);
+    ///     let retrieved_value = storage.map.get(key);
+    ///     assert(value == retrieved_value);
+    /// }
+    /// ```
     #[storage(write)]
     fn insert(self, key: K, value: V) {
         let key = sha256((key, __get_storage_key()));
         store::<V>(key, value);
     }
 
+    /// Retrieves a value previously stored using a key
+    /// 
+    /// # Arguments
+    ///
+    /// * `key` - The key to which the value is paired
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// storage {
+    ///     map: StorageMap = StorageMap {} 
+    /// }
+    /// 
+    /// fn foo() {
+    ///     let key = 5_u64;
+    ///     let value = true;
+    ///     storage.map.insert(key, value);
+    ///     let retrieved_value = storage.map.get(key);
+    ///     assert(value == retrieved_value);
+    /// }
+    /// ```
     #[storage(read)]
     fn get(self, key: K) -> V {
         let key = sha256((key, __get_storage_key()));
