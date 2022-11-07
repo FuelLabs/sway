@@ -80,9 +80,12 @@ pub struct BuiltPackage {
     pub bytecode: Vec<u8>,
     pub entries: Vec<FinalizedEntry>,
     pub tree_type: TreeType,
+    source_map: SourceMap,
 }
 
 /// The result of successfully compiling a workspace.
+///
+/// This is a map from each member package name to its associated built package.
 pub type BuiltWorkspace = HashMap<String, BuiltPackage>;
 
 #[derive(Debug)]
@@ -285,7 +288,7 @@ pub struct MinifyOpts {
 }
 
 /// The set of options provided to the `build` functions.
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct BuildOpts {
     pub pkg: PkgOpts,
     pub print: PrintOpts,
@@ -344,40 +347,37 @@ impl fmt::Display for DepKind {
 }
 
 impl BuiltPackage {
-    fn output_artifacts(
+    /// Writes bytecode of the BuiltPackage to the given `path`.
+    pub fn write_bytecode(&self, path: &Path) -> Result<()> {
+        fs::write(&path, &self.bytecode)?;
+        Ok(())
+    }
+
+    /// Writes debug_info (source_map) of the BuiltPackage to the given `path`.
+    pub fn write_debug_info(&self, path: &Path) -> Result<()> {
+        let source_map_json =
+            serde_json::to_vec(&self.source_map).expect("JSON serialization failed");
+        fs::write(path, &source_map_json)?;
+        Ok(())
+    }
+
+    /// Writes BuiltPackage to `output_dir/out/`.
+    pub fn write_output(
         &self,
-        source_map: &SourceMap,
-        build_options: BuildOpts,
-        pkg_manifest: &PackageManifestFile,
+        minify: MinifyOpts,
+        pkg_name: &str,
         output_dir: &Path,
     ) -> Result<()> {
-        let BuildOpts {
-            minify,
-            binary_outfile,
-            debug_outfile,
-            ..
-        } = build_options;
-        if let Some(outfile) = binary_outfile {
-            fs::write(&outfile, &self.bytecode)?;
-        }
-
-        if let Some(outfile) = debug_outfile {
-            let source_map_json =
-                serde_json::to_vec(&source_map).expect("JSON serialization failed");
-            fs::write(outfile, &source_map_json)?;
-        }
         if !output_dir.exists() {
             fs::create_dir_all(output_dir)?;
         }
         // Place build artifacts into the output directory.
-        let bin_path = output_dir
-            .join(&pkg_manifest.project.name)
-            .with_extension("bin");
+        let bin_path = output_dir.join(pkg_name).with_extension("bin");
 
-        fs::write(&bin_path, &self.bytecode)?;
+        self.write_bytecode(&bin_path)?;
 
         if !self.json_abi_program.functions.is_empty() {
-            let json_abi_program_stem = format!("{}-abi", pkg_manifest.project.name);
+            let json_abi_program_stem = format!("{}-abi", pkg_name);
             let json_abi_program_path = output_dir
                 .join(&json_abi_program_stem)
                 .with_extension("json");
@@ -394,8 +394,7 @@ impl BuiltPackage {
         match self.tree_type {
             TreeType::Contract => {
                 // For contracts, emit a JSON file with all the initialized storage slots.
-                let json_storage_slots_stem =
-                    format!("{}-storage_slots", pkg_manifest.project.name);
+                let json_storage_slots_stem = format!("{}-storage_slots", pkg_name);
                 let json_storage_slots_path = output_dir
                     .join(&json_storage_slots_stem)
                     .with_extension("json");
@@ -411,8 +410,7 @@ impl BuiltPackage {
             TreeType::Predicate => {
                 // Get the root hash of the bytecode for predicates and store the result in a file in the output directory
                 let root = format!("0x{}", Contract::root_from_code(&self.bytecode));
-                let root_file_name =
-                    format!("{}{}", &pkg_manifest.project.name, SWAY_BIN_ROOT_SUFFIX);
+                let root_file_name = format!("{}{}", &pkg_name, SWAY_BIN_ROOT_SUFFIX);
                 let root_path = output_dir.join(root_file_name);
                 fs::write(root_path, &root)?;
                 info!("  Predicate root: {}", root);
@@ -420,8 +418,7 @@ impl BuiltPackage {
             TreeType::Script => {
                 // hash the bytecode for scripts and store the result in a file in the output directory
                 let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&self.bytecode));
-                let hash_file_name =
-                    format!("{}{}", &pkg_manifest.project.name, SWAY_BIN_HASH_SUFFIX);
+                let hash_file_name = format!("{}{}", &pkg_name, SWAY_BIN_HASH_SUFFIX);
                 let hash_path = output_dir.join(hash_file_name);
                 fs::write(hash_path, &bytecode_hash)?;
                 info!("  Script bytecode hash: {}", bytecode_hash);
@@ -2315,6 +2312,7 @@ pub fn compile(
                 bytecode,
                 tree_type,
                 entries,
+                source_map: source_map.to_owned(),
             };
             Ok((built_package, namespace))
         }
@@ -2335,8 +2333,6 @@ fn build_profile_from_opts(
     build_profiles: &HashMap<String, BuildProfile>,
     build_options: &BuildOpts,
 ) -> Result<(String, BuildProfile)> {
-    let key_debug = "debug".to_string();
-    let key_release = "release".to_string();
 
     let BuildOpts {
         pkg,
@@ -2346,31 +2342,31 @@ fn build_profile_from_opts(
         time_phases,
         tests,
         ..
-    } = build_options.to_owned();
-    let mut selected_build_profile = key_debug;
+    } = build_options;
+    let mut selected_build_profile = BuildProfile::DEBUG;
 
     match &build_profile {
         Some(build_profile) => {
-            if release {
+            if *release {
                 warn!(
                     "You specified both {} and 'release' profiles. Using the 'release' profile",
                     build_profile
                 );
-                selected_build_profile = key_release;
+                selected_build_profile = BuildProfile::RELEASE;
             } else {
-                selected_build_profile = build_profile.clone();
+                selected_build_profile = build_profile;
             }
         }
         None => {
-            if release {
-                selected_build_profile = key_release;
+            if *release {
+                selected_build_profile = BuildProfile::RELEASE;
             }
         }
     }
 
     // Retrieve the specified build profile
     let mut profile = build_profiles
-        .get(&selected_build_profile)
+        .get(selected_build_profile)
         .cloned()
         .unwrap_or_else(|| {
             warn!(
@@ -2388,7 +2384,7 @@ fn build_profile_from_opts(
     profile.time_phases |= time_phases;
     profile.include_tests |= tests;
 
-    Ok((selected_build_profile, profile))
+    Ok((selected_build_profile.to_string(), profile))
 }
 
 /// Builds a project with given BuildOptions
@@ -2400,6 +2396,14 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     } else {
         std::env::current_dir()?
     };
+
+    let BuildOpts {
+        minify,
+        binary_outfile,
+        debug_outfile,
+        pkg,
+        ..
+    } = &build_options;
 
     let manifest_file = ManifestFile::from_dir(&this_dir)?;
     let member_manifests = manifest_file.member_manifests()?;
@@ -2427,41 +2431,36 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         ManifestFile::Workspace(_) => build_plan.member_nodes().collect(),
     };
     // Build it!
-    let mut built_workspaces = HashMap::new();
-    let built_packages_with_source_map = build(&build_plan, &build_profile, &outputs)?;
-    let output_dir = build_options
-        .clone()
-        .pkg
-        .output_directory
-        .map(PathBuf::from);
-    for (node_ix, (built_package, source_map)) in built_packages_with_source_map
-        .iter()
-        .filter(|(node_ix, _)| outputs.contains(node_ix))
-    {
-        let pinned = &graph[*node_ix];
+    let mut built_workspace = HashMap::new();
+    let built_packages = build(&build_plan, &build_profile, &outputs)?;
+    let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
+    for (node_ix, built_package) in built_packages.into_iter() {
+        let pinned = &graph[node_ix];
         let pkg_manifest = manifest_map
             .get(&pinned.id())
             .ok_or_else(|| anyhow!("Couldn't find member manifest for {}", pinned.name))?;
         let output_dir = output_dir
             .clone()
             .unwrap_or_else(|| default_output_directory(pkg_manifest.dir()).join(&profile_name));
-        built_package.output_artifacts(
-            source_map,
-            build_options.clone(),
-            pkg_manifest,
-            &output_dir,
-        )?;
-        built_workspaces.insert(pinned.name.clone(), built_package.clone());
+        // Output artifacts for the built package
+        if let Some(outfile) = &binary_outfile {
+            built_package.write_bytecode(outfile.as_ref())?;
+        }
+        if let Some(outfile) = &debug_outfile {
+            built_package.write_debug_info(outfile.as_ref())?;
+        }
+        built_package.write_output(minify.clone(), &pkg_manifest.project.name, &output_dir)?;
+        built_workspace.insert(pinned.name.clone(), built_package.clone());
     }
 
     match manifest_file {
         ManifestFile::Package(pkg_manifest) => {
-            let built_pkg = built_workspaces
-                .get(&pkg_manifest.project.name)
-                .ok_or_else(|| anyhow!("Couldn't find the built package"))?;
-            Ok(Built::Package(Box::new(built_pkg.clone())))
+            let built_pkg = built_workspace
+                .remove(&pkg_manifest.project.name)
+                .expect("package didn't exist in workspace");
+            Ok(Built::Package(Box::new(built_pkg)))
         }
-        ManifestFile::Workspace(_) => Ok(Built::Workspace(built_workspaces)),
+        ManifestFile::Workspace(_) => Ok(Built::Workspace(built_workspace)),
     }
 }
 
@@ -2485,7 +2484,7 @@ pub fn build(
     plan: &BuildPlan,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
-) -> anyhow::Result<Vec<(NodeIx, (BuiltPackage, SourceMap))>> {
+) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
     let mut built_packages = Vec::new();
@@ -2534,7 +2533,9 @@ pub fn build(
         }
         source_map.insert_dependency(manifest.dir());
         standardize_json_abi_types(&mut built_package.json_abi_program);
-        built_packages.push((node, (built_package, source_map)));
+        if outputs.contains(&node) {
+            built_packages.push((node, built_package));
+        }
     }
 
     Ok(built_packages)
