@@ -6,12 +6,5 @@
 
 The following is an example of how to properly set ownership of a contract:
 
-```sway
-{{#include ../../../examples/ownership/src/main.sw:set_owner_example}}
-```
 
 The following is an example of how to properly revoke ownership of a contract:
-
-```sway
-{{#include ../../../examples/ownership/src/main.sw:revoke_owner_example}}
-``` -->
