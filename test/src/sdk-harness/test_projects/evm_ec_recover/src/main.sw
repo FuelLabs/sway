@@ -1,6 +1,13 @@
 contract;
 
-use std::{b512::B512, ecr::ec_recover, vm::evm::{ecr::ec_recover_evm_address, evm_address::EvmAddress}};
+use std::{
+    b512::B512,
+    ecr::ec_recover,
+    vm::evm::{
+        ecr::ec_recover_evm_address,
+        evm_address::EvmAddress,
+    },
+};
 
 abi EvmEcRecover {
     fn recover_evm_address(sig_r: b256, sig_v_s: b256, hash: b256) -> EvmAddress;
