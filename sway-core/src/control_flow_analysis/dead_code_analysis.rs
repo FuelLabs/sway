@@ -743,13 +743,15 @@ fn connect_expression(
         }
         EnumInstantiation {
             enum_decl,
+            enum_instantiation_span,
             variant_name,
             contents,
             ..
         } => {
             // connect this particular instantiation to its variants declaration
+            let enum_decl = de_get_enum(enum_decl.clone(), enum_instantiation_span).unwrap();
             connect_enum_instantiation(
-                enum_decl,
+                &enum_decl,
                 contents,
                 variant_name,
                 graph,

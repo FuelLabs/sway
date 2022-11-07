@@ -16,7 +16,7 @@ use crate::{
     metadata::MetadataManager,
     type_system::{look_up_type_id, to_typeinfo, LogId, TypeId, TypeInfo},
 };
-use declaration_engine::de_get_function;
+use declaration_engine::{de_get_enum, de_get_function};
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::{CompileError, Hint};
 use sway_ir::{Context, *};
@@ -307,10 +307,14 @@ impl FnCompiler {
             }
             ty::TyExpressionVariant::EnumInstantiation {
                 enum_decl,
+                enum_instantiation_span,
                 tag,
                 contents,
                 ..
-            } => self.compile_enum_expr(context, md_mgr, enum_decl, tag, contents),
+            } => {
+                let enum_decl = de_get_enum(enum_decl, &enum_instantiation_span).unwrap();
+                self.compile_enum_expr(context, md_mgr, enum_decl, tag, contents)
+            }
             ty::TyExpressionVariant::Tuple { fields } => {
                 self.compile_tuple_expr(context, md_mgr, fields, span_md_idx)
             }

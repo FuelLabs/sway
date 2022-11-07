@@ -3,7 +3,7 @@ use std::fmt;
 use sway_types::{Span, Spanned};
 
 use crate::{
-    declaration_engine::{de_get_function, DeclMapping, ReplaceDecls},
+    declaration_engine::{de_get_enum, de_get_function, DeclMapping, ReplaceDecls},
     error::*,
     language::{ty::*, Literal},
     type_system::*,
@@ -258,11 +258,12 @@ impl CollectTypesMetadata for TyExpression {
                 ));
             }
             EnumInstantiation {
-                enum_decl,
-                contents,
+                enum_decl: enum_decl_id,
                 enum_instantiation_span,
+                contents,
                 ..
             } => {
+                let enum_decl = de_get_enum(enum_decl_id.clone(), enum_instantiation_span).unwrap();
                 for type_param in enum_decl.type_parameters.iter() {
                     ctx.call_site_insert(type_param.type_id, enum_instantiation_span.clone())
                 }

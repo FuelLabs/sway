@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::{de_get_function, declaration_engine::de_get_constant},
+    declaration_engine::{de_get_constant, de_get_enum, de_get_function},
     language::ty,
     metadata::MetadataManager,
     semantic_analysis::*,
@@ -239,11 +239,13 @@ fn const_eval_typed_expr(
         }
         ty::TyExpressionVariant::EnumInstantiation {
             enum_decl,
+            enum_instantiation_span,
             tag,
             contents,
             ..
         } => {
-            let aggregate = create_enum_aggregate(lookup.context, enum_decl.variants.clone());
+            let enum_decl = de_get_enum(enum_decl.clone(), enum_instantiation_span).unwrap();
+            let aggregate = create_enum_aggregate(lookup.context, enum_decl.variants);
             if let Ok(aggregate) = aggregate {
                 let tag_value = Constant::new_uint(64, *tag as u64);
                 let mut fields: Vec<Constant> = vec![tag_value];

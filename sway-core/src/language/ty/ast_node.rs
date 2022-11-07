@@ -4,12 +4,16 @@ use derivative::Derivative;
 use sway_types::Span;
 
 use crate::{
-    declaration_engine::{de_get_function, DeclMapping, ReplaceDecls},
+    declaration_engine::{de_get_function, DeclMapping, DeclarationId, ReplaceDecls},
     error::*,
     language::{parsed, ty::*},
     type_system::*,
     types::DeterministicallyAborts,
 };
+
+pub trait GetDeclId {
+    fn get_decl_id(&self) -> Option<DeclarationId>;
+}
 
 #[derive(Clone, Debug, Eq, Derivative)]
 #[derivative(PartialEq)]
@@ -17,6 +21,12 @@ pub struct TyAstNode {
     pub content: TyAstNodeContent,
     #[derivative(PartialEq = "ignore")]
     pub(crate) span: Span,
+}
+
+impl GetDeclId for TyAstNode {
+    fn get_decl_id(&self) -> Option<DeclarationId> {
+        self.content.get_decl_id()
+    }
 }
 
 impl fmt::Display for TyAstNode {
@@ -177,6 +187,17 @@ pub enum TyAstNodeContent {
     ImplicitReturnExpression(TyExpression),
     // a no-op node used for something that just issues a side effect, like an import statement.
     SideEffect,
+}
+
+impl GetDeclId for TyAstNodeContent {
+    fn get_decl_id(&self) -> Option<DeclarationId> {
+        match self {
+            TyAstNodeContent::Declaration(decl) => decl.get_decl_id(),
+            TyAstNodeContent::Expression(_expr) => None, //expr.get_decl_id(),
+            TyAstNodeContent::ImplicitReturnExpression(_expr) => None, //expr.get_decl_id(),
+            TyAstNodeContent::SideEffect => None,
+        }
+    }
 }
 
 impl CollectTypesMetadata for TyAstNodeContent {

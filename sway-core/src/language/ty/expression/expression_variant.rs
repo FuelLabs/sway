@@ -7,7 +7,7 @@ use derivative::Derivative;
 use sway_types::{state::StateIndex, Ident, Span};
 
 use crate::{
-    declaration_engine::{de_get_function, DeclMapping, DeclarationId, ReplaceDecls},
+    declaration_engine::{de_get_enum, de_get_function, DeclMapping, DeclarationId, ReplaceDecls},
     language::{ty::*, *},
     type_system::*,
 };
@@ -84,7 +84,7 @@ pub enum TyExpressionVariant {
     },
     EnumInstantiation {
         /// for printing
-        enum_decl: TyEnumDeclaration,
+        enum_decl: DeclarationId,
         /// for printing
         variant_name: Ident,
         tag: usize,
@@ -744,8 +744,10 @@ impl fmt::Display for TyExpressionVariant {
                 tag,
                 enum_decl,
                 variant_name,
+                enum_instantiation_span,
                 ..
             } => {
+                let enum_decl = de_get_enum(enum_decl.clone(), enum_instantiation_span).unwrap();
                 format!(
                     "{}::{} enum instantiation (tag: {})",
                     enum_decl.name.as_str(),

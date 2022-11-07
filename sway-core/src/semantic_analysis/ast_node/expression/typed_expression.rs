@@ -18,7 +18,11 @@ use crate::{
     asm_lang::{virtual_ops::VirtualOp, virtual_register::VirtualRegister},
     declaration_engine::declaration_engine::*,
     error::*,
-    language::{parsed::*, ty, *},
+    language::{
+        parsed::*,
+        ty::{self, GetDeclId},
+        *,
+    },
     semantic_analysis::*,
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
@@ -1186,9 +1190,8 @@ impl ty::TyExpression {
                 span: call_path_binding.span,
             };
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|unknown_decl| unknown_decl.expect_enum(&call_path_binding.span()))
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
-                .map(|enum_decl| (enum_decl, enum_name, variant_name))
+                .map(|enum_decl| (enum_decl.get_decl_id().unwrap(), enum_name, variant_name))
         };
 
         // Check if this could be a constant

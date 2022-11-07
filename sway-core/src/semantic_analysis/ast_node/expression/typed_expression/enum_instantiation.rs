@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::{de_get_enum, DeclarationId},
     error::*,
     language::{parsed::*, ty},
     semantic_analysis::*,
@@ -13,7 +14,7 @@ use sway_types::{Ident, Spanned};
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
     ctx: TypeCheckContext,
-    enum_decl: ty::TyEnumDeclaration,
+    enum_decl_id: DeclarationId,
     enum_name: Ident,
     enum_variant_name: Ident,
     args: Vec<Expression>,
@@ -21,6 +22,7 @@ pub(crate) fn instantiate_enum(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let enum_decl = de_get_enum(enum_decl_id.clone(), &enum_decl_id.span()).unwrap();
     let enum_variant = check!(
         enum_decl
             .expect_variant_from_name(&enum_variant_name)
@@ -40,7 +42,7 @@ pub(crate) fn instantiate_enum(
                 expression: ty::TyExpressionVariant::EnumInstantiation {
                     tag: enum_variant.tag,
                     contents: None,
-                    enum_decl,
+                    enum_decl: enum_decl_id,
                     variant_name: enum_variant.name,
                     enum_instantiation_span: enum_name.span(),
                     variant_instantiation_span: enum_variant_name.span(),
@@ -73,14 +75,13 @@ pub(crate) fn instantiate_enum(
 
             // we now know that the instantiator type matches the declared type, via the above tpe
             // check
-
             ok(
                 ty::TyExpression {
                     return_type: enum_decl.create_type_id(),
                     expression: ty::TyExpressionVariant::EnumInstantiation {
                         tag: enum_variant.tag,
                         contents: Some(Box::new(typed_expr)),
-                        enum_decl,
+                        enum_decl: enum_decl_id,
                         variant_name: enum_variant.name,
                         enum_instantiation_span: enum_name.span(),
                         variant_instantiation_span: enum_variant_name.span(),

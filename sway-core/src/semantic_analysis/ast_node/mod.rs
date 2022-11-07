@@ -152,22 +152,22 @@ impl ty::TyAstNode {
                             typed_const_decl
                         }
                         Declaration::EnumDeclaration(decl) => {
+                            let decl_name = decl.name.clone();
                             let enum_decl = check!(
                                 ty::TyEnumDeclaration::type_check(ctx.by_ref(), decl),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
-                            let name = enum_decl.name.clone();
-                            let decl =
+                            let ty_decl =
                                 ty::TyDeclaration::EnumDeclaration(de_insert_enum(enum_decl));
                             check!(
-                                ctx.namespace.insert_symbol(name, decl.clone()),
+                                ctx.namespace.insert_symbol(decl_name, ty_decl.clone()),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
                             );
-                            decl
+                            ty_decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
                             let mut ctx = ctx.with_type_annotation(insert_type(TypeInfo::Unknown));

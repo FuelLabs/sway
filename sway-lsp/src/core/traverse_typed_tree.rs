@@ -5,7 +5,7 @@ use crate::{
     utils::token::{struct_declaration_of_type_id, to_ident_key},
 };
 use sway_core::{
-    declaration_engine::{self, de_get_function},
+    declaration_engine::{self, de_get_enum, de_get_function},
     language::ty,
 };
 use sway_types::{ident::Ident, Spanned};
@@ -368,7 +368,8 @@ fn handle_expression(expression: &ty::TyExpression, tokens: &TokenMap) {
                 tokens.get_mut(&to_ident_key(&Ident::new(enum_instantiation_span.clone())))
             {
                 token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                token.type_def = Some(TypeDefinition::Ident(enum_decl.name.clone()));
+                let enum_decl = de_get_enum(enum_decl.clone(), enum_instantiation_span).unwrap();
+                token.type_def = Some(TypeDefinition::Ident(enum_decl.name));
             }
 
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(
