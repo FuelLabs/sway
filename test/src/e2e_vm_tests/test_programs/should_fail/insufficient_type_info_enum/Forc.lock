@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-517D42DD06E1D0DC'
+
+[[package]]
+name = 'insufficient_type_info_enum'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-517D42DD06E1D0DC'
+dependencies = ['core']

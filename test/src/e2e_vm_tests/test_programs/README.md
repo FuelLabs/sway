@@ -15,6 +15,7 @@ The `category` field is mandatory and must be one of the following strings:
 - `"run"` - The test is compiled and run in a VM.
 - `"run_on_node"` - The test is compiled and run on a local Fuel Core node.
 - `"compile"` - The test is expected to succeed compiling, but isn't run in any way.
+- `"unit_tests_pass"` - The test compiles and all unit tests pass successfully.
 - `"fail"` - The test is expected to fail to compile.
 - `"disabled"` - The test is disabled.
 

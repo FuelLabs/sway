@@ -1087,12 +1087,14 @@ impl FnCompiler {
                     parameters: callee.parameters.clone(),
                     ..callee
                 };
+                let is_entry = false;
                 let new_func = compile_function(
                     context,
                     md_mgr,
                     self.module,
                     callee_fn_decl,
                     &self.logged_types_map,
+                    is_entry,
                 )?
                 .unwrap();
                 self.recreated_fns.insert(fn_key, new_func);
@@ -2070,7 +2072,7 @@ impl FnCompiler {
     fn compile_storage_read(
         &mut self,
         context: &mut Context,
-        md_mgr: &mut MetadataManager,
+        _md_mgr: &mut MetadataManager,
         ix: &StateIndex,
         indices: &[u64],
         ty: &Type,
@@ -2102,7 +2104,7 @@ impl FnCompiler {
 
                     let val_to_insert = self.compile_storage_read(
                         context,
-                        md_mgr,
+                        _md_mgr,
                         ix,
                         &new_indices,
                         &field_type,
@@ -2164,6 +2166,10 @@ impl FnCompiler {
                         "Pointers in storage have not been implemented yet.",
                         Span::dummy(),
                     )),
+                    Type::Slice => Err(CompileError::Internal(
+                        "Slices in storage have not been implemented yet.",
+                        Span::dummy(),
+                    )),
                     Type::B256 => self.compile_b256_storage_read(
                         context,
                         ix,
@@ -2200,7 +2206,7 @@ impl FnCompiler {
     fn compile_storage_write(
         &mut self,
         context: &mut Context,
-        md_mgr: &mut MetadataManager,
+        _md_mgr: &mut MetadataManager,
         ix: &StateIndex,
         indices: &[u64],
         ty: &Type,
@@ -2226,7 +2232,7 @@ impl FnCompiler {
 
                     self.compile_storage_write(
                         context,
-                        md_mgr,
+                        _md_mgr,
                         ix,
                         &new_indices,
                         &field_type,
@@ -2280,6 +2286,10 @@ impl FnCompiler {
                     )),
                     Type::Pointer(_) => Err(CompileError::Internal(
                         "Pointers in storage have not been implemented yet.",
+                        Span::dummy(),
+                    )),
+                    Type::Slice => Err(CompileError::Internal(
+                        "Slices in storage have not been implemented yet.",
                         Span::dummy(),
                     )),
                     Type::B256 => self.compile_b256_storage_write(

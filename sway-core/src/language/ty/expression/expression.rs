@@ -1,9 +1,9 @@
 use std::fmt;
 
-use sway_types::Span;
+use sway_types::{Span, Spanned};
 
 use crate::{
-    declaration_engine::de_get_function,
+    declaration_engine::{de_get_function, DeclMapping, ReplaceDecls},
     error::*,
     language::{ty::*, Literal},
     type_system::*,
@@ -41,6 +41,12 @@ impl ReplaceSelfType for TyExpression {
     }
 }
 
+impl ReplaceDecls for TyExpression {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
+        self.expression.replace_decls(decl_mapping);
+    }
+}
+
 impl fmt::Display for TyExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -70,6 +76,7 @@ impl CollectTypesMetadata for TyExpression {
             FunctionApplication {
                 arguments,
                 function_decl_id,
+                call_path,
                 ..
             } => {
                 for arg in arguments.iter() {
@@ -84,6 +91,12 @@ impl CollectTypesMetadata for TyExpression {
                     Ok(decl) => decl,
                     Err(e) => return err(vec![], vec![e]),
                 };
+
+                ctx.call_site_push();
+                for type_parameter in function_decl.type_parameters {
+                    ctx.call_site_insert(type_parameter.type_id, call_path.span())
+                }
+
                 for content in function_decl.body.contents.iter() {
                     res.append(&mut check!(
                         content.collect_types_metadata(ctx),
@@ -92,6 +105,7 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
+                ctx.call_site_pop();
             }
             Tuple { fields } => {
                 for field in fields.iter() {
@@ -115,7 +129,15 @@ impl CollectTypesMetadata for TyExpression {
                     }
                 }
             }
-            StructExpression { fields, .. } => {
+            StructExpression { fields, span, .. } => {
+                if let TypeInfo::Struct {
+                    type_parameters, ..
+                } = look_up_type_id(self.return_type)
+                {
+                    for type_parameter in type_parameters {
+                        ctx.call_site_insert(type_parameter.type_id, span.clone());
+                    }
+                }
                 for field in fields.iter() {
                     res.append(&mut check!(
                         field.value.collect_types_metadata(ctx),
@@ -238,8 +260,12 @@ impl CollectTypesMetadata for TyExpression {
             EnumInstantiation {
                 enum_decl,
                 contents,
+                enum_instantiation_span,
                 ..
             } => {
+                for type_param in enum_decl.type_parameters.iter() {
+                    ctx.call_site_insert(type_param.type_id, enum_instantiation_span.clone())
+                }
                 if let Some(contents) = contents {
                     res.append(&mut check!(
                         contents.collect_types_metadata(ctx),

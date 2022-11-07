@@ -4,7 +4,7 @@ source = 'path+from-root-31441D12B1FE5745'
 
 [[package]]
 name = 'exponentiation_test'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

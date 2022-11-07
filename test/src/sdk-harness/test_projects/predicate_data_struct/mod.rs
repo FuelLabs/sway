@@ -22,6 +22,7 @@ async fn setup() -> (Vec<u8>, Address, WalletUnlocked, u64, AssetId) {
             utxo_validation: true,
             ..Config::local_node()
         }),
+        None,
     )
     .await;
 

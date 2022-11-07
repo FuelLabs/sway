@@ -4,7 +4,7 @@ source = 'path+from-root-0AF85F21A8536CE1'
 
 [[package]]
 name = 'eq_and_neq'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

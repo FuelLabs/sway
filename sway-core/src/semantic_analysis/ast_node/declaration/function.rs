@@ -55,14 +55,17 @@ impl ty::TyFunctionDeclaration {
                 errors.push(CompileError::WhereClauseNotYetSupported {
                     span: type_parameter.trait_constraints_span,
                 });
-                return err(warnings, errors);
+                continue;
             }
             new_type_parameters.push(check!(
                 TypeParameter::type_check(fn_ctx.by_ref(), type_parameter),
-                return err(warnings, errors),
+                continue,
                 warnings,
                 errors
             ));
+        }
+        if !errors.is_empty() {
+            return err(warnings, errors);
         }
 
         // type check the function parameters, which will also insert them into the namespace
@@ -74,6 +77,9 @@ impl ty::TyFunctionDeclaration {
                 warnings,
                 errors
             ));
+        }
+        if !errors.is_empty() {
+            return err(warnings, errors);
         }
 
         // type check the return type

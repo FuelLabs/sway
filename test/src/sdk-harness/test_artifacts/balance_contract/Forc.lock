@@ -1,6 +1,6 @@
 [[package]]
 name = 'balance_contract'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

@@ -4,7 +4,7 @@ source = 'path+from-root-B183794502AF314F'
 
 [[package]]
 name = 'logging'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

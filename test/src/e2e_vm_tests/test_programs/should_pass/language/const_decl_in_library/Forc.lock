@@ -1,6 +1,6 @@
 [[package]]
 name = 'const_decl_in_library'
-source = 'root'
+source = 'member'
 dependencies = ['core']
 
 [[package]]

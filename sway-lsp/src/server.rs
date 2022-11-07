@@ -795,7 +795,7 @@ mod tests {
             json!({
                 "contents": {
                     "kind": "markdown",
-                    "value": " Struct holding:\n\n 1. A `value` of type `NumberOrString`\n 2. An `address` of type `u64`"
+                    "value": "```sway\nstruct Data\n```\n---\n Struct holding:\n\n 1. A `value` of type `NumberOrString`\n 2. An `address` of type `u64`"
                 },
                 "range": {
                     "end": {

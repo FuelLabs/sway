@@ -1,6 +1,6 @@
 [[package]]
 name = 'asm_without_return'
-source = 'root'
+source = 'member'
 dependencies = ['core']
 
 [[package]]

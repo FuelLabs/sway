@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::{de_get_function, DeclarationId},
     error::*,
     language::{ty, CallPath},
     type_system::*,
@@ -153,7 +154,7 @@ impl Namespace {
         method_name: &Ident,
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
-    ) -> CompileResult<ty::TyFunctionDeclaration> {
+    ) -> CompileResult<DeclarationId> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -199,29 +200,31 @@ impl Namespace {
         let mut methods = local_methods;
         methods.append(&mut type_methods);
 
-        match methods
-            .into_iter()
-            .find(|ty::TyFunctionDeclaration { name, .. }| name == method_name)
-        {
-            Some(o) => {
+        for decl_id in methods.into_iter() {
+            let method = check!(
+                CompileResult::from(de_get_function(decl_id.clone(), &decl_id.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            if &method.name == method_name {
                 // if we find the method that we are looking for, we also need
                 // to retrieve the impl definitions for the return type so that
                 // the user can string together method calls
-                self.insert_trait_implementation_for_type(o.return_type);
-                ok(o, warnings, errors)
-            }
-            None => {
-                if args_buf.get(0).map(|x| look_up_type_id(x.return_type))
-                    != Some(TypeInfo::ErrorRecovery)
-                {
-                    errors.push(CompileError::MethodNotFound {
-                        method_name: method_name.clone(),
-                        type_name: type_id.to_string(),
-                    });
-                }
-                err(warnings, errors)
+                self.insert_trait_implementation_for_type(method.return_type);
+                return ok(decl_id, warnings, errors);
             }
         }
+
+        if args_buf.get(0).map(|x| look_up_type_id(x.return_type)) != Some(TypeInfo::ErrorRecovery)
+        {
+            errors.push(CompileError::MethodNotFound {
+                method_name: method_name.clone(),
+                type_name: type_id.to_string(),
+                span: method_name.span(),
+            });
+        }
+        err(warnings, errors)
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.

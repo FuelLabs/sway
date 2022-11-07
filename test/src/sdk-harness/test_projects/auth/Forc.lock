@@ -1,6 +1,6 @@
 [[package]]
 name = 'auth'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

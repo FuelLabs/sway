@@ -76,7 +76,7 @@ pub fn serialize_to_storage_slots(
                     [0; 7]
                         .iter()
                         .cloned()
-                        .chain([if *b { 0x01 } else { 0x00 }].iter().cloned())
+                        .chain([u8::from(*b)].iter().cloned())
                         .chain([0; 24].iter().cloned())
                         .collect::<Vec<u8>>()
                         .try_into()
@@ -172,7 +172,7 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
                 [0; 7]
                     .iter()
                     .cloned()
-                    .chain([if *b { 0x01 } else { 0x00 }].iter().cloned())
+                    .chain([u8::from(*b)].iter().cloned())
                     .collect::<Vec<u8>>()
                     .try_into()
                     .unwrap(),

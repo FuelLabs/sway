@@ -4,7 +4,7 @@ source = 'path+from-root-846924BE01AC096F'
 
 [[package]]
 name = 'generic_type_inference'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

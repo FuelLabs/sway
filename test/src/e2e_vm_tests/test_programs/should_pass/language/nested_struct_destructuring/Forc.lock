@@ -4,5 +4,5 @@ source = 'path+from-root-F93ECA3248F311E3'
 
 [[package]]
 name = 'struct_destructuring'
-source = 'root'
+source = 'member'
 dependencies = ['core']

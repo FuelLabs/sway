@@ -4,5 +4,5 @@ source = 'path+from-root-B83AF983C6574F96'
 
 [[package]]
 name = 'generic_struct'
-source = 'root'
+source = 'member'
 dependencies = ['core']

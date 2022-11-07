@@ -21,7 +21,7 @@ use sway_types::span::Span;
 
 /// Represents some exportable information that results from compiling some
 /// Sway source code.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParseTree {
     /// The untyped AST nodes that constitute this tree's root nodes.
     pub root_nodes: Vec<AstNode>,

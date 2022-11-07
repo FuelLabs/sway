@@ -1,4 +1,4 @@
 category = "fail"
 
 # check: fn main() -> raw_ptr {
-# nextln: $()returning a `raw_ptr` from `main()` is not allowed
+# nextln: $()Returning a `raw_ptr` from `main()` is not allowed.

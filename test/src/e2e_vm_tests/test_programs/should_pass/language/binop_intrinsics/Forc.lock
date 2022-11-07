@@ -1,6 +1,6 @@
 [[package]]
 name = 'binop_intrinsics'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
