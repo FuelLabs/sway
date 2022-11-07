@@ -177,11 +177,13 @@ impl TyProgram {
                         name: mains.last().unwrap().name.clone(),
                     });
                 }
-                // A script must not return a `raw_ptr` or any type containing a `raw_slice`.
+                // A script must not return a `raw_ptr` or any type aggregating a `raw_slice`.
+                // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
+                // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
                 let main_func = mains.remove(0);
+                let main_return_type_info = look_up_type_id(main_func.return_type);
                 let nested_types = check!(
-                    look_up_type_id(main_func.return_type)
-                        .extract_nested_types(&main_func.return_type_span),
+                    main_return_type_info.extract_nested_types(&main_func.return_type_span),
                     vec![],
                     warnings,
                     errors
@@ -194,12 +196,10 @@ impl TyProgram {
                         span: main_func.return_type_span.clone(),
                     });
                 }
-                if !matches!(
-                    look_up_type_id(main_func.return_type),
-                    TypeInfo::RawUntypedSlice
-                ) && nested_types
-                    .iter()
-                    .any(|ty| matches!(ty, TypeInfo::RawUntypedSlice))
+                if !matches!(main_return_type_info, TypeInfo::RawUntypedSlice)
+                    && nested_types
+                        .iter()
+                        .any(|ty| matches!(ty, TypeInfo::RawUntypedSlice))
                 {
                     errors.push(CompileError::NestedSliceReturnNotAllowedInMain {
                         span: main_func.return_type_span.clone(),
