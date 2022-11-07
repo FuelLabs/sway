@@ -1,6 +1,6 @@
 contract;
 
-use std::storage::{StorageMap, StorageVec};
+use std::storage::StorageVec;
 
 struct Wrapper {
     map1: StorageMap<u64, u64>,

@@ -1,7 +1,10 @@
 mod function_parameter;
 
 pub use function_parameter::*;
-use sway_error::warning::{CompileWarning, Warning};
+use sway_error::{
+    error::CompileError,
+    warning::{CompileWarning, Warning},
+};
 
 use crate::{
     error::*,
@@ -45,20 +48,27 @@ impl ty::TyFunctionDeclaration {
         let mut fn_namespace = ctx.namespace.clone();
         let mut fn_ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
 
-        // type check the type parameters
-        // insert them into the namespace
+        // type check the type parameters, which will also insert them into the namespace
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
+            if !type_parameter.trait_constraints.is_empty() {
+                errors.push(CompileError::WhereClauseNotYetSupported {
+                    span: type_parameter.trait_constraints_span,
+                });
+                continue;
+            }
             new_type_parameters.push(check!(
                 TypeParameter::type_check(fn_ctx.by_ref(), type_parameter),
-                return err(warnings, errors),
+                continue,
                 warnings,
                 errors
             ));
         }
+        if !errors.is_empty() {
+            return err(warnings, errors);
+        }
 
-        // type check the function parameters
-        // insert them into the namespace
+        // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
         for parameter in parameters.into_iter() {
             new_parameters.push(check!(
@@ -67,6 +77,9 @@ impl ty::TyFunctionDeclaration {
                 warnings,
                 errors
             ));
+        }
+        if !errors.is_empty() {
+            return err(warnings, errors);
         }
 
         // type check the return type

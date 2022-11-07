@@ -300,6 +300,15 @@ impl Format for Expr {
                 write!(formatted_code, "{}", bang_token.span().as_str())?;
                 expr.format(formatted_code, formatter)?;
             }
+            Self::Pow {
+                lhs,
+                double_star_token,
+                rhs,
+            } => {
+                lhs.format(formatted_code, formatter)?;
+                write!(formatted_code, " {} ", double_star_token.span().as_str())?;
+                rhs.format(formatted_code, formatter)?;
+            }
             Self::Mul {
                 lhs,
                 star_token,
@@ -837,6 +846,16 @@ fn expr_leaf_spans(expr: &Expr) -> Vec<ByteSpan> {
         Expr::Not { bang_token, expr } => {
             let mut collected_spans = vec![ByteSpan::from(bang_token.span())];
             collected_spans.append(&mut expr.leaf_spans());
+            collected_spans
+        }
+        Expr::Pow {
+            lhs,
+            double_star_token,
+            rhs,
+        } => {
+            let mut collected_spans = lhs.leaf_spans();
+            collected_spans.push(ByteSpan::from(double_star_token.span()));
+            collected_spans.append(&mut rhs.leaf_spans());
             collected_spans
         }
         Expr::Mul {

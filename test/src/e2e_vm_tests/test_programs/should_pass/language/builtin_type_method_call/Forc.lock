@@ -1,6 +1,6 @@
 [[package]]
 name = 'builtin_type_method_call'
-source = 'root'
+source = 'member'
 dependencies = ['core']
 
 [[package]]

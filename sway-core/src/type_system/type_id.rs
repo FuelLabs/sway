@@ -3,7 +3,7 @@ use std::fmt;
 use sway_types::{JsonTypeApplication, JsonTypeDeclaration};
 
 /// A identifier to uniquely refer to our type terms
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd)]
 pub struct TypeId(usize);
 
 impl std::ops::Deref for TypeId {
@@ -15,13 +15,13 @@ impl std::ops::Deref for TypeId {
 
 impl fmt::Display for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&look_up_type_id(*self).to_string())
+        write!(f, "{}", look_up_type_id(*self))
     }
 }
 
 impl fmt::Debug for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&look_up_type_id(*self).to_string())
+        write!(f, "{:?}", look_up_type_id(*self))
     }
 }
 
@@ -34,10 +34,12 @@ impl From<usize> for TypeId {
 impl CollectTypesMetadata for TypeId {
     fn collect_types_metadata(
         &self,
-        _ctx: &mut CollectTypesMetadataContext,
+        ctx: &mut CollectTypesMetadataContext,
     ) -> CompileResult<Vec<TypeMetadata>> {
         let res = match look_up_type_id(*self) {
-            TypeInfo::UnknownGeneric { name } => vec![TypeMetadata::UnresolvedType(name)],
+            TypeInfo::UnknownGeneric { name } => {
+                vec![TypeMetadata::UnresolvedType(name, ctx.call_site_get(self))]
+            }
             _ => vec![],
         };
         ok(res, vec![], vec![])
@@ -103,6 +105,7 @@ impl ReplaceSelfType for TypeId {
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery => {}
         }
@@ -114,6 +117,12 @@ impl CopyTypes for TypeId {
         if let Some(matching_id) = type_mapping.find_match(*self) {
             *self = matching_id;
         }
+    }
+}
+
+impl UnconstrainedTypeParameters for TypeId {
+    fn type_parameter_is_unconstrained(&self, type_parameter: &TypeParameter) -> bool {
+        look_up_type_id(*self).type_parameter_is_unconstrained(type_parameter)
     }
 }
 

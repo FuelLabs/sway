@@ -4,6 +4,7 @@ use ::alloc::{alloc, realloc};
 use ::assert::assert;
 use ::intrinsics::size_of;
 use ::option::Option;
+use ::convert::From;
 
 struct RawVec<T> {
     ptr: raw_ptr,
@@ -14,7 +15,7 @@ impl<T> RawVec<T> {
     /// Create a new `RawVec` with zero capacity.
     fn new() -> Self {
         Self {
-            ptr: alloc(0),
+            ptr: alloc::<T>(0),
             cap: 0,
         }
     }
@@ -24,7 +25,7 @@ impl<T> RawVec<T> {
     /// `capacity` is `0`.
     fn with_capacity(capacity: u64) -> Self {
         Self {
-            ptr: alloc(capacity * size_of::<T>()),
+            ptr: alloc::<T>(capacity),
             cap: capacity,
         }
     }
@@ -45,7 +46,7 @@ impl<T> RawVec<T> {
     fn grow(ref mut self) {
         let new_cap = if self.cap == 0 { 1 } else { 2 * self.cap };
 
-        self.ptr = realloc(self.ptr, self.cap * size_of::<T>(), new_cap * size_of::<T>());
+        self.ptr = realloc::<T>(self.ptr, self.cap, new_cap);
         self.cap = new_cap;
     }
 }
@@ -62,7 +63,7 @@ impl<T> Vec<T> {
     /// The vector will not allocate until elements are pushed onto it.
     pub fn new() -> Self {
         Self {
-            buf: ~RawVec::new(),
+            buf: RawVec::new(),
             len: 0,
         }
     }
@@ -76,7 +77,7 @@ impl<T> Vec<T> {
     /// *capacity* specified, the vector will have a zero *length*.
     pub fn with_capacity(capacity: u64) -> Self {
         Self {
-            buf: ~RawVec::with_capacity(capacity),
+            buf: RawVec::with_capacity(capacity),
             len: 0,
         }
     }
@@ -90,7 +91,7 @@ impl<T> Vec<T> {
 
         // Get a pointer to the end of the buffer, where the new element will
         // be inserted.
-        let end = self.buf.ptr().add(self.len * size_of::<T>());
+        let end = self.buf.ptr().add::<T>(self.len);
 
         // Write `value` at pointer `end`
         end.write(value);
@@ -121,7 +122,7 @@ impl<T> Vec<T> {
         };
 
         // Get a pointer to the desired element using `index`
-        let ptr = self.buf.ptr().add(index * size_of::<T>());
+        let ptr = self.buf.ptr().add::<T>(index);
 
         // Read from `ptr`
         Option::Some(ptr.read())
@@ -144,18 +145,17 @@ impl<T> Vec<T> {
     pub fn remove(ref mut self, index: u64) -> T {
         assert(index < self.len);
 
-        let val_size = size_of::<T>();
         let buf_start = self.buf.ptr();
 
         // Read the value at `index`
-        let ptr = buf_start.add(index * val_size);
+        let ptr = buf_start.add::<T>(index);
         let ret = ptr.read();
 
         // Shift everything down to fill in that spot.
         let mut i = index;
         while i < self.len {
-            let ptr = buf_start.add(i * val_size);
-            ptr.add(val_size).copy_to(ptr, val_size);
+            let ptr = buf_start.add::<T>(i);
+            ptr.add::<T>(1).copy_to::<T>(ptr, 1);
             i += 1;
         }
 
@@ -175,17 +175,16 @@ impl<T> Vec<T> {
             self.buf.grow();
         }
 
-        let val_size = size_of::<T>();
         let buf_start = self.buf.ptr();
 
         // The spot to put the new value
-        let index_ptr = buf_start.add(index * val_size);
+        let index_ptr = buf_start.add::<T>(index);
 
         // Shift everything over to make space.
         let mut i = self.len;
         while i > index {
-            let ptr = buf_start.add(i * val_size);
-            ptr.sub(val_size).copy_to(ptr, val_size);
+            let ptr = buf_start.add::<T>(i);
+            ptr.sub::<T>(1).copy_to::<T>(ptr, 1);
             i -= 1;
         }
 
@@ -203,7 +202,7 @@ impl<T> Vec<T> {
             return Option::None;
         }
         self.len -= 1;
-        Option::Some(self.buf.ptr().add(self.len * size_of::<T>()).read())
+        Option::Some(self.buf.ptr().add::<T>(self.len).read())
     }
 
     /// Swaps two elements.
@@ -224,13 +223,11 @@ impl<T> Vec<T> {
             return;
         }
 
-        let val_size = size_of::<T>();
-
-        let element1_ptr = self.buf.ptr().add(element1_index * val_size);
-        let element2_ptr = self.buf.ptr().add(element2_index * val_size);
+        let element1_ptr = self.buf.ptr().add::<T>(element1_index);
+        let element2_ptr = self.buf.ptr().add::<T>(element2_index);
 
         let element1_val = element1_ptr.read();
-        element2_ptr.copy_to(element1_ptr, val_size);
+        element2_ptr.copy_to::<T>(element1_ptr, 1);
         element2_ptr.write(element1_val);
     }
 
@@ -247,8 +244,32 @@ impl<T> Vec<T> {
     pub fn set(ref mut self, index: u64, value: T) {
         assert(index < self.len);
 
-        let index_ptr = self.buf.ptr().add(index * size_of::<T>());
+        let index_ptr = self.buf.ptr().add::<T>(index);
 
         index_ptr.write(value);
+    }
+}
+
+impl<T> AsRawSlice for Vec<T> {
+    /// Returns a raw slice to all of the elements in the vector.
+    fn as_raw_slice(self) -> raw_slice {
+        raw_slice::from_parts::<T>(self.buf.ptr(), self.len)
+    }
+}
+
+impl<T> From<raw_slice> for Vec<T> {
+    fn from(slice: raw_slice) -> Vec<T> {
+        let buf = RawVec {
+            ptr: slice.ptr(),
+            cap: slice.len::<T>(),
+        };
+        Self {
+            buf,
+            len: buf.cap,
+        }
+    }
+
+    fn into(self) -> raw_slice {
+        asm(ptr: (self.buf.ptr(), self.len)) { ptr: raw_slice }
     }
 }

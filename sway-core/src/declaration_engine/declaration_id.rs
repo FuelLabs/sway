@@ -8,8 +8,9 @@ use crate::{
 };
 
 use super::{
-    de_insert_function,
+    de_find_all_parents, de_insert, de_register_parent,
     declaration_engine::{de_look_up_decl_id, de_replace_decl_id},
+    DeclMapping, ReplaceDecls,
 };
 
 /// An ID used to refer to an item in the [DeclarationEngine](super::declaration_engine::DeclarationEngine)
@@ -73,9 +74,30 @@ impl ReplaceSelfType for DeclarationId {
     }
 }
 
+impl ReplaceDecls for DeclarationId {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
+        if let Some(new_decl_id) = decl_mapping.find_match(self) {
+            self.0 = *new_decl_id;
+            return;
+        }
+        let all_parents = de_find_all_parents(self.clone());
+        for parent in all_parents.into_iter() {
+            if let Some(new_decl_id) = decl_mapping.find_match(&parent) {
+                self.0 = *new_decl_id;
+                return;
+            }
+        }
+    }
+}
+
 impl DeclarationId {
     pub(super) fn new(index: usize, span: Span) -> DeclarationId {
         DeclarationId(index, span)
+    }
+
+    pub(crate) fn with_parent(self, parent: DeclarationId) -> DeclarationId {
+        de_register_parent(&self, parent);
+        self
     }
 
     pub(crate) fn replace_id(&mut self, index: usize) {
@@ -85,14 +107,18 @@ impl DeclarationId {
     pub(crate) fn copy_types_and_insert_new(&self, type_mapping: &TypeMapping) -> DeclarationId {
         let mut decl = de_look_up_decl_id(self.clone());
         decl.copy_types(type_mapping);
-        let function = decl.expect_function(&self.1).unwrap();
-        de_insert_function(function)
+        de_insert(decl, self.1.clone()).with_parent(self.clone())
     }
 
     pub(crate) fn replace_self_type_and_insert_new(&self, self_type: TypeId) -> DeclarationId {
         let mut decl = de_look_up_decl_id(self.clone());
         decl.replace_self_type(self_type);
-        let function = decl.expect_function(&self.1).unwrap();
-        de_insert_function(function)
+        de_insert(decl, self.1.clone()).with_parent(self.clone())
+    }
+
+    pub(crate) fn replace_decls_and_insert_new(&self, decl_mapping: &DeclMapping) -> DeclarationId {
+        let mut decl = de_look_up_decl_id(self.clone());
+        decl.replace_decls(decl_mapping);
+        de_insert(decl, self.1.clone()).with_parent(self.clone())
     }
 }

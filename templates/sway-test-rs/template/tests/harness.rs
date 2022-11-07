@@ -12,6 +12,7 @@ async fn get_contract_instance() -> (MyContract, ContractId) {
             Some(1_000_000_000), /* Amount per coin */
         ),
         None,
+        None,
     )
     .await;
     let wallet = wallets.pop().unwrap();
@@ -27,7 +28,7 @@ async fn get_contract_instance() -> (MyContract, ContractId) {
     .await
     .unwrap();
 
-    let instance = MyContract::new(id.to_string(), wallet);
+    let instance = MyContract::new(id.clone(), wallet);
 
     (instance, id.into())
 }

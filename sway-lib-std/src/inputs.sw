@@ -127,9 +127,8 @@ pub fn input_amount(index: u64) -> Option<u64> {
 pub fn input_owner(index: u64) -> Option<Address> {
     let type = input_type(index);
     match type {
-        Input::Coin => Option::Some(~Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER))),
-        Input::Message => Option::Some(~Address::from(__gtf::<b256>(index, GTF_INPUT_MESSAGE_RECIPIENT))),
-        Input::Contract => return Option::None,
+        Input::Coin => Option::Some(Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER))),
+        _ => Option::None,
     }
 }
 

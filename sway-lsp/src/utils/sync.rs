@@ -174,6 +174,7 @@ impl SyncWorkspace {
             });
     }
 
+    /// Return the path to the projects manifest directory.
     pub(crate) fn manifest_dir(&self) -> Result<PathBuf, DirectoryError> {
         self.directories
             .get(&Directory::Manifest)
@@ -181,7 +182,8 @@ impl SyncWorkspace {
             .ok_or(DirectoryError::ManifestDirNotFound)
     }
 
-    fn temp_dir(&self) -> Result<PathBuf, DirectoryError> {
+    /// Return the path to the temporary directory that was created for the current session.
+    pub(crate) fn temp_dir(&self) -> Result<PathBuf, DirectoryError> {
         self.directories
             .get(&Directory::Temp)
             .map(|item| item.value().clone())
@@ -198,7 +200,7 @@ impl SyncWorkspace {
     }
 
     fn url_from_path(&self, path: &PathBuf) -> Result<Url, DirectoryError> {
-        Url::from_file_path(&path).map_err(|_| DirectoryError::UrlFromPathFailed {
+        Url::from_file_path(path).map_err(|_| DirectoryError::UrlFromPathFailed {
             path: path.to_string_lossy().to_string(),
         })
     }

@@ -4,7 +4,7 @@ source = 'path+from-root-D5DDAB0633863C0B'
 
 [[package]]
 name = 'primitive_type_argument'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

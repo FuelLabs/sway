@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-3A4B138164AB0A00'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-3A4B138164AB0A00'
+dependencies = ['core']
+
+[[package]]
+name = 'u128_log_test'
+source = 'member'
+dependencies = ['std']

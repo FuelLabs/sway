@@ -4,5 +4,5 @@ source = 'path+from-root-C086F5BB5B0BA300'
 
 [[package]]
 name = 'issue_1512_repro'
-source = 'root'
+source = 'member'
 dependencies = ['core']

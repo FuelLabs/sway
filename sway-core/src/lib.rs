@@ -16,9 +16,11 @@ pub mod transform;
 pub mod type_system;
 
 use crate::ir_generation::check_function_purity;
+use crate::language::Inline;
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
+pub use asm_generation::FinalizedEntry;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
@@ -27,7 +29,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_ast::Dependency;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_ir::{Context, Function, Instruction, Kind, Module, Value};
+use sway_ir::{call_graph, Context, Function, Instruction, Kind, Module, Value};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -40,6 +42,10 @@ pub use type_system::*;
 
 use language::{parsed, ty};
 use transform::to_parsed_lang;
+
+pub mod fuel_prelude {
+    pub use fuel_vm::{self, fuel_asm, fuel_crypto, fuel_tx, fuel_types};
+}
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
@@ -55,30 +61,19 @@ use transform::to_parsed_lang;
 /// # Panics
 /// Panics if the parser panics.
 pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<parsed::ParseProgram> {
-    // Omit tests by default so that a test that fails to typecheck doesn't block the rest of the
-    // program (similar behaviour to rust). Later, we'll add a flag for including tests on
-    // invocations of `forc test` or `forc check --tests`. See #1832.
-    let include_test_fns = false;
-
     CompileResult::with_handler(|h| match config {
-        None => parse_in_memory(h, input, include_test_fns),
+        None => parse_in_memory(h, input),
         // When a `BuildConfig` is given,
         // the module source may declare `dep`s that must be parsed from other files.
-        Some(config) => {
-            parse_module_tree(h, input, config.canonical_root_module(), include_test_fns)
-                .map(|(kind, root)| parsed::ParseProgram { kind, root })
-        }
+        Some(config) => parse_module_tree(h, input, config.canonical_root_module())
+            .map(|(kind, root)| parsed::ParseProgram { kind, root }),
     })
 }
 
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
-fn parse_in_memory(
-    handler: &Handler,
-    src: Arc<str>,
-    include_test_fns: bool,
-) -> Result<parsed::ParseProgram, ErrorEmitted> {
+fn parse_in_memory(handler: &Handler, src: Arc<str>) -> Result<parsed::ParseProgram, ErrorEmitted> {
     let module = sway_parse::parse_file(handler, src, None)?;
-    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, module, include_test_fns)?;
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, module)?;
     let submodules = Default::default();
     let root = parsed::ParseModule { tree, submodules };
     Ok(parsed::ParseProgram { kind, root })
@@ -89,7 +84,6 @@ fn parse_submodules(
     handler: &Handler,
     deps: &[Dependency],
     module_dir: &Path,
-    include_test_fns: bool,
 ) -> Vec<(Ident, parsed::ParseSubmodule)> {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut submods = Vec::with_capacity(deps.len());
@@ -110,9 +104,7 @@ fn parse_submodules(
             }
         };
 
-        if let Ok((kind, module)) =
-            parse_module_tree(handler, dep_str.clone(), dep_path.clone(), include_test_fns)
-        {
+        if let Ok((kind, module)) = parse_module_tree(handler, dep_str.clone(), dep_path.clone()) {
             let library_name = match kind {
                 parsed::TreeType::Library { name } => name,
                 _ => {
@@ -143,7 +135,6 @@ fn parse_module_tree(
     handler: &Handler,
     src: Arc<str>,
     path: Arc<PathBuf>,
-    include_test_fns: bool,
 ) -> Result<(parsed::TreeType, parsed::ParseModule), ErrorEmitted> {
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
@@ -151,10 +142,10 @@ fn parse_module_tree(
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
-    let submodules = parse_submodules(handler, &module.dependencies, module_dir, include_test_fns);
+    let submodules = parse_submodules(handler, &module.dependencies, module_dir);
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, module, include_test_fns)?;
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, module)?;
 
     Ok((kind, parsed::ParseModule { tree, submodules }))
 }
@@ -167,20 +158,10 @@ fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf 
         .with_extension(sway_types::constants::DEFAULT_FILE_EXTENSION)
 }
 
-/// Either finalized ASM or a library.
-pub enum AsmOrLib {
-    Asm(FinalizedAsm),
-    Library {
-        name: Ident,
-        namespace: Box<namespace::Root>,
-    },
-}
+pub struct CompiledAsm(pub FinalizedAsm);
 
-/// Either compiled bytecode in byte form or a library.
-pub enum BytecodeOrLib {
-    Bytecode(Vec<u8>),
-    Library,
-}
+/// The bytecode for a sway program.
+pub struct CompiledBytecode(pub Vec<u8>);
 
 pub fn parsed_to_ast(
     parse_program: &parsed::ParseProgram,
@@ -251,10 +232,12 @@ pub fn parsed_to_ast(
 
     // All unresolved types lead to compile errors.
     errors.extend(types_metadata.iter().filter_map(|m| match m {
-        TypeMetadata::UnresolvedType(name) => Some(CompileError::UnableToInferGeneric {
-            ty: name.as_str().to_string(),
-            span: name.span(),
-        }),
+        TypeMetadata::UnresolvedType(name, call_site_span_opt) => {
+            Some(CompileError::UnableToInferGeneric {
+                ty: name.as_str().to_string(),
+                span: call_site_span_opt.clone().unwrap_or_else(|| name.span()),
+            })
+        }
         _ => None,
     }));
 
@@ -298,49 +281,36 @@ pub fn compile_to_ast(
 }
 
 /// Given input Sway source code,
-/// try compiling to a `AsmOrLib`,
+/// try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn compile_to_asm(
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
-) -> CompileResult<AsmOrLib> {
+) -> CompileResult<CompiledAsm> {
     let ast_res = compile_to_ast(input, initial_namespace, Some(&build_config));
     ast_to_asm(ast_res, &build_config)
 }
 
 /// Given an AST compilation result,
-/// try compiling to a `AsmOrLib`,
+/// try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn ast_to_asm(
     ast_res: CompileResult<ty::TyProgram>,
     build_config: &BuildConfig,
-) -> CompileResult<AsmOrLib> {
+) -> CompileResult<CompiledAsm> {
     match ast_res.value {
         None => err(ast_res.warnings, ast_res.errors),
         Some(typed_program) => {
             let mut errors = ast_res.errors;
             let mut warnings = ast_res.warnings;
-
-            let tree_type = typed_program.kind.tree_type();
-            match tree_type {
-                parsed::TreeType::Contract
-                | parsed::TreeType::Script
-                | parsed::TreeType::Predicate => {
-                    let asm = check!(
-                        compile_ast_to_ir_to_asm(typed_program, build_config),
-                        return deduped_err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    ok(AsmOrLib::Asm(asm), warnings, errors)
-                }
-                parsed::TreeType::Library { name } => {
-                    let namespace = Box::new(typed_program.root.namespace.into());
-                    let lib = AsmOrLib::Library { name, namespace };
-                    ok(lib, warnings, errors)
-                }
-            }
+            let asm = check!(
+                compile_ast_to_ir_to_asm(typed_program, build_config),
+                return deduped_err(warnings, errors),
+                warnings,
+                errors
+            );
+            ok(CompiledAsm(asm), warnings, errors)
         }
     }
 }
@@ -364,27 +334,16 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // IR phase.
 
     let tree_type = program.kind.tree_type();
-    let mut ir = match ir_generation::compile_program(program) {
+    let mut ir = match ir_generation::compile_program(program, build_config.include_tests) {
         Ok(ir) => ir,
         Err(e) => return err(warnings, vec![e]),
     };
 
-    // Find all the entry points.  This is main for scripts and predicates, or ABI methods for
-    // contracts, identified by them having a selector.
+    // Find all the entry points for purity checking and DCE.
     let entry_point_functions: Vec<::sway_ir::Function> = ir
         .module_iter()
         .flat_map(|module| module.function_iter(&ir))
-        .filter(|func| {
-            let is_script_or_predicate = matches!(
-                tree_type,
-                parsed::TreeType::Script | parsed::TreeType::Predicate
-            );
-            let is_contract = tree_type == parsed::TreeType::Contract;
-            let has_entry_name =
-                func.get_name(&ir) == sway_types::constants::DEFAULT_ENTRY_POINT_FN_NAME;
-
-            (is_script_or_predicate && has_entry_name) || (is_contract && func.has_selector(&ir))
-        })
+        .filter(|func| func.is_entry(&ir))
         .collect();
 
     // Do a purity check on the _unoptimised_ IR.
@@ -405,6 +364,14 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         .module_iter()
         .flat_map(|module| module.function_iter(&ir))
         .collect::<Vec<_>>();
+
+    // Promote local values to registers.
+    check!(
+        promote_to_registers(&mut ir, &all_functions),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     // Inline function calls.
     check!(
@@ -444,14 +411,29 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     ok(final_asm, warnings, errors)
 }
 
-// Inline function calls based on two conditions:
-// 1. The program we're compiling is a "predicate". Predicates cannot jump backwards which means
-//    that supporting function calls (i.e. without inlining) is not possible. This is a protocl
-//    restriction and not a heuristic.
-// 2. If the program is not a "predicate" then, we rely on some heuristic which is described below
-//    in the `inline_heuristc` closure.
-//
-fn inline_function_calls(
+fn promote_to_registers(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+    for function in functions {
+        if let Err(ir_error) = sway_ir::optimize::promote_to_registers(ir, function) {
+            return err(
+                Vec::new(),
+                vec![CompileError::InternalOwned(
+                    ir_error.to_string(),
+                    span::Span::dummy(),
+                )],
+            );
+        }
+    }
+    ok((), Vec::new(), Vec::new())
+}
+
+/// Inline function calls based on two conditions:
+/// 1. The program we're compiling is a "predicate". Predicates cannot jump backwards which means
+///    that supporting function calls (i.e. without inlining) is not possible. This is a protocl
+///    restriction and not a heuristic.
+/// 2. If the program is not a "predicate" then, we rely on some heuristic which is described below
+///    in the `inline_heuristc` closure.
+///
+pub fn inline_function_calls(
     ir: &mut Context,
     functions: &[Function],
     tree_type: &parsed::TreeType,
@@ -474,6 +456,20 @@ fn inline_function_calls(
     };
 
     let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
+        let mut md_mgr = metadata::MetadataManager::default();
+        let attributed_inline = md_mgr.md_to_inline(ctx, func.get_metadata(ctx));
+
+        match attributed_inline {
+            Some(Inline::Always) => {
+                // TODO: check if inlining of function is possible
+                // return true;
+            }
+            Some(Inline::Never) => {
+                return false;
+            }
+            None => {}
+        }
+
         // For now, pending improvements to ASMgen for calls, we must inline any function which has
         // too many args.
         if func.args_iter(ctx).count() as u8
@@ -508,13 +504,16 @@ fn inline_function_calls(
         false
     };
 
+    let cg = call_graph::build_call_graph(ir, functions);
+    let functions = call_graph::callee_first_order(&cg);
+
     for function in functions {
         if let Err(ir_error) = match tree_type {
             parsed::TreeType::Predicate => {
                 // Inline everything for predicates
-                sway_ir::optimize::inline_all_function_calls(ir, function)
+                sway_ir::optimize::inline_all_function_calls(ir, &function)
             }
-            _ => sway_ir::optimize::inline_some_function_calls(ir, function, inline_heuristic),
+            _ => sway_ir::optimize::inline_some_function_calls(ir, &function, inline_heuristic),
         } {
             return err(
                 Vec::new(),
@@ -584,39 +583,38 @@ fn simplify_cfg(
     Ok(())
 }
 
-/// Given input Sway source code, compile to a [BytecodeOrLib], containing the asm in bytecode form.
+/// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn compile_to_bytecode(
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
-) -> CompileResult<BytecodeOrLib> {
+) -> CompileResult<CompiledBytecode> {
     let asm_res = compile_to_asm(input, initial_namespace, build_config);
     let result = asm_to_bytecode(asm_res, source_map);
     clear_lazy_statics();
     result
 }
 
-/// Given the assembly (opcodes), compile to a [BytecodeOrLib], containing the asm in bytecode form.
+/// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn asm_to_bytecode(
     CompileResult {
         value,
         mut warnings,
         mut errors,
-    }: CompileResult<AsmOrLib>,
+    }: CompileResult<CompiledAsm>,
     source_map: &mut SourceMap,
-) -> CompileResult<BytecodeOrLib> {
+) -> CompileResult<CompiledBytecode> {
     match value {
-        Some(AsmOrLib::Asm(mut asm)) => {
+        Some(CompiledAsm(mut asm)) => {
             let bytes = check!(
                 asm.to_bytecode_mut(source_map),
                 return err(warnings, errors),
                 warnings,
                 errors,
             );
-            ok(BytecodeOrLib::Bytecode(bytes), warnings, errors)
+            ok(CompiledBytecode(bytes), warnings, errors)
         }
-        Some(AsmOrLib::Library { .. }) => ok(BytecodeOrLib::Library, warnings, errors),
         None => err(warnings, errors),
     }
 }

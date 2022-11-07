@@ -73,7 +73,7 @@ fn run_forc_command(path: &Path, cmd_args: &[&str]) -> bool {
 
     let output = std::process::Command::new("forc")
         .args(cmd_args)
-        .arg(&path)
+        .arg(path)
         .output()
         .expect("failed to run command for example project");
 

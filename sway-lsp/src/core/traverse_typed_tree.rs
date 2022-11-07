@@ -26,6 +26,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
         ty::TyDeclaration::VariableDeclaration(variable) => {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&variable.name)) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                token.type_def = Some(TypeDefinition::Ident(variable.name.clone()));
             }
             if let Some(type_ascription_span) = &variable.type_ascription_span {
                 if let Some(mut token) =
@@ -44,6 +45,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
             {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&const_decl.name)) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
                 }
                 handle_expression(&const_decl.value, tokens);
             }
@@ -61,6 +63,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
             {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_decl.name)) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(trait_decl.name.clone()));
                 }
 
                 for trait_fn_decl_id in &trait_decl.interface_surface {
@@ -79,6 +82,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
             {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&struct_decl.name)) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(struct_decl.name));
                 }
 
                 for field in &struct_decl.fields {
@@ -108,6 +112,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
             {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&enum_decl.name)) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(enum_decl.name.clone()));
                 }
 
                 for type_param in &enum_decl.type_parameters {
@@ -172,6 +177,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
             if let Ok(abi_decl) = declaration_engine::de_get_abi(decl_id.clone(), &decl_id.span()) {
                 if let Some(mut token) = tokens.get_mut(&to_ident_key(&abi_decl.name)) {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(abi_decl.name.clone()));
                 }
 
                 for trait_fn_decl_id in &abi_decl.interface_surface {
@@ -189,7 +195,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }
         }
-        ty::TyDeclaration::ErrorRecovery => {}
+        ty::TyDeclaration::ErrorRecovery(_) => {}
         ty::TyDeclaration::StorageDeclaration(decl_id) => {
             if let Ok(storage_decl) =
                 declaration_engine::de_get_storage(decl_id.clone(), &decl_id.span())
@@ -475,6 +481,7 @@ fn handle_while_loop(body: &ty::TyCodeBlock, condition: &ty::TyExpression, token
 fn collect_typed_trait_fn_token(trait_fn: &ty::TyTraitFn, tokens: &TokenMap) {
     if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_fn.name)) {
         token.typed = Some(TypedAstToken::TypedTraitFn(trait_fn.clone()));
+        token.type_def = Some(TypeDefinition::Ident(trait_fn.name.clone()));
     }
 
     for parameter in &trait_fn.parameters {
@@ -504,6 +511,7 @@ fn collect_typed_fn_param_token(param: &ty::TyFunctionParameter, tokens: &TokenM
 fn collect_typed_fn_decl(func_decl: &ty::TyFunctionDeclaration, tokens: &TokenMap) {
     if let Some(mut token) = tokens.get_mut(&to_ident_key(&func_decl.name)) {
         token.typed = Some(TypedAstToken::TypedFunctionDeclaration(func_decl.clone()));
+        token.type_def = Some(TypeDefinition::Ident(func_decl.name.clone()));
     }
 
     for node in &func_decl.body.contents {

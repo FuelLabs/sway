@@ -1,0 +1,7 @@
+category = "fail"
+
+# check: $()fn add_points<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: MyAdd {
+# check: $()"where" clauses are not yet supported
+
+# check: $()let baz = add_points(foo, bar);
+# check: $()Could not find symbol "add_points" in this scope.

@@ -108,96 +108,98 @@ impl ControlFlowGraph {
 
             leaves = l_leaves;
         }
-
-        // calculate the entry points based on the tree type
-        graph.entry_points = match tree_type {
-            TreeType::Predicate | TreeType::Script => {
-                // a predicate or script have a main function as the only entry point
-                let mut ret = vec![];
-                for i in graph.graph.node_indices() {
-                    let count_it = match &graph.graph[i] {
-                        ControlFlowGraphNode::OrganizationalDominator(_) => false,
-                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                            span,
-                            content:
-                                ty::TyAstNodeContent::Declaration(
-                                    ty::TyDeclaration::FunctionDeclaration(decl_id),
-                                ),
-                            ..
-                        }) => {
-                            let decl = de_get_function(decl_id.clone(), span)?;
-                            decl.name.as_str() == "main"
-                        }
-                        _ => false,
-                    };
-                    if count_it {
-                        ret.push(i);
-                    }
-                }
-                ret
-            }
-            TreeType::Contract | TreeType::Library { .. } => {
-                let mut ret = vec![];
-                for i in graph.graph.node_indices() {
-                    let count_it = match &graph.graph[i] {
-                        ControlFlowGraphNode::OrganizationalDominator(_) => false,
-                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                            content:
-                                ty::TyAstNodeContent::Declaration(
-                                    ty::TyDeclaration::FunctionDeclaration(decl_id),
-                                ),
-                            ..
-                        }) => {
-                            let function_decl = de_get_function(decl_id.clone(), &decl_id.span())?;
-                            function_decl.visibility == Visibility::Public
-                        }
-                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                            content:
-                                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(
-                                    decl_id,
-                                )),
-                            ..
-                        }) => de_get_trait(decl_id.clone(), &decl_id.span())?
-                            .visibility
-                            .is_public(),
-                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                            content:
-                                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(
-                                    decl_id,
-                                )),
-                            ..
-                        }) => {
-                            let struct_decl = de_get_struct(decl_id.clone(), &decl_id.span())?;
-                            struct_decl.visibility == Visibility::Public
-                        }
-                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                            content:
-                                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait {
-                                    ..
-                                }),
-                            ..
-                        }) => true,
-                        ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                            content:
-                                ty::TyAstNodeContent::Declaration(
-                                    ty::TyDeclaration::ConstantDeclaration(decl_id),
-                                ),
-                            ..
-                        }) => {
-                            let decl = de_get_constant(decl_id.clone(), &decl_id.span())?;
-                            decl.visibility.is_public()
-                        }
-                        _ => false,
-                    };
-                    if count_it {
-                        ret.push(i);
-                    }
-                }
-                ret
-            }
-        };
+        graph.entry_points = entry_points(tree_type, &graph.graph)?;
         Ok(())
     }
+}
+
+/// Collect all entry points into the graph based on the tree type.
+fn entry_points(
+    tree_type: &TreeType,
+    graph: &flow_graph::Graph,
+) -> Result<Vec<flow_graph::EntryPoint>, CompileError> {
+    let mut entry_points = vec![];
+    match tree_type {
+        TreeType::Predicate | TreeType::Script => {
+            // Predicates and scripts have main and test functions as entry points.
+            for i in graph.node_indices() {
+                match &graph[i] {
+                    ControlFlowGraphNode::OrganizationalDominator(_) => continue,
+                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
+                        span,
+                        content:
+                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(
+                                decl_id,
+                            )),
+                        ..
+                    }) => {
+                        let decl = de_get_function(decl_id.clone(), span)?;
+                        if !decl.is_entry() {
+                            continue;
+                        }
+                    }
+                    _ => continue,
+                };
+                entry_points.push(i);
+            }
+        }
+        TreeType::Contract | TreeType::Library { .. } => {
+            for i in graph.node_indices() {
+                let is_entry = match &graph[i] {
+                    ControlFlowGraphNode::OrganizationalDominator(_) => continue,
+                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
+                        content:
+                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(
+                                decl_id,
+                            )),
+                        ..
+                    }) => {
+                        let decl = de_get_function(decl_id.clone(), &decl_id.span())?;
+                        decl.visibility == Visibility::Public || decl.is_test()
+                    }
+                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
+                        content:
+                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(
+                                decl_id,
+                            )),
+                        ..
+                    }) => de_get_trait(decl_id.clone(), &decl_id.span())?
+                        .visibility
+                        .is_public(),
+                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
+                        content:
+                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(
+                                decl_id,
+                            )),
+                        ..
+                    }) => {
+                        let struct_decl = de_get_struct(decl_id.clone(), &decl_id.span())?;
+                        struct_decl.visibility == Visibility::Public
+                    }
+                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
+                        content:
+                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait { .. }),
+                        ..
+                    }) => true,
+                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
+                        content:
+                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ConstantDeclaration(
+                                decl_id,
+                            )),
+                        ..
+                    }) => {
+                        let decl = de_get_constant(decl_id.clone(), &decl_id.span())?;
+                        decl.visibility.is_public()
+                    }
+                    _ => continue,
+                };
+                if is_entry {
+                    entry_points.push(i);
+                }
+            }
+        }
+    }
+    Ok(entry_points)
 }
 
 fn connect_node(
@@ -367,7 +369,7 @@ fn connect_declaration(
             connect_storage_declaration(&storage, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
+        ErrorRecovery(_) | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
     }
 }
 
@@ -762,27 +764,27 @@ fn connect_expression(
             r#else,
         } => {
             let condition_expr = connect_expression(
-                &(*condition).expression,
+                &condition.expression,
                 graph,
                 leaves,
                 exit_node,
                 "",
                 tree_type,
-                (*condition).span.clone(),
+                condition.span.clone(),
             )?;
             let then_expr = connect_expression(
-                &(*then).expression,
+                &then.expression,
                 graph,
                 leaves,
                 exit_node,
                 "then branch",
                 tree_type,
-                (*then).span.clone(),
+                then.span.clone(),
             )?;
 
             let else_expr = if let Some(else_expr) = r#else {
                 connect_expression(
-                    &(*else_expr).expression,
+                    &else_expr.expression,
                     graph,
                     leaves,
                     exit_node,
@@ -1145,7 +1147,7 @@ fn connect_intrinsic_function(
     let mut result = vec![node];
     let _ = arguments.iter().try_fold(&mut result, |accum, exp| {
         let mut res = connect_expression(
-            &(*exp).expression,
+            &exp.expression,
             graph,
             leaves,
             exit_node,

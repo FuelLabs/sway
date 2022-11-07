@@ -12,15 +12,27 @@ impl AllocatedProgram {
                 .collect(),
         };
 
-        let realized_ops = abstract_ops.realize_labels(&mut self.data_section)?;
+        let (realized_ops, mut label_offsets) =
+            abstract_ops.realize_labels(&mut self.data_section)?;
         let ops = InstructionSet {
             ops: realized_ops.pad_to_even(),
         };
+
+        // Collect the entry point offsets.
+        let entries = self
+            .entries
+            .into_iter()
+            .map(|(selector, label, name)| {
+                let offset = label_offsets.remove(&label).expect("no offset for entry");
+                (selector, offset, name)
+            })
+            .collect();
 
         Ok(FinalProgram {
             kind: self.kind,
             data_section: self.data_section,
             ops,
+            entries,
         })
     }
 }

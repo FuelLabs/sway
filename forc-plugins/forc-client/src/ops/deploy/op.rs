@@ -1,14 +1,19 @@
-use anyhow::{bail, Result};
-use forc_pkg::{BuildOptions, PackageManifestFile};
-use fuel_gql_client::client::FuelClient;
-use fuel_tx::{Output, Salt, TransactionBuilder};
-use fuel_vm::prelude::*;
+use anyhow::{bail, Context, Result};
+use forc_pkg::{self as pkg, PackageManifestFile};
+use fuel_gql_client::client::types::TransactionStatus;
+use fuel_gql_client::{
+    client::FuelClient,
+    fuel_tx::{Output, Salt, TransactionBuilder},
+    fuel_vm::prelude::*,
+};
+use futures::FutureExt;
 use std::path::PathBuf;
+use std::time::Duration;
 use sway_core::language::parsed::TreeType;
 use sway_utils::constants::DEFAULT_NODE_URL;
 use tracing::info;
 
-use crate::ops::tx_util::{TransactionBuilderExt, TxParameters};
+use crate::ops::tx_util::{TransactionBuilderExt, TxParameters, TX_SUBMIT_TIMEOUT_MS};
 
 use super::cmd::DeployCommand;
 
@@ -25,28 +30,11 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         Some(network) => &network.url,
         _ => DEFAULT_NODE_URL,
     };
-    let node_url = command.url.unwrap_or_else(|| node_url.to_string());
+    let node_url = command.url.as_deref().unwrap_or(node_url);
     let client = FuelClient::new(node_url)?;
 
-    let build_options = BuildOptions {
-        path: command.path,
-        print_ast: command.print_ast,
-        print_finalized_asm: command.print_finalized_asm,
-        print_intermediate_asm: command.print_intermediate_asm,
-        print_ir: command.print_ir,
-        binary_outfile: command.binary_outfile,
-        offline_mode: command.offline_mode,
-        debug_outfile: command.debug_outfile,
-        terse_mode: command.terse_mode,
-        output_directory: command.output_directory,
-        minify_json_abi: command.minify_json_abi,
-        minify_json_storage_slots: command.minify_json_storage_slots,
-        locked: command.locked,
-        build_profile: command.build_profile,
-        release: command.release,
-        time_phases: command.time_phases,
-    };
-    let compiled = forc_pkg::build_with_options(build_options)?;
+    let build_opts = build_opts_from_cmd(&command);
+    let compiled = forc_pkg::build_package_with_options(&manifest, build_opts)?;
 
     let bytecode = compiled.bytecode.clone().into();
     let salt = Salt::new([0; 32]);
@@ -63,11 +51,66 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
         .finalize_signed(client.clone(), command.unsigned, command.signing_key)
         .await?;
 
-    match client.submit(&tx).await {
-        Ok(logs) => {
-            info!("Logs:\n{:?}", logs);
-            Ok(contract_id)
-        }
+    let tx = Transaction::from(tx);
+
+    let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
+        Ok(logs) => match logs {
+            TransactionStatus::Submitted { .. } => {
+                bail!("contract {} deployment timed out", &contract_id);
+            }
+            TransactionStatus::Success { block_id, .. } => {
+                info!("contract {} deployed in block {}", &contract_id, &block_id);
+                Ok(contract_id)
+            }
+            TransactionStatus::Failure { reason, .. } => {
+                bail!(
+                    "contract {} failed to deploy due to an error: {}",
+                    &contract_id,
+                    reason
+                )
+            }
+        },
         Err(e) => bail!("{e}"),
+    });
+
+    // submit contract deployment with a timeout
+    tokio::time::timeout(
+        Duration::from_millis(TX_SUBMIT_TIMEOUT_MS),
+        deployment_request,
+    )
+    .await
+    .with_context(|| {
+        format!(
+            "Timed out waiting for contract {} to deploy. The transaction may have been dropped.",
+            &contract_id
+        )
+    })?
+}
+
+fn build_opts_from_cmd(cmd: &DeployCommand) -> pkg::BuildOpts {
+    pkg::BuildOpts {
+        pkg: pkg::PkgOpts {
+            path: cmd.path.clone(),
+            offline: cmd.offline_mode,
+            terse: cmd.terse_mode,
+            locked: cmd.locked,
+            output_directory: cmd.output_directory.clone(),
+        },
+        print: pkg::PrintOpts {
+            ast: cmd.print_ast,
+            finalized_asm: cmd.print_finalized_asm,
+            intermediate_asm: cmd.print_intermediate_asm,
+            ir: cmd.print_ir,
+        },
+        minify: pkg::MinifyOpts {
+            json_abi: cmd.minify_json_abi,
+            json_storage_slots: cmd.minify_json_storage_slots,
+        },
+        build_profile: cmd.build_profile.clone(),
+        release: cmd.release,
+        time_phases: cmd.time_phases,
+        binary_outfile: cmd.binary_outfile.clone(),
+        debug_outfile: cmd.debug_outfile.clone(),
+        tests: false,
     }
 }

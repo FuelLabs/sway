@@ -179,17 +179,14 @@ impl TypeBinding<CallPath> {
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = de_insert_function(new_copy);
-
-                // add the new copy as a monomorphized copy of the original id
-                de_add_monomorphized_copy(original_id, new_id.clone());
+                let new_id = de_insert_function(new_copy).with_parent(original_id);
 
                 ty::TyDeclaration::FunctionDeclaration(new_id)
             }
             ty::TyDeclaration::EnumDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
-                    CompileResult::from(de_get_enum(original_id.clone(), &self.span())),
+                    CompileResult::from(de_get_enum(original_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -215,15 +212,12 @@ impl TypeBinding<CallPath> {
                 // insert the new copy into the declaration engine
                 let new_id = de_insert_enum(new_copy);
 
-                // add the new copy as a monomorphized copy of the original id
-                de_add_monomorphized_copy(original_id, new_id.clone());
-
                 ty::TyDeclaration::EnumDeclaration(new_id)
             }
             ty::TyDeclaration::StructDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
-                    CompileResult::from(de_get_struct(original_id.clone(), &self.span())),
+                    CompileResult::from(de_get_struct(original_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -248,9 +242,6 @@ impl TypeBinding<CallPath> {
 
                 // insert the new copy into the declaration engine
                 let new_id = de_insert_struct(new_copy);
-
-                // add the new copy as a monomorphized copy of the original id
-                de_add_monomorphized_copy(original_id, new_id.clone());
 
                 ty::TyDeclaration::StructDeclaration(new_id)
             }

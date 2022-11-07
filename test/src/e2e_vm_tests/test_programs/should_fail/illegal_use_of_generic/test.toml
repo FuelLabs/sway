@@ -1,0 +1,7 @@
+category = "fail"
+
+# check: $()fn test_function<T>(value: T) {
+# check: $()No method named "new" found for type "T"
+
+# check: $()fn test_function(self) {
+# check: $()No method named "new" found for type "T".

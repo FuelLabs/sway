@@ -1,5 +1,6 @@
 use fuels::prelude::*;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tai64::Tai64;
 use tokio::time::{sleep, Duration};
 
 abigen!(
@@ -19,7 +20,7 @@ async fn get_block_instance() -> (BlockTestContract, ContractId) {
     )
     .await
     .unwrap();
-    let instance = BlockTestContract::new(id.to_string(), wallet);
+    let instance = BlockTestContract::new(id.clone(), wallet);
 
     (instance, id.into())
 }
@@ -41,13 +42,11 @@ async fn can_get_block_height() {
 async fn can_get_timestamp() {
     let (instance, _id) = get_block_instance().await;
     let block_0_time = instance.methods().get_timestamp().call().await.unwrap();
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards");
+    let now = Tai64::now();
 
     // This should really be zero in most cases, but be conservative to guarantee the stability of
     // the test
-    assert!(now.as_secs() - block_0_time.value <= 1);
+    assert!(now.0 - block_0_time.value <= 1);
 
     // Wait 1 seconds and request another block
     sleep(Duration::from_secs(1)).await;

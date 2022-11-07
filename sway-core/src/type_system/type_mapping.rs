@@ -1,3 +1,5 @@
+use std::fmt;
+
 use super::*;
 
 type SourceType = TypeId;
@@ -7,6 +9,34 @@ type DestinationType = TypeId;
 /// and a [DestinationType] (RHS).
 pub(crate) struct TypeMapping {
     mapping: Vec<(SourceType, DestinationType)>,
+}
+
+impl fmt::Display for TypeMapping {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "TypeMapping {{ {} }}",
+            self.mapping
+                .iter()
+                .map(|(source_type, dest_type)| { format!("{} -> {}", source_type, dest_type) })
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+}
+
+impl fmt::Debug for TypeMapping {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "TypeMapping {{ {} }}",
+            self.mapping
+                .iter()
+                .map(|(source_type, dest_type)| { format!("{:?} -> {:?}", source_type, dest_type) })
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
 }
 
 impl TypeMapping {
@@ -353,6 +383,7 @@ impl TypeMapping {
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery => None,
         }
@@ -360,9 +391,9 @@ impl TypeMapping {
 }
 
 fn iter_for_match(type_mapping: &TypeMapping, type_info: &TypeInfo) -> Option<TypeId> {
-    for (param, ty_id) in type_mapping.mapping.iter() {
-        if look_up_type_id(*param) == *type_info {
-            return Some(*ty_id);
+    for (source_type, dest_type) in type_mapping.mapping.iter() {
+        if look_up_type_id(*source_type) == *type_info {
+            return Some(*dest_type);
         }
     }
     None

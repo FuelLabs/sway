@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use std::sync::RwLock;
+use std::{collections::HashMap, fmt};
 
 use crate::{
     concurrent_slab::ConcurrentSlab, declaration_engine::*, language::ty, namespace::Path,
@@ -21,6 +21,12 @@ pub(crate) struct TypeEngine {
     id_map: RwLock<HashMap<TypeInfo, TypeId>>,
 }
 
+impl fmt::Display for TypeEngine {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "DeclarationEngine {{\n{}\n}}", self.slab)
+    }
+}
+
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
@@ -36,6 +42,18 @@ impl TypeEngine {
             id_map.insert(ty, type_id);
             type_id
         }
+    }
+
+    /// Currently the [TypeEngine] is a lazy static object, so when we run
+    /// cargo tests, we can either choose to use a local [TypeEngine] and bypass
+    /// all of the global methods or we can use the lazy static [TypeEngine].
+    /// This method is for testing to be able to bypass the global methods for
+    /// the lazy static [TypeEngine] (contained within the call to hash in the
+    /// id_map).
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub(crate) fn insert_type_always(&self, ty: TypeInfo) -> TypeId {
+        TypeId::new(self.slab.insert(ty))
     }
 
     /// Gets the size of the [TypeEngine].
@@ -380,7 +398,7 @@ impl TypeEngine {
                     Some(ty::TyDeclaration::StructDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
-                            CompileResult::from(de_get_struct(original_id.clone(), &name.span())),
+                            CompileResult::from(de_get_struct(original_id, &name.span())),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -407,16 +425,13 @@ impl TypeEngine {
                         // take any trait methods that apply to this type and copy them to the new type
                         namespace.insert_trait_implementation_for_type(type_id);
 
-                        // add the new copy as a monomorphized copy of the original id
-                        de_add_monomorphized_struct_copy(original_id, new_copy);
-
                         // return the id
                         type_id
                     }
                     Some(ty::TyDeclaration::EnumDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
-                            CompileResult::from(de_get_enum(original_id.clone(), &name.span())),
+                            CompileResult::from(de_get_enum(original_id, &name.span())),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -442,9 +457,6 @@ impl TypeEngine {
 
                         // take any trait methods that apply to this type and copy them to the new type
                         namespace.insert_trait_implementation_for_type(type_id);
-
-                        // add the new copy as a monomorphized copy of the original id
-                        de_add_monomorphized_enum_copy(original_id, new_copy);
 
                         // return the id
                         type_id
@@ -523,6 +535,11 @@ impl TypeEngine {
     }
 }
 
+#[allow(dead_code)]
+pub(crate) fn print_type_engine() {
+    println!("{}", &*TYPE_ENGINE);
+}
+
 pub fn insert_type(ty: TypeInfo) -> TypeId {
     TYPE_ENGINE.insert_type(ty)
 }
@@ -596,7 +613,7 @@ pub(crate) fn unify(
     )
 }
 
-pub fn unify_right_with_self(
+pub(crate) fn unify_right_with_self(
     received: TypeId,
     expected: TypeId,
     self_type: TypeId,
