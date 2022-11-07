@@ -235,6 +235,7 @@ pub enum CompileError {
     MethodNotFound {
         method_name: Ident,
         type_name: String,
+        span: Span,
     },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
@@ -656,8 +657,13 @@ pub enum CompileError {
     ConfigTimeConstantNotALiteral { span: Span },
     #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident },
-    #[error("returning a `raw_ptr` from `main()` is not allowed")]
+    #[error("Returning a `raw_ptr` from `main()` is not allowed.")]
     PointerReturnNotAllowedInMain { span: Span },
+    #[error(
+        "Returning a type containing `raw_slice` from `main()` is not allowed. \
+            Consider converting it into a flat `raw_slice` first."
+    )]
+    NestedSliceReturnNotAllowedInMain { span: Span },
     #[error(
         "Register \"{name}\" is initialized and later reassigned which is not allowed. \
             Consider assigning to a different register inside the ASM block."
@@ -721,7 +727,7 @@ impl Spanned for CompileError {
             MethodOnNonValue { span, .. } => span.clone(),
             StructMissingField { span, .. } => span.clone(),
             StructDoesNotHaveField { span, .. } => span.clone(),
-            MethodNotFound { method_name, .. } => method_name.span(),
+            MethodNotFound { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
@@ -842,6 +848,7 @@ impl Spanned for CompileError {
             ConfigTimeConstantNotALiteral { span } => span.clone(),
             RefMutableNotAllowedInMain { param_name } => param_name.span(),
             PointerReturnNotAllowedInMain { span } => span.clone(),
+            NestedSliceReturnNotAllowedInMain { span } => span.clone(),
             InitializedRegisterReassignment { span, .. } => span.clone(),
             DisallowedControlFlowInstruction { span, .. } => span.clone(),
         }
