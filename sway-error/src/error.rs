@@ -499,6 +499,8 @@ pub enum CompileError {
     ContractStorageFromExternalContext { span: Span },
     #[error("The {opcode} opcode cannot be used in a predicate.")]
     InvalidOpcodeFromPredicate { opcode: String, span: Span },
+    #[error("The {opcode} opcode cannot jump backwards in a predicate.")]
+    InvalidBackwardJumpFromPredicate { opcode: String, span: Span },
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
     #[error("Tuple index out of bounds; the arity is {count} but the index is {index}.")]
@@ -800,6 +802,7 @@ impl Spanned for CompileError {
             BurnFromExternalContext { span, .. } => span.clone(),
             ContractStorageFromExternalContext { span, .. } => span.clone(),
             InvalidOpcodeFromPredicate { span, .. } => span.clone(),
+            InvalidBackwardJumpFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
