@@ -64,8 +64,8 @@ pub async fn deploy(command: DeployCommand) -> Result<Vec<fuel_tx::ContractId>> 
             .is_ok()
         {
             if let Some(built_pkg) = built_packages.get(&member_manifest.project.name) {
-                let contract_id = deploy_pkg(&command, member_manifest, built_pkg).await?;
-                contract_ids.push(contract_id);
+                let contract_id = deploy_pkg(&command, member_manifest, built_pkg).await;
+                contract_ids.push(contract_id?);
             }
         }
     }

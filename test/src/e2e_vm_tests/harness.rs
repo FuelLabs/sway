@@ -65,7 +65,9 @@ pub(crate) async fn runs_on_node(
         signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
         ..Default::default()
     };
-    run(command).await
+    run(command)
+        .await
+        .map(|receipts| receipts.first().cloned().unwrap())
 }
 
 /// Very basic check that code does indeed run in the VM.
