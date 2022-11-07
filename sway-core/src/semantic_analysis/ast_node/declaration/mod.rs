@@ -1,4 +1,6 @@
 mod abi;
+#[allow(clippy::module_inception)]
+mod declaration;
 mod r#enum;
 mod function;
 mod impl_trait;

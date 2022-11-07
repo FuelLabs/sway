@@ -94,6 +94,7 @@ pub enum TypeInfo {
     /// which can create pointers by (eg.) reading logically-pointer-valued registers, using the
     /// gtf instruction, or manipulating u64s.
     RawUntypedPtr,
+    RawUntypedSlice,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -192,6 +193,9 @@ impl Hash for TypeInfo {
             TypeInfo::RawUntypedPtr => {
                 state.write_u8(18);
             }
+            TypeInfo::RawUntypedSlice => {
+                state.write_u8(19);
+            }
         }
     }
 }
@@ -281,6 +285,7 @@ impl PartialEq for TypeInfo {
                 l_fields == r_fields
             }
             (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
+            (TypeInfo::RawUntypedSlice, TypeInfo::RawUntypedSlice) => true,
             _ => false,
         }
     }
@@ -351,6 +356,7 @@ impl fmt::Display for TypeInfo {
             Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty, count),
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
+            RawUntypedSlice => "raw untyped slice".into(),
         };
         write!(f, "{}", s)
     }
@@ -447,6 +453,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
             | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
             | TypeInfo::Storage { .. } => false,
         }
     }
@@ -492,6 +499,7 @@ impl TypeInfo {
             Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty.json_abi_str(), count),
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
+            RawUntypedSlice => "raw untyped slice".into(),
         }
     }
 
@@ -653,6 +661,7 @@ impl TypeInfo {
                 format!("a[{};{}]", name, size)
             }
             RawUntypedPtr => "rawptr".to_string(),
+            RawUntypedSlice => "rawslice".to_string(),
             _ => {
                 return err(
                     vec![],
@@ -805,6 +814,7 @@ impl TypeInfo {
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
             | TypeInfo::Array(_, _, _)
@@ -884,6 +894,7 @@ impl TypeInfo {
                 | TypeInfo::B256
                 | TypeInfo::Numeric
                 | TypeInfo::RawUntypedPtr
+                | TypeInfo::RawUntypedSlice
                 | TypeInfo::Contract => {
                     inner_types.insert(type_id);
                 }
@@ -949,6 +960,7 @@ impl TypeInfo {
             | TypeInfo::Numeric
             | TypeInfo::Contract
             | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
             | TypeInfo::ErrorRecovery => {}
         }
         inner_types
@@ -973,6 +985,7 @@ impl TypeInfo {
             | TypeInfo::Numeric => ok((), warnings, errors),
             TypeInfo::Unknown
             | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
             | TypeInfo::SelfType
@@ -1003,6 +1016,7 @@ impl TypeInfo {
             | TypeInfo::Tuple(_)
             | TypeInfo::B256
             | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
             | TypeInfo::Custom { .. }
             | TypeInfo::Str(_)
             | TypeInfo::Array(_, _, _)
@@ -1132,6 +1146,7 @@ impl TypeInfo {
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery => {}
             TypeInfo::Custom { .. } | TypeInfo::SelfType => {
@@ -1446,6 +1461,7 @@ impl TypeInfo {
             | TypeInfo::Boolean
             | TypeInfo::B256
             | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
             | TypeInfo::ErrorRecovery => false,
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }

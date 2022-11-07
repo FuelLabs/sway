@@ -769,6 +769,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Array(..) => "array",
         TypeInfo::Storage { .. } => "contract storage",
         TypeInfo::RawUntypedPtr => "raw untyped ptr",
+        TypeInfo::RawUntypedSlice => "raw untyped slice",
     }
     .to_string()
 }

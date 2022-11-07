@@ -4,6 +4,7 @@ use ::alloc::{alloc, realloc};
 use ::assert::assert;
 use ::intrinsics::size_of;
 use ::option::Option;
+use ::convert::From;
 
 struct RawVec<T> {
     ptr: raw_ptr,
@@ -246,5 +247,29 @@ impl<T> Vec<T> {
         let index_ptr = self.buf.ptr().add::<T>(index);
 
         index_ptr.write(value);
+    }
+}
+
+impl<T> AsRawSlice for Vec<T> {
+    /// Returns a raw slice to all of the elements in the vector.
+    fn as_raw_slice(self) -> raw_slice {
+        raw_slice::from_parts::<T>(self.buf.ptr(), self.len)
+    }
+}
+
+impl<T> From<raw_slice> for Vec<T> {
+    fn from(slice: raw_slice) -> Vec<T> {
+        let buf = RawVec {
+            ptr: slice.ptr(),
+            cap: slice.len::<T>(),
+        };
+        Self {
+            buf,
+            len: buf.cap,
+        }
+    }
+
+    fn into(self) -> raw_slice {
+        asm(ptr: (self.buf.ptr(), self.len)) { ptr: raw_slice }
     }
 }

@@ -284,7 +284,7 @@ fn decl_validate(decl: &ty::TyDeclaration) -> CompileResult<()> {
             }
         }
         ty::TyDeclaration::GenericTypeForFunctionScope { .. }
-        | ty::TyDeclaration::ErrorRecovery => {}
+        | ty::TyDeclaration::ErrorRecovery(_) => {}
     }
     ok((), warnings, errors)
 }

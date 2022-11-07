@@ -1,26 +1,26 @@
 category = "fail"
 
 # check: $()impl<E, F> Setter<E> for FooBarData<E> {
-# nextln: $()The generic type parameter "F" is unconstrained.
+# check: $()The generic type parameter "F" is unconstrained.
 
 # check: $()impl<I> OutOfScopeGetter<I> for FooBarData<I> {
-# nextln: $()Could not find symbol "OutOfScopeGetter" in this scope.
+# check: $()Could not find symbol "OutOfScopeGetter" in this scope.
 
 # check: $()impl<I> OutOfScopeGetter<I> for FooBarData<I> {
-# nextln: $()Trait "OutOfScopeGetter" cannot be found in the current scope.
+# check: $()Trait "OutOfScopeGetter" cannot be found in the current scope.
 
 # check: $()impl<J, K> Getter<J, K> for FooBarData<J> {
-# nextln: $()Expected 1 type argument, but instead found 2.
+# check: $()Expected 1 type argument, but instead found 2.
 
 # check: $()impl<L> Getter for FooBarData<L> {
-# nextln: $()"Getter" needs type arguments.
+# check: $()"Getter" needs type arguments.
 
 # check: $()impl<F> Multiple<u64> for FooBarData<F> {
-# nextln: $()fn unused(self, x: u64, other: u64) -> u64 {
-# nextln: $()other
-# nextln: $()}
-# nextln: $()}
-# nextln: $()Conflicting implementations of trait "Multiple<u64>" for type "FooBarData<F>".
+# check: $()fn unused(self, x: u64, other: u64) -> u64 {
+# check: $()other
+# check: $()}
+# check: $()}
+# check: $()Conflicting implementations of trait "Multiple<u64>" for type "FooBarData<F>".
 
 # check: $()impl<T> Returner<T> for T {
 # check: $()Unimplemented feature: implementing traits on this type is unsupported right now
@@ -32,4 +32,4 @@ category = "fail"
 # check: $()Unimplemented feature: Using generic traits in trait constraints is not supported yet.
 
 # check: $()let b = a.set(42);
-# nextln: $()No method named "set" found for type "FooBarData<u8>".
+# check: $()No method named "set" found for type "FooBarData<u8>".

@@ -221,6 +221,7 @@ impl Namespace {
             errors.push(CompileError::MethodNotFound {
                 method_name: method_name.clone(),
                 type_name: type_id.to_string(),
+                span: method_name.span(),
             });
         }
         err(warnings, errors)

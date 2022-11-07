@@ -14,7 +14,7 @@ dependencies = ['std']
 
 [[package]]
 name = 'wallet_contract_caller_script'
-source = 'root'
+source = 'member'
 dependencies = [
     'std',
     'wallet_abi',

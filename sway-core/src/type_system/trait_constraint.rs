@@ -47,6 +47,30 @@ impl From<&Supertrait> for TraitConstraint {
     }
 }
 
+impl CollectTypesMetadata for TraitConstraint {
+    fn collect_types_metadata(
+        &self,
+        ctx: &mut CollectTypesMetadataContext,
+    ) -> CompileResult<Vec<TypeMetadata>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut res = vec![];
+        for type_arg in self.type_arguments.iter() {
+            res.extend(check!(
+                type_arg.type_id.collect_types_metadata(ctx),
+                continue,
+                warnings,
+                errors
+            ));
+        }
+        if errors.is_empty() {
+            ok(res, warnings, errors)
+        } else {
+            err(warnings, errors)
+        }
+    }
+}
+
 impl TraitConstraint {
     pub(crate) fn type_check(&mut self, mut ctx: TypeCheckContext) -> CompileResult<()> {
         let mut warnings = vec![];
