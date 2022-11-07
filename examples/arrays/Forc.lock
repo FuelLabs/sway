@@ -1,6 +1,6 @@
 [[package]]
 name = 'array'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

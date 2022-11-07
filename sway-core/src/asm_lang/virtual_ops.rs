@@ -23,6 +23,7 @@ use std::fmt;
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Clone, Debug)]
 pub(crate) enum VirtualOp {
+    /* Arithmetic/Logic (ALU) Instructions */
     ADD(VirtualRegister, VirtualRegister, VirtualRegister),
     ADDI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     AND(VirtualRegister, VirtualRegister, VirtualRegister),
@@ -33,51 +34,42 @@ pub(crate) enum VirtualOp {
     EXP(VirtualRegister, VirtualRegister, VirtualRegister),
     EXPI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     GT(VirtualRegister, VirtualRegister, VirtualRegister),
-    GTF(VirtualRegister, VirtualRegister, VirtualImmediate12),
     LT(VirtualRegister, VirtualRegister, VirtualRegister),
     MLOG(VirtualRegister, VirtualRegister, VirtualRegister),
-    MROO(VirtualRegister, VirtualRegister, VirtualRegister),
     MOD(VirtualRegister, VirtualRegister, VirtualRegister),
     MODI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     MOVE(VirtualRegister, VirtualRegister),
     MOVI(VirtualRegister, VirtualImmediate18),
+    MROO(VirtualRegister, VirtualRegister, VirtualRegister),
     MUL(VirtualRegister, VirtualRegister, VirtualRegister),
     MULI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    NOOP,
     NOT(VirtualRegister, VirtualRegister),
     OR(VirtualRegister, VirtualRegister, VirtualRegister),
     ORI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     SLL(VirtualRegister, VirtualRegister, VirtualRegister),
     SLLI(VirtualRegister, VirtualRegister, VirtualImmediate12),
-    SMO(
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
-    ),
     SRL(VirtualRegister, VirtualRegister, VirtualRegister),
     SRLI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     SUB(VirtualRegister, VirtualRegister, VirtualRegister),
     SUBI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     XOR(VirtualRegister, VirtualRegister, VirtualRegister),
     XORI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+
+    /* Control Flow Instructions */
     JMP(VirtualRegister),
     JI(VirtualImmediate24),
+    JNE(VirtualRegister, VirtualRegister, VirtualRegister),
     JNEI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     JNZI(VirtualRegister, VirtualImmediate18),
     RET(VirtualRegister),
-    RETD(VirtualRegister, VirtualRegister),
+
+    /* Memory Instructions */
+    ALOC(VirtualRegister),
     CFEI(VirtualImmediate24),
     CFSI(VirtualImmediate24),
     LB(VirtualRegister, VirtualRegister, VirtualImmediate12),
-    // LWDataId takes a virtual register and a DataId, which points to a labeled piece
-    // of data in the data section. Note that the ASM op corresponding to a LW is
-    // subtly complex: $rB is in bytes and points to some mem address. The immediate
-    // third argument is a _word_ offset from that byte address.
-    LWDataId(VirtualRegister, DataId),
-    // A raw LW that doesn't refer to a deferred placeholder and instead refers
-    // directly to memory
     LW(VirtualRegister, VirtualRegister, VirtualImmediate12),
-    ALOC(VirtualRegister),
     MCL(VirtualRegister, VirtualRegister),
     MCLI(VirtualRegister, VirtualImmediate18),
     MCP(VirtualRegister, VirtualRegister, VirtualRegister),
@@ -90,9 +82,11 @@ pub(crate) enum VirtualOp {
     ),
     SB(VirtualRegister, VirtualRegister, VirtualImmediate12),
     SW(VirtualRegister, VirtualRegister, VirtualImmediate12),
+
+    /* Contract Instructions */
     BAL(VirtualRegister, VirtualRegister, VirtualRegister),
-    BHSH(VirtualRegister, VirtualRegister),
     BHEI(VirtualRegister),
+    BHSH(VirtualRegister, VirtualRegister),
     BURN(VirtualRegister),
     CALL(
         VirtualRegister,
@@ -100,6 +94,7 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
         VirtualRegister,
     ),
+    CB(VirtualRegister),
     CCP(
         VirtualRegister,
         VirtualRegister,
@@ -108,7 +103,6 @@ pub(crate) enum VirtualOp {
     ),
     CROO(VirtualRegister, VirtualRegister),
     CSIZ(VirtualRegister, VirtualRegister),
-    CB(VirtualRegister),
     LDC(VirtualRegister, VirtualRegister, VirtualRegister),
     LOG(
         VirtualRegister,
@@ -123,7 +117,15 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
     ),
     MINT(VirtualRegister),
+    RETD(VirtualRegister, VirtualRegister),
     RVRT(VirtualRegister),
+    SMO(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
+    SCWQ(VirtualRegister, VirtualRegister, VirtualRegister),
     SRW(VirtualRegister, VirtualRegister, VirtualRegister),
     SRWQ(
         VirtualRegister,
@@ -146,22 +148,34 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
         VirtualRegister,
     ),
+
+    /* Cryptographic Instructions */
     ECR(VirtualRegister, VirtualRegister, VirtualRegister),
     K256(VirtualRegister, VirtualRegister, VirtualRegister),
     S256(VirtualRegister, VirtualRegister, VirtualRegister),
-    NOOP,
-    BLOB(VirtualImmediate24),
+
+    /* Other Instructions */
     FLAG(VirtualRegister),
     GM(VirtualRegister, VirtualImmediate18),
-    Undefined,
+    GTF(VirtualRegister, VirtualRegister, VirtualImmediate12),
+
+    /* Non-VM Instructions */
+    BLOB(VirtualImmediate24),
     DataSectionOffsetPlaceholder,
     DataSectionRegisterLoadPlaceholder,
+    // LWDataId takes a virtual register and a DataId, which points to a labeled piece
+    // of data in the data section. Note that the ASM op corresponding to a LW is
+    // subtly complex: $rB is in bytes and points to some mem address. The immediate
+    // third argument is a _word_ offset from that byte address.
+    LWDataId(VirtualRegister, DataId),
+    Undefined,
 }
 
 impl VirtualOp {
     pub(crate) fn registers(&self) -> BTreeSet<&VirtualRegister> {
         use VirtualOp::*;
         (match self {
+            /* Arithmetic/Logic (ALU) Instructions */
             ADD(r1, r2, r3) => vec![r1, r2, r3],
             ADDI(r1, r2, _i) => vec![r1, r2],
             AND(r1, r2, r3) => vec![r1, r2, r3],
@@ -172,61 +186,68 @@ impl VirtualOp {
             EXP(r1, r2, r3) => vec![r1, r2, r3],
             EXPI(r1, r2, _i) => vec![r1, r2],
             GT(r1, r2, r3) => vec![r1, r2, r3],
-            GTF(r1, r2, _i) => vec![r1, r2],
             LT(r1, r2, r3) => vec![r1, r2, r3],
             MLOG(r1, r2, r3) => vec![r1, r2, r3],
-            MROO(r1, r2, r3) => vec![r1, r2, r3],
             MOD(r1, r2, r3) => vec![r1, r2, r3],
             MODI(r1, r2, _i) => vec![r1, r2],
             MOVE(r1, r2) => vec![r1, r2],
             MOVI(r1, _i) => vec![r1],
+            MROO(r1, r2, r3) => vec![r1, r2, r3],
             MUL(r1, r2, r3) => vec![r1, r2, r3],
             MULI(r1, r2, _i) => vec![r1, r2],
+            NOOP => vec![],
             NOT(r1, r2) => vec![r1, r2],
             OR(r1, r2, r3) => vec![r1, r2, r3],
             ORI(r1, r2, _i) => vec![r1, r2],
             SLL(r1, r2, r3) => vec![r1, r2, r3],
             SLLI(r1, r2, _i) => vec![r1, r2],
-            SMO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             SRL(r1, r2, r3) => vec![r1, r2, r3],
             SRLI(r1, r2, _i) => vec![r1, r2],
             SUB(r1, r2, r3) => vec![r1, r2, r3],
             SUBI(r1, r2, _i) => vec![r1, r2],
             XOR(r1, r2, r3) => vec![r1, r2, r3],
             XORI(r1, r2, _i) => vec![r1, r2],
+
+            /* Control Flow Instructions */
             JMP(r1) => vec![r1],
             JI(_im) => vec![],
+            JNE(r1, r2, r3) => vec![r1, r2, r3],
             JNEI(r1, r2, _i) => vec![r1, r2],
             JNZI(r1, _i) => vec![r1],
             RET(r1) => vec![r1],
-            RETD(r1, r2) => vec![r1, r2],
+
+            /* Memory Instructions */
+            ALOC(r1) => vec![r1],
             CFEI(_imm) => vec![],
             CFSI(_imm) => vec![],
             LB(r1, r2, _i) => vec![r1, r2],
-            LWDataId(r1, _i) => vec![r1],
             LW(r1, r2, _i) => vec![r1, r2],
-            ALOC(r1) => vec![r1],
             MCL(r1, r2) => vec![r1, r2],
             MCLI(r1, _imm) => vec![r1],
             MCP(r1, r2, r3) => vec![r1, r2, r3],
-            MEQ(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             MCPI(r1, r2, _imm) => vec![r1, r2],
+            MEQ(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             SB(r1, r2, _i) => vec![r1, r2],
             SW(r1, r2, _i) => vec![r1, r2],
+
+            /* Contract Instructions */
             BAL(r1, r2, r3) => vec![r1, r2, r3],
-            BHSH(r1, r2) => vec![r1, r2],
             BHEI(r1) => vec![r1],
+            BHSH(r1, r2) => vec![r1, r2],
             BURN(r1) => vec![r1],
             CALL(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            CB(r1) => vec![r1],
             CCP(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             CROO(r1, r2) => vec![r1, r2],
             CSIZ(r1, r2) => vec![r1, r2],
-            CB(r1) => vec![r1],
             LDC(r1, r2, r3) => vec![r1, r2, r3],
             LOG(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             LOGD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             MINT(r1) => vec![r1],
+            RETD(r1, r2) => vec![r1, r2],
             RVRT(r1) => vec![r1],
+            SMO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SCWQ(r1, r2, r3) => vec![r1, r2, r3],
             SRW(r1, r2, r3) => vec![r1, r2, r3],
             SRWQ(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             SWW(r1, r2, r3) => vec![r1, r2, r3],
@@ -234,18 +255,26 @@ impl VirtualOp {
             TIME(r1, r2) => vec![r1, r2],
             TR(r1, r2, r3) => vec![r1, r2, r3],
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+
+            /* Cryptographic Instructions */
             ECR(r1, r2, r3) => vec![r1, r2, r3],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
-            NOOP => vec![],
-            BLOB(_imm) => vec![],
+
+            /* Other Instructions */
             FLAG(r1) => vec![r1],
             GM(r1, _imm) => vec![r1],
-            Undefined | DataSectionOffsetPlaceholder => vec![],
+            GTF(r1, r2, _i) => vec![r1, r2],
+
+            /* Non-VM Instructions */
+            BLOB(_imm) => vec![],
+            DataSectionOffsetPlaceholder => vec![],
             DataSectionRegisterLoadPlaceholder => vec![
                 &VirtualRegister::Constant(ConstantRegister::DataSectionStart),
                 &VirtualRegister::Constant(ConstantRegister::InstructionStart),
             ],
+            LWDataId(r1, _i) => vec![r1],
+            Undefined => vec![],
         })
         .into_iter()
         .collect()
@@ -255,6 +284,7 @@ impl VirtualOp {
     pub(crate) fn use_registers(&self) -> BTreeSet<&VirtualRegister> {
         use VirtualOp::*;
         (match self {
+            /* Arithmetic/Logic (ALU) Instructions */
             ADD(_r1, r2, r3) => vec![r2, r3],
             ADDI(_r1, r2, _i) => vec![r2],
             AND(_r1, r2, r3) => vec![r2, r3],
@@ -265,61 +295,68 @@ impl VirtualOp {
             EXP(_r1, r2, r3) => vec![r2, r3],
             EXPI(_r1, r2, _i) => vec![r2],
             GT(_r1, r2, r3) => vec![r2, r3],
-            GTF(_r1, r2, _i) => vec![r2],
             LT(_r1, r2, r3) => vec![r2, r3],
             MLOG(_r1, r2, r3) => vec![r2, r3],
-            MROO(_r1, r2, r3) => vec![r2, r3],
             MOD(_r1, r2, r3) => vec![r2, r3],
             MODI(r1, r2, _i) => vec![r1, r2],
             MOVE(_r1, r2) => vec![r2],
             MOVI(_r1, _i) => vec![],
+            MROO(_r1, r2, r3) => vec![r2, r3],
             MUL(_r1, r2, r3) => vec![r2, r3],
             MULI(_r1, r2, _i) => vec![r2],
+            NOOP => vec![],
             NOT(_r1, r2) => vec![r2],
             OR(_r1, r2, r3) => vec![r2, r3],
             ORI(_r1, r2, _i) => vec![r2],
             SLL(_r1, r2, r3) => vec![r2, r3],
             SLLI(_r1, r2, _i) => vec![r2],
-            SMO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             SRL(_r1, r2, r3) => vec![r2, r3],
             SRLI(_r1, r2, _i) => vec![r2],
             SUB(_r1, r2, r3) => vec![r2, r3],
             SUBI(_r1, r2, _i) => vec![r2],
             XOR(_r1, r2, r3) => vec![r2, r3],
             XORI(_r1, r2, _i) => vec![r2],
+
+            /* Control Flow Instructions */
             JMP(r1) => vec![r1],
             JI(_im) => vec![],
+            JNE(r1, r2, r3) => vec![r1, r2, r3],
             JNEI(r1, r2, _i) => vec![r1, r2],
             JNZI(r1, _i) => vec![r1],
             RET(r1) => vec![r1],
-            RETD(r1, r2) => vec![r1, r2],
+
+            /* Memory Instructions */
+            ALOC(r1) => vec![r1],
             CFEI(_imm) => vec![],
             CFSI(_imm) => vec![],
             LB(_r1, r2, _i) => vec![r2],
-            LWDataId(_r1, _i) => vec![],
             LW(_r1, r2, _i) => vec![r2],
-            ALOC(r1) => vec![r1],
             MCL(r1, r2) => vec![r1, r2],
             MCLI(r1, _imm) => vec![r1],
             MCP(r1, r2, r3) => vec![r1, r2, r3],
-            MEQ(_r1, r2, r3, r4) => vec![r2, r3, r4],
             MCPI(r1, r2, _imm) => vec![r1, r2],
+            MEQ(_r1, r2, r3, r4) => vec![r2, r3, r4],
             SB(r1, r2, _i) => vec![r1, r2],
             SW(r1, r2, _i) => vec![r1, r2],
+
+            /* Contract Instructions */
             BAL(_r1, r2, r3) => vec![r2, r3],
-            BHSH(r1, r2) => vec![r1, r2],
             BHEI(_r1) => vec![],
+            BHSH(r1, r2) => vec![r1, r2],
             BURN(r1) => vec![r1],
             CALL(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            CB(r1) => vec![r1],
             CCP(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             CROO(r1, r2) => vec![r1, r2],
             CSIZ(_r1, r2) => vec![r2],
-            CB(r1) => vec![r1],
             LDC(r1, r2, r3) => vec![r1, r2, r3],
             LOG(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             LOGD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             MINT(r1) => vec![r1],
+            RETD(r1, r2) => vec![r1, r2],
             RVRT(r1) => vec![r1],
+            SMO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SCWQ(r1, _r2, r3) => vec![r1, r3],
             SRW(_r1, _r2, r3) => vec![r3],
             SRWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
             SWW(r1, _r2, r3) => vec![r1, r3],
@@ -327,17 +364,25 @@ impl VirtualOp {
             TIME(_r1, r2) => vec![r2],
             TR(r1, r2, r3) => vec![r1, r2, r3],
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+
+            /* Cryptographic Instructions */
             ECR(r1, r2, r3) => vec![r1, r2, r3],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
-            NOOP => vec![],
-            BLOB(_imm) => vec![],
+
+            /* Other Instructions */
             FLAG(r1) => vec![r1],
             GM(_r1, _imm) => vec![],
-            Undefined | DataSectionOffsetPlaceholder => vec![],
+            GTF(_r1, r2, _i) => vec![r2],
+
+            /* Non-VM Instructions */
+            BLOB(_imm) => vec![],
+            DataSectionOffsetPlaceholder => vec![],
             DataSectionRegisterLoadPlaceholder => vec![&VirtualRegister::Constant(
                 ConstantRegister::InstructionStart,
             )],
+            LWDataId(_r1, _i) => vec![],
+            Undefined => vec![],
         })
         .into_iter()
         .collect()
@@ -348,6 +393,7 @@ impl VirtualOp {
     pub(crate) fn def_registers(&self) -> BTreeSet<&VirtualRegister> {
         use VirtualOp::*;
         (match self {
+            /* Arithmetic/Logic (ALU) Instructions */
             ADD(r1, _r2, _r3) => vec![r1],
             ADDI(r1, _r2, _i) => vec![r1],
             AND(r1, _r2, _r3) => vec![r1],
@@ -358,61 +404,68 @@ impl VirtualOp {
             EXP(r1, _r2, _r3) => vec![r1],
             EXPI(r1, _r2, _i) => vec![r1],
             GT(r1, _r2, _r3) => vec![r1],
-            GTF(r1, _r2, _i) => vec![r1],
             LT(r1, _r2, _r3) => vec![r1],
             MLOG(r1, _r2, _r3) => vec![r1],
-            MROO(r1, _r2, _r3) => vec![r1],
             MOD(r1, _r2, _r3) => vec![r1],
             MODI(r1, _r2, _i) => vec![r1],
             MOVE(r1, _r2) => vec![r1],
             MOVI(r1, _i) => vec![r1],
+            MROO(r1, _r2, _r3) => vec![r1],
             MUL(r1, _r2, _r3) => vec![r1],
             MULI(r1, _r2, _i) => vec![r1],
+            NOOP => vec![],
             NOT(r1, _r2) => vec![r1],
             OR(r1, _r2, _r3) => vec![r1],
             ORI(r1, _r2, _i) => vec![r1],
             SLL(r1, _r2, _r3) => vec![r1],
             SLLI(r1, _r2, _i) => vec![r1],
-            SMO(_r1, _r2, _r3, _r4) => vec![],
             SRL(r1, _r2, _r3) => vec![r1],
             SRLI(r1, _r2, _i) => vec![r1],
             SUB(r1, _r2, _r3) => vec![r1],
             SUBI(r1, _r2, _i) => vec![r1],
             XOR(r1, _r2, _r3) => vec![r1],
             XORI(r1, _r2, _i) => vec![r1],
+
+            /* Control Flow Instructions */
             JMP(_r1) => vec![],
             JI(_im) => vec![],
+            JNE(_r1, _r2, _r3) => vec![],
             JNEI(_r1, _r2, _i) => vec![],
             JNZI(_r1, _i) => vec![],
             RET(_r1) => vec![],
-            RETD(_r1, _r2) => vec![],
+
+            /* Memory Instructions */
+            ALOC(_r1) => vec![],
             CFEI(_imm) => vec![],
             CFSI(_imm) => vec![],
             LB(r1, _r2, _i) => vec![r1],
-            LWDataId(r1, _i) => vec![r1],
             LW(r1, _r2, _i) => vec![r1],
-            ALOC(_r1) => vec![],
             MCL(_r1, _r2) => vec![],
             MCLI(_r1, _imm) => vec![],
             MCP(_r1, _r2, _r3) => vec![],
-            MEQ(r1, _r2, _r3, _r4) => vec![r1],
             MCPI(_r1, _r2, _imm) => vec![],
+            MEQ(r1, _r2, _r3, _r4) => vec![r1],
             SB(_r1, _r2, _i) => vec![],
             SW(_r1, _r2, _i) => vec![],
+
+            /* Contract Instructions */
             BAL(r1, _r2, _r3) => vec![r1],
-            BHSH(_r1, _r2) => vec![],
             BHEI(r1) => vec![r1],
+            BHSH(_r1, _r2) => vec![],
             BURN(_r1) => vec![],
             CALL(_r1, _r2, _r3, _r4) => vec![],
+            CB(_r1) => vec![],
             CCP(_r1, _r2, _r3, _r4) => vec![],
             CROO(_r1, _r2) => vec![],
             CSIZ(r1, _r2) => vec![r1],
-            CB(_r1) => vec![],
             LDC(_r1, _r2, _r3) => vec![],
             LOG(_r1, _r2, _r3, _r4) => vec![],
             LOGD(_r1, _r2, _r3, _r4) => vec![],
             MINT(_r1) => vec![],
+            RETD(_r1, _r2) => vec![],
             RVRT(_r1) => vec![],
+            SMO(_r1, _r2, _r3, _r4) => vec![],
+            SCWQ(_r1, r2, _r3) => vec![r2],
             SRW(r1, r2, _r3) => vec![r1, r2],
             SRWQ(_r1, r2, _r3, _r4) => vec![r2],
             SWW(_r1, r2, _r3) => vec![r2],
@@ -420,17 +473,25 @@ impl VirtualOp {
             TIME(r1, _r2) => vec![r1],
             TR(_r1, _r2, _r3) => vec![],
             TRO(_r1, _r2, _r3, _r4) => vec![],
+
+            /* Cryptographic Instructions */
             ECR(_r1, _r2, _r3) => vec![],
             K256(_r1, _r2, _r3) => vec![],
             S256(_r1, _r2, _r3) => vec![],
-            NOOP => vec![],
-            BLOB(_imm) => vec![],
+
+            /* Other Instructions */
             FLAG(_r1) => vec![],
             GM(r1, _imm) => vec![r1],
-            Undefined | DataSectionOffsetPlaceholder => vec![],
+            GTF(r1, _r2, _i) => vec![r1],
+
+            /* Non-VM Instructions */
+            BLOB(_imm) => vec![],
+            LWDataId(r1, _i) => vec![r1],
+            DataSectionOffsetPlaceholder => vec![],
             DataSectionRegisterLoadPlaceholder => vec![&VirtualRegister::Constant(
                 ConstantRegister::DataSectionStart,
             )],
+            Undefined => vec![],
         })
         .into_iter()
         .collect()
@@ -463,6 +524,7 @@ impl VirtualOp {
     ) -> Self {
         use VirtualOp::*;
         match self {
+            /* Arithmetic/Logic (ALU) Instructions */
             ADD(r1, r2, r3) => Self::ADD(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -513,22 +575,12 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
             ),
-            GTF(r1, r2, i) => Self::GTF(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                i.clone(),
-            ),
             LT(r1, r2, r3) => Self::LT(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
             ),
             MLOG(r1, r2, r3) => Self::MLOG(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                update_reg(reg_to_reg_map, r3),
-            ),
-            MROO(r1, r2, r3) => Self::MROO(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
@@ -548,6 +600,11 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
             ),
             MOVI(r1, i) => Self::MOVI(update_reg(reg_to_reg_map, r1), i.clone()),
+            MROO(r1, r2, r3) => Self::MROO(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
             MUL(r1, r2, r3) => Self::MUL(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -558,6 +615,7 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 i.clone(),
             ),
+            NOOP => Self::NOOP,
             NOT(r1, r2) => Self::NOT(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -581,12 +639,6 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 i.clone(),
-            ),
-            SMO(r1, r2, r3, r4) => Self::SMO(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                update_reg(reg_to_reg_map, r3),
-                update_reg(reg_to_reg_map, r4),
             ),
             SRL(r1, r2, r3) => Self::SRL(
                 update_reg(reg_to_reg_map, r1),
@@ -618,8 +670,15 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 i.clone(),
             ),
+
+            /* Control Flow Instructions */
             JMP(r1) => Self::JMP(update_reg(reg_to_reg_map, r1)),
             JI(_) => self.clone(),
+            JNE(r1, r2, r3) => Self::JNE(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
             JNEI(r1, r2, i) => Self::JNEI(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -627,10 +686,9 @@ impl VirtualOp {
             ),
             JNZI(r1, i) => Self::JNZI(update_reg(reg_to_reg_map, r1), i.clone()),
             RET(r1) => Self::RET(update_reg(reg_to_reg_map, r1)),
-            RETD(r1, r2) => Self::RETD(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-            ),
+
+            /* Memory Instructions */
+            ALOC(r1) => Self::ALOC(update_reg(reg_to_reg_map, r1)),
             CFEI(i) => Self::CFEI(i.clone()),
             CFSI(i) => Self::CFSI(i.clone()),
             LB(r1, r2, i) => Self::LB(
@@ -638,13 +696,11 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 i.clone(),
             ),
-            LWDataId(r1, i) => Self::LWDataId(update_reg(reg_to_reg_map, r1), i.clone()),
             LW(r1, r2, i) => Self::LW(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 i.clone(),
             ),
-            ALOC(r1) => Self::ALOC(update_reg(reg_to_reg_map, r1)),
             MCL(r1, r2) => Self::MCL(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -676,16 +732,18 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 i.clone(),
             ),
+
+            /* Contract Instructions */
             BAL(r1, r2, r3) => Self::BAL(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
             ),
+            BHEI(r1) => Self::BHEI(update_reg(reg_to_reg_map, r1)),
             BHSH(r1, r2) => Self::BHSH(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
             ),
-            BHEI(r1) => Self::BHEI(update_reg(reg_to_reg_map, r1)),
             BURN(r1) => Self::BURN(update_reg(reg_to_reg_map, r1)),
             CALL(r1, r2, r3, r4) => Self::CALL(
                 update_reg(reg_to_reg_map, r1),
@@ -693,6 +751,7 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r3),
                 update_reg(reg_to_reg_map, r4),
             ),
+            CB(r1) => Self::CB(update_reg(reg_to_reg_map, r1)),
             CCP(r1, r2, r3, r4) => Self::CCP(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -707,7 +766,6 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
             ),
-            CB(r1) => Self::CB(update_reg(reg_to_reg_map, r1)),
             LDC(r1, r2, r3) => Self::LDC(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -726,7 +784,22 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r4),
             ),
             MINT(r1) => Self::MINT(update_reg(reg_to_reg_map, r1)),
+            RETD(r1, r2) => Self::RETD(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
             RVRT(reg1) => Self::RVRT(update_reg(reg_to_reg_map, reg1)),
+            SMO(r1, r2, r3, r4) => Self::SMO(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+            SCWQ(r1, r2, r3) => Self::SCWQ(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
             SRW(r1, r2, r3) => Self::SRW(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -764,6 +837,8 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r3),
                 update_reg(reg_to_reg_map, r4),
             ),
+
+            /* Cryptographic Instructions */
             ECR(r1, r2, r3) => Self::ECR(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -779,13 +854,22 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
             ),
-            NOOP => Self::NOOP,
-            BLOB(i) => Self::BLOB(i.clone()),
+
+            /* Other Instructions */
             FLAG(r1) => Self::FLAG(update_reg(reg_to_reg_map, r1)),
             GM(r1, i) => Self::GM(update_reg(reg_to_reg_map, r1), i.clone()),
-            Undefined => Self::Undefined,
+            GTF(r1, r2, i) => Self::GTF(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+
+            /* Non-VM Instructions */
+            BLOB(i) => Self::BLOB(i.clone()),
             DataSectionOffsetPlaceholder => Self::DataSectionOffsetPlaceholder,
             DataSectionRegisterLoadPlaceholder => Self::DataSectionRegisterLoadPlaceholder,
+            LWDataId(r1, i) => Self::LWDataId(update_reg(reg_to_reg_map, r1), i.clone()),
+            Undefined => Self::Undefined,
         }
     }
 
@@ -860,6 +944,7 @@ impl VirtualOp {
 
         use VirtualOp::*;
         match self {
+            /* Arithmetic/Logic (ALU) Instructions */
             ADD(reg1, reg2, reg3) => AllocatedOpcode::ADD(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
@@ -910,22 +995,12 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            GTF(reg1, reg2, imm) => AllocatedOpcode::GTF(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                imm.clone(),
-            ),
             LT(reg1, reg2, reg3) => AllocatedOpcode::LT(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
             MLOG(reg1, reg2, reg3) => AllocatedOpcode::MLOG(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                map_reg(&mapping, reg3),
-            ),
-            MROO(reg1, reg2, reg3) => AllocatedOpcode::MROO(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
@@ -944,6 +1019,11 @@ impl VirtualOp {
                 AllocatedOpcode::MOVE(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }
             MOVI(reg1, imm) => AllocatedOpcode::MOVI(map_reg(&mapping, reg1), imm.clone()),
+            MROO(reg1, reg2, reg3) => AllocatedOpcode::MROO(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
             MUL(reg1, reg2, reg3) => AllocatedOpcode::MUL(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
@@ -954,6 +1034,7 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
+            NOOP => AllocatedOpcode::NOOP,
             NOT(reg1, reg2) => {
                 AllocatedOpcode::NOT(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }
@@ -976,12 +1057,6 @@ impl VirtualOp {
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
-            ),
-            SMO(reg1, reg2, reg3, reg4) => AllocatedOpcode::SMO(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                map_reg(&mapping, reg3),
-                map_reg(&mapping, reg4),
             ),
             SRL(reg1, reg2, reg3) => AllocatedOpcode::SRL(
                 map_reg(&mapping, reg1),
@@ -1013,8 +1088,15 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
+
+            /* Control Flow Instructions */
             JMP(reg1) => AllocatedOpcode::JMP(map_reg(&mapping, reg1)),
             JI(imm) => AllocatedOpcode::JI(imm.clone()),
+            JNE(reg1, reg2, reg3) => AllocatedOpcode::JNE(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
             JNEI(reg1, reg2, imm) => AllocatedOpcode::JNEI(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
@@ -1022,9 +1104,9 @@ impl VirtualOp {
             ),
             JNZI(reg1, imm) => AllocatedOpcode::JNZI(map_reg(&mapping, reg1), imm.clone()),
             RET(reg) => AllocatedOpcode::RET(map_reg(&mapping, reg)),
-            RETD(reg1, reg2) => {
-                AllocatedOpcode::RETD(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
-            }
+
+            /* Memory Instructions */
+            ALOC(reg) => AllocatedOpcode::ALOC(map_reg(&mapping, reg)),
             CFEI(imm) => AllocatedOpcode::CFEI(imm.clone()),
             CFSI(imm) => AllocatedOpcode::CFSI(imm.clone()),
             LB(reg1, reg2, imm) => AllocatedOpcode::LB(
@@ -1032,15 +1114,11 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            LWDataId(reg1, label) => {
-                AllocatedOpcode::LWDataId(map_reg(&mapping, reg1), label.clone())
-            }
             LW(reg1, reg2, imm) => AllocatedOpcode::LW(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            ALOC(reg) => AllocatedOpcode::ALOC(map_reg(&mapping, reg)),
             MCL(reg1, reg2) => {
                 AllocatedOpcode::MCL(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }
@@ -1050,16 +1128,16 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
+            MCPI(reg1, reg2, imm) => AllocatedOpcode::MCPI(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                imm.clone(),
+            ),
             MEQ(reg1, reg2, reg3, reg4) => AllocatedOpcode::MEQ(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
                 map_reg(&mapping, reg4),
-            ),
-            MCPI(reg1, reg2, imm) => AllocatedOpcode::MCPI(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                imm.clone(),
             ),
             SB(reg1, reg2, imm) => AllocatedOpcode::SB(
                 map_reg(&mapping, reg1),
@@ -1071,15 +1149,17 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
+
+            /* Contract Instructions */
             BAL(reg1, reg2, reg3) => AllocatedOpcode::BAL(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
+            BHEI(reg1) => AllocatedOpcode::BHEI(map_reg(&mapping, reg1)),
             BHSH(reg1, reg2) => {
                 AllocatedOpcode::BHSH(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }
-            BHEI(reg1) => AllocatedOpcode::BHEI(map_reg(&mapping, reg1)),
             BURN(reg1) => AllocatedOpcode::BURN(map_reg(&mapping, reg1)),
             CALL(reg1, reg2, reg3, reg4) => AllocatedOpcode::CALL(
                 map_reg(&mapping, reg1),
@@ -1087,6 +1167,7 @@ impl VirtualOp {
                 map_reg(&mapping, reg3),
                 map_reg(&mapping, reg4),
             ),
+            CB(reg1) => AllocatedOpcode::CB(map_reg(&mapping, reg1)),
             CCP(reg1, reg2, reg3, reg4) => AllocatedOpcode::CCP(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
@@ -1099,7 +1180,6 @@ impl VirtualOp {
             CSIZ(reg1, reg2) => {
                 AllocatedOpcode::CSIZ(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }
-            CB(reg1) => AllocatedOpcode::CB(map_reg(&mapping, reg1)),
             LDC(reg1, reg2, reg3) => AllocatedOpcode::LDC(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
@@ -1118,7 +1198,21 @@ impl VirtualOp {
                 map_reg(&mapping, reg4),
             ),
             MINT(reg1) => AllocatedOpcode::MINT(map_reg(&mapping, reg1)),
+            RETD(reg1, reg2) => {
+                AllocatedOpcode::RETD(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
             RVRT(reg1) => AllocatedOpcode::RVRT(map_reg(&mapping, reg1)),
+            SMO(reg1, reg2, reg3, reg4) => AllocatedOpcode::SMO(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                map_reg(&mapping, reg4),
+            ),
+            SCWQ(reg1, reg2, reg3) => AllocatedOpcode::SCWQ(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
             SRW(reg1, reg2, reg3) => AllocatedOpcode::SRW(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
@@ -1155,6 +1249,8 @@ impl VirtualOp {
                 map_reg(&mapping, reg3),
                 map_reg(&mapping, reg4),
             ),
+
+            /* Cryptographic Instructions */
             ECR(reg1, reg2, reg3) => AllocatedOpcode::ECR(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
@@ -1170,15 +1266,26 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            NOOP => AllocatedOpcode::NOOP,
-            BLOB(imm) => AllocatedOpcode::BLOB(imm.clone()),
+
+            /* Other Instructions */
             FLAG(reg) => AllocatedOpcode::FLAG(map_reg(&mapping, reg)),
             GM(reg, imm) => AllocatedOpcode::GM(map_reg(&mapping, reg), imm.clone()),
-            Undefined => AllocatedOpcode::Undefined,
+            GTF(reg1, reg2, imm) => AllocatedOpcode::GTF(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                imm.clone(),
+            ),
+
+            /* Non-VM Instructions */
+            BLOB(imm) => AllocatedOpcode::BLOB(imm.clone()),
             DataSectionOffsetPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
             DataSectionRegisterLoadPlaceholder => {
                 AllocatedOpcode::DataSectionRegisterLoadPlaceholder
             }
+            LWDataId(reg1, label) => {
+                AllocatedOpcode::LWDataId(map_reg(&mapping, reg1), label.clone())
+            }
+            Undefined => AllocatedOpcode::Undefined,
         }
     }
 }

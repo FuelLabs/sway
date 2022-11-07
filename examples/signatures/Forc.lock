@@ -4,7 +4,7 @@ source = 'path+from-root-1C601C86FBCFA98F'
 
 [[package]]
 name = 'signatures'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

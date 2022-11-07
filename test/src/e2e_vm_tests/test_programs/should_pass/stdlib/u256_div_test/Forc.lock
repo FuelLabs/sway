@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-9D3054CE9B0DD894'
-dependencies = []
 
 [[package]]
 name = 'std'
@@ -10,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'u256_div_test'
-source = 'root'
+source = 'member'
 dependencies = ['std']
