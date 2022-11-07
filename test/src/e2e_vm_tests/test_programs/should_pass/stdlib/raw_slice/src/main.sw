@@ -28,5 +28,5 @@ fn main() -> raw_slice {
     assert(foo_vec.len() == 2);
 
     // Return it
-    foo_vec.as_slice()
+    foo_vec.as_raw_slice()
 }

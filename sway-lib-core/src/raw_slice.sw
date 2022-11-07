@@ -4,8 +4,8 @@ dep raw_ptr;
 
 use ::raw_ptr::*;
 
-pub trait AsSlice {
-    fn as_slice(self) -> raw_slice;
+pub trait AsRawSlice {
+    fn as_raw_slice(self) -> raw_slice;
 }
 
 fn from_parts(parts: (raw_ptr, u64)) -> raw_slice {
