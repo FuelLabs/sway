@@ -251,7 +251,7 @@ impl<T> Vec<T> {
 }
 
 impl<T> AsRawSlice for Vec<T> {
-    /// Returns a slice to all of the elements in the vector.
+    /// Returns a raw slice to all of the elements in the vector.
     fn as_raw_slice(self) -> raw_slice {
         raw_slice::from_parts::<T>(self.buf.ptr(), self.len)
     }
