@@ -8,6 +8,7 @@ mod contract_bytecode;
 mod ec_recover;
 mod ec_recover_and_match_predicate;
 mod evm;
+mod evm_ec_recover;
 mod exponentiation;
 mod generics_in_abi;
 mod hashing;
