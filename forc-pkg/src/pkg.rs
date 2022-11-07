@@ -242,7 +242,7 @@ pub struct GitSourceIndex {
     pub head_with_time: HeadWithTime,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct PkgOpts {
     /// Path to the project, if not specified, current working directory will be used.
     pub path: Option<String>,
@@ -260,7 +260,7 @@ pub struct PkgOpts {
     pub output_directory: Option<String>,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct PrintOpts {
     /// Print the generated Sway AST (Abstract Syntax Tree).
     pub ast: bool,
@@ -349,7 +349,7 @@ impl fmt::Display for DepKind {
 impl BuiltPackage {
     /// Writes bytecode of the BuiltPackage to the given `path`.
     pub fn write_bytecode(&self, path: &Path) -> Result<()> {
-        fs::write(&path, &self.bytecode)?;
+        fs::write(path, &self.bytecode)?;
         Ok(())
     }
 
@@ -361,7 +361,7 @@ impl BuiltPackage {
         Ok(())
     }
 
-    /// Writes BuiltPackage to `output_dir/out/`.
+    /// Writes BuiltPackage to `output_dir`.
     pub fn write_output(
         &self,
         minify: MinifyOpts,
