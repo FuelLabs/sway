@@ -235,6 +235,7 @@ pub enum CompileError {
     MethodNotFound {
         method_name: Ident,
         type_name: String,
+        span: Span,
     },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
@@ -726,7 +727,7 @@ impl Spanned for CompileError {
             MethodOnNonValue { span, .. } => span.clone(),
             StructMissingField { span, .. } => span.clone(),
             StructDoesNotHaveField { span, .. } => span.clone(),
-            MethodNotFound { method_name, .. } => method_name.span(),
+            MethodNotFound { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),

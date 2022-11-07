@@ -366,7 +366,7 @@ impl ty::TyImplTrait {
                 | ty::TyDeclaration::ImplTrait(_)
                 | ty::TyDeclaration::AbiDeclaration(_)
                 | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
-                | ty::TyDeclaration::ErrorRecovery
+                | ty::TyDeclaration::ErrorRecovery(_)
                 | ty::TyDeclaration::StorageDeclaration(_) => Ok(false),
             }
         }
@@ -432,14 +432,17 @@ impl ty::TyImplTrait {
                 errors.push(CompileError::WhereClauseNotYetSupported {
                     span: type_parameter.trait_constraints_span,
                 });
-                return err(warnings, errors);
+                continue;
             }
             new_impl_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                return err(warnings, errors),
+                continue,
                 warnings,
                 errors
             ));
+        }
+        if !errors.is_empty() {
+            return err(warnings, errors);
         }
 
         // type check the type that we are implementing for
@@ -490,6 +493,9 @@ impl ty::TyImplTrait {
                 warnings,
                 errors
             ));
+        }
+        if !errors.is_empty() {
+            return err(warnings, errors);
         }
 
         check!(
@@ -611,7 +617,7 @@ fn type_check_trait_implementation(
             errors.push(CompileError::MultipleDefinitionsOfFunction {
                 name: impl_method.name.clone(),
             });
-            return err(warnings, errors);
+            continue;
         }
 
         // remove this function from the "checklist"
@@ -623,7 +629,7 @@ fn type_check_trait_implementation(
                     interface_name: interface_name(),
                     span: impl_method.name.span(),
                 });
-                return err(warnings, errors);
+                continue;
             }
         };
 
@@ -820,7 +826,11 @@ fn type_check_trait_implementation(
         });
     }
 
-    ok(new_method_ids, warnings, errors)
+    if errors.is_empty() {
+        ok(new_method_ids, warnings, errors)
+    } else {
+        err(warnings, errors)
+    }
 }
 
 /// Given an array of [TypeParameter] `type_parameters`, checks to see if any of
