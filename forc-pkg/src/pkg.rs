@@ -2333,7 +2333,6 @@ fn build_profile_from_opts(
     build_profiles: &HashMap<String, BuildProfile>,
     build_options: &BuildOpts,
 ) -> Result<(String, BuildProfile)> {
-
     let BuildOpts {
         pkg,
         print,
@@ -2450,7 +2449,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
             built_package.write_debug_info(outfile.as_ref())?;
         }
         built_package.write_output(minify.clone(), &pkg_manifest.project.name, &output_dir)?;
-        built_workspace.insert(pinned.name.clone(), built_package.clone());
+        built_workspace.insert(pinned.name.clone(), built_package);
     }
 
     match manifest_file {
