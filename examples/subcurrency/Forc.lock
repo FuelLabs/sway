@@ -9,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'subcurrency'
-source = 'root'
+source = 'member'
 dependencies = ['std']

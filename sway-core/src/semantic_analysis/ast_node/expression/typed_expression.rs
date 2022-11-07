@@ -15,7 +15,7 @@ pub(crate) use self::{
 };
 
 use crate::{
-    asm_lang::virtual_register::VirtualRegister,
+    asm_lang::{virtual_ops::VirtualOp, virtual_register::VirtualRegister},
     declaration_engine::declaration_engine::*,
     error::*,
     language::{parsed::*, ty, *},
@@ -675,6 +675,18 @@ impl ty::TyExpression {
     ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        // Various checks that we can catch early to check that the assembly is valid. For now,
+        // this includes two checks:
+        // 1. Check that no control flow opcodes are used.
+        // 2. Check that initialized registers are not reassigned in the `asm` block.
+        check!(
+            check_asm_block_validity(&asm),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
         let asm_span = asm
             .returns
             .clone()
@@ -715,14 +727,6 @@ impl ty::TyExpression {
                 },
             )
             .collect();
-
-        // Make sure that all registers that are initialized are *not* assigned again.
-        check!(
-            disallow_assigning_initialized_registers(&asm),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
 
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::AsmExpression {
@@ -1949,17 +1953,9 @@ mod tests {
     }
 }
 
-fn disallow_assigning_initialized_registers(asm: &AsmExpression) -> CompileResult<()> {
+fn check_asm_block_validity(asm: &AsmExpression) -> CompileResult<()> {
     let mut errors = vec![];
     let mut warnings = vec![];
-
-    // Collect all registers that have initializers in the list of arguments
-    let initialized_registers = asm
-        .registers
-        .iter()
-        .filter(|reg| reg.initializer.is_some())
-        .map(|reg| VirtualRegister::Virtual(reg.name.to_string()))
-        .collect::<FxHashSet<_>>();
 
     // Collect all asm block instructions in the form of `VirtualOp`s
     let mut opcodes = vec![];
@@ -1970,35 +1966,74 @@ fn disallow_assigning_initialized_registers(asm: &AsmExpression) -> CompileResul
             .map(|reg_name| VirtualRegister::Virtual(reg_name.to_string()))
             .collect::<Vec<VirtualRegister>>();
 
-        opcodes.push(check!(
-            crate::asm_lang::Op::parse_opcode(
-                &op.op_name,
-                &registers,
-                &op.immediate,
-                op.span.clone(),
+        opcodes.push((
+            check!(
+                crate::asm_lang::Op::parse_opcode(
+                    &op.op_name,
+                    &registers,
+                    &op.immediate,
+                    op.span.clone(),
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
             ),
-            return err(warnings, errors),
-            warnings,
-            errors
+            op.op_name.clone(),
+            op.span.clone(),
         ));
     }
 
-    // From the list of `VirtualOp`s, figure out what registers are assigned
+    // Check #1: Disallow control flow instructions
+    //
+    errors.extend(
+        opcodes
+            .iter()
+            .filter(|op| {
+                matches!(
+                    op.0,
+                    VirtualOp::JMP(_)
+                        | VirtualOp::JI(_)
+                        | VirtualOp::JNE(..)
+                        | VirtualOp::JNEI(..)
+                        | VirtualOp::JNZI(..)
+                        | VirtualOp::RET(_)
+                        | VirtualOp::RETD(..)
+                        | VirtualOp::RVRT(..)
+                )
+            })
+            .map(|op| CompileError::DisallowedControlFlowInstruction {
+                name: op.1.to_string(),
+                span: op.2.clone(),
+            })
+            .collect::<Vec<_>>(),
+    );
+
+    // Check #2: Disallow initialized registers from being reassigned in the asm block
+    //
+    // 1. Collect all registers that have initializers in the list of arguments
+    let initialized_registers = asm
+        .registers
+        .iter()
+        .filter(|reg| reg.initializer.is_some())
+        .map(|reg| VirtualRegister::Virtual(reg.name.to_string()))
+        .collect::<FxHashSet<_>>();
+
+    // 2. From the list of `VirtualOp`s, figure out what registers are assigned
     let assigned_registers: FxHashSet<VirtualRegister> =
         opcodes.iter().fold(FxHashSet::default(), |mut acc, op| {
-            for u in op.def_registers() {
+            for u in op.0.def_registers() {
                 acc.insert(u.clone());
             }
             acc
         });
 
-    // Intersect the list of assigned registers with the list of initialized registers
+    // 3. Intersect the list of assigned registers with the list of initialized registers
     let initialized_and_assigned_registers = assigned_registers
         .intersection(&initialized_registers)
         .collect::<FxHashSet<_>>();
 
-    // Form all the compile errors given the violating registers above. Obtain span information
-    // from the original `asm.registers` vector.
+    // 4. Form all the compile errors given the violating registers above. Obtain span information
+    //    from the original `asm.registers` vector.
     errors.extend(
         asm.registers
             .iter()
