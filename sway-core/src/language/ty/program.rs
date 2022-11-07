@@ -183,7 +183,9 @@ impl TyProgram {
                 let main_func = mains.remove(0);
                 let main_return_type_info = look_up_type_id(main_func.return_type);
                 let nested_types = check!(
-                    main_return_type_info.extract_nested_types(&main_func.return_type_span),
+                    main_return_type_info
+                        .clone()
+                        .extract_nested_types(&main_func.return_type_span),
                     vec![],
                     warnings,
                     errors
