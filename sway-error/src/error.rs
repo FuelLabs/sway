@@ -360,18 +360,6 @@ pub enum CompileError {
     #[error("The value \"{val}\" is too large to fit in this 24-bit immediate spot.")]
     Immediate24TooLarge { val: u64, span: Span },
     #[error(
-        "The opcode \"ji\" is not valid in inline assembly. Try using function calls instead."
-    )]
-    DisallowedJi { span: Span },
-    #[error("The opcode \"jnei\" is not valid in inline assembly. Use an enclosing if expression instead.")]
-    DisallowedJnei { span: Span },
-    #[error("The opcode \"jnzi\" is not valid in inline assembly. Use an enclosing if expression instead.")]
-    DisallowedJnzi { span: Span },
-    #[error(
-        "The opcode \"lw\" is not valid in inline assembly. Try assigning a static value to a variable instead."
-    )]
-    DisallowedLw { span: Span },
-    #[error(
         "This op expects {expected} register(s) as arguments, but you provided {received} register(s)."
     )]
     IncorrectNumberOfAsmRegisters {
@@ -676,6 +664,8 @@ pub enum CompileError {
             Consider assigning to a different register inside the ASM block."
     )]
     InitializedRegisterReassignment { name: String, span: Span },
+    #[error("Control flow VM instructions are not allowed in assembly blocks.")]
+    DisallowedControlFlowInstruction { name: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -759,10 +749,6 @@ impl Spanned for CompileError {
             Immediate12TooLarge { span, .. } => span.clone(),
             Immediate18TooLarge { span, .. } => span.clone(),
             Immediate24TooLarge { span, .. } => span.clone(),
-            DisallowedJi { span, .. } => span.clone(),
-            DisallowedJnei { span, .. } => span.clone(),
-            DisallowedJnzi { span, .. } => span.clone(),
-            DisallowedLw { span, .. } => span.clone(),
             IncorrectNumberOfAsmRegisters { span, .. } => span.clone(),
             UnnecessaryImmediate { span, .. } => span.clone(),
             AmbiguousPath { span, .. } => span.clone(),
@@ -858,6 +844,7 @@ impl Spanned for CompileError {
             RefMutableNotAllowedInMain { param_name } => param_name.span(),
             PointerReturnNotAllowedInMain { span } => span.clone(),
             InitializedRegisterReassignment { span, .. } => span.clone(),
+            DisallowedControlFlowInstruction { span, .. } => span.clone(),
         }
     }
 }

@@ -4,7 +4,7 @@ source = 'path+from-root-A779871B261C194D'
 
 [[package]]
 name = 'native_token'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
