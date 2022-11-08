@@ -2,8 +2,8 @@ use super::{AbstractEntry, AbstractProgram, AllocatedProgram, ProgramKind};
 
 use crate::{
     asm_generation::{
-        compiler_constants, AbstractInstructionSet, AllocatedAbstractInstructionSet, DataSection,
-        Entry, RegisterSequencer,
+        compiler_constants, AbstractInstructionSet, AllocatedAbstractInstructionSet, Entry,
+        RegisterSequencer, VirtualDataSection,
     },
     asm_lang::{
         allocated_ops::{AllocatedOpcode, AllocatedRegister},
@@ -17,7 +17,7 @@ use either::Either;
 impl AbstractProgram {
     pub(crate) fn new(
         kind: ProgramKind,
-        data_section: DataSection,
+        data_section: VirtualDataSection,
         entries: Vec<AbstractEntry>,
         non_entries: Vec<AbstractInstructionSet>,
         reg_seqr: RegisterSequencer,

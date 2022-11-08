@@ -156,12 +156,12 @@ impl fmt::Display for DataId {
 }
 
 #[derive(Default, Clone, Debug)]
-pub struct DataSection {
+pub struct VirtualDataSection {
     /// the data to be put in the data section of the asm
     pub value_pairs: Vec<Entry>,
 }
 
-impl DataSection {
+impl VirtualDataSection {
     /// Given a [DataId], calculate the offset _from the beginning of the data section_ to the data
     /// in bytes.
     pub(crate) fn offset_to_id(&self, id: &DataId) -> usize {
@@ -188,17 +188,6 @@ impl DataSection {
             .map(|entry| entry.has_copy_type())
     }
 
-    /// When generating code, sometimes a hard-coded data pointer is needed to reference
-    /// static values that have a length longer than one word.
-    /// This method appends pointers to the end of the data section (thus, not altering the data
-    /// offsets of previous data).
-    /// `pointer_value` is in _bytes_ and refers to the offset from instruction start to the data
-    /// in question.
-    pub(crate) fn append_pointer(&mut self, pointer_value: u64) -> DataId {
-        // The 'pointer' is just a literal 64 bit address.
-        self.insert_data_value(Entry::new_word(pointer_value, None))
-    }
-
     /// Given any data in the form of a [Literal] (using this type mainly because it includes type
     /// information and debug spans), insert it into the data section and return its offset as a
     /// [DataId].
@@ -219,7 +208,7 @@ impl DataSection {
     }
 }
 
-impl fmt::Display for DataSection {
+impl fmt::Display for VirtualDataSection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn display_entry(datum: &Datum) -> String {
             match datum {

@@ -4,7 +4,9 @@ use crate::asm_lang::{
     VirtualImmediate18, VirtualImmediate24,
 };
 
-use super::{compiler_constants as consts, DataSection, Entry, RealizedAbstractInstructionSet};
+use super::{
+    compiler_constants as consts, Entry, RealizedAbstractInstructionSet, VirtualDataSection,
+};
 
 use sway_types::span::Span;
 
@@ -160,7 +162,7 @@ impl AllocatedAbstractInstructionSet {
     /// labels in the organizational ops
     pub(crate) fn realize_labels(
         mut self,
-        data_section: &mut DataSection,
+        data_section: &mut VirtualDataSection,
     ) -> Result<(RealizedAbstractInstructionSet, HashMap<Label, u64>), crate::CompileError> {
         let label_offsets = self.resolve_labels(data_section, 0)?;
 
@@ -254,7 +256,7 @@ impl AllocatedAbstractInstructionSet {
 
     fn resolve_labels(
         &mut self,
-        data_section: &mut DataSection,
+        data_section: &mut VirtualDataSection,
         iter_count: usize,
     ) -> Result<HashMap<Label, u64>, crate::CompileError> {
         // Iteratively resolve the label offsets.
@@ -291,7 +293,7 @@ impl AllocatedAbstractInstructionSet {
         }
     }
 
-    fn map_label_offsets(&self, data_section: &DataSection) -> (bool, HashMap<Label, u64>) {
+    fn map_label_offsets(&self, data_section: &VirtualDataSection) -> (bool, HashMap<Label, u64>) {
         let mut label_offsets = HashMap::new();
         let mut cur_offset = 0;
 

@@ -4,7 +4,7 @@ use super::{
     finalized_asm::FinalizedAsm,
     programs::{AbstractEntry, AbstractProgram, ProgramKind},
     register_sequencer::RegisterSequencer,
-    DataId, DataSection,
+    DataId, VirtualDataSection,
 };
 
 use crate::{err, ok, BuildConfig, CompileResult, CompileWarning};
@@ -83,7 +83,7 @@ fn compile_module_to_asm(
     context: &Context,
     module: Module,
 ) -> CompileResult<AbstractProgram> {
-    let mut builder = AsmBuilder::new(DataSection::default(), reg_seqr, context);
+    let mut builder = AsmBuilder::new(VirtualDataSection::default(), reg_seqr, context);
 
     // Pre-create labels for all functions before we generate other code, so we can call them
     // before compiling them if needed.

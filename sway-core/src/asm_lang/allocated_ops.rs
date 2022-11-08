@@ -12,7 +12,7 @@
 use super::DataId;
 use super::*;
 use crate::{
-    asm_generation::{compiler_constants::DATA_SECTION_REGISTER, DataSection},
+    asm_generation::{compiler_constants::DATA_SECTION_REGISTER, Entry, VirtualDataSection},
     fuel_prelude::fuel_asm::{self, Opcode as VmOp},
 };
 use either::Either;
@@ -450,7 +450,7 @@ impl AllocatedOp {
     pub(crate) fn to_fuel_asm(
         &self,
         offset_to_data_section: u64,
-        data_section: &mut DataSection,
+        data_section: &mut VirtualDataSection,
     ) -> Either<Vec<fuel_asm::Opcode>, DoubleWideData> {
         use AllocatedOpcode::*;
         Either::Left(vec![match &self.opcode {
@@ -621,7 +621,7 @@ impl AllocatedOp {
 fn realize_lw(
     dest: &AllocatedRegister,
     data_id: &DataId,
-    data_section: &mut DataSection,
+    data_section: &mut VirtualDataSection,
     offset_to_data_section: u64,
 ) -> Vec<VmOp> {
     // all data is word-aligned right now, and `offset_to_id` returns the offset in bytes
@@ -643,8 +643,8 @@ fn realize_lw(
         // address here
         let pointer_offset_from_instruction_start = offset_to_data_section + offset_bytes;
         // insert the pointer as bytes as a new data section entry at the end of the data
-        let data_id_for_pointer =
-            data_section.append_pointer(pointer_offset_from_instruction_start);
+        let data_id_for_pointer = data_section
+            .insert_data_value(Entry::new_word(pointer_offset_from_instruction_start, None));
         // now load the pointer we just created into the `dest`ination
         let mut buf = Vec::with_capacity(2);
         buf.append(&mut realize_lw(

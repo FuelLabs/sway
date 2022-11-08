@@ -2,7 +2,7 @@ mod functions;
 
 use super::{
     compiler_constants, from_ir::*, register_sequencer::RegisterSequencer, AbstractInstructionSet,
-    DataSection, Entry,
+    Entry, VirtualDataSection,
 };
 
 use crate::{
@@ -22,7 +22,7 @@ use std::{collections::HashMap, sync::Arc};
 
 pub(super) struct AsmBuilder<'ir> {
     // Data section is used by the rest of code gen to layout const memory.
-    data_section: DataSection,
+    data_section: VirtualDataSection,
 
     // Register sequencer dishes out new registers and labels.
     reg_seqr: RegisterSequencer,
@@ -62,7 +62,7 @@ pub(super) struct AsmBuilder<'ir> {
 }
 
 type AsmBuilderResult = (
-    DataSection,
+    VirtualDataSection,
     RegisterSequencer,
     Vec<(Function, Label, AbstractInstructionSet)>,
     Vec<AbstractInstructionSet>,
@@ -70,7 +70,7 @@ type AsmBuilderResult = (
 
 impl<'ir> AsmBuilder<'ir> {
     pub(super) fn new(
-        data_section: DataSection,
+        data_section: VirtualDataSection,
         reg_seqr: RegisterSequencer,
         context: &'ir Context,
     ) -> Self {

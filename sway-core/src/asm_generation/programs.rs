@@ -4,7 +4,7 @@ mod r#final;
 
 use super::{
     register_sequencer::RegisterSequencer, AbstractInstructionSet, AllocatedAbstractInstructionSet,
-    DataSection, InstructionSet,
+    InstructionSet, VirtualDataSection,
 };
 
 use crate::asm_lang::Label;
@@ -28,7 +28,7 @@ pub enum ProgramKind {
 ///
 pub(super) struct AbstractProgram {
     kind: ProgramKind,
-    data_section: DataSection,
+    data_section: VirtualDataSection,
     entries: Vec<AbstractEntry>,
     non_entries: Vec<AbstractInstructionSet>,
     reg_seqr: RegisterSequencer,
@@ -46,7 +46,7 @@ pub(super) struct AbstractEntry {
 /// control flow.
 pub(super) struct AllocatedProgram {
     kind: ProgramKind,
-    data_section: DataSection,
+    data_section: VirtualDataSection,
     prologue: AllocatedAbstractInstructionSet,
     functions: Vec<AllocatedAbstractInstructionSet>,
     entries: Vec<(SelectorOpt, Label, FnName)>,
@@ -55,7 +55,7 @@ pub(super) struct AllocatedProgram {
 /// A FinalProgram represents code which may be serialized to VM bytecode.
 pub(super) struct FinalProgram {
     kind: ProgramKind,
-    data_section: DataSection,
+    data_section: VirtualDataSection,
     ops: InstructionSet,
     entries: Vec<(SelectorOpt, ImmOffset, FnName)>,
 }

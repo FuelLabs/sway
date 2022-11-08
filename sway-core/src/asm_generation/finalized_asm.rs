@@ -1,4 +1,4 @@
-use super::{DataSection, InstructionSet, ProgramKind};
+use super::{InstructionSet, ProgramKind, VirtualDataSection};
 use crate::asm_lang::allocated_ops::AllocatedOpcode;
 use crate::error::*;
 use crate::source_map::SourceMap;
@@ -14,7 +14,7 @@ use std::io::Read;
 /// applied to it
 #[derive(Clone)]
 pub struct FinalizedAsm {
-    pub data_section: DataSection,
+    pub data_section: VirtualDataSection,
     pub program_section: InstructionSet,
     pub program_kind: ProgramKind,
     pub entries: Vec<FinalizedEntry>,
@@ -53,7 +53,7 @@ impl fmt::Display for FinalizedAsm {
 
 fn to_bytecode_mut(
     program_section: &InstructionSet,
-    data_section: &mut DataSection,
+    data_section: &mut VirtualDataSection,
     source_map: &mut SourceMap,
 ) -> CompileResult<Vec<u8>> {
     let mut errors = vec![];
