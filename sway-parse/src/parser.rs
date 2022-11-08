@@ -136,10 +136,6 @@ impl<'a, 'e> Parser<'a, 'e> {
         &self.token_trees[..len]
     }
 
-    pub(crate) fn token_trees(&self) -> &'a [TokenTree] {
-        self.token_trees
-    }
-
     /// Errors given `Some(PubToken)`.
     pub fn ban_visibility_qualifier(&mut self, vis: &Option<PubToken>) -> ParseResult<()> {
         if let Some(token) = vis {

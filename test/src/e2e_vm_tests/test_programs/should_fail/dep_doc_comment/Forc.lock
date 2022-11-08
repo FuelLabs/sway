@@ -4,7 +4,7 @@ source = 'path+from-root-137BEA77671D03C2'
 
 [[package]]
 name = 'dep_doc_comment'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

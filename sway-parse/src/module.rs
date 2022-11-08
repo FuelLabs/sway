@@ -1,7 +1,5 @@
-use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed, Peeker};
+use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
-use sway_ast::keywords::DepToken;
-use sway_ast::token::DocComment;
 use sway_ast::{Module, ModuleKind};
 use sway_error::parser_error::ParseErrorKind;
 
@@ -28,36 +26,12 @@ impl Parse for ModuleKind {
 impl ParseToEnd for Module {
     fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(Self, ParserConsumed<'a>)> {
         let (kind, semicolon_token) = parser.parse()?;
-        let mut dependencies = Vec::new();
-
-        // Parses multiple Dependency
-        loop {
-            // Return error if there is any DocComment before a Dependency
-            let mut doc_comment: Option<DocComment> = None;
-            let mut token_trees = parser.token_trees();
-            while let Some((doc, tokens)) = Peeker::with::<DocComment>(token_trees) {
-                token_trees = tokens;
-                doc_comment = Some(doc);
-            }
-            if let Some(doc) = doc_comment {
-                if let Some((_, _)) = Peeker::with::<DepToken>(token_trees) {
-                    return Err(parser
-                        .emit_error_with_span(ParseErrorKind::CannotDocCommentDepToken, doc.span));
-                }
-            }
-
-            if let Some(dep) = parser.guarded_parse::<DepToken, _>()? {
-                dependencies.push(dep);
-            } else {
-                break;
-            }
-        }
 
         let (items, consumed) = parser.parse_to_end()?;
+
         let module = Self {
             kind,
             semicolon_token,
-            dependencies,
             items,
         };
         Ok((module, consumed))

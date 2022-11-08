@@ -8,8 +8,6 @@ pub enum ParseErrorKind {
     ExpectedImportNameGroupOrGlob,
     #[error("Expected an item.")]
     ExpectedAnItem,
-    #[error("Cannot attach a docstring to a dependency.")]
-    CannotDocCommentDepToken,
     #[error("Expected a comma or closing parenthesis in function arguments.")]
     ExpectedCommaOrCloseParenInFnArgs,
     #[error("Unrecognized op code.")]

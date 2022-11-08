@@ -80,11 +80,12 @@ fn parse_in_memory(handler: &Handler, src: Arc<str>) -> Result<parsed::ParseProg
 }
 
 /// Parse all dependencies `deps` as submodules.
-fn parse_submodules(
+fn parse_submodules<'a>(
     handler: &Handler,
-    deps: &[Dependency],
+    dependencies: impl Iterator<Item = &'a Dependency>,
     module_dir: &Path,
 ) -> Vec<(Ident, parsed::ParseSubmodule)> {
+    let deps = dependencies.collect::<Vec<&Dependency>>();
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut submods = Vec::with_capacity(deps.len());
 
@@ -142,7 +143,7 @@ fn parse_module_tree(
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
-    let submodules = parse_submodules(handler, &module.dependencies, module_dir);
+    let submodules = parse_submodules(handler, module.dependencies(), module_dir);
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, module)?;
