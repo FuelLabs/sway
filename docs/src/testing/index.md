@@ -11,4 +11,5 @@ issue](https://github.com/FuelLabs/sway/issues/1832).
 within some wider application. You can add integration testing to your Sway+Rust
 projects today using the cargo generate template and Rust SDK.
 
+- [Unit Testing](./unit-testing.md)
 - [Testing with Rust](./testing-with-rust.md)
