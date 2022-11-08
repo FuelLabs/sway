@@ -102,10 +102,10 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// let x: Option<u32> = Some(2);
+    /// let x: Option<u32> = Option::Some(2);
     /// assert(x.is_some());
     ///
-    /// let x: Option<u32> = None;
+    /// let x: Option<u32> = Option::None;
     /// assert(!x.is_some());
     /// ```
     pub fn is_some(self) -> bool {
@@ -120,7 +120,7 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// let x: Option<u32> = Some(2);
+    /// let x: Option<u32> = Option::Some(2);
     /// assert(!x.is_none());
     ///
     /// let x: Option<u32> = Option::None;
@@ -170,7 +170,7 @@ impl<T> Option<T> {
 
     /// Returns the contained [`Some`] value or a provided default.
     ///
-    /// [`unwrap_or_else`]: Option::unwrap_or_else
+    /// [`unwrap_or`]: Option::unwrap_or
     ///
     /// # Examples
     ///
@@ -195,7 +195,7 @@ impl<T> Option<T> {
     /// [`Ok(v)`]: Ok
     /// [`Err(err)`]: Err
     /// [`Some(v)`]: Some
-    /// [`ok_or_else`]: Option::ok_or_else
+    /// [`ok_or`]: Option::ok_or
     ///
     /// # Examples
     ///
