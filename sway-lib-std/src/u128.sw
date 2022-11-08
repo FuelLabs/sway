@@ -95,6 +95,17 @@ impl u64 {
 
 impl U128 {
     /// Initializes a new, zeroed `U128`.
+    ///
+    /// # Examples
+    /// 
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// let new_u128 = U128::new();
+    /// let zero_u128 = U128 { upper: 0, lower: 0};
+    ///
+    /// assert(new_u128 == zero_u128);
+    /// ```
     pub fn new() -> U128 {
         U128 {
             upper: 0,
@@ -104,6 +115,22 @@ impl U128 {
 
     /// Safely downcast to `u64` without loss of precision.
     /// Returns Err if the number > u64::max()
+    ///
+    /// # Examples
+    /// 
+    /// ```sway
+    /// use std::u128::{U128, U128Error};
+    ///
+    /// let zero_u128 = U128 { upper: 0, lower: 0};
+    /// let zero_u64 = zero_u128.as_u64().unwrap();
+    ///
+    /// assert(zero_u64 == zero_u128);
+    /// 
+    /// let max_u128 = U128::max();
+    /// let result = max_u128.as_u64();
+    ///
+    /// assert(result == Result::Err(U128Error::LossOfPrecision));
+    /// ```
     pub fn as_u64(self) -> Result<u64, U128Error> {
         match self.upper {
             0 => Result::Ok(self.lower),
@@ -112,6 +139,18 @@ impl U128 {
     }
 
     /// The smallest value that can be represented by this integer type.
+    /// Initializes a new, zeroed `U128`.
+    ///
+    /// # Examples
+    /// 
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// let min_u128 = U128::min();
+    /// let zero_u128 = U128 { upper: 0, lower: 0};
+    ///
+    /// assert(min_u128 == zero_u128);
+    /// ```
     pub fn min() -> U128 {
         U128 {
             upper: 0,
@@ -121,6 +160,17 @@ impl U128 {
 
     /// The largest value that can be represented by this type,
     /// 2<sup>128</sup> - 1.
+    ///
+    /// # Examples
+    /// 
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// let max_u128 = U128::max();
+    /// let maxed_u128 = U128 { upper: u64::max(), lower: u64::max()};
+    ///
+    /// assert(max_u128 == maxed_u128);
+    /// ```
     pub fn max() -> U128 {
         U128 {
             upper: u64::max(),
@@ -129,6 +179,16 @@ impl U128 {
     }
 
     /// The size of this type in bits.
+    ///
+    /// # Examples
+    /// 
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// let bits = U128::bits();
+    ///
+    /// assert(bits == 128);
+    /// ```
     pub fn bits() -> u32 {
         128
     }
