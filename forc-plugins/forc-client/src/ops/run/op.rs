@@ -20,7 +20,7 @@ pub const NODE_URL: &str = "http://127.0.0.1:4000";
 /// Builds and runs script(s). If given path corresponds to a workspace, all runnable members will
 /// be built and deployed.
 ///
-/// Upon success, returns the receipts of each script in order they are executed.
+/// Upon success, returns the receipts of each script in the order they are executed.
 ///
 /// When running a single script, only that script's receipts are returned.
 pub async fn run(command: RunCommand) -> Result<Vec<Vec<fuel_tx::Receipt>>> {
