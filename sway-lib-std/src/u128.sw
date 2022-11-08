@@ -102,7 +102,7 @@ impl U128 {
     /// use std::u128::U128;
     ///
     /// let new_u128 = U128::new();
-    /// let zero_u128 = U128 { upper: 0, lower: 0};
+    /// let zero_u128 = U128 { upper: 0, lower: 0 };
     ///
     /// assert(new_u128 == zero_u128);
     /// ```
@@ -121,10 +121,10 @@ impl U128 {
     /// ```sway
     /// use std::u128::{U128, U128Error};
     ///
-    /// let zero_u128 = U128 { upper: 0, lower: 0};
+    /// let zero_u128 = U128 { upper: 0, lower: 0 };
     /// let zero_u64 = zero_u128.as_u64().unwrap();
     ///
-    /// assert(zero_u64 == zero_u128);
+    /// assert(zero_u64 == 0);
     /// 
     /// let max_u128 = U128::max();
     /// let result = max_u128.as_u64();
@@ -147,7 +147,7 @@ impl U128 {
     /// use std::u128::U128;
     ///
     /// let min_u128 = U128::min();
-    /// let zero_u128 = U128 { upper: 0, lower: 0};
+    /// let zero_u128 = U128 { upper: 0, lower: 0 };
     ///
     /// assert(min_u128 == zero_u128);
     /// ```
@@ -167,7 +167,7 @@ impl U128 {
     /// use std::u128::U128;
     ///
     /// let max_u128 = U128::max();
-    /// let maxed_u128 = U128 { upper: u64::max(), lower: u64::max()};
+    /// let maxed_u128 = U128 { upper: u64::max(), lower: u64::max() };
     ///
     /// assert(max_u128 == maxed_u128);
     /// ```

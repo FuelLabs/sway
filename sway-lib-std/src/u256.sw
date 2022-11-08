@@ -59,6 +59,17 @@ impl core::ops::Eq for U256 {
 
 impl U256 {
     /// Initializes a new, zeroed `U256`.
+    ///
+    /// # Examples
+    /// 
+    /// ```sway
+    /// use std::u256::U256;
+    ///
+    /// let new_u256 = U256::new();
+    /// let zero_u256 = U256 { a: 0, b: 0, c: 0, d: 0 };
+    ///
+    /// assert(new_u256 == zero_u256);
+    /// ```
     pub fn new() -> U256 {
         U256 {
             a: 0,
@@ -70,6 +81,22 @@ impl U256 {
 
     /// Safely downcast to `u64` without loss of precision.
     /// Returns Err if the number > u64::max()
+    ///
+    /// # Examples
+    /// 
+    /// ```sway
+    /// use std::u256::{U256, U256Error};
+    ///
+    /// let zero_u256 = U256 { a: 0, b: 0, c: 0, d: 0 };
+    /// let zero_u64 = zero_u256.as_u64().unwrap();
+    ///
+    /// assert(zero_u64 == 0);
+    ///
+    /// let max_u256 = U256::max();
+    /// let result = U256.as_u64();
+    ///
+    /// assert(result == Result::Err(U256Error::LossOfPrecision))
+    /// ```
     pub fn as_u64(self) -> Result<u64, U256Error> {
         if self.a == 0 && self.b == 0 && self.c == 0 {
             Result::Ok(self.d)
@@ -80,6 +107,22 @@ impl U256 {
 
     /// Safely downcast to `u128` without loss of precision.
     /// Returns an error if `self > U128::max()`.
+    ///
+    /// # Examples
+    /// 
+    /// ```sway
+    /// use std::{u128::U128, u256::{U256, U256Error}};
+    ///
+    /// let zero_u256 = U256 { a: 0, b: 0, c: 0, d: 0 };
+    /// let zero_u128 = zero_u256.as_u128().unwrap();
+    ///
+    /// assert(zero_u128 == U128 { upper: 0, lower: 0 });
+    ///
+    /// let max_u256 = U256::max();
+    /// let result = U256.as_u64();
+    ///
+    /// assert(result == Result::Err(U256Error::LossOfPrecision))
+    /// ```
     pub fn as_u128(self) -> Result<U128, U256Error> {
         if self.a == 0 && self.b == 0 {
             Result::Ok(U128::from((self.c, self.d)))
@@ -89,6 +132,17 @@ impl U256 {
     }
 
     /// The smallest value that can be represented by this integer type.
+    ///
+    /// # Examples
+    /// 
+    /// ```sway
+    /// use std::u256::U256;
+    ///
+    /// let min_u256 = U256::min();
+    /// let zero_u256 = U256 { a: 0, b: 0, c: 0, d: 0 };
+    ///
+    /// assert(min_u256 == zero_u256);
+    /// ```
     pub fn min() -> U256 {
         U256 {
             a: 0,
@@ -100,6 +154,17 @@ impl U256 {
 
     /// The largest value that can be represented by this type,
     /// 2<sup>256</sup> - 1.
+    ///
+    /// # Examples
+    /// 
+    /// ```sway
+    /// use std::u256::U256;
+    ///
+    /// let max_u256 = U256::max();
+    /// let maxed_u256 = U256 { a: u64::max(), b: u64::max(), c: u64::max(), d: u64::max() };
+    ///
+    /// assert(max_u256 == maxed_u256);
+    /// ```
     pub fn max() -> U256 {
         U256 {
             a: u64::max(),
@@ -110,11 +175,33 @@ impl U256 {
     }
 
     /// The size of this type in bits.
+    ///
+    /// # Examples
+    /// 
+    /// ```sway
+    /// use std::u256::U256;
+    ///
+    /// let bits = U256::bits();
+    ///
+    /// assert(bits == 256);
+    /// ```
     pub fn bits() -> u32 {
         256
     }
 
     /// Get 4 64 bit words from a single `U256` value.
+    ///
+    /// # Examples
+    /// 
+    /// ```sway
+    /// use std::u256::U256;
+    ///
+    /// let u64s = (1, 2, 3, 4);
+    /// let u256: U256::from(u64s);
+    /// let decomposed = u256.decompose();
+    ///
+    /// assert(u64s == decomposed);
+    /// ```
     fn decompose(self) -> (u64, u64, u64, u64) {
         (self.a, self.b, self.c, self.d)
     }
