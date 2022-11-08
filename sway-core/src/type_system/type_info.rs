@@ -1247,7 +1247,7 @@ impl TypeInfo {
     /// subset of the generic type `other` when the trait constraints of
     /// `other` are a subset of the trait constraints of `self`. This is a bit
     /// unintuitive, but you can think of it this way---a generic type `self`
-    /// can be generalized over `other` when `other` contains has no methods
+    /// can be generalized over `other` when `other` has no methods
     /// that `self` doesn't have. These methods are coming from the trait
     /// constraints---if the trait constraints of `other` are a subset of the
     /// trait constraints of `self`, then we know that `other` has unique
