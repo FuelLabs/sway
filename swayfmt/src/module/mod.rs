@@ -3,7 +3,7 @@ use crate::{
     utils::map::byte_span::{self, ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_ast::{Dependency, Module, ModuleKind};
+use sway_ast::{Module, ModuleKind};
 use sway_types::Spanned;
 
 pub(crate) mod dependency;
@@ -17,10 +17,6 @@ impl Format for Module {
     ) -> Result<(), FormatterError> {
         self.kind.format(formatted_code, formatter)?;
         writeln!(formatted_code, "{}", self.semicolon_token.span().as_str())?;
-
-        for dependency in self.dependencies() {
-            dependency.format(formatted_code, formatter)?;
-        }
 
         let iter = self.items.iter();
         for item in iter.clone() {
@@ -66,13 +62,6 @@ impl LeafSpans for Module {
         let mut collected_spans = vec![byte_span::STARTING_BYTE_SPAN];
         collected_spans.append(&mut self.kind.leaf_spans());
         collected_spans.push(ByteSpan::from(self.semicolon_token.span()));
-        collected_spans.append(
-            &mut self
-                .dependencies()
-                .cloned()
-                .collect::<Vec<Dependency>>()
-                .leaf_spans(),
-        );
         collected_spans.append(&mut self.items.leaf_spans());
         collected_spans
     }
