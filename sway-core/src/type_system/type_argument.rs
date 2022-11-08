@@ -56,6 +56,16 @@ impl fmt::Display for TypeArgument {
     }
 }
 
+impl From<&TypeParameter> for TypeArgument {
+    fn from(type_param: &TypeParameter) -> Self {
+        TypeArgument {
+            type_id: type_param.type_id,
+            initial_type_id: type_param.initial_type_id,
+            span: type_param.name_ident.span(),
+        }
+    }
+}
+
 impl TypeArgument {
     pub fn json_abi_str(&self) -> String {
         look_up_type_id(self.type_id).json_abi_str()

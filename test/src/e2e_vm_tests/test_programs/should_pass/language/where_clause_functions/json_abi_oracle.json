@@ -2,22 +2,7 @@
   "functions": [
     {
       "inputs": [],
-      "name": "get",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
-    },
-    {
-      "inputs": [
-        {
-          "name": "increment_by",
-          "type": 0,
-          "typeArguments": null
-        }
-      ],
-      "name": "increment",
+      "name": "main",
       "output": {
         "name": "",
         "type": 0,
