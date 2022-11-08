@@ -26,12 +26,11 @@ pub fn build_call_graph(ctx: &Context, functions: &[Function]) -> CallGraph {
 /// Given a call graph, return reverse topological sort
 /// (post order traversal), i.e., If A calls B, then B
 /// occurs before A in the returned Vec.
-pub fn callee_first_order(ctx: &Context, cg: &CallGraph) -> Vec<Function> {
+pub fn callee_first_order(cg: &CallGraph) -> Vec<Function> {
     let mut res = Vec::new();
 
     let mut visited = FxHashSet::<Function>::default();
     fn post_order_visitor(
-        ctx: &Context,
         cg: &CallGraph,
         visited: &mut FxHashSet<Function>,
         res: &mut Vec<Function>,
@@ -42,12 +41,12 @@ pub fn callee_first_order(ctx: &Context, cg: &CallGraph) -> Vec<Function> {
         }
         visited.insert(node);
         for callee in &cg[&node] {
-            post_order_visitor(ctx, cg, visited, res, *callee);
+            post_order_visitor(cg, visited, res, *callee);
         }
         res.push(node);
     }
     for node in cg.keys() {
-        post_order_visitor(ctx, cg, &mut visited, &mut res, *node);
+        post_order_visitor(cg, &mut visited, &mut res, *node);
     }
 
     res

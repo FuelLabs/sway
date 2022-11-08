@@ -4,7 +4,7 @@ source = 'path+from-root-9CF9D5A3681400C0'
 
 [[package]]
 name = 'option_field_order'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

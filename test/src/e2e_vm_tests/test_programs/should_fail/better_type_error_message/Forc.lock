@@ -1,6 +1,6 @@
 [[package]]
 name = 'better_type_error_message'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

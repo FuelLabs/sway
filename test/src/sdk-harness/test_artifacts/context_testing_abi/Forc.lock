@@ -1,6 +1,6 @@
 [[package]]
 name = 'context_testing_abi'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

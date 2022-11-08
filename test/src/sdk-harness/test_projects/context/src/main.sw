@@ -1,6 +1,10 @@
 contract;
 
-use std::context::{*, call_frames::*, registers::*};
+use std::{
+    context::*,
+    call_frames::*,
+    registers::*,
+};
 use context_testing_abi::*;
 
 impl ContextTesting for Contract {

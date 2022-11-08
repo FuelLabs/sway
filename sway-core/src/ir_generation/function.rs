@@ -676,6 +676,32 @@ impl FnCompiler {
                     .revert(revert_code_val)
                     .add_metadatum(context, span_md_idx))
             }
+            Intrinsic::PtrAdd | Intrinsic::PtrSub => {
+                let op = match kind {
+                    Intrinsic::PtrAdd => BinaryOpKind::Add,
+                    Intrinsic::PtrSub => BinaryOpKind::Sub,
+                    _ => unreachable!(),
+                };
+
+                let len = type_arguments[0].clone();
+                let ir_type = convert_resolved_typeid(context, &len.type_id, &len.span)?;
+                let len_value =
+                    Constant::get_uint(context, 64, ir_type_size_in_bytes(context, &ir_type));
+
+                let lhs = arguments[0].clone();
+                let count = arguments[1].clone();
+                let lhs_value = self.compile_expression(context, md_mgr, lhs)?;
+                let count_value = self.compile_expression(context, md_mgr, count)?;
+                let rhs_value = self.current_block.ins(context).binary_op(
+                    BinaryOpKind::Mul,
+                    len_value,
+                    count_value,
+                );
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .binary_op(op, lhs_value, rhs_value))
+            }
         }
     }
 
@@ -1061,12 +1087,14 @@ impl FnCompiler {
                     parameters: callee.parameters.clone(),
                     ..callee
                 };
+                let is_entry = false;
                 let new_func = compile_function(
                     context,
                     md_mgr,
                     self.module,
                     callee_fn_decl,
                     &self.logged_types_map,
+                    is_entry,
                 )?
                 .unwrap();
                 self.recreated_fns.insert(fn_key, new_func);
@@ -2044,7 +2072,7 @@ impl FnCompiler {
     fn compile_storage_read(
         &mut self,
         context: &mut Context,
-        md_mgr: &mut MetadataManager,
+        _md_mgr: &mut MetadataManager,
         ix: &StateIndex,
         indices: &[u64],
         ty: &Type,
@@ -2076,7 +2104,7 @@ impl FnCompiler {
 
                     let val_to_insert = self.compile_storage_read(
                         context,
-                        md_mgr,
+                        _md_mgr,
                         ix,
                         &new_indices,
                         &field_type,
@@ -2174,7 +2202,7 @@ impl FnCompiler {
     fn compile_storage_write(
         &mut self,
         context: &mut Context,
-        md_mgr: &mut MetadataManager,
+        _md_mgr: &mut MetadataManager,
         ix: &StateIndex,
         indices: &[u64],
         ty: &Type,
@@ -2200,7 +2228,7 @@ impl FnCompiler {
 
                     self.compile_storage_write(
                         context,
-                        md_mgr,
+                        _md_mgr,
                         ix,
                         &new_indices,
                         &field_type,

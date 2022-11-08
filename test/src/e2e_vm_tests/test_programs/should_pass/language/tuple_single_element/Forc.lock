@@ -9,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'tuple_single_element'
-source = 'root'
+source = 'member'
 dependencies = ['std']

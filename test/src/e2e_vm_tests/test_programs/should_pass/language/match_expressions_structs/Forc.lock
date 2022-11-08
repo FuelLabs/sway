@@ -4,5 +4,5 @@ source = 'path+from-root-E081FBDDEF62D471'
 
 [[package]]
 name = 'match_expressions_structs'
-source = 'root'
+source = 'member'
 dependencies = ['core']

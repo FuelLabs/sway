@@ -4,5 +4,5 @@ source = 'path+from-root-17B0AE322441F666'
 
 [[package]]
 name = 'use_full_path_names'
-source = 'root'
+source = 'member'
 dependencies = ['core']

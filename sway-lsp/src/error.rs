@@ -27,6 +27,10 @@ pub enum DocumentError {
     DocumentNotFound { path: String },
     #[error("Missing Forc.toml in {:?}", dir)]
     ManifestFileNotFound { dir: String },
+    #[error("Cannot get member manifest files for the manifest at {:?}", dir)]
+    MemberManifestsFailed { dir: String },
+    #[error("Cannot get lock file path for the manifest at {:?}", dir)]
+    ManifestsLockPathFailed { dir: String },
     #[error("Document is already stored at {:?}", path)]
     DocumentAlreadyStored { path: String },
 }

@@ -1,6 +1,6 @@
 [[package]]
 name = 'contract_bytecode'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

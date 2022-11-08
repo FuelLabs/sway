@@ -1,7 +1,7 @@
 // ANCHOR: body
 contract;
 
-use std::{chain::auth::{AuthError, msg_sender}, hash::sha256, logging::log};
+use std::{auth::{AuthError, msg_sender}, hash::sha256, logging::log};
 
 ////////////////////////////////////////
 // Event declarations
@@ -66,7 +66,7 @@ impl Token for Contract {
         };
 
         // Increase the balance of receiver
-        storage.balances.insert(receiver, storage.balances.get(receiver) + amount)
+        storage.balances.insert(receiver, storage.balances.get(receiver) + amount);
     }
 
     #[storage(read, write)]

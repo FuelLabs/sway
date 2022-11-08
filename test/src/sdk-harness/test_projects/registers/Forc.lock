@@ -4,7 +4,7 @@ source = 'path+from-root-A46277EC5F63F4E2'
 
 [[package]]
 name = 'registers'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

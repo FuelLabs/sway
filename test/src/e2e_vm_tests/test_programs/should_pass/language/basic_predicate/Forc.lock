@@ -1,6 +1,6 @@
 [[package]]
 name = 'basic_predicate'
-source = 'root'
+source = 'member'
 dependencies = ['core']
 
 [[package]]

@@ -4,5 +4,5 @@ source = 'path+from-root-B3139936C693DF4E'
 
 [[package]]
 name = 'trait_impl_import'
-source = 'root'
+source = 'member'
 dependencies = ['core']

@@ -1,6 +1,6 @@
 [[package]]
 name = 'const_decl'
-source = 'root'
+source = 'member'
 dependencies = ['core']
 
 [[package]]

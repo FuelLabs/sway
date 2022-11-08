@@ -9,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'vec_ret'
-source = 'root'
+source = 'member'
 dependencies = ['std']

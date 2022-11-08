@@ -1,6 +1,6 @@
 [[package]]
 name = 'const_decl_with_call_path'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

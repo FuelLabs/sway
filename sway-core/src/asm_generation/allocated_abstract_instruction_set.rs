@@ -161,7 +161,7 @@ impl AllocatedAbstractInstructionSet {
     pub(crate) fn realize_labels(
         mut self,
         data_section: &mut DataSection,
-    ) -> Result<RealizedAbstractInstructionSet, crate::CompileError> {
+    ) -> Result<(RealizedAbstractInstructionSet, HashMap<Label, u64>), crate::CompileError> {
         let label_offsets = self.resolve_labels(data_section, 0)?;
 
         let mut realized_ops = vec![];
@@ -248,7 +248,8 @@ impl AllocatedAbstractInstructionSet {
             };
         }
 
-        Ok(RealizedAbstractInstructionSet { ops: realized_ops })
+        let realized_ops = RealizedAbstractInstructionSet { ops: realized_ops };
+        Ok((realized_ops, label_offsets))
     }
 
     fn resolve_labels(

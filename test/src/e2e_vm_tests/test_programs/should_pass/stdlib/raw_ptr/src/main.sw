@@ -25,17 +25,15 @@ fn main() -> bool {
 
     // Get a pointer to it
     let foo_ptr = __addr_of(foo);
-    assert(foo_ptr == asm(r1: foo) {
-        r1: raw_ptr
-    });
+    assert(foo_ptr == asm(r1: foo) { r1: raw_ptr });
 
     // Get another pointer to it and compare
     let foo_ptr_2 = __addr_of(foo);
     assert(foo_ptr_2 == foo_ptr);
 
     // Copy the struct into a buffer
-    let buf_ptr = alloc(16);
-    foo_ptr.copy_to(buf_ptr, 16);
+    let buf_ptr = alloc::<u64>(2);
+    foo_ptr.copy_to::<u64>(buf_ptr, 2);
     assert(asm(r1: buf_ptr, r2: foo_ptr, r3: foo_len, res) {
         meq res r1 r2 r3;
         res: bool
@@ -47,25 +45,25 @@ fn main() -> bool {
     assert(foo.uwu == 42);
 
     // Read fields of the struct
-    let uwu_ptr = buf_ptr.add(size_of::<bool>());
+    let uwu_ptr = buf_ptr.add::<bool>(1);
     let uwu: u64 = uwu_ptr.read();
     assert(uwu == 42);
-    let boo_ptr = uwu_ptr.sub(size_of::<bool>());
+    let boo_ptr = uwu_ptr.sub::<bool>(1);
     let boo: bool = boo_ptr.read();
     assert(boo == true);
 
     // Write values into a buffer
-    let buf_ptr = alloc(16);
+    let buf_ptr = alloc::<u64>(2);
     buf_ptr.write(true);
-    buf_ptr.add(size_of::<bool>()).write(42);
+    buf_ptr.add::<bool>(1).write(42);
     let foo: TestStruct = buf_ptr.read();
     assert(foo.boo == true);
     assert(foo.uwu == 42);
 
     // Write structs into a buffer
-    let buf_ptr = alloc(32);
+    let buf_ptr = alloc::<u64>(4);
     buf_ptr.write(foo);
-    buf_ptr.add(size_of::<TestStruct>()).write(foo);
+    buf_ptr.add::<TestStruct>(1).write(foo);
     let bar: ExtendedTestStruct = buf_ptr.read();
     assert(bar.boo == true);
     assert(bar.uwu == 42);
@@ -74,7 +72,7 @@ fn main() -> bool {
 
     // Make sure that reading a memory location into a variable and then
     // overriding the same memory location does not change the variable read.
-    let buf_ptr = alloc(8);
+    let buf_ptr = alloc::<u64>(1);
     let small_string_1 = "fuel";
     let small_string_2 = "labs";
     buf_ptr.write(small_string_1);
@@ -84,7 +82,7 @@ fn main() -> bool {
     assert(sha256(small_string_1) == sha256(read_small_string_1));
     assert(sha256(small_string_2) == sha256(read_small_string_2));
 
-    let buf_ptr = alloc(16);
+    let buf_ptr = alloc::<u64>(2);
     let large_string_1 = "fuelfuelfuel";
     let large_string_2 = "labslabslabs";
     buf_ptr.write(large_string_1);

@@ -1,7 +1,7 @@
 contract;
 
 use auth_testing_abi::*;
-use std::chain::auth::*;
+use std::auth::*;
 
 abi AuthCaller {
     fn call_auth_contract(auth_id: ContractId, expected_id: ContractId) -> bool;

@@ -4,5 +4,5 @@ source = 'path+from-root-81DEAB773E69E2BF'
 
 [[package]]
 name = 'method_on_empty_struct'
-source = 'root'
+source = 'member'
 dependencies = ['core']
