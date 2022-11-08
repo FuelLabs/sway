@@ -34,7 +34,10 @@ pub async fn deploy(command: DeployCommand) -> Result<fuel_tx::ContractId> {
     let client = FuelClient::new(node_url)?;
 
     let build_opts = build_opts_from_cmd(&command);
-    let compiled = forc_pkg::build_package_with_options(&manifest, build_opts)?;
+    let compiled = match forc_pkg::build_with_options(build_opts)? {
+        pkg::Built::Package(built_package) => *built_package,
+        pkg::Built::Workspace(_) => bail!("deploying workspaces not yet supported"),
+    };
 
     let bytecode = compiled.bytecode.clone().into();
     let salt = Salt::new([0; 32]);
