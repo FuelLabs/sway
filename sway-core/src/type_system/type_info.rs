@@ -8,7 +8,7 @@ use sway_types::{integer_bits::IntegerBits, span::Span};
 
 use derivative::Derivative;
 use std::{
-    collections::HashSet,
+    collections::{BTreeSet, HashSet},
     fmt,
     hash::{Hash, Hasher},
 };
@@ -38,6 +38,7 @@ pub enum TypeInfo {
     Unknown,
     UnknownGeneric {
         name: Ident,
+        trait_constraints: BTreeSet<TraitConstraint>,
     },
     Str(u64),
     UnsignedInteger(IntegerBits),
@@ -164,9 +165,13 @@ impl Hash for TypeInfo {
             TypeInfo::SelfType => {
                 state.write_u8(13);
             }
-            TypeInfo::UnknownGeneric { name } => {
+            TypeInfo::UnknownGeneric {
+                name,
+                trait_constraints,
+            } => {
                 state.write_u8(14);
                 name.hash(state);
+                trait_constraints.hash(state);
             }
             TypeInfo::Custom {
                 name,
@@ -208,7 +213,16 @@ impl PartialEq for TypeInfo {
             (Self::Numeric, Self::Numeric) => true,
             (Self::Contract, Self::Contract) => true,
             (Self::ErrorRecovery, Self::ErrorRecovery) => true,
-            (Self::UnknownGeneric { name: l }, Self::UnknownGeneric { name: r }) => l == r,
+            (
+                Self::UnknownGeneric {
+                    name: l,
+                    trait_constraints: ltc,
+                },
+                Self::UnknownGeneric {
+                    name: r,
+                    trait_constraints: rtc,
+                },
+            ) => l == r && ltc == rtc,
             (
                 Self::Custom {
                     name: l_name,
@@ -352,7 +366,21 @@ impl UnconstrainedTypeParameters for TypeInfo {
     fn type_parameter_is_unconstrained(&self, type_parameter: &TypeParameter) -> bool {
         let type_parameter_info = look_up_type_id(type_parameter.type_id);
         match self {
-            TypeInfo::UnknownGeneric { .. } => self.clone() == type_parameter_info,
+            TypeInfo::UnknownGeneric {
+                trait_constraints, ..
+            } => {
+                self.clone() == type_parameter_info
+                    || trait_constraints
+                        .iter()
+                        .flat_map(|trait_constraint| {
+                            trait_constraint.type_arguments.iter().map(|type_arg| {
+                                type_arg
+                                    .type_id
+                                    .type_parameter_is_unconstrained(type_parameter)
+                            })
+                        })
+                        .any(|x| x)
+            }
             TypeInfo::Enum {
                 type_parameters,
                 variant_types,
@@ -1095,8 +1123,22 @@ impl TypeInfo {
                     all_nested_types.append(&mut nested_types);
                 }
             }
+            TypeInfo::UnknownGeneric {
+                trait_constraints, ..
+            } => {
+                for trait_constraint in trait_constraints.iter() {
+                    for type_arg in trait_constraint.type_arguments.iter() {
+                        let mut nested_types = check!(
+                            look_up_type_id(type_arg.type_id).extract_nested_types(span),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        all_nested_types.append(&mut nested_types);
+                    }
+                }
+            }
             TypeInfo::Unknown
-            | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
@@ -1201,11 +1243,37 @@ impl TypeInfo {
     /// | `Data<bool, u64>` | `Data<T, F>`, any generic type               | `Data<T, T>`        |
     /// | `Data<u8, u8>`    | `Data<T, T>`, `Data<T, F>`, any generic type |                     |
     ///
+    /// For generic types with trait constraints, the generic type `self` is a
+    /// subset of the generic type `other` when the trait constraints of
+    /// `other` are a subset of the trait constraints of `self`. This is a bit
+    /// unintuitive, but you can think of it this way---a generic type `self`
+    /// can be generalized over `other` when `other` has no methods
+    /// that `self` doesn't have. These methods are coming from the trait
+    /// constraints---if the trait constraints of `other` are a subset of the
+    /// trait constraints of `self`, then we know that `other` has unique
+    /// methods.
     pub(crate) fn is_subset_of(&self, other: &TypeInfo) -> bool {
-        // any type is the subset of a generic
-        if let Self::UnknownGeneric { .. } = other {
-            return true;
+        // handle the generics cases
+        match (self, other) {
+            (
+                Self::UnknownGeneric {
+                    trait_constraints: ltc,
+                    ..
+                },
+                Self::UnknownGeneric {
+                    trait_constraints: rtc,
+                    ..
+                },
+            ) => {
+                return rtc.is_subset(ltc);
+            }
+            // any type is the subset of a generic
+            (_, Self::UnknownGeneric { .. }) => {
+                return true;
+            }
+            _ => {}
         }
+
         self.is_subset_inner(other)
     }
 

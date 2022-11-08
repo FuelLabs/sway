@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
@@ -7,7 +9,7 @@ use crate::{
     insert_type,
     language::CallPath,
     type_system::{look_up_type_id, CopyTypes, TypeId},
-    ReplaceSelfType, TypeArgument, TypeInfo, TypeMapping,
+    ReplaceSelfType, TraitConstraint, TypeArgument, TypeInfo, TypeMapping,
 };
 
 type TraitName = CallPath<(Ident, Vec<TypeArgument>)>;
@@ -483,6 +485,26 @@ impl TraitMap {
         trait_map
     }
 
+    /// Filters the contents of `self` to exclude elements that are superset
+    /// types of the given `type_id`. This function is used when handling trait
+    /// constraints and is coupled with `filter_by_type` and
+    /// `filter_by_type_item_import`.
+    pub(crate) fn filter_against_type(&mut self, type_id: TypeId) {
+        // this collect is actually needed and causes an error if removed
+        #[allow(clippy::needless_collect)]
+        let filtered_keys = self
+            .trait_impls
+            .keys()
+            .cloned()
+            .filter(|(_, map_type_id)| {
+                look_up_type_id(type_id).is_subset_of(&look_up_type_id(*map_type_id))
+            })
+            .collect::<Vec<_>>();
+        for key in filtered_keys.into_iter() {
+            self.trait_impls.remove(&key);
+        }
+    }
+
     /// Find the entries in `self` that are equivalent to `type_id`.
     ///
     /// Notes:
@@ -548,6 +570,73 @@ impl TraitMap {
             }
         }
         methods
+    }
+
+    /// Checks to see if the trait constraints are satisfied for a given type.
+    pub(crate) fn check_if_trait_constraints_are_satisfied_for_type(
+        &self,
+        type_id: TypeId,
+        constraints: &[TraitConstraint],
+        access_span: &Span,
+    ) -> CompileResult<()> {
+        let warnings = vec![];
+        let mut errors = vec![];
+
+        let required_traits: BTreeSet<Ident> = constraints
+            .iter()
+            .cloned()
+            .map(|constraint| constraint.trait_name.suffix)
+            .collect();
+        let mut found_traits: BTreeSet<Ident> = BTreeSet::new();
+
+        for constraint in constraints.iter() {
+            let TraitConstraint {
+                trait_name: constraint_trait_name,
+                type_arguments: constraint_type_arguments,
+            } = constraint;
+            let constraint_type_id = insert_type(TypeInfo::Custom {
+                name: constraint_trait_name.suffix.clone(),
+                type_arguments: if constraint_type_arguments.is_empty() {
+                    None
+                } else {
+                    Some(constraint_type_arguments.clone())
+                },
+            });
+            for (map_trait_name, map_type_id) in self.trait_impls.keys() {
+                let CallPath {
+                    suffix: (map_trait_name_suffix, map_trait_type_args),
+                    ..
+                } = map_trait_name;
+                let map_trait_type_id = insert_type(TypeInfo::Custom {
+                    name: map_trait_name_suffix.clone(),
+                    type_arguments: if map_trait_type_args.is_empty() {
+                        None
+                    } else {
+                        Some(map_trait_type_args.to_vec())
+                    },
+                });
+                if are_equal_minus_dynamic_types(type_id, *map_type_id)
+                    && are_equal_minus_dynamic_types(constraint_type_id, map_trait_type_id)
+                {
+                    found_traits.insert(constraint_trait_name.suffix.clone());
+                }
+            }
+        }
+
+        for trait_name in required_traits.difference(&found_traits) {
+            // TODO: use a better span
+            errors.push(CompileError::TraitConstraintNotSatisfied {
+                ty: type_id.to_string(),
+                trait_name: trait_name.to_string(),
+                span: access_span.clone(),
+            });
+        }
+
+        if errors.is_empty() {
+            ok((), warnings, errors)
+        } else {
+            err(warnings, errors)
+        }
     }
 }
 

@@ -93,6 +93,24 @@ impl<T> Returner<T> for Self {
     }
 }
 
+trait Setter<T> {
+    fn set(mut self, new_value: T);
+}
+
+struct Data<T> {
+    value: T
+}
+
+impl<T> Setter<T> for Data<T> {
+    fn set(mut self, new_value: T) {
+        self.value = new_value;
+    }
+}
+
+fn set_it<T, F>(mut data: T, new_value: F) where T: Setter<F> {
+    data.set(new_value);
+}
+
 fn main() -> u64 {
     let a = FooBarData {
         value: 1u8
