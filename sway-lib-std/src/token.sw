@@ -115,6 +115,10 @@ pub fn mint(amount: u64) {
 ///
 /// * `amount` - The amount of tokens to burn
 ///
+/// # Reverts
+///
+/// Reverts if the contract balance is less than `amount`
+///
 /// # Examples
 /// 
 /// ```sway
@@ -143,6 +147,12 @@ pub fn burn(amount: u64) {
 /// * `amount` - The amount of tokens to transfer
 /// * `asset_id` - The ContractId of the token to transfer
 /// * `to` - The Identity of the recipient 
+///
+/// # Reverts
+///
+/// * If `amount` is greater than the contract balance for `asset_id`
+/// * If `amount` is equal to 0
+/// * If there are no free variable outputs when transferring to an Address
 ///
 /// # Examples
 /// 
@@ -177,6 +187,11 @@ pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
 /// * `asset_id` - The ContractId of the token to transfer
 /// * `to` - The ContractId of the recipient contract 
 ///
+/// # Reverts
+///
+/// * If `amount` is greater than the contract balance for `asset_id`
+/// * If `amount` is equal to 0 
+///
 /// # Examples
 /// 
 /// ```sway
@@ -203,7 +218,9 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: Contrac
 ///
 /// # Reverts
 ///
-/// TODO: Reverts if output is 0? Not sure. Update the transfer (identity) function too
+/// * If `amount` is greater than the contract balance for `asset_id`
+/// * If `amount` is equal to 0
+/// * If there are no free variable outputs
 ///
 /// # Examples
 /// 
