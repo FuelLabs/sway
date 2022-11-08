@@ -156,7 +156,7 @@ impl<K, V> StorageMap<K, V> {
     /// 
     /// ```
     /// storage {
-    ///     map: StorageMap = StorageMap {} 
+    ///     map: StorageMap<u64, bool> = StorageMap {} 
     /// }
     /// 
     /// fn foo() {
