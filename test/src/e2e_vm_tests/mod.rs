@@ -109,7 +109,12 @@ impl TestContext {
 
                 let (result, ..) = harness::compile_to_bytes(&name, &context.run_config, false);
                 assert_matches!(result, Ok(_));
-                let compiled = result.unwrap();
+                let compiled = match result.unwrap() {
+                    forc_pkg::Built::Package(built_pkg) => *built_pkg,
+                    forc_pkg::Built::Workspace(_) => {
+                        panic!("workspaces are not supported in the test suite yet")
+                    }
+                };
 
                 let (state, receipts, pkg) = harness::runs_in_vm(compiled, script_data);
                 let result = match state {
@@ -136,14 +141,24 @@ impl TestContext {
             TestCategory::Compiles => {
                 let (result, output) = harness::compile_to_bytes(&name, &context.run_config, true);
                 assert_matches!(result, Ok(_));
-                let compiled = result.unwrap();
+                let compiled_pkgs = match result.unwrap() {
+                    forc_pkg::Built::Package(built_pkg) => vec![(name.clone(), *built_pkg)],
+                    forc_pkg::Built::Workspace(built_workspace) => built_workspace
+                        .iter()
+                        .map(|(n, b)| (n.clone(), b.clone()))
+                        .collect(),
+                };
                 check_file_checker(checker, &name, &output);
 
                 if validate_abi {
-                    assert_matches!(harness::test_json_abi(&name, &compiled), Ok(_));
+                    for (name, built_pkg) in &compiled_pkgs {
+                        assert_matches!(harness::test_json_abi(name, built_pkg), Ok(_));
+                    }
                 }
                 if validate_storage_slots {
-                    assert_matches!(harness::test_json_storage_slots(&name, &compiled), Ok(_));
+                    for (name, built_pkg) in &compiled_pkgs {
+                        assert_matches!(harness::test_json_storage_slots(name, built_pkg), Ok(_));
+                    }
                 }
                 Ok(())
             }

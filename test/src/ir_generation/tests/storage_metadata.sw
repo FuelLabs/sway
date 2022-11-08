@@ -45,9 +45,9 @@ impl Incrementor for Contract {
 // Each function should have a span and a storage attribute.  It gets a little dicey assuming which
 // one is which, but should at least be deterministic for any particular version of the compiler.
 
-// check: fn initialize<557ac400>(initial_value $MD: u64) -> u64, $(init_md=$MD) {
-// check: fn increment<e543c666>(increment_by $MD: u64) -> u64, $(increment_md=$MD) {
 // check: fn get<75b70457>() -> u64, $(get_md=$MD) {
+// check: fn increment<e543c666>(increment_by $MD: u64) -> u64, $(increment_md=$MD) {
+// check: fn initialize<557ac400>(initial_value $MD: u64) -> u64, $(init_md=$MD) {
 
 // unordered: $(write_md=$MD) = storage "writes"
 // unordered: $(readwrite_md=$MD) = storage "readswrites"

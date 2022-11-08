@@ -36,13 +36,29 @@ impl CollectTypesMetadata for TypeId {
         &self,
         ctx: &mut CollectTypesMetadataContext,
     ) -> CompileResult<Vec<TypeMetadata>> {
-        let res = match look_up_type_id(*self) {
-            TypeInfo::UnknownGeneric { name } => {
-                vec![TypeMetadata::UnresolvedType(name, ctx.call_site_get(self))]
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut res = vec![];
+        if let TypeInfo::UnknownGeneric {
+            name,
+            trait_constraints,
+        } = look_up_type_id(*self)
+        {
+            res.push(TypeMetadata::UnresolvedType(name, ctx.call_site_get(self)));
+            for trait_constraint in trait_constraints.iter() {
+                res.extend(check!(
+                    trait_constraint.collect_types_metadata(ctx),
+                    continue,
+                    warnings,
+                    errors
+                ));
             }
-            _ => vec![],
-        };
-        ok(res, vec![], vec![])
+        }
+        if errors.is_empty() {
+            ok(res, warnings, errors)
+        } else {
+            err(warnings, errors)
+        }
     }
 }
 

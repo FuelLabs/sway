@@ -80,11 +80,18 @@ pub struct BuiltPackage {
     pub bytecode: Vec<u8>,
     pub entries: Vec<FinalizedEntry>,
     pub tree_type: TreeType,
+    source_map: SourceMap,
 }
 
+/// The result of successfully compiling a workspace.
+///
+/// This is a map from each member package name to its associated built package.
+pub type BuiltWorkspace = HashMap<String, BuiltPackage>;
+
+#[derive(Debug)]
 pub enum Built {
     Package(Box<BuiltPackage>),
-    Workspace,
+    Workspace(BuiltWorkspace),
 }
 
 /// A package uniquely identified by name along with its source.
@@ -270,7 +277,7 @@ pub struct PrintOpts {
     pub ir: bool,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct MinifyOpts {
     /// By default the JSON for ABIs is formatted for human readability. By using this option JSON
     /// output will be "minified", i.e. all on one line without whitespace.
@@ -339,6 +346,89 @@ impl fmt::Display for DepKind {
     }
 }
 
+impl BuiltPackage {
+    /// Writes bytecode of the BuiltPackage to the given `path`.
+    pub fn write_bytecode(&self, path: &Path) -> Result<()> {
+        fs::write(path, &self.bytecode)?;
+        Ok(())
+    }
+
+    /// Writes debug_info (source_map) of the BuiltPackage to the given `path`.
+    pub fn write_debug_info(&self, path: &Path) -> Result<()> {
+        let source_map_json =
+            serde_json::to_vec(&self.source_map).expect("JSON serialization failed");
+        fs::write(path, &source_map_json)?;
+        Ok(())
+    }
+
+    /// Writes BuiltPackage to `output_dir`.
+    pub fn write_output(
+        &self,
+        minify: MinifyOpts,
+        pkg_name: &str,
+        output_dir: &Path,
+    ) -> Result<()> {
+        if !output_dir.exists() {
+            fs::create_dir_all(output_dir)?;
+        }
+        // Place build artifacts into the output directory.
+        let bin_path = output_dir.join(pkg_name).with_extension("bin");
+
+        self.write_bytecode(&bin_path)?;
+
+        if !self.json_abi_program.functions.is_empty() {
+            let json_abi_program_stem = format!("{}-abi", pkg_name);
+            let json_abi_program_path = output_dir
+                .join(&json_abi_program_stem)
+                .with_extension("json");
+            let file = File::create(json_abi_program_path)?;
+            let res = if minify.json_abi {
+                serde_json::to_writer(&file, &self.json_abi_program)
+            } else {
+                serde_json::to_writer_pretty(&file, &self.json_abi_program)
+            };
+            res?
+        }
+        info!("  Bytecode size is {} bytes.", self.bytecode.len());
+        // Additional ops required depending on the program type
+        match self.tree_type {
+            TreeType::Contract => {
+                // For contracts, emit a JSON file with all the initialized storage slots.
+                let json_storage_slots_stem = format!("{}-storage_slots", pkg_name);
+                let json_storage_slots_path = output_dir
+                    .join(&json_storage_slots_stem)
+                    .with_extension("json");
+                let storage_slots_file = File::create(json_storage_slots_path)?;
+                let res = if minify.json_storage_slots {
+                    serde_json::to_writer(&storage_slots_file, &self.storage_slots)
+                } else {
+                    serde_json::to_writer_pretty(&storage_slots_file, &self.storage_slots)
+                };
+
+                res?;
+            }
+            TreeType::Predicate => {
+                // Get the root hash of the bytecode for predicates and store the result in a file in the output directory
+                let root = format!("0x{}", Contract::root_from_code(&self.bytecode));
+                let root_file_name = format!("{}{}", &pkg_name, SWAY_BIN_ROOT_SUFFIX);
+                let root_path = output_dir.join(root_file_name);
+                fs::write(root_path, &root)?;
+                info!("  Predicate root: {}", root);
+            }
+            TreeType::Script => {
+                // hash the bytecode for scripts and store the result in a file in the output directory
+                let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&self.bytecode));
+                let hash_file_name = format!("{}{}", &pkg_name, SWAY_BIN_HASH_SUFFIX);
+                let hash_path = output_dir.join(hash_file_name);
+                fs::write(hash_path, &bytecode_hash)?;
+                info!("  Script bytecode hash: {}", bytecode_hash);
+            }
+            _ => (),
+        }
+
+        Ok(())
+    }
+}
 const DEFAULT_REMOTE_NAME: &str = "origin";
 
 /// Error returned upon failed parsing of `SourcePinned::from_str`.
@@ -514,6 +604,30 @@ impl BuildPlan {
     /// The order in which nodes are compiled, determined via a toposort of the package graph.
     pub fn compilation_order(&self) -> &[NodeIx] {
         &self.compilation_order
+    }
+
+    /// Produce the node index of the member with the given name.
+    pub fn find_member_index(&self, member_name: &str) -> Option<NodeIx> {
+        self.member_nodes()
+            .find(|node_ix| self.graph[*node_ix].name == member_name)
+    }
+
+    /// Produce an iterator yielding indices for the given node and its dependencies in BFS order.
+    pub fn node_deps(&self, n: NodeIx) -> impl '_ + Iterator<Item = NodeIx> {
+        let bfs = Bfs::new(&self.graph, n);
+        // Return an iterator yielding visitable nodes from the given node.
+        bfs.iter(&self.graph)
+    }
+
+    /// Produce an iterator yielding build profiles from the member nodes of this BuildPlan.
+    pub fn build_profiles(&self) -> impl '_ + Iterator<Item = (String, BuildProfile)> {
+        let manifest_map = &self.manifest_map;
+        let graph = &self.graph;
+        self.member_nodes().flat_map(|member_node| {
+            manifest_map[&graph[member_node].id()]
+                .build_profiles()
+                .map(|(n, p)| (n.clone(), p.clone()))
+        })
     }
 }
 
@@ -2198,6 +2312,7 @@ pub fn compile(
                 bytecode,
                 tree_type,
                 entries,
+                source_map: source_map.to_owned(),
             };
             Ok((built_package, namespace))
         }
@@ -2213,47 +2328,44 @@ pub const SWAY_BIN_HASH_SUFFIX: &str = "-bin-hash";
 /// when predicates are built_package.
 pub const SWAY_BIN_ROOT_SUFFIX: &str = "-bin-root";
 
-pub fn build_package_with_options(
-    manifest: &PackageManifestFile,
-    build_options: BuildOpts,
-) -> Result<BuiltPackage> {
-    let key_debug: String = "debug".to_string();
-    let key_release: String = "release".to_string();
-
+/// Selects the build profile from all available build profiles in the workspace using build_opts.
+fn build_profile_from_opts(
+    build_profiles: &HashMap<String, BuildProfile>,
+    build_options: &BuildOpts,
+) -> Result<(String, BuildProfile)> {
     let BuildOpts {
         pkg,
         print,
-        minify,
-        binary_outfile,
-        debug_outfile,
         build_profile,
         release,
         time_phases,
         tests,
+        ..
     } = build_options;
+    let mut selected_build_profile = BuildProfile::DEBUG;
 
-    let mut selected_build_profile = key_debug;
     match &build_profile {
         Some(build_profile) => {
-            if release {
+            if *release {
                 warn!(
                     "You specified both {} and 'release' profiles. Using the 'release' profile",
                     build_profile
                 );
-                selected_build_profile = key_release;
+                selected_build_profile = BuildProfile::RELEASE;
             } else {
-                selected_build_profile = build_profile.clone();
+                selected_build_profile = build_profile;
             }
         }
         None => {
-            if release {
-                selected_build_profile = key_release;
+            if *release {
+                selected_build_profile = BuildProfile::RELEASE;
             }
         }
     }
+
     // Retrieve the specified build profile
-    let mut profile = manifest
-        .build_profile(&selected_build_profile)
+    let mut profile = build_profiles
+        .get(selected_build_profile)
         .cloned()
         .unwrap_or_else(|| {
             warn!(
@@ -2271,91 +2383,7 @@ pub fn build_package_with_options(
     profile.time_phases |= time_phases;
     profile.include_tests |= tests;
 
-    let manifest_file = ManifestFile::Package(Box::new(manifest.clone()));
-    let member_manifests = manifest_file.member_manifests()?;
-    let lock_path = manifest_file.lock_path()?;
-    let plan =
-        BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, pkg.locked, pkg.offline)?;
-
-    // Build it!
-    let (built_package, source_map) = build(&plan, &profile)?;
-
-    if let Some(outfile) = binary_outfile {
-        fs::write(&outfile, &built_package.bytecode)?;
-    }
-
-    if let Some(outfile) = debug_outfile {
-        let source_map_json = serde_json::to_vec(&source_map).expect("JSON serialization failed");
-        fs::write(outfile, &source_map_json)?;
-    }
-
-    // Create the output directory for build artifacts.
-    let output_dir = pkg
-        .output_directory
-        .map(PathBuf::from)
-        .unwrap_or_else(|| default_output_directory(manifest.dir()).join(selected_build_profile));
-    if !output_dir.exists() {
-        fs::create_dir_all(&output_dir)?;
-    }
-
-    // Place build artifacts into the output directory.
-    let bin_path = output_dir
-        .join(&manifest.project.name)
-        .with_extension("bin");
-    fs::write(&bin_path, &built_package.bytecode)?;
-    if !built_package.json_abi_program.functions.is_empty() {
-        let json_abi_program_stem = format!("{}-abi", manifest.project.name);
-        let json_abi_program_path = output_dir
-            .join(&json_abi_program_stem)
-            .with_extension("json");
-        let file = File::create(json_abi_program_path)?;
-        let res = if minify.json_abi {
-            serde_json::to_writer(&file, &built_package.json_abi_program)
-        } else {
-            serde_json::to_writer_pretty(&file, &built_package.json_abi_program)
-        };
-        res?;
-    }
-
-    info!("  Bytecode size is {} bytes.", built_package.bytecode.len());
-
-    // Additional ops required depending on the program type
-    match built_package.tree_type {
-        TreeType::Contract => {
-            // For contracts, emit a JSON file with all the initialized storage slots.
-            let json_storage_slots_stem = format!("{}-storage_slots", manifest.project.name);
-            let json_storage_slots_path = output_dir
-                .join(&json_storage_slots_stem)
-                .with_extension("json");
-            let storage_slots_file = File::create(json_storage_slots_path)?;
-            let res = if minify.json_storage_slots {
-                serde_json::to_writer(&storage_slots_file, &built_package.storage_slots)
-            } else {
-                serde_json::to_writer_pretty(&storage_slots_file, &built_package.storage_slots)
-            };
-
-            res?;
-        }
-        TreeType::Predicate => {
-            // get the root hash of the bytecode for predicates and store the result in a file in the output directory
-            let root = format!("0x{}", Contract::root_from_code(&built_package.bytecode));
-            let root_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_ROOT_SUFFIX);
-            let root_path = output_dir.join(root_file_name);
-            fs::write(root_path, &root)?;
-            info!("  Predicate root: {}", root);
-        }
-        TreeType::Script => {
-            // hash the bytecode for scripts and store the result in a file in the output directory
-            let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&built_package.bytecode));
-            let hash_file_name = format!("{}{}", &manifest.project.name, SWAY_BIN_HASH_SUFFIX);
-            let hash_path = output_dir.join(hash_file_name);
-            fs::write(hash_path, &bytecode_hash)?;
-            info!("  Script bytecode hash: {}", bytecode_hash);
-        }
-        _ => (),
-    }
-
-    Ok(built_package)
+    Ok((selected_build_profile.to_string(), profile))
 }
 
 /// Builds a project with given BuildOptions
@@ -2368,15 +2396,70 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         std::env::current_dir()?
     };
 
+    let BuildOpts {
+        minify,
+        binary_outfile,
+        debug_outfile,
+        pkg,
+        ..
+    } = &build_options;
+
     let manifest_file = ManifestFile::from_dir(&this_dir)?;
+    let member_manifests = manifest_file.member_manifests()?;
+    let lock_path = manifest_file.lock_path()?;
+    let build_plan = BuildPlan::from_lock_and_manifests(
+        &lock_path,
+        &member_manifests,
+        build_options.pkg.locked,
+        build_options.pkg.offline,
+    )?;
+    let graph = build_plan.graph();
+    let manifest_map = build_plan.manifest_map();
+    let build_profiles: HashMap<String, BuildProfile> = build_plan.build_profiles().collect();
+    // Get the selected build profile using build options
+    let (profile_name, build_profile) = build_profile_from_opts(&build_profiles, &build_options)?;
+
+    // If this is a workspace we want to have all members in the output.
+    let outputs = match &manifest_file {
+        ManifestFile::Package(pkg_manifest) => std::iter::once(
+            build_plan
+                .find_member_index(&pkg_manifest.project.name)
+                .ok_or_else(|| anyhow!("Cannot found project node in the graph"))?,
+        )
+        .collect(),
+        ManifestFile::Workspace(_) => build_plan.member_nodes().collect(),
+    };
+    // Build it!
+    let mut built_workspace = HashMap::new();
+    let built_packages = build(&build_plan, &build_profile, &outputs)?;
+    let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
+    for (node_ix, built_package) in built_packages.into_iter() {
+        let pinned = &graph[node_ix];
+        let pkg_manifest = manifest_map
+            .get(&pinned.id())
+            .ok_or_else(|| anyhow!("Couldn't find member manifest for {}", pinned.name))?;
+        let output_dir = output_dir
+            .clone()
+            .unwrap_or_else(|| default_output_directory(pkg_manifest.dir()).join(&profile_name));
+        // Output artifacts for the built package
+        if let Some(outfile) = &binary_outfile {
+            built_package.write_bytecode(outfile.as_ref())?;
+        }
+        if let Some(outfile) = &debug_outfile {
+            built_package.write_debug_info(outfile.as_ref())?;
+        }
+        built_package.write_output(minify.clone(), &pkg_manifest.project.name, &output_dir)?;
+        built_workspace.insert(pinned.name.clone(), built_package);
+    }
+
     match manifest_file {
-        ManifestFile::Package(package_manifest) => {
-            let built_package = build_package_with_options(&package_manifest, build_options)?;
-            Ok(Built::Package(Box::new(built_package)))
+        ManifestFile::Package(pkg_manifest) => {
+            let built_pkg = built_workspace
+                .remove(&pkg_manifest.project.name)
+                .expect("package didn't exist in workspace");
+            Ok(Built::Package(Box::new(built_pkg)))
         }
-        ManifestFile::Workspace(_) => {
-            bail!("Workspace building is not supported")
-        }
+        ManifestFile::Workspace(_) => Ok(Built::Workspace(built_workspace)),
     }
 }
 
@@ -2399,15 +2482,25 @@ fn contract_id(built_package: &BuiltPackage) -> ContractId {
 pub fn build(
     plan: &BuildPlan,
     profile: &BuildProfile,
-) -> anyhow::Result<(BuiltPackage, SourceMap)> {
+    outputs: &HashSet<NodeIx>,
+) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
+    let mut built_packages = Vec::new();
+
+    let required: HashSet<NodeIx> = outputs
+        .iter()
+        .flat_map(|output_node| plan.node_deps(*output_node))
+        .collect();
 
     let mut lib_namespace_map = Default::default();
-    let mut source_map = SourceMap::new();
     let mut compiled_contract_deps = HashMap::new();
-    let mut last_pkg = None;
-    for &node in &plan.compilation_order {
+    for &node in plan
+        .compilation_order
+        .iter()
+        .filter(|node| required.contains(node))
+    {
+        let mut source_map = SourceMap::new();
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
         let constants = manifest.config_time_constants();
@@ -2425,7 +2518,7 @@ pub fn build(
             }
         };
         let res = compile(pkg, manifest, profile, dep_namespace, &mut source_map)?;
-        let (built_package, namespace) = res;
+        let (mut built_package, namespace) = res;
         // If the current node is a contract dependency, collect the contract_id
         if plan
             .graph()
@@ -2437,15 +2530,14 @@ pub fn build(
         if let TreeType::Library { .. } = built_package.tree_type {
             lib_namespace_map.insert(node, namespace.into());
         }
-        last_pkg = Some(built_package);
         source_map.insert_dependency(manifest.dir());
+        standardize_json_abi_types(&mut built_package.json_abi_program);
+        if outputs.contains(&node) {
+            built_packages.push((node, built_package));
+        }
     }
 
-    let mut built_pkg =
-        last_pkg.ok_or_else(|| anyhow!("build plan must contain at least one package"))?;
-    standardize_json_abi_types(&mut built_pkg.json_abi_program);
-
-    Ok((built_pkg, source_map))
+    Ok(built_packages)
 }
 
 /// Standardize the JSON ABI data structure by eliminating duplicate types. This is an iterative

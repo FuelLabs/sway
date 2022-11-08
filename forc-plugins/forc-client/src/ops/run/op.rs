@@ -36,7 +36,10 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     let client = FuelClient::new(node_url)?;
 
     let build_opts = build_opts_from_cmd(&command);
-    let compiled = forc_pkg::build_package_with_options(&manifest, build_opts)?;
+    let compiled = match forc_pkg::build_with_options(build_opts)? {
+        pkg::Built::Package(built_package) => *built_package,
+        pkg::Built::Workspace(_) => bail!("running workspaces not yet supported"),
+    };
 
     let contract_ids: Vec<ContractId> = command
         .contract
