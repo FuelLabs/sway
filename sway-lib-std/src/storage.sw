@@ -15,7 +15,7 @@ use ::result::Result;
 ///
 /// # Examples
 /// 
-/// ```
+/// ```sway
 /// use std::{storage::{store, get}, constants::ZERO_B256};
 ///
 /// let five = 5_u64;
@@ -71,7 +71,7 @@ pub fn store<T>(key: b256, value: T) {
 ///
 /// # Examples
 /// 
-/// ```
+/// ```sway
 /// use std::{storage::{store, get}, constants::ZERO_B256};
 ///
 /// let five = 5_u64;
@@ -130,7 +130,7 @@ impl<K, V> StorageMap<K, V> {
     ///
     /// # Examples
     /// 
-    /// ```
+    /// ```sway
     /// storage {
     ///     map: StorageMap<u64, bool> = StorageMap {} 
     /// }
@@ -160,7 +160,7 @@ impl<K, V> StorageMap<K, V> {
     ///
     /// # Examples
     /// 
-    /// ```
+    /// ```sway
     /// storage {
     ///     map: StorageMap<u64, bool> = StorageMap {} 
     /// }
@@ -192,7 +192,7 @@ impl<V> StorageVec<V> {
     ///
     /// # Examples
     /// 
-    /// ```
+    /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
@@ -223,7 +223,7 @@ impl<V> StorageVec<V> {
     ///
     /// # Examples
     /// 
-    /// ```
+    /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
@@ -262,7 +262,7 @@ impl<V> StorageVec<V> {
     ///
     /// # Examples
     /// 
-    /// ```
+    /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
@@ -307,7 +307,7 @@ impl<V> StorageVec<V> {
     ///
     /// # Examples
     /// 
-    /// ```
+    /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
@@ -362,7 +362,7 @@ impl<V> StorageVec<V> {
     ///
     /// # Examples
     /// 
-    /// ```
+    /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
@@ -410,7 +410,7 @@ impl<V> StorageVec<V> {
     ///
     /// # Examples
     /// 
-    /// ```
+    /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
@@ -455,7 +455,7 @@ impl<V> StorageVec<V> {
     ///
     /// # Examples
     /// 
-    /// ```
+    /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
@@ -514,7 +514,7 @@ impl<V> StorageVec<V> {
     ///
     /// # Examples
     /// 
-    /// ```
+    /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
@@ -542,7 +542,7 @@ impl<V> StorageVec<V> {
     ///
     /// # Examples
     /// 
-    /// ```
+    /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
@@ -571,7 +571,7 @@ impl<V> StorageVec<V> {
     ///
     /// # Examples
     /// 
-    /// ```
+    /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {

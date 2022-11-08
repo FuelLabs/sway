@@ -26,7 +26,7 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 ///
 /// # Examples
 /// 
-/// ```
+/// ```sway
 /// use std::{constants::ZERO_B256, token::mint_to};
 ///
 /// // replace the zero Address/ContractId with your desired Address/ContractId
@@ -56,7 +56,7 @@ pub fn mint_to(amount: u64, to: Identity) {
 ///
 /// # Examples
 /// 
-/// ```
+/// ```sway
 /// use std::{constants::ZERO_B256, token::mint_to_contract};
 ///
 /// // replace the zero ContractId with your desired ContractId
@@ -78,7 +78,7 @@ pub fn mint_to_contract(amount: u64, to: ContractId) {
 ///
 /// # Examples
 /// 
-/// ```
+/// ```sway
 /// use std::{constants::ZERO_B256, token::mint_to_address};
 ///
 /// // replace the zero Address with your desired Address
@@ -98,7 +98,7 @@ pub fn mint_to_address(amount: u64, to: Address) {
 ///
 /// # Examples
 /// 
-/// ```
+/// ```sway
 /// use std::token::mint;
 ///
 /// mint(500);
@@ -117,7 +117,7 @@ pub fn mint(amount: u64) {
 ///
 /// # Examples
 /// 
-/// ```
+/// ```sway
 /// use std::token::burn;
 ///
 /// burn(500);
@@ -146,7 +146,7 @@ pub fn burn(amount: u64) {
 ///
 /// # Examples
 /// 
-/// ```
+/// ```sway
 /// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::transfer};
 ///
 /// // replace the zero Address/ContractId with your desired Address/ContractId
@@ -179,7 +179,7 @@ pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
 ///
 /// # Examples
 /// 
-/// ```
+/// ```sway
 /// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::force_transfer_to_contract};
 ///
 /// // replace the zero ContractId with your desired ContractId
@@ -207,7 +207,7 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: Contrac
 ///
 /// # Examples
 /// 
-/// ```
+/// ```sway
 /// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::transfer_to_address};
 ///
 /// // replace the zero Address with your desired Address
