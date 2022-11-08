@@ -11,7 +11,7 @@ library alloc;
 /// ... 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 ///                                               $hp^  ^VM_MAX_RAM
 ///
-/// After allocating with `let ptr = alloc(8)`:
+/// After allocating with `let ptr = alloc::<u64>(1)`:
 /// ... 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 ///                       $hp^  ^ptr                    ^VM_MAX_RAM
 ///

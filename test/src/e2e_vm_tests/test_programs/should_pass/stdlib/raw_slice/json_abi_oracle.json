@@ -14,7 +14,7 @@
   "types": [
     {
       "components": null,
-      "type": "bool",
+      "type": "raw untyped slice",
       "typeId": 0,
       "typeParameters": null
     }

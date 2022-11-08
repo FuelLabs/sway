@@ -1331,20 +1331,42 @@ impl<'ir> AsmBuilder<'ir> {
                     comment: "".into(),
                 });
             } else {
-                // If the type not a reference type then we use RETD to return data.  First put the
-                // size into the data section, then add a LW to get it, then add a RETD which uses
-                // it.
+                // If the type is not a copy type then we use RETD to return data.
                 let size_reg = self.reg_seqr.next();
-                let size_in_bytes = ir_type_size_in_bytes(self.context, ret_type);
-                let size_data_id = self
-                    .data_section
-                    .insert_data_value(Entry::new_word(size_in_bytes, None));
+                if ret_type.eq(self.context, &Type::Slice) {
+                    // If this is a slice then return what it points to.
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::LW(
+                            size_reg.clone(),
+                            ret_reg.clone(),
+                            VirtualImmediate12 { value: 1 },
+                        )),
+                        owning_span: owning_span.clone(),
+                        comment: "load size of returned slice".into(),
+                    });
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::LW(
+                            ret_reg.clone(),
+                            ret_reg.clone(),
+                            VirtualImmediate12 { value: 0 },
+                        )),
+                        owning_span: owning_span.clone(),
+                        comment: "load ptr of returned slice".into(),
+                    });
+                } else {
+                    // First put the size into the data section, then add a LW to get it,
+                    // then add a RETD which uses it.
+                    let size_in_bytes = ir_type_size_in_bytes(self.context, ret_type);
+                    let size_data_id = self
+                        .data_section
+                        .insert_data_value(Entry::new_word(size_in_bytes, None));
 
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
-                    owning_span: owning_span.clone(),
-                    comment: "loading size for RETD".into(),
-                });
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
+                        owning_span: owning_span.clone(),
+                        comment: "load size of returned ref".into(),
+                    });
+                }
                 self.cur_bytecode.push(Op {
                     owning_span,
                     opcode: Either::Left(VirtualOp::RETD(ret_reg, size_reg)),

@@ -1,8 +1,6 @@
 [project]
+name = "illegal_use_of_generic"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
-name = "evm_ecr"
-
-[dependencies]
-std = { path = "../../../../../../../sway-lib-std" }
+implicit-std = false
