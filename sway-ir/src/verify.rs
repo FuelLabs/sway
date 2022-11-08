@@ -270,7 +270,8 @@ impl<'a> InstructionVerifier<'a> {
             | Type::Array(_)
             | Type::Union(_)
             | Type::Struct(_)
-            | Type::Pointer(_) => false,
+            | Type::Pointer(_)
+            | Type::Slice => false,
         };
         if !is_valid {
             Err(IrError::VerifyBitcastBetweenInvalidTypes(

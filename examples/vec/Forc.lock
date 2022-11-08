@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-E8B33641BFB485A7'
-dependencies = []
 
 [[package]]
 name = 'std'
@@ -10,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'vec'
-source = 'root'
+source = 'member'
 dependencies = ['std']
