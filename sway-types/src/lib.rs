@@ -11,9 +11,6 @@ pub mod constants;
 pub mod ident;
 pub use ident::*;
 
-pub mod ident_unique;
-pub use ident_unique::*;
-
 pub mod integer_bits;
 
 pub mod span;
