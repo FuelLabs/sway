@@ -3,26 +3,26 @@ use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder, UniqueIdentifier};
 use futures::TryFutureExt;
-use pkg::manifest::ManifestFile;
-use pkg::{BuildPlan, BuiltPackage};
+use pkg::BuiltPackage;
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
 use sway_core::language::parsed::TreeType;
 use tokio::time::timeout;
 use tracing::info;
 
+use crate::ops::pkg_util::built_pkgs_with_manifest;
 use crate::ops::tx_util::{TransactionBuilderExt, TxParameters, TX_SUBMIT_TIMEOUT_MS};
 
 use super::cmd::RunCommand;
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
 
-/// Builds and runs script(s). If given path corresponds to a workspace, all runnable members
-/// of the workspace is going to be built and deployed.
+/// Builds and runs script(s). If given path corresponds to a workspace, all runnable members will
+/// be built and deployed.
 ///
-/// Returns the list of receipts for each runnable member, if a single pkg is ran, list contains
-/// just one list of receipts. Otherwise, it contains a list of receipts for each member of the workspace in
-/// the order they are ran.
+/// Upon success, returns the receipts of each script in order they are executed.
+///
+/// When running a single script, only that script's receipts are returned.
 pub async fn run(command: RunCommand) -> Result<Vec<Vec<fuel_tx::Receipt>>> {
     let mut receipts = Vec::new();
     let curr_dir = if let Some(path) = &command.path {
@@ -30,41 +30,15 @@ pub async fn run(command: RunCommand) -> Result<Vec<Vec<fuel_tx::Receipt>>> {
     } else {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
-    let manifest_file = ManifestFile::from_dir(&curr_dir)?;
-    let member_manifests = manifest_file.member_manifests()?;
-    let lock_path = manifest_file.lock_path()?;
     let build_opts = build_opts_from_cmd(&command);
-    let build_plan = BuildPlan::from_lock_and_manifests(
-        &lock_path,
-        &manifest_file.member_manifests()?,
-        build_opts.pkg.locked,
-        build_opts.pkg.offline,
-    )?;
-    let built = pkg::build_with_options(build_opts)?;
-    let built_packages = match built {
-        pkg::Built::Package(built_pkg) => {
-            let pkg_name = member_manifests
-                .keys()
-                .next()
-                .ok_or_else(|| anyhow!("built package is missing"))?;
-            std::iter::once((pkg_name.clone(), *built_pkg)).collect()
-        }
-        pkg::Built::Workspace(built_workspace) => built_workspace,
-    };
-    let graph = build_plan.graph();
-    for member_node_ix in build_plan.member_nodes() {
-        let pkg_name = &graph[member_node_ix].name;
-        let member_manifest = member_manifests
-            .get(pkg_name)
-            .ok_or_else(|| anyhow!("Member manifest file is missing"))?;
+    let built_pkgs_with_manifest = built_pkgs_with_manifest(&curr_dir, build_opts)?;
+    for (member_manifest, built_pkg) in built_pkgs_with_manifest {
         if member_manifest
             .check_program_type(vec![TreeType::Script])
             .is_ok()
         {
-            if let Some(built_pkg) = built_packages.get(&member_manifest.project.name) {
-                let pkg_receipts = run_pkg(&command, member_manifest, built_pkg).await?;
-                receipts.push(pkg_receipts);
-            }
+            let pkg_receipts = run_pkg(&command, &member_manifest, &built_pkg).await?;
+            receipts.push(pkg_receipts);
         }
     }
 

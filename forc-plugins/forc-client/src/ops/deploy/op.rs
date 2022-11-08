@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
 use fuel_gql_client::client::types::TransactionStatus;
 use fuel_gql_client::{
@@ -7,24 +7,24 @@ use fuel_gql_client::{
     fuel_vm::prelude::*,
 };
 use futures::FutureExt;
-use pkg::manifest::ManifestFile;
-use pkg::{BuildPlan, BuiltPackage};
+use pkg::BuiltPackage;
 use std::path::PathBuf;
 use std::time::Duration;
 use sway_core::language::parsed::TreeType;
 use sway_utils::constants::DEFAULT_NODE_URL;
 use tracing::info;
 
+use crate::ops::pkg_util::built_pkgs_with_manifest;
 use crate::ops::tx_util::{TransactionBuilderExt, TxParameters, TX_SUBMIT_TIMEOUT_MS};
 
 use super::cmd::DeployCommand;
 
-/// Builds and deploys contract(s). If given path corresponds to a workspace, all deployable members
-/// of the workspace is going to be built and deployed.
+/// Builds and deploys contract(s). If the given path corresponds to a workspace, all deployable members
+/// will be built and deployed.
 ///
-/// Returns the list of contract id(s), if the deployment is done for a single pkg, list contains
-/// just one contract id. Otherwise, it contains a contract id for each member of the workspace in
-/// the order of deployment.
+/// Upon success, returns the ID of each deployed contract in order of deployment.
+///
+/// When deploying a single contract, only that contract's ID is returned.
 pub async fn deploy(command: DeployCommand) -> Result<Vec<fuel_tx::ContractId>> {
     let mut contract_ids = Vec::new();
     let curr_dir = if let Some(ref path) = command.path {
@@ -32,41 +32,15 @@ pub async fn deploy(command: DeployCommand) -> Result<Vec<fuel_tx::ContractId>> 
     } else {
         std::env::current_dir()?
     };
-    let manifest_file = ManifestFile::from_dir(&curr_dir)?;
-    let member_manifests = manifest_file.member_manifests()?;
-    let lock_path = manifest_file.lock_path()?;
     let build_opts = build_opts_from_cmd(&command);
-    let build_plan = BuildPlan::from_lock_and_manifests(
-        &lock_path,
-        &manifest_file.member_manifests()?,
-        build_opts.pkg.locked,
-        build_opts.pkg.offline,
-    )?;
-    let built = pkg::build_with_options(build_opts)?;
-    let built_packages = match built {
-        pkg::Built::Package(built_pkg) => {
-            let pkg_name = member_manifests
-                .keys()
-                .next()
-                .ok_or_else(|| anyhow!("built package is missing"))?;
-            std::iter::once((pkg_name.clone(), *built_pkg)).collect()
-        }
-        pkg::Built::Workspace(built_workspace) => built_workspace,
-    };
-    let graph = build_plan.graph();
-    for member_node_ix in build_plan.member_nodes() {
-        let pkg_name = &graph[member_node_ix].name;
-        let member_manifest = member_manifests
-            .get(pkg_name)
-            .ok_or_else(|| anyhow!("Member manifest file is missing"))?;
+    let built_pkgs_with_manifest = built_pkgs_with_manifest(&curr_dir, build_opts)?;
+    for (member_manifest, built_pkg) in built_pkgs_with_manifest {
         if member_manifest
             .check_program_type(vec![TreeType::Contract])
             .is_ok()
         {
-            if let Some(built_pkg) = built_packages.get(&member_manifest.project.name) {
-                let contract_id = deploy_pkg(&command, member_manifest, built_pkg).await;
-                contract_ids.push(contract_id?);
-            }
+            let contract_id = deploy_pkg(&command, &member_manifest, &built_pkg).await?;
+            contract_ids.push(contract_id);
         }
     }
     Ok(contract_ids)
