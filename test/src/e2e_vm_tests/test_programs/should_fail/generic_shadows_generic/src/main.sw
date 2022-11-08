@@ -10,14 +10,14 @@ impl<T> Data<T> {
         value: value
     }
   }
-    
+
   fn get_value<T>(self) -> T {
     self.value
   }
 }
 
 fn main() -> bool {
-    let data = ~Data::new(7);
+    let data = Data::new(7);
     let foo = data.get_value();
     true
 }

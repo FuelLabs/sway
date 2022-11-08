@@ -8,6 +8,7 @@ use super::{
 use crate::{
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
     error::*,
+    fuel_prelude::fuel_crypto::Hasher,
     metadata::MetadataManager,
     size_bytes_in_words, size_bytes_round_up_to_word_alignment,
 };
@@ -15,8 +16,6 @@ use sway_error::warning::CompileWarning;
 use sway_error::{error::CompileError, warning::Warning};
 use sway_ir::*;
 use sway_types::{span::Span, Spanned};
-
-use fuel_crypto::Hasher;
 
 use either::Either;
 use std::{collections::HashMap, sync::Arc};
@@ -332,7 +331,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         let realize_register = |reg_name: &str| {
             inline_reg_map.get(reg_name).cloned().or_else(|| {
-                ConstantRegister::parse_register_name(reg_name).map(&VirtualRegister::Constant)
+                ConstantRegister::parse_register_name(reg_name).map(VirtualRegister::Constant)
             })
         };
 
@@ -1332,20 +1331,42 @@ impl<'ir> AsmBuilder<'ir> {
                     comment: "".into(),
                 });
             } else {
-                // If the type not a reference type then we use RETD to return data.  First put the
-                // size into the data section, then add a LW to get it, then add a RETD which uses
-                // it.
+                // If the type is not a copy type then we use RETD to return data.
                 let size_reg = self.reg_seqr.next();
-                let size_in_bytes = ir_type_size_in_bytes(self.context, ret_type);
-                let size_data_id = self
-                    .data_section
-                    .insert_data_value(Entry::new_word(size_in_bytes, None));
+                if ret_type.eq(self.context, &Type::Slice) {
+                    // If this is a slice then return what it points to.
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::LW(
+                            size_reg.clone(),
+                            ret_reg.clone(),
+                            VirtualImmediate12 { value: 1 },
+                        )),
+                        owning_span: owning_span.clone(),
+                        comment: "load size of returned slice".into(),
+                    });
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::LW(
+                            ret_reg.clone(),
+                            ret_reg.clone(),
+                            VirtualImmediate12 { value: 0 },
+                        )),
+                        owning_span: owning_span.clone(),
+                        comment: "load ptr of returned slice".into(),
+                    });
+                } else {
+                    // First put the size into the data section, then add a LW to get it,
+                    // then add a RETD which uses it.
+                    let size_in_bytes = ir_type_size_in_bytes(self.context, ret_type);
+                    let size_data_id = self
+                        .data_section
+                        .insert_data_value(Entry::new_word(size_in_bytes, None));
 
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
-                    owning_span: owning_span.clone(),
-                    comment: "loading size for RETD".into(),
-                });
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
+                        owning_span: owning_span.clone(),
+                        comment: "load size of returned ref".into(),
+                    });
+                }
                 self.cur_bytecode.push(Op {
                     owning_span,
                     opcode: Either::Left(VirtualOp::RETD(ret_reg, size_reg)),
@@ -1466,10 +1487,23 @@ impl<'ir> AsmBuilder<'ir> {
             _ => unreachable!("Unexpected storage locations for key and val"),
         };
 
+        // capture the status of whether the slot was set before calling this instruction
+        let was_slot_set_reg = self.reg_seqr.next();
+
         self.cur_bytecode.push(Op {
             opcode: Either::Left(match access_type {
-                StateAccessType::Read => VirtualOp::SRWQ(val_reg, key_reg),
-                StateAccessType::Write => VirtualOp::SWWQ(key_reg, val_reg),
+                StateAccessType::Read => VirtualOp::SRWQ(
+                    val_reg,
+                    was_slot_set_reg,
+                    key_reg,
+                    ConstantRegister::One.into(),
+                ),
+                StateAccessType::Write => VirtualOp::SWWQ(
+                    key_reg,
+                    was_slot_set_reg,
+                    val_reg,
+                    ConstantRegister::One.into(),
+                ),
             }),
             comment: "quad word state access".into(),
             owning_span,
@@ -1496,6 +1530,10 @@ impl<'ir> AsmBuilder<'ir> {
 
         let load_reg = self.reg_seqr.next();
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
+        // capture the status of whether the slot was set before calling this instruction
+        let was_slot_set_reg = self.reg_seqr.next();
+
         match self.ptr_map.get(&key_ptr) {
             Some(Storage::Stack(key_offset)) => {
                 let base_reg = self.locals_base_reg().clone();
@@ -1504,7 +1542,11 @@ impl<'ir> AsmBuilder<'ir> {
                 let key_reg = self.offset_reg(&base_reg, key_offset_in_bytes, owning_span.clone());
 
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::SRW(load_reg.clone(), key_reg)),
+                    opcode: Either::Left(VirtualOp::SRW(
+                        load_reg.clone(),
+                        was_slot_set_reg,
+                        key_reg,
+                    )),
                     comment: "single word state access".into(),
                     owning_span,
                 });
@@ -1542,6 +1584,9 @@ impl<'ir> AsmBuilder<'ir> {
         }
         let (key_ptr, ptr_ty, offset) = key_ptr.value.unwrap();
 
+        // capture the status of whether the slot was set before calling this instruction
+        let was_slot_set_reg = self.reg_seqr.next();
+
         // Not expecting an offset here nor a pointer cast
         assert!(offset == 0);
         assert!(ptr_ty.get_type(self.context).eq(self.context, &Type::B256));
@@ -1555,7 +1600,7 @@ impl<'ir> AsmBuilder<'ir> {
                 let key_reg = self.offset_reg(&base_reg, key_offset_in_bytes, owning_span.clone());
 
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::SWW(key_reg, store_reg)),
+                    opcode: Either::Left(VirtualOp::SWW(key_reg, was_slot_set_reg, store_reg)),
                     comment: "single word state access".into(),
                     owning_span,
                 });

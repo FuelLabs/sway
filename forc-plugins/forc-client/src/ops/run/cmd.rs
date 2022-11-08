@@ -1,5 +1,5 @@
 use clap::Parser;
-use fuel_crypto::SecretKey;
+use fuel_gql_client::fuel_crypto::SecretKey;
 
 /// Run script project.
 /// Crafts a script transaction then sends it to a running node.

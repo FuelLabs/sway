@@ -1,6 +1,6 @@
 library auth_testing_abi;
 
-use std::chain::auth::*;
+use std::auth::*;
 
 abi AuthTesting {
     fn is_caller_external() -> bool;

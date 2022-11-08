@@ -120,7 +120,6 @@ token_impls! {
     GreaterThanToken,
     OpenAngleBracketToken,
     CloseAngleBracketToken,
-    TildeToken,
     EqToken,
     AddEqToken,
     SubEqToken,

@@ -6,6 +6,7 @@ mod render;
 use anyhow::{bail, Result};
 use clap::Parser;
 use cli::Command;
+use pkg::manifest::ManifestFile;
 use std::{
     process::Command as Process,
     {fs, path::PathBuf},
@@ -15,7 +16,7 @@ use crate::{
     doc::{Document, Documentation},
     render::{RenderedDocument, RenderedDocumentation},
 };
-use forc_pkg::{self as pkg, PackageManifestFile};
+use forc_pkg::{self as pkg};
 use forc_util::default_output_directory;
 
 /// Main method for `forc doc`.
@@ -35,17 +36,27 @@ pub fn main() -> Result<()> {
     } else {
         std::env::current_dir()?
     };
-    let manifest = PackageManifestFile::from_dir(&dir)?;
+    let manifest = ManifestFile::from_dir(&dir)?;
+    let pkg_manifest = if let ManifestFile::Package(pkg_manifest) = &manifest {
+        pkg_manifest
+    } else {
+        bail!("forc-doc does not support workspaces.")
+    };
 
     // check if the out path exists
-    let project_name = &manifest.project.name;
+    let project_name = &pkg_manifest.project.name;
     let out_path = default_output_directory(manifest.dir());
     let doc_path = out_path.join("doc");
     fs::create_dir_all(&doc_path)?;
 
     // compile the program and extract the docs
-    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
-    let compilation = pkg::check(&plan, silent)?;
+    let member_manifests = manifest.member_manifests()?;
+    let lock_path = manifest.lock_path()?;
+    let plan =
+        pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
+    let compilation = pkg::check(&plan, silent)?
+        .pop()
+        .expect("there is guaranteed to be at least one elem in the vector");
     let raw_docs: Documentation = Document::from_ty_program(&compilation, no_deps)?;
     // render docs to HTML
     let rendered_docs: RenderedDocumentation =

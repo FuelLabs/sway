@@ -9,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'svec_u32'
-source = 'root'
+source = 'member'
 dependencies = ['std']

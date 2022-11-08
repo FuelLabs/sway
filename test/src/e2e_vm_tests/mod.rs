@@ -8,6 +8,8 @@ use crate::{FilterConfig, RunConfig};
 use anyhow::{anyhow, bail, Result};
 use assert_matches::assert_matches;
 use colored::*;
+use core::fmt;
+use fuel_vm::fuel_tx;
 use fuel_vm::prelude::*;
 use regex::Regex;
 use std::{
@@ -26,15 +28,27 @@ enum TestCategory {
     FailsToCompile,
     Runs,
     RunsWithContract,
+    UnitTestsPass,
     Disabled,
 }
 
-#[derive(Debug)]
+#[derive(PartialEq)]
 enum TestResult {
     Result(Word),
     Return(u64),
-    ReturnData(Bytes32),
+    ReturnData(Vec<u8>),
     Revert(u64),
+}
+
+impl fmt::Debug for TestResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TestResult::Result(result) => write!(f, "Result({})", result),
+            TestResult::Return(code) => write!(f, "Return({})", code),
+            TestResult::ReturnData(data) => write!(f, "ReturnData(0x{})", hex::encode(data)),
+            TestResult::Revert(code) => write!(f, "Revert({})", code),
+        }
+    }
 }
 
 struct TestDescription {
@@ -83,9 +97,9 @@ impl TestContext {
         match category {
             TestCategory::Runs => {
                 let res = match expected_result {
-                    Some(TestResult::Return(v)) => ProgramState::Return(v),
-                    Some(TestResult::ReturnData(bytes)) => ProgramState::ReturnData(bytes),
-                    Some(TestResult::Revert(v)) => ProgramState::Revert(v),
+                    Some(TestResult::Return(_))
+                    | Some(TestResult::ReturnData(_))
+                    | Some(TestResult::Revert(_)) => expected_result.unwrap(),
 
                     _ => panic!(
                         "For {name}:\n\
@@ -95,12 +109,31 @@ impl TestContext {
 
                 let (result, ..) = harness::compile_to_bytes(&name, &context.run_config, false);
                 assert_matches!(result, Ok(_));
-                let compiled = result.unwrap();
+                let compiled = match result.unwrap() {
+                    forc_pkg::Built::Package(built_pkg) => *built_pkg,
+                    forc_pkg::Built::Workspace(_) => {
+                        panic!("workspaces are not supported in the test suite yet")
+                    }
+                };
 
-                let result = harness::runs_in_vm(compiled, script_data);
-                assert_eq!(result.0, res);
+                let (state, receipts, pkg) = harness::runs_in_vm(compiled, script_data);
+                let result = match state {
+                    ProgramState::Return(v) => TestResult::Return(v),
+                    ProgramState::ReturnData(digest) => {
+                        // Find the ReturnData receipt matching the digest
+                        let receipt = receipts
+                            .iter()
+                            .find(|r| r.digest() == Some(&digest))
+                            .unwrap();
+                        // Get the data from the receipt
+                        let data = receipt.data().unwrap().to_vec();
+                        TestResult::ReturnData(data)
+                    }
+                    ProgramState::Revert(v) => TestResult::Revert(v),
+                };
+                assert_eq!(result, res);
                 if validate_abi {
-                    assert_matches!(harness::test_json_abi(&name, &result.1), Ok(_));
+                    assert_matches!(harness::test_json_abi(&name, &pkg), Ok(_));
                 }
                 Ok(())
             }
@@ -108,14 +141,24 @@ impl TestContext {
             TestCategory::Compiles => {
                 let (result, output) = harness::compile_to_bytes(&name, &context.run_config, true);
                 assert_matches!(result, Ok(_));
-                let compiled = result.unwrap();
+                let compiled_pkgs = match result.unwrap() {
+                    forc_pkg::Built::Package(built_pkg) => vec![(name.clone(), *built_pkg)],
+                    forc_pkg::Built::Workspace(built_workspace) => built_workspace
+                        .iter()
+                        .map(|(n, b)| (n.clone(), b.clone()))
+                        .collect(),
+                };
                 check_file_checker(checker, &name, &output);
 
                 if validate_abi {
-                    assert_matches!(harness::test_json_abi(&name, &compiled), Ok(_));
+                    for (name, built_pkg) in &compiled_pkgs {
+                        assert_matches!(harness::test_json_abi(name, built_pkg), Ok(_));
+                    }
                 }
                 if validate_storage_slots {
-                    assert_matches!(harness::test_json_storage_slots(&name, &compiled), Ok(_));
+                    for (name, built_pkg) in &compiled_pkgs {
+                        assert_matches!(harness::test_json_storage_slots(name, built_pkg), Ok(_));
+                    }
                 }
                 Ok(())
             }
@@ -162,6 +205,31 @@ impl TestContext {
                 assert_matches!(result[result.len() - 2], fuel_tx::Receipt::Return { .. });
                 assert_eq!(result[result.len() - 2].val().unwrap(), val);
 
+                Ok(())
+            }
+
+            TestCategory::UnitTestsPass => {
+                let result = harness::compile_and_run_unit_tests(&name, &context.run_config, false);
+                let tested_pkg = result.expect("failed to compile and run unit tests");
+                let failed: Vec<String> = tested_pkg
+                    .tests
+                    .into_iter()
+                    .enumerate()
+                    .filter_map(|(ix, test)| match test.state {
+                        ProgramState::Revert(code) => {
+                            Some(format!("Test {ix} failed with revert {code}\n"))
+                        }
+                        _ => None,
+                    })
+                    .collect();
+
+                if !failed.is_empty() {
+                    panic!(
+                        "For {name}\n{} tests failed:\n{}",
+                        failed.len(),
+                        failed.into_iter().collect::<String>()
+                    );
+                }
                 Ok(())
             }
 
@@ -356,6 +424,7 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
             Some("fail") => Ok(TestCategory::FailsToCompile),
             Some("compile") => Ok(TestCategory::Compiles),
             Some("disabled") => Ok(TestCategory::Disabled),
+            Some("unit_tests_pass") => Ok(TestCategory::UnitTestsPass),
             None => Err(anyhow!(
                 "Malformed category '{category_val}', should be a string."
             )),
@@ -381,14 +450,20 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
                 _ => None,
             }
         }
-        TestCategory::Compiles | TestCategory::FailsToCompile | TestCategory::Disabled => None,
+        TestCategory::Compiles
+        | TestCategory::FailsToCompile
+        | TestCategory::UnitTestsPass
+        | TestCategory::Disabled => None,
     };
 
     let expected_result = match &category {
         TestCategory::Runs | TestCategory::RunsWithContract => {
             Some(get_expected_result(&toml_content)?)
         }
-        TestCategory::Compiles | TestCategory::FailsToCompile | TestCategory::Disabled => None,
+        TestCategory::Compiles
+        | TestCategory::FailsToCompile
+        | TestCategory::UnitTestsPass
+        | TestCategory::Disabled => None,
     };
 
     let contract_paths = match toml_content.get("contracts") {
@@ -454,41 +529,9 @@ fn get_expected_result(toml_content: &toml::Value) -> Result<TestResult> {
             (Some("result"), toml::Value::Integer(v)) => Ok(TestResult::Result(*v as Word)),
 
             // A bytes32 value.
-            (Some("return_data"), toml::Value::Array(ary)) => ary
-                .iter()
-                .map(|byte_val| {
-                    byte_val.as_integer().ok_or_else(|| {
-                        anyhow!(
-                            "Return data must only contain integer values; \
-                                                    found {byte_val}."
-                        )
-                    })
-                })
-                .collect::<Result<Vec<_>, _>>()
-                .and_then(|bytes| {
-                    if bytes.iter().any(|byte| *byte < 0 || *byte > 255) {
-                        Err(anyhow!("Return data byte values must be less than 256."))
-                    } else if bytes.len() != 32 {
-                        Err(anyhow!(
-                            "Return data must be a 32 byte array; \
-                                                found {} values.",
-                            bytes.len()
-                        ))
-                    } else {
-                        Ok(bytes.iter().map(|byte| *byte as u8).collect())
-                    }
-                })
-                .map(|bytes: Vec<u8>| {
-                    let fixed_byte_array =
-                        bytes
-                            .iter()
-                            .enumerate()
-                            .fold([0_u8; 32], |mut ary, (idx, byte)| {
-                                ary[idx] = *byte;
-                                ary
-                            });
-                    TestResult::ReturnData(Bytes32::from(fixed_byte_array))
-                }),
+            (Some("return_data"), toml::Value::String(v)) => hex::decode(v)
+                .map(TestResult::ReturnData)
+                .map_err(|e| anyhow!("Invalid hex value for 'return_data': {}", e)),
 
             // Revert with a specific code.
             (Some("revert"), toml::Value::Integer(v)) => Ok(TestResult::Revert(*v as u64)),

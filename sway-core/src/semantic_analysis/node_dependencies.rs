@@ -451,6 +451,23 @@ impl Dependencies {
             ExpressionKind::Subfield(SubfieldExpression { prefix, .. }) => {
                 self.gather_from_expr(prefix)
             }
+            ExpressionKind::AmbiguousPathExpression(e) => {
+                let AmbiguousPathExpression {
+                    call_path_binding,
+                    args,
+                } = &**e;
+                let mut this = self;
+                if call_path_binding.inner.prefixes.is_empty() {
+                    // We have just `Foo::Bar`, and nothing before `Foo`,
+                    // so this could be referring to `Enum::Variant`,
+                    // so we want to depend on `Enum` but not `Variant`.
+                    this.deps.insert(DependentSymbol::Symbol(
+                        call_path_binding.inner.suffix.before.inner.clone(),
+                    ));
+                }
+                this.gather_from_type_arguments(&call_path_binding.type_arguments)
+                    .gather_from_iter(args.iter(), |deps, arg| deps.gather_from_expr(arg))
+            }
             ExpressionKind::DelineatedPath(delineated_path_expression) => {
                 let DelineatedPathExpression {
                     call_path_binding,
@@ -743,7 +760,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Contract => "contract",
         TypeInfo::ErrorRecovery => "err_recov",
         TypeInfo::Unknown => "unknown",
-        TypeInfo::UnknownGeneric { name } => return format!("generic {}", name),
+        TypeInfo::UnknownGeneric { name, .. } => return format!("generic {}", name),
         TypeInfo::ContractCaller { abi_name, .. } => {
             return format!("contract caller {}", abi_name);
         }
@@ -752,6 +769,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Array(..) => "array",
         TypeInfo::Storage { .. } => "contract storage",
         TypeInfo::RawUntypedPtr => "raw untyped ptr",
+        TypeInfo::RawUntypedSlice => "raw untyped slice",
     }
     .to_string()
 }

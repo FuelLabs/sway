@@ -20,6 +20,7 @@ use crate::language::Inline;
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
+pub use asm_generation::FinalizedEntry;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
@@ -42,6 +43,10 @@ pub use type_system::*;
 use language::{parsed, ty};
 use transform::to_parsed_lang;
 
+pub mod fuel_prelude {
+    pub use fuel_vm::{self, fuel_asm, fuel_crypto, fuel_tx, fuel_types};
+}
+
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
 /// # Example
@@ -60,24 +65,15 @@ pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<par
         None => parse_in_memory(h, input),
         // When a `BuildConfig` is given,
         // the module source may declare `dep`s that must be parsed from other files.
-        Some(config) => parse_module_tree(
-            h,
-            input,
-            config.canonical_root_module(),
-            config.include_tests,
-        )
-        .map(|(kind, root)| parsed::ParseProgram { kind, root }),
+        Some(config) => parse_module_tree(h, input, config.canonical_root_module())
+            .map(|(kind, root)| parsed::ParseProgram { kind, root }),
     })
 }
 
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
 fn parse_in_memory(handler: &Handler, src: Arc<str>) -> Result<parsed::ParseProgram, ErrorEmitted> {
-    // Omit tests by default so that a test that fails to typecheck doesn't block the rest of the
-    // program (similar behaviour to rust). To include test functions, specify the `include_tests`
-    // flag in the `BuildConfig` passed to `parse`.
-    let include_test_fns = false;
     let module = sway_parse::parse_file(handler, src, None)?;
-    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, module, include_test_fns)?;
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, module)?;
     let submodules = Default::default();
     let root = parsed::ParseModule { tree, submodules };
     Ok(parsed::ParseProgram { kind, root })
@@ -88,7 +84,6 @@ fn parse_submodules(
     handler: &Handler,
     deps: &[Dependency],
     module_dir: &Path,
-    include_test_fns: bool,
 ) -> Vec<(Ident, parsed::ParseSubmodule)> {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut submods = Vec::with_capacity(deps.len());
@@ -109,9 +104,7 @@ fn parse_submodules(
             }
         };
 
-        if let Ok((kind, module)) =
-            parse_module_tree(handler, dep_str.clone(), dep_path.clone(), include_test_fns)
-        {
+        if let Ok((kind, module)) = parse_module_tree(handler, dep_str.clone(), dep_path.clone()) {
             let library_name = match kind {
                 parsed::TreeType::Library { name } => name,
                 _ => {
@@ -142,7 +135,6 @@ fn parse_module_tree(
     handler: &Handler,
     src: Arc<str>,
     path: Arc<PathBuf>,
-    include_test_fns: bool,
 ) -> Result<(parsed::TreeType, parsed::ParseModule), ErrorEmitted> {
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
@@ -150,10 +142,10 @@ fn parse_module_tree(
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
-    let submodules = parse_submodules(handler, &module.dependencies, module_dir, include_test_fns);
+    let submodules = parse_submodules(handler, &module.dependencies, module_dir);
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, module, include_test_fns)?;
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, module)?;
 
     Ok((kind, parsed::ParseModule { tree, submodules }))
 }
@@ -240,10 +232,12 @@ pub fn parsed_to_ast(
 
     // All unresolved types lead to compile errors.
     errors.extend(types_metadata.iter().filter_map(|m| match m {
-        TypeMetadata::UnresolvedType(name) => Some(CompileError::UnableToInferGeneric {
-            ty: name.as_str().to_string(),
-            span: name.span(),
-        }),
+        TypeMetadata::UnresolvedType(name, call_site_span_opt) => {
+            Some(CompileError::UnableToInferGeneric {
+                ty: name.as_str().to_string(),
+                span: call_site_span_opt.clone().unwrap_or_else(|| name.span()),
+            })
+        }
         _ => None,
     }));
 
@@ -340,27 +334,16 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // IR phase.
 
     let tree_type = program.kind.tree_type();
-    let mut ir = match ir_generation::compile_program(program) {
+    let mut ir = match ir_generation::compile_program(program, build_config.include_tests) {
         Ok(ir) => ir,
         Err(e) => return err(warnings, vec![e]),
     };
 
-    // Find all the entry points.  This is main for scripts and predicates, or ABI methods for
-    // contracts, identified by them having a selector.
+    // Find all the entry points for purity checking and DCE.
     let entry_point_functions: Vec<::sway_ir::Function> = ir
         .module_iter()
         .flat_map(|module| module.function_iter(&ir))
-        .filter(|func| {
-            let is_script_or_predicate = matches!(
-                tree_type,
-                parsed::TreeType::Script | parsed::TreeType::Predicate
-            );
-            let is_contract = tree_type == parsed::TreeType::Contract;
-            let has_entry_name =
-                func.get_name(&ir) == sway_types::constants::DEFAULT_ENTRY_POINT_FN_NAME;
-
-            (is_script_or_predicate && has_entry_name) || (is_contract && func.has_selector(&ir))
-        })
+        .filter(|func| func.is_entry(&ir))
         .collect();
 
     // Do a purity check on the _unoptimised_ IR.
@@ -522,7 +505,7 @@ pub fn inline_function_calls(
     };
 
     let cg = call_graph::build_call_graph(ir, functions);
-    let functions = call_graph::callee_first_order(ir, &cg);
+    let functions = call_graph::callee_first_order(&cg);
 
     for function in functions {
         if let Err(ir_error) = match tree_type {

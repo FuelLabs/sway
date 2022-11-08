@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-A242C9BF5E559F7A'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-A242C9BF5E559F7A'
+dependencies = ['core']
+
+[[package]]
+name = 'vec_in_abi'
+source = 'member'
+dependencies = ['std']

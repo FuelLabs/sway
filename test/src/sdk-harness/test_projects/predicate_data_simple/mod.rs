@@ -19,10 +19,10 @@ async fn setup() -> (Vec<u8>, Address, WalletUnlocked, u64, AssetId) {
     let wallets = launch_custom_provider_and_get_wallets(
         WalletsConfig::default(),
         Some(Config {
-            predicates: true,
             utxo_validation: true,
             ..Config::local_node()
         }),
+        None,
     )
     .await;
 
@@ -55,7 +55,7 @@ async fn create_predicate(
     let mut tx = Transaction::script(
         1,
         1000000,
-        1,
+        0,
         Opcode::RET(REG_ONE).to_bytes().to_vec(),
         vec![],
         wallet_coins,

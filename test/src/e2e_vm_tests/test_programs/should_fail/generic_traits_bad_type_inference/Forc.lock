@@ -4,5 +4,5 @@ source = 'path+from-root-363DA6276A6DBDC0'
 
 [[package]]
 name = 'generic_traits_bad_type_inference'
-source = 'root'
+source = 'member'
 dependencies = ['core']

@@ -3,8 +3,9 @@ use forc_client::ops::{
     deploy::{cmd::DeployCommand, op::deploy},
     run::{cmd::RunCommand, op::run},
 };
-use forc_pkg::{BuiltPackage, PackageManifestFile};
+use forc_pkg::{Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;
+use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
@@ -71,7 +72,7 @@ pub(crate) async fn runs_on_node(
 pub(crate) fn runs_in_vm(
     script: BuiltPackage,
     script_data: Option<Vec<u8>>,
-) -> (ProgramState, BuiltPackage) {
+) -> (ProgramState, Vec<Receipt>, BuiltPackage) {
     let storage = MemoryStorage::default();
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -92,7 +93,7 @@ pub(crate) fn runs_in_vm(
 
     let mut i = Interpreter::with_storage(storage, Default::default());
     let transition = i.transact(tx).unwrap();
-    (*transition.state(), script)
+    (*transition.state(), transition.receipts().to_vec(), script)
 }
 
 /// Compiles the code and optionally captures the output of forc and the compilation.
@@ -101,7 +102,7 @@ pub(crate) fn compile_to_bytes(
     file_name: &str,
     run_config: &RunConfig,
     capture_output: bool,
-) -> (Result<BuiltPackage>, String) {
+) -> (Result<Built>, String) {
     tracing::info!(" Compiling {}", file_name);
 
     let mut buf_stdout: Option<gag::BufferRedirect> = None;
@@ -113,26 +114,19 @@ pub(crate) fn compile_to_bytes(
     }
 
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let path = format!(
-        "{}/src/e2e_vm_tests/test_programs/{}",
-        manifest_dir, file_name
-    );
-    let manifest = PackageManifestFile::from_dir(&PathBuf::from(path)).unwrap();
-    let result = forc_pkg::build_package_with_options(
-        &manifest,
-        forc_pkg::BuildOpts {
-            pkg: forc_pkg::PkgOpts {
-                path: Some(format!(
-                    "{}/src/e2e_vm_tests/test_programs/{}",
-                    manifest_dir, file_name
-                )),
-                locked: run_config.locked,
-                terse: !(capture_output || run_config.verbose),
-                ..Default::default()
-            },
+    let build_opts = forc_pkg::BuildOpts {
+        pkg: forc_pkg::PkgOpts {
+            path: Some(format!(
+                "{}/src/e2e_vm_tests/test_programs/{}",
+                manifest_dir, file_name
+            )),
+            locked: run_config.locked,
+            terse: !(capture_output || run_config.verbose),
             ..Default::default()
         },
-    );
+        ..Default::default()
+    };
+    let result = forc_pkg::build_with_options(build_opts);
 
     let mut output = String::new();
     if capture_output {
@@ -167,6 +161,43 @@ pub(crate) fn compile_to_bytes(
     }
 
     (result, output)
+}
+
+/// Compiles the project's unit tests, then runs all unit tests.
+/// Returns the tested package result.
+pub(crate) fn compile_and_run_unit_tests(
+    file_name: &str,
+    run_config: &RunConfig,
+    capture_output: bool,
+) -> Result<Box<forc_test::TestedPackage>> {
+    tracing::info!(" Testing {}", file_name);
+
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let path: PathBuf = [
+        manifest_dir,
+        "src",
+        "e2e_vm_tests",
+        "test_programs",
+        file_name,
+    ]
+    .iter()
+    .collect();
+    let built_tests = forc_test::build(forc_test::Opts {
+        pkg: forc_pkg::PkgOpts {
+            path: Some(path.to_string_lossy().into_owned()),
+            locked: run_config.locked,
+            terse: !(capture_output || run_config.verbose),
+            ..Default::default()
+        },
+        ..Default::default()
+    })?;
+    let tested = built_tests.run()?;
+    match tested {
+        forc_test::Tested::Package(tested_pkg) => Ok(tested_pkg),
+        forc_test::Tested::Workspace => {
+            bail!("testing full workspaces not yet implemented")
+        }
+    }
 }
 
 pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {

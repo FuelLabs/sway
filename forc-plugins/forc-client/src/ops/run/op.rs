@@ -1,13 +1,15 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
 use fuel_gql_client::client::FuelClient;
-use fuel_tx::{ContractId, Transaction, TransactionBuilder};
+use fuel_tx::{ContractId, Transaction, TransactionBuilder, UniqueIdentifier};
 use futures::TryFutureExt;
+use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
 use sway_core::language::parsed::TreeType;
+use tokio::time::timeout;
 use tracing::info;
 
-use crate::ops::tx_util::{TransactionBuilderExt, TxParameters};
+use crate::ops::tx_util::{TransactionBuilderExt, TxParameters, TX_SUBMIT_TIMEOUT_MS};
 
 use super::cmd::RunCommand;
 
@@ -34,7 +36,10 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
     let client = FuelClient::new(node_url)?;
 
     let build_opts = build_opts_from_cmd(&command);
-    let compiled = forc_pkg::build_package_with_options(&manifest, build_opts)?;
+    let compiled = match forc_pkg::build_with_options(build_opts)? {
+        pkg::Built::Package(built_package) => *built_package,
+        pkg::Built::Workspace(_) => bail!("running workspaces not yet supported"),
+    };
 
     let contract_ids: Vec<ContractId> = command
         .contract
@@ -52,7 +57,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         info!("{:?}", tx);
         Ok(vec![])
     } else {
-        try_send_tx(node_url, &tx, command.pretty_print, command.simulate).await
+        try_send_tx(node_url, &tx.into(), command.pretty_print, command.simulate).await
     }
 }
 
@@ -65,7 +70,12 @@ async fn try_send_tx(
     let client = FuelClient::new(node_url)?;
 
     match client.health().await {
-        Ok(_) => send_tx(&client, tx, pretty_print, simulate).await,
+        Ok(_) => timeout(
+            Duration::from_millis(TX_SUBMIT_TIMEOUT_MS),
+            send_tx(&client, tx, pretty_print, simulate),
+        )
+        .await
+        .with_context(|| format!("timeout waiting for {} to be included in a block", tx.id()))?,
         Err(_) => Err(fuel_core_not_running(node_url)),
     }
 }
@@ -80,7 +90,7 @@ async fn send_tx(
     let outputs = {
         if !simulate {
             client
-                .submit(tx)
+                .submit_and_await_commit(tx)
                 .and_then(|_| client.receipts(id.as_str()))
                 .await
         } else {
@@ -106,7 +116,7 @@ fn format_hex_data(data: &str) -> &str {
 }
 
 fn print_receipt_output(receipts: &Vec<fuel_tx::Receipt>, pretty_print: bool) -> Result<()> {
-    let mut receipt_to_json_array = serde_json::to_value(&receipts)?;
+    let mut receipt_to_json_array = serde_json::to_value(receipts)?;
     for (rec_index, receipt) in receipts.iter().enumerate() {
         let rec_value = receipt_to_json_array.get_mut(rec_index).ok_or_else(|| {
             anyhow!(

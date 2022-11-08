@@ -1,7 +1,7 @@
 use derivative::Derivative;
 use sway_types::{Ident, Span};
 
-use crate::{declaration_engine::DeclarationId, language::parsed, transform, type_system::*};
+use crate::{declaration_engine::DeclarationId, transform, type_system::*};
 
 /// A [TyAbiDeclaration] contains the type-checked version of the parse tree's `AbiDeclaration`.
 #[derive(Clone, Debug, Derivative)]
@@ -11,11 +11,7 @@ pub struct TyAbiDeclaration {
     pub name: Ident,
     /// The methods a contract is required to implement in order opt in to this interface
     pub interface_surface: Vec<DeclarationId>,
-    /// The methods provided to a contract "for free" upon opting in to this interface
-    // NOTE: It may be important in the future to include this component
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub methods: Vec<parsed::FunctionDeclaration>,
+    pub methods: Vec<DeclarationId>,
     #[derivative(PartialEq = "ignore")]
     #[derivative(Eq(bound = ""))]
     pub span: Span,

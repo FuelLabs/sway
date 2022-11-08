@@ -1,4 +1,4 @@
-mod constant_decleration;
+mod constant_declaration;
 mod enum_instantiation;
 mod function_application;
 mod if_expression;
@@ -8,26 +8,31 @@ mod struct_field_access;
 mod tuple_index_access;
 mod unsafe_downcast;
 
-use self::constant_decleration::instantiate_constant_decl;
+use self::constant_declaration::instantiate_constant_decl;
 pub(crate) use self::{
     enum_instantiation::*, function_application::*, if_expression::*, lazy_operator::*,
     method_application::*, struct_field_access::*, tuple_index_access::*, unsafe_downcast::*,
 };
 
 use crate::{
+    asm_lang::{virtual_ops::VirtualOp, virtual_register::VirtualRegister},
     declaration_engine::declaration_engine::*,
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
+    transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
 };
 
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
+    convert_parse_tree_error::ConvertParseTreeError,
     error::CompileError,
     warning::{CompileWarning, Warning},
 };
 use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
+
+use rustc_hash::FxHashSet;
 
 use std::collections::{HashMap, VecDeque};
 
@@ -60,21 +65,48 @@ impl ty::TyExpression {
             span: call_path.span(),
         };
         let arguments = VecDeque::from(arguments);
-        let method = check!(
+        let decl_id = check!(
             resolve_method_name(ctx, &method_name_binding, arguments.clone()),
             return err(warnings, errors),
             warnings,
             errors
         );
-        instantiate_function_application_simple(
-            call_path,
-            HashMap::new(),
-            arguments,
-            method,
-            None,
-            None,
+        let method = check!(
+            CompileResult::from(de_get_function(
+                decl_id.clone(),
+                &method_name_binding.span()
+            )),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        // check that the number of parameters and the number of the arguments is the same
+        check!(
+            check_function_arguments_arity(arguments.len(), &method, &call_path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let return_type = method.return_type;
+        let args_and_names = method
+            .parameters
+            .into_iter()
+            .zip(arguments.into_iter())
+            .map(|(param, arg)| (param.name, arg))
+            .collect::<Vec<(_, _)>>();
+        let exp = ty::TyExpression {
+            expression: ty::TyExpressionVariant::FunctionApplication {
+                call_path,
+                contract_call_params: HashMap::new(),
+                arguments: args_and_names,
+                function_decl_id: decl_id,
+                self_state_idx: None,
+                selector: None,
+            },
+            return_type,
             span,
-        )
+        };
+        ok(exp, warnings, errors)
     }
 
     pub(crate) fn type_check(mut ctx: TypeCheckContext, expr: Expression) -> CompileResult<Self> {
@@ -163,6 +195,13 @@ impl ty::TyExpression {
                 index,
                 index_span,
             }) => Self::type_check_tuple_index(ctx.by_ref(), *prefix, index, index_span, span),
+            ExpressionKind::AmbiguousPathExpression(e) => {
+                let AmbiguousPathExpression {
+                    call_path_binding,
+                    args,
+                } = *e;
+                Self::type_check_ambiguous_path(ctx.by_ref(), call_path_binding, span, args)
+            }
             ExpressionKind::DelineatedPath(delineated_path_expression) => {
                 let DelineatedPathExpression {
                     call_path_binding,
@@ -596,12 +635,7 @@ impl ty::TyExpression {
 
         // check to see if the match expression is exhaustive and if all match arms are reachable
         let (witness_report, arms_reachability) = check!(
-            check_match_expression_usefulness(
-                ctx.namespace,
-                type_id,
-                typed_scrutinees,
-                span.clone()
-            ),
+            check_match_expression_usefulness(type_id, typed_scrutinees, span.clone()),
             return err(warnings, errors),
             warnings,
             errors
@@ -641,6 +675,18 @@ impl ty::TyExpression {
     ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        // Various checks that we can catch early to check that the assembly is valid. For now,
+        // this includes two checks:
+        // 1. Check that no control flow opcodes are used.
+        // 2. Check that initialized registers are not reassigned in the `asm` block.
+        check!(
+            check_asm_block_validity(&asm),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
         let asm_span = asm
             .returns
             .clone()
@@ -661,6 +707,7 @@ impl ty::TyExpression {
         // type check the initializers
         let typed_registers = asm
             .registers
+            .clone()
             .into_iter()
             .map(
                 |AsmRegisterDeclaration { name, initializer }| ty::TyAsmRegisterDeclaration {
@@ -680,10 +727,7 @@ impl ty::TyExpression {
                 },
             )
             .collect();
-        // check for any disallowed opcodes
-        for op in &asm.body {
-            check!(disallow_opcode(&op.op_name), continue, warnings, errors)
-        }
+
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::AsmExpression {
                 whole_block_span: asm.whole_block_span,
@@ -983,6 +1027,111 @@ impl ty::TyExpression {
         ok(exp, warnings, errors)
     }
 
+    fn type_check_ambiguous_path(
+        mut ctx: TypeCheckContext,
+        TypeBinding {
+            inner:
+                CallPath {
+                    prefixes,
+                    suffix: AmbiguousSuffix { before, suffix },
+                    is_absolute,
+                },
+            type_arguments,
+            span: path_span,
+        }: TypeBinding<CallPath<AmbiguousSuffix>>,
+        span: Span,
+        args: Vec<Expression>,
+    ) -> CompileResult<ty::TyExpression> {
+        // Is `path = prefix ++ before` a module?
+        let mut path = Vec::with_capacity(prefixes.len() + 1);
+        path.extend(prefixes.iter().cloned());
+        path.push(before.inner.clone());
+        let not_module = ctx.namespace.check_submodule(&path).value.is_none();
+
+        // Not a module? Not a `Enum::Variant` either?
+        // Type check as an associated function call instead.
+        let is_associated_call = not_module && {
+            let probe_call_path = CallPath {
+                prefixes: prefixes.clone(),
+                suffix: before.inner.clone(),
+                is_absolute,
+            };
+            ctx.namespace
+                .resolve_call_path(&probe_call_path)
+                .flat_map(|decl| decl.expect_enum(&before.inner.span()))
+                .flat_map(|decl| decl.expect_variant_from_name(&suffix).map(drop))
+                .value
+                .is_none()
+        };
+
+        if is_associated_call {
+            let before_span = before.span();
+            let type_name = before.inner;
+            let type_info_span = type_name.span();
+            let type_info = type_name_to_type_info_opt(&type_name).unwrap_or(TypeInfo::Custom {
+                name: type_name,
+                type_arguments: None,
+            });
+
+            let method_name_binding = TypeBinding {
+                inner: MethodName::FromType {
+                    call_path_binding: TypeBinding {
+                        span: before_span,
+                        type_arguments: before.type_arguments,
+                        inner: CallPath {
+                            prefixes,
+                            suffix: (type_info, type_info_span),
+                            is_absolute,
+                        },
+                    },
+                    method_name: suffix,
+                },
+                type_arguments,
+                span: path_span,
+            };
+            type_check_method_application(ctx.by_ref(), method_name_binding, Vec::new(), args, span)
+        } else {
+            let call_path_binding = TypeBinding {
+                inner: CallPath {
+                    prefixes: path,
+                    suffix,
+                    is_absolute,
+                },
+                type_arguments,
+                span: path_span,
+            };
+            let mut res = Self::type_check_delineated_path(ctx, call_path_binding, span, args);
+
+            // In case `before` has type args, this would be e.g., `foo::bar::<TyArgs>::baz(...)`.
+            // So, we would need, but don't have, parametric modules to apply arguments to.
+            // Emit an error and ignore the type args.
+            //
+            // TODO: This also bans `Enum::<TyArgs>::Variant` but there's no good reason to ban that.
+            // Instead, we should allow this but ban `Enum::Variant::<TyArgs>`, which Rust does allow,
+            // but shouldn't, because with GADTs, we could ostensibly have the equivalent of:
+            // ```haskell
+            // {-# LANGUAGE GADTs, RankNTypes #-}
+            // data Foo where Bar :: forall a. Show a => a -> Foo
+            // ```
+            // or to illustrate with Sway-ish syntax:
+            // ```rust
+            // enum Foo {
+            //     Bar<A: Debug>: A, // Let's ignore memory representation, etc.
+            // }
+            // ```
+            if !before.type_arguments.is_empty() {
+                res.errors.push(
+                    ConvertParseTreeError::GenericsNotSupportedHere {
+                        span: Span::join_all(before.type_arguments.iter().map(|t| t.span())),
+                    }
+                    .into(),
+                );
+            }
+
+            res
+        }
+    }
+
     fn type_check_delineated_path(
         mut ctx: TypeCheckContext,
         call_path_binding: TypeBinding<CallPath>,
@@ -1116,6 +1265,7 @@ impl ty::TyExpression {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
         // TODO use lib-std's Address type instead of b256
         // type check the address and make sure it is
         let err_span = address.span();
@@ -1131,6 +1281,7 @@ impl ty::TyExpression {
                 errors
             )
         };
+
         // look up the call path and get the declaration it references
         let abi = check!(
             ctx.namespace.resolve_call_path(&abi_name).cloned(),
@@ -1138,7 +1289,13 @@ impl ty::TyExpression {
             warnings,
             errors
         );
-        let abi = match abi {
+        let ty::TyAbiDeclaration {
+            name,
+            interface_surface,
+            mut methods,
+            span,
+            ..
+        } = match abi {
             ty::TyDeclaration::AbiDeclaration(decl_id) => {
                 check!(
                     CompileResult::from(de_get_abi(decl_id, &span)),
@@ -1206,42 +1363,30 @@ impl ty::TyExpression {
             address: Some(Box::new(address_expr.clone())),
         });
 
-        let mut trait_fns = vec![];
-        for decl_id in abi.interface_surface.iter() {
-            match de_get_trait_fn(decl_id.clone(), &abi.span) {
-                Ok(decl) => trait_fns.push(decl),
-                Err(err) => errors.push(err),
-            }
-        }
-
-        let mut functions_buf = trait_fns
-            .iter()
-            .map(|x| x.to_dummy_func(Mode::ImplAbiFn))
-            .collect::<Vec<_>>();
-        // calls of ABI methods do not result in any codegen of the ABI method block
-        // they instead just use the CALL opcode and the return type
-        let mut type_checked_fn_buf = Vec::with_capacity(abi.methods.len());
-        for method in &abi.methods {
-            let ctx = ctx
-                .by_ref()
-                .with_help_text("")
-                .with_type_annotation(insert_type(TypeInfo::Unknown))
-                .with_mode(Mode::ImplAbiFn);
-            type_checked_fn_buf.push(check!(
-                ty::TyFunctionDeclaration::type_check(ctx, method.clone(), true),
+        // Retrieve the interface surface for this abi.
+        let mut abi_methods = vec![];
+        for decl_id in interface_surface.into_iter() {
+            let method = check!(
+                CompileResult::from(de_get_trait_fn(decl_id.clone(), &name.span())),
                 return err(warnings, errors),
                 warnings,
                 errors
-            ));
+            );
+            abi_methods.push(
+                de_insert_function(method.to_dummy_func(Mode::ImplAbiFn)).with_parent(decl_id),
+            );
         }
 
-        functions_buf.append(&mut type_checked_fn_buf);
+        // Retrieve the methods for this abi.
+        abi_methods.append(&mut methods);
+
+        // Insert the abi methods into the namespace.
         check!(
             ctx.namespace.insert_trait_implementation(
                 abi_name.clone(),
                 vec![],
                 return_type,
-                functions_buf,
+                &abi_methods,
                 &span,
                 false
             ),
@@ -1249,6 +1394,7 @@ impl ty::TyExpression {
             warnings,
             errors
         );
+
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::AbiCast {
                 abi_name,
@@ -1806,24 +1952,101 @@ mod tests {
         assert!(comp_res.warnings.is_empty() && comp_res.errors.is_empty());
     }
 }
-fn disallow_opcode(op: &Ident) -> CompileResult<()> {
-    let mut errors = vec![];
 
-    match op.as_str().to_lowercase().as_str() {
-        "ji" => {
-            errors.push(CompileError::DisallowedJi { span: op.span() });
-        }
-        "jnei" => {
-            errors.push(CompileError::DisallowedJnei { span: op.span() });
-        }
-        "jnzi" => {
-            errors.push(CompileError::DisallowedJnzi { span: op.span() });
-        }
-        _ => (),
-    };
-    if errors.is_empty() {
-        ok((), vec![], vec![])
-    } else {
-        err(vec![], errors)
+fn check_asm_block_validity(asm: &AsmExpression) -> CompileResult<()> {
+    let mut errors = vec![];
+    let mut warnings = vec![];
+
+    // Collect all asm block instructions in the form of `VirtualOp`s
+    let mut opcodes = vec![];
+    for op in &asm.body {
+        let registers = op
+            .op_args
+            .iter()
+            .map(|reg_name| VirtualRegister::Virtual(reg_name.to_string()))
+            .collect::<Vec<VirtualRegister>>();
+
+        opcodes.push((
+            check!(
+                crate::asm_lang::Op::parse_opcode(
+                    &op.op_name,
+                    &registers,
+                    &op.immediate,
+                    op.span.clone(),
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+            op.op_name.clone(),
+            op.span.clone(),
+        ));
     }
+
+    // Check #1: Disallow control flow instructions
+    //
+    errors.extend(
+        opcodes
+            .iter()
+            .filter(|op| {
+                matches!(
+                    op.0,
+                    VirtualOp::JMP(_)
+                        | VirtualOp::JI(_)
+                        | VirtualOp::JNE(..)
+                        | VirtualOp::JNEI(..)
+                        | VirtualOp::JNZI(..)
+                        | VirtualOp::RET(_)
+                        | VirtualOp::RETD(..)
+                        | VirtualOp::RVRT(..)
+                )
+            })
+            .map(|op| CompileError::DisallowedControlFlowInstruction {
+                name: op.1.to_string(),
+                span: op.2.clone(),
+            })
+            .collect::<Vec<_>>(),
+    );
+
+    // Check #2: Disallow initialized registers from being reassigned in the asm block
+    //
+    // 1. Collect all registers that have initializers in the list of arguments
+    let initialized_registers = asm
+        .registers
+        .iter()
+        .filter(|reg| reg.initializer.is_some())
+        .map(|reg| VirtualRegister::Virtual(reg.name.to_string()))
+        .collect::<FxHashSet<_>>();
+
+    // 2. From the list of `VirtualOp`s, figure out what registers are assigned
+    let assigned_registers: FxHashSet<VirtualRegister> =
+        opcodes.iter().fold(FxHashSet::default(), |mut acc, op| {
+            for u in op.0.def_registers() {
+                acc.insert(u.clone());
+            }
+            acc
+        });
+
+    // 3. Intersect the list of assigned registers with the list of initialized registers
+    let initialized_and_assigned_registers = assigned_registers
+        .intersection(&initialized_registers)
+        .collect::<FxHashSet<_>>();
+
+    // 4. Form all the compile errors given the violating registers above. Obtain span information
+    //    from the original `asm.registers` vector.
+    errors.extend(
+        asm.registers
+            .iter()
+            .filter(|reg| {
+                initialized_and_assigned_registers
+                    .contains(&VirtualRegister::Virtual(reg.name.to_string()))
+            })
+            .map(|reg| CompileError::InitializedRegisterReassignment {
+                name: reg.name.to_string(),
+                span: reg.name.span(),
+            })
+            .collect::<Vec<_>>(),
+    );
+
+    ok((), vec![], errors)
 }

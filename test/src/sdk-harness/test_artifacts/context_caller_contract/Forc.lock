@@ -1,6 +1,6 @@
 [[package]]
 name = 'context_caller_contract'
-source = 'root'
+source = 'member'
 dependencies = [
     'context_testing_abi',
     'std',

@@ -1,0 +1,32 @@
+category = "fail"
+
+# check: $()jmp r1
+# nextln: $()Control flow VM instructions are not allowed in assembly blocks.
+# nextln: $()ji i5
+
+# check: $()ji i5
+# nextln: $()Control flow VM instructions are not allowed in assembly blocks.
+# nextln: $()jne r1 r2 r3;
+
+# check: $()jne r1 r2 r3;
+# nextln: $()Control flow VM instructions are not allowed in assembly blocks.
+# nextln: $()jnei r1 r2 i5;
+
+# check: $()jnei r1 r2 i5;
+# nextln: $()Control flow VM instructions are not allowed in assembly blocks.
+# nextln: $()jnzi r1 i5;
+
+# check: $()jnzi r1 i5;
+# nextln: $()Control flow VM instructions are not allowed in assembly blocks.
+# nextln: $()ret r1;
+
+# check: $()ret r1;
+# nextln: $()Control flow VM instructions are not allowed in assembly blocks.
+# nextln: $()retd r1 r2;
+
+# check: $()retd r1 r2;
+# nextln: $()Control flow VM instructions are not allowed in assembly blocks.
+# nextln: $()rvrt r1;
+
+# check: $()rvrt r1;
+# nextln: $()Control flow VM instructions are not allowed in assembly blocks.

@@ -9,7 +9,7 @@ dependencies = ['core']
 
 [[package]]
 name = 'increment_contract'
-source = 'root'
+source = 'member'
 dependencies = [
     'increment_abi',
     'std',

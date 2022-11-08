@@ -241,7 +241,7 @@ fn connect_declaration(
             connect_impl_trait(&trait_name, graph, &methods, entry_node)?;
             Ok(leaves.to_vec())
         }
-        ErrorRecovery => Ok(leaves.to_vec()),
+        ErrorRecovery(_) => Ok(leaves.to_vec()),
     }
 }
 

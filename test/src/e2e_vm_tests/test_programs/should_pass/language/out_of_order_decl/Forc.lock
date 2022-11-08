@@ -4,5 +4,5 @@ source = 'path+from-root-02BB6BAC50786DCA'
 
 [[package]]
 name = 'out_of_order_decl'
-source = 'root'
+source = 'member'
 dependencies = ['core']

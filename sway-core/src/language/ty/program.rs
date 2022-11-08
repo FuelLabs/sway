@@ -1,19 +1,20 @@
-use fuel_tx::StorageSlot;
 use sway_error::error::CompileError;
 use sway_types::*;
 
 use crate::{
     declaration_engine::*,
     error::*,
+    fuel_prelude::fuel_tx::StorageSlot,
     language::{parsed, ty::*, Purity},
     semantic_analysis::storage_only_types,
     type_system::*,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TyProgram {
     pub kind: TyProgramKind,
     pub root: TyModule,
+    pub declarations: Vec<TyDeclaration>,
     pub storage_slots: Vec<StorageSlot>,
     pub logged_types: Vec<(LogId, TypeId)>,
 }
@@ -24,7 +25,7 @@ impl TyProgram {
         root: &TyModule,
         kind: parsed::TreeType,
         module_span: Span,
-    ) -> CompileResult<TyProgramKind> {
+    ) -> CompileResult<(TyProgramKind, Vec<TyDeclaration>)> {
         // Extract program-kind-specific properties from the root nodes.
         let mut errors = vec![];
         let mut warnings = vec![];
@@ -141,10 +142,7 @@ impl TyProgram {
 
         // Perform other validation based on the tree type.
         let typed_program_kind = match kind {
-            parsed::TreeType::Contract => TyProgramKind::Contract {
-                abi_entries,
-                declarations,
-            },
+            parsed::TreeType::Contract => TyProgramKind::Contract { abi_entries },
             parsed::TreeType::Library { name } => TyProgramKind::Library { name },
             parsed::TreeType::Predicate => {
                 // A predicate must have a main function and that function must return a boolean.
@@ -166,7 +164,6 @@ impl TyProgram {
                 }
                 TyProgramKind::Predicate {
                     main_function: main_func,
-                    declarations,
                 }
             }
             parsed::TreeType::Script => {
@@ -180,10 +177,14 @@ impl TyProgram {
                         name: mains.last().unwrap().name.clone(),
                     });
                 }
-                // A script must not return a `raw_ptr`
+                // A script must not return a `raw_ptr` or any type aggregating a `raw_slice`.
+                // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
+                // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
                 let main_func = mains.remove(0);
+                let main_return_type_info = look_up_type_id(main_func.return_type);
                 let nested_types = check!(
-                    look_up_type_id(main_func.return_type)
+                    main_return_type_info
+                        .clone()
                         .extract_nested_types(&main_func.return_type_span),
                     vec![],
                     warnings,
@@ -197,9 +198,17 @@ impl TyProgram {
                         span: main_func.return_type_span.clone(),
                     });
                 }
+                if !matches!(main_return_type_info, TypeInfo::RawUntypedSlice)
+                    && nested_types
+                        .iter()
+                        .any(|ty| matches!(ty, TypeInfo::RawUntypedSlice))
+                {
+                    errors.push(CompileError::NestedSliceReturnNotAllowedInMain {
+                        span: main_func.return_type_span.clone(),
+                    });
+                }
                 TyProgramKind::Script {
                     main_function: main_func,
-                    declarations,
                 }
             }
         };
@@ -217,7 +226,7 @@ impl TyProgram {
             }
             _ => (),
         }
-        ok(typed_program_kind, warnings, errors)
+        ok((typed_program_kind, declarations), warnings, errors)
     }
 
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.
@@ -391,18 +400,15 @@ impl TyProgram {
 pub enum TyProgramKind {
     Contract {
         abi_entries: Vec<TyFunctionDeclaration>,
-        declarations: Vec<TyDeclaration>,
     },
     Library {
         name: Ident,
     },
     Predicate {
         main_function: TyFunctionDeclaration,
-        declarations: Vec<TyDeclaration>,
     },
     Script {
         main_function: TyFunctionDeclaration,
-        declarations: Vec<TyDeclaration>,
     },
 }
 
