@@ -1,0 +1,8 @@
+category = "fail"
+
+# check: $()let c = add_points(a, b);
+# check: $()Trait "MyAdd" is not implemented for type "u64".
+
+# check: $()let f = add_points2(d, e);
+# check: $()Trait "MyAdd" is not implemented for type "u64".
+# check: $()Trait "MyAdd" is not implemented for type "u8".

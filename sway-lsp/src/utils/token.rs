@@ -73,7 +73,7 @@ pub(crate) fn struct_declaration_of_type_id(
 pub(crate) fn ident_of_type_id(type_id: &TypeId) -> Option<Ident> {
     let type_info = sway_core::type_system::look_up_type_id(*type_id);
     match type_info {
-        TypeInfo::UnknownGeneric { name }
+        TypeInfo::UnknownGeneric { name, .. }
         | TypeInfo::Enum { name, .. }
         | TypeInfo::Struct { name, .. }
         | TypeInfo::Custom { name, .. } => Some(name),

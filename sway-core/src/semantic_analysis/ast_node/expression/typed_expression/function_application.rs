@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::ReplaceDecls,
     error::*,
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
@@ -10,7 +11,7 @@ use sway_types::Spanned;
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
-    function_decl: ty::TyFunctionDeclaration,
+    mut function_decl: ty::TyFunctionDeclaration,
     call_path: CallPath,
     arguments: Vec<Expression>,
 ) -> CompileResult<ty::TyExpression> {
@@ -33,10 +34,9 @@ pub(crate) fn instantiate_function_application(
         errors
     );
 
-    // type check arguments in function application vs arguments in function
-    // declaration. Use parameter type annotations as annotations for the
-    // arguments
-    let typed_arguments = arguments
+    // Type check the arguments from the function application and unify them with
+    // the arguments from the function application.
+    let typed_arguments: Vec<(Ident, ty::TyExpression)> = arguments
         .into_iter()
         .zip(function_decl.parameters.iter())
         .map(|(arg, param)| {
@@ -78,18 +78,34 @@ pub(crate) fn instantiate_function_application(
         })
         .collect();
 
+    // Handle the trait constraints. This includes checking to see if the trait
+    // constraints are satisfied and replacing old decl ids based on the
+    // constraint with new decl ids based on the new type.
+    let decl_mapping = check!(
+        TypeParameter::gather_decl_mapping_from_trait_constraints(
+            ctx.by_ref(),
+            &function_decl.type_parameters,
+            &call_path.span()
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    function_decl.replace_decls(&decl_mapping);
+    let return_type = function_decl.return_type;
     let span = function_decl.span.clone();
+    let new_decl_id = de_insert_function(function_decl);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path,
             contract_call_params: HashMap::new(),
             arguments: typed_arguments,
-            function_decl_id: de_insert_function(function_decl.clone()),
+            function_decl_id: new_decl_id,
             self_state_idx: None,
             selector: None,
         },
-        return_type: function_decl.return_type,
+        return_type,
         span,
     };
 
