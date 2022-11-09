@@ -8,7 +8,7 @@ use ::error_signals::FAILED_SEND_MESSAGE_SIGNAL;
 
 /// Sends a message to `recipient` of length `msg_len` through `output` with amount of `coins`
 ///
-/// # Arguments
+/// ### Arguments
 ///
 /// * `recipient` - The address of the message recipient
 /// * `msg_data` - arbitrary length message data

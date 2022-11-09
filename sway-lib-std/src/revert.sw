@@ -7,11 +7,11 @@ use ::error_signals::FAILED_REQUIRE_SIGNAL;
 /// will panic if used in a predicate
 /// will revert if used in a contract
 ///
-/// # Arguments
+/// ### Arguments
 ///
 /// * `code` - The code with which to revert the program
 ///
-/// # Reverts
+/// ### Reverts
 ///
 /// Reverts when called in a contract
 ///
@@ -19,7 +19,7 @@ use ::error_signals::FAILED_REQUIRE_SIGNAL;
 ///
 /// Panics when called in a script
 ///
-/// # Examples
+/// ### Examples
 /// 
 /// ```sway
 /// fn foo(should_revert: bool) {
@@ -35,16 +35,16 @@ pub fn revert(code: u64) {
 
 /// Checks if the given `condition` is `true` and if not, logs `value` and reverts.
 ///
-/// # Arguments
+/// ### Arguments
 ///
 /// * `condition` - The condition upon which to decide whether to revert or not
 /// * `value` - The value which will be logged incase condition is false
 ///
-/// # Reverts
+/// ### Reverts
 ///
 /// Reverts when `condition` is false
 ///
-/// # Examples
+/// ### Examples
 /// 
 /// ```sway
 /// fn foo(a: u64, b: u64) {

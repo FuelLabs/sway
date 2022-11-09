@@ -19,12 +19,12 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 /// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
 /// the PERMANENT LOSS OF COINS if not used with care.
 ///
-/// # Arguments
+/// ### Arguments
 ///
 /// * `amount` - The amount of tokens to mint
 /// * `to` - The Identity to which to send the tokens
 ///
-/// # Examples
+/// ### Examples
 /// 
 /// ```sway
 /// use std::{constants::ZERO_B256, token::mint_to};
@@ -49,12 +49,12 @@ pub fn mint_to(amount: u64, to: Identity) {
 /// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
 /// the PERMANENT LOSS OF COINS if not used with care.
 ///
-/// # Arguments
+/// ### Arguments
 ///
 /// * `amount` - The amount of tokens to mint
 /// * `to` - The ContractId to which to send the tokens
 ///
-/// # Examples
+/// ### Examples
 /// 
 /// ```sway
 /// use std::{constants::ZERO_B256, token::mint_to_contract};
@@ -71,12 +71,12 @@ pub fn mint_to_contract(amount: u64, to: ContractId) {
 /// Mint `amount` coins of the current contract's `asset_id` and send them to
 /// the Address `to`.
 ///
-/// # Arguments
+/// ### Arguments
 ///
 /// * `amount` - The amount of tokens to mint
 /// * `to` - The Address to which to send the tokens
 ///
-/// # Examples
+/// ### Examples
 /// 
 /// ```sway
 /// use std::{constants::ZERO_B256, token::mint_to_address};
@@ -92,11 +92,11 @@ pub fn mint_to_address(amount: u64, to: Address) {
 
 /// Mint `amount` coins of the current contract's `asset_id`. The newly minted tokens are owned by the current contract.
 ///
-/// # Arguments
+/// ### Arguments
 ///
 /// * `amount` - The amount of tokens to mint
 ///
-/// # Examples
+/// ### Examples
 /// 
 /// ```sway
 /// use std::token::mint;
@@ -111,15 +111,15 @@ pub fn mint(amount: u64) {
 
 /// Burn `amount` coins of the current contract's `asset_id`. Burns them from the balance of the current contract.
 ///
-/// # Arguments
+/// ### Arguments
 ///
 /// * `amount` - The amount of tokens to burn
 ///
-/// # Reverts
+/// ### Reverts
 ///
 /// Reverts if the contract balance is less than `amount`
 ///
-/// # Examples
+/// ### Examples
 /// 
 /// ```sway
 /// use std::token::burn;
@@ -142,19 +142,19 @@ pub fn burn(amount: u64) {
 /// (i.e. no withdrawal functionality on receiving contract), possibly leading
 /// to the PERMANENT LOSS OF COINS if not used with care.
 ///
-/// # Arguments
+/// ### Arguments
 ///
 /// * `amount` - The amount of tokens to transfer
 /// * `asset_id` - The ContractId of the token to transfer
 /// * `to` - The Identity of the recipient 
 ///
-/// # Reverts
+/// ### Reverts
 ///
 /// * If `amount` is greater than the contract balance for `asset_id`
 /// * If `amount` is equal to 0
 /// * If there are no free variable outputs when transferring to an Address
 ///
-/// # Examples
+/// ### Examples
 /// 
 /// ```sway
 /// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::transfer};
@@ -181,18 +181,18 @@ pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
 /// (i.e. no withdrawal functionality on receiving contract), possibly leading
 /// to the PERMANENT LOSS OF COINS if not used with care.
 ///
-/// # Arguments
+/// ### Arguments
 ///
 /// * `amount` - The amount of tokens to transfer
 /// * `asset_id` - The ContractId of the token to transfer
 /// * `to` - The ContractId of the recipient contract 
 ///
-/// # Reverts
+/// ### Reverts
 ///
 /// * If `amount` is greater than the contract balance for `asset_id`
 /// * If `amount` is equal to 0 
 ///
-/// # Examples
+/// ### Examples
 /// 
 /// ```sway
 /// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::force_transfer_to_contract};
@@ -210,19 +210,19 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: Contrac
 /// Transfer `amount` coins of type `asset_id` and send them to
 /// the address `to`.
 ///
-/// # Arguments
+/// ### Arguments
 ///
 /// * `amount` - The amount of tokens to transfer
 /// * `asset_id` - The ContractId of the token to transfer
 /// * `to` - The Address of the recipient user 
 ///
-/// # Reverts
+/// ### Reverts
 ///
 /// * If `amount` is greater than the contract balance for `asset_id`
 /// * If `amount` is equal to 0
 /// * If there are no free variable outputs
 ///
-/// # Examples
+/// ### Examples
 /// 
 /// ```sway
 /// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::transfer_to_address};

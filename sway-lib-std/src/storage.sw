@@ -8,12 +8,12 @@ use ::result::Result;
 
 /// Store a stack value in storage. Will not work for heap values.
 /// 
-/// # Arguments
+/// ### Arguments
 ///
 /// * `key` - The storage slot at which the variable will be stored
 /// * `value` - The value to be stored
 ///
-/// # Examples
+/// ### Examples
 /// 
 /// ```sway
 /// use std::{storage::{store, get}, constants::ZERO_B256};
@@ -65,11 +65,11 @@ pub fn store<T>(key: b256, value: T) {
 /// If no value was previously stored using the key, a byte representation of all zeroes is returned
 /// Read more [here](https://fuellabs.github.io/sway/v0.30.1/common-collections/storage_map.html#accessing-values-in-a-storage-map)
 ///
-/// # Arguments
+/// ### Arguments
 ///
 /// * `key` - The storage slot to load the value from
 ///
-/// # Examples
+/// ### Examples
 /// 
 /// ```sway
 /// use std::{storage::{store, get}, constants::ZERO_B256};
@@ -123,12 +123,12 @@ pub struct StorageMap<K, V> {}
 impl<K, V> StorageMap<K, V> {
     /// Inserts a key-value pair into the map.
     /// 
-    /// # Arguments
+    /// ### Arguments
     ///
     /// * `key` - The key to which the value is paired
     /// * `value` - The value to be stored
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// storage {
@@ -154,11 +154,11 @@ impl<K, V> StorageMap<K, V> {
     /// If no value was previously stored using the key, a byte representation of all zeroes is returned
     /// Read more [here](https://fuellabs.github.io/sway/v0.30.1/common-collections/storage_map.html#accessing-values-in-a-storage-map)
     /// 
-    /// # Arguments
+    /// ### Arguments
     ///
     /// * `key` - The key to which the value is paired
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// storage {
@@ -186,11 +186,11 @@ pub struct StorageVec<V> {}
 impl<V> StorageVec<V> {
     /// Appends the value to the end of the vector
     ///
-    /// # Arguments
+    /// ### Arguments
     ///
     /// * `value` - The item being added to the end of the vector
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::storage::StorageVec;
@@ -221,7 +221,7 @@ impl<V> StorageVec<V> {
 
     /// Removes the last element of the vector and returns it, None if empty
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::storage::StorageVec;
@@ -256,11 +256,11 @@ impl<V> StorageVec<V> {
 
     /// Gets the value in the given index, None if index is out of bounds
     ///
-    /// # Arguments
+    /// ### Arguments
     ///
     /// * `index` - The index of the vec to retrieve the item from
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::storage::StorageVec;
@@ -297,15 +297,15 @@ impl<V> StorageVec<V> {
     ///
     /// Expensive for larger vecs
     ///
-    /// # Arguments
+    /// ### Arguments
     ///
     /// * `index` - The index of the vec to remove the item from
     ///
-    /// # Reverts
+    /// ### Reverts
     ///
     /// Reverts if index is larger or equal to length of the vec
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::storage::StorageVec;
@@ -352,15 +352,15 @@ impl<V> StorageVec<V> {
     /// Removes the element at the specified index and fills it with the last element
     /// Does not preserve ordering. Also returns the element
     ///
-    /// # Arguments
+    /// ### Arguments
     ///
     /// * `index` - The index of the vec to remove the item from
     ///
-    /// # Reverts
+    /// ### Reverts
     ///
     /// Reverts if index is larger or equal to length of the vec
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::storage::StorageVec;
@@ -399,16 +399,16 @@ impl<V> StorageVec<V> {
     }
     /// Sets/mutates the value at the given index
     ///
-    /// # Arguments
+    /// ### Arguments
     ///
     /// * `index` - The index of the vec to set the value at
     /// * `value` - The value to be set
     ///
-    /// # Reverts
+    /// ### Reverts
     ///
     /// Reverts if index is larger than or equal to the length of the vec
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::storage::StorageVec;
@@ -444,16 +444,16 @@ impl<V> StorageVec<V> {
     ///
     /// Expensive for larger vecs
     ///
-    /// # Arguments
+    /// ### Arguments
     ///
     /// * `index` - The index of the vec to insert the item into
     /// * `value` - The value to insert into the vec
     ///
-    /// # Reverts
+    /// ### Reverts
     ///
     /// Reverts if index is larger than length of the vec
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::storage::StorageVec;
@@ -512,7 +512,7 @@ impl<V> StorageVec<V> {
 
     /// Returns the length of the vector
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::storage::StorageVec;
@@ -540,7 +540,7 @@ impl<V> StorageVec<V> {
 
     /// Checks whether the len is 0 or not
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::storage::StorageVec;
@@ -569,7 +569,7 @@ impl<V> StorageVec<V> {
 
     /// Sets the len to 0
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::storage::StorageVec;

@@ -60,7 +60,7 @@ impl core::ops::Eq for U256 {
 impl U256 {
     /// Initializes a new, zeroed `U256`.
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::u256::U256;
@@ -82,7 +82,7 @@ impl U256 {
     /// Safely downcast to `u64` without loss of precision.
     /// Returns Err if the number > u64::max()
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::u256::{U256, U256Error};
@@ -108,7 +108,7 @@ impl U256 {
     /// Safely downcast to `u128` without loss of precision.
     /// Returns an error if `self > U128::max()`.
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::{u128::U128, u256::{U256, U256Error}};
@@ -133,7 +133,7 @@ impl U256 {
 
     /// The smallest value that can be represented by this integer type.
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::u256::U256;
@@ -155,7 +155,7 @@ impl U256 {
     /// The largest value that can be represented by this type,
     /// 2<sup>256</sup> - 1.
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::u256::U256;
@@ -176,7 +176,7 @@ impl U256 {
 
     /// The size of this type in bits.
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::u256::U256;
@@ -191,7 +191,7 @@ impl U256 {
 
     /// Get 4 64 bit words from a single `U256` value.
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::u256::U256;

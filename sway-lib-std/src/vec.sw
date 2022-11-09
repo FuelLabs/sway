@@ -61,6 +61,16 @@ impl<T> Vec<T> {
     /// Constructs a new, empty `Vec<T>`.
     ///
     /// The vector will not allocate until elements are pushed onto it.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::vec::Vec;
+    ///
+    /// let vec = Vec::new();
+    /// // allocates when element is pushed
+    /// vec.push(5);
+    /// ```
     pub fn new() -> Self {
         Self {
             buf: RawVec::new(),
@@ -75,6 +85,18 @@ impl<T> Vec<T> {
     ///
     /// It is important to note that although the returned vector has the
     /// *capacity* specified, the vector will have a zero *length*.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::vec::Vec;
+    ///
+    /// let vec = Vec::with_capacity(2);
+    /// // does not allocate
+    /// vec.push(5);
+    /// // does not re-allocate
+    /// vec.push(10);
+    /// ```
     pub fn with_capacity(capacity: u64) -> Self {
         Self {
             buf: RawVec::with_capacity(capacity),
@@ -83,6 +105,17 @@ impl<T> Vec<T> {
     }
 
     /// Appends an element to the back of a collection.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::vec::Vec;
+    ///
+    /// let vec = Vec::new();
+    /// vec.push(5);
+    /// let last_element = vec.pop().unwrap();
+    /// assert(last_element == 5);
+    /// ```
     pub fn push(ref mut self, value: T) {
         // If there is insufficient capacity, grow the buffer.
         if self.len == self.buf.capacity() {
@@ -101,6 +134,16 @@ impl<T> Vec<T> {
     }
 
     /// Gets the capacity of the allocation.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::vec::Vec;
+    ///
+    /// let vec = Vec::with_capacity(5);
+    /// let cap = vec.capacity();
+    /// assert(cap == 5);
+    /// ```
     pub fn capacity(self) -> u64 {
         self.buf.cap
     }
@@ -109,12 +152,38 @@ impl<T> Vec<T> {
     ///
     /// Note that this method has no effect on the allocated capacity
     /// of the vector.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::vec::Vec;
+    ///
+    /// let vec = Vec::new();
+    /// vec.push(5);
+    /// vec.clear()
+    /// assert(vec.is_empty());
+    /// ```
     pub fn clear(ref mut self) {
         self.len = 0;
     }
 
     /// Returns a vector element at `index`, or None if `index` is out of
     /// bounds.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::vec::Vec;
+    ///
+    /// let vec = Vec::new();
+    /// vec.push(5);
+    /// vec.push(10);
+    /// vec.push(15);
+    /// let item = vec.get(1).unwrap();
+    /// assert(item == 10);
+    /// let res = vec.get(10);
+    /// assert(res == Option::None); // index out of bounds
+    /// ```
     pub fn get(self, index: u64) -> Option<T> {
         // First check that index is within bounds.
         if self.len <= index {
@@ -130,18 +199,62 @@ impl<T> Vec<T> {
 
     /// Returns the number of elements in the vector, also referred to
     /// as its 'length'.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::vec::Vec;
+    ///
+    /// let vec = Vec::new();
+    /// vec.push(5);
+    /// assert(vec.len() == 1);
+    /// vec.push(10);
+    /// assert(vec.len() == 2);
+    /// ```
     pub fn len(self) -> u64 {
         self.len
     }
 
     /// Returns `true` if the vector contains no elements.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::vec::Vec;
+    ///
+    /// let vec = Vec::new();
+    /// assert(vec.is_empty());
+    /// vec.push(5);
+    /// assert(!vec.is_empty());
+    /// vec.clear()
+    /// assert(vec.is_empty());
+    /// ```
     pub fn is_empty(self) -> bool {
         self.len == 0
     }
 
     /// Removes and returns the element at position `index` within the vector,
     /// shifting all elements after it to the left.
-    /// Panics if `index >= self.len`
+    /// 
+    /// ### Reverts
+    ///
+    /// * If `index >= self.len`
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::vec::Vec;
+    ///
+    /// let vec = Vec::new();
+    /// vec.push(5);
+    /// vec.push(10);
+    /// vec.push(15);
+    /// let item = vec.remove(1);
+    /// assert(item == 10);
+    /// assert(vec.get(0) == Option::Some(5));
+    /// assert(vec.get(1) == Option::Some(15));
+    /// assert(vec.get(2) == Option::None);
+    /// ```
     pub fn remove(ref mut self, index: u64) -> T {
         assert(index < self.len);
 
@@ -167,6 +280,22 @@ impl<T> Vec<T> {
     /// Inserts an element at position `index` within the vector, shifting all
     /// elements after it to the right.
     /// Panics if `index > len`.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::vec::Vec;
+    ///
+    /// let vec = Vec::new();
+    /// vec.push(5);
+    /// vec.push(10);
+    ///
+    /// vec.insert(1, 15);
+    ///
+    /// assert(vec.get(0).unwrap() == 5);
+    /// assert(vec.get(0).unwrap() == 15);
+    /// assert(vec.get(0).unwrap() == 10);
+    /// ```
     pub fn insert(ref mut self, index: u64, element: T) {
         assert(index <= self.len);
 
@@ -197,6 +326,22 @@ impl<T> Vec<T> {
 
     /// Removes the last element from a vector and returns it, or [`None`] if it
     /// is empty.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::vec::Vec;
+    ///
+    /// let vec = Vec::new();
+    ///
+    /// let res = vec.pop();
+    /// assert(res == Option::None);
+    ///
+    /// vec.push(5);
+    /// let res = vec.pop();
+    /// assert(res == Option::Some(5));
+    /// assert(vec.is_empty());
+    /// ```
     fn pop(ref mut self) -> Option<T> {
         if self.len == 0 {
             return Option::None;
@@ -207,14 +352,29 @@ impl<T> Vec<T> {
 
     /// Swaps two elements.
     ///
-    /// # Arguments
+    /// ### Arguments
     ///
     /// * element1_index - The index of the first element
     /// * element2_index - The index of the second element
     ///
-    /// # Reverts
+    /// ### Reverts
     ///
-    /// Reverts if `element1_index` or `element2_index` is greater than or equal to the length of vector.
+    /// * If `element1_index` or `element2_index` is greater than or equal to the length of vector.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::vec::Vec;
+    ///
+    /// let vec = Vec::new();
+    /// vec.push(5);
+    /// vec.push(10);
+    ///
+    /// vec.swap(0, 1);
+    ///
+    /// assert(vec.get(0).unwrap() == 10);
+    /// assert(vec.get(1).unwrap() == 5);
+    /// ```
     pub fn swap(ref mut self, element1_index: u64, element2_index: u64) {
         assert(element1_index < self.len);
         assert(element2_index < self.len);
@@ -233,14 +393,29 @@ impl<T> Vec<T> {
 
     /// Updates an element at position `index` with a new element `value`
     ///
-    /// # Arguments
+    /// ### Arguments
     ///
     /// * index - The index of the element to be set
     /// * value - The value of the element to be set
     ///
-    /// # Reverts
+    /// ### Reverts
     ///
-    /// Reverts if `index` is greater than or equal to the length of vector.
+    /// * If `index` is greater than or equal to the length of vector.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::vec::Vec;
+    ///
+    /// let vec = Vec::new();
+    /// vec.push(5);
+    /// vec.push(10);
+    ///
+    /// vec.set(0, 15);
+    ///
+    /// assert(vec.get(0).unwrap() == 15);
+    /// assert(vec.get(1).unwrap() == 10);
+    /// ```
     pub fn set(ref mut self, index: u64, value: T) {
         assert(index < self.len);
 

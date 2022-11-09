@@ -6,15 +6,15 @@ use ::revert::revert;
 /// To check for conditions that may not be `true`, use `std::revert::require` instead.
 /// See: https://en.wikipedia.org/wiki/Assertion_(software_development)#Comparison_with_error_handling
 ///
-/// # Arguments
+/// ### Arguments
 ///
 /// * `condition` - The condition which will be asserted to be true
 ///
-/// # Reverts
+/// ### Reverts
 ///
 /// Reverts when `condition` is false
 ///
-/// # Examples
+/// ### Examples
 /// 
 /// ```sway
 /// fn foo(a: u64, b: u64) {

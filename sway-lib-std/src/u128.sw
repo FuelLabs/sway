@@ -96,7 +96,7 @@ impl u64 {
 impl U128 {
     /// Initializes a new, zeroed `U128`.
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::u128::U128;
@@ -116,7 +116,7 @@ impl U128 {
     /// Safely downcast to `u64` without loss of precision.
     /// Returns Err if the number > u64::max()
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::u128::{U128, U128Error};
@@ -141,7 +141,7 @@ impl U128 {
     /// The smallest value that can be represented by this integer type.
     /// Initializes a new, zeroed `U128`.
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::u128::U128;
@@ -161,7 +161,7 @@ impl U128 {
     /// The largest value that can be represented by this type,
     /// 2<sup>128</sup> - 1.
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::u128::U128;
@@ -180,7 +180,7 @@ impl U128 {
 
     /// The size of this type in bits.
     ///
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```sway
     /// use std::u128::U128;
