@@ -8,7 +8,7 @@ use ::revert::revert;
 ///
 /// ### Arguments
 ///
-/// * `condition` - The condition which will be asserted to be true
+/// * `condition` - The condition which will be asserted to be `true`
 ///
 /// ### Reverts
 ///
