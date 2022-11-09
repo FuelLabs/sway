@@ -335,7 +335,7 @@ impl<T> Vec<T> {
     /// let vec = Vec::new();
     ///
     /// let res = vec.pop();
-    /// assert(res == Option::None);
+    /// assert(res.is_none());
     ///
     /// vec.push(5);
     /// let res = vec.pop();
