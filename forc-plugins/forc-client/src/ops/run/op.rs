@@ -17,13 +17,17 @@ use super::cmd::RunCommand;
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
 
+pub struct RanScript {
+    pub receipts: Vec<fuel_tx::Receipt>,
+}
+
 /// Builds and runs script(s). If given path corresponds to a workspace, all runnable members will
 /// be built and deployed.
 ///
 /// Upon success, returns the receipts of each script in the order they are executed.
 ///
 /// When running a single script, only that script's receipts are returned.
-pub async fn run(command: RunCommand) -> Result<Vec<Vec<fuel_tx::Receipt>>> {
+pub async fn run(command: RunCommand) -> Result<Vec<RanScript>> {
     let mut receipts = Vec::new();
     let curr_dir = if let Some(path) = &command.path {
         PathBuf::from(path)
@@ -49,7 +53,7 @@ pub async fn run_pkg(
     command: &RunCommand,
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
-) -> Result<Vec<fuel_tx::Receipt>> {
+) -> Result<RanScript> {
     let input_data = command.data.as_deref().unwrap_or("");
     let data = format_hex_data(input_data);
     let script_data = hex::decode(data).expect("Invalid hex");
@@ -60,13 +64,16 @@ pub async fn run_pkg(
         .or_else(|| manifest.network.as_ref().map(|nw| &nw.url[..]))
         .unwrap_or(NODE_URL);
     let client = FuelClient::new(node_url)?;
-    let contract_ids: Vec<ContractId> = command
+    let contract_ids = command
         .contract
-        .clone()
-        .unwrap_or_default()
-        .iter()
-        .map(|contract_id| ContractId::from_str(contract_id).unwrap())
-        .collect();
+        .as_ref()
+        .into_iter()
+        .flat_map(|contracts| contracts.iter())
+        .map(|contract| {
+            ContractId::from_str(contract)
+                .map_err(|e| anyhow!("Failed to parse contract id: {}", e))
+        })
+        .collect::<Result<Vec<ContractId>>>()?;
     let tx = TransactionBuilder::script(compiled.bytecode.clone(), script_data)
         .params(TxParameters::new(command.gas_limit, command.gas_price))
         .add_contracts(contract_ids)
@@ -74,9 +81,11 @@ pub async fn run_pkg(
         .await?;
     if command.dry_run {
         info!("{:?}", tx);
-        Ok(vec![])
+        Ok(RanScript { receipts: vec![] })
     } else {
-        try_send_tx(node_url, &tx.into(), command.pretty_print, command.simulate).await
+        let receipts =
+            try_send_tx(node_url, &tx.into(), command.pretty_print, command.simulate).await?;
+        Ok(RanScript { receipts })
     }
 }
 

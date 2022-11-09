@@ -429,6 +429,26 @@ impl BuiltPackage {
         Ok(())
     }
 }
+
+impl Built {
+    /// Returns a map between package names and their corresponding `BuiltPackage` given `Built`
+    /// and member `MemberManifestFiles`.
+    pub fn into_members(
+        self,
+        member_manifests: &MemberManifestFiles,
+    ) -> Result<HashMap<String, BuiltPackage>> {
+        match self {
+            Built::Package(built_pkg) => {
+                let pkg_name = member_manifests
+                    .keys()
+                    .next()
+                    .expect("built package is missing");
+                Ok(std::iter::once((pkg_name.clone(), *built_pkg)).collect())
+            }
+            Built::Workspace(built_workspace) => Ok(built_workspace),
+        }
+    }
+}
 const DEFAULT_REMOTE_NAME: &str = "origin";
 
 /// Error returned upon failed parsing of `SourcePinned::from_str`.

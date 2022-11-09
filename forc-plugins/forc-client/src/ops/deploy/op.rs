@@ -19,13 +19,17 @@ use crate::ops::tx_util::{TransactionBuilderExt, TxParameters, TX_SUBMIT_TIMEOUT
 
 use super::cmd::DeployCommand;
 
+pub struct DeployedContract {
+    pub id: fuel_tx::ContractId,
+}
+
 /// Builds and deploys contract(s). If the given path corresponds to a workspace, all deployable members
 /// will be built and deployed.
 ///
 /// Upon success, returns the ID of each deployed contract in order of deployment.
 ///
 /// When deploying a single contract, only that contract's ID is returned.
-pub async fn deploy(command: DeployCommand) -> Result<Vec<fuel_tx::ContractId>> {
+pub async fn deploy(command: DeployCommand) -> Result<Vec<DeployedContract>> {
     let mut contract_ids = Vec::new();
     let curr_dir = if let Some(ref path) = command.path {
         PathBuf::from(path)
@@ -51,7 +55,7 @@ pub async fn deploy_pkg(
     command: &DeployCommand,
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
-) -> Result<fuel_tx::ContractId> {
+) -> Result<DeployedContract> {
     let node_url = match &manifest.network {
         Some(network) => &network.url,
         _ => DEFAULT_NODE_URL,
@@ -100,7 +104,7 @@ pub async fn deploy_pkg(
     });
 
     // submit contract deployment with a timeout
-    tokio::time::timeout(
+    let contract_id = tokio::time::timeout(
         Duration::from_millis(TX_SUBMIT_TIMEOUT_MS),
         deployment_request,
     )
@@ -110,7 +114,8 @@ pub async fn deploy_pkg(
             "Timed out waiting for contract {} to deploy. The transaction may have been dropped.",
             &contract_id
         )
-    })?
+    })??;
+    Ok(DeployedContract { id: contract_id })
 }
 
 fn build_opts_from_cmd(cmd: &DeployCommand) -> pkg::BuildOpts {
