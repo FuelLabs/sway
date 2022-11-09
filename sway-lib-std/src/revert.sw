@@ -48,7 +48,7 @@ pub fn revert(code: u64) {
 /// 
 /// ```sway
 /// fn foo(a: u64, b: u64) {
-///     require(a == b, "A was not equal to B");
+///     require(a == b, "a was not equal to b");
 ///     // If the condition was true, code execution will continue
 ///     log("The require function did not revert");
 /// }
