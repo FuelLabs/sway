@@ -63,7 +63,7 @@ pub fn store<T>(key: b256, value: T) {
 /// duration of the program.
 ///
 /// If no value was previously stored using the key, a byte representation of all zeroes is returned
-/// Read more [here](https://fuellabs.github.io/sway/v0.30.1/common-collections/storage_map.html#accessing-values-in-a-storage-map)
+/// Read more [here](https://fuellabs.github.io/sway/master/common-collections/storage_map.html#accessing-values-in-a-storage-map)
 ///
 /// ### Arguments
 ///
