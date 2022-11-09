@@ -145,7 +145,7 @@ pub fn burn(amount: u64) {
 /// ### Arguments
 ///
 /// * `amount` - The amount of tokens to transfer
-/// * `asset_id` - The ContractId of the token to transfer
+/// * `asset_id` - The `ContractId` of the token to transfer
 /// * `to` - The Identity of the recipient 
 ///
 /// ### Reverts
