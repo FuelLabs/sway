@@ -431,8 +431,7 @@ impl BuiltPackage {
 }
 
 impl Built {
-    /// Returns a map between package names and their corresponding `BuiltPackage` given `Built`
-    /// and member `MemberManifestFiles`.
+    /// Returns a map between package names and their corresponding `BuiltPackage`.
     pub fn into_members(
         self,
         member_manifests: &MemberManifestFiles,
