@@ -14,7 +14,7 @@ dependencies = ['std']
 
 [[package]]
 name = 'token_ops_test'
-source = 'root'
+source = 'member'
 dependencies = [
     'std',
     'test_fuel_coin_abi',

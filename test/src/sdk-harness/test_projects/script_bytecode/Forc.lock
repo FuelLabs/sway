@@ -4,7 +4,7 @@ source = 'path+from-root-5B109F800B9B533C'
 
 [[package]]
 name = 'script_bytecode'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

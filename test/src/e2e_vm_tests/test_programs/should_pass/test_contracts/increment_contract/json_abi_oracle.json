@@ -1,6 +1,15 @@
 {
   "functions": [
     {
+      "inputs": [],
+      "name": "get",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    },
+    {
       "inputs": [
         {
           "name": "increment_by",
@@ -9,15 +18,6 @@
         }
       ],
       "name": "increment",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
-    },
-    {
-      "inputs": [],
-      "name": "get",
       "output": {
         "name": "",
         "type": 0,

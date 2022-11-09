@@ -9,7 +9,7 @@ dependencies = ['std']
 
 [[package]]
 name = 'reentrancy_attacker_contract'
-source = 'root'
+source = 'member'
 dependencies = [
     'reentrancy_attacker_abi',
     'reentrancy_target_abi',

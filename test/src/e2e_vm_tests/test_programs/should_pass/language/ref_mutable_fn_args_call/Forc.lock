@@ -4,5 +4,5 @@ source = 'path+from-root-1823A1D461605CE8'
 
 [[package]]
 name = 'ref_mutable_fn_args_struct_assign'
-source = 'root'
+source = 'member'
 dependencies = ['core']

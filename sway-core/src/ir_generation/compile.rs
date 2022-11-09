@@ -183,7 +183,7 @@ fn compile_declarations(
             | ty::TyDeclaration::AbiDeclaration(_)
             | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
             | ty::TyDeclaration::StorageDeclaration(_)
-            | ty::TyDeclaration::ErrorRecovery => (),
+            | ty::TyDeclaration::ErrorRecovery(_) => (),
         }
     }
     Ok(())

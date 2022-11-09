@@ -4,7 +4,7 @@ source = 'path+from-root-1C4B691D300E54B2'
 
 [[package]]
 name = 'method_type_args'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

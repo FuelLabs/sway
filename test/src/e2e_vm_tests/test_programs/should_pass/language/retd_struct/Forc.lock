@@ -4,5 +4,5 @@ source = 'path+from-root-615AD0AE63423614'
 
 [[package]]
 name = 'retd_struct'
-source = 'root'
+source = 'member'
 dependencies = ['core']

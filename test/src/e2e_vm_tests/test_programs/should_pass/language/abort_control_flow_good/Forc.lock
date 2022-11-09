@@ -1,6 +1,6 @@
 [[package]]
 name = 'abort_control_flow_good'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

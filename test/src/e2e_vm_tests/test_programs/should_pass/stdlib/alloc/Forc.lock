@@ -9,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'std_alloc_test'
-source = 'root'
+source = 'member'
 dependencies = ['std']

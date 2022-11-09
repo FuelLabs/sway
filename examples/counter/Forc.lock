@@ -4,7 +4,7 @@ source = 'path+from-root-D8BC155605882939'
 
 [[package]]
 name = 'counter'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

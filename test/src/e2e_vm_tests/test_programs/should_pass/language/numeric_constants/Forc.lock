@@ -4,7 +4,7 @@ source = 'path+from-root-1D28A47FA12C061E'
 
 [[package]]
 name = 'numeric_constants'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

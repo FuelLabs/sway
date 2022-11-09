@@ -4,5 +4,5 @@ source = 'path+from-root-7AD6FC8AD1F79D10'
 
 [[package]]
 name = 'import_method_from_other_file'
-source = 'root'
+source = 'member'
 dependencies = ['core']

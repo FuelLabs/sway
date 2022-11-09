@@ -4,5 +4,5 @@ source = 'path+from-root-C5124BA2E9BCE152'
 
 [[package]]
 name = 'valid_impurity'
-source = 'root'
+source = 'member'
 dependencies = ['core']

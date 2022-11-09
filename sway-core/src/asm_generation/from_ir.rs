@@ -167,6 +167,7 @@ pub enum StateAccessType {
 pub(crate) fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
     match ty {
         Type::Unit | Type::Bool | Type::Uint(_) | Type::Pointer(_) => 8,
+        Type::Slice => 16,
         Type::B256 => 32,
         Type::String(n) => size_bytes_round_up_to_word_alignment!(n),
         Type::Array(aggregate) => {

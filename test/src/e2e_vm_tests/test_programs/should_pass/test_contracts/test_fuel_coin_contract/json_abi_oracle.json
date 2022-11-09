@@ -3,21 +3,6 @@
     {
       "inputs": [
         {
-          "name": "mint_amount",
-          "type": 3,
-          "typeArguments": null
-        }
-      ],
-      "name": "mint",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
-    },
-    {
-      "inputs": [
-        {
           "name": "burn_amount",
           "type": 3,
           "typeArguments": null
@@ -49,6 +34,21 @@
         }
       ],
       "name": "force_transfer",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    },
+    {
+      "inputs": [
+        {
+          "name": "mint_amount",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "name": "mint",
       "output": {
         "name": "",
         "type": 0,
