@@ -339,7 +339,7 @@ impl<T> Vec<T> {
     ///
     /// vec.push(5);
     /// let res = vec.pop();
-    /// assert(res == Option::Some(5));
+    /// assert(res.unwrap() == 5);
     /// assert(vec.is_empty());
     /// ```
     fn pop(ref mut self) -> Option<T> {
