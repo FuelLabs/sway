@@ -68,7 +68,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// let vec = Vec::new();
-    /// // allocates when element is pushed
+    /// // allocates when an element is pushed
     /// vec.push(5);
     /// ```
     pub fn new() -> Self {
