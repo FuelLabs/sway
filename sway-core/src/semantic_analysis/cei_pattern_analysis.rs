@@ -367,8 +367,7 @@ fn analyze_expressions(
     accumulated_effects
 }
 
-// TODO: jumps are not processed at the moment, so the CEI analysis will work only
-// for simple linear assembly blocks, which arguably is the most important use case so far
+// No need to worry about jumps because they are not allowed in `asm` blocks.
 fn analyze_asm_block(
     asm_block: &Vec<AsmOp>,
     block_name: &Ident,
