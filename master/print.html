@@ -968,7 +968,7 @@ fn main() -&gt; bool {
 }
 </code></pre>
 <h2 id="debugging-predicates"><a class="header" href="#debugging-predicates">Debugging Predicates</a></h2>
-<p>Because they don't have any side effects (they are <em>pure</em>), predicates cannot create receipts. Therefore, they cannot have logging or create a stack backtrace. This means that there is no naive way to debug them aside from using a single-stepping debugger (which is a <a href="https://github.com/FuelLabs/fuel-debugger/pull/1">work-in-progress</a>).</p>
+<p>Because they don't have any side effects (they are <em>pure</em>), predicates cannot create receipts. Therefore, they cannot have logging or create a stack backtrace. This means that there is no native way to debug them aside from using a single-stepping debugger (which is a <a href="https://github.com/FuelLabs/fuel-debugger/pull/1">work-in-progress</a>).</p>
 <p>As a workaround, the predicate can be written, tested, and debugged first as a <code>script</code>, and then changed back into a <code>predicate</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="sway-language-basics"><a class="header" href="#sway-language-basics">Sway Language basics</a></h1>
 <p>Sway is a programming language designed for the FuelVM. It is a statically typed, compiled language with type inference and traits. Sway aims to make smart contract development safer and more performant through the use of strong static analysis and compiler feedback.</p>
