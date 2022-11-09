@@ -448,15 +448,27 @@ fn inline_instruction(
                 .ins(context)
                 .branch(*post_block, vec![map_value(val)]),
             Instruction::Revert(val) => new_block.ins(context).revert(map_value(val)),
-            Instruction::StateLoadQuadWord { load_val, key } => new_block
-                .ins(context)
-                .state_load_quad_word(map_value(load_val), map_value(key)),
+            Instruction::StateLoadQuadWord {
+                load_val,
+                key,
+                number_of_slots,
+            } => new_block.ins(context).state_load_quad_word(
+                map_value(load_val),
+                map_value(key),
+                map_value(number_of_slots),
+            ),
             Instruction::StateLoadWord(key) => {
                 new_block.ins(context).state_load_word(map_value(key))
             }
-            Instruction::StateStoreQuadWord { stored_val, key } => new_block
-                .ins(context)
-                .state_store_quad_word(map_value(stored_val), map_value(key)),
+            Instruction::StateStoreQuadWord {
+                stored_val,
+                key,
+                number_of_slots,
+            } => new_block.ins(context).state_store_quad_word(
+                map_value(stored_val),
+                map_value(key),
+                map_value(number_of_slots),
+            ),
             Instruction::StateStoreWord { stored_val, key } => new_block
                 .ins(context)
                 .state_store_word(map_value(stored_val), map_value(key)),

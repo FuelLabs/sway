@@ -226,11 +226,16 @@ impl<'ir> AsmBuilder<'ir> {
                     }
                 }
                 Instruction::Revert(revert_val) => self.compile_revert(instr_val, revert_val),
-                Instruction::StateLoadQuadWord { load_val, key } => check!(
+                Instruction::StateLoadQuadWord {
+                    load_val,
+                    key,
+                    number_of_slots,
+                } => check!(
                     self.compile_state_access_quad_word(
                         instr_val,
                         load_val,
                         key,
+                        number_of_slots,
                         StateAccessType::Read
                     ),
                     return err(warnings, errors),
@@ -243,11 +248,16 @@ impl<'ir> AsmBuilder<'ir> {
                     warnings,
                     errors
                 ),
-                Instruction::StateStoreQuadWord { stored_val, key } => check!(
+                Instruction::StateStoreQuadWord {
+                    stored_val,
+                    key,
+                    number_of_slots,
+                } => check!(
                     self.compile_state_access_quad_word(
                         instr_val,
                         stored_val,
                         key,
+                        number_of_slots,
                         StateAccessType::Write
                     ),
                     return err(warnings, errors),
@@ -1428,6 +1438,7 @@ impl<'ir> AsmBuilder<'ir> {
         instr_val: &Value,
         val: &Value,
         key: &Value,
+        number_of_slots: &Value,
         access_type: StateAccessType,
     ) -> CompileResult<()> {
         // Make sure that both val and key are pointers to B256.
@@ -1490,24 +1501,29 @@ impl<'ir> AsmBuilder<'ir> {
         // capture the status of whether the slot was set before calling this instruction
         let was_slot_set_reg = self.reg_seqr.next();
 
+        // Number of slots to be read or written
+        let number_of_slots_reg = self.value_to_register(number_of_slots);
+
         self.cur_bytecode.push(Op {
             opcode: Either::Left(match access_type {
                 StateAccessType::Read => VirtualOp::SRWQ(
                     val_reg,
-                    was_slot_set_reg,
+                    was_slot_set_reg.clone(),
                     key_reg,
-                    ConstantRegister::One.into(),
+                    number_of_slots_reg,
                 ),
                 StateAccessType::Write => VirtualOp::SWWQ(
                     key_reg,
-                    was_slot_set_reg,
+                    was_slot_set_reg.clone(),
                     val_reg,
-                    ConstantRegister::One.into(),
+                    number_of_slots_reg,
                 ),
             }),
             comment: "quad word state access".into(),
             owning_span,
         });
+
+        self.reg_map.insert(*instr_val, was_slot_set_reg);
         ok((), Vec::new(), Vec::new())
     }
 
@@ -1600,7 +1616,11 @@ impl<'ir> AsmBuilder<'ir> {
                 let key_reg = self.offset_reg(&base_reg, key_offset_in_bytes, owning_span.clone());
 
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::SWW(key_reg, was_slot_set_reg, store_reg)),
+                    opcode: Either::Left(VirtualOp::SWW(
+                        key_reg,
+                        was_slot_set_reg.clone(),
+                        store_reg,
+                    )),
                     comment: "single word state access".into(),
                     owning_span,
                 });
@@ -1608,6 +1628,7 @@ impl<'ir> AsmBuilder<'ir> {
             _ => unreachable!("Unexpected storage locations for key and store_val"),
         }
 
+        self.reg_map.insert(*instr_val, was_slot_set_reg);
         ok((), Vec::new(), Vec::new())
     }
 

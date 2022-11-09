@@ -10,34 +10,21 @@ use ::result::Result;
 #[storage(write)]
 pub fn store<T>(key: b256, value: T) {
     if !__is_reference_type::<T>() {
-        // If copy type, then it's a single word
+        // If `T` is a copy type, then `value` fits in a single word.
         let value = asm(v: value) { v: u64 };
         __state_store_word(key, value);
     } else {
-        // If reference type, then it can be more than a word. Loop over every 32
-        // bytes and store sequentially.
-        let mut size_left = __size_of::<T>();
-        let mut local_key = key;
+        // If `T` is a reference type, then `value` can be larger than a word, so we need to use
+        // `__state_store_quad`.
 
-        // Cast the pointer to `value` to a u64. This lets us increment
-        // this pointer later on to iterate over 32 byte chunks of `value`.
+        // Get the number of storage slots needed.
+        let number_of_slots = (__size_of::<T>() + 31) >> 5;
+
+        // Cast the pointer to `value` to a `raw_ptr`.
         let mut ptr_to_value = asm(ptr: value) { ptr: raw_ptr };
 
-        while size_left > 32 {
-            // Store a 4 words (32 byte) at a time
-            __state_store_quad(local_key, ptr_to_value);
-
-            // Move by 32 bytes
-            ptr_to_value = ptr_to_value.add::<b256>(1);
-            size_left -= 32;
-
-            // Generate a new key for each 32 byte chunk TODO Should eventually
-            // replace this with `local_key = local_key + 1
-            local_key = sha256(local_key);
-        }
-
-        // Store the leftover bytes using a single quad store
-        __state_store_quad(local_key, ptr_to_value);
+        // Store `number_of_slots * 32` bytes starting at storage slot `key`.
+        __state_store_quad(key, ptr_to_value, number_of_slots);
     };
 }
 
@@ -48,37 +35,26 @@ pub fn store<T>(key: b256, value: T) {
 #[storage(read)]
 pub fn get<T>(key: b256) -> T {
     if !__is_reference_type::<T>() {
-        // If copy type, then it's a single word
+        // If `T` is a copy type, then we can use `__state_load_word` to read from storage. We can 
+        // then cast the result into `T`.
         let loaded_word = __state_load_word(key);
         asm(l: loaded_word) { l: T }
     } else {
-        // If reference type, then it can be more than a word. Loop over every 32
-        // bytes and read sequentially.  NOTE: we are leaking this value on the heap.
-        let mut size_left = __size_of::<T>();
-        let mut local_key = key;
+        // If `T` is a reference type, then we need to use `__state_load_quad` because the result
+        // might be larger than a word.
+        // NOTE: we are leaking this value on the heap.
+        
+        // Get the number of storage slots needed.
+        let number_of_slots = (__size_of::<T>() + 31) >> 5;
 
-        // Allocate a buffer for the result.  It needs to be a multiple of 32 bytes so we can make
-        // 'quad' storage reads without overflowing.
-        let result_ptr = alloc::<u64>(((size_left + 31) & 0xffffffe0) / 8);
+        // Allocate a buffer for the result. It's size needs to be a multiple of 32 bytes so we can 
+        // make the 'quad' storage instruction read without overflowing.
+        let result_ptr = alloc::<u64>(number_of_slots * 32);
 
-        let mut current_pointer = result_ptr;
-        while size_left > 32 {
-            // Read 4 words (32 bytes) at a time
-            __state_load_quad(local_key, current_pointer);
+        // Read `number_of_slots * 32` bytes starting at storage slot `key`.
+        __state_load_quad(key, result_ptr, number_of_slots);
 
-            // Move by 32 bytes
-            size_left -= 32;
-            current_pointer = current_pointer.add::<b256>(1);
-
-            // Generate a new key for each 32 byte chunk TODO Should eventually
-            // replace this with `local_key = local_key + 1
-            local_key = sha256(local_key);
-        }
-
-        // Read the leftover bytes using a single `srwq`
-        __state_load_quad(local_key, current_pointer);
-
-        // Return the final result as type T
+        // Cast the final result to `T` 
         asm(res: result_ptr) { res: T }
     }
 }

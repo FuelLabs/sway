@@ -675,13 +675,19 @@ fn instruction_to_doc<'a>(
                         .append(md_namer.md_idx_to_doc(context, metadata)),
                 ))
             }
-            Instruction::StateLoadQuadWord { load_val, key } => Doc::line(
-                Doc::text(format!(
-                    "state_load_quad_word ptr {}, key ptr {}",
-                    namer.name(context, load_val),
-                    namer.name(context, key),
-                ))
-                .append(md_namer.md_idx_to_doc(context, metadata)),
+            Instruction::StateLoadQuadWord {
+                load_val,
+                key,
+                number_of_slots,
+            } => Doc::line(
+                maybe_constant_to_doc(context, md_namer, namer, number_of_slots)
+                    .append(Doc::text(format!(
+                        "state_load_quad_word ptr {}, key ptr {}, {}",
+                        namer.name(context, load_val),
+                        namer.name(context, key),
+                        namer.name(context, number_of_slots),
+                    )))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
             ),
             Instruction::StateLoadWord(key) => Doc::line(
                 Doc::text(format!(
@@ -691,13 +697,18 @@ fn instruction_to_doc<'a>(
                 ))
                 .append(md_namer.md_idx_to_doc(context, metadata)),
             ),
-            Instruction::StateStoreQuadWord { stored_val, key } => Doc::line(
-                Doc::text(format!(
-                    "state_store_quad_word ptr {}, key ptr {}",
-                    namer.name(context, stored_val),
-                    namer.name(context, key),
-                ))
-                .append(md_namer.md_idx_to_doc(context, metadata)),
+            Instruction::StateStoreQuadWord {
+                stored_val,
+                key,
+                number_of_slots,
+            } => Doc::line(
+                maybe_constant_to_doc(context, md_namer, namer, number_of_slots)
+                    .append(Doc::text(format!(
+                        "state_store_quad_word ptr {}, key ptr {}",
+                        namer.name(context, stored_val),
+                        namer.name(context, key),
+                    )))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
             ),
             Instruction::StateStoreWord { stored_val, key } => {
                 maybe_constant_to_doc(context, md_namer, namer, stored_val).append(Doc::line(

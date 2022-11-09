@@ -428,7 +428,7 @@ impl ty::TyIntrinsicFunctionKind {
                 let return_type = insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour));
                 (intrinsic_function, return_type)
             }
-            Intrinsic::StateStoreWord | Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
+            Intrinsic::StateStoreWord => {
                 if arguments.len() != 2 {
                     errors.push(CompileError::IntrinsicIncorrectNumArgs {
                         name: kind.to_string(),
@@ -481,6 +481,9 @@ impl ty::TyIntrinsicFunctionKind {
                     warnings,
                     errors
                 );
+                let ctx = ctx.with_help_text("").with_type_annotation(insert_type(
+                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                ));
                 let type_argument = type_arguments.get(0).map(|targ| {
                     let mut ctx = ctx
                         .with_help_text("")
@@ -517,7 +520,108 @@ impl ty::TyIntrinsicFunctionKind {
                     type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
                     span,
                 };
-                let return_type = insert_type(TypeInfo::Tuple(vec![]));
+                let return_type = insert_type(TypeInfo::Boolean);
+                (intrinsic_function, return_type)
+            }
+            Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
+                if arguments.len() != 3 {
+                    errors.push(CompileError::IntrinsicIncorrectNumArgs {
+                        name: kind.to_string(),
+                        expected: 3,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                if type_arguments.len() > 1 {
+                    errors.push(CompileError::IntrinsicIncorrectNumTArgs {
+                        name: kind.to_string(),
+                        expected: 1,
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                let mut ctx = ctx
+                    .with_help_text("")
+                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+                let key_exp = check!(
+                    ty::TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let key_ty = check!(
+                    CompileResult::from(
+                        to_typeinfo(key_exp.return_type, &span).map_err(CompileError::from)
+                    ),
+                    TypeInfo::ErrorRecovery,
+                    warnings,
+                    errors
+                );
+                if key_ty != TypeInfo::B256 {
+                    errors.push(CompileError::IntrinsicUnsupportedArgType {
+                        name: kind.to_string(),
+                        span,
+                        hint: Hint::new(
+                            "Argument type must be B256, a key into the state storage".to_string(),
+                        ),
+                    });
+                    return err(warnings, errors);
+                }
+                let mut ctx = ctx
+                    .with_help_text("")
+                    .with_type_annotation(insert_type(TypeInfo::Unknown));
+                let val_exp = check!(
+                    ty::TyExpression::type_check(ctx.by_ref(), arguments[1].clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let mut ctx = ctx.with_help_text("").with_type_annotation(insert_type(
+                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                ));
+                let number_of_slots_exp = check!(
+                    ty::TyExpression::type_check(ctx.by_ref(), arguments[2].clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let type_argument = type_arguments.get(0).map(|targ| {
+                    let mut ctx = ctx
+                        .with_help_text("")
+                        .with_type_annotation(insert_type(TypeInfo::Unknown));
+                    let initial_type_info = check!(
+                        CompileResult::from(
+                            to_typeinfo(targ.type_id, &targ.span).map_err(CompileError::from)
+                        ),
+                        TypeInfo::ErrorRecovery,
+                        warnings,
+                        errors
+                    );
+                    let initial_type_id = insert_type(initial_type_info);
+                    let type_id = check!(
+                        ctx.resolve_type_with_self(
+                            initial_type_id,
+                            &targ.span,
+                            EnforceTypeArguments::Yes,
+                            None
+                        ),
+                        insert_type(TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors,
+                    );
+                    TypeArgument {
+                        type_id,
+                        initial_type_id,
+                        span: span.clone(),
+                    }
+                });
+                let intrinsic_function = ty::TyIntrinsicFunctionKind {
+                    kind,
+                    arguments: vec![key_exp, val_exp, number_of_slots_exp],
+                    type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
+                    span,
+                };
+                let return_type = insert_type(TypeInfo::Boolean);
                 (intrinsic_function, return_type)
             }
             Intrinsic::Log => {

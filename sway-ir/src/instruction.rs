@@ -128,6 +128,7 @@ pub enum Instruction {
     StateLoadQuadWord {
         load_val: Value,
         key: Value,
+        number_of_slots: Value,
     },
     /// Read a single word from a storage slot.
     StateLoadWord(Value),
@@ -136,6 +137,7 @@ pub enum Instruction {
     StateStoreQuadWord {
         stored_val: Value,
         key: Value,
+        number_of_slots: Value,
     },
     /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
     /// Uint(64) value.
@@ -242,9 +244,9 @@ impl Instruction {
             Instruction::Revert(..) => None,
 
             Instruction::MemCopy { .. } => Some(Type::Unit),
-            Instruction::StateLoadQuadWord { .. } => Some(Type::Unit),
-            Instruction::StateStoreQuadWord { .. } => Some(Type::Unit),
-            Instruction::StateStoreWord { .. } => Some(Type::Unit),
+            Instruction::StateLoadQuadWord { .. } => Some(Type::Bool),
+            Instruction::StateStoreQuadWord { .. } => Some(Type::Bool),
+            Instruction::StateStoreWord { .. } => Some(Type::Bool),
             Instruction::Store { .. } => Some(Type::Unit),
 
             // No-op is also no-type.
@@ -365,9 +367,17 @@ impl Instruction {
             Instruction::ReadRegister(_) => vec![],
             Instruction::Ret(v, _) => vec![*v],
             Instruction::Revert(v) => vec![*v],
-            Instruction::StateLoadQuadWord { load_val, key } => vec![*load_val, *key],
+            Instruction::StateLoadQuadWord {
+                load_val,
+                key,
+                number_of_slots,
+            } => vec![*load_val, *key, *number_of_slots],
             Instruction::StateLoadWord(key) => vec![*key],
-            Instruction::StateStoreQuadWord { stored_val, key } => vec![*stored_val, *key],
+            Instruction::StateStoreQuadWord {
+                stored_val,
+                key,
+                number_of_slots,
+            } => vec![*stored_val, *key, *number_of_slots],
             Instruction::StateStoreWord { stored_val, key } => vec![*stored_val, *key],
             Instruction::Store {
                 dst_val,
@@ -471,16 +481,26 @@ impl Instruction {
             Instruction::ReadRegister { .. } => (),
             Instruction::Ret(ret_val, _) => replace(ret_val),
             Instruction::Revert(revert_val) => replace(revert_val),
-            Instruction::StateLoadQuadWord { load_val, key } => {
+            Instruction::StateLoadQuadWord {
+                load_val,
+                key,
+                number_of_slots,
+            } => {
                 replace(load_val);
                 replace(key);
+                replace(number_of_slots);
             }
             Instruction::StateLoadWord(key) => {
                 replace(key);
             }
-            Instruction::StateStoreQuadWord { stored_val, key } => {
+            Instruction::StateStoreQuadWord {
+                stored_val,
+                key,
+                number_of_slots,
+            } => {
                 replace(key);
                 replace(stored_val);
+                replace(number_of_slots);
             }
             Instruction::StateStoreWord { stored_val, key } => {
                 replace(key);
@@ -847,16 +867,40 @@ impl<'a> InstructionInserter<'a> {
         revert_val
     }
 
-    pub fn state_load_quad_word(self, load_val: Value, key: Value) -> Value {
-        make_instruction!(self, Instruction::StateLoadQuadWord { load_val, key })
+    pub fn state_load_quad_word(
+        self,
+        load_val: Value,
+        key: Value,
+        number_of_slots: Value,
+    ) -> Value {
+        make_instruction!(
+            self,
+            Instruction::StateLoadQuadWord {
+                load_val,
+                key,
+                number_of_slots
+            }
+        )
     }
 
     pub fn state_load_word(self, key: Value) -> Value {
         make_instruction!(self, Instruction::StateLoadWord(key))
     }
 
-    pub fn state_store_quad_word(self, stored_val: Value, key: Value) -> Value {
-        make_instruction!(self, Instruction::StateStoreQuadWord { stored_val, key })
+    pub fn state_store_quad_word(
+        self,
+        stored_val: Value,
+        key: Value,
+        number_of_slots: Value,
+    ) -> Value {
+        make_instruction!(
+            self,
+            Instruction::StateStoreQuadWord {
+                stored_val,
+                key,
+                number_of_slots
+            }
+        )
     }
 
     pub fn state_store_word(self, stored_val: Value, key: Value) -> Value {

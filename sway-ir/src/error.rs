@@ -49,6 +49,7 @@ pub enum IrError {
     VerifyBlockArgMalformed,
     VerifyPtrCastFromNonPointer,
     VerifyReturnRefTypeValue(String, String),
+    VerifyStateAccessNumOfSlots,
     VerifyStateKeyBadType,
     VerifyStateDestBadType(String),
     VerifyStoreMismatchedTypes,
@@ -273,6 +274,12 @@ impl fmt::Display for IrError {
                     f,
                     "Verification failed: Function {fn_str} must not return value with reference \
                     type of {ty_str}.",
+                )
+            }
+            IrError::VerifyStateAccessNumOfSlots => {
+                write!(
+                    f,
+                    "Verification failed: Number of slots for state access must be an integer."
                 )
             }
             IrError::VerifyStateKeyBadType => {
