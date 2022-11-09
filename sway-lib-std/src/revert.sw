@@ -38,7 +38,7 @@ pub fn revert(code: u64) {
 /// ### Arguments
 ///
 /// * `condition` - The condition upon which to decide whether to revert or not
-/// * `value` - The value which will be logged incase condition is false
+/// * `value` - The value which will be logged in case `condition` is `false`
 ///
 /// ### Reverts
 ///
