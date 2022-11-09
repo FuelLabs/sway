@@ -275,7 +275,7 @@ impl<V> StorageVec<V> {
     ///     let retrieved_value = storage.vec.get(0).unwrap();
     ///     assert(five == retrieved_value);
     ///     let none_value = storage.vec.get(1);
-    ///     assert(none_value == Option::None)
+    ///     assert(none_value.is_none())
     /// }
     /// ```
     #[storage(read)]
