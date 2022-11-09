@@ -12,7 +12,7 @@ use ::revert::revert;
 ///
 /// ### Reverts
 ///
-/// Reverts when `condition` is false
+/// Reverts when `condition` is `false`
 ///
 /// ### Examples
 /// 
