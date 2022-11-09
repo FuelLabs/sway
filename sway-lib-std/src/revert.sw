@@ -15,7 +15,7 @@ use ::error_signals::FAILED_REQUIRE_SIGNAL;
 ///
 /// Reverts when called in a contract
 ///
-/// # Panics
+/// ### Panics
 ///
 /// Panics when called in a predicate
 ///
