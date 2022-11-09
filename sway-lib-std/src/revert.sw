@@ -17,7 +17,7 @@ use ::error_signals::FAILED_REQUIRE_SIGNAL;
 ///
 /// # Panics
 ///
-/// Panics when called in a script
+/// Panics when called in a predicate
 ///
 /// ### Examples
 /// 
