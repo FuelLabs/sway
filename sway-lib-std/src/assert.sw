@@ -20,7 +20,7 @@ use ::revert::revert;
 /// fn foo(a: u64, b: u64) {
 ///     assert(a == b);
 ///     // if code execution continues, that means a was equal to b
-///     log("A is equal to B");
+///     log("a is equal to b");
 /// }
 /// ```
 pub fn assert(condition: bool) {
