@@ -200,7 +200,10 @@ impl U256 {
     /// let u256: U256::from(u64s);
     /// let decomposed = u256.decompose();
     ///
-    /// assert(u64s == decomposed);
+    /// assert(u64s.0 == decomposed.0);
+    /// assert(u64s.1 == decomposed.1);
+    /// assert(u64s.2 == decomposed.2);
+    /// assert(u64s.3 == decomposed.3);
     /// ```
     fn decompose(self) -> (u64, u64, u64, u64) {
         (self.a, self.b, self.c, self.d)
