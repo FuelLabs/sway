@@ -95,7 +95,7 @@ impl U256 {
     /// let max_u256 = U256::max();
     /// let result = U256.as_u64();
     ///
-    /// assert(result == Result::Err(U256Error::LossOfPrecision))
+    /// assert(result.is_err()))
     /// ```
     pub fn as_u64(self) -> Result<u64, U256Error> {
         if self.a == 0 && self.b == 0 && self.c == 0 {
