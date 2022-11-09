@@ -129,7 +129,7 @@ impl U128 {
     /// let max_u128 = U128::max();
     /// let result = max_u128.as_u64();
     ///
-    /// assert(result == Result::Err(U128Error::LossOfPrecision));
+    /// assert(result.is_err()));
     /// ```
     pub fn as_u64(self) -> Result<u64, U128Error> {
         match self.upper {
