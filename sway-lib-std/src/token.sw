@@ -213,7 +213,7 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: Contrac
 /// ### Arguments
 ///
 /// * `amount` - The amount of tokens to transfer
-/// * `asset_id` - The ContractId of the token to transfer
+/// * `asset_id` - The `ContractId` of the token to transfer
 /// * `to` - The Address of the recipient user 
 ///
 /// ### Reverts
