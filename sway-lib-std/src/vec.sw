@@ -182,7 +182,7 @@ impl<T> Vec<T> {
     /// let item = vec.get(1).unwrap();
     /// assert(item == 10);
     /// let res = vec.get(10);
-    /// assert(res == Option::None); // index out of bounds
+    /// assert(res.is_none()); // index out of bounds
     /// ```
     pub fn get(self, index: u64) -> Option<T> {
         // First check that index is within bounds.
