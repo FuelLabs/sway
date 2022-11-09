@@ -184,7 +184,7 @@ pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
 /// ### Arguments
 ///
 /// * `amount` - The amount of tokens to transfer
-/// * `asset_id` - The ContractId of the token to transfer
+/// * `asset_id` - The `ContractId` of the token to transfer
 /// * `to` - The `ContractId` of the recipient contract 
 ///
 /// ### Reverts
