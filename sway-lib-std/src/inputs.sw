@@ -162,7 +162,7 @@ pub fn input_predicate_data<T>(index: u64) -> T {
 pub fn input_asset_id(index: u64) -> Option<ContractId> {
     let type = input_type(index);
     match type {
-        Input::Coin => Option::Some(~ContractId::from(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID))),
+        Input::Coin => Option::Some(ContractId::from(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID))),
         Input::Message => Option::Some(BASE_ASSET_ID),
         Input::Contract => return Option::None,
     }
@@ -261,12 +261,12 @@ pub fn input_message_msg_id(index: u64) -> b256 {
 
 /// Get the sender of the input message at `index`.
 pub fn input_message_sender(index: u64) -> Address {
-    ~Address::from(__gtf::<b256>(index, GTF_INPUT_MESSAGE_SENDER))
+    Address::from(__gtf::<b256>(index, GTF_INPUT_MESSAGE_SENDER))
 }
 
 /// Get the recipient of the input message at `index`.
 pub fn input_message_recipient(index: u64) -> Address {
-    ~Address::from(__gtf::<b256>(index, GTF_INPUT_MESSAGE_RECIPIENT))
+    Address::from(__gtf::<b256>(index, GTF_INPUT_MESSAGE_RECIPIENT))
 }
 
 /// Get the nonce of input message at `index`.

@@ -1,15 +1,11 @@
 use fuel_vm::{
-    consts::REG_ONE,
-    fuel_asm::Opcode,
-    fuel_crypto::Hasher,
-    fuel_tx::{ConsensusParameters, Transaction as FuelTransaction},
+    consts::REG_ONE, fuel_asm::Opcode, fuel_crypto::Hasher, fuel_tx::Transaction as FuelTransaction,
 };
 use fuels::{
     prelude::*,
     tx::{
-        field::Script as ScriptField, Bytes32, Bytes32, ConsensusParameters,
-        Contract as TxContract, ContractId, Input as TxInput, Output as TxOutput, TxPointer,
-        UniqueIdentifier, UtxoId,
+        field::Script as ScriptField, Bytes32, ConsensusParameters, Contract as TxContract,
+        ContractId, Input as TxInput, Output as TxOutput, TxPointer, UniqueIdentifier, UtxoId,
     },
 };
 use std::str::FromStr;
@@ -35,7 +31,7 @@ async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
         MESSAGE_DATA.to_vec(),
     );
 
-    let (provider, _address) = setup_test_provider(vec![], messages.clone(), None).await;
+    let (provider, _address) = setup_test_provider(vec![], messages.clone(), None, None).await;
     wallet.set_provider(provider);
 
     let contract_id = Contract::deploy(
@@ -97,7 +93,6 @@ async fn generate_predicate_inputs(
         &message.sender.clone().into(),
         &message.recipient.clone().into(),
         message.nonce.clone().into(),
-        &message.owner.clone().into(),
         message.amount.0,
         &data,
     );
@@ -107,7 +102,6 @@ async fn generate_predicate_inputs(
         message.recipient.clone().into(),
         message.amount.0,
         0,
-        message.owner.clone().into(),
         data.clone(),
         predicate_bytecode.clone(),
         data.clone(),
@@ -428,19 +422,6 @@ mod inputs {
             }
         }
     }
-    // let tx = contract_instance
-    //     .methods()
-    //     .get_tx_script_bytecode_hash()
-    //     .get_call_execution_script()
-    //     .await
-    //     .unwrap()
-    //     .tx;
-    // let hash = {
-    //     let script = tx.script();
-    //     // Make sure script is actually something fairly substantial
-    //     assert!(script.len() > 1);
-    //     Hasher::hash(&script)
-    // };
 
     mod success {
         use super::*;
