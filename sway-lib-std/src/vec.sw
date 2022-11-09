@@ -251,9 +251,9 @@ impl<T> Vec<T> {
     /// vec.push(15);
     /// let item = vec.remove(1);
     /// assert(item == 10);
-    /// assert(vec.get(0) == Option::Some(5));
-    /// assert(vec.get(1) == Option::Some(15));
-    /// assert(vec.get(2) == Option::None);
+    /// assert(vec.get(0).unwrap() == 5);
+    /// assert(vec.get(1).unwrap() == 15);
+    /// assert(vec.get(2).is_none());
     /// ```
     pub fn remove(ref mut self, index: u64) -> T {
         assert(index < self.len);
