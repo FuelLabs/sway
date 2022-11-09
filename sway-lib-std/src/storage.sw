@@ -580,7 +580,6 @@ impl<V> StorageVec<V> {
     ///     storage.vec.push(5);
     ///     assert(1 == storage.vec.len());
     ///     storage.vec.clear();
-    /// 
     ///     assert(0 == storage.vec.len());
     /// }
     /// ```
