@@ -217,6 +217,11 @@ pub fn parsed_to_ast(
         errors.push(e);
     }
 
+    // CEI pattern analysis
+    let cei_analysis_warnings =
+        semantic_analysis::cei_pattern_analysis::analyze_program(&typed_program);
+    warnings.extend(cei_analysis_warnings);
+
     // Check that all storage initializers can be evaluated at compile time.
     let typed_wiss_res = typed_program.get_typed_program_with_initialized_storage_slots(
         &mut ctx,
@@ -240,11 +245,6 @@ pub fn parsed_to_ast(
         }
         _ => None,
     }));
-
-    // CEI pattern analysis
-    let cei_analysis_warnings =
-        semantic_analysis::cei_pattern_analysis::analyze_program(&typed_program);
-    warnings.extend(cei_analysis_warnings);
 
     ok(
         typed_program_with_storage_slots,

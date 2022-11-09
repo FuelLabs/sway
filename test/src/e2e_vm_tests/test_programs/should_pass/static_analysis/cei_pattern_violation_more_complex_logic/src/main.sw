@@ -20,14 +20,12 @@ abi NFT {
 
 use std::{
     block::height,
-    chain::auth::msg_sender,
-    context::{
-        call_frames::{
-            contract_id,
-            msg_asset_id,
-        },
-        msg_amount,
+    auth::msg_sender,
+    call_frames::{
+        contract_id,
+        msg_asset_id,
     },
+    context::msg_amount,
     storage::StorageMap,
 };
 

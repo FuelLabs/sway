@@ -1,6 +1,6 @@
 [[package]]
 name = 'cei_pattern_violation_in_if_statement'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

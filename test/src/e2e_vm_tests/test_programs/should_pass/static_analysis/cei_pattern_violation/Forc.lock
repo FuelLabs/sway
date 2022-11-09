@@ -1,6 +1,6 @@
 [[package]]
 name = 'cei_pattern_violation'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
