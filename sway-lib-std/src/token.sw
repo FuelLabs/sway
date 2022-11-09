@@ -15,7 +15,7 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 ///
 /// # WARNING
 ///
-/// This will transfer coins to a contract even with no way to retrieve them
+/// If the `to` Identity is a contract this will transfer coins to the contract even with no way to retrieve them
 /// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
 /// the PERMANENT LOSS OF COINS if not used with care.
 ///
@@ -138,7 +138,7 @@ pub fn burn(amount: u64) {
 ///
 /// # WARNING
 ///
-/// This may transfer coins to a contract even with no way to retrieve them
+/// If the `to` Identity is a contract this may transfer coins to the contract even with no way to retrieve them
 /// (i.e. no withdrawal functionality on receiving contract), possibly leading
 /// to the PERMANENT LOSS OF COINS if not used with care.
 ///
