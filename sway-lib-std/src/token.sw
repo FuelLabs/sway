@@ -74,7 +74,7 @@ pub fn mint_to_contract(amount: u64, to: ContractId) {
 /// ### Arguments
 ///
 /// * `amount` - The amount of tokens to mint
-/// * `to` - The Address to which to send the tokens
+/// * `to` - The `Address` to which to send the tokens
 ///
 /// ### Examples
 /// 
