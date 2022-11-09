@@ -152,7 +152,7 @@ pub fn burn(amount: u64) {
 ///
 /// * If `amount` is greater than the contract balance for `asset_id`
 /// * If `amount` is equal to 0
-/// * If there are no free variable outputs when transferring to an Address
+/// * If there are no free variable outputs when transferring to an `Address`
 ///
 /// ### Examples
 /// 
