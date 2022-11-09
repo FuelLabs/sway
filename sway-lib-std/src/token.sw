@@ -22,7 +22,7 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 /// ### Arguments
 ///
 /// * `amount` - The amount of tokens to mint
-/// * `to` - The Identity to which to send the tokens
+/// * `to` - The `Identity` to which to send the tokens
 ///
 /// ### Examples
 /// 
