@@ -236,7 +236,7 @@ impl<V> StorageVec<V> {
     ///     let popped_value = storage.vec.pop().unwrap();
     ///     assert(five == popped_value);
     ///     let none_value = storage.vec.pop();
-    ///     assert(none_value == Option::None)
+    ///     assert(none_value.is_none())
     /// }
     /// ```
     #[storage(read, write)]
