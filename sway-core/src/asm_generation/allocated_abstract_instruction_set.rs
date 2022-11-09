@@ -226,7 +226,7 @@ impl AllocatedAbstractInstructionSet {
                     }
                     ControlFlowOp::DataSectionOffsetPlaceholder => {
                         realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::DataSectionOffsetPlaceholder,
+                            opcode: AllocatedOpcode::DataSectionOffsetPlaceholder(0),
                             owning_span: None,
                             comment: String::new(),
                         });
@@ -311,11 +311,11 @@ impl AllocatedAbstractInstructionSet {
                 }
                 // A special case for LWDataId which may be 1 or 2 ops, depending on the source size.
                 Either::Left(AllocatedOpcode::LWDataId(_, ref data_id)) => {
-                    let has_copy_type = data_section.has_copy_type(data_id).expect(
-                        "Internal miscalculation in data section -- \
-                        data id did not match up to any actual data",
-                    );
-                    cur_offset += if has_copy_type { 1 } else { 2 };
+                    cur_offset += if !data_section.is_reference(data_id) {
+                        1
+                    } else {
+                        2
+                    };
                 }
                 // Another special case for the blob opcode, used for testing.
                 Either::Left(AllocatedOpcode::BLOB(ref count)) => cur_offset += count.value as u64,

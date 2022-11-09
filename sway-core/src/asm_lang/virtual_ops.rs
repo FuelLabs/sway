@@ -1278,7 +1278,7 @@ impl VirtualOp {
 
             /* Non-VM Instructions */
             BLOB(imm) => AllocatedOpcode::BLOB(imm.clone()),
-            DataSectionOffsetPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
+            DataSectionOffsetPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder(0),
             DataSectionRegisterLoadPlaceholder => {
                 AllocatedOpcode::DataSectionRegisterLoadPlaceholder
             }

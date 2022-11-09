@@ -55,7 +55,7 @@ pub(super) struct AllocatedProgram {
 /// A FinalProgram represents code which may be serialized to VM bytecode.
 pub(super) struct FinalProgram {
     kind: ProgramKind,
-    data_section: VirtualDataSection,
+    imm_data_section: VirtualDataSection,
     ops: InstructionSet,
     entries: Vec<(SelectorOpt, ImmOffset, FnName)>,
 }

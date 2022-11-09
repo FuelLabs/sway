@@ -4,6 +4,16 @@ use sway_ir::{AggregateContent, Constant, ConstantValue, Context, Type};
 
 use std::fmt::{self, Write};
 
+/// An address which refers to a value in the data section of the asm.
+#[derive(Clone, Debug)]
+pub(crate) struct DataId(usize);
+
+impl fmt::Display for DataId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "data_{}", self.0)
+    }
+}
+
 // An entry in the data section.  It's important for the size to be correct, especially for unions
 // where the size could be larger than the represented value.
 #[derive(Clone, Debug)]
@@ -13,10 +23,12 @@ pub struct Entry {
 }
 
 #[derive(Clone, Debug)]
-pub enum Datum {
+pub(crate) enum Datum {
     Word(u64),
     ByteArray(Vec<u8>),
     Collection(Vec<Entry>),
+    Reference(DataId),
+    Offset(u64),
 }
 
 impl Entry {
@@ -40,6 +52,20 @@ impl Entry {
         Entry {
             value: Datum::Collection(elements),
             size,
+        }
+    }
+
+    pub(crate) fn new_ref(data_id: DataId) -> Entry {
+        Entry {
+            value: Datum::Reference(data_id),
+            size: 8,
+        }
+    }
+
+    pub(crate) fn new_offset(offset: u64) -> Entry {
+        Entry {
+            value: Datum::Offset(offset),
+            size: 8,
         }
     }
 
@@ -99,7 +125,7 @@ impl Entry {
     pub(crate) fn to_bytes(&self) -> Vec<u8> {
         // Get the big-endian byte representation of the basic value.
         let mut bytes = match &self.value {
-            Datum::Word(w) => w.to_be_bytes().to_vec(),
+            Datum::Word(w) | Datum::Offset(w) => w.to_be_bytes().to_vec(),
             Datum::ByteArray(bs) if bs.len() % 8 == 0 => bs.clone(),
             Datum::ByteArray(bs) => bs
                 .iter()
@@ -108,6 +134,10 @@ impl Entry {
                 .take((bs.len() + 7) & 0xfffffff8_usize)
                 .collect(),
             Datum::Collection(els) => els.iter().flat_map(|el| el.to_bytes()).collect(),
+
+            Datum::Reference(_) => unreachable!(
+                "We will move this to the RealizedSections which doesn't have symbolic references."
+            ),
         };
 
         // Pad the size out to match the specified size.
@@ -120,8 +150,15 @@ impl Entry {
         bytes
     }
 
-    pub(crate) fn has_copy_type(&self) -> bool {
-        matches!(self.value, Datum::Word(_))
+    fn byte_len(&self) -> usize {
+        std::cmp::max(
+            self.size,
+            match &self.value {
+                Datum::Word(_) | Datum::Reference(_) | Datum::Offset(_) => 8,
+                Datum::ByteArray(bs) => (bs.len() + 7) & 0xfffffff8_usize,
+                Datum::Collection(els) => els.iter().map(|el| el.byte_len()).sum(),
+            },
+        )
     }
 
     pub(crate) fn equiv(&self, entry: &Entry) -> bool {
@@ -145,16 +182,6 @@ impl Entry {
     }
 }
 
-/// An address which refers to a value in the data section of the asm.
-#[derive(Clone, Debug)]
-pub(crate) struct DataId(pub(crate) u32);
-
-impl fmt::Display for DataId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "data_{}", self.0)
-    }
-}
-
 #[derive(Default, Clone, Debug)]
 pub struct VirtualDataSection {
     /// the data to be put in the data section of the asm
@@ -168,7 +195,7 @@ impl VirtualDataSection {
         self.value_pairs
             .iter()
             .take(id.0 as usize)
-            .map(|x| x.to_bytes().len())
+            .map(|entry| entry.byte_len())
             .sum()
     }
 
@@ -181,28 +208,73 @@ impl VirtualDataSection {
         buf
     }
 
-    /// Returns whether a specific [DataId] value has a copy type (fits in a register).
-    pub(crate) fn has_copy_type(&self, id: &DataId) -> Option<bool> {
-        self.value_pairs
-            .get(id.0 as usize)
-            .map(|entry| entry.has_copy_type())
+    pub(crate) fn finalize(mut self, data_section_base_offset: u64) -> VirtualDataSection {
+        // Create a new data section with references replaced with words containing the final data
+        // offset to the referee.  The references are always to the previous entry, so we just need
+        // to track the most recent offset.
+
+        self.value_pairs.iter_mut().enumerate().fold(
+            (0, 0),
+            |(prev_offs, prev_size), (cur_idx, entry)| {
+                let cur_offs = prev_offs + prev_size;
+                let cur_size = entry.byte_len();
+
+                if let Datum::Reference(DataId(prev_idx)) = entry.value {
+                    assert!(prev_idx == cur_idx - 1, "{prev_idx} != {cur_idx} - 1");
+                    *entry = Entry::new_offset(prev_offs as u64 + data_section_base_offset);
+                }
+
+                (cur_offs, cur_size)
+            },
+        );
+
+        self
     }
 
-    /// Given any data in the form of a [Literal] (using this type mainly because it includes type
-    /// information and debug spans), insert it into the data section and return its offset as a
-    /// [DataId].
+    pub(crate) fn is_reference(&self, data_id: &DataId) -> bool {
+        matches!(&self.value_pairs[data_id.0].value, Datum::Reference(_))
+    }
+
+    pub(crate) fn is_offset(&self, data_id: &DataId) -> bool {
+        matches!(&self.value_pairs[data_id.0].value, Datum::Offset(_))
+    }
+
+    /// Insert an Entry into the data section, return a [DataId] to it.
     pub(crate) fn insert_data_value(&mut self, new_entry: Entry) -> DataId {
-        // if there is an identical data value, use the same id
+        let is_large_entry = matches!(&new_entry.value, Datum::ByteArray(_) | Datum::Collection(_));
+
+        // If there is an identical data value use the same id.
         match self
             .value_pairs
             .iter()
             .position(|entry| entry.equiv(&new_entry))
         {
-            Some(num) => DataId(num as u32),
             None => {
+                // The index of the data section where the value is stored.
                 self.value_pairs.push(new_entry);
-                // the index of the data section where the value is stored
-                DataId((self.value_pairs.len() - 1) as u32)
+                let data_id = DataId(self.value_pairs.len() - 1);
+
+                // If the entry is a too large to fit in a word then we insert a reference to it, and
+                // return the reference.
+                if is_large_entry {
+                    self.insert_data_value(Entry::new_ref(data_id))
+                } else {
+                    data_id
+                }
+            }
+
+            Some(num) => {
+                // Minor hackiness: if it's a large entry then we want its reference, which is the
+                // following entry.
+                if is_large_entry {
+                    assert!(matches!(
+                        self.value_pairs[num + 1].value,
+                        Datum::Reference(DataId(_))
+                    ));
+                    DataId(num + 1)
+                } else {
+                    DataId(num)
+                }
             }
         }
     }
@@ -233,17 +305,14 @@ impl fmt::Display for VirtualDataSection {
                         .collect::<Vec<_>>()
                         .join(", ")
                 ),
+                Datum::Reference(data_id) => format!(".ref {data_id}"),
+                Datum::Offset(offs) => format!(".offset {offs}"),
             }
         }
 
         let mut data_buf = String::new();
         for (ix, entry) in self.value_pairs.iter().enumerate() {
-            writeln!(
-                data_buf,
-                "{} {}",
-                DataId(ix as u32),
-                display_entry(&entry.value)
-            )?;
+            writeln!(data_buf, "{} {}", DataId(ix), display_entry(&entry.value))?;
         }
 
         write!(f, ".data:\n{}", data_buf)

@@ -1,7 +1,5 @@
 use super::{InstructionSet, ProgramKind, VirtualDataSection};
-use crate::asm_lang::allocated_ops::AllocatedOpcode;
-use crate::error::*;
-use crate::source_map::SourceMap;
+use crate::{error::*, source_map::SourceMap};
 
 use sway_error::error::CompileError;
 use sway_types::span::Span;
@@ -14,7 +12,7 @@ use std::io::Read;
 /// applied to it
 #[derive(Clone)]
 pub struct FinalizedAsm {
-    pub data_section: VirtualDataSection,
+    pub imm_data_section: VirtualDataSection,
     pub program_section: InstructionSet,
     pub program_kind: ProgramKind,
     pub entries: Vec<FinalizedEntry>,
@@ -32,7 +30,7 @@ pub struct FinalizedEntry {
 
 impl FinalizedAsm {
     pub(crate) fn to_bytecode_mut(&mut self, source_map: &mut SourceMap) -> CompileResult<Vec<u8>> {
-        to_bytecode_mut(&self.program_section, &mut self.data_section, source_map)
+        to_bytecode_mut(&self.program_section, &self.imm_data_section, source_map)
     }
 }
 
@@ -47,13 +45,13 @@ impl FinalizedEntry {
 
 impl fmt::Display for FinalizedAsm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\n{}", self.program_section, self.data_section)
+        write!(f, "{}\n{}", self.program_section, self.imm_data_section)
     }
 }
 
 fn to_bytecode_mut(
     program_section: &InstructionSet,
-    data_section: &mut VirtualDataSection,
+    imm_data_section: &VirtualDataSection,
     source_map: &mut SourceMap,
 ) -> CompileResult<Vec<u8>> {
     let mut errors = vec![];
@@ -65,28 +63,6 @@ fn to_bytecode_mut(
         ));
         return err(vec![], errors);
     }
-    // The below invariant is introduced to word-align the data section.
-    // A noop is inserted in ASM generation if there is an odd number of ops.
-    assert_eq!(program_section.ops.len() & 1, 0);
-    // this points at the byte (*4*8) address immediately following (+1) the last instruction
-    // Some LWs are expanded into two ops to allow for data larger than one word, so we calculate
-    // exactly how many ops will be generated to calculate the offset.
-    let offset_to_data_section_in_bytes =
-        program_section
-            .ops
-            .iter()
-            .fold(0, |acc, item| match &item.opcode {
-                AllocatedOpcode::LWDataId(_reg, data_label)
-                    if !data_section
-                        .has_copy_type(data_label)
-                        .expect("data label references non existent data -- internal error") =>
-                {
-                    acc + 8
-                }
-                AllocatedOpcode::BLOB(count) => acc + count.value as u64 * 4,
-                _ => acc + 4,
-            })
-            + 4;
 
     // each op is four bytes, so the length of the buf is the number of ops times four.
     let mut buf = vec![0; (program_section.ops.len() * 4) + 4];
@@ -94,7 +70,7 @@ fn to_bytecode_mut(
     let mut half_word_ix = 0;
     for op in program_section.ops.iter() {
         let span = op.owning_span.clone();
-        let op = op.to_fuel_asm(offset_to_data_section_in_bytes, data_section);
+        let op = op.to_fuel_asm(imm_data_section);
         match op {
             Either::Right(data) => {
                 for i in 0..data.len() {
@@ -120,7 +96,7 @@ fn to_bytecode_mut(
         }
     }
 
-    let mut data_section = data_section.serialize_to_bytes();
+    let mut data_section = imm_data_section.serialize_to_bytes();
 
     buf.append(&mut data_section);
 

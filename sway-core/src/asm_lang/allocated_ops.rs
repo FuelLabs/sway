@@ -12,7 +12,7 @@
 use super::DataId;
 use super::*;
 use crate::{
-    asm_generation::{compiler_constants::DATA_SECTION_REGISTER, Entry, VirtualDataSection},
+    asm_generation::{compiler_constants::DATA_SECTION_REGISTER, VirtualDataSection},
     fuel_prelude::fuel_asm::{self, Opcode as VmOp},
 };
 use either::Either;
@@ -195,7 +195,7 @@ pub(crate) enum AllocatedOpcode {
 
     /* Non-VM Instructions */
     BLOB(VirtualImmediate24),
-    DataSectionOffsetPlaceholder,
+    DataSectionOffsetPlaceholder(u64),
     DataSectionRegisterLoadPlaceholder,
     LWDataId(AllocatedRegister, DataId),
     Undefined,
@@ -298,7 +298,7 @@ impl AllocatedOpcode {
 
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
-            DataSectionOffsetPlaceholder => vec![],
+            DataSectionOffsetPlaceholder(_) => vec![],
             DataSectionRegisterLoadPlaceholder => vec![&AllocatedRegister::Constant(
                 ConstantRegister::DataSectionStart,
             )],
@@ -407,11 +407,8 @@ impl fmt::Display for AllocatedOpcode {
 
             /* Non-VM Instructions */
             BLOB(a) => write!(fmtr, "blob {a}"),
-            DataSectionOffsetPlaceholder => {
-                write!(
-                    fmtr,
-                    "DATA_SECTION_OFFSET[0..32]\nDATA_SECTION_OFFSET[32..64]"
-                )
+            DataSectionOffsetPlaceholder(offs) => {
+                write!(fmtr, "DATA_SECTION_OFFSET {offs} (0x{offs:x})")
             }
             DataSectionRegisterLoadPlaceholder => write!(fmtr, "lw   $ds $is 1"),
             LWDataId(a, b) => write!(fmtr, "lw   {} {}", a, b),
@@ -449,8 +446,7 @@ type DoubleWideData = [u8; 8];
 impl AllocatedOp {
     pub(crate) fn to_fuel_asm(
         &self,
-        offset_to_data_section: u64,
-        data_section: &mut VirtualDataSection,
+        imm_data_section: &VirtualDataSection,
     ) -> Either<Vec<fuel_asm::Opcode>, DoubleWideData> {
         use AllocatedOpcode::*;
         Either::Left(vec![match &self.opcode {
@@ -598,17 +594,15 @@ impl AllocatedOp {
                         .collect(),
                 )
             }
-            DataSectionOffsetPlaceholder => {
-                return Either::Right(offset_to_data_section.to_be_bytes())
+            DataSectionOffsetPlaceholder(data_section_offset) => {
+                return Either::Right(data_section_offset.to_be_bytes())
             }
             DataSectionRegisterLoadPlaceholder => VmOp::LW(
                 DATA_SECTION_REGISTER as fuel_asm::RegisterId,
                 ConstantRegister::InstructionStart.to_register_id(),
                 1,
             ),
-            LWDataId(a, b) => {
-                return Either::Left(realize_lw(a, b, data_section, offset_to_data_section))
-            }
+            LWDataId(a, b) => return Either::Left(realize_lw(a, b, imm_data_section)),
             Undefined => VmOp::Undefined,
         }])
     }
@@ -621,50 +615,27 @@ impl AllocatedOp {
 fn realize_lw(
     dest: &AllocatedRegister,
     data_id: &DataId,
-    data_section: &mut VirtualDataSection,
-    offset_to_data_section: u64,
+    imm_data_section: &VirtualDataSection,
 ) -> Vec<VmOp> {
     // all data is word-aligned right now, and `offset_to_id` returns the offset in bytes
-    let offset_bytes = data_section.offset_to_id(data_id) as u64;
-    let offset_words = offset_bytes / 8;
-    let offset = match VirtualImmediate12::new(offset_words, Span::new(" ".into(), 0, 0, None).unwrap()) {
-        Ok(value) => value,
-        Err(_) => panic!("Unable to offset into the data section more than 2^12 bits. Unsupported data section length.")
-    };
-    // if this data is larger than a word, instead of loading the data directly
-    // into the register, we want to load a pointer to the data into the register
-    // this appends onto the data section and mutates it by adding the pointer as a literal
-    let has_copy_type = data_section.has_copy_type(data_id).expect(
-        "Internal miscalculation in data section -- data id did not match up to any actual data",
-    );
-    if !has_copy_type {
-        // load the pointer itself into the register
-        // `offset_to_data_section` is in bytes. We want a byte
-        // address here
-        let pointer_offset_from_instruction_start = offset_to_data_section + offset_bytes;
-        // insert the pointer as bytes as a new data section entry at the end of the data
-        let data_id_for_pointer = data_section
-            .insert_data_value(Entry::new_word(pointer_offset_from_instruction_start, None));
-        // now load the pointer we just created into the `dest`ination
-        let mut buf = Vec::with_capacity(2);
-        buf.append(&mut realize_lw(
-            dest,
-            &data_id_for_pointer,
-            data_section,
-            offset_to_data_section,
-        ));
-        // add $is to the pointer since it is relative to the data section
+    let offset_words = imm_data_section.offset_to_id(data_id) as u64 / 8;
+    let offset = VirtualImmediate12::new(offset_words, Span::dummy()).unwrap_or_else(|_| {
+        panic!("Unable to offset into the data section more than 2^12 bits. Unsupported data section length.")
+    });
+
+    let dest = dest.to_register_id();
+
+    let mut buf = Vec::with_capacity(2);
+    buf.push(VmOp::LW(dest, DATA_SECTION_REGISTER as usize, offset.value));
+
+    if imm_data_section.is_offset(data_id) {
+        // Add `$is` to the pointer since it is relative to the data section.
         buf.push(VmOp::ADD(
-            dest.to_register_id(),
-            dest.to_register_id(),
+            dest,
+            dest,
             ConstantRegister::InstructionStart.to_register_id(),
         ));
-        buf
-    } else {
-        vec![VmOp::LW(
-            dest.to_register_id(),
-            DATA_SECTION_REGISTER as usize,
-            offset.value,
-        )]
     }
+
+    buf
 }
