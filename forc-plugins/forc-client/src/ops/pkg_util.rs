@@ -18,20 +18,20 @@ pub(crate) fn built_pkgs_with_manifest(
         build_opts.pkg.offline,
     )?;
     let graph = build_plan.graph();
-    let mut built_pkgs = build_with_options(build_opts)?.into_members(&member_manifests)?;
-    let pkgs_with_manifest: Vec<(PackageManifestFile, BuiltPackage)> = build_plan
-        .member_nodes()
-        .map(|member_index| {
-            let pkg_name = &graph[member_index].name;
+    let mut built_pkgs = build_with_options(build_opts)?.into_members()?;
+    let mut pkgs_with_manifest = Vec::new();
+    for member_index in build_plan.member_nodes() {
+        let pkg_name = &graph[member_index].name;
+        // Check if the currrent member is built.
+        //
+        // For indivual members of the workspace, member nodes would be iterating
+        // over all the members but only the relevant member would be built.
+        if let Some(built_pkg) = built_pkgs.remove(pkg_name) {
             let member_manifest = member_manifests
                 .remove(pkg_name)
                 .expect("Member manifest file is missing");
-            let built_pkg = built_pkgs
-                .remove(pkg_name)
-                .expect("Built package is missing");
-            (member_manifest, built_pkg)
-        })
-        .collect();
-
+            pkgs_with_manifest.push((member_manifest, built_pkg));
+        }
+    }
     Ok(pkgs_with_manifest)
 }

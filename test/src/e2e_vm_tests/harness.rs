@@ -72,8 +72,9 @@ pub(crate) async fn runs_on_node(
     };
     run(command).await.map(|ran_scripts| {
         ran_scripts
-            .first()
-            .map(|ran_script| ran_script.receipts.clone())
+            .into_iter()
+            .next()
+            .map(|ran_script| ran_script.receipts)
             .unwrap()
     })
 }
