@@ -52,7 +52,7 @@ pub fn mint_to(amount: u64, to: Identity) {
 /// ### Arguments
 ///
 /// * `amount` - The amount of tokens to mint
-/// * `to` - The ContractId to which to send the tokens
+/// * `to` - The `ContractId` to which to send the tokens
 ///
 /// ### Examples
 /// 
