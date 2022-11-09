@@ -578,7 +578,6 @@ impl<V> StorageVec<V> {
     /// fn foo() {
     ///     assert(0 == storage.vec.len());
     ///     storage.vec.push(5);
-    ///
     ///     assert(1 == storage.vec.len());
     ///     storage.vec.clear();
     /// 
