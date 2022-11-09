@@ -320,6 +320,7 @@ impl<V> StorageVec<V> {
     ///     storage.vec.push(15);
     ///     let removed_value = storage.vec.remove(1);
     ///     assert(10 == removed_value);
+    ///     assert(storage.vec.len() == 2);
     /// }
     /// ```
     #[storage(read, write)]
