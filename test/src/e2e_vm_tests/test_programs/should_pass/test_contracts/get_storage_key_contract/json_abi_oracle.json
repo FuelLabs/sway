@@ -2,6 +2,15 @@
   "functions": [
     {
       "inputs": [],
+      "name": "from_callers",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    },
+    {
+      "inputs": [],
       "name": "from_f1",
       "output": {
         "name": "",
@@ -33,15 +42,6 @@
       "output": {
         "name": "",
         "type": 1,
-        "typeArguments": null
-      }
-    },
-    {
-      "inputs": [],
-      "name": "from_callers",
-      "output": {
-        "name": "",
-        "type": 0,
         "typeArguments": null
       }
     }

@@ -31,9 +31,9 @@ impl Test for Contract {
 // ::check-ir::
 
 // check: contract {
-// check: fn get_u64<9890aef4>($ID $MD: u64) -> u64
 // check: fn get_b256<42123b96>($ID $MD: b256) -> b256
 // check: fn get_s<fc62d029>($ID $MD: u64, $ID $MD: b256) -> { u64, b256 }
+// check: fn get_u64<9890aef4>($ID $MD: u64) -> u64
 
 // ::check-asm::
 
@@ -65,6 +65,6 @@ impl Test for Contract {
 // check: lw   $REG $$fp i74
 
 // check: .data:
-// check: data_2 .word 2559618804
-// check: data_3 .word 1108491158
-// check: data_4 .word 4234334249
+// check: data_2 .word 1108491158
+// check: data_3 .word 4234334249
+// check: data_4 .word 2559618804
