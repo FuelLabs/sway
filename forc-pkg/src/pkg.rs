@@ -2563,6 +2563,7 @@ fn standardize_json_abi_types(json_abi_program: &mut fuels_types::ProgramABI) {
         let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();
 
         // A vector containing unique `fuels_types::TypeDeclaration`s.
+        //
         // Two `fuels_types::TypeDeclaration` are deemed the same if the have the same
         // `type_field`, `components`, and `type_parameters` (even if their `type_id`s are
         // different).
@@ -2638,8 +2639,8 @@ fn update_all_types(
     }
 }
 
-/// Recursively updates the type IDs used in a `fuels_types::TypeApplication` given a HashMap from old to
-/// new IDs
+/// Recursively updates the type IDs used in a `fuels_types::TypeApplication` given a HashMap from
+/// old to new IDs
 fn update_json_type_application(
     type_application: &mut fuels_types::TypeApplication,
     old_to_new_id: &HashMap<usize, usize>,
@@ -2655,8 +2656,8 @@ fn update_json_type_application(
     }
 }
 
-/// Recursively updates the type IDs used in a `fuels_types::TypeDeclaration` given a HashMap from old to
-/// new IDs
+/// Recursively updates the type IDs used in a `fuels_types::TypeDeclaration` given a HashMap from
+/// old to new IDs
 fn update_json_type_declaration(
     type_declaration: &mut fuels_types::TypeDeclaration,
     old_to_new_id: &HashMap<usize, usize>,

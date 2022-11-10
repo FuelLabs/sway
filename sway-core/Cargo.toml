@@ -14,7 +14,7 @@ derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
 fuel-vm = { version = "0.22", features = ["serde"] }
-fuels-types = "0.30"
+fuels-types = "0.31"
 hex = { version = "0.4", optional = true }
 im = "15.0"
 itertools = "0.10"

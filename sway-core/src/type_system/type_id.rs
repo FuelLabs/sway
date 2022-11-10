@@ -181,9 +181,9 @@ impl TypeId {
     }
 
     /// Return the components of a given (potentially generic) type while considering what it
-    /// actually resolves to. These components are essentially of type of `fuels_types::TypeApplication`.
-    /// The method below also updates the provided list of `fuels_types::TypeDeclaration`s  to add the newly
-    /// discovered types.
+    /// actually resolves to. These components are essentially of type of
+    /// `fuels_types::TypeApplication`.  The method below also updates the provided list of
+    /// `fuels_types::TypeDeclaration`s  to add the newly discovered types.
     pub(crate) fn get_json_type_components(
         &self,
         types: &mut Vec<fuels_types::TypeDeclaration>,
@@ -346,8 +346,9 @@ impl TypeId {
 
     /// Return the type parameters of a given (potentially generic) type while considering what it
     /// actually resolves to. These parameters are essentially of type of `usize` which are
-    /// basically the IDs of some set of `fuels_types::TypeDeclaration`s. The method below also updates the
-    /// provide list of `fuels_types::TypeDeclaration`s  to add the newly discovered types.
+    /// basically the IDs of some set of `fuels_types::TypeDeclaration`s. The method below also
+    /// updates the provide list of `fuels_types::TypeDeclaration`s  to add the newly discovered
+    /// types.
     pub(crate) fn get_json_type_parameters(
         &self,
         types: &mut Vec<fuels_types::TypeDeclaration>,
@@ -364,9 +365,9 @@ impl TypeId {
     }
 
     /// Return the type arguments of a given (potentially generic) type while considering what it
-    /// actually resolves to. These arguments are essentially of type of `fuels_types::TypeApplication`. The
-    /// method below also updates the provided list of `fuels_types::TypeDeclaration`s  to add the newly
-    /// discovered types.
+    /// actually resolves to. These arguments are essentially of type of
+    /// `fuels_types::TypeApplication`. The method below also updates the provided list of
+    /// `fuels_types::TypeDeclaration`s  to add the newly discovered types.
     pub(crate) fn get_json_type_arguments(
         &self,
         types: &mut Vec<fuels_types::TypeDeclaration>,
