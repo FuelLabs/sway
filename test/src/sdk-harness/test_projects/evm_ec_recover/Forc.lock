@@ -1,13 +1,13 @@
 [[package]]
 name = 'core'
-source = 'path+from-root-0F8B93B33FD67819'
+source = 'path+from-root-304A6B2C558319C7'
 
 [[package]]
-name = 'evm_ecr'
+name = 'evm_ec_recover'
 source = 'member'
 dependencies = ['std']
 
 [[package]]
 name = 'std'
-source = 'path+from-root-0F8B93B33FD67819'
+source = 'path+from-root-304A6B2C558319C7'
 dependencies = ['core']

@@ -38,12 +38,14 @@ use sway_types::{integer_bits::IntegerBits, Span};
 #[test]
 fn generic_enum_resolution() {
     use crate::{language::ty, span::Span, transform, Ident};
+    use std::collections::BTreeSet;
     let engine = TypeEngine::default();
 
     let sp = Span::dummy();
 
     let generic_type = engine.insert_type_always(TypeInfo::UnknownGeneric {
         name: Ident::new_with_override("T", sp.clone()),
+        trait_constraints: BTreeSet::new(),
     });
     let variant_types = vec![ty::TyEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),

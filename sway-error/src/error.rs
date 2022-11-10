@@ -51,6 +51,12 @@ pub enum CompileError {
     },
     #[error("Unimplemented feature: {0}")]
     Unimplemented(&'static str, Span),
+    #[error(
+        "Unimplemented feature: {0}\n\
+         help: {1}.\n\
+         "
+    )]
+    UnimplementedWithHelp(&'static str, &'static str, Span),
     #[error("{0}")]
     TypeError(TypeError),
     #[error("Error parsing input: {err:?}")]
@@ -351,6 +357,12 @@ pub enum CompileError {
     UnableToInferGeneric { ty: String, span: Span },
     #[error("The generic type parameter \"{ty}\" is unconstrained.")]
     UnconstrainedGenericParameter { ty: String, span: Span },
+    #[error("Trait \"{trait_name}\" is not implemented for type \"{ty}\".")]
+    TraitConstraintNotSatisfied {
+        ty: String,
+        trait_name: String,
+        span: Span,
+    },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 12-bit immediate spot.")]
@@ -571,12 +583,6 @@ pub enum CompileError {
     AsteriskWithAlias { span: Span },
     #[error("A trait cannot be a subtrait of an ABI.")]
     AbiAsSupertrait { span: Span },
-    #[error("The trait \"{supertrait_name}\" is not implemented for type \"{type_name}\"")]
-    SupertraitImplMissing {
-        supertrait_name: String,
-        type_name: String,
-        span: Span,
-    },
     #[error(
         "Implementation of trait \"{supertrait_name}\" is required by this bound in \"{trait_name}\""
     )]
@@ -689,6 +695,7 @@ impl Spanned for CompileError {
             NotAVariable { name, .. } => name.span(),
             NotAFunction { span, .. } => span.clone(),
             Unimplemented(_, span) => span.clone(),
+            UnimplementedWithHelp(_, _, span) => span.clone(),
             TypeError(err) => err.span(),
             ParseError { span, .. } => span.clone(),
             Internal(_, span) => span.clone(),
@@ -750,6 +757,7 @@ impl Spanned for CompileError {
             UnrecognizedOp { span, .. } => span.clone(),
             UnableToInferGeneric { span, .. } => span.clone(),
             UnconstrainedGenericParameter { span, .. } => span.clone(),
+            TraitConstraintNotSatisfied { span, .. } => span.clone(),
             Immediate06TooLarge { span, .. } => span.clone(),
             Immediate12TooLarge { span, .. } => span.clone(),
             Immediate18TooLarge { span, .. } => span.clone(),
@@ -818,7 +826,6 @@ impl Spanned for CompileError {
             IntegerContainsInvalidDigit { span, .. } => span.clone(),
             AsteriskWithAlias { span, .. } => span.clone(),
             AbiAsSupertrait { span, .. } => span.clone(),
-            SupertraitImplMissing { span, .. } => span.clone(),
             SupertraitImplRequired { span, .. } => span.clone(),
             IfLetNonEnum { span, .. } => span.clone(),
             ContractCallParamRepeated { span, .. } => span.clone(),

@@ -3,7 +3,6 @@ pub mod declaration;
 pub mod expression;
 pub mod mode;
 
-pub use declaration::*;
 pub(crate) use expression::*;
 pub(crate) use mode::*;
 
