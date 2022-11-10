@@ -55,6 +55,15 @@ pub(crate) fn type_check_method_application(
         errors
     );
 
+    // check the method visibility
+    if span.path() != method.span.path() && method.visibility.is_private() {
+        errors.push(CompileError::CallingPrivateLibraryMethod {
+            name: method.name.as_str().to_string(),
+            span,
+        });
+        return err(warnings, errors);
+    }
+
     // check the function storage purity
     if !method.is_contract_call {
         // 'method.purity' is that of the callee, 'opts.purity' of the caller.

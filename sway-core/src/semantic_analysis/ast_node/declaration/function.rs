@@ -16,6 +16,7 @@ impl ty::TyFunctionDeclaration {
         mut ctx: TypeCheckContext,
         fn_decl: FunctionDeclaration,
         is_method: bool,
+        is_in_impl_self: bool,
     ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -131,7 +132,11 @@ impl ty::TyFunctionDeclaration {
         }
 
         let (visibility, is_contract_call) = if is_method {
-            (Visibility::Public, false)
+            if is_in_impl_self {
+                (visibility, false)
+            } else {
+                (Visibility::Public, false)
+            }
         } else {
             (visibility, fn_ctx.mode() == Mode::ImplAbiFn)
         };

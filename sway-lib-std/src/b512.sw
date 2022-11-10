@@ -31,7 +31,7 @@ impl From<(b256, b256)> for B512 {
 /// Methods on the `B512` type
 impl B512 {
     /// Initializes a new, zeroed `B512`.
-    fn new() -> B512 {
+    pub fn new() -> B512 {
         B512 {
             bytes: [ZERO_B256, ZERO_B256],
         }
