@@ -10,3 +10,4 @@ pub mod plugins;
 pub mod template;
 pub mod test;
 pub mod update;
+pub mod edit;

@@ -4,3 +4,4 @@ pub mod forc_clean;
 pub mod forc_init;
 pub mod forc_template;
 pub mod forc_update;
+pub mod forc_edit;

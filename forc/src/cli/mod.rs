@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use self::commands::{
     addr2line, build, check, clean, completions, init, new, parse_bytecode, plugins, template,
-    test, update,
+    test, update, edit,
 };
 use addr2line::Command as Addr2LineCommand;
 use anyhow::{anyhow, Result};
@@ -20,6 +20,8 @@ pub use template::Command as TemplateCommand;
 pub use test::Command as TestCommand;
 use tracing::metadata::LevelFilter;
 pub use update::Command as UpdateCommand;
+use edit::Command as EditCommand;
+pub use edit::CommandArgs as EditCommandOpt;
 
 mod commands;
 mod plugin;
@@ -62,6 +64,7 @@ enum Forc {
     Update(UpdateCommand),
     Plugins(PluginsCommand),
     Template(TemplateCommand),
+    Edit(EditCommand),
     /// This is a catch-all for unknown subcommands and their arguments.
     ///
     /// When we receive an unknown subcommand, we check for a plugin exe named
@@ -98,6 +101,7 @@ pub async fn run_cli() -> Result<()> {
         Forc::Test(command) => test::exec(command),
         Forc::Update(command) => update::exec(command).await,
         Forc::Template(command) => template::exec(command),
+        Forc::Edit(command) => edit::exec(command),
         Forc::Plugin(args) => {
             let output = plugin::execute_external_subcommand(args)?;
             let code = output
