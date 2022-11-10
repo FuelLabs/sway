@@ -1,6 +1,5 @@
 use super::*;
 use std::fmt;
-use sway_types::{JsonTypeApplication, JsonTypeDeclaration};
 
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd)]
@@ -182,20 +181,20 @@ impl TypeId {
     }
 
     /// Return the components of a given (potentially generic) type while considering what it
-    /// actually resolves to. These components are essentially of type of `JsonTypeApplication`.
-    /// The method below also updates the provided list of `JsonTypeDeclaration`s  to add the newly
+    /// actually resolves to. These components are essentially of type of `fuels_types::TypeApplication`.
+    /// The method below also updates the provided list of `fuels_types::TypeDeclaration`s  to add the newly
     /// discovered types.
     pub(crate) fn get_json_type_components(
         &self,
-        types: &mut Vec<JsonTypeDeclaration>,
+        types: &mut Vec<fuels_types::TypeDeclaration>,
         resolved_type_id: TypeId,
-    ) -> Option<Vec<JsonTypeApplication>> {
+    ) -> Option<Vec<fuels_types::TypeApplication>> {
         match look_up_type_id(*self) {
             TypeInfo::Enum { variant_types, .. } => {
-                // A list of all `JsonTypeDeclaration`s needed for the enum variants
+                // A list of all `fuels_types::TypeDeclaration`s needed for the enum variants
                 let variants = variant_types
                     .iter()
-                    .map(|x| JsonTypeDeclaration {
+                    .map(|x| fuels_types::TypeDeclaration {
                         type_id: *x.initial_type_id,
                         type_field: x.initial_type_id.get_json_type_str(x.type_id),
                         components: x.initial_type_id.get_json_type_components(types, x.type_id),
@@ -207,11 +206,11 @@ impl TypeId {
                 types.extend(variants);
 
                 // Generate the JSON data for the enum. This is basically a list of
-                // `JsonTypeApplication`s
+                // `fuels_types::TypeApplication`s
                 Some(
                     variant_types
                         .iter()
-                        .map(|x| JsonTypeApplication {
+                        .map(|x| fuels_types::TypeApplication {
                             name: x.name.to_string(),
                             type_id: *x.initial_type_id,
                             type_arguments: x
@@ -222,10 +221,10 @@ impl TypeId {
                 )
             }
             TypeInfo::Struct { fields, .. } => {
-                // A list of all `JsonTypeDeclaration`s needed for the struct fields
+                // A list of all `fuels_types::TypeDeclaration`s needed for the struct fields
                 let field_types = fields
                     .iter()
-                    .map(|x| JsonTypeDeclaration {
+                    .map(|x| fuels_types::TypeDeclaration {
                         type_id: *x.initial_type_id,
                         type_field: x.initial_type_id.get_json_type_str(x.type_id),
                         components: x.initial_type_id.get_json_type_components(types, x.type_id),
@@ -237,11 +236,11 @@ impl TypeId {
                 types.extend(field_types);
 
                 // Generate the JSON data for the struct. This is basically a list of
-                // `JsonTypeApplication`s
+                // `fuels_types::TypeApplication`s
                 Some(
                     fields
                         .iter()
-                        .map(|x| JsonTypeApplication {
+                        .map(|x| fuels_types::TypeApplication {
                             name: x.name.to_string(),
                             type_id: *x.initial_type_id,
                             type_arguments: x
@@ -255,8 +254,8 @@ impl TypeId {
                 if let TypeInfo::Array(type_id, _, initial_type_id) =
                     look_up_type_id(resolved_type_id)
                 {
-                    // The `JsonTypeDeclaration`s needed for the array element type
-                    let elem_ty = JsonTypeDeclaration {
+                    // The `fuels_types::TypeDeclaration`s needed for the array element type
+                    let elem_ty = fuels_types::TypeDeclaration {
                         type_id: *initial_type_id,
                         type_field: initial_type_id.get_json_type_str(type_id),
                         components: initial_type_id.get_json_type_components(types, type_id),
@@ -265,8 +264,8 @@ impl TypeId {
                     types.push(elem_ty);
 
                     // Generate the JSON data for the array. This is basically a single
-                    // `JsonTypeApplication` for the array element type
-                    Some(vec![JsonTypeApplication {
+                    // `fuels_types::TypeApplication` for the array element type
+                    Some(vec![fuels_types::TypeApplication {
                         name: "__array_element".to_string(),
                         type_id: *initial_type_id,
                         type_arguments: initial_type_id.get_json_type_arguments(types, type_id),
@@ -277,10 +276,10 @@ impl TypeId {
             }
             TypeInfo::Tuple(_) => {
                 if let TypeInfo::Tuple(fields) = look_up_type_id(resolved_type_id) {
-                    // A list of all `JsonTypeDeclaration`s needed for the tuple fields
+                    // A list of all `fuels_types::TypeDeclaration`s needed for the tuple fields
                     let fields_types = fields
                         .iter()
-                        .map(|x| JsonTypeDeclaration {
+                        .map(|x| fuels_types::TypeDeclaration {
                             type_id: *x.initial_type_id,
                             type_field: x.initial_type_id.get_json_type_str(x.type_id),
                             components: x
@@ -294,11 +293,11 @@ impl TypeId {
                     types.extend(fields_types);
 
                     // Generate the JSON data for the tuple. This is basically a list of
-                    // `JsonTypeApplication`s
+                    // `fuels_types::TypeApplication`s
                     Some(
                         fields
                             .iter()
-                            .map(|x| JsonTypeApplication {
+                            .map(|x| fuels_types::TypeApplication {
                                 name: "__tuple_element".to_string(),
                                 type_id: *x.initial_type_id,
                                 type_arguments: x
@@ -313,7 +312,7 @@ impl TypeId {
             }
             TypeInfo::Custom { type_arguments, .. } => {
                 if !self.is_generic_parameter(resolved_type_id) {
-                    // A list of all `JsonTypeDeclaration`s needed for the type arguments
+                    // A list of all `fuels_types::TypeDeclaration`s needed for the type arguments
                     let type_args = type_arguments
                         .unwrap_or_default()
                         .iter()
@@ -323,7 +322,7 @@ impl TypeId {
                                 .unwrap_or_default()
                                 .iter(),
                         )
-                        .map(|(v, p)| JsonTypeDeclaration {
+                        .map(|(v, p)| fuels_types::TypeDeclaration {
                             type_id: *v.initial_type_id,
                             type_field: v.initial_type_id.get_json_type_str(p.type_id),
                             components: v
@@ -347,11 +346,11 @@ impl TypeId {
 
     /// Return the type parameters of a given (potentially generic) type while considering what it
     /// actually resolves to. These parameters are essentially of type of `usize` which are
-    /// basically the IDs of some set of `JsonTypeDeclaration`s. The method below also updates the
-    /// provide list of `JsonTypeDeclaration`s  to add the newly discovered types.
+    /// basically the IDs of some set of `fuels_types::TypeDeclaration`s. The method below also updates the
+    /// provide list of `fuels_types::TypeDeclaration`s  to add the newly discovered types.
     pub(crate) fn get_json_type_parameters(
         &self,
-        types: &mut Vec<JsonTypeDeclaration>,
+        types: &mut Vec<fuels_types::TypeDeclaration>,
         resolved_type_id: TypeId,
     ) -> Option<Vec<usize>> {
         match self.is_generic_parameter(resolved_type_id) {
@@ -365,14 +364,14 @@ impl TypeId {
     }
 
     /// Return the type arguments of a given (potentially generic) type while considering what it
-    /// actually resolves to. These arguments are essentially of type of `JsonTypeApplication`. The
-    /// method below also updates the provided list of `JsonTypeDeclaration`s  to add the newly
+    /// actually resolves to. These arguments are essentially of type of `fuels_types::TypeApplication`. The
+    /// method below also updates the provided list of `fuels_types::TypeDeclaration`s  to add the newly
     /// discovered types.
     pub(crate) fn get_json_type_arguments(
         &self,
-        types: &mut Vec<JsonTypeDeclaration>,
+        types: &mut Vec<fuels_types::TypeDeclaration>,
         resolved_type_id: TypeId,
-    ) -> Option<Vec<JsonTypeApplication>> {
+    ) -> Option<Vec<fuels_types::TypeApplication>> {
         let resolved_params = resolved_type_id.get_type_parameters();
         match look_up_type_id(*self) {
             TypeInfo::Custom {
@@ -383,7 +382,7 @@ impl TypeId {
                 let json_type_arguments = type_arguments
                     .iter()
                     .zip(resolved_params.iter())
-                    .map(|(v, p)| JsonTypeDeclaration {
+                    .map(|(v, p)| fuels_types::TypeDeclaration {
                         type_id: *v.initial_type_id,
                         type_field: v.initial_type_id.get_json_type_str(p.type_id),
                         components: v.initial_type_id.get_json_type_components(types, p.type_id),
@@ -396,7 +395,7 @@ impl TypeId {
 
                 type_arguments
                     .iter()
-                    .map(|arg| JsonTypeApplication {
+                    .map(|arg| fuels_types::TypeApplication {
                         name: "".to_string(),
                         type_id: *arg.initial_type_id,
                         type_arguments: arg
@@ -414,7 +413,7 @@ impl TypeId {
                 // Here, type_id for each type parameter should contain resolved types
                 let json_type_arguments = type_parameters
                     .iter()
-                    .map(|v| JsonTypeDeclaration {
+                    .map(|v| fuels_types::TypeDeclaration {
                         type_id: *v.type_id,
                         type_field: v.type_id.get_json_type_str(v.type_id),
                         components: v.type_id.get_json_type_components(types, v.type_id),
@@ -426,7 +425,7 @@ impl TypeId {
                 Some(
                     type_parameters
                         .iter()
-                        .map(|arg| JsonTypeApplication {
+                        .map(|arg| fuels_types::TypeApplication {
                             name: "".to_string(),
                             type_id: *arg.type_id,
                             type_arguments: arg.type_id.get_json_type_arguments(types, arg.type_id),
