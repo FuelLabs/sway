@@ -5,7 +5,7 @@ A *workspace* is a collection of one or more packages, namely *workspace members
 The key points for workspaces are:
 
 * Common `forc` commands available for a single package can also be used for a workspace, like `forc build` or `forc deploy`.
-* All packages share a common [`Forc.lock`] file which resides in the root directory of the workspace.
+* All packages share a common `Forc.lock` file which resides in the root directory of the workspace.
 
 For workspaces, `Forc.toml` accepts following fields:
 
@@ -20,6 +20,7 @@ members = ["member1", "path/to/member2"]
 ```
 
 The `members` field accepts entries to be given in relative path with respect to the workspace root.
+Packages that are located within a workspace directory but are *not* contained within the `members` set are ignored.
 
 ## Some forc commands that supports workspaces
 
