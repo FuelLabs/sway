@@ -12,7 +12,7 @@ A smart contract consists of two parts:
 
 ## Application Binary Interface (`ABI`)
 
-The `ABI` is a structure which defines the endpoints that a contract exposes for other contracts to call. That is to say that functions defined in the `ABI` are considered to be `external` and thus a contract cannot call its own functions.
+The `ABI` is a structure which defines the endpoints that a contract exposes for calls. That is to say that functions defined in the `ABI` are considered to be `external` and thus a contract cannot call its own functions.
 
 The following example demonstrates an interface for a wallet which is able to receive and send funds.
 

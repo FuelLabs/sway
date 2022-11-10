@@ -12,7 +12,7 @@ Some properties of a script include:
 
 ## Example
 
-The following example demonstrates a sciprt which takes one argument and returns the boolean value of true.
+The following example demonstrates a script which takes one argument and returns the boolean value of true.
 
 ```sway
 {{#include ../../../code/language/program-types/scripts/simple/src/main.sw}}
