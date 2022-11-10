@@ -630,3 +630,22 @@ fn compose(words: (u64, u64, u64, u64)) -> b256 {
 fn decompose(val: b256) -> (u64, u64, u64, u64) {
     asm(r1: __addr_of(val)) { r1: (u64, u64, u64, u64) }
 }
+
+#[test]
+fn test_compose()  {
+    let expected: b256 = 0x0000000000000001_0000000000000002_0000000000000003_0000000000000004;
+    let composed = compose((1, 2, 3, 4));
+    if composed.neq(expected) {
+        __revert(0)
+    }
+}
+
+#[test]
+fn test_decompose()  {
+    let initial: b256 = 0x0000000000000001_0000000000000002_0000000000000003_0000000000000004;
+    let expected = (1, 2, 3, 4);
+    let decomposed = decompose(initial);
+    if decomposed.0.neq(expected.0) && decomposed.1.neq(expected.1) && decomposed.2.neq(expected.2) && decomposed.3.neq(expected.3) {
+        __revert(0)
+    }
+}
