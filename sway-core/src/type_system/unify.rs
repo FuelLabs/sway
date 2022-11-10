@@ -236,7 +236,10 @@ pub(super) fn unify(
                 name: en,
                 trait_constraints: etc,
             },
-        ) if rn.as_str() == en.as_str() && rtc.eq(&etc, type_engine) => (vec![], vec![]),
+        ) if rn.as_str() == en.as_str() && rtc.eq(&etc, type_engine) => {
+            type_engine.insert_unified_type(received, expected);
+            (vec![], vec![])
+        }
         (ref r @ UnknownGeneric { .. }, e) => {
             match type_engine.slab.replace(received, r, e, type_engine) {
                 None => (vec![], vec![]),
