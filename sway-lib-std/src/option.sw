@@ -24,7 +24,7 @@ impl<T> Option<T> {
     // Querying the contained values
     /////////////////////////////////////////////////////////////////////////
     /// Returns `true` if the result is [`Some`].
-    fn is_some(self) -> bool {
+    pub fn is_some(self) -> bool {
         match self {
             Option::Some(_) => true,
             _ => false,
@@ -32,7 +32,7 @@ impl<T> Option<T> {
     }
 
     /// Returns `true` if the result is [`None`].
-    fn is_none(self) -> bool {
+    pub fn is_none(self) -> bool {
         match self {
             Option::Some(_) => false,
             _ => true,
@@ -44,7 +44,7 @@ impl<T> Option<T> {
     /// Because this function may revert, its use is generally discouraged.
     /// Instead, prefer to use pattern matching and handle the [`None`]
     /// case explicitly.
-    fn unwrap(self) -> T {
+    pub fn unwrap(self) -> T {
         match self {
             Option::Some(inner_value) => inner_value,
             _ => revert(0),
