@@ -1,3 +1,4 @@
+use fuel_gql_client::client::schema::resource::Resource;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::Opcode;
 use fuels::contract::abi_encoder::ABIEncoder;
@@ -83,7 +84,7 @@ async fn submit_to_predicate(
     let utxo_predicate_hash = wallet
         .get_provider()
         .unwrap()
-        .get_spendable_coins(&predicate_address.into(), asset_id, amount_to_predicate)
+        .get_spendable_resources(&predicate_address.into(), asset_id, amount_to_predicate)
         .await
         .unwrap();
 
@@ -95,19 +96,24 @@ async fn submit_to_predicate(
     let tx_index = rng.gen();
     let tx_pointer = TxPointer::new(block_height, tx_index);
 
-    for coin in utxo_predicate_hash {
-        let input_coin = Input::coin_predicate(
-            UtxoId::from(coin.utxo_id),
-            coin.owner.into(),
-            coin.amount.0,
-            asset_id,
-            tx_pointer,
-            0,
-            predicate_code.clone(),
-            predicate_data.clone(),
-        );
-        inputs.push(input_coin);
-        total_amount_in_predicate += coin.amount.0;
+    for resource in utxo_predicate_hash {
+        match resource {
+            Resource::Coin(coin) => {
+                let input_coin = Input::coin_predicate(
+                    UtxoId::from(coin.utxo_id),
+                    coin.owner.into(),
+                    coin.amount.0,
+                    asset_id,
+                    tx_pointer,
+                    0,
+                    predicate_code.clone(),
+                    predicate_data.clone(),
+                );
+                inputs.push(input_coin);
+                total_amount_in_predicate += coin.amount.0;
+            }
+            Resource::Message(_) => {}
+        }
     }
 
     let output_coin = Output::coin(receiver_address, total_amount_in_predicate, asset_id);
