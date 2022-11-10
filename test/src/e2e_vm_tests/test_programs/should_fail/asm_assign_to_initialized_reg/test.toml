@@ -1,0 +1,7 @@
+category = "fail"
+
+# check: $()asm(r1: 0, r2: 0, r3, r4) {
+# nextln: $()Register "r1" is initialized and later reassigned which is not allowed. Consider assigning to a different register inside the ASM block.
+
+# check: $()asm(r1: 0, r2: 0, r3, r4) {
+# nextln: $()Register "r2" is initialized and later reassigned which is not allowed. Consider assigning to a different register inside the ASM block.

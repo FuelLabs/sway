@@ -4,24 +4,20 @@ fn main() -> bool {
     (false && true) || true
 }
 
-// check: entry:
+// check: entry():
 // check: $(false_val=$VAL) = const bool false
-// check: cbr $false_val, $(bl0=$ID), $(bl1=$ID)
+// check: cbr $false_val, $(bl0=$ID)(), $(bl1=$ID)($false_val)
 
-// check: $bl0:
-// check: $VAL = phi(entry: $false_val)
+// check: $bl0()
 // check: $(bl0_val=$VAL) = const bool true
-// check: br $bl1
+// check: br $bl1($bl0_val)
 
-// check: $bl1:
-// check: $(bl1_val=$VAL) = phi(entry: $false_val, $bl0: $bl0_val)
-// check: cbr $bl1_val, $(bl3=$ID), $(bl2=$ID)
+// check: $bl1($(bl1_val=$VAL): bool)
+// check: cbr $bl1_val, $(bl3=$ID)($bl1_val), $(bl2=$ID)()
 
-// check: $bl2:
-// check: $VAL = phi($bl1: $bl1_val)
+// check: $bl2()
 // check: $(true_val=$VAL) = const bool true
 // check: br $bl3
 
-// check: $bl3:
-// check: $(ret_val=$VAL) = phi($bl1: $bl1_val, $bl2: $true_val)
+// check: $bl3($(ret_val=$VAL): bool)
 // check: ret bool $ret_val

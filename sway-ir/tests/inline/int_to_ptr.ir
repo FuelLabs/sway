@@ -1,25 +1,36 @@
+// all
+//
 // regex: VAR=v\d+
-// regex: LABEL=[[:alpha:]0-9]+:
+// regex: LABEL=[[:alpha:]0-9_]+
 
 script {
-    fn a(b: u64) -> b256 {
-        entry:
-        v1 = int_to_ptr b to b256
-        ret b256 v1
+    fn a(b: u64, __ret_value: mut ptr b256) -> b256 {
+        entry(b: u64, __ret_value: mut ptr b256):
+        v0 = int_to_ptr b to b256
+        mem_copy __ret_value, v0, 32
+        ret b256 __ret_value
     }
 
-// check: fn main
     fn main() -> b256 {
-        entry:
+// check: fn main
+        local mut ptr b256 __ret_val_a
 
+        entry():
+        v0 = get_ptr mut ptr b256 __ret_val_a, ptr b256, 0
+        v1 = const u64 11
+
+// check: $(retv=$VAR) = get_ptr mut ptr b256 __ret_val_a, ptr b256, 0
 // check: $(arg0=$VAR) = const u64 11
-        v0 = const u64 11
-// check: $(arg1=$VAR) = int_to_ptr $arg0 to b256
-// not: call
-        v1 = call a(v0)
 
-// check: $(arg2=$VAR) = phi($LABEL $arg1)
-// check: ret b256 $arg2
-        ret b256 v1
+        v2 = call a(v1, v0)
+// not: call
+
+// check: $(ret_ptr=$VAR) = int_to_ptr $arg0 to b256
+// check: mem_copy $retv, $ret_ptr, 32
+// check: br $(ret_block=$LABEL)($retv)
+
+        ret b256 v0
+// check: $ret_block($VAR: b256)
+// check: ret b256
     }
 }

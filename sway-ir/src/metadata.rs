@@ -4,129 +4,131 @@
 ///! describe properties which aren't required for code generation, but help with other
 ///! introspective tools (e.g., the debugger) or compiler error messages.
 ///!
-///! NOTE: At the moment the Spans contain a source string and optional path.  Any spans with no
-///! path are ignored/rejected by this module.  The source string is not (de)serialised and so the
-///! string is assumed to always represent the entire contents of the file path.
-use std::sync::Arc;
+///! The metadata themselves are opaque to `sway-ir` and are represented with simple value types;
+///! integers, strings, symbols (tags) and lists.
+use crate::context::Context;
 
-use sway_types::span::Span;
-
-use crate::{context::Context, error::IrError};
-
-pub enum Metadatum {
-    /// A path to a source file.
-    FileLocation(Arc<std::path::PathBuf>, Arc<str>),
-
-    /// A specific section within a source file.
-    Span {
-        loc_idx: MetadataIndex,
-        start: usize,
-        end: usize,
-    },
-
-    /// A unique token for storage operations.
-    StateIndex(usize),
-
-    /// An attribute indicating the permitted/expected storage operations with a function.
-    StorageAttribute(StorageOperation),
-}
-
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash)]
 pub struct MetadataIndex(pub generational_arena::Index);
 
-impl MetadataIndex {
-    pub fn from_span(context: &mut Context, span: &Span) -> Option<MetadataIndex> {
-        // Search for an existing matching path, otherwise insert it.
-        span.path().map(|path_buf| {
-            let loc_idx = match context.metadata_reverse_map.get(&Arc::as_ptr(path_buf)) {
-                Some(idx) => *idx,
-                None => {
-                    // This is assuming that the string in this span represents the entire file
-                    // found at `path_buf`.
-                    let new_idx = MetadataIndex(context.metadata.insert(Metadatum::FileLocation(
-                        path_buf.clone(),
-                        span.src().clone(),
-                    )));
-                    context
-                        .metadata_reverse_map
-                        .insert(Arc::as_ptr(path_buf), new_idx);
-                    new_idx
-                }
-            };
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum Metadatum {
+    Integer(u64),
+    Index(MetadataIndex),
+    String(String),
+    Struct(String, Vec<Metadatum>),
+    List(Vec<MetadataIndex>),
+}
 
-            MetadataIndex(context.metadata.insert(Metadatum::Span {
-                loc_idx,
-                start: span.start(),
-                end: span.end(),
-            }))
-        })
-    }
-
-    pub fn to_span(&self, context: &Context) -> Result<Span, IrError> {
-        match &context.metadata[self.0] {
-            Metadatum::Span {
-                loc_idx,
-                start,
-                end,
-            } => {
-                let (path, src) = match &context.metadata[loc_idx.0] {
-                    Metadatum::FileLocation(path, src) => Ok((path.clone(), src.clone())),
-                    _otherwise => Err(IrError::InvalidMetadatum),
-                }?;
-                Span::new(src, *start, *end, Some(path)).ok_or(IrError::InvalidMetadatum)
+/// Combine two metadata indices into one.
+///
+/// When multiple indices are attached to an IR value or function they must go in a list.  It is
+/// rare for `MetadataIndex` to exist outside of an `Option` though, so we may want to combine two
+/// optional indices when we might end up with only one or the other, or maybe even None.
+///
+/// This function conveniently has all the logic to return the simplest combination of two
+/// `Option<MetadataIndex>`s.
+pub fn combine(
+    context: &mut Context,
+    md_idx_a: &Option<MetadataIndex>,
+    md_idx_b: &Option<MetadataIndex>,
+) -> Option<MetadataIndex> {
+    match (md_idx_a, md_idx_b) {
+        (None, None) => None,
+        (Some(_), None) => *md_idx_a,
+        (None, Some(_)) => *md_idx_b,
+        (Some(idx_a), Some(idx_b)) => {
+            // Rather than potentially making lists of lists, if either are already list we can
+            // merge them together.
+            let mut new_list = Vec::new();
+            if let Metadatum::List(lst_a) = &context.metadata[idx_a.0] {
+                new_list.append(&mut lst_a.clone());
+            } else {
+                new_list.push(*idx_a);
             }
-            _otherwise => Err(IrError::InvalidMetadatum),
+            if let Metadatum::List(lst_b) = &context.metadata[idx_b.0] {
+                new_list.append(&mut lst_b.clone());
+            } else {
+                new_list.push(*idx_b);
+            }
+            Some(MetadataIndex(
+                context.metadata.insert(Metadatum::List(new_list)),
+            ))
+        }
+    }
+}
+
+impl MetadataIndex {
+    pub fn new_integer(context: &mut Context, int: u64) -> Self {
+        MetadataIndex(context.metadata.insert(Metadatum::Integer(int)))
+    }
+
+    pub fn new_index(context: &mut Context, idx: MetadataIndex) -> Self {
+        MetadataIndex(context.metadata.insert(Metadatum::Index(idx)))
+    }
+
+    pub fn new_string<S: Into<String>>(context: &mut Context, s: S) -> Self {
+        MetadataIndex(context.metadata.insert(Metadatum::String(s.into())))
+    }
+
+    pub fn new_struct<S: Into<String>>(
+        context: &mut Context,
+        tag: S,
+        fields: Vec<Metadatum>,
+    ) -> Self {
+        MetadataIndex(
+            context
+                .metadata
+                .insert(Metadatum::Struct(tag.into(), fields)),
+        )
+    }
+
+    pub fn new_list(context: &mut Context, els: Vec<MetadataIndex>) -> Self {
+        MetadataIndex(context.metadata.insert(Metadatum::List(els)))
+    }
+
+    pub fn get_content<'a>(&self, context: &'a Context) -> &'a Metadatum {
+        &context.metadata[self.0]
+    }
+}
+
+impl Metadatum {
+    pub fn unwrap_integer(&self) -> Option<u64> {
+        if let Metadatum::Integer(n) = self {
+            Some(*n)
+        } else {
+            None
         }
     }
 
-    pub fn from_state_idx(context: &mut Context, state_idx: usize) -> Option<MetadataIndex> {
-        Some(MetadataIndex(
-            context.metadata.insert(Metadatum::StateIndex(state_idx)),
-        ))
-    }
-
-    pub fn to_state_idx(&self, context: &Context) -> Result<usize, IrError> {
-        match &context.metadata[self.0] {
-            Metadatum::StateIndex(ix) => Ok(*ix),
-            _otherwise => Err(IrError::InvalidMetadatum),
+    pub fn unwrap_index(&self) -> Option<MetadataIndex> {
+        if let Metadatum::Index(idx) = self {
+            Some(*idx)
+        } else {
+            None
         }
     }
 
-    pub fn get_storage_index(context: &mut Context, storage_op: StorageOperation) -> MetadataIndex {
-        *context
-            .metadata_storage_indices
-            .entry(storage_op)
-            .or_insert_with(|| {
-                MetadataIndex(
-                    context
-                        .metadata
-                        .insert(Metadatum::StorageAttribute(storage_op)),
-                )
-            })
+    pub fn unwrap_string(&self) -> Option<&str> {
+        if let Metadatum::String(s) = self {
+            Some(s)
+        } else {
+            None
+        }
     }
-}
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum StorageOperation {
-    Reads,
-    Writes,
-    ReadsWrites,
-}
-
-use std::fmt::{Display, Error, Formatter};
-
-impl Display for StorageOperation {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "{}", self.simple_string())
-    }
-}
-
-impl StorageOperation {
-    pub fn simple_string(&self) -> &'static str {
+    pub fn unwrap_struct<'a>(&'a self, tag: &str, num_fields: usize) -> Option<&'a [Metadatum]> {
         match self {
-            StorageOperation::Reads => "read",
-            StorageOperation::Writes => "write",
-            StorageOperation::ReadsWrites => "readwrite",
+            Metadatum::Struct(t, fs) if t == tag && fs.len() == num_fields => Some(fs),
+            _otherwise => None,
+        }
+    }
+
+    pub fn unwrap_list(&self) -> Option<&[MetadataIndex]> {
+        if let Metadatum::List(els) = self {
+            Some(els)
+        } else {
+            None
         }
     }
 }

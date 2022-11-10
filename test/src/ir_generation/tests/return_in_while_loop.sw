@@ -7,12 +7,12 @@ fn main() -> bool {
     true
 }
 
-// check: $(while=$ID):
-// check: cbr $VAL, $(while_body=$ID), $(end_while=$ID)
+// check: $(while=$ID)():
+// check: cbr $VAL, $(while_body=$ID)(), $(end_while=$ID)()
 
-// check: $while_body:
+// check: $while_body():
 // check: $(f_val=$VAL) = const bool false
-// check: ret bool $f_val, !4
+// check: ret bool $f_val, $MD
 // not: br $while
 
-// check: $end_while:
+// check: $end_while():

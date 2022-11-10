@@ -1,47 +1,14 @@
-use crate::priv_prelude::*;
+use crate::expr::op_code::parse_instruction;
+use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
-#[derive(Clone, Debug)]
-pub struct AsmBlock {
-    pub asm_token: AsmToken,
-    pub registers: Parens<Punctuated<AsmRegisterDeclaration, CommaToken>>,
-    pub contents: Braces<AsmBlockContents>,
-}
+use core::str::FromStr;
+use num_bigint::BigUint;
 
-#[derive(Clone, Debug)]
-pub struct AsmRegisterDeclaration {
-    pub register: Ident,
-    pub value_opt: Option<(ColonToken, Box<Expr>)>,
-}
-
-#[derive(Clone, Debug)]
-pub struct AsmBlockContents {
-    pub instructions: Vec<(Instruction, SemicolonToken)>,
-    pub final_expr_opt: Option<AsmFinalExpr>,
-}
-
-#[derive(Clone, Debug)]
-pub struct AsmFinalExpr {
-    pub register: Ident,
-    pub ty_opt: Option<(ColonToken, Ty)>,
-}
-
-#[derive(Clone, Debug)]
-pub struct AsmImmediate {
-    pub span: Span,
-    pub parsed: BigUint,
-}
-
-impl Spanned for AsmImmediate {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-impl Spanned for AsmBlock {
-    fn span(&self) -> Span {
-        Span::join(self.asm_token.span(), self.contents.span())
-    }
-}
+use sway_ast::expr::asm::{
+    AsmBlock, AsmBlockContents, AsmFinalExpr, AsmImmediate, AsmRegisterDeclaration,
+};
+use sway_error::parser_error::ParseErrorKind;
+use sway_types::{Ident, Spanned};
 
 impl Parse for AsmBlock {
     fn parse(parser: &mut Parser) -> ParseResult<AsmBlock> {

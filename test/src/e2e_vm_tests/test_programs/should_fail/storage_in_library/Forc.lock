@@ -1,4 +1,3 @@
 [[package]]
 name = 'storage_in_library'
-source = 'root'
-dependencies = []
+source = 'member'

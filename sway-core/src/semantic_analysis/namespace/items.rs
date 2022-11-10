@@ -1,14 +1,31 @@
-use crate::{error::*, namespace::*, parse_tree::*, semantic_analysis::*, type_engine::*};
+use crate::{
+    declaration_engine::{declaration_engine::de_get_storage, declaration_id::DeclarationId},
+    error::*,
+    language::{ty, CallPath},
+    namespace::*,
+    type_system::*,
+};
 
 use super::TraitMap;
 
+use sway_error::{
+    error::CompileError,
+    warning::{CompileWarning, Warning},
+};
 use sway_types::{span::Span, Spanned};
 
 use std::sync::Arc;
 
-type SymbolMap = im::OrdMap<Ident, TypedDeclaration>;
-type UseSynonyms = im::HashMap<Ident, Vec<Ident>>;
-type UseAliases = im::HashMap<String, Ident>;
+/// Is this a glob (`use foo::*;`) import?
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub(crate) enum GlobImport {
+    Yes,
+    No,
+}
+
+pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDeclaration>;
+pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport)>;
+pub(super) type UseAliases = im::HashMap<String, Ident>;
 
 /// The set of items that exist within some lexical scope via declaration or importing.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -27,7 +44,7 @@ pub struct Items {
     /// alias for `bar`.
     pub(crate) use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
-    pub(crate) declared_storage: Option<TypedStorageDeclaration>,
+    pub(crate) declared_storage: Option<DeclarationId>,
 }
 
 impl Items {
@@ -39,27 +56,40 @@ impl Items {
     pub fn apply_storage_load(
         &self,
         fields: Vec<Ident>,
-        storage_fields: &[TypedStorageField],
-    ) -> CompileResult<(TypeCheckedStorageAccess, TypeId)> {
+        storage_fields: &[ty::TyStorageField],
+        access_span: &Span,
+    ) -> CompileResult<(ty::TyStorageAccess, TypeId)> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         match self.declared_storage {
-            Some(ref storage) => storage.apply_storage_load(fields, storage_fields),
-            None => err(
-                vec![],
-                vec![CompileError::NoDeclaredStorage {
+            Some(ref decl_id) => {
+                let storage = check!(
+                    CompileResult::from(de_get_storage(decl_id.clone(), access_span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                storage.apply_storage_load(fields, storage_fields)
+            }
+            None => {
+                errors.push(CompileError::NoDeclaredStorage {
                     span: fields[0].span(),
-                }],
-            ),
+                });
+                err(warnings, errors)
+            }
         }
     }
 
-    pub fn set_storage_declaration(&mut self, decl: TypedStorageDeclaration) -> CompileResult<()> {
+    pub fn set_storage_declaration(&mut self, decl_id: DeclarationId) -> CompileResult<()> {
         if self.declared_storage.is_some() {
             return err(
                 vec![],
-                vec![CompileError::MultipleStorageDeclarations { span: decl.span() }],
+                vec![CompileError::MultipleStorageDeclarations {
+                    span: decl_id.span(),
+                }],
             );
         }
-        self.declared_storage = Some(decl);
+        self.declared_storage = Some(decl_id);
         ok((), vec![], vec![])
     }
 
@@ -70,19 +100,19 @@ impl Items {
     pub(crate) fn insert_symbol(
         &mut self,
         name: Ident,
-        item: TypedDeclaration,
+        item: ty::TyDeclaration,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
         // purposefully do not preemptively return errors so that the
-        // new definiton allows later usages to compile
+        // new definition allows later usages to compile
         if self.symbols.get(&name).is_some() {
             match item {
-                TypedDeclaration::EnumDeclaration { .. }
-                | TypedDeclaration::StructDeclaration { .. } => {
+                ty::TyDeclaration::EnumDeclaration { .. }
+                | ty::TyDeclaration::StructDeclaration { .. } => {
                     errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
                 }
-                TypedDeclaration::GenericTypeForFunctionScope { .. } => {
+                ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
                     errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
                 }
                 _ => {
@@ -97,7 +127,7 @@ impl Items {
         ok((), warnings, errors)
     }
 
-    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&TypedDeclaration, CompileError> {
+    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDeclaration, CompileError> {
         self.symbols
             .get(name)
             .ok_or_else(|| CompileError::SymbolNotFound { name: name.clone() })
@@ -106,49 +136,79 @@ impl Items {
     pub(crate) fn insert_trait_implementation(
         &mut self,
         trait_name: CallPath,
-        implementing_for_type_id: TypeId,
-        functions_buf: Vec<TypedFunctionDeclaration>,
-    ) {
+        trait_type_args: Vec<TypeArgument>,
+        type_id: TypeId,
+        methods: &[DeclarationId],
+        impl_span: &Span,
+        is_impl_self: bool,
+    ) -> CompileResult<()> {
         let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
                 .get(&trait_name.suffix)
+                .map(|us| &us.0)
                 .unwrap_or(&trait_name.prefixes)
                 .clone()
         } else {
             trait_name.prefixes
         };
         let trait_name = CallPath {
-            suffix: trait_name.suffix,
             prefixes: new_prefixes,
+            suffix: trait_name.suffix,
             is_absolute: trait_name.is_absolute,
         };
-        self.implemented_traits
-            .insert(trait_name, implementing_for_type_id, functions_buf);
+        self.implemented_traits.insert(
+            trait_name,
+            trait_type_args,
+            type_id,
+            methods,
+            impl_span,
+            is_impl_self,
+        )
     }
 
-    pub(crate) fn get_methods_for_type(
+    pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
+        self.implemented_traits.insert_for_type(type_id);
+    }
+
+    pub(crate) fn get_methods_for_type(&self, type_id: TypeId) -> Vec<DeclarationId> {
+        self.implemented_traits.get_methods_for_type(type_id)
+    }
+
+    pub(crate) fn get_methods_for_type_and_trait_name(
         &self,
-        implementing_for_type_id: TypeId,
-    ) -> Vec<TypedFunctionDeclaration> {
+        type_id: TypeId,
+        trait_name: &CallPath,
+    ) -> Vec<DeclarationId> {
         self.implemented_traits
-            .get_methods_for_type(implementing_for_type_id)
-    }
-
-    pub(crate) fn get_canonical_path(&self, symbol: &Ident) -> &[Ident] {
-        self.use_synonyms.get(symbol).map(|v| &v[..]).unwrap_or(&[])
+            .get_methods_for_type_and_trait_name(type_id, trait_name)
     }
 
     pub(crate) fn has_storage_declared(&self) -> bool {
         self.declared_storage.is_some()
     }
 
-    pub(crate) fn get_storage_field_descriptors(&self) -> CompileResult<Vec<TypedStorageField>> {
-        if let Some(fields) = self.declared_storage.as_ref().map(|ds| ds.fields.clone()) {
-            ok(fields, vec![], vec![])
-        } else {
-            let msg = "unknown source location";
-            let span = Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
-            err(vec![], vec![CompileError::NoDeclaredStorage { span }])
+    pub(crate) fn get_storage_field_descriptors(
+        &self,
+        access_span: &Span,
+    ) -> CompileResult<Vec<ty::TyStorageField>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match self.declared_storage {
+            Some(ref decl_id) => {
+                let storage = check!(
+                    CompileResult::from(de_get_storage(decl_id.clone(), access_span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                ok(storage.fields, warnings, errors)
+            }
+            None => {
+                let msg = "unknown source location";
+                let span = Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
+                errors.push(CompileError::NoDeclaredStorage { span });
+                err(warnings, errors)
+            }
         }
     }
 
@@ -157,7 +217,7 @@ impl Items {
     pub(crate) fn find_subfield_type(
         &self,
         base_name: &Ident,
-        projections: &[ProjectionKind],
+        projections: &[ty::ProjectionKind],
     ) -> CompileResult<(TypeId, TypeId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -171,7 +231,7 @@ impl Items {
             }
         };
         let mut symbol = check!(
-            symbol.return_type(),
+            symbol.return_type(&base_name.span()),
             return err(warnings, errors),
             warnings,
             errors
@@ -181,7 +241,7 @@ impl Items {
         let mut full_name_for_error = base_name.to_string();
         let mut full_span_for_error = base_name.span();
         for projection in projections {
-            let resolved_type = match resolve_type(symbol, &symbol_span) {
+            let resolved_type = match to_typeinfo(symbol, &symbol_span) {
                 Ok(resolved_type) => resolved_type,
                 Err(error) => {
                     errors.push(CompileError::TypeError(error));
@@ -195,11 +255,11 @@ impl Items {
                         fields,
                         ..
                     },
-                    ProjectionKind::StructField { name: field_name },
+                    ty::ProjectionKind::StructField { name: field_name },
                 ) => {
                     let field_type_opt = {
                         fields.iter().find_map(
-                            |TypedStructField {
+                            |ty::TyStructField {
                                  type_id: r#type,
                                  name,
                                  ..
@@ -236,7 +296,7 @@ impl Items {
                     full_span_for_error =
                         Span::join(full_span_for_error, field_name.span().clone());
                 }
-                (TypeInfo::Tuple(fields), ProjectionKind::TupleField { index, index_span }) => {
+                (TypeInfo::Tuple(fields), ty::ProjectionKind::TupleField { index, index_span }) => {
                     let field_type_opt = {
                         fields
                             .get(*index)
@@ -259,14 +319,14 @@ impl Items {
                     full_name_for_error.push_str(&index.to_string());
                     full_span_for_error = Span::join(full_span_for_error, index_span.clone());
                 }
-                (actually, ProjectionKind::StructField { .. }) => {
+                (actually, ty::ProjectionKind::StructField { .. }) => {
                     errors.push(CompileError::FieldAccessOnNonStruct {
                         span: full_span_for_error,
                         actually: actually.to_string(),
                     });
                     return err(warnings, errors);
                 }
-                (actually, ProjectionKind::TupleField { .. }) => {
+                (actually, ty::ProjectionKind::TupleField { .. }) => {
                     errors.push(CompileError::NotATuple {
                         name: full_name_for_error,
                         span: full_span_for_error,

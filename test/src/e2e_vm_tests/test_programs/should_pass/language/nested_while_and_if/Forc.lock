@@ -1,11 +1,10 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-454A4726DFB746F1'
-dependencies = []
 
 [[package]]
 name = 'nested_while_and_if'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

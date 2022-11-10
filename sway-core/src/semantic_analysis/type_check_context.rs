@@ -1,13 +1,14 @@
 use crate::{
+    language::Purity,
     namespace::Path,
-    parse_tree::declaration::Purity,
     semantic_analysis::{ast_node::Mode, Namespace},
-    type_engine::{
+    type_system::{
         insert_type, monomorphize, unify_with_self, CopyTypes, EnforceTypeArguments,
         MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
     },
-    CompileResult, CompileWarning, TypeError,
+    CompileResult, CompileWarning,
 };
+use sway_error::error::CompileError;
 use sway_types::{span::Span, Ident};
 
 /// Contextual state tracked and accumulated throughout type-checking.
@@ -176,7 +177,7 @@ impl<'ns> TypeCheckContext<'ns> {
 
     /// Short-hand for calling the `monomorphize` function in the type engine
     pub(crate) fn monomorphize<T>(
-        &self,
+        &mut self,
         value: &mut T,
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
@@ -185,13 +186,14 @@ impl<'ns> TypeCheckContext<'ns> {
     where
         T: MonomorphizeHelper + CopyTypes,
     {
+        let mod_path = self.namespace.mod_path.clone();
         monomorphize(
             value,
             type_arguments,
             enforce_type_arguments,
             call_site_span,
-            &self.namespace.root,
-            &self.namespace.mod_path,
+            self.namespace,
+            &mod_path,
         )
     }
 
@@ -224,13 +226,13 @@ impl<'ns> TypeCheckContext<'ns> {
             .resolve_type_without_self(type_id, span, type_info_prefix)
     }
 
-    /// Short-hand around `type_engine::unify_with_self`, where the `TypeCheckContext` provides the
+    /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the
     /// type annotation, self type and help text.
     pub(crate) fn unify_with_self(
         &self,
         ty: TypeId,
         span: &Span,
-    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
+    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         unify_with_self(
             ty,
             self.type_annotation(),

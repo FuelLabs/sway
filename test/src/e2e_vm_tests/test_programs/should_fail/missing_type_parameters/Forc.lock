@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-71DB3AC72E68AF59'
+
+[[package]]
+name = 'missing_type_parameteres'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-71DB3AC72E68AF59'
+dependencies = ['core']

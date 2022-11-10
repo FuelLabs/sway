@@ -1,5 +1,4 @@
 use fuels::prelude::*;
-use fuels::signers::wallet::Wallet;
 use fuels::tx::ContractId;
 
 abigen!(
@@ -19,8 +18,9 @@ async fn can_detect_reentrancy() {
     let (_, target_id) = get_target_instance(wallet).await;
 
     let result = attacker_instance
+        .methods()
         .launch_attack(target_id)
-        .set_contracts(&[target_id])
+        .set_contracts(&[target_id.into()])
         .call()
         .await
         .unwrap();
@@ -36,8 +36,9 @@ async fn can_block_reentrancy() {
     let (_, target_id) = get_target_instance(wallet).await;
 
     attacker_instance
+        .methods()
         .launch_thwarted_attack_1(target_id)
-        .set_contracts(&[target_id])
+        .set_contracts(&[target_id.into()])
         .call()
         .await
         .unwrap();
@@ -51,8 +52,9 @@ async fn can_block_cross_function_reentrancy() {
     let (_, target_id) = get_target_instance(wallet).await;
 
     attacker_instance
+        .methods()
         .launch_thwarted_attack_2(target_id)
-        .set_contracts(&[target_id])
+        .set_contracts(&[target_id.into()])
         .call()
         .await
         .unwrap();
@@ -65,8 +67,9 @@ async fn can_call_guarded_function() {
     let (_, target_id) = get_target_instance(wallet).await;
 
     let result = attacker_instance
+        .methods()
         .innocent_call(target_id)
-        .set_contracts(&[target_id])
+        .set_contracts(&[target_id.into()])
         .call()
         .await
         .unwrap();
@@ -74,7 +77,7 @@ async fn can_call_guarded_function() {
     assert_eq!(result.value, true)
 }
 
-async fn get_attacker_instance(wallet: Wallet) -> (AttackerContract, ContractId) {
+async fn get_attacker_instance(wallet: WalletUnlocked) -> (AttackerContract, ContractId) {
     let id = Contract::deploy(
         "test_artifacts/reentrancy_attacker_contract/out/debug/reentrancy_attacker_contract.bin",
         &wallet,
@@ -88,12 +91,12 @@ async fn get_attacker_instance(wallet: Wallet) -> (AttackerContract, ContractId)
     .await
     .unwrap();
 
-    let instance = AttackerContract::new(id.to_string(), wallet);
+    let instance = AttackerContract::new(id.clone(), wallet);
 
-    (instance, id)
+    (instance, id.into())
 }
 
-async fn get_target_instance(wallet: Wallet) -> (TargetContract, ContractId) {
+async fn get_target_instance(wallet: WalletUnlocked) -> (TargetContract, ContractId) {
     let id = Contract::deploy(
         "test_artifacts/reentrancy_target_contract/out/debug/reentrancy_target_contract.bin",
         &wallet,
@@ -107,7 +110,7 @@ async fn get_target_instance(wallet: Wallet) -> (TargetContract, ContractId) {
     .await
     .unwrap();
 
-    let instance = TargetContract::new(id.to_string(), wallet);
+    let instance = TargetContract::new(id.clone(), wallet);
 
-    (instance, id)
+    (instance, id.into())
 }

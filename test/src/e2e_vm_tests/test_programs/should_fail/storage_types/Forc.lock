@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-B427A21A0EB5F683'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-B427A21A0EB5F683'
+dependencies = ['core']
+
+[[package]]
+name = 'storage_types'
+source = 'member'
+dependencies = ['std']

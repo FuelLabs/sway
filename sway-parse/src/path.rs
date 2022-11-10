@@ -1,62 +1,10 @@
-use crate::priv_prelude::*;
+use crate::{Parse, ParseResult, Parser};
 
-#[derive(Clone, Debug)]
-pub struct PathExpr {
-    pub root_opt: Option<(Option<AngleBrackets<QualifiedPathRoot>>, DoubleColonToken)>,
-    pub prefix: PathExprSegment,
-    pub suffix: Vec<(DoubleColonToken, PathExprSegment)>,
-}
-
-#[derive(Clone, Debug)]
-pub struct PathExprSegment {
-    pub fully_qualified: Option<TildeToken>,
-    pub name: Ident,
-    pub generics_opt: Option<(DoubleColonToken, GenericArgs)>,
-}
-
-impl Spanned for PathExpr {
-    fn span(&self) -> Span {
-        let start = match &self.root_opt {
-            Some((qualified_path_root_opt, double_colon_token)) => match qualified_path_root_opt {
-                Some(qualified_path_root) => qualified_path_root.span(),
-                None => double_colon_token.span(),
-            },
-            None => self.prefix.span(),
-        };
-        let end = match self.suffix.last() {
-            Some((_double_colon_token, path_expr_segment)) => path_expr_segment.span(),
-            None => self.prefix.span(),
-        };
-        Span::join(start, end)
-    }
-}
-
-impl PathExpr {
-    pub fn try_into_ident(self) -> Result<Ident, PathExpr> {
-        if self.root_opt.is_none()
-            && self.suffix.is_empty()
-            && self.prefix.fully_qualified.is_none()
-            && self.prefix.generics_opt.is_none()
-        {
-            return Ok(self.prefix.name);
-        }
-        Err(self)
-    }
-}
-
-impl Spanned for PathExprSegment {
-    fn span(&self) -> Span {
-        let start = match &self.fully_qualified {
-            Some(tilde_token) => tilde_token.span(),
-            None => self.name.span(),
-        };
-        let end = match &self.generics_opt {
-            Some((_double_colon_token, generic_args)) => generic_args.span(),
-            None => self.name.span(),
-        };
-        Span::join(start, end)
-    }
-}
+use sway_ast::keywords::{DoubleColonToken, OpenAngleBracketToken, SelfToken, StorageToken};
+use sway_ast::{
+    AngleBrackets, PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot,
+};
+use sway_types::Ident;
 
 impl Parse for PathExpr {
     fn parse(parser: &mut Parser) -> ParseResult<PathExpr> {
@@ -91,14 +39,10 @@ impl Parse for PathExpr {
 }
 
 fn parse_ident(parser: &mut Parser) -> ParseResult<Ident> {
-    if parser.peek::<StorageToken>().is_some() {
-        let token = parser.parse::<StorageToken>()?;
-        let ident: Ident = Ident::from(token);
-        Ok(ident)
-    } else if parser.peek::<SelfToken>().is_some() {
-        let token = parser.parse::<SelfToken>()?;
-        let ident: Ident = Ident::from(token);
-        Ok(ident)
+    if let Some(token) = parser.take::<StorageToken>() {
+        Ok(Ident::from(token))
+    } else if let Some(token) = parser.take::<SelfToken>() {
+        Ok(Ident::from(token))
     } else {
         parser.parse::<Ident>()
     }
@@ -106,75 +50,11 @@ fn parse_ident(parser: &mut Parser) -> ParseResult<Ident> {
 
 impl Parse for PathExprSegment {
     fn parse(parser: &mut Parser) -> ParseResult<PathExprSegment> {
-        let fully_qualified = parser.take();
-        let name = parse_ident(parser)?;
-        let generics_opt = if parser
-            .peek2::<DoubleColonToken, OpenAngleBracketToken>()
-            .is_some()
-        {
-            let double_colon_token = parser.parse()?;
-            let generics = parser.parse()?;
-            Some((double_colon_token, generics))
-        } else {
-            None
-        };
         Ok(PathExprSegment {
-            fully_qualified,
-            name,
-            generics_opt,
+            name: parse_ident(parser)?,
+            generics_opt: parser.guarded_parse::<(DoubleColonToken, OpenAngleBracketToken), _>()?,
         })
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct PathType {
-    pub root_opt: Option<(Option<AngleBrackets<QualifiedPathRoot>>, DoubleColonToken)>,
-    pub prefix: PathTypeSegment,
-    pub suffix: Vec<(DoubleColonToken, PathTypeSegment)>,
-}
-
-impl Spanned for PathType {
-    fn span(&self) -> Span {
-        let start = match &self.root_opt {
-            Some((qualified_path_root_opt, double_colon_token)) => match qualified_path_root_opt {
-                Some(qualified_path_root) => qualified_path_root.span(),
-                None => double_colon_token.span(),
-            },
-            None => self.prefix.span(),
-        };
-        let end = match self.suffix.last() {
-            Some((_double_colon_token, path_type_segment)) => path_type_segment.span(),
-            None => self.prefix.span(),
-        };
-        Span::join(start, end)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct PathTypeSegment {
-    pub fully_qualified: Option<TildeToken>,
-    pub name: Ident,
-    pub generics_opt: Option<(Option<DoubleColonToken>, GenericArgs)>,
-}
-
-impl Spanned for PathTypeSegment {
-    fn span(&self) -> Span {
-        let start = match &self.fully_qualified {
-            Some(tilde_token) => tilde_token.span(),
-            None => self.name.span(),
-        };
-        let end = match &self.generics_opt {
-            Some((_double_colon_token, generic_args)) => generic_args.span(),
-            None => self.name.span(),
-        };
-        Span::join(start, end)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct QualifiedPathRoot {
-    pub ty: Box<Ty>,
-    pub as_trait: Option<(AsToken, Box<PathType>)>,
 }
 
 impl Parse for PathType {
@@ -211,26 +91,18 @@ impl Parse for PathType {
 
 impl Parse for PathTypeSegment {
     fn parse(parser: &mut Parser) -> ParseResult<PathTypeSegment> {
-        let fully_qualified = parser.take();
         let name = parse_ident(parser)?;
-        let generics_opt = if parser.peek::<OpenAngleBracketToken>().is_some() {
-            let generics = parser.parse()?;
-            Some((None, generics))
-        } else if parser
-            .peek2::<DoubleColonToken, OpenAngleBracketToken>()
-            .is_some()
-        {
-            let double_colon_token = parser.parse()?;
-            let generics = parser.parse()?;
-            Some((Some(double_colon_token), generics))
-        } else {
-            None
-        };
-        Ok(PathTypeSegment {
-            fully_qualified,
-            name,
-            generics_opt,
-        })
+        let generics_opt =
+            if let Some(generics) = parser.guarded_parse::<OpenAngleBracketToken, _>()? {
+                Some((None, generics))
+            } else if let Some((double_colon_token, generics)) =
+                parser.guarded_parse::<(DoubleColonToken, OpenAngleBracketToken), _>()?
+            {
+                Some((Some(double_colon_token), generics))
+            } else {
+                None
+            };
+        Ok(PathTypeSegment { name, generics_opt })
     }
 }
 
@@ -238,10 +110,7 @@ impl Parse for QualifiedPathRoot {
     fn parse(parser: &mut Parser) -> ParseResult<QualifiedPathRoot> {
         let ty = parser.parse()?;
         let as_trait = match parser.take() {
-            Some(as_token) => {
-                let path_type = parser.parse()?;
-                Some((as_token, path_type))
-            }
+            Some(as_token) => Some((as_token, parser.parse()?)),
             None => None,
         };
         Ok(QualifiedPathRoot { ty, as_trait })

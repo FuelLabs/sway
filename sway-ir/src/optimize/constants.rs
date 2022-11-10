@@ -11,6 +11,7 @@ use crate::{
     function::Function,
     instruction::Instruction,
     value::{Value, ValueContent, ValueDatum},
+    BranchToWithArgs, Predicate,
 };
 
 /// Find constant expressions which can be reduced to fewer opterations.
@@ -22,10 +23,105 @@ pub fn combine_constants(context: &mut Context, function: &Function) -> Result<b
             continue;
         }
 
+        if combine_cmp(context, function) {
+            modified = true;
+            continue;
+        }
+
+        if combine_cbr(context, function)? {
+            modified = true;
+            continue;
+        }
+
         // Other passes here... always continue to the top if pass returns true.
         break;
     }
+
     Ok(modified)
+}
+
+fn combine_cbr(context: &mut Context, function: &Function) -> Result<bool, IrError> {
+    let candidate = function
+        .instruction_iter(context)
+        .find_map(
+            |(in_block, inst_val)| match &context.values[inst_val.0].value {
+                ValueDatum::Instruction(Instruction::ConditionalBranch {
+                    cond_value,
+                    true_block,
+                    false_block,
+                }) if cond_value.is_constant(context) => {
+                    match &cond_value.get_constant(context).unwrap().value {
+                        ConstantValue::Bool(true) => Some(Ok((
+                            inst_val,
+                            in_block,
+                            true_block.clone(),
+                            false_block.clone(),
+                        ))),
+                        ConstantValue::Bool(false) => Some(Ok((
+                            inst_val,
+                            in_block,
+                            false_block.clone(),
+                            true_block.clone(),
+                        ))),
+                        _ => Some(Err(IrError::VerifyConditionExprNotABool)),
+                    }
+                }
+                _ => None,
+            },
+        )
+        .transpose()?;
+
+    candidate.map_or(
+        Ok(false),
+        |(
+            cbr,
+            from_block,
+            dest,
+            BranchToWithArgs {
+                block: no_more_dest,
+                ..
+            },
+        )| {
+            no_more_dest.remove_pred(context, &from_block);
+            cbr.replace(context, ValueDatum::Instruction(Instruction::Branch(dest)));
+            Ok(true)
+        },
+    )
+}
+
+fn combine_cmp(context: &mut Context, function: &Function) -> bool {
+    let candidate = function
+        .instruction_iter(context)
+        .find_map(
+            |(block, inst_val)| match &context.values[inst_val.0].value {
+                ValueDatum::Instruction(Instruction::Cmp(pred, val1, val2))
+                    if val1.is_constant(context) && val2.is_constant(context) =>
+                {
+                    let val1 = val1.get_constant(context).unwrap();
+                    let val2 = val2.get_constant(context).unwrap();
+                    match pred {
+                        Predicate::Equal => {
+                            if val1.eq(context, val2) {
+                                Some((inst_val, block, true))
+                            } else {
+                                Some((inst_val, block, false))
+                            }
+                        }
+                    }
+                }
+                _ => None,
+            },
+        );
+
+    candidate.map_or(false, |(inst_val, block, cn_replace)| {
+        // Replace this `cmp` instruction with a constant.
+        inst_val.replace(
+            context,
+            ValueDatum::Constant(Constant::new_bool(cn_replace)),
+        );
+        block.remove_instruction(context, inst_val);
+        true
+    })
 }
 
 fn combine_const_insert_values(context: &mut Context, function: &Function) -> bool {
@@ -62,10 +158,9 @@ fn combine_const_insert_values(context: &mut Context, function: &Function) -> bo
         });
 
     if let Some((block, ins_val, aggregate, const_val, indices)) = candidate {
-        // OK, here we have an `insert_value` of a constant directly into a constant
-        // aggregate.  We want to replace the constant aggregate with an updated one.
-        let new_aggregate =
-            combine_const_aggregate_field(context, function, aggregate, const_val, &indices);
+        // OK, here we have an `insert_value` of a constant directly into a constant aggregate.  We
+        // want to replace the constant aggregate with an updated one.
+        let new_aggregate = combine_const_aggregate_field(context, aggregate, const_val, &indices);
 
         // Replace uses of the `insert_value` instruction with the new aggregate.
         function.replace_value(context, ins_val, new_aggregate, None);
@@ -73,8 +168,8 @@ fn combine_const_insert_values(context: &mut Context, function: &Function) -> bo
         // Remove the `insert_value` instruction.
         block.remove_instruction(context, ins_val);
 
-        // Let's return now, since our iterator may get confused and let the pass
-        // iterate further itself.
+        // Let's return now, since our iterator may get confused and let the pass iterate further
+        // itself.
         return true;
     }
 
@@ -83,18 +178,16 @@ fn combine_const_insert_values(context: &mut Context, function: &Function) -> bo
 
 fn combine_const_aggregate_field(
     context: &mut Context,
-    function: &Function,
     aggregate: Value,
     const_value: Value,
     indices: &[u64],
 ) -> Value {
     // Create a copy of the aggregate constant and inserted value.
-    let (mut new_aggregate, span_md_idx) = match &context.values[aggregate.0] {
+    let (mut new_aggregate, metadata) = match &context.values[aggregate.0] {
         ValueContent {
             value: ValueDatum::Constant(c),
-            span_md_idx,
-            state_idx_md_idx: None,
-        } => (c.clone(), *span_md_idx),
+            metadata,
+        } => (c.clone(), *metadata),
         _otherwise => {
             unreachable!("BUG! Invalid aggregate parameter to combine_const_insert_value()")
         }
@@ -109,19 +202,11 @@ fn combine_const_aggregate_field(
     // Update the new aggregate with the constant field, based in the indices.
     inject_constant_into_aggregate(&mut new_aggregate, const_value, indices);
 
-    // Replace the old aggregate with the new aggregate.
-    let new_aggregate_value = Value::new_constant(context, new_aggregate, span_md_idx);
-    function.replace_value(context, aggregate, new_aggregate_value, None);
+    // NOTE: Previous versions of this pass were trying to clean up after themselves, by replacing
+    // the old aggregate with this new one, and/or removing the old aggregate altogether.  This is
+    // too dangerous without proper checking for remaining uses, and is best left to DCE anyway.
 
-    // Remove the old aggregate from the context.
-    //
-    // OR NOT!  This is too dangerous unless we can
-    // guarantee it has no uses, which is something we should implement eventually.  For now, in
-    // this case it shouldn't matter if we leave it, even if it's not used.
-    //
-    // TODO: context.values.remove(aggregate.0);
-
-    new_aggregate_value
+    Value::new_constant(context, new_aggregate).add_metadatum(context, metadata)
 }
 
 fn inject_constant_into_aggregate(aggregate: &mut Constant, value: Constant, indices: &[u64]) {

@@ -1,27 +1,92 @@
 mod e2e_vm_tests;
 mod ir_generation;
 
-fn main() {
-    let mut locked = false;
-    let mut filter_regex = None;
-    for arg in std::env::args().skip(1) {
-        // Check for the `--locked` flag. Must precede the regex.
-        // Intended for use in `CI` to ensure test lock files are up to date.
-        if arg == "--locked" {
-            locked = true;
-            continue;
-        }
+use anyhow::Result;
+use clap::Parser;
+use forc_tracing::init_tracing_subscriber;
+use tracing::Instrument;
 
-        // Check for a regex, used to filter the set of tests.
-        let regex = regex::Regex::new(&arg).unwrap_or_else(|_| {
-            panic!(
-                "Expected either `--locked` or a filter regex, found: {:?}.",
-                arg
-            )
-        });
-        filter_regex = Some(regex);
+#[derive(Parser)]
+struct Cli {
+    /// Only run tests matching this regex
+    #[arg(value_name = "REGEX")]
+    include: Option<regex::Regex>,
+
+    /// Exclude tests matching this regex
+    #[arg(long, short, value_name = "REGEX")]
+    exclude: Option<regex::Regex>,
+
+    /// Skip all tests until a test matches this regex
+    #[arg(long, short, value_name = "REGEX")]
+    skip_until: Option<regex::Regex>,
+
+    /// Only run tests with ABI JSON output validation
+    #[arg(long, visible_alias = "abi")]
+    abi_only: bool,
+
+    /// Only run tests that deploy contracts
+    #[arg(long, visible_alias = "contract")]
+    contract_only: bool,
+
+    /// Only run the first test
+    #[arg(long, visible_alias = "first")]
+    first_only: bool,
+
+    /// Print out warnings and errors
+    #[arg(long, env = "SWAY_TEST_VERBOSE")]
+    verbose: bool,
+
+    /// Intended for use in `CI` to ensure test lock files are up to date
+    #[arg(long)]
+    locked: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct FilterConfig {
+    pub include: Option<regex::Regex>,
+    pub exclude: Option<regex::Regex>,
+    pub skip_until: Option<regex::Regex>,
+    pub abi_only: bool,
+    pub contract_only: bool,
+    pub first_only: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct RunConfig {
+    pub locked: bool,
+    pub verbose: bool,
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    init_tracing_subscriber(Default::default());
+
+    // Parse args
+    let cli = Cli::parse();
+    let filter_config = FilterConfig {
+        include: cli.include,
+        exclude: cli.exclude,
+        skip_until: cli.skip_until,
+        abi_only: cli.abi_only,
+        contract_only: cli.contract_only,
+        first_only: cli.first_only,
+    };
+    let run_config = RunConfig {
+        locked: cli.locked,
+        verbose: cli.verbose,
+    };
+
+    // Run E2E tests
+    e2e_vm_tests::run(&filter_config, &run_config)
+        .instrument(tracing::trace_span!("E2E"))
+        .await?;
+
+    // Run IR tests
+    if !filter_config.first_only {
+        ir_generation::run(filter_config.include.as_ref())
+            .instrument(tracing::trace_span!("IR"))
+            .await?;
     }
 
-    e2e_vm_tests::run(locked, filter_regex.as_ref());
-    ir_generation::run(filter_regex.as_ref());
+    Ok(())
 }

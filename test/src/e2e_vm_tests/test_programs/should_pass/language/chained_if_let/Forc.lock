@@ -1,9 +1,8 @@
 [[package]]
 name = 'chained_if_let'
-source = 'root'
+source = 'member'
 dependencies = ['core']
 
 [[package]]
 name = 'core'
 source = 'path+from-root-152613234D2C9EC5'
-dependencies = []

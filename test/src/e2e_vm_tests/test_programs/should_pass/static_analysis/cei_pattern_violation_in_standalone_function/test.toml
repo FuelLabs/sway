@@ -1,0 +1,3 @@
+category = "compile"
+
+# check: $()Storage modification after external contract interaction in function or method "standalone_function". Consider making all storage writes before calling another contract

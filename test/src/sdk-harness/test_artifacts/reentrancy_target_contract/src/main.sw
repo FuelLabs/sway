@@ -1,6 +1,6 @@
 contract;
 
-use std::{assert::assert, chain::auth::*, context::{call_frames::contract_id, gas}, contract_id::ContractId, reentrancy::*, result::*, revert::revert, identity::Identity};
+use std::{auth::*, call_frames::contract_id, context::gas, reentrancy::*};
 
 use reentrancy_attacker_abi::Attacker;
 use reentrancy_target_abi::Target;
@@ -14,7 +14,9 @@ fn get_msg_sender_id_or_panic(result: Result<Identity, AuthError>) -> ContractId
                 _ => revert(0),
             }
         },
-        _ => {revert(0);},
+        _ => {
+            revert(0);
+        },
     }
 }
 
@@ -28,7 +30,7 @@ impl Target for Contract {
             let id = id.value;
             let caller = abi(Attacker, id);
 
-            /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
+            // this call transfers control to the attacker contract, allowing it to execute arbitrary code.
             let return_value = caller.evil_callback_1();
             false
         }
@@ -43,7 +45,7 @@ impl Target for Contract {
         let id = id.value;
         let caller = abi(Attacker, id);
 
-        /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
+        // this call transfers control to the attacker contract, allowing it to execute arbitrary code.
         let return_value = caller.evil_callback_2();
     }
 
@@ -56,12 +58,12 @@ impl Target for Contract {
         let id = id.value;
         let caller = abi(Attacker, id);
 
-        /// this call transfers control to the attacker contract, allowing it to execute arbitrary code.
+        // this call transfers control to the attacker contract, allowing it to execute arbitrary code.
         let return_value = caller.evil_callback_3();
     }
 
     fn intra_contract_call() {
-        let this = abi(Target, ~ContractId::into(contract_id()));
+        let this = abi(Target, ContractId::into(contract_id()));
         this.cross_function_reentrance_denied();
     }
 

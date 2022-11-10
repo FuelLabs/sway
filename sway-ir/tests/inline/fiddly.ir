@@ -1,3 +1,5 @@
+// all
+//
 // Based on this Sway which is designed to have many blocks and branches in main() before we inline
 // more blocks and branches.  In particular, we need to be sure the `phi` instructions refer to the
 // correct predecessor blocks.
@@ -14,30 +16,29 @@
 // }
 
 // regex: ID=[[:alpha:]0-9_]+
-// regex: LABEL=[[:alpha:]0-9_]+:
+// regex: LABEL=[[:alpha:]0-9_]+\(.*\):
 // regex: VAR=v\d+
 
 script {
     fn not(v: bool) -> bool {
-        entry:
-        cbr v, block0, block1
+        entry(v: bool):
+        cbr v, block0(), block1()
 
-        block0:
+        block0():
         v0 = const bool false
-        br block2
+        br block2(v0)
 
-        block1:
+        block1():
         v1 = const bool true
-        br block2
+        br block2(v1)
 
-        block2:
-        v2 = phi(block0: v0, block1: v1)
+        block2(v2: bool):
         ret bool v2
     }
 
 // check: fn main
     fn main() -> bool {
-        entry:
+        entry():
         v0 = const bool true
 // not: call
         v1 = call not(v0)
@@ -51,16 +52,14 @@ script {
 // check: $(bl1_lab=$LABEL)
 // check: const bool true
 // check: br $bl0_to
-// check: $bl0_to:
-// check: phi($bl0_lab $VAR, $bl1_lab $VAR)
+// check: $bl0_to
 
 // * Match this cbr to not be confused with the inlined cbr below.  A more unique marker in not()
 //   would be better...
 // check: cbr
-        cbr v1, block1, block0
+        cbr v1, block1(v1), block0(v1)
 
-        block0:
-        v2 = phi(entry: v1)
+        block0(v2: bool):
         v3 = const bool false
 // not: call
         v4 = call not(v3)
@@ -71,13 +70,11 @@ script {
 // check: br $(bl2_to=$ID)
 // check: $(bl3_lab=$LABEL)
 // check: br $bl2_to
-// check: $bl2_to:
-// check: phi($bl2_lab $VAR, $bl3_lab $VAR)
+// check: $bl2_to($VAR: bool):
 
-        br block1
+        br block1(v4)
 
-        block1:
-        v5 = phi(entry: v1, block0: v4)
+        block1(v5: bool):
         ret bool v5
     }
 }

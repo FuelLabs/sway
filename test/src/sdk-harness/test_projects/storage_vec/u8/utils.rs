@@ -24,9 +24,9 @@ pub mod setup {
         .await
         .unwrap();
 
-        let instance = MyContract::new(id.to_string(), wallet);
+        let instance = MyContract::new(id.clone(), wallet);
 
-        (instance, id)
+        (instance, id.into())
     }
 }
 
@@ -34,42 +34,64 @@ pub mod wrappers {
     use super::*;
 
     pub async fn push(instance: &MyContract, value: u8) {
-        instance.u8_push(value).call().await.unwrap();
+        instance.methods().u8_push(value).call().await.unwrap();
     }
 
     pub async fn get(instance: &MyContract, index: u64) -> u8 {
-        instance.u8_get(index).call().await.unwrap().value
+        instance.methods().u8_get(index).call().await.unwrap().value
     }
 
     pub async fn pop(instance: &MyContract) -> u8 {
-        instance.u8_pop().call().await.unwrap().value
+        instance.methods().u8_pop().call().await.unwrap().value
     }
 
     pub async fn remove(instance: &MyContract, index: u64) -> u8 {
-        instance.u8_remove(index).call().await.unwrap().value
+        instance
+            .methods()
+            .u8_remove(index)
+            .call()
+            .await
+            .unwrap()
+            .value
     }
 
     pub async fn swap_remove(instance: &MyContract, index: u64) -> u8 {
-        instance.u8_swap_remove(index).call().await.unwrap().value
+        instance
+            .methods()
+            .u8_swap_remove(index)
+            .call()
+            .await
+            .unwrap()
+            .value
     }
 
     pub async fn set(instance: &MyContract, index: u64, value: u8) {
-        instance.u8_set(index, value).call().await.unwrap();
+        instance
+            .methods()
+            .u8_set(index, value)
+            .call()
+            .await
+            .unwrap();
     }
 
     pub async fn insert(instance: &MyContract, index: u64, value: u8) {
-        instance.u8_insert(index, value).call().await.unwrap();
+        instance
+            .methods()
+            .u8_insert(index, value)
+            .call()
+            .await
+            .unwrap();
     }
 
     pub async fn len(instance: &MyContract) -> u64 {
-        instance.u8_len().call().await.unwrap().value
+        instance.methods().u8_len().call().await.unwrap().value
     }
 
     pub async fn is_empty(instance: &MyContract) -> bool {
-        instance.u8_is_empty().call().await.unwrap().value
+        instance.methods().u8_is_empty().call().await.unwrap().value
     }
 
     pub async fn clear(instance: &MyContract) {
-        instance.u8_clear().call().await.unwrap();
+        instance.methods().u8_clear().call().await.unwrap();
     }
 }

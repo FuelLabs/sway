@@ -1,0 +1,7 @@
+category = "fail"
+
+# check: $()fn add_points<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: my_add::MyAdd {
+# check: $()Unimplemented feature: Using module paths to define trait constraints is not supported yet.
+
+# check: $()trait B: my_a::A {
+# nextln: $()Unimplemented feature: Using module paths to define supertraits is not supported yet.

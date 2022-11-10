@@ -58,7 +58,7 @@ fn dir_contains_forc_manifest(path: &Path) -> bool {
 fn get_sway_path() -> PathBuf {
     let mut curr_path = std::env::current_dir().unwrap();
     loop {
-        if curr_path.ends_with("sway") {
+        if curr_path.join("examples").exists() && curr_path.join("sway-core").exists() {
             return curr_path;
         }
         curr_path = curr_path.parent().unwrap().to_path_buf()
@@ -73,7 +73,7 @@ fn run_forc_command(path: &Path, cmd_args: &[&str]) -> bool {
 
     let output = std::process::Command::new("forc")
         .args(cmd_args)
-        .arg(&path)
+        .arg(path)
         .output()
         .expect("failed to run command for example project");
 

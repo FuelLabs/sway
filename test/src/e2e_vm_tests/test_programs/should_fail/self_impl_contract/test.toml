@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()`impl Self` for contracts is not supported

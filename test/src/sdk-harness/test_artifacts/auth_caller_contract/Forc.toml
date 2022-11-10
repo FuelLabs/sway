@@ -5,5 +5,5 @@ license = "Apache-2.0"
 name = "auth_caller_contract"
 
 [dependencies]
+auth_testing_abi = { path = "../auth_testing_abi" }
 std = { path = "../../../../../sway-lib-std" }
-auth_testing_abi = { path = "../auth_testing_abi"}

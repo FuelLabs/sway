@@ -30,6 +30,8 @@ purely shorthand for the sake of ergonomics.
 
 ## Trait Constraints
 
+> **Note** Trait constraints [have not yet been implemented](https://github.com/FuelLabs/sway/issues/970)
+
 Important background to know before diving into trait constraints is that the `where` clause can be used to specify the required traits for the generic argument. So, when writing something like a `HashMap` you may
 want to specify that the generic argument implements a `Hash` trait.
 
@@ -40,8 +42,6 @@ fn get_hashmap_key<T>(Key : T) -> b256
     // Code within here can then call methods associated with the Hash trait on Key
 }
 ```
-
-*`where` clauses are still [work-in-progress](https://github.com/FuelLabs/sway/issues/970), so some `where` statements shown may not be fully implemented.*
 
 Of course, our `noop()` function is not useful. Often, a programmer will want to declare functions over types which satisfy certain traits.
 For example, let's try to implement the successor function, `successor()`, for all numeric types.
@@ -60,8 +60,8 @@ Run `forc build`, and you will get:
 .. |
  9 |   where T: Add
 10 |   {
-11 |     argument + 1                                        
-   |                ^ Mismatched types: expected type "T" but saw type "u64"
+11 |       argument + 1                                        
+   |                  ^ Mismatched types: expected type "T" but saw type "u64"
 12 |   }
 13 |
 ```
@@ -84,11 +84,9 @@ fn successor<T>(argument: T)
     where T: Add,
           T: Incrementable
 {
-    argument + ~T::incrementor()
+    argument + T::incrementor()
 }
 ```
-
-_(There's a little bit of new syntax here. When directly referring to a type to execute a method from it, a tilde (`~`) is used. This may change in the future.)_
 
 ## Generic Structs and Enums
 

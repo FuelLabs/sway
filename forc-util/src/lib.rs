@@ -5,16 +5,15 @@ use annotate_snippets::{
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
 use anyhow::{bail, Result};
-use std::env;
+use forc_tracing::{println_green_err, println_red_err, println_yellow_err};
 use std::ffi::OsStr;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str;
-use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
-use sway_types::Spanned;
+use sway_core::language::parsed::TreeType;
+use sway_error::error::CompileError;
+use sway_error::warning::CompileWarning;
+use sway_types::{LineCol, Spanned};
 use sway_utils::constants;
-use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
-use tracing_subscriber::filter::EnvFilter;
 
 pub mod restricted;
 
@@ -40,10 +39,6 @@ pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option
 /// Continually go up in the file tree until a Forc manifest file is found.
 pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
     find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
-}
-/// Continually go up in the file tree until a Cargo manifest file is found.
-pub fn find_cargo_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
-    find_parent_dir_with_file(starter_path, constants::TEST_MANIFEST_FILE_NAME)
 }
 
 pub fn is_sway_file(file: &Path) -> bool {
@@ -131,7 +126,7 @@ pub fn git_checkouts_directory() -> PathBuf {
 }
 
 pub fn print_on_success(
-    silent_mode: bool,
+    terse_mode: bool,
     proj_name: &str,
     warnings: &[CompileWarning],
     tree_type: &TreeType,
@@ -143,7 +138,7 @@ pub fn print_on_success(
         TreeType::Library { .. } => "library",
     };
 
-    if !silent_mode {
+    if !terse_mode {
         warnings.iter().for_each(format_warning);
     }
 
@@ -164,8 +159,8 @@ pub fn print_on_success(
     }
 }
 
-pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[CompileWarning]) {
-    if !silent_mode {
+pub fn print_on_success_library(terse_mode: bool, proj_name: &str, warnings: &[CompileWarning]) {
+    if !terse_mode {
         warnings.iter().for_each(format_warning);
     }
 
@@ -185,10 +180,10 @@ pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[
     }
 }
 
-pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: &[CompileError]) {
+pub fn print_on_failure(terse_mode: bool, warnings: &[CompileWarning], errors: &[CompileError]) {
     let e_len = errors.len();
 
-    if !silent_mode {
+    if !terse_mode {
         warnings.iter().for_each(format_warning);
         errors.iter().for_each(format_err);
     }
@@ -200,69 +195,7 @@ pub fn print_on_failure(silent_mode: bool, warnings: &[CompileWarning], errors: 
     ));
 }
 
-pub fn println_red(txt: &str) {
-    println_std_out(txt, TermColor::Red);
-}
-
-pub fn println_green(txt: &str) {
-    println_std_out(txt, TermColor::Green);
-}
-
-pub fn print_blue_err(txt: &str) {
-    print_std_err(txt, TermColor::Blue);
-}
-
-pub fn println_yellow_err(txt: &str) {
-    println_std_err(txt, TermColor::Yellow);
-}
-
-pub fn println_red_err(txt: &str) {
-    println_std_err(txt, TermColor::Red);
-}
-
-pub fn println_green_err(txt: &str) {
-    println_std_err(txt, TermColor::Green);
-}
-
-pub fn print_std_out(txt: &str, color: TermColor) {
-    let stdout = StandardStream::stdout(ColorChoice::Always);
-    print_with_color(txt, color, stdout);
-}
-
-fn println_std_out(txt: &str, color: TermColor) {
-    let stdout = StandardStream::stdout(ColorChoice::Always);
-    println_with_color(txt, color, stdout);
-}
-
-fn print_std_err(txt: &str, color: TermColor) {
-    let stdout = StandardStream::stderr(ColorChoice::Always);
-    print_with_color(txt, color, stdout);
-}
-
-fn println_std_err(txt: &str, color: TermColor) {
-    let stdout = StandardStream::stderr(ColorChoice::Always);
-    println_with_color(txt, color, stdout);
-}
-
-fn print_with_color(txt: &str, color: TermColor, stream: StandardStream) {
-    let mut stream = stream;
-    stream
-        .set_color(ColorSpec::new().set_fg(Some(color)))
-        .expect("internal printing error");
-    write!(&mut stream, "{}", txt).expect("internal printing error");
-    stream.reset().expect("internal printing error");
-}
-
-fn println_with_color(txt: &str, color: TermColor, stream: StandardStream) {
-    let mut stream = stream;
-    stream
-        .set_color(ColorSpec::new().set_fg(Some(color)))
-        .expect("internal printing error");
-    writeln!(&mut stream, "{}", txt).expect("internal printing error");
-    stream.reset().expect("internal printing error");
-}
-
-fn format_err(err: &sway_core::CompileError) {
+fn format_err(err: &CompileError) {
     let span = err.span();
     let input = span.input();
     let path = err.path();
@@ -278,7 +211,7 @@ fn format_err(err: &sway_core::CompileError) {
             annotation_type: AnnotationType::Error,
         });
 
-        let (mut start, end) = err.line_col();
+        let (mut start, end) = err.span().line_col();
         let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
         let slices = vec![Slice {
             source: input,
@@ -316,7 +249,7 @@ fn format_err(err: &sway_core::CompileError) {
     tracing::error!("{}\n____\n", DisplayList::from(snippet))
 }
 
-fn format_warning(err: &sway_core::CompileWarning) {
+fn format_warning(err: &CompileWarning) {
     let span = err.span();
     let input = span.input();
     let path = err.path();
@@ -330,7 +263,7 @@ fn format_warning(err: &sway_core::CompileWarning) {
         end_pos += 1;
     }
 
-    let (mut start, end) = err.line_col();
+    let (mut start, end) = err.span.line_col();
     let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
     let snippet = Snippet {
         title: Some(Annotation {
@@ -418,28 +351,6 @@ fn construct_window<'a>(
 
     start.line = lines_to_start_of_snippet;
     &input[calculated_start_ix..calculated_end_ix]
-}
-
-const LOG_FILTER: &str = "RUST_LOG";
-
-/// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
-///
-/// `RUST_LOG` environment variable can be used to set different minimum level for the subscriber, default is `INFO`.
-pub fn init_tracing_subscriber() {
-    let filter = match env::var_os(LOG_FILTER) {
-        Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
-        None => EnvFilter::new("info"),
-    };
-
-    tracing_subscriber::fmt::Subscriber::builder()
-        .with_env_filter(filter)
-        .with_ansi(true)
-        .with_level(false)
-        .with_file(false)
-        .with_line_number(false)
-        .without_time()
-        .with_target(false)
-        .init();
 }
 
 #[cfg(all(feature = "uwu", any(target_arch = "x86", target_arch = "x86_64")))]

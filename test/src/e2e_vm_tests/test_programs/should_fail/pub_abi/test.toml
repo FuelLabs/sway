@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()Unnecessary visibility qualifier, `pub` is implied here.
+# check: $()Mismatched types.

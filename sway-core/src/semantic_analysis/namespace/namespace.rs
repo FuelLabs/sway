@@ -1,11 +1,15 @@
 use crate::{
-    semantic_analysis::ast_node::TypedExpression, type_engine::*, CallPath, CompileResult, Ident,
-    TypedDeclaration, TypedFunctionDeclaration,
+    declaration_engine::{de_get_function, DeclarationId},
+    error::*,
+    language::{ty, CallPath},
+    type_system::*,
+    CompileResult, Ident,
 };
 
 use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
 
-use sway_types::span::Span;
+use sway_error::error::CompileError;
+use sway_types::{span::Span, Spanned};
 
 use std::collections::VecDeque;
 
@@ -51,10 +55,10 @@ impl Namespace {
     }
 
     /// Find the module that these prefixes point to
-    pub fn find_module_path<'a, T>(&'a self, prefixes: T) -> PathBuf
-    where
-        T: IntoIterator<Item = &'a Ident>,
-    {
+    pub fn find_module_path<'a>(
+        &'a self,
+        prefixes: impl IntoIterator<Item = &'a Ident>,
+    ) -> PathBuf {
         self.mod_path.iter().chain(prefixes).cloned().collect()
     }
 
@@ -85,7 +89,7 @@ impl Namespace {
     }
 
     /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
-    pub(crate) fn resolve_symbol(&self, symbol: &Ident) -> CompileResult<&TypedDeclaration> {
+    pub(crate) fn resolve_symbol(&self, symbol: &Ident) -> CompileResult<&ty::TyDeclaration> {
         self.root.resolve_symbol(&self.mod_path, symbol)
     }
 
@@ -93,7 +97,7 @@ impl Namespace {
     pub(crate) fn resolve_call_path(
         &self,
         call_path: &CallPath,
-    ) -> CompileResult<&TypedDeclaration> {
+    ) -> CompileResult<&ty::TyDeclaration> {
         self.root.resolve_call_path(&self.mod_path, call_path)
     }
 
@@ -106,13 +110,15 @@ impl Namespace {
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
-        self.root.resolve_type_with_self(
+        let mod_path = self.mod_path.clone();
+        resolve_type_with_self(
             type_id,
             self_type,
             span,
             enforce_type_arguments,
             type_info_prefix,
-            &self.mod_path,
+            self,
+            &mod_path,
         )
     }
 
@@ -123,32 +129,102 @@ impl Namespace {
         span: &Span,
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
-        self.root.resolve_type(
+        let mod_path = self.mod_path.clone();
+        resolve_type(
             type_id,
             span,
             EnforceTypeArguments::Yes,
             type_info_prefix,
-            &self.mod_path,
+            self,
+            &mod_path,
         )
     }
 
-    /// Short-hand for calling [Root::find_method_for_type] on `root` with the `mod_path`.
+    /// Given a method and a type (plus a `self_type` to potentially
+    /// resolve it), find that method in the namespace. Requires `args_buf`
+    /// because of some special casing for the standard library where we pull
+    /// the type from the arguments buffer.
+    ///
+    /// This function will generate a missing method error if the method is not
+    /// found.
     pub(crate) fn find_method_for_type(
         &mut self,
-        r#type: TypeId,
+        mut type_id: TypeId,
         method_prefix: &Path,
         method_name: &Ident,
         self_type: TypeId,
-        args_buf: &VecDeque<TypedExpression>,
-    ) -> CompileResult<TypedFunctionDeclaration> {
-        self.root.find_method_for_type(
-            &self.mod_path,
-            r#type,
-            method_prefix,
-            method_name,
-            self_type,
-            args_buf,
-        )
+        args_buf: &VecDeque<ty::TyExpression>,
+    ) -> CompileResult<DeclarationId> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        // grab the local module
+        let local_module = check!(
+            self.root().check_submodule(&self.mod_path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // grab the local methods from the local module
+        let local_methods = local_module.get_methods_for_type(type_id);
+
+        type_id.replace_self_type(self_type);
+
+        // resolve the type
+        let type_id = check!(
+            resolve_type(
+                type_id,
+                &method_name.span(),
+                EnforceTypeArguments::No,
+                None,
+                self,
+                method_prefix
+            ),
+            insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors
+        );
+
+        // grab the module where the type itself is declared
+        let type_module = check!(
+            self.root().check_submodule(method_prefix),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // grab the methods from where the type is declared
+        let mut type_methods = type_module.get_methods_for_type(type_id);
+
+        let mut methods = local_methods;
+        methods.append(&mut type_methods);
+
+        for decl_id in methods.into_iter() {
+            let method = check!(
+                CompileResult::from(de_get_function(decl_id.clone(), &decl_id.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            if &method.name == method_name {
+                // if we find the method that we are looking for, we also need
+                // to retrieve the impl definitions for the return type so that
+                // the user can string together method calls
+                self.insert_trait_implementation_for_type(method.return_type);
+                return ok(decl_id, warnings, errors);
+            }
+        }
+
+        if args_buf.get(0).map(|x| look_up_type_id(x.return_type)) != Some(TypeInfo::ErrorRecovery)
+        {
+            errors.push(CompileError::MethodNotFound {
+                method_name: method_name.clone(),
+                type_name: type_id.to_string(),
+                span: method_name.span(),
+            });
+        }
+        err(warnings, errors)
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.

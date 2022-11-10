@@ -1,25 +1,23 @@
 use crate::{
     error::{err, ok},
+    language::{ty, Literal},
     semantic_analysis::{
         ast_node::expression::typed_expression::{
             instantiate_struct_field_access, instantiate_tuple_index_access,
             instantiate_unsafe_downcast,
         },
         namespace::Namespace,
-        IsConstant, TypedEnumVariant, TypedExpression, TypedExpressionVariant,
     },
-    type_engine::unify,
-    CompileResult, Ident, Literal,
+    type_system::unify,
+    CompileResult, Ident, TypeId,
 };
 
 use sway_types::span::Span;
 
-use super::typed_scrutinee::{TypedScrutinee, TypedScrutineeVariant, TypedStructScrutineeField};
-
 /// List of requirements that a desugared if expression must include in the conditional.
-pub(crate) type MatchReqMap = Vec<(TypedExpression, TypedExpression)>;
+pub(crate) type MatchReqMap = Vec<(ty::TyExpression, ty::TyExpression)>;
 /// List of variable declarations that must be placed inside of the body of the if expression.
-pub(crate) type MatchDeclMap = Vec<(Ident, TypedExpression)>;
+pub(crate) type MatchDeclMap = Vec<(Ident, ty::TyExpression)>;
 /// This is the result type given back by the matcher.
 pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 
@@ -64,46 +62,50 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 /// ]
 /// ```
 pub(crate) fn matcher(
-    exp: &TypedExpression,
-    scrutinee: TypedScrutinee,
+    exp: &ty::TyExpression,
+    scrutinee: ty::TyScrutinee,
     namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let TypedScrutinee {
+    let ty::TyScrutinee {
         variant,
         type_id,
         span,
     } = scrutinee;
-    let (mut new_warnings, new_errors) = unify(type_id, exp.return_type, &span, "");
-    warnings.append(&mut new_warnings);
-    errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+
+    // unify the type of the scrutinee with the type of the expression
+    append!(unify(type_id, exp.return_type, &span, ""), warnings, errors);
+
     if !errors.is_empty() {
         return err(warnings, errors);
     }
+
     match variant {
-        TypedScrutineeVariant::CatchAll => ok((vec![], vec![]), warnings, errors),
-        TypedScrutineeVariant::Literal(value) => match_literal(exp, value, span),
-        TypedScrutineeVariant::Variable(name) => match_variable(exp, name, span),
-        TypedScrutineeVariant::StructScrutinee(fields) => match_struct(exp, fields, namespace),
-        TypedScrutineeVariant::EnumScrutinee { value, variant } => {
+        ty::TyScrutineeVariant::CatchAll => ok((vec![], vec![]), warnings, errors),
+        ty::TyScrutineeVariant::Literal(value) => match_literal(exp, value, span),
+        ty::TyScrutineeVariant::Variable(name) => match_variable(exp, name),
+        ty::TyScrutineeVariant::Constant(name, _, type_id) => {
+            match_constant(exp, name, type_id, span)
+        }
+        ty::TyScrutineeVariant::StructScrutinee(_, fields) => match_struct(exp, fields, namespace),
+        ty::TyScrutineeVariant::EnumScrutinee { value, variant, .. } => {
             match_enum(exp, variant, *value, span, namespace)
         }
-        TypedScrutineeVariant::Tuple(elems) => match_tuple(exp, elems, span, namespace),
+        ty::TyScrutineeVariant::Tuple(elems) => match_tuple(exp, elems, span, namespace),
     }
 }
 
 fn match_literal(
-    exp: &TypedExpression,
+    exp: &ty::TyExpression,
     scrutinee: Literal,
     span: Span,
 ) -> CompileResult<MatcherResult> {
     let match_req_map = vec![(
         exp.to_owned(),
-        TypedExpression {
-            expression: TypedExpressionVariant::Literal(scrutinee),
+        ty::TyExpression {
+            expression: ty::TyExpressionVariant::Literal(scrutinee),
             return_type: exp.return_type,
-            is_constant: IsConstant::No,
             span,
         },
     )];
@@ -111,26 +113,46 @@ fn match_literal(
     ok((match_req_map, match_decl_map), vec![], vec![])
 }
 
-fn match_variable(
-    exp: &TypedExpression,
-    scrutinee_name: Ident,
-    _span: Span,
-) -> CompileResult<MatcherResult> {
+fn match_variable(exp: &ty::TyExpression, scrutinee_name: Ident) -> CompileResult<MatcherResult> {
     let match_req_map = vec![];
     let match_decl_map = vec![(scrutinee_name, exp.to_owned())];
+
+    ok((match_req_map, match_decl_map), vec![], vec![])
+}
+
+fn match_constant(
+    exp: &ty::TyExpression,
+    scrutinee_name: Ident,
+    scrutinee_type_id: TypeId,
+    span: Span,
+) -> CompileResult<MatcherResult> {
+    let match_req_map = vec![(
+        exp.to_owned(),
+        ty::TyExpression {
+            expression: ty::TyExpressionVariant::VariableExpression {
+                name: scrutinee_name,
+                span: span.clone(),
+                mutability: ty::VariableMutability::Immutable,
+            },
+            return_type: scrutinee_type_id,
+            span,
+        },
+    )];
+    let match_decl_map = vec![];
+
     ok((match_req_map, match_decl_map), vec![], vec![])
 }
 
 fn match_struct(
-    exp: &TypedExpression,
-    fields: Vec<TypedStructScrutineeField>,
+    exp: &ty::TyExpression,
+    fields: Vec<ty::TyStructScrutineeField>,
     namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut match_req_map = vec![];
     let mut match_decl_map = vec![];
-    for TypedStructScrutineeField {
+    for ty::TyStructScrutineeField {
         field,
         scrutinee,
         span: field_span,
@@ -165,9 +187,9 @@ fn match_struct(
 }
 
 fn match_enum(
-    exp: &TypedExpression,
-    variant: TypedEnumVariant,
-    scrutinee: TypedScrutinee,
+    exp: &ty::TyExpression,
+    variant: ty::TyEnumVariant,
+    scrutinee: ty::TyScrutinee,
     span: Span,
     namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
@@ -185,8 +207,8 @@ fn match_enum(
 }
 
 fn match_tuple(
-    exp: &TypedExpression,
-    elems: Vec<TypedScrutinee>,
+    exp: &ty::TyExpression,
+    elems: Vec<ty::TyScrutinee>,
     span: Span,
     namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {

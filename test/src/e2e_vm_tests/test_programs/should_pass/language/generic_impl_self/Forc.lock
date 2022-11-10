@@ -1,9 +1,8 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-DA3FEDB2AB26E552'
-dependencies = []
 
 [[package]]
 name = 'generic_impl_self'
-source = 'root'
+source = 'member'
 dependencies = ['core']

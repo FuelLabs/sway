@@ -1,12 +1,11 @@
 [[package]]
 name = 'call_frames_test_abi'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
 source = 'path+from-root-5E1AE3B7DA5CAD9F'
-dependencies = []
 
 [[package]]
 name = 'std'

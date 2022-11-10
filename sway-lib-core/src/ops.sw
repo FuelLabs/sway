@@ -1,42 +1,32 @@
 library ops;
 
+use ::num::*;
+
 pub trait Add {
     fn add(self, other: Self) -> Self;
 }
 
 impl Add for u64 {
     fn add(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            add r3 r2 r1;
-            r3: u64
-        }
+        __add(self, other)
     }
 }
 
 impl Add for u32 {
     fn add(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            add r3 r2 r1;
-            r3: u32
-        }
+        __add(self, other)
     }
 }
 
 impl Add for u16 {
     fn add(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            add r3 r2 r1;
-            r3: u16
-        }
+        __add(self, other)
     }
 }
 
 impl Add for u8 {
     fn add(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            add r3 r2 r1;
-            r3: u8
-        }
+        __add(self, other)
     }
 }
 
@@ -46,37 +36,25 @@ pub trait Subtract {
 
 impl Subtract for u64 {
     fn subtract(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sub r3 r1 r2;
-            r3
-        }
+        __sub(self, other)
     }
 }
 
 impl Subtract for u32 {
     fn subtract(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sub r3 r1 r2;
-            r3: u32
-        }
+        __sub(self, other)
     }
 }
 
 impl Subtract for u16 {
     fn subtract(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sub r3 r1 r2;
-            r3: u16
-        }
+        __sub(self, other)
     }
 }
 
 impl Subtract for u8 {
     fn subtract(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            sub r3 r1 r2;
-            r3: u8
-        }
+        __sub(self, other)
     }
 }
 
@@ -86,37 +64,25 @@ pub trait Multiply {
 
 impl Multiply for u64 {
     fn multiply(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            mul r3 r1 r2;
-            r3
-        }
+        __mul(self, other)
     }
 }
 
 impl Multiply for u32 {
     fn multiply(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            mul r3 r1 r2;
-            r3: u32
-        }
+        __mul(self, other)
     }
 }
 
 impl Multiply for u16 {
     fn multiply(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            mul r3 r1 r2;
-            r3: u16
-        }
+        __mul(self, other)
     }
 }
 
 impl Multiply for u8 {
     fn multiply(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            mul r3 r1 r2;
-            r3: u8
-        }
+        __mul(self, other)
     }
 }
 
@@ -126,37 +92,25 @@ pub trait Divide {
 
 impl Divide for u64 {
     fn divide(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            div r3 r1 r2;
-            r3
-        }
+        __div(self, other)
     }
 }
 
 impl Divide for u32 {
     fn divide(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            div r3 r1 r2;
-            r3: u32
-        }
+        __div(self, other)
     }
 }
 
 impl Divide for u16 {
     fn divide(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            div r3 r1 r2;
-            r3: u16
-        }
+        __div(self, other)
     }
 }
 
 impl Divide for u8 {
     fn divide(self, other: Self) -> Self {
-        asm(r1: self, r2: other, r3) {
-            div r3 r1 r2;
-            r3: u8
-        }
+        __div(self, other)
     }
 }
 
@@ -200,11 +154,21 @@ impl Mod for u8 {
     }
 }
 
+pub trait Not {
+    fn not(self) -> Self;
+}
+
+impl Not for bool {
+    fn not(self) -> Self {
+        __eq(self, false)
+    }
+}
+
 pub trait Eq {
     fn eq(self, other: Self) -> bool;
 } {
     fn neq(self, other: Self) -> bool {
-        not(self.eq(other))
+        (self.eq(other)).not()
     }
 }
 
@@ -246,6 +210,12 @@ impl Eq for b256 {
             meq r4 r1 r2 r3;
             r4: bool
         }
+    }
+}
+
+impl Eq for raw_ptr {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
     }
 }
 
@@ -350,27 +320,6 @@ impl Ord for b256 {
     }
 }
 
-// Should this be a trait eventually? Do we want to allow people to customize what `!` does?
-// Scala says yes, Rust says perhaps...
-pub fn not(a: bool) -> bool {
-    // using direct asm for perf
-    asm(r1: a, r2) {
-        eq r2 r1 zero;
-        r2: bool
-    }
-}
-
-impl b256 {
-    fn neq(self, other: Self) -> bool {
-        // Both self and other are addresses of the values, so we can use MEQ.
-        not(asm(r1: self, r2: other, r3, r4) {
-            addi r3 zero i32;
-            meq r4 r1 r2 r3;
-            r4: bool
-        })
-    }
-}
-
 pub trait BitwiseAnd {
     fn binary_and(self, other: Self) -> Self;
 }
@@ -410,41 +359,80 @@ impl BitwiseXor for u64 {
     }
 }
 
+impl Not for u64 {
+    fn not(self) -> Self {
+        asm(r1: self, r2) {
+            not r2 r1;
+            r2: u64
+        }
+    }
+}
+
+impl Not for u32 {
+    fn not(self) -> Self {
+        asm(r1: self, r2, r3: u32::max(), r4) {
+            not r2 r1;
+            and r4 r2 r3;
+            r4: u32
+        }
+    }
+}
+
+impl Not for u16 {
+    fn not(self) -> Self {
+        asm(r1: self, r2, r3: u16::max(), r4) {
+            not r2 r1;
+            and r4 r2 r3;
+            r4: u16
+        }
+    }
+}
+
+impl Not for u8 {
+    fn not(self) -> Self {
+        asm(r1: self, r2, r3: u8::max(), r4) {
+            not r2 r1;
+            and r4 r2 r3;
+            r4: u8
+        }
+    }
+}
+
 impl BitwiseAnd for b256 {
-    pub fn binary_and(val: self, other: Self) -> Self {
+    fn binary_and(val: self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_and(other_word_1);
         let word_2 = value_word_2.binary_and(other_word_2);
         let word_3 = value_word_3.binary_and(other_word_3);
         let word_4 = value_word_4.binary_and(other_word_4);
-        let rebuilt = compose(word_1, word_2, word_3, word_4);
+        let rebuilt = compose((word_1, word_2, word_3, word_4));
         rebuilt
     }
 }
 
 impl BitwiseOr for b256 {
-    pub fn binary_or(val: self, other: Self) -> Self {
+    fn binary_or(val: self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_or(other_word_1);
         let word_2 = value_word_2.binary_or(other_word_2);
         let word_3 = value_word_3.binary_or(other_word_3);
         let word_4 = value_word_4.binary_or(other_word_4);
-        let rebuilt = compose(word_1, word_2, word_3, word_4);
+        let rebuilt = compose((word_1, word_2, word_3, word_4));
         rebuilt
     }
 }
 
 impl BitwiseXor for b256 {
-    pub fn binary_xor(val: self, other: Self) -> Self {
+    fn binary_xor(val: self, other: Self) -> Self {
         let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
         let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_xor(other_word_1);
         let word_2 = value_word_2.binary_xor(other_word_2);
         let word_3 = value_word_3.binary_xor(other_word_3);
         let word_4 = value_word_4.binary_xor(other_word_4);
-        let rebuilt = compose(word_1, word_2, word_3, word_4);
+        let rebuilt = compose((word_1, word_2, word_3, word_4));
         rebuilt
     }
 }
@@ -571,7 +559,7 @@ impl Shiftable for b256 {
             ();
         };
 
-        compose(w1, w2, w3, w4)
+        compose((w1, w2, w3, w4))
     }
 
     fn rsh(self, shift_amount: u64) -> Self {
@@ -609,7 +597,7 @@ impl Shiftable for b256 {
             ();
         };
 
-        compose(w1, w2, w3, w4)
+        compose((w1, w2, w3, w4))
     }
 }
 
@@ -633,33 +621,31 @@ fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     (shifted, carry)
 }
 
-/// Extract a single 64 bit word from a b256 value using the specified offset.
-fn get_word_from_b256(val: b256, offset: u64) -> u64 {
-    let mut empty: u64 = 0;
-    asm(r1: val, offset: offset, r2, res: empty) {
-        add r2 r1 offset;
-        lw res r2 i0;
-        res: u64
-    }
+/// Build a single b256 value from a tuple of 4 u64 values.
+fn compose(words: (u64, u64, u64, u64)) -> b256 {
+    asm(r1: __addr_of(words)) { r1: b256 }
 }
 
-/// Build a single b256 value from 4 64 bit words.
-fn compose(word_1: u64, word_2: u64, word_3: u64, word_4: u64) -> b256 {
-    let res: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
-    asm(w1: word_1, w2: word_2, w3: word_3, w4: word_4, result: res) {
-        sw result w1 i0;
-        sw result w2 i1;
-        sw result w3 i2;
-        sw result w4 i3;
-        result: b256
-    }
-}
-
-/// Get 4 64 bit words from a single b256 value.
+/// Get a tuple of 4 u64 values from a single b256 value.
 fn decompose(val: b256) -> (u64, u64, u64, u64) {
-    let w1 = get_word_from_b256(val, 0);
-    let w2 = get_word_from_b256(val, 8);
-    let w3 = get_word_from_b256(val, 16);
-    let w4 = get_word_from_b256(val, 24);
-    (w1, w2, w3, w4)
+    asm(r1: __addr_of(val)) { r1: (u64, u64, u64, u64) }
+}
+
+#[test]
+fn test_compose()  {
+    let expected: b256 = 0x0000000000000001_0000000000000002_0000000000000003_0000000000000004;
+    let composed = compose((1, 2, 3, 4));
+    if composed.neq(expected) {
+        __revert(0)
+    }
+}
+
+#[test]
+fn test_decompose()  {
+    let initial: b256 = 0x0000000000000001_0000000000000002_0000000000000003_0000000000000004;
+    let expected = (1, 2, 3, 4);
+    let decomposed = decompose(initial);
+    if decomposed.0.neq(expected.0) && decomposed.1.neq(expected.1) && decomposed.2.neq(expected.2) && decomposed.3.neq(expected.3) {
+        __revert(0)
+    }
 }

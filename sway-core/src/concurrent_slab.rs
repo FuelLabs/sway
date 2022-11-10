@@ -1,39 +1,112 @@
-use crate::type_engine::TypeId;
-use std::sync::RwLock;
+use std::{fmt, sync::RwLock};
 
-#[derive(Debug, Default)]
-pub struct ConcurrentSlab<T> {
+use crate::{
+    declaration_engine::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper},
+    type_system::TypeId,
+    TypeInfo,
+};
+
+#[derive(Debug)]
+pub(crate) struct ConcurrentSlab<T> {
     inner: RwLock<Vec<T>>,
+}
+
+impl<T> Default for ConcurrentSlab<T>
+where
+    T: Default,
+{
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+        }
+    }
+}
+
+impl<T> fmt::Display for ConcurrentSlab<T>
+where
+    T: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let inner = self.inner.read().unwrap();
+        write!(
+            f,
+            "{}",
+            inner
+                .iter()
+                .enumerate()
+                .map(|(i, value)| { format!("{:<10}\t->\t{}", i, value) })
+                .collect::<Vec<_>>()
+                .join("\n"),
+        )
+    }
 }
 
 impl<T> ConcurrentSlab<T>
 where
-    T: Clone + PartialEq,
+    T: Clone,
 {
-    pub fn insert(&self, value: T) -> TypeId {
+    pub fn insert(&self, value: T) -> usize {
         let mut inner = self.inner.write().unwrap();
         let ret = inner.len();
         inner.push(value);
-        ret.into()
+        ret
     }
 
-    pub fn get(&self, index: TypeId) -> T {
+    pub fn get(&self, index: usize) -> T {
         let inner = self.inner.read().unwrap();
-        inner[*index].clone()
-    }
-
-    pub fn replace(&self, index: TypeId, prev_value: &T, new_value: T) -> Option<T> {
-        let mut inner = self.inner.write().unwrap();
-        let actual_prev_value = &inner[*index];
-        if actual_prev_value != prev_value {
-            return Some(actual_prev_value.clone());
-        }
-        inner[*index] = new_value;
-        None
+        inner[index].clone()
     }
 
     pub fn clear(&self) {
         let mut inner = self.inner.write().unwrap();
         *inner = Vec::new();
+    }
+
+    pub fn exists<F: Fn(&T) -> bool>(&self, f: F) -> bool {
+        let inner = self.inner.read().unwrap();
+        inner.iter().any(f)
+    }
+
+    pub fn size(&self) -> usize {
+        let inner = self.inner.read().unwrap();
+        inner.len()
+    }
+}
+
+impl ConcurrentSlab<TypeInfo> {
+    pub fn replace(
+        &self,
+        index: TypeId,
+        prev_value: &TypeInfo,
+        new_value: TypeInfo,
+    ) -> Option<TypeInfo> {
+        // The comparison below ends up calling functions in the slab, which
+        // can lead to deadlocks if we used a single read/write lock.
+        // So we split the operation: we do the read only operations with
+        // a single scoped read lock below, and only after the scope do
+        // we get a write lock for writing into the slab.
+        {
+            let inner = self.inner.read().unwrap();
+            let actual_prev_value = &inner[*index];
+            if actual_prev_value != prev_value {
+                return Some(actual_prev_value.clone());
+            }
+        }
+
+        let mut inner = self.inner.write().unwrap();
+        inner[*index] = new_value;
+        None
+    }
+}
+
+impl ConcurrentSlab<DeclarationWrapper> {
+    pub fn replace(
+        &self,
+        index: DeclarationId,
+        new_value: DeclarationWrapper,
+    ) -> Option<DeclarationWrapper> {
+        let mut inner = self.inner.write().unwrap();
+        inner[*index] = new_value;
+        None
     }
 }

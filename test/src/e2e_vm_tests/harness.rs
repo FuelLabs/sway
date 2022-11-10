@@ -1,39 +1,54 @@
 use anyhow::{bail, Result};
-use forc::test::{forc_build, forc_deploy, forc_run, BuildCommand, DeployCommand, RunCommand};
-use forc_pkg::Compiled;
-use fuel_tx::Transaction;
+use forc_client::ops::{
+    deploy::{cmd::DeployCommand, op::deploy},
+    run::{cmd::RunCommand, op::run},
+};
+use forc_pkg::{Built, BuiltPackage};
+use fuel_tx::TransactionBuilder;
+use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
-use std::{fmt::Write, fs};
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
+use regex::{Captures, Regex};
+use std::{fmt::Write, fs, io::Read, path::PathBuf, str::FromStr};
 
-pub(crate) fn deploy_contract(file_name: &str, locked: bool) -> ContractId {
+use super::RunConfig;
+
+pub const NODE_URL: &str = "http://127.0.0.1:4000";
+pub const SECRET_KEY: &str = "de97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
+
+pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> Result<ContractId> {
     // build the contract
     // deploy it
     tracing::info!(" Deploying {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
-    let verbose = get_test_config_from_env();
-
-    tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(forc_deploy::deploy(DeployCommand {
-            path: Some(format!(
-                "{}/src/e2e_vm_tests/test_programs/{}",
-                manifest_dir, file_name
-            )),
-            silent_mode: !verbose,
-            locked,
-            ..Default::default()
-        }))
-        .unwrap()
+    deploy(DeployCommand {
+        path: Some(format!(
+            "{}/src/e2e_vm_tests/test_programs/{}",
+            manifest_dir, file_name
+        )),
+        terse_mode: !run_config.verbose,
+        locked: run_config.locked,
+        signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
+        ..Default::default()
+    })
+    .await
+    .map(|contract_ids| {
+        contract_ids
+            .first()
+            .map(|contract_id| contract_id.id)
+            .unwrap()
+    })
 }
 
 /// Run a given project against a node. Assumes the node is running at localhost:4000.
-pub(crate) fn runs_on_node(
+pub(crate) async fn runs_on_node(
     file_name: &str,
-    locked: bool,
+    run_config: &RunConfig,
     contract_ids: &[fuel_tx::ContractId],
-) -> Vec<fuel_tx::Receipt> {
+) -> Result<Vec<fuel_tx::Receipt>> {
     tracing::info!("Running on node: {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
@@ -43,116 +58,162 @@ pub(crate) fn runs_on_node(
         contracts.push(contract);
     }
 
-    let verbose = get_test_config_from_env();
-
     let command = RunCommand {
         path: Some(format!(
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
         )),
-        node_url: Some("http://127.0.0.1:4000".into()),
-        silent_mode: !verbose,
+        node_url: Some(NODE_URL.into()),
+        terse_mode: !run_config.verbose,
         contract: Some(contracts),
-        locked,
+        locked: run_config.locked,
+        signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
         ..Default::default()
     };
-    tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(forc_run::run(command))
-        .unwrap()
+    run(command).await.map(|ran_scripts| {
+        ran_scripts
+            .into_iter()
+            .next()
+            .map(|ran_script| ran_script.receipts)
+            .unwrap()
+    })
 }
 
 /// Very basic check that code does indeed run in the VM.
 /// `true` if it does, `false` if not.
-pub(crate) fn runs_in_vm(file_name: &str, locked: bool) -> (ProgramState, Compiled) {
+pub(crate) fn runs_in_vm(
+    script: BuiltPackage,
+    script_data: Option<Vec<u8>>,
+) -> (ProgramState, Vec<Receipt>, BuiltPackage) {
     let storage = MemoryStorage::default();
 
-    let script = compile_to_bytes(file_name, locked).unwrap();
-    let gas_price = 10;
-    let gas_limit = fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx;
-    let byte_price = 0;
-    let maturity = 0;
-    let script_data = vec![];
-    let inputs = vec![];
-    let outputs = vec![];
-    let witness = vec![];
-    let tx_to_test = Transaction::script(
-        gas_price,
-        gas_limit,
-        byte_price,
-        maturity,
-        script.bytecode.clone(),
-        script_data,
-        inputs,
-        outputs,
-        witness,
-    );
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let maturity = 1;
+    let script_data = script_data.unwrap_or_default();
     let block_height = (u32::MAX >> 1) as u64;
-    tx_to_test
-        .validate(block_height, &Default::default())
-        .unwrap();
+    let params = &ConsensusParameters {
+        // The default max length is 1MB which isn't enough for the bigger tests.
+        max_script_length: 64 * 1024 * 1024,
+        ..ConsensusParameters::DEFAULT
+    };
+
+    let tx = TransactionBuilder::script(script.bytecode.clone(), script_data)
+        .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
+        .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
+        .maturity(maturity)
+        .finalize_checked(block_height as Word, params);
+
     let mut i = Interpreter::with_storage(storage, Default::default());
-    (*i.transact(tx_to_test).unwrap().state(), script)
+    let transition = i.transact(tx).unwrap();
+    (*transition.state(), transition.receipts().to_vec(), script)
 }
 
-/// Returns Err(()) if code _does_ compile, used for test cases where the source
-/// code should have been rejected by the compiler.  When it fails to compile the
-/// captured stdout is returned.
-pub(crate) fn does_not_compile(file_name: &str, locked: bool) -> Result<String, ()> {
-    use std::io::Read;
-
+/// Compiles the code and optionally captures the output of forc and the compilation.
+/// Returns a tuple with the result of the compilation, as well as the output.
+pub(crate) fn compile_to_bytes(
+    file_name: &str,
+    run_config: &RunConfig,
+    capture_output: bool,
+) -> (Result<Built>, String) {
     tracing::info!(" Compiling {}", file_name);
 
-    // Capture stdout to a buffer, compile the test and save stdout to a string.
-    let mut buf = gag::BufferRedirect::stdout().unwrap();
-    let result = compile_to_bytes_verbose(file_name, locked, true);
-    let mut output = String::new();
-    buf.read_to_string(&mut output).unwrap();
-    drop(buf);
-
-    // If verbosity is requested then print it out.
-    if get_test_config_from_env() {
-        tracing::info!("{output}");
+    let mut buf_stdout: Option<gag::BufferRedirect> = None;
+    let mut buf_stderr: Option<gag::BufferRedirect> = None;
+    if capture_output {
+        // Capture both stdout and stderr to buffers, compile the test and save to a string.
+        buf_stdout = Some(gag::BufferRedirect::stdout().unwrap());
+        buf_stderr = Some(gag::BufferRedirect::stderr().unwrap());
     }
 
-    // Invert the result; if it succeeds then return an Err.
-    match result {
-        Ok(_) => Err(()),
-        Err(e) => {
-            // Capture the result of the compilation (i.e., any errors Forc produces) and append to
-            // the stdout from the compiler.
-            write!(output, "\n{}", e).map_err(|_| ())?;
-            Ok(output)
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let build_opts = forc_pkg::BuildOpts {
+        pkg: forc_pkg::PkgOpts {
+            path: Some(format!(
+                "{}/src/e2e_vm_tests/test_programs/{}",
+                manifest_dir, file_name
+            )),
+            locked: run_config.locked,
+            terse: !(capture_output || run_config.verbose),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let result = forc_pkg::build_with_options(build_opts);
+
+    let mut output = String::new();
+    if capture_output {
+        let mut buf_stdout = buf_stdout.unwrap();
+        let mut buf_stderr = buf_stderr.unwrap();
+        buf_stdout.read_to_string(&mut output).unwrap();
+        buf_stderr.read_to_string(&mut output).unwrap();
+        drop(buf_stdout);
+        drop(buf_stderr);
+
+        // If verbosity is requested then print it out.
+        if run_config.verbose {
+            tracing::info!("{output}");
+        }
+
+        // Capture the result of the compilation (i.e., any errors Forc produces) and append to
+        // the stdout from the compiler.
+        if let Err(ref e) = result {
+            write!(output, "\n{}", e).expect("error writing output");
+        }
+
+        if cfg!(windows) {
+            // In windows output error and warning path files start with \\?\
+            // We replace \ by / so tests can check unix paths only
+            let regex = Regex::new(r"\\\\?\\(.*)").unwrap();
+            output = regex
+                .replace_all(output.as_str(), |caps: &Captures| {
+                    caps[1].replace('\\', "/")
+                })
+                .to_string();
+        }
+    }
+
+    (result, output)
+}
+
+/// Compiles the project's unit tests, then runs all unit tests.
+/// Returns the tested package result.
+pub(crate) fn compile_and_run_unit_tests(
+    file_name: &str,
+    run_config: &RunConfig,
+    capture_output: bool,
+) -> Result<Box<forc_test::TestedPackage>> {
+    tracing::info!(" Testing {}", file_name);
+
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let path: PathBuf = [
+        manifest_dir,
+        "src",
+        "e2e_vm_tests",
+        "test_programs",
+        file_name,
+    ]
+    .iter()
+    .collect();
+    let built_tests = forc_test::build(forc_test::Opts {
+        pkg: forc_pkg::PkgOpts {
+            path: Some(path.to_string_lossy().into_owned()),
+            locked: run_config.locked,
+            terse: !(capture_output || run_config.verbose),
+            ..Default::default()
+        },
+        ..Default::default()
+    })?;
+    let tested = built_tests.run()?;
+    match tested {
+        forc_test::Tested::Package(tested_pkg) => Ok(tested_pkg),
+        forc_test::Tested::Workspace => {
+            bail!("testing full workspaces not yet implemented")
         }
     }
 }
 
-/// Returns `true` if a file compiled without any errors or warnings,
-/// and `false` if it did not.
-pub(crate) fn compile_to_bytes(file_name: &str, locked: bool) -> Result<Compiled> {
-    compile_to_bytes_verbose(file_name, locked, get_test_config_from_env())
-}
-
-pub(crate) fn compile_to_bytes_verbose(
-    file_name: &str,
-    locked: bool,
-    verbose: bool,
-) -> Result<Compiled> {
-    tracing::info!(" Compiling {}", file_name);
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    forc_build::build(BuildCommand {
-        path: Some(format!(
-            "{}/src/e2e_vm_tests/test_programs/{}",
-            manifest_dir, file_name
-        )),
-        locked,
-        silent_mode: !verbose,
-        ..Default::default()
-    })
-}
-
-pub(crate) fn test_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> {
-    emit_json_abi(file_name, compiled)?;
+pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
+    emit_json_abi(file_name, built_package)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let oracle_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
@@ -178,9 +239,9 @@ pub(crate) fn test_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> 
     Ok(())
 }
 
-fn emit_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> {
+fn emit_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
     tracing::info!("   ABI gen {}", file_name);
-    let json_abi = serde_json::json!(compiled.json_abi);
+    let json_abi = serde_json::json!(built_package.json_abi_program);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let file = std::fs::File::create(format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
@@ -191,8 +252,8 @@ fn emit_json_abi(file_name: &str, compiled: &Compiled) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn test_json_storage_slots(file_name: &str, compiled: &Compiled) -> Result<()> {
-    emit_json_storage_slots(file_name, compiled)?;
+pub(crate) fn test_json_storage_slots(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
+    emit_json_storage_slots(file_name, built_package)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let oracle_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
@@ -218,9 +279,9 @@ pub(crate) fn test_json_storage_slots(file_name: &str, compiled: &Compiled) -> R
     Ok(())
 }
 
-fn emit_json_storage_slots(file_name: &str, compiled: &Compiled) -> Result<()> {
+fn emit_json_storage_slots(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
     tracing::info!("   storage slots JSON gen {}", file_name);
-    let json_storage_slots = serde_json::json!(compiled.storage_slots);
+    let json_storage_slots = serde_json::json!(built_package.storage_slots);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let file = std::fs::File::create(format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
@@ -229,9 +290,4 @@ fn emit_json_storage_slots(file_name: &str, compiled: &Compiled) -> Result<()> {
     let res = serde_json::to_writer_pretty(&file, &json_storage_slots);
     res?;
     Ok(())
-}
-
-fn get_test_config_from_env() -> bool {
-    let var_exists = |key| std::env::var(key).map(|_| true).unwrap_or(false);
-    var_exists("SWAY_TEST_VERBOSE")
 }

@@ -1,0 +1,20 @@
+// This script was causing a verification error:
+//   An untyped/void value has been passed to a function call.
+// Based on the `v2 = call a(v1)` line
+
+script {
+// check: fn main
+    fn main() -> bool {
+        entry():
+        v0 = const bool true
+        v1 = call a(v0)
+        v2 = call a(v1)
+        ret bool v2
+    }
+
+    fn a(x: bool) -> bool {
+        entry(x: bool):
+        v0 = const bool true
+        ret bool v0
+    }
+}

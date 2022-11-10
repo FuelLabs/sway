@@ -1,15 +1,14 @@
 use crate::cli::TemplateCommand;
-use crate::utils::{defaults, SWAY_GIT_TAG};
 use anyhow::{anyhow, Context, Result};
 use forc_pkg::{
-    fetch_git, fetch_id, find_dir_within, git_commit_path, pin_git, Manifest, SourceGit,
+    fetch_git, fetch_id, find_dir_within, git_commit_path, pin_git, PackageManifest, SourceGit,
 };
 use forc_util::validate_name;
 use fs_extra::dir::{copy, CopyOptions};
+use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::{env, fs};
 use sway_utils::constants;
 use tracing::info;
 use url::Url;
@@ -46,17 +45,16 @@ pub fn init(command: TemplateCommand) -> Result<()> {
     }
 
     let from_path = match command.template_name {
-        Some(ref template_name) => find_dir_within(&repo_path, template_name, SWAY_GIT_TAG)
-            .ok_or_else(|| {
-                anyhow!(
-                    "failed to find a template `{}` in {}",
-                    template_name,
-                    command.url
-                )
-            })?,
+        Some(ref template_name) => find_dir_within(&repo_path, template_name).ok_or_else(|| {
+            anyhow!(
+                "failed to find a template `{}` in {}",
+                template_name,
+                command.url
+            )
+        })?,
         None => {
             let manifest_path = repo_path.join(constants::MANIFEST_FILE_NAME);
-            if Manifest::from_file(&manifest_path, SWAY_GIT_TAG).is_err() {
+            if PackageManifest::from_file(&manifest_path).is_err() {
                 anyhow::bail!("failed to find a template in {}", command.url);
             }
             repo_path
@@ -74,19 +72,6 @@ pub fn init(command: TemplateCommand) -> Result<()> {
     edit_forc_toml(&target_dir, &command.project_name, &whoami::realname())?;
     if target_dir.join("test").exists() {
         edit_cargo_toml(&target_dir, &command.project_name, &whoami::realname())?;
-    } else {
-        // Create the tests directory, harness.rs and Cargo.toml file
-        fs::create_dir_all(target_dir.join("tests"))?;
-
-        fs::write(
-            target_dir.join("tests").join("harness.rs"),
-            defaults::default_test_program(&command.project_name),
-        )?;
-
-        fs::write(
-            target_dir.join("Cargo.toml"),
-            defaults::default_tests_manifest(&command.project_name),
-        )?;
     }
     Ok(())
 }

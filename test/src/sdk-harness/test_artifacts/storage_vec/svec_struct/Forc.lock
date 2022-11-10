@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-5D548BD88B479EAC'
-dependencies = []
 
 [[package]]
 name = 'std'
@@ -10,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'svec_struct'
-source = 'root'
+source = 'member'
 dependencies = ['std']

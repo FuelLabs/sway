@@ -13,7 +13,13 @@
 //! over blocks or instructions can be invalidated, and starting over is a safer option than trying
 //! to attempt multiple changes at once.
 
-pub mod inline;
-pub use inline::*;
 pub mod constants;
 pub use constants::*;
+pub mod inline;
+pub use inline::*;
+pub mod simplify_cfg;
+pub use simplify_cfg::*;
+pub mod dce;
+pub use dce::*;
+pub mod mem2reg;
+pub use mem2reg::*;

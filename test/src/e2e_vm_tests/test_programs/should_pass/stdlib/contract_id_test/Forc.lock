@@ -1,12 +1,11 @@
 [[package]]
 name = 'contract_id_test'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
 source = 'path+from-root-16F6D7874F5EC2F3'
-dependencies = []
 
 [[package]]
 name = 'std'

@@ -1,8 +1,9 @@
 library u128;
 
-use core::num::*;
 use ::assert::assert;
-use ::flags::*;
+use ::convert::From;
+use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
+use ::math::*;
 use ::result::Result;
 
 /// The 128-bit unsigned integer type.
@@ -16,16 +17,11 @@ pub enum U128Error {
     LossOfPrecision: (),
 }
 
-pub trait From {
-    /// Function for creating U128 from its u64 components.
-    fn from(upper: u64, lower: u64) -> Self;
-    fn into(self) -> (u64, u64);
-}
-
-impl From for U128 {
-    pub fn from(upper: u64, lower: u64) -> U128 {
+impl From<(u64, u64)> for U128 {
+    fn from(components: (u64, u64)) -> U128 {
         U128 {
-            upper, lower,
+            upper: components.0,
+            lower: components.1,
         }
     }
 
@@ -35,17 +31,17 @@ impl From for U128 {
 }
 
 impl core::ops::Eq for U128 {
-    pub fn eq(self, other: Self) -> bool {
+    fn eq(self, other: Self) -> bool {
         self.lower == other.lower && self.upper == other.upper
     }
 }
 
 impl core::ops::Ord for U128 {
-    pub fn gt(self, other: Self) -> bool {
+    fn gt(self, other: Self) -> bool {
         self.upper > other.upper || self.upper == other.upper && self.lower > other.lower
     }
 
-    pub fn lt(self, other: Self) -> bool {
+    fn lt(self, other: Self) -> bool {
         self.upper < other.upper || self.upper == other.upper && self.lower < other.lower
     }
 }
@@ -53,7 +49,6 @@ impl core::ops::Ord for U128 {
 // TODO this doesn't work?
 // impl core::ops::OrdEq for U128 {
 // }
-
 impl u64 {
     pub fn overflowing_add(self, right: Self) -> U128 {
         disable_panic_on_overflow();
@@ -99,7 +94,18 @@ impl u64 {
 }
 
 impl U128 {
-    /// Initializes a new, zeroed U128.
+    /// Initializes a new, zeroed `U128`.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// let new_u128 = U128::new();
+    /// let zero_u128 = U128 { upper: 0, lower: 0 };
+    ///
+    /// assert(new_u128 == zero_u128);
+    /// ```
     pub fn new() -> U128 {
         U128 {
             upper: 0,
@@ -108,19 +114,43 @@ impl U128 {
     }
 
     /// Safely downcast to `u64` without loss of precision.
-    /// Returns Err if the number > ~u64::max()
+    /// Returns Err if the number > u64::max()
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::u128::{U128, U128Error};
+    ///
+    /// let zero_u128 = U128 { upper: 0, lower: 0 };
+    /// let zero_u64 = zero_u128.as_u64().unwrap();
+    ///
+    /// assert(zero_u64 == 0);
+    /// 
+    /// let max_u128 = U128::max();
+    /// let result = max_u128.as_u64();
+    ///
+    /// assert(result.is_err()));
+    /// ```
     pub fn as_u64(self) -> Result<u64, U128Error> {
         match self.upper {
-            0 => {
-                Result::Ok(self.lower)
-            },
-            _ => {
-                Result::Err(U128Error::LossOfPrecision)
-            },
+            0 => Result::Ok(self.lower),
+            _ => Result::Err(U128Error::LossOfPrecision),
         }
     }
 
     /// The smallest value that can be represented by this integer type.
+    /// Initializes a new, zeroed `U128`.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// let min_u128 = U128::min();
+    /// let zero_u128 = U128 { upper: 0, lower: 0 };
+    ///
+    /// assert(min_u128 == zero_u128);
+    /// ```
     pub fn min() -> U128 {
         U128 {
             upper: 0,
@@ -130,87 +160,105 @@ impl U128 {
 
     /// The largest value that can be represented by this type,
     /// 2<sup>128</sup> - 1.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// let max_u128 = U128::max();
+    /// let maxed_u128 = U128 { upper: u64::max(), lower: u64::max() };
+    ///
+    /// assert(max_u128 == maxed_u128);
+    /// ```
     pub fn max() -> U128 {
         U128 {
-            upper: ~u64::max(),
-            lower: ~u64::max(),
+            upper: u64::max(),
+            lower: u64::max(),
         }
     }
 
     /// The size of this type in bits.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// let bits = U128::bits();
+    ///
+    /// assert(bits == 128);
+    /// ```
     pub fn bits() -> u32 {
         128
     }
 }
 
 impl core::ops::BitwiseAnd for U128 {
-    pub fn binary_and(self, other: Self) -> Self {
-        ~U128::from(self.upper & other.upper, self.lower & other.lower)
+    fn binary_and(self, other: Self) -> Self {
+        U128::from((self.upper & other.upper, self.lower & other.lower))
     }
 }
 
 impl core::ops::BitwiseOr for U128 {
-    pub fn binary_or(self, other: Self) -> Self {
-        ~U128::from(self.upper | other.upper, self.lower | other.lower)
+    fn binary_or(self, other: Self) -> Self {
+        U128::from((self.upper | other.upper, self.lower | other.lower))
     }
 }
 
 impl core::ops::Shiftable for U128 {
-    pub fn lsh(self, rhs: u64) -> Self {
+    fn lsh(self, rhs: u64) -> Self {
         // If shifting by at least the number of bits, then saturate with
         // zeroes.
         if rhs >= 128 {
-            return ~Self::new();
+            return Self::new();
         }
 
         // If shifting by at least half the number of bits, then upper word can
         // be discarded.
         if rhs >= 64 {
-            return ~Self::from(self.lower <<(rhs - 64), 0);
+            return Self::from((self.lower << (rhs - 64), 0));
         }
 
         // If shifting by less than half the number of bits, then need to
         // partially shift both upper and lower.
-
         // Save highest bits of lower half.
-        let highest_lower_bits = self.lower >>(64 - rhs);
+        let highest_lower_bits = self.lower >> (64 - rhs);
 
         let upper = (self.upper << rhs) + highest_lower_bits;
         let lower = self.lower << rhs;
 
-        ~Self::from(upper, lower)
+        Self::from((upper, lower))
     }
 
-    pub fn rsh(self, rhs: u64) -> Self {
+    fn rsh(self, rhs: u64) -> Self {
         // If shifting by at least the number of bits, then saturate with
         // zeroes.
         if (rhs >= 128) {
-            return ~Self::new();
+            return Self::new();
         }
 
         // If shifting by at least half the number of bits, then lower word can
         // be discarded.
-        // TODO remove the `else` once #1682 is fixed
-        else if (rhs >= 64) {
-            return ~Self::from(0, self.upper >>(rhs - 64));
+        if (rhs >= 64) {
+            return Self::from((0, self.upper >> (rhs - 64)));
         }
 
         // If shifting by less than half the number of bits, then need to
         // partially shift both upper and lower.
-
         // Save lowest bits of upper half.
-        let lowest_upper_bits = self.upper <<(64 - rhs);
+        let lowest_upper_bits = self.upper << (64 - rhs);
 
         let upper = self.upper >> rhs;
         let lower = (self.lower >> rhs) + lowest_upper_bits;
 
-        ~Self::from(upper, lower)
+        Self::from((upper, lower))
     }
 }
 
 impl core::ops::Add for U128 {
     /// Add a U128 to a U128. Panics on overflow.
-    pub fn add(self, other: Self) -> Self {
+    fn add(self, other: Self) -> Self {
         let mut upper_128 = self.upper.overflowing_add(other.upper);
 
         // If the upper overflows, then the number cannot fit in 128 bits, so panic.
@@ -234,8 +282,8 @@ impl core::ops::Add for U128 {
 }
 
 impl core::ops::Subtract for U128 {
-    /// Subtract a U128 from a U128. Panics of overflow.
-    pub fn subtract(self, other: Self) -> Self {
+    /// Subtract a `U128` from a `U128`. Panics of overflow.
+    fn subtract(self, other: Self) -> Self {
         // If trying to subtract a larger number, panic.
         assert(!(self < other));
 
@@ -244,75 +292,146 @@ impl core::ops::Subtract for U128 {
 
         // If necessary, borrow and carry for lower subtraction
         if self.lower < other.lower {
-            lower = ~u64::max() - (other.lower - self.lower - 1);
+            lower = u64::max() - (other.lower - self.lower - 1);
             upper -= 1;
         } else {
             lower = self.lower - other.lower;
         }
 
-        U128 {
-            upper, lower,
-        }
+        U128 { upper, lower }
     }
 }
-
 impl core::ops::Multiply for U128 {
-    /// Multiply a U128 with a U128. Panics of overflow.
-    pub fn multiply(self, other: Self) -> Self {
-        let zero = ~U128::from(0, 0);
-        let one = ~U128::from(0, 1);
+    /// Multiply a `U128` with a `U128`. Panics of overflow.
+    fn multiply(self, other: Self) -> Self {
+        let zero = U128::from((0, 0));
+        let one = U128::from((0, 1));
 
-        let mut total = ~U128::new();
-        // The algorithm loops <from number of bits - 1> to <zero>.
-        // Need to add 1 here to invalidate the while loop once i == 0 since we
-        // don't have a break keyword.
-        let mut i = 128 - 1 + 1;
-
-        while i > 0 {
-            // Workaround for not having break keyword
-            let shift = i - 1;
-            total <<= 1;
-            if (other & (one << shift)) != zero {
-                total = total + self;
+        let mut x = self;
+        let mut y = other;
+        let mut result = U128::new();
+        while y != zero {
+            if (y & one).lower != 0 {
+                result += x;
             }
-
-            i -= 1;
+            x <<= 1;
+            y >>= 1;
         }
 
-        total
+        result
     }
 }
 
 impl core::ops::Divide for U128 {
-    /// Divide a U128 by a U128. Panics if divisor is zero.
-    pub fn divide(self, divisor: Self) -> Self {
-        let zero = ~U128::from(0, 0);
-        let one = ~U128::from(0, 1);
+    /// Divide a `U128` by a `U128`. Panics if divisor is zero.
+    fn divide(self, divisor: Self) -> Self {
+        let zero = U128::from((0, 0));
 
         assert(divisor != zero);
 
-        let mut quotient = ~U128::new();
-        let mut remainder = ~U128::new();
-        // The algorithm loops <from number of bits - 1> to <zero>.
-        // Need to add 1 here to invalidate the while loop once i == 0 since we
-        // don't have a break keyword.
-        let mut i = 128 - 1 + 1;
-
-        while i > 0 {
-            // Workaround for not having break keyword
-            let shift = i - 1;
+        let mut quotient = U128::new();
+        let mut remainder = U128::new();
+        let mut i = 128 - 1;
+        while true {
             quotient <<= 1;
             remainder <<= 1;
-            remainder = remainder | ((self & (one << shift)) >> shift);
+            remainder.lower = remainder.lower | (self >> i).lower & 1;
             // TODO use >= once OrdEq can be implemented.
             if remainder > divisor || remainder == divisor {
                 remainder -= divisor;
-                quotient = quotient | one;
+                quotient.lower = quotient.lower | 1;
+            }
+
+            if i == 0 {
+                break;
             }
 
             i -= 1;
         }
 
         quotient
+    }
+}
+
+impl Exponentiate for U128 {
+    fn pow(self, exponent: Self) -> Self {
+        let mut value = self;
+        let mut exp = exponent;
+        let one = U128::from((0, 1));
+        let zero = U128::from((0, 0));
+
+        if exp == zero {
+            return one;
+        }
+
+        while exp & one == zero {
+            value = value * value;
+            exp >>= 1;
+        }
+
+        if exp == one {
+            return self;
+        }
+
+        let mut acc = value;
+        while exp > one {
+            exp >>= 1;
+            value = value * value;
+            if exp & one == one {
+                acc = acc * value;
+            }
+        }
+        acc
+    }
+}
+
+impl Root for U128 {
+    /// Newton's method as in https://en.wikipedia.org/wiki/Integer_square_root#Algorithm_using_Newton's_method
+    fn sqrt(self) -> Self {
+        let zero = U128::from((0, 0));
+        let mut x0 = self >> 1;
+        let mut s = self;
+
+        if x0 != zero {
+            let mut x1 = (x0 + s / x0) >> 1;
+
+            while x1 < x0 {
+                x0 = x1;
+                x1 = (x0 + self / x0) >> 1;
+            }
+
+            return x0;
+        } else {
+            return s;
+        }
+    }
+}
+
+impl BinaryLogarithm for U128 {
+    /// log2 of `x` is the largest `n` such that `2^n <= x < 2^(n+1)`.
+    ///
+    /// * If `x` is smaller than `2^64`, we could just rely on the `log` method by setting
+    /// the base to 2.
+    /// * Otherwise, we can find the highest non-zero bit by taking the regular log of the upper
+    /// part of the `U128`, and then add 64.
+    fn log2(self) -> Self {
+        let zero = U128::from((0, 0));
+        let mut res = zero;
+        // If trying to get a log2(0), panic, as infinity is not a number.
+        assert(self != zero);
+        if self.upper != 0 {
+            res = U128::from((0, self.upper.log(2) + 64));
+        } else if self.lower != 0 {
+            res = U128::from((0, self.lower.log(2)));
+        }
+        res
+    }
+}
+
+impl Logarithm for U128 {
+    fn log(self, base: Self) -> Self {
+        let self_log2 = self.log2();
+        let base_log2 = base.log2();
+        self_log2 / base_log2
     }
 }

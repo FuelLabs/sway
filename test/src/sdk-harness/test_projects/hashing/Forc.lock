@@ -1,11 +1,10 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-BFCC9E74738B0693'
-dependencies = []
 
 [[package]]
 name = 'hashing'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

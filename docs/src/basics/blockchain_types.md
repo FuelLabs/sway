@@ -20,7 +20,7 @@ Casting between the `b256` and `Address` types must be done explicitly:
 
 ```sway
 let my_number: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
-let my_address: Address = ~Address::from(my_number);
+let my_address: Address = Address::from(my_number);
 let forty_two: b256 = my_address.into();
 ```
 
@@ -40,7 +40,7 @@ Casting between the `b256` and `ContractId` types must be done explicitly:
 
 ```sway
 let my_number: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
-let my_contract_id: ContractId = ~ContractId::from(my_number);
+let my_contract_id: ContractId = ContractId::from(my_number);
 let forty_two: b256 = my_contract_id.into();
 ```
 
@@ -70,7 +70,7 @@ A `match` statement can be used to return to an `Address` or `ContractId` as wel
 {{#include ../../../examples/identity/src/main.sw:different_executions}}
 ```
 
-A common use case for `Identity` is for access control. The use of `Identity` uniquely allows both `ContractId` and `Address` to have access control inclusively. 
+A common use case for `Identity` is for access control. The use of `Identity` uniquely allows both `ContractId` and `Address` to have access control inclusively.
 
 ```sway
 {{#include ../../../examples/identity/src/main.sw:access_control_with_identity}}

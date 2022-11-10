@@ -1,104 +1,105 @@
-use crate::ops::forc_build;
+use crate::cli;
+use ansi_term::Colour;
 use anyhow::{bail, Result};
 use clap::Parser;
-use std::io::{BufRead, BufReader};
-use std::process;
-use std::thread;
-use tracing::{error, info};
+use forc_pkg as pkg;
+use tracing::info;
 
-/// Run Rust-based tests on current project.
-/// As of now, `forc test` is a simple wrapper on
-/// `cargo test`; `forc new` also creates a rust
-/// package under your project, named `tests`.
-/// You can opt to either run these Rust tests by
-/// using `forc test` or going inside the package
-/// and using `cargo test`.
+/// Run the Sway unit tests for the current project.
+///
+/// NOTE: Previously this command was used to support Rust integration testing, however the
+/// provided behaviour served no benefit over running `cargo test` directly. The proposal to change
+/// the behaviour to support unit testing can be found at the following link:
+/// https://github.com/FuelLabs/sway/issues/1833
+///
+/// Sway unit tests are functions decorated with the `#[test]` attribute. Each test is compiled as
+/// a unique entry point for a single program and has access to the namespace of the module in
+/// which it is declared.
+///
+/// Unit tests decorated with the `#[test(script)]` attribute that are declared within `contract`
+/// projects may also call directly into their associated contract's ABI.
+///
+/// Upon successful compilation, test scripts are executed to their completion. A test is
+/// considered a failure in the case that a revert (`rvrt`) instruction is encountered during
+/// execution. Otherwise, it is considered a success.
 #[derive(Debug, Parser)]
-pub(crate) struct Command {
-    /// If specified, only run tests containing this string in their names
-    pub test_name: Option<String>,
-    /// Options passed through to the `cargo test` invocation.
-    ///
-    /// E.g. Given the following:
-    ///
-    /// `forc test --cargo-test-opts="--color always"`
-    ///
-    /// The `--color always` option is forwarded to `cargo test` like so:
-    ///
-    /// `cargo test --color always`
-    #[clap(long)]
-    pub cargo_test_opts: Option<String>,
-    /// All trailing arguments following `--` are collected within this argument.
-    ///
-    /// E.g. Given the following:
-    ///
-    /// `forc test -- foo bar baz`
-    ///
-    /// The arguments `foo`, `bar` and `baz` are forwarded on to `cargo test` like so:
-    ///
-    /// `cargo test -- foo bar baz`
-    #[clap(raw = true)]
-    pub cargo_test_args: Vec<String>,
+pub struct Command {
+    #[clap(flatten)]
+    pub build: cli::shared::Build,
+    /// When specified, only tests containing the given string will be executed.
+    pub filter: Option<String>,
 }
 
-pub(crate) fn exec(command: Command) -> Result<()> {
-    // Ensure the project builds before running tests.
-    forc_build::build(Default::default())?;
+pub(crate) fn exec(cmd: Command) -> Result<()> {
+    if let Some(ref _filter) = cmd.filter {
+        bail!("unit test filter not yet supported");
+    }
 
-    let mut cmd = process::Command::new("cargo");
-    cmd.arg("test");
+    let opts = opts_from_cmd(cmd);
+    let built_tests = forc_test::build(opts)?;
+    let start = std::time::Instant::now();
+    info!("   Running {} tests", built_tests.test_count());
+    let tested = built_tests.run()?;
+    let duration = start.elapsed();
 
-    // Pass through cargo test options.
-    let mut user_specified_color_opt = false;
-    if let Some(opts) = command.cargo_test_opts {
-        user_specified_color_opt = opts.contains("--color");
-        for opt in opts.split_whitespace() {
-            cmd.arg(&opt);
+    // Eventually we'll print this in a fancy manner, but this will do for testing.
+    match tested {
+        forc_test::Tested::Workspace => unimplemented!(),
+        forc_test::Tested::Package(pkg) => {
+            let succeeded = pkg.tests.iter().filter(|t| t.passed()).count();
+            let failed = pkg.tests.len() - succeeded;
+            for test in &pkg.tests {
+                let (state, color) = match test.passed() {
+                    true => ("ok", Colour::Green),
+                    false => ("FAILED", Colour::Red),
+                };
+                info!(
+                    "      test {} ... {} ({:?})",
+                    test.name,
+                    color.paint(state),
+                    test.duration
+                );
+            }
+            let (state, color) = match succeeded == pkg.tests.len() {
+                true => ("OK", Colour::Green),
+                false => ("FAILED", Colour::Red),
+            };
+            info!(
+                "   Result: {}. {} passed. {} failed. Finished in {:?}.",
+                color.paint(state),
+                succeeded,
+                failed,
+                duration
+            );
         }
     }
 
-    // If the coloring option wasn't specified by the user, enable it ourselves. This is useful as
-    // `cargo test`'s coloring is disabled by default when run as a child process.
-    if !user_specified_color_opt {
-        cmd.args(&["--color", "always"]);
-    }
+    Ok(())
+}
 
-    // Pass through test name.
-    if let Some(ref name) = command.test_name {
-        cmd.arg(name);
-    }
-
-    // Pass through cargo test args.
-    if !command.cargo_test_args.is_empty() {
-        cmd.arg("--");
-        cmd.args(&command.cargo_test_args);
-    }
-
-    let mut child = cmd
-        .stdout(process::Stdio::piped())
-        .stderr(process::Stdio::piped())
-        .spawn()
-        .unwrap();
-
-    let out = BufReader::new(child.stdout.take().unwrap());
-    let err = BufReader::new(child.stderr.take().unwrap());
-
-    // Reading stderr on a separate thread so we keep things non-blocking
-    let thread = thread::spawn(move || {
-        err.lines().for_each(|line| error!("{}", line.unwrap()));
-    });
-
-    out.lines().for_each(|line| info!("{}", line.unwrap()));
-    thread.join().unwrap();
-
-    let child_success = match child.try_wait() {
-        Ok(Some(returned_status)) => returned_status.success(),
-        Ok(None) => child.wait().unwrap().success(),
-        Err(_) => false,
-    };
-
-    match child_success {
-        true => Ok(()),
-        false => bail!("child test process failed"),
+fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
+    forc_test::Opts {
+        pkg: pkg::PkgOpts {
+            path: cmd.build.path,
+            offline: cmd.build.offline_mode,
+            terse: cmd.build.terse_mode,
+            locked: cmd.build.locked,
+            output_directory: cmd.build.output_directory,
+        },
+        print: pkg::PrintOpts {
+            ast: cmd.build.print_ast,
+            finalized_asm: cmd.build.print_finalized_asm,
+            intermediate_asm: cmd.build.print_intermediate_asm,
+            ir: cmd.build.print_ir,
+        },
+        minify: pkg::MinifyOpts {
+            json_abi: cmd.build.minify_json_abi,
+            json_storage_slots: cmd.build.minify_json_storage_slots,
+        },
+        build_profile: cmd.build.build_profile,
+        release: cmd.build.release,
+        time_phases: cmd.build.time_phases,
+        binary_outfile: cmd.build.binary_outfile,
+        debug_outfile: cmd.build.debug_outfile,
     }
 }

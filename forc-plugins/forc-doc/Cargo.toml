@@ -1,0 +1,20 @@
+[package]
+name = "forc-doc"
+version = "0.31.0"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "Build the documentation for the local package and all dependencies. The output is placed in `out/doc` in the same format as the project."
+
+[dependencies]
+anyhow = "1.0.65"
+clap = { version = "4.0.18", features = ["derive"] }
+forc-pkg = { version = "0.31.0", path = "../../forc-pkg" }
+forc-util = { version = "0.31.0", path = "../../forc-util"}
+horrorshow = "0.8.4"
+opener = "0.5.0"
+sway-core = { version = "0.31.0", path = "../../sway-core" }
+sway-types = { version = "0.31.0", path = "../../sway-types" }
+

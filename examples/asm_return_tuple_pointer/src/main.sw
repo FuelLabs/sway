@@ -1,7 +1,5 @@
 script;
 
-use std::assert::assert;
-
 fn adder(a: u64, b: u64, c: u64) -> (u64, u64) {
     let empty_tuple = (0u64, 0u64);
     asm(output: empty_tuple, r1: a, r2: b, r3: c, r4, r5) {
@@ -14,7 +12,7 @@ fn adder(a: u64, b: u64, c: u64) -> (u64, u64) {
 }
 
 fn main() -> bool {
-    let(first, second) = adder(1, 2, 3);
+    let (first, second) = adder(1, 2, 3);
     assert(first == 3);
     assert(second == 5);
     true

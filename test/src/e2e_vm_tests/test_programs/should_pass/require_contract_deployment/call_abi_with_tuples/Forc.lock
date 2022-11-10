@@ -5,7 +5,7 @@ dependencies = ['core']
 
 [[package]]
 name = 'call_abi_with_tuples'
-source = 'root'
+source = 'member'
 dependencies = [
     'abi_with_tuples',
     'std',
@@ -14,7 +14,6 @@ dependencies = [
 [[package]]
 name = 'core'
 source = 'path+from-root-A94357F7D125B65F'
-dependencies = []
 
 [[package]]
 name = 'std'

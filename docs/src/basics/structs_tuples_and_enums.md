@@ -4,7 +4,7 @@
 
 Structs in Sway are a named grouping of types. You may also be familiar with structs via another name: _product types_. Sway does not make any significantly unique usages of structs; they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.
 
-Firstly, we declare a struct named `Foo` with two fields. The first field is named `bar` and it accepts values of type `u64`, the second field is named `baz` and it accepts `bool` values. 
+Firstly, we declare a struct named `Foo` with two fields. The first field is named `bar` and it accepts values of type `u64`, the second field is named `baz` and it accepts `bool` values.
 
 ```sway
 {{#include ../../../examples/structs/src/data_structures.sw}}
@@ -30,7 +30,7 @@ Furthermore, multiple variables can be extracted from a struct using the destruc
 
 ### Struct Memory Layout
 
-> **Note** 
+> **Note**
 > This information is not vital if you are new to the language, or programming in general
 
 Structs have zero memory overhead. What that means is that in memory, each struct field is laid out sequentially. No metadata regarding the struct's name or other properties is preserved at runtime. In other words, structs are compile-time constructs. This is the same in Rust, but different in other languages with runtimes like Java.
@@ -50,9 +50,6 @@ You can access values directly by using the `.` syntax. Moreover, multiple varia
 _Enumerations_, or _enums_, are also known as _sum types_. An enum is a type that could be one of several variants. To declare an enum, you enumerate all potential variants.
 
 Here, we have defined five potential colors. Each enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type `()`, or unit.
-
-> **Note**
-> enum instantiation does not require the `~` tilde syntax
 
 ```sway
 {{#include ../../../examples/enums/src/basic_enum.sw}}

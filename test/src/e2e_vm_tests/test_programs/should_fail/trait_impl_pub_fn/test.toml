@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: pub fn foo() {
+# nextln: $()Unnecessary visibility qualifier, `pub` is implied here.

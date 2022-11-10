@@ -1,15 +1,16 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
-use crate::type_engine::{TypeArgument, TypeParameter};
+use crate::type_system::{TypeArgument, TypeParameter};
 use crate::{
     error::*,
-    parse_tree::*,
-    type_engine::{look_up_type_id, AbiName, IntegerBits},
-    AstNode, AstNodeContent, CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo,
-    WhileLoop,
+    language::{parsed::*, CallPath},
+    type_system::{look_up_type_id, AbiName},
+    TypeInfo,
 };
 
+use sway_error::error::CompileError;
+use sway_types::integer_bits::IntegerBits;
 use sway_types::Spanned;
 use sway_types::{ident::Ident, span::Span};
 
@@ -314,7 +315,6 @@ impl Dependencies {
                     deps.gather_from_typeinfo(&variant.type_info)
                 })
                 .gather_from_type_parameters(type_parameters),
-            Declaration::Reassignment(decl) => self.gather_from_expr(&decl.rhs),
             Declaration::TraitDeclaration(TraitDeclaration {
                 interface_surface,
                 methods,
@@ -326,7 +326,7 @@ impl Dependencies {
                 })
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                        deps.gather_from_typeinfo(&look_up_type_id(param.type_id))
+                        deps.gather_from_typeinfo(&param.type_info)
                     })
                     .gather_from_typeinfo(&sig.return_type)
                 })
@@ -334,15 +334,15 @@ impl Dependencies {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
             Declaration::ImplTrait(ImplTrait {
+                impl_type_parameters,
                 trait_name,
                 type_implementing_for,
-                type_parameters: type_arguments,
                 functions,
                 ..
             }) => self
                 .gather_from_call_path(trait_name, false, false)
                 .gather_from_typeinfo(type_implementing_for)
-                .gather_from_type_parameters(type_arguments)
+                .gather_from_type_parameters(impl_type_parameters)
                 .gather_from_iter(functions.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
@@ -362,7 +362,7 @@ impl Dependencies {
             }) => self
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                        deps.gather_from_typeinfo(&look_up_type_id(param.type_id))
+                        deps.gather_from_typeinfo(&param.type_info)
                     })
                     .gather_from_typeinfo(&sig.return_type)
                 })
@@ -373,9 +373,6 @@ impl Dependencies {
                 .gather_from_iter(fields.iter(), |deps, StorageField { ref type_info, .. }| {
                     deps.gather_from_typeinfo(type_info)
                 }),
-            // Nothing to do for `break` and `continue`
-            Declaration::Break { .. } => self,
-            Declaration::Continue { .. } => self,
         }
     }
 
@@ -388,7 +385,7 @@ impl Dependencies {
             ..
         } = fn_decl;
         self.gather_from_iter(parameters.iter(), |deps, param| {
-            deps.gather_from_typeinfo(&look_up_type_id(param.type_id))
+            deps.gather_from_typeinfo(&param.type_info)
         })
         .gather_from_typeinfo(return_type)
         .gather_from_block(body)
@@ -396,65 +393,86 @@ impl Dependencies {
     }
 
     fn gather_from_expr(self, expr: &Expression) -> Self {
-        match expr {
-            Expression::VariableExpression { name, .. } => {
+        match &expr.kind {
+            ExpressionKind::Variable(name) => {
                 // in the case of ABI variables, we actually want to check if the ABI needs to be
                 // ordered
                 self.gather_from_call_path(&(name.clone()).into(), false, false)
             }
-            Expression::FunctionApplication {
-                call_path_binding,
-                arguments,
-                ..
-            } => self
-                .gather_from_call_path(&call_path_binding.inner, false, true)
-                .gather_from_type_arguments(&call_path_binding.type_arguments)
-                .gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
-            Expression::LazyOperator { lhs, rhs, .. } => {
+            ExpressionKind::FunctionApplication(function_application_expression) => {
+                let FunctionApplicationExpression {
+                    call_path_binding,
+                    arguments,
+                } = &**function_application_expression;
+                self.gather_from_call_path(&call_path_binding.inner, false, true)
+                    .gather_from_type_arguments(&call_path_binding.type_arguments)
+                    .gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg))
+            }
+            ExpressionKind::LazyOperator(LazyOperatorExpression { lhs, rhs, .. }) => {
                 self.gather_from_expr(lhs).gather_from_expr(rhs)
             }
-            Expression::IfExp {
+            ExpressionKind::If(IfExpression {
                 condition,
                 then,
                 r#else,
                 ..
-            } => if let Some(else_expr) = r#else {
+            }) => if let Some(else_expr) = r#else {
                 self.gather_from_expr(else_expr)
             } else {
                 self
             }
             .gather_from_expr(condition)
             .gather_from_expr(then),
-            Expression::MatchExp {
+            ExpressionKind::Match(MatchExpression {
                 value, branches, ..
-            } => self
+            }) => self
                 .gather_from_expr(value)
                 .gather_from_iter(branches.iter(), |deps, branch| {
                     deps.gather_from_match_branch(branch)
                 }),
-            Expression::CodeBlock { contents, .. } => self.gather_from_block(contents),
-            Expression::Array { contents, .. } => {
+            ExpressionKind::CodeBlock(contents) => self.gather_from_block(contents),
+            ExpressionKind::Array(contents) => {
                 self.gather_from_iter(contents.iter(), |deps, expr| deps.gather_from_expr(expr))
             }
-            Expression::ArrayIndex { prefix, index, .. } => {
+            ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index, .. }) => {
                 self.gather_from_expr(prefix).gather_from_expr(index)
             }
-            Expression::StructExpression {
-                call_path_binding,
-                fields,
-                ..
-            } => self
-                .gather_from_typeinfo(&call_path_binding.inner.suffix.0)
-                .gather_from_type_arguments(&call_path_binding.type_arguments)
-                .gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_expr(&field.value)
-                }),
-            Expression::SubfieldExpression { prefix, .. } => self.gather_from_expr(prefix),
-            Expression::DelineatedPath {
-                call_path_binding,
-                args,
-                ..
-            } => {
+            ExpressionKind::Struct(struct_expression) => {
+                let StructExpression {
+                    call_path_binding,
+                    fields,
+                } = &**struct_expression;
+                self.gather_from_call_path(&call_path_binding.inner, false, false)
+                    .gather_from_type_arguments(&call_path_binding.type_arguments)
+                    .gather_from_iter(fields.iter(), |deps, field| {
+                        deps.gather_from_expr(&field.value)
+                    })
+            }
+            ExpressionKind::Subfield(SubfieldExpression { prefix, .. }) => {
+                self.gather_from_expr(prefix)
+            }
+            ExpressionKind::AmbiguousPathExpression(e) => {
+                let AmbiguousPathExpression {
+                    call_path_binding,
+                    args,
+                } = &**e;
+                let mut this = self;
+                if call_path_binding.inner.prefixes.is_empty() {
+                    // We have just `Foo::Bar`, and nothing before `Foo`,
+                    // so this could be referring to `Enum::Variant`,
+                    // so we want to depend on `Enum` but not `Variant`.
+                    this.deps.insert(DependentSymbol::Symbol(
+                        call_path_binding.inner.suffix.before.inner.clone(),
+                    ));
+                }
+                this.gather_from_type_arguments(&call_path_binding.type_arguments)
+                    .gather_from_iter(args.iter(), |deps, arg| deps.gather_from_expr(arg))
+            }
+            ExpressionKind::DelineatedPath(delineated_path_expression) => {
+                let DelineatedPathExpression {
+                    call_path_binding,
+                    args,
+                } = &**delineated_path_expression;
                 // It's either a module path which we can ignore, or an enum variant path, in which
                 // case we're interested in the enum name and initialiser args, ignoring the
                 // variant name.
@@ -462,10 +480,12 @@ impl Dependencies {
                     .gather_from_type_arguments(&call_path_binding.type_arguments)
                     .gather_from_iter(args.iter(), |deps, arg| deps.gather_from_expr(arg))
             }
-            Expression::MethodApplication { arguments, .. } => {
-                self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg))
-            }
-            Expression::AsmExpression { asm, .. } => self
+            ExpressionKind::MethodApplication(method_application_expression) => self
+                .gather_from_iter(
+                    method_application_expression.arguments.iter(),
+                    |deps, arg| deps.gather_from_expr(arg),
+                ),
+            ExpressionKind::Asm(asm) => self
                 .gather_from_iter(asm.registers.iter(), |deps, register| {
                     deps.gather_from_opt_expr(register.initializer.as_ref())
                 })
@@ -473,19 +493,30 @@ impl Dependencies {
 
             // we should do address someday, but due to the whole `re_parse_expression` thing
             // it isn't possible right now
-            Expression::AbiCast { abi_name, .. } => {
-                self.gather_from_call_path(abi_name, false, false)
+            ExpressionKind::AbiCast(abi_cast_expression) => {
+                self.gather_from_call_path(&abi_cast_expression.abi_name, false, false)
             }
 
-            Expression::Literal { .. } => self,
-            Expression::Tuple { fields, .. } => {
+            ExpressionKind::Literal(_)
+            | ExpressionKind::Break
+            | ExpressionKind::Continue
+            | ExpressionKind::StorageAccess(_)
+            | ExpressionKind::Error(_) => self,
+
+            ExpressionKind::Tuple(fields) => {
                 self.gather_from_iter(fields.iter(), |deps, field| deps.gather_from_expr(field))
             }
-            Expression::TupleIndex { prefix, .. } => self.gather_from_expr(prefix),
-            Expression::StorageAccess { .. } => self,
-            Expression::IntrinsicFunction { arguments, .. } => {
-                self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg))
+            ExpressionKind::TupleIndex(TupleIndexExpression { prefix, .. }) => {
+                self.gather_from_expr(prefix)
             }
+            ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
+                arguments, ..
+            }) => self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
+            ExpressionKind::WhileLoop(WhileLoopExpression {
+                condition, body, ..
+            }) => self.gather_from_expr(condition).gather_from_block(body),
+            ExpressionKind::Reassignment(reassignment) => self.gather_from_expr(&reassignment.rhs),
+            ExpressionKind::Return(expr) => self.gather_from_expr(expr),
         }
     }
 
@@ -515,15 +546,9 @@ impl Dependencies {
 
     fn gather_from_node(self, node: &AstNode) -> Self {
         match &node.content {
-            AstNodeContent::ReturnStatement(ReturnStatement { expr }) => {
-                self.gather_from_expr(expr)
-            }
             AstNodeContent::Expression(expr) => self.gather_from_expr(expr),
             AstNodeContent::ImplicitReturnExpression(expr) => self.gather_from_expr(expr),
             AstNodeContent::Declaration(decl) => self.gather_from_decl(decl),
-            AstNodeContent::WhileLoop(WhileLoop { condition, body }) => {
-                self.gather_from_expr(condition).gather_from_block(body)
-            }
 
             // No deps from these guys.
             AstNodeContent::UseStatement(_) => self,
@@ -557,7 +582,7 @@ impl Dependencies {
         self.gather_from_iter(type_parameters.iter(), |deps, type_parameter| {
             deps.gather_from_iter(
                 type_parameter.trait_constraints.iter(),
-                |deps, constraint| deps.gather_from_call_path(&constraint.call_path, false, false),
+                |deps, constraint| deps.gather_from_call_path(&constraint.trait_name, false, false),
             )
         })
     }
@@ -587,7 +612,7 @@ impl Dependencies {
             TypeInfo::Tuple(elems) => self.gather_from_iter(elems.iter(), |deps, elem| {
                 deps.gather_from_typeinfo(&look_up_type_id(elem.type_id))
             }),
-            TypeInfo::Array(type_id, _) => self.gather_from_typeinfo(&look_up_type_id(*type_id)),
+            TypeInfo::Array(type_id, _, _) => self.gather_from_typeinfo(&look_up_type_id(*type_id)),
             TypeInfo::Struct { fields, .. } => self
                 .gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_typeinfo(&look_up_type_id(field.type_id))
@@ -709,12 +734,8 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
 
         // These don't have declaration dependencies.
         Declaration::VariableDeclaration(_) => None,
-        Declaration::Reassignment(_) => None,
         // Storage cannot be depended upon or exported
         Declaration::StorageDeclaration(_) => None,
-        // Nothing depends on a `break` and `continue`
-        Declaration::Break { .. } => None,
-        Declaration::Continue { .. } => None,
     }
 }
 
@@ -734,14 +755,12 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Tuple(fields) if fields.is_empty() => "unit",
         TypeInfo::Tuple(..) => "tuple",
         TypeInfo::SelfType => "self",
-        TypeInfo::Byte => "byte",
         TypeInfo::B256 => "b256",
         TypeInfo::Numeric => "numeric",
         TypeInfo::Contract => "contract",
         TypeInfo::ErrorRecovery => "err_recov",
-        TypeInfo::Ref(x, _sp) => return format!("T{}", x),
         TypeInfo::Unknown => "unknown",
-        TypeInfo::UnknownGeneric { name } => return format!("generic {}", name),
+        TypeInfo::UnknownGeneric { name, .. } => return format!("generic {}", name),
         TypeInfo::ContractCaller { abi_name, .. } => {
             return format!("contract caller {}", abi_name);
         }
@@ -749,6 +768,8 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Enum { .. } => "enum",
         TypeInfo::Array(..) => "array",
         TypeInfo::Storage { .. } => "contract storage",
+        TypeInfo::RawUntypedPtr => "raw untyped ptr",
+        TypeInfo::RawUntypedSlice => "raw untyped slice",
     }
     .to_string()
 }

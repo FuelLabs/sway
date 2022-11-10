@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-E22D083410030709'
-dependencies = []
 
 [[package]]
 name = 'std'
@@ -10,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'tuple_single_element'
-source = 'root'
+source = 'member'
 dependencies = ['std']

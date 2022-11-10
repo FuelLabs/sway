@@ -1,6 +1,7 @@
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Result};
-use forc_util::{find_manifest_dir, println_yellow_err, validate_name};
+use forc_tracing::println_yellow_err;
+use forc_util::{find_manifest_dir, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -8,16 +9,106 @@ use std::{
     sync::Arc,
 };
 
-use sway_core::{parse, TreeType};
+use sway_core::{language::parsed::TreeType, parse};
+pub use sway_types::ConfigTimeConstant;
 use sway_utils::constants;
+
+/// The name of a workspace member package.
+pub type MemberName = String;
+/// A manifest for each workspace member, or just one manifest if working with a single package
+pub type MemberManifestFiles = BTreeMap<MemberName, PackageManifestFile>;
+
+pub enum ManifestFile {
+    Package(Box<PackageManifestFile>),
+    Workspace(WorkspaceManifestFile),
+}
+
+impl ManifestFile {
+    /// Returns a `PackageManifestFile` if the path is within a package directory, otherwise
+    /// returns a `WorkspaceManifestFile` if within a workspace directory.
+    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
+        if let Ok(package_manifest) = PackageManifestFile::from_dir(manifest_dir) {
+            Ok(ManifestFile::Package(Box::new(package_manifest)))
+        } else if let Ok(workspace_manifest) = WorkspaceManifestFile::from_dir(manifest_dir) {
+            Ok(ManifestFile::Workspace(workspace_manifest))
+        } else {
+            bail!("Cannot find a valid `Forc.toml` at {:?}", manifest_dir)
+        }
+    }
+
+    /// Returns a `PackageManifestFile` if the path is pointing to package manifest, otherwise
+    /// returns a `WorkspaceManifestFile` if it is pointing to a workspace manifest.
+    pub fn from_file(path: PathBuf) -> Result<Self> {
+        if let Ok(package_manifest) = PackageManifestFile::from_file(path.clone()) {
+            Ok(ManifestFile::Package(Box::new(package_manifest)))
+        } else if let Ok(workspace_manifest) = WorkspaceManifestFile::from_file(path.clone()) {
+            Ok(ManifestFile::Workspace(workspace_manifest))
+        } else {
+            bail!("Cannot find a valid `Forc.toml` at {:?}", path)
+        }
+    }
+
+    /// The path to the `Forc.toml` from which this manifest was loaded.
+    ///
+    /// This will always be a canonical path.
+    pub fn path(&self) -> &Path {
+        match self {
+            ManifestFile::Package(pkg_manifest_file) => pkg_manifest_file.path(),
+            ManifestFile::Workspace(workspace_manifest_file) => workspace_manifest_file.path(),
+        }
+    }
+
+    /// The path to the directory containing the `Forc.toml` from which this manifest was loaded.
+    ///
+    /// This will always be a canonical path.
+    pub fn dir(&self) -> &Path {
+        self.path()
+            .parent()
+            .expect("failed to retrieve manifest directory")
+    }
+
+    /// Returns manifest file map from member name to the corresponding package manifest file
+    pub fn member_manifests(&self) -> Result<MemberManifestFiles> {
+        let mut member_manifest_files = BTreeMap::new();
+        match self {
+            ManifestFile::Package(pkg_manifest_file) => {
+                // Check if this package is in a workspace, in that case insert all member manifests
+                if let Some(workspace_manifest_file) = pkg_manifest_file.workspace()? {
+                    for member_manifest in workspace_manifest_file.member_pkg_manifests()? {
+                        member_manifest_files
+                            .insert(member_manifest.project.name.clone(), member_manifest);
+                    }
+                } else {
+                    let member_name = &pkg_manifest_file.project.name;
+                    member_manifest_files.insert(member_name.clone(), *pkg_manifest_file.clone());
+                }
+            }
+            ManifestFile::Workspace(workspace_manifest_file) => {
+                for member_manifest in workspace_manifest_file.member_pkg_manifests()? {
+                    member_manifest_files
+                        .insert(member_manifest.project.name.clone(), member_manifest);
+                }
+            }
+        }
+        Ok(member_manifest_files)
+    }
+
+    /// Returns the path of the lock file for the given ManifestFile
+    pub fn lock_path(&self) -> Result<PathBuf> {
+        match self {
+            ManifestFile::Package(pkg_manifest) => pkg_manifest.lock_path(),
+            ManifestFile::Workspace(workspace_manifest) => Ok(workspace_manifest.lock_path()),
+        }
+    }
+}
 
 type PatchMap = BTreeMap<String, Dependency>;
 
-/// A [Manifest] that was deserialized from a file at a particular path.
+/// A [PackageManifest] that was deserialized from a file at a particular path.
 #[derive(Clone, Debug)]
-pub struct ManifestFile {
+pub struct PackageManifestFile {
     /// The deserialized `Forc.toml`.
-    manifest: Manifest,
+    manifest: PackageManifest,
     /// The path from which the `Forc.toml` file was read.
     path: PathBuf,
 }
@@ -25,12 +116,15 @@ pub struct ManifestFile {
 /// A direct mapping to a `Forc.toml`.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
-pub struct Manifest {
+pub struct PackageManifest {
     pub project: Project,
     pub network: Option<Network>,
     pub dependencies: Option<BTreeMap<String, Dependency>>,
     pub patch: Option<BTreeMap<String, PatchMap>>,
+    /// A list of [configuration-time constants](https://github.com/FuelLabs/sway/issues/1498).
+    pub constants: Option<BTreeMap<String, ConfigTimeConstant>>,
     build_profile: Option<BTreeMap<String, BuildProfile>>,
+    pub contract_dependencies: Option<BTreeMap<String, Dependency>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -43,6 +137,7 @@ pub struct Project {
     #[serde(default = "default_entry")]
     pub entry: String,
     pub implicit_std: Option<bool>,
+    pub forc_version: Option<semver::Version>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -68,7 +163,7 @@ pub enum Dependency {
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,
-    pub(crate) path: Option<String>,
+    pub path: Option<String>,
     pub(crate) git: Option<String>,
     pub(crate) branch: Option<String>,
     pub(crate) tag: Option<String>,
@@ -80,11 +175,13 @@ pub struct DependencyDetails {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct BuildProfile {
+    pub print_ast: bool,
     pub print_ir: bool,
     pub print_finalized_asm: bool,
     pub print_intermediate_asm: bool,
-    pub silent: bool,
+    pub terse: bool,
     pub time_phases: bool,
+    pub include_tests: bool,
 }
 
 impl Dependency {
@@ -97,34 +194,34 @@ impl Dependency {
     }
 }
 
-impl ManifestFile {
-    /// Given a path to a `Forc.toml`, read it and construct a `Manifest`.
+impl PackageManifestFile {
+    /// Given a path to a `Forc.toml`, read it and construct a `PackageManifest`.
     ///
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
     /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
-    /// implicitly. In this case, the `sway_git_tag` is used to specify the pinned commit at which
-    /// we fetch `std`.
-    pub fn from_file(path: PathBuf, sway_git_tag: &str) -> Result<Self> {
+    /// implicitly. In this case, the git tag associated with the version of this crate is used to
+    /// specify the pinned commit at which we fetch `std`.
+    pub fn from_file(path: PathBuf) -> Result<Self> {
         let path = path.canonicalize()?;
-        let manifest = Manifest::from_file(&path, sway_git_tag)?;
+        let manifest = PackageManifest::from_file(&path)?;
         Ok(Self { manifest, path })
     }
 
     /// Read the manifest from the `Forc.toml` in the directory specified by the given `path` or
     /// any of its parent directories.
     ///
-    /// This is short for `Manifest::from_file`, but takes care of constructing the path to the
+    /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(manifest_dir: &Path, sway_git_tag: &str) -> Result<Self> {
+    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
         let dir = forc_util::find_manifest_dir(manifest_dir)
             .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
-        Self::from_file(path, sway_git_tag)
+        Self::from_file(path)
     }
 
-    /// Validate the `Manifest`.
+    /// Validate the `PackageManifest`.
     ///
     /// This checks the project and organization names against a set of reserved/restricted
     /// keywords and patterns, and if a given entry point exists.
@@ -160,7 +257,7 @@ impl ManifestFile {
             .expect("failed to retrieve manifest directory")
     }
 
-    /// Given the directory in which the file associated with this `Manifest` resides, produce the
+    /// Given the directory in which the file associated with this `PackageManifest` resides, produce the
     /// path to the entry file as specified in the manifest.
     ///
     /// This will always be a canonical path.
@@ -220,35 +317,87 @@ impl ManifestFile {
             }
         })
     }
+    /// Getter for the config time constants on the manifest.
+    pub fn config_time_constants(&self) -> BTreeMap<String, ConfigTimeConstant> {
+        self.constants.as_ref().cloned().unwrap_or_default()
+    }
+
+    /// Returns the workspace manifest file if this `PackageManifestFile` is one of the members.
+    pub fn workspace(&self) -> Result<Option<WorkspaceManifestFile>> {
+        let parent_dir = match self.dir().parent() {
+            None => return Ok(None),
+            Some(dir) => dir,
+        };
+        let ws_manifest = match WorkspaceManifestFile::from_dir(parent_dir) {
+            Ok(manifest) => manifest,
+            Err(e) => {
+                // Check if the error is missing workspace manifest file. Do not return that error if that
+                // is the case as we do not want to return error if this is a single project
+                // without a workspace.
+                if e.to_string().contains("could not find") {
+                    return Ok(None);
+                } else {
+                    return Err(e);
+                }
+            }
+        };
+        if ws_manifest.is_member_path(self.dir())? {
+            Ok(Some(ws_manifest))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Returns the location of the lock file for `PackageManifestFile`.
+    /// Checks if this PackageManifestFile corresponds to a workspace member and if that is the case
+    /// returns the workspace level lock file's location.
+    ///
+    /// This will always be a canonical path.
+    pub fn lock_path(&self) -> Result<PathBuf> {
+        // Check if this package is in a workspace
+        let workspace_manifest = self.workspace()?;
+        if let Some(workspace_manifest) = workspace_manifest {
+            Ok(workspace_manifest.lock_path())
+        } else {
+            Ok(self.dir().to_path_buf().join(constants::LOCK_FILE_NAME))
+        }
+    }
 }
 
-impl Manifest {
+impl PackageManifest {
     pub const DEFAULT_ENTRY_FILE_NAME: &'static str = "main.sw";
 
-    /// Given a path to a `Forc.toml`, read it and construct a `Manifest`.
+    /// Given a path to a `Forc.toml`, read it and construct a `PackageManifest`.
     ///
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
     /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
-    /// implicitly. In this case, the `sway_git_tag` is used to specify the pinned commit at which
-    /// we fetch `std`.
-    pub fn from_file(path: &Path, sway_git_tag: &str) -> Result<Self> {
+    /// implicitly. In this case, the git tag associated with the version of this crate is used to
+    /// specify the pinned commit at which we fetch `std`.
+    pub fn from_file(path: &Path) -> Result<Self> {
+        // While creating a `ManifestFile` we need to check if the given path corresponds to a
+        // package or a workspace. While doing so, we should be printing the warnings if the given
+        // file parses so that we only see warnings for the correct type of manifest.
+        let mut warnings = vec![];
         let manifest_str = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
         let mut manifest: Self = serde_ignored::deserialize(toml_de, |path| {
             let warning = format!("  WARNING! unused manifest key: {}", path);
-            println_yellow_err(&warning);
+            warnings.push(warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
-        manifest.implicitly_include_std_if_missing(sway_git_tag);
+        for warning in warnings {
+            println_yellow_err(&warning);
+        }
+        manifest.implicitly_include_std_if_missing();
         manifest.implicitly_include_default_build_profiles_if_missing();
         manifest.validate()?;
         Ok(manifest)
     }
 
-    /// Validate the `Manifest`.
+    /// Validate the `PackageManifest`.
     ///
     /// This checks the project and organization names against a set of reserved/restricted
     /// keywords and patterns.
@@ -262,12 +411,12 @@ impl Manifest {
 
     /// Given a directory to a forc project containing a `Forc.toml`, read the manifest.
     ///
-    /// This is short for `Manifest::from_file`, but takes care of constructing the path to the
+    /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(dir: &Path, sway_git_tag: &str) -> Result<Self> {
+    pub fn from_dir(dir: &Path) -> Result<Self> {
         let manifest_dir = find_manifest_dir(dir).ok_or_else(|| manifest_file_missing(dir))?;
         let file_path = manifest_dir.join(constants::MANIFEST_FILE_NAME);
-        Self::from_file(&file_path, sway_git_tag)
+        Self::from_file(&file_path)
     }
 
     /// Produce an iterator yielding all listed dependencies.
@@ -281,6 +430,14 @@ impl Manifest {
     /// Produce an iterator yielding all listed build profiles.
     pub fn build_profiles(&self) -> impl Iterator<Item = (&String, &BuildProfile)> {
         self.build_profile
+            .as_ref()
+            .into_iter()
+            .flat_map(|deps| deps.iter())
+    }
+
+    /// Produce an iterator yielding all listed contract dependencies
+    pub fn contract_deps(&self) -> impl Iterator<Item = (&String, &Dependency)> {
+        self.contract_dependencies
             .as_ref()
             .into_iter()
             .flat_map(|deps| deps.iter())
@@ -310,7 +467,7 @@ impl Manifest {
     ///
     /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
     /// guarantee that the user's `core` is compatible with the implicit `std`.
-    fn implicitly_include_std_if_missing(&mut self, sway_git_tag: &str) {
+    fn implicitly_include_std_if_missing(&mut self) {
         use crate::{CORE, STD};
         // Don't include `std` if:
         // - this *is* `core` or `std`.
@@ -328,7 +485,7 @@ impl Manifest {
         // Add a `[dependencies]` table if there isn't one.
         let deps = self.dependencies.get_or_insert_with(Default::default);
         // Add the missing dependency.
-        let std_dep = implicit_std_dep(sway_git_tag.to_string());
+        let std_dep = implicit_std_dep();
         deps.insert(STD.to_string(), std_dep);
     }
 
@@ -368,6 +525,25 @@ impl Manifest {
             .and_then(|patches| patches.get(patch_name))
     }
 
+    /// Retrieve a reference to the contract dependency with the given name.
+    pub fn contract_dep(&self, contract_dep_name: &str) -> Option<&Dependency> {
+        self.contract_dependencies
+            .as_ref()
+            .and_then(|contract_dependencies| contract_dependencies.get(contract_dep_name))
+    }
+
+    /// Retrieve a reference to the contract dependency with the given name.
+    pub fn contract_dependency_detailed(
+        &self,
+        contract_dep_name: &str,
+    ) -> Option<&DependencyDetails> {
+        self.contract_dep(contract_dep_name)
+            .and_then(|contract_dep| match contract_dep {
+                Dependency::Simple(_) => None,
+                Dependency::Detailed(detailed) => Some(detailed),
+            })
+    }
+
     /// Finds and returns the name of the dependency associated with a package of the specified
     /// name if there is one.
     ///
@@ -389,27 +565,31 @@ impl BuildProfile {
 
     pub fn debug() -> Self {
         Self {
+            print_ast: false,
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
-            silent: false,
+            terse: false,
             time_phases: false,
+            include_tests: false,
         }
     }
 
     pub fn release() -> Self {
         Self {
+            print_ast: false,
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
-            silent: false,
+            terse: false,
             time_phases: false,
+            include_tests: false,
         }
     }
 }
 
-impl std::ops::Deref for ManifestFile {
-    type Target = Manifest;
+impl std::ops::Deref for PackageManifestFile {
+    type Target = PackageManifest;
     fn deref(&self) -> &Self::Target {
         &self.manifest
     }
@@ -422,20 +602,185 @@ impl Default for BuildProfile {
 }
 
 /// The definition for the implicit `std` dependency.
-fn implicit_std_dep(sway_git_tag: String) -> Dependency {
+fn implicit_std_dep() -> Dependency {
+    // Here, we use the `forc-pkg` crate version formatted with the `v` prefix (e.g. "v1.2.3"),
+    // or the revision commit hash (e.g. "abcdefg").
+    //
+    // This git tag or revision is used during `PackageManifest` construction to pin the version of the
+    // implicit `std` dependency to the `forc-pkg` version.
+    //
+    // This is important to ensure that the version of `sway-core` that is baked into `forc-pkg` is
+    // compatible with the version of the `std` lib.
+    const VERSION: &str = env!("CARGO_PKG_VERSION");
     const SWAY_GIT_REPO_URL: &str = "https://github.com/fuellabs/sway";
-    let det = DependencyDetails {
+
+    fn rev_from_build_metadata(build_metadata: &str) -> Option<String> {
+        // Nightlies are in the format v<version>+nightly.<date>.<hash>
+        build_metadata.split('.').last().map(|r| r.to_string())
+    }
+
+    let sway_git_tag: String = "v".to_string() + VERSION;
+
+    let mut det = DependencyDetails {
         git: Some(SWAY_GIT_REPO_URL.to_string()),
         tag: Some(sway_git_tag),
         ..Default::default()
     };
+
+    if let Some((_tag, build_metadata)) = VERSION.split_once('+') {
+        let rev = rev_from_build_metadata(build_metadata);
+
+        // If some revision is available and parsed from the 'nightly' build metadata,
+        // we always prefer the revision over the tag.
+        det.tag = None;
+        det.rev = rev;
+    };
+
     Dependency::Detailed(det)
 }
 
 fn default_entry() -> String {
-    Manifest::DEFAULT_ENTRY_FILE_NAME.to_string()
+    PackageManifest::DEFAULT_ENTRY_FILE_NAME.to_string()
 }
 
 fn default_url() -> String {
     constants::DEFAULT_NODE_URL.into()
+}
+
+/// A [WorkspaceManifest] that was deserialized from a file at a particular path.
+#[derive(Clone, Debug)]
+pub struct WorkspaceManifestFile {
+    /// The derserialized `Forc.toml`
+    manifest: WorkspaceManifest,
+    /// The path from which the `Forc.toml` file was read.
+    path: PathBuf,
+}
+
+/// A direct mapping to `Forc.toml` if it is a WorkspaceManifest
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "kebab-case")]
+pub struct WorkspaceManifest {
+    pub members: Vec<PathBuf>,
+}
+
+impl WorkspaceManifestFile {
+    /// Given a path to a `Forc.toml`, read it and construct a `PackageManifest`
+    ///
+    /// This also `validate`s the manifest, returning an `Err` in the case that given members are
+    /// not present in the manifest dir.
+    pub fn from_file(path: PathBuf) -> Result<Self> {
+        let path = path.canonicalize()?;
+        let parent = path
+            .parent()
+            .ok_or_else(|| anyhow!("Cannot get parent dir of {:?}", path))?;
+        let manifest = WorkspaceManifest::from_file(&path)?;
+        manifest.validate(parent)?;
+        Ok(Self { manifest, path })
+    }
+
+    /// Read the manifest from the `Forc.toml` in the directory specified by the given `path` or
+    /// any of its parent directories.
+    ///
+    /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
+    /// file.
+    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
+        let dir = forc_util::find_manifest_dir(manifest_dir)
+            .ok_or_else(|| manifest_file_missing(manifest_dir))?;
+        let path = dir.join(constants::MANIFEST_FILE_NAME);
+        Self::from_file(path)
+    }
+
+    /// Returns an iterator over relative paths of workspace members.
+    pub fn members(&self) -> impl Iterator<Item = &PathBuf> + '_ {
+        self.members.iter()
+    }
+
+    /// Returns an iterator over workspace member root directories.
+    ///
+    /// This will always return canonical paths.
+    pub fn member_paths(&self) -> Result<impl Iterator<Item = PathBuf> + '_> {
+        Ok(self.members.iter().map(|member| self.dir().join(member)))
+    }
+
+    /// Returns an iterator over workspace member package manifests.
+    pub fn member_pkg_manifests(&self) -> Result<impl Iterator<Item = PackageManifestFile> + '_> {
+        let member_paths = self.member_paths()?;
+        let member_pkg_manifests =
+            member_paths.flat_map(|member_path| PackageManifestFile::from_dir(&member_path));
+        Ok(member_pkg_manifests)
+    }
+
+    /// The path to the `Forc.toml` from which this manifest was loaded.
+    ///
+    /// This will always be a canonical path.
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    /// The path to the directory containing the `Forc.toml` from which this manifest was loaded.
+    ///
+    /// This will always be a canonical path.
+    pub fn dir(&self) -> &Path {
+        self.path()
+            .parent()
+            .expect("failed to retrieve manifest directory")
+    }
+
+    /// Check if given path corresponds to any workspace member's path
+    pub fn is_member_path(&self, path: &Path) -> Result<bool> {
+        Ok(self.member_paths()?.any(|member_path| member_path == path))
+    }
+
+    /// Returns the location of the lock file for `WorkspaceManifestFile`.
+    ///
+    /// This will always be a canonical path.
+    pub fn lock_path(&self) -> PathBuf {
+        self.dir().to_path_buf().join(constants::LOCK_FILE_NAME)
+    }
+}
+
+impl WorkspaceManifest {
+    /// Given a path to a `Forc.toml`, read it and construct a `WorkspaceManifest`.
+    pub fn from_file(path: &Path) -> Result<Self> {
+        // While creating a `ManifestFile` we need to check if the given path corresponds to a
+        // package or a workspace. While doing so, we should be printing the warnings if the given
+        // file parses so that we only see warnings for the correct type of manifest.
+        let mut warnings = vec![];
+        let manifest_str = std::fs::read_to_string(path)
+            .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
+        let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
+        let manifest: Self = serde_ignored::deserialize(toml_de, |path| {
+            let warning = format!("  WARNING! unused manifest key: {}", path);
+            warnings.push(warning);
+        })
+        .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
+        for warning in warnings {
+            println_yellow_err(&warning);
+        }
+        Ok(manifest)
+    }
+
+    /// Validate the `WorkspaceManifest`
+    ///
+    /// This checks if the listed members in the `WorkspaceManifest` are indeed in the given `Forc.toml`'s directory.
+    pub fn validate(&self, path: &Path) -> Result<()> {
+        for member in self.members.iter() {
+            let member_path = path.join(member).join("Forc.toml");
+            if !member_path.exists() {
+                bail!(
+                    "{:?} is listed as a member of the workspace but {:?} does not exists",
+                    &member,
+                    member_path
+                );
+            }
+        }
+        Ok(())
+    }
+}
+
+impl std::ops::Deref for WorkspaceManifestFile {
+    type Target = WorkspaceManifest;
+    fn deref(&self) -> &Self::Target {
+        &self.manifest
+    }
 }

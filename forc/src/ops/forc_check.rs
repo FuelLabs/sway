@@ -1,13 +1,15 @@
-use crate::{cli::CheckCommand, utils::SWAY_GIT_TAG};
+use crate::cli::CheckCommand;
 use anyhow::Result;
-use forc_pkg::{self as pkg, ManifestFile};
+use forc_pkg::{self as pkg};
+use pkg::manifest::ManifestFile;
 use std::path::PathBuf;
+use sway_core::{language::ty, CompileResult};
 
-pub fn check(command: CheckCommand) -> Result<sway_core::CompileAstResult> {
+pub fn check(command: CheckCommand) -> Result<CompileResult<ty::TyProgram>> {
     let CheckCommand {
         path,
         offline_mode: offline,
-        silent_mode,
+        terse_mode,
         locked,
     } = command;
 
@@ -16,9 +18,16 @@ pub fn check(command: CheckCommand) -> Result<sway_core::CompileAstResult> {
     } else {
         std::env::current_dir()?
     };
-    let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
-    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline, SWAY_GIT_TAG)?;
+    let manifest_file = ManifestFile::from_dir(&this_dir)?;
+    let member_manifests = manifest_file.member_manifests()?;
+    let lock_path = manifest_file.lock_path()?;
+    let plan =
+        pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
 
-    let (_, ast_res) = pkg::check(&plan, silent_mode)?;
-    Ok(ast_res)
+    let mut v = pkg::check(&plan, terse_mode)?;
+    let res = v
+        .pop()
+        .expect("there is guaranteed to be at least one elem in the vector")
+        .flat_map(|(_, tp)| CompileResult::new(tp, vec![], vec![]));
+    Ok(res)
 }

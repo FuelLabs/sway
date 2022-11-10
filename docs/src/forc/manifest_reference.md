@@ -10,6 +10,7 @@ The `Forc.toml` (the _manifest_ file) is a compulsory file for each package and 
   * `entry` — The entry point for the compiler to start parsing from.
     * For the recomended way of selecting an entry point of large libraries please take a look at: [Libraries](./../sway-program-types/libraries.md)
   * `implicit-std` -  Controls whether provided `std` version (with the current `forc` version) will get added as a dependency _implicitly_. _Unless you know what you are doing, leave this as default._
+  * `forc-version` - The minimum forc version required for this project to work properly.
 
 * [`[dependencies]`](#the-dependencies-section) — Defines the dependencies.
 * `[network]` — Defines a network for forc to interact with.
@@ -18,6 +19,8 @@ The `Forc.toml` (the _manifest_ file) is a compulsory file for each package and 
 * [`[build-profiles]`](#the-build-profiles--section) - Defines the build profiles.
 
 * [`[patch]`](#the-patch-section) - Defines the patches.
+
+* [`[contract-dependencies]`](#the-contract-dependencies-section) - Defines the contract dependencies.
 
 ## The `[project]` section
 
@@ -65,10 +68,11 @@ The `[build-profiles]` tables provide a way to customize compiler settings such 
 
 The following fields needs to be provided for a build-profile:
 
+* `print-ast` - Whether to print out the generated AST (true) or not (false).
 * `print-finalized-asm` - Whether to compile to bytecode (false) or to print out the generated ASM (true).
 * `print-intermediate-asm` - Whether to compile to bytecode (false) or to print out the generated ASM (true).
 * `print-ir` - Whether to compile to bytecode (false) or to print out the generated IR (true).
-* `silent-mode` - Silent mode. Don't output any warnings or errors to the command line.
+* `terse-mode` - Terse mode. Limited warning and error output.
 
 There are two default `[build-profile]` available with every manifest file. These are `debug` and `release` profiles. If you want to override these profiles, you can provide them explicitly in the manifest file like the following example:
 
@@ -84,13 +88,13 @@ name = "wallet_contract"
 print-finalized-asm = false
 print-intermediate-asm = false
 print-ir = false
-silent = false
+terse = false
 
 [build-profiles.release]
 print-finalized-asm = false 
 print-intermediate-asm = false
 print-ir = false
-silent = true
+terse = true
 ```
 
 Since `release` and `debug` implicitly included in every manifest file, you can use them by just passing `--release` or by not passing anything (debug is default). For using a user defined build profile there is `--build-profile <profile name>` option available to the relevant commands. (For an example see [forc-build](../forc/commands/forc_build.md))
@@ -100,7 +104,7 @@ Note that providing the corresponding cli options (like `--print-finalized-asm`)
 * print-finalized-asm - true
 * print-intermediate-asm - false
 * print-ir - false
-* silent - false
+* terse - false
 
 ## The `[patch]` section
 
@@ -145,3 +149,35 @@ foo = { git = "https://github.com/foo/foo", branch = "test" }
 ```
 
 Note that each key after the `[patch]` is a URL of the source that is being patched.
+
+## The `[contract-dependencies]` section
+
+The `[contract-dependenices]` table can be used to declare contract dependencies for a Sway contract or script. Contract dependencies are the set of contracts that our contract or script may interact with. Declaring `[contract-dependencies]` makes it easier to refer to contracts in your Sway source code without having to manually update IDs each time a new version is deployed. Instead, we can use forc to pin and update contract dependencies just like we do for regular library dependencies.
+
+Contracts declared under `[contract-dependencies]` are built and pinned just like regular `[dependencies]` however rather than importing each contract dependency's entire public namespace we instead import their respective contract IDs as `CONTRACT_ID` constants available via each contract dependency's namespace root. This means you can use a contract dependency's ID as if it were declared as a `pub const` in the root of the contract dependency package as demonstrated in the example below.
+
+Entries under `[contract-dependencies]` can be declared in the same way that `[dependencies]` can be declared. That is, they can refer to the `path` or `git` source of another contract. Note that entries under `[contract-dependencies]` must refer to contracts and will otherwise produce an error.
+
+Example `Forc.toml`:
+
+```toml
+[project]
+authors = ["user"]
+entry = "main.sw"
+organization = "Fuel_Labs"
+license = "Apache-2.0"
+name = "wallet_contract"
+
+[contract-dependencies]
+foo = { path = "../foo" }
+```
+
+Example usage:
+
+```sway
+script;
+
+fn main() {
+  let foo_id = foo::CONTRACT_ID;
+}
+```

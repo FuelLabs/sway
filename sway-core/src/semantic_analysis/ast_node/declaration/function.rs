@@ -1,120 +1,22 @@
 mod function_parameter;
+
 pub use function_parameter::*;
+use sway_error::warning::{CompileWarning, Warning};
 
-use crate::{error::*, parse_tree::*, semantic_analysis::*, style::*, type_engine::*, types::*};
-use sha2::{Digest, Sha256};
-use sway_types::{Function, Ident, Property, Span, Spanned};
+use crate::{
+    error::*,
+    language::{parsed::*, ty, Visibility},
+    semantic_analysis::*,
+    type_system::*,
+};
+use sway_types::{style::is_snake_case, Spanned};
 
-#[derive(Clone, Debug, Eq)]
-pub struct TypedFunctionDeclaration {
-    pub name: Ident,
-    pub body: TypedCodeBlock,
-    pub parameters: Vec<TypedFunctionParameter>,
-    pub span: Span,
-    pub(crate) return_type: TypeId,
-    pub(crate) type_parameters: Vec<TypeParameter>,
-    /// Used for error messages -- the span pointing to the return type
-    /// annotation of the function
-    pub return_type_span: Span,
-    pub(crate) visibility: Visibility,
-    /// whether this function exists in another contract and requires a call to it or not
-    pub(crate) is_contract_call: bool,
-    pub(crate) purity: Purity,
-}
-
-impl From<&TypedFunctionDeclaration> for TypedAstNode {
-    fn from(o: &TypedFunctionDeclaration) -> Self {
-        let span = o.span.clone();
-        TypedAstNode {
-            content: TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
-                o.clone(),
-            )),
-            span,
-        }
-    }
-}
-
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypedFunctionDeclaration {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.body == other.body
-            && self.parameters == other.parameters
-            && look_up_type_id(self.return_type) == look_up_type_id(other.return_type)
-            && self.type_parameters == other.type_parameters
-            && self.visibility == other.visibility
-            && self.is_contract_call == other.is_contract_call
-            && self.purity == other.purity
-    }
-}
-
-impl CopyTypes for TypedFunctionDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-        self.return_type
-            .update_type(type_mapping, &self.return_type_span);
-        self.body.copy_types(type_mapping);
-    }
-}
-
-impl Spanned for TypedFunctionDeclaration {
-    fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-impl MonomorphizeHelper for TypedFunctionDeclaration {
-    fn type_parameters(&self) -> &[TypeParameter] {
-        &self.type_parameters
-    }
-
-    fn name(&self) -> &Ident {
-        &self.name
-    }
-}
-
-impl ToJsonAbi for TypedFunctionDeclaration {
-    type Output = Function;
-
-    fn generate_json_abi(&self) -> Self::Output {
-        Function {
-            name: self.name.as_str().to_string(),
-            type_field: "function".to_string(),
-            inputs: self
-                .parameters
-                .iter()
-                .map(|x| Property {
-                    name: x.name.as_str().to_string(),
-                    type_field: x.type_id.json_abi_str(),
-                    components: x.type_id.generate_json_abi(),
-                    type_arguments: x
-                        .type_id
-                        .get_type_parameters()
-                        .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
-                })
-                .collect(),
-            outputs: vec![Property {
-                name: "".to_string(),
-                type_field: self.return_type.json_abi_str(),
-                components: self.return_type.generate_json_abi(),
-                type_arguments: self
-                    .return_type
-                    .get_type_parameters()
-                    .map(|v| v.iter().map(TypeParameter::generate_json_abi).collect()),
-            }],
-        }
-    }
-}
-
-impl TypedFunctionDeclaration {
-    pub fn type_check(ctx: TypeCheckContext, fn_decl: FunctionDeclaration) -> CompileResult<Self> {
+impl ty::TyFunctionDeclaration {
+    pub fn type_check(
+        mut ctx: TypeCheckContext,
+        fn_decl: FunctionDeclaration,
+        is_method: bool,
+    ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -123,48 +25,59 @@ impl TypedFunctionDeclaration {
             body,
             parameters,
             span,
+            attributes,
             return_type,
             type_parameters,
             return_type_span,
             visibility,
             purity,
-            ..
         } = fn_decl;
-        is_snake_case(&name).ok(&mut warnings, &mut errors);
+
+        // Warn against non-snake case function names.
+        if !is_snake_case(name.as_str()) {
+            warnings.push(CompileWarning {
+                span: name.span(),
+                warning_content: Warning::NonSnakeCaseFunctionName { name: name.clone() },
+            })
+        }
 
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
+        let mut fn_ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
 
-        let mut ctx = ctx.scoped(&mut fn_namespace).with_purity(purity);
-
-        // type check the type parameters
-        // insert them into the namespace
+        // type check the type parameters, which will also insert them into the namespace
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
             new_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
-        }
-
-        // type check the function parameters
-        // insert them into the namespace
-        let mut new_parameters = vec![];
-        for parameter in parameters.into_iter() {
-            new_parameters.push(check!(
-                TypedFunctionParameter::type_check(ctx.by_ref(), parameter),
+                TypeParameter::type_check(fn_ctx.by_ref(), type_parameter),
                 continue,
                 warnings,
                 errors
             ));
         }
+        if !errors.is_empty() {
+            return err(warnings, errors);
+        }
+
+        // type check the function parameters, which will also insert them into the namespace
+        let mut new_parameters = vec![];
+        for parameter in parameters.into_iter() {
+            new_parameters.push(check!(
+                ty::TyFunctionParameter::type_check(fn_ctx.by_ref(), parameter, is_method),
+                continue,
+                warnings,
+                errors
+            ));
+        }
+        if !errors.is_empty() {
+            return err(warnings, errors);
+        }
 
         // type check the return type
+        let initial_return_type = insert_type(return_type);
         let return_type = check!(
-            ctx.resolve_type_with_self(
-                insert_type(return_type),
+            fn_ctx.resolve_type_with_self(
+                initial_return_type,
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None
@@ -179,14 +92,15 @@ impl TypedFunctionDeclaration {
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
         let (body, _implicit_block_return) = {
-            let ctx = ctx
+            let fn_ctx = fn_ctx
                 .by_ref()
+                .with_purity(purity)
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
                 .with_type_annotation(return_type);
             check!(
-                TypedCodeBlock::type_check(ctx, body),
+                ty::TyCodeBlock::type_check(fn_ctx, body),
                 (
-                    TypedCodeBlock { contents: vec![] },
+                    ty::TyCodeBlock { contents: vec![] },
                     insert_type(TypeInfo::ErrorRecovery)
                 ),
                 warnings,
@@ -195,122 +109,79 @@ impl TypedFunctionDeclaration {
         };
 
         // gather the return statements
-        let return_statements: Vec<&TypedExpression> = body
+        let return_statements: Vec<&ty::TyExpression> = body
             .contents
             .iter()
-            .flat_map(|node| -> Vec<&TypedReturnStatement> { node.gather_return_statements() })
-            .map(|TypedReturnStatement { expr, .. }| expr)
+            .flat_map(|node| node.gather_return_statements())
             .collect();
 
         // unify the types of the return statements with the function return type
         for stmt in return_statements {
-            let (mut new_warnings, new_errors) = ctx
-                .by_ref()
-                .with_type_annotation(return_type)
-                .with_help_text("Return statement must return the declared function return type.")
-                .unify_with_self(stmt.return_type, &stmt.span);
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+            append!(
+                fn_ctx
+                    .by_ref()
+                    .with_type_annotation(return_type)
+                    .with_help_text(
+                        "Return statement must return the declared function return type."
+                    )
+                    .unify_with_self(stmt.return_type, &stmt.span),
+                warnings,
+                errors
+            );
         }
 
-        let function_decl = TypedFunctionDeclaration {
+        let (visibility, is_contract_call) = if is_method {
+            (Visibility::Public, false)
+        } else {
+            (visibility, fn_ctx.mode() == Mode::ImplAbiFn)
+        };
+
+        let function_decl = ty::TyFunctionDeclaration {
             name,
             body,
             parameters: new_parameters,
             span,
+            attributes,
             return_type,
+            initial_return_type,
             type_parameters: new_type_parameters,
             return_type_span,
             visibility,
-            // if this is for a contract, then it is a contract call
-            is_contract_call: ctx.mode() == Mode::ImplAbiFn,
+            is_contract_call,
             purity,
         };
 
-        ok(function_decl, warnings, errors)
-    }
-
-    /// If there are parameters, join their spans. Otherwise, use the fn name span.
-    pub(crate) fn parameters_span(&self) -> Span {
-        if !self.parameters.is_empty() {
-            self.parameters.iter().fold(
-                self.parameters[0].name.span(),
-                |acc, TypedFunctionParameter { type_span, .. }| Span::join(acc, type_span.clone()),
-            )
-        } else {
-            self.name.span()
+        // Retrieve the implemented traits for the type of the return type and
+        // insert them in the broader namespace. We don't want to include any
+        // type parameters, so we filter them out.
+        let mut return_type_namespace = fn_ctx
+            .namespace
+            .implemented_traits
+            .filter_by_type(function_decl.return_type);
+        for type_param in function_decl.type_parameters.iter() {
+            return_type_namespace.filter_against_type(type_param.type_id);
         }
-    }
+        ctx.namespace
+            .implemented_traits
+            .extend(return_type_namespace);
 
-    pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<Vec<u8>> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-        let mut hasher = Sha256::new();
-        let data = check!(
-            self.to_selector_name(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        hasher.update(data);
-        let hash = hasher.finalize();
-        ok(hash.to_vec(), warnings, errors)
-    }
-
-    /// Converts a [TypedFunctionDeclaration] into a value that is to be used in contract function
-    /// selectors.
-    /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
-    pub fn to_fn_selector_value(&self) -> CompileResult<[u8; 4]> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-        let hash = check!(
-            self.to_fn_selector_value_untruncated(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        // 4 bytes truncation via copying into a 4 byte buffer
-        let mut buf = [0u8; 4];
-        buf.copy_from_slice(&hash[..4]);
-        ok(buf, warnings, errors)
-    }
-
-    pub fn to_selector_name(&self) -> CompileResult<String> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-        let named_params = self
-            .parameters
-            .iter()
-            .map(
-                |TypedFunctionParameter {
-                     type_id, type_span, ..
-                 }| {
-                    resolve_type(*type_id, type_span)
-                        .expect("unreachable I think?")
-                        .to_selector_name(type_span)
-                },
-            )
-            .filter_map(|name| name.ok(&mut warnings, &mut errors))
-            .collect::<Vec<String>>();
-
-        ok(
-            format!("{}({})", self.name.as_str(), named_params.join(","),),
-            warnings,
-            errors,
-        )
+        ok(function_decl, warnings, errors)
     }
 }
 
 #[test]
 fn test_function_selector_behavior() {
-    use crate::type_engine::IntegerBits;
-    let decl = TypedFunctionDeclaration {
+    use crate::language::Visibility;
+    use sway_types::{integer_bits::IntegerBits, Ident, Span};
+    let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_no_span("foo"),
-        body: TypedCodeBlock { contents: vec![] },
+        body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![],
         span: Span::dummy(),
+        attributes: Default::default(),
         return_type: 0.into(),
+        initial_return_type: 0.into(),
         type_parameters: vec![],
         return_type_span: Span::dummy(),
         visibility: Visibility::Public,
@@ -324,26 +195,34 @@ fn test_function_selector_behavior() {
 
     assert_eq!(selector_text, "foo()".to_string());
 
-    let decl = TypedFunctionDeclaration {
+    let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_with_override("bar", Span::dummy()),
-        body: TypedCodeBlock { contents: vec![] },
+        body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![
-            TypedFunctionParameter {
+            ty::TyFunctionParameter {
                 name: Ident::new_no_span("foo"),
+                is_reference: false,
                 is_mutable: false,
-                type_id: crate::type_engine::insert_type(TypeInfo::Str(5)),
+                mutability_span: Span::dummy(),
+                type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
+                initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
-            TypedFunctionParameter {
+            ty::TyFunctionParameter {
                 name: Ident::new_no_span("baz"),
+                is_reference: false,
                 is_mutable: false,
+                mutability_span: Span::dummy(),
                 type_id: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
+                initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
         ],
         span: Span::dummy(),
+        attributes: Default::default(),
         return_type: 0.into(),
+        initial_return_type: 0.into(),
         type_parameters: vec![],
         return_type_span: Span::dummy(),
         visibility: Visibility::Public,

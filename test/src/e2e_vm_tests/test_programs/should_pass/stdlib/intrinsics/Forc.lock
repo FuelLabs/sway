@@ -1,11 +1,10 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-89DFACC7FCC0773C'
-dependencies = []
 
 [[package]]
 name = 'intrinsics'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

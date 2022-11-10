@@ -1,0 +1,21 @@
+[[package]]
+name = 'block'
+source = 'member'
+dependencies = [
+    'block_test_abi',
+    'std',
+]
+
+[[package]]
+name = 'block_test_abi'
+source = 'path+from-root-9A6BFB98DBD0352C'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-9A6BFB98DBD0352C'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-9A6BFB98DBD0352C'
+dependencies = ['core']

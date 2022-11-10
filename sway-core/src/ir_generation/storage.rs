@@ -1,7 +1,11 @@
-use crate::asm_generation::from_ir::ir_type_size_in_bytes;
-use fuel_crypto::Hasher;
-use fuel_tx::StorageSlot;
-use fuel_types::{Bytes32, Bytes8};
+use crate::{
+    asm_generation::from_ir::ir_type_size_in_bytes,
+    fuel_prelude::{
+        fuel_crypto::Hasher,
+        fuel_tx::StorageSlot,
+        fuel_types::{Bytes32, Bytes8},
+    },
+};
 use sway_ir::{
     constant::{Constant, ConstantValue},
     context::Context,
@@ -33,14 +37,14 @@ use uint::construct_uint;
     clippy::assign_op_pattern,
     clippy::ptr_offset_with_cast
 )]
-pub(super) fn add_to_b256(x: fuel_types::Bytes32, y: u64) -> fuel_types::Bytes32 {
+pub(super) fn add_to_b256(x: Bytes32, y: u64) -> Bytes32 {
     construct_uint! {
         struct U256(4);
     }
     let x = U256::from(*x);
     let y = U256::from(y);
     let res: [u8; 32] = (x + y).into();
-    fuel_types::Bytes32::from(res)
+    Bytes32::from(res)
 }
 
 /// Given a constant value `constant`, a type `ty`, a state index, and a vector of subfield
@@ -72,7 +76,7 @@ pub fn serialize_to_storage_slots(
                     [0; 7]
                         .iter()
                         .cloned()
-                        .chain([if *b { 0x01 } else { 0x00 }].iter().cloned())
+                        .chain([u8::from(*b)].iter().cloned())
                         .chain([0; 24].iter().cloned())
                         .collect::<Vec<u8>>()
                         .try_into()
@@ -104,7 +108,7 @@ pub fn serialize_to_storage_slots(
             unimplemented!("Arrays in storage have not been implemented yet.")
         }
         (Type::Struct(aggregate), ConstantValue::Struct(vec)) => {
-            match &context.aggregates[aggregate.0] {
+            match aggregate.get_content(context) {
                 AggregateContent::FieldTypes(field_tys) => vec
                     .iter()
                     .zip(field_tys.iter())
@@ -168,7 +172,7 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
                 [0; 7]
                     .iter()
                     .cloned()
-                    .chain([if *b { 0x01 } else { 0x00 }].iter().cloned())
+                    .chain([u8::from(*b)].iter().cloned())
                     .collect::<Vec<u8>>()
                     .try_into()
                     .unwrap(),
@@ -183,10 +187,9 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
                 .map(|i| Bytes8::new(b[8 * i..8 * i + 8].try_into().unwrap())),
         ),
         (Type::String(_), ConstantValue::String(s)) => {
-            // Turn the serialized words (Bytes8) into seriliazed storage slots (Bytes32)
-            // Pad to word alignment
+            // Turn the bytes into serialized words (Bytes8).
             let mut s = s.clone();
-            s.extend(vec![0; ((s.len() + 3) / 4) * 4 - s.len()]);
+            s.extend(vec![0; ((s.len() + 7) / 8) * 8 - s.len()]);
 
             assert!(s.len() % 8 == 0);
 
@@ -203,7 +206,7 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
             unimplemented!("Arrays in storage have not been implemented yet.")
         }
         (Type::Struct(aggregate), ConstantValue::Struct(vec)) => {
-            match &context.aggregates[aggregate.0] {
+            match aggregate.get_content(context) {
                 AggregateContent::FieldTypes(field_tys) => vec
                     .iter()
                     .zip(field_tys.iter())

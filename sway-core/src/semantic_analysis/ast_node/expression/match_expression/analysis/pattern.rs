@@ -1,14 +1,10 @@
 use std::{cmp::Ordering, fmt};
 
 use std::fmt::Write;
+use sway_error::error::CompileError;
 use sway_types::Span;
 
-use crate::type_engine::look_up_type_id;
-use crate::TypeInfo;
-use crate::{
-    error::{err, ok},
-    CompileError, CompileResult, Literal, Scrutinee, StructScrutineeField,
-};
+use crate::{error::*, language::ty, language::Literal, TypeInfo};
 
 use super::{patstack::PatStack, range::Range};
 
@@ -106,7 +102,6 @@ pub(crate) enum Pattern {
     U64(Range<u64>),
     B256([u8; 32]),
     Boolean(bool),
-    Byte(Range<u8>),
     Numeric(Range<u64>),
     String(String),
     Struct(StructPattern),
@@ -117,52 +112,34 @@ pub(crate) enum Pattern {
 
 impl Pattern {
     /// Converts a `Scrutinee` to a `Pattern`.
-    pub(crate) fn from_scrutinee(scrutinee: Scrutinee) -> CompileResult<Self> {
+    pub(crate) fn from_scrutinee(scrutinee: ty::TyScrutinee) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let pat = match scrutinee {
-            Scrutinee::CatchAll { .. } => Pattern::Wildcard,
-            Scrutinee::Variable { .. } => Pattern::Wildcard,
-            Scrutinee::Literal { value, .. } => match value {
-                Literal::U8(x) => Pattern::U8(Range::from_single(x)),
-                Literal::U16(x) => Pattern::U16(Range::from_single(x)),
-                Literal::U32(x) => Pattern::U32(Range::from_single(x)),
-                Literal::U64(x) => Pattern::U64(Range::from_single(x)),
-                Literal::B256(x) => Pattern::B256(x),
-                Literal::Boolean(b) => Pattern::Boolean(b),
-                Literal::Byte(x) => Pattern::Byte(Range::from_single(x)),
-                Literal::Numeric(x) => Pattern::Numeric(Range::from_single(x)),
-                Literal::String(s) => Pattern::String(s.as_str().to_string()),
-            },
-            Scrutinee::StructScrutinee {
-                struct_name,
-                fields,
-                ..
-            } => {
+        let pat = match scrutinee.variant {
+            ty::TyScrutineeVariant::CatchAll => Pattern::Wildcard,
+            ty::TyScrutineeVariant::Variable(_) => Pattern::Wildcard,
+            ty::TyScrutineeVariant::Literal(value) => Pattern::from_literal(value),
+            ty::TyScrutineeVariant::Constant(_, value, _) => Pattern::from_literal(value),
+            ty::TyScrutineeVariant::StructScrutinee(struct_name, fields) => {
                 let mut new_fields = vec![];
                 for field in fields.into_iter() {
-                    if let StructScrutineeField::Field {
-                        field, scrutinee, ..
-                    } = field
-                    {
-                        let f = match scrutinee {
-                            Some(scrutinee) => check!(
-                                Pattern::from_scrutinee(scrutinee),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            ),
-                            None => Pattern::Wildcard,
-                        };
-                        new_fields.push((field.as_str().to_string(), f));
-                    }
+                    let f = match field.scrutinee {
+                        Some(scrutinee) => check!(
+                            Pattern::from_scrutinee(scrutinee),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ),
+                        None => Pattern::Wildcard,
+                    };
+                    new_fields.push((field.field.as_str().to_string(), f));
                 }
                 Pattern::Struct(StructPattern {
                     struct_name: struct_name.to_string(),
                     fields: new_fields,
                 })
             }
-            Scrutinee::Tuple { elems, .. } => {
+            ty::TyScrutineeVariant::Tuple(elems) => {
                 let mut new_elems = PatStack::empty();
                 for elem in elems.into_iter() {
                     new_elems.push(check!(
@@ -174,7 +151,7 @@ impl Pattern {
                 }
                 Pattern::Tuple(new_elems)
             }
-            Scrutinee::EnumScrutinee {
+            ty::TyScrutineeVariant::EnumScrutinee {
                 call_path, value, ..
             } => {
                 let enum_name = call_path.prefixes.last().unwrap().to_string();
@@ -192,6 +169,20 @@ impl Pattern {
             }
         };
         ok(pat, warnings, errors)
+    }
+
+    /// Convert the given literal `value` into a pattern.
+    fn from_literal(value: Literal) -> Pattern {
+        match value {
+            Literal::U8(x) => Pattern::U8(Range::from_single(x)),
+            Literal::U16(x) => Pattern::U16(Range::from_single(x)),
+            Literal::U32(x) => Pattern::U32(Range::from_single(x)),
+            Literal::U64(x) => Pattern::U64(Range::from_single(x)),
+            Literal::B256(x) => Pattern::B256(x),
+            Literal::Boolean(b) => Pattern::Boolean(b),
+            Literal::Numeric(x) => Pattern::Numeric(Range::from_single(x)),
+            Literal::String(s) => Pattern::String(s.as_str().to_string()),
+        }
     }
 
     /// Converts a `PatStack` to a `Pattern`. If the `PatStack` is of lenth 1,
@@ -376,16 +367,6 @@ impl Pattern {
                 }
                 Pattern::Boolean(*b)
             }
-            Pattern::Byte(range) => {
-                if !args.is_empty() {
-                    errors.push(CompileError::Internal(
-                        "malformed constructor request",
-                        span.clone(),
-                    ));
-                    return err(warnings, errors);
-                }
-                Pattern::Byte(range.clone())
-            }
             Pattern::Numeric(range) => {
                 if !args.is_empty() {
                     errors.push(CompileError::Internal(
@@ -522,7 +503,6 @@ impl Pattern {
             Pattern::U64(_) => 0,
             Pattern::B256(_) => 0,
             Pattern::Boolean(_) => 0,
-            Pattern::Byte(_) => 0,
             Pattern::Numeric(_) => 0,
             Pattern::String(_) => 0,
             Pattern::Struct(StructPattern { fields, .. }) => fields.len(),
@@ -570,7 +550,6 @@ impl Pattern {
             (Pattern::U64(a), Pattern::U64(b)) => a == b,
             (Pattern::B256(a), Pattern::B256(b)) => a == b,
             (Pattern::Boolean(a), Pattern::Boolean(b)) => a == b,
-            (Pattern::Byte(a), Pattern::Byte(b)) => a == b,
             (Pattern::Numeric(a), Pattern::Numeric(b)) => a == b,
             (Pattern::String(a), Pattern::String(b)) => a == b,
             (
@@ -659,11 +638,8 @@ impl Pattern {
         }
     }
 
-    pub(crate) fn matches_type_info(&self, type_info: &TypeInfo, span: &Span) -> bool {
+    pub(crate) fn matches_type_info(&self, type_info: &TypeInfo) -> bool {
         match (self, type_info) {
-            (pattern, TypeInfo::Ref(type_id, _)) => {
-                pattern.matches_type_info(&look_up_type_id(*type_id), span)
-            }
             (
                 Pattern::Enum(EnumPattern {
                     enum_name: l_enum_name,
@@ -695,13 +671,12 @@ impl Pattern {
             Pattern::U64(_) => 4,
             Pattern::B256(_) => 5,
             Pattern::Boolean(_) => 6,
-            Pattern::Byte(_) => 7,
-            Pattern::Numeric(_) => 8,
-            Pattern::String(_) => 9,
-            Pattern::Struct(_) => 10,
-            Pattern::Enum(_) => 11,
-            Pattern::Tuple(_) => 12,
-            Pattern::Or(_) => 13,
+            Pattern::Numeric(_) => 7,
+            Pattern::String(_) => 8,
+            Pattern::Struct(_) => 9,
+            Pattern::Enum(_) => 10,
+            Pattern::Tuple(_) => 11,
+            Pattern::Or(_) => 12,
         }
     }
 }
@@ -717,7 +692,6 @@ impl fmt::Display for Pattern {
             Pattern::Numeric(range) => format!("{}", range),
             Pattern::B256(n) => format!("{:#?}", n),
             Pattern::Boolean(b) => format!("{}", b),
-            Pattern::Byte(range) => format!("{}", range),
             Pattern::String(s) => s.clone(),
             Pattern::Struct(struct_pattern) => format!("{}", struct_pattern),
             Pattern::Enum(enum_pattern) => format!("{}", enum_pattern),
@@ -746,7 +720,6 @@ impl std::cmp::Ord for Pattern {
             (Pattern::U64(x), Pattern::U64(y)) => x.cmp(y),
             (Pattern::B256(x), Pattern::B256(y)) => x.cmp(y),
             (Pattern::Boolean(x), Pattern::Boolean(y)) => x.cmp(y),
-            (Pattern::Byte(x), Pattern::Byte(y)) => x.cmp(y),
             (Pattern::Numeric(x), Pattern::Numeric(y)) => x.cmp(y),
             (Pattern::String(x), Pattern::String(y)) => x.cmp(y),
             (Pattern::Struct(x), Pattern::Struct(y)) => x.cmp(y),
@@ -805,7 +778,7 @@ impl fmt::Display for StructPattern {
                 let (front, rest) = self.fields.split_at(start_of_wildcard_tail);
                 let mut inner_builder = front
                     .iter()
-                    .map(|(name, field)| -> Result<_, _> {
+                    .map(|(name, field)| -> Result<_, fmt::Error> {
                         let mut inner_builder = String::new();
                         inner_builder.push_str(name);
                         inner_builder.push_str(": ");
@@ -822,7 +795,7 @@ impl fmt::Display for StructPattern {
             None => self
                 .fields
                 .iter()
-                .map(|(name, field)| -> Result<_, _> {
+                .map(|(name, field)| -> Result<_, fmt::Error> {
                     let mut inner_builder = String::new();
                     inner_builder.push_str(name);
                     inner_builder.push_str(": ");

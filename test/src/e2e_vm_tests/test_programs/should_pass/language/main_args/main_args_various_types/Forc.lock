@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-CE6BEA8545326BB4'
+
+[[package]]
+name = 'main_args_various_types'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-CE6BEA8545326BB4'
+dependencies = ['core']

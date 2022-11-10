@@ -2,86 +2,79 @@ use sway_types::Span;
 
 use crate::{
     error::{err, ok},
+    language::{parsed::*, ty, *},
     semantic_analysis::{
         ast_node::expression::typed_expression::{
             instantiate_if_expression, instantiate_lazy_operator,
         },
-        IsConstant, TypeCheckContext, TypedExpression, TypedExpressionVariant,
+        TypeCheckContext,
     },
-    type_engine::{insert_type, TypeId},
-    CompileError, CompileResult, LazyOp, Literal, MatchBranch, TypeInfo,
+    type_system::insert_type,
+    CompileError, CompileResult, TypeInfo,
 };
 
-use super::typed_match_branch::TypedMatchBranch;
-
-#[derive(Debug)]
-pub(crate) struct TypedMatchExpression {
-    branches: Vec<TypedMatchBranch>,
-    return_type_id: TypeId,
-    #[allow(dead_code)]
-    span: Span,
-}
-
-impl TypedMatchExpression {
+impl ty::TyMatchExpression {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
-        typed_value: TypedExpression,
+        typed_value: ty::TyExpression,
         branches: Vec<MatchBranch>,
         span: Span,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<(ty::TyMatchExpression, Vec<ty::TyScrutinee>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         // type check all of the branches
         let mut typed_branches = vec![];
+        let mut typed_scrutinees = vec![];
         let mut ctx =
             ctx.with_help_text("all branches of a match statement must return the same type");
         for branch in branches.into_iter() {
-            let typed_branch = check!(
-                TypedMatchBranch::type_check(ctx.by_ref(), &typed_value, branch),
+            let (typed_branch, typed_scrutinee) = check!(
+                ty::TyMatchBranch::type_check(ctx.by_ref(), &typed_value, branch),
                 continue,
                 warnings,
                 errors
             );
             typed_branches.push(typed_branch);
+            typed_scrutinees.push(typed_scrutinee);
         }
 
         if !errors.is_empty() {
             return err(warnings, errors);
         }
 
-        let exp = TypedMatchExpression {
+        let typed_exp = ty::TyMatchExpression {
             branches: typed_branches,
             return_type_id: ctx.type_annotation(),
             span,
         };
-        ok(exp, warnings, errors)
+        ok((typed_exp, typed_scrutinees), warnings, errors)
     }
 
     pub(crate) fn convert_to_typed_if_expression(
         self,
         mut ctx: TypeCheckContext,
-    ) -> CompileResult<TypedExpression> {
+    ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let TypedMatchExpression { branches, .. } = self;
+        let ty::TyMatchExpression { branches, .. } = self;
 
         // create the typed if expression object that we will be building on to
-        let mut typed_if_exp: Option<TypedExpression> = None;
+        let mut typed_if_exp: Option<ty::TyExpression> = None;
 
         // for every branch of the match expression, in reverse
-        for TypedMatchBranch {
+        for ty::TyMatchBranch {
             conditions, result, ..
         } in branches.into_iter().rev()
         {
             // create the conditional that will act as the conditional for the if statement, in reverse
-            let mut conditional: Option<TypedExpression> = None;
+            let mut conditional: Option<ty::TyExpression> = None;
             for (left_req, right_req) in conditions.into_iter().rev() {
                 let joined_span = Span::join(left_req.span.clone(), right_req.span.clone());
                 let args = vec![left_req, right_req];
                 let new_condition = check!(
-                    TypedExpression::core_ops_eq(ctx.by_ref(), args, joined_span),
+                    ty::TyExpression::core_ops_eq(ctx.by_ref(), args, joined_span),
                     continue,
                     warnings,
                     errors
@@ -123,10 +116,9 @@ impl TypedMatchExpression {
                     )
                 }
                 (Some(prev_if_exp), None) => {
-                    let conditional = TypedExpression {
-                        expression: TypedExpressionVariant::Literal(Literal::Boolean(true)),
+                    let conditional = ty::TyExpression {
+                        expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
                         return_type: insert_type(TypeInfo::Boolean),
-                        is_constant: IsConstant::No,
                         span: result_span.clone(),
                     };
                     check!(

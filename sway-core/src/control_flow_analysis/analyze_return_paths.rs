@@ -2,30 +2,31 @@
 //! execution.
 
 use crate::{
-    control_flow_analysis::*, error::*, parse_tree::*, semantic_analysis::*, type_engine::*,
+    control_flow_analysis::*,
+    declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait},
+    language::{ty, CallPath},
+    type_system::*,
 };
 use petgraph::prelude::NodeIndex;
-use sway_types::{ident::Ident, span::Span};
+use sway_error::error::CompileError;
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 impl ControlFlowGraph {
     pub(crate) fn construct_return_path_graph(
-        module_nodes: &[TypedAstNode],
+        module_nodes: &[ty::TyAstNode],
     ) -> Result<Self, CompileError> {
-        let mut graph = ControlFlowGraph {
-            graph: Graph::new(),
-            entry_points: vec![],
-            namespace: Default::default(),
-        };
+        let mut graph = ControlFlowGraph::default();
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
         for ast_entrypoint in module_nodes {
-            let l_leaves = connect_node(ast_entrypoint, &mut graph, &leaves, None, None)?.0;
+            let l_leaves = connect_node(ast_entrypoint, &mut graph, &leaves)?.0;
             if let NodeConnection::NextStep(nodes) = l_leaves {
                 leaves = nodes;
             }
         }
         Ok(graph)
     }
+
     /// This function looks through the control flow graph and ensures that all paths that are
     /// required to return a value do, indeed, return a value of the correct type.
     /// It does this by checking every function declaration in both the methods namespace
@@ -53,6 +54,7 @@ impl ControlFlowGraph {
         }
         errors
     }
+
     fn ensure_all_paths_reach_exit(
         &self,
         entry_point: EntryPoint,
@@ -65,10 +67,7 @@ impl ControlFlowGraph {
         let mut max_iterations = 50;
         while !rovers.is_empty() && rovers[0] != exit_point && max_iterations > 0 {
             max_iterations -= 1;
-            rovers = rovers
-                .into_iter()
-                .filter(|idx| *idx != exit_point)
-                .collect();
+            rovers.retain(|idx| *idx != exit_point);
             let mut next_rovers = vec![];
             let mut last_discovered_span;
             for rover in rovers {
@@ -120,23 +119,27 @@ enum NodeConnection {
 }
 
 fn connect_node(
-    node: &TypedAstNode,
+    node: &ty::TyAstNode,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
-    break_to_node: Option<NodeIndex>,
-    continue_to_node: Option<NodeIndex>,
 ) -> Result<(NodeConnection, ReturnStatementNodes), CompileError> {
     let span = node.span.clone();
     match &node.content {
-        TypedAstNodeContent::ReturnStatement(_)
-        | TypedAstNodeContent::ImplicitReturnExpression(_) => {
+        ty::TyAstNodeContent::Expression(ty::TyExpression {
+            expression: ty::TyExpressionVariant::Return(..),
+            ..
+        })
+        | ty::TyAstNodeContent::ImplicitReturnExpression(_) => {
             let this_index = graph.add_node(node.into());
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());
             }
             Ok((NodeConnection::Return(this_index), vec![]))
         }
-        TypedAstNodeContent::WhileLoop(TypedWhileLoop { body, .. }) => {
+        ty::TyAstNodeContent::Expression(ty::TyExpression {
+            expression: ty::TyExpressionVariant::WhileLoop { body, .. },
+            ..
+        }) => {
             // This is very similar to the dead code analysis for a while loop.
             let entry = graph.add_node(node.into());
             let while_loop_exit = graph.add_node("while loop exit".to_string().into());
@@ -154,13 +157,7 @@ fn connect_node(
 
             // We need to dig into the body of the while loop in case there is a break or a
             // continue at some level.
-            let (l_leaves, inner_returns) = depth_first_insertion_code_block(
-                body,
-                graph,
-                &leaves,
-                Some(while_loop_exit), // break_to_node
-                Some(entry),           // continue_to_node
-            )?;
+            let (l_leaves, inner_returns) = depth_first_insertion_code_block(body, graph, &leaves)?;
 
             // insert edges from end of block back to beginning of it
             for leaf in &l_leaves {
@@ -177,7 +174,7 @@ fn connect_node(
                 inner_returns,
             ))
         }
-        TypedAstNodeContent::Expression(TypedExpression { .. }) => {
+        ty::TyAstNodeContent::Expression(ty::TyExpression { .. }) => {
             let entry = graph.add_node(node.into());
             // insert organizational dominator node
             // connected to all current leaves
@@ -186,32 +183,22 @@ fn connect_node(
             }
             Ok((NodeConnection::NextStep(vec![entry]), vec![]))
         }
-        TypedAstNodeContent::SideEffect => Ok((NodeConnection::NextStep(leaves.to_vec()), vec![])),
-        TypedAstNodeContent::Declaration(decl) => Ok((
-            NodeConnection::NextStep(connect_declaration(
-                node,
-                decl,
-                graph,
-                span,
-                leaves,
-                break_to_node,
-                continue_to_node,
-            )?),
+        ty::TyAstNodeContent::SideEffect => Ok((NodeConnection::NextStep(leaves.to_vec()), vec![])),
+        ty::TyAstNodeContent::Declaration(decl) => Ok((
+            NodeConnection::NextStep(connect_declaration(node, decl, graph, span, leaves)?),
             vec![],
         )),
     }
 }
 
 fn connect_declaration(
-    node: &TypedAstNode,
-    decl: &TypedDeclaration,
+    node: &ty::TyAstNode,
+    decl: &ty::TyDeclaration,
     graph: &mut ControlFlowGraph,
     span: Span,
     leaves: &[NodeIndex],
-    break_to_node: Option<NodeIndex>,
-    continue_to_node: Option<NodeIndex>,
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    use TypedDeclaration::*;
+    use ty::TyDeclaration::*;
     match decl {
         TraitDeclaration(_)
         | AbiDeclaration(_)
@@ -226,67 +213,35 @@ fn connect_declaration(
             }
             Ok(vec![entry_node])
         }
-        FunctionDeclaration(fn_decl) => {
+        FunctionDeclaration(decl_id) => {
+            let fn_decl = de_get_function(decl_id.clone(), &decl.span())?;
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
-            connect_typed_fn_decl(fn_decl, graph, entry_node, span)?;
+            connect_typed_fn_decl(&fn_decl, graph, entry_node, span)?;
             Ok(leaves.to_vec())
         }
-        Reassignment(TypedReassignment { .. }) => {
+        ImplTrait(decl_id) => {
+            let ty::TyImplTrait {
+                trait_name,
+                methods,
+                ..
+            } = de_get_impl_trait(decl_id.clone(), &span)?;
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
-            Ok(vec![entry_node])
-        }
-        StorageReassignment(_) => {
-            let entry_node = graph.add_node(node.into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, entry_node, "".into());
-            }
-            Ok(vec![entry_node])
-        }
-        ImplTrait(TypedImplTrait {
-            trait_name,
-            methods,
-            ..
-        }) => {
-            let entry_node = graph.add_node(node.into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, entry_node, "".into());
-            }
-            connect_impl_trait(trait_name, graph, methods, entry_node)?;
+
+            let methods = methods
+                .into_iter()
+                .map(|decl_id| de_get_function(decl_id, &trait_name.span()))
+                .collect::<Result<Vec<_>, CompileError>>()?;
+
+            connect_impl_trait(&trait_name, graph, &methods, entry_node)?;
             Ok(leaves.to_vec())
         }
-        ErrorRecovery => Ok(leaves.to_vec()),
-        Break { .. } => {
-            let entry_node = graph.add_node(node.into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, entry_node, "".into());
-            }
-            match break_to_node {
-                Some(break_to_node) => {
-                    graph.add_edge(entry_node, break_to_node, "".into());
-                    Ok(vec![break_to_node])
-                }
-                None => Err(CompileError::BreakOutsideLoop { span }),
-            }
-        }
-        Continue { .. } => {
-            let entry_node = graph.add_node(node.into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, entry_node, "".into());
-            }
-            match continue_to_node {
-                Some(continue_to_node) => {
-                    graph.add_edge(entry_node, continue_to_node, "".into());
-                    Ok(vec![continue_to_node])
-                }
-                None => Err(CompileError::ContinueOutsideLoop { span }),
-            }
-        }
+        ErrorRecovery(_) => Ok(leaves.to_vec()),
     }
 }
 
@@ -298,7 +253,7 @@ fn connect_declaration(
 fn connect_impl_trait(
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph,
-    methods: &[TypedFunctionDeclaration],
+    methods: &[ty::TyFunctionDeclaration],
     entry_node: NodeIndex,
 ) -> Result<(), CompileError> {
     let mut methods_and_indexes = vec![];
@@ -335,14 +290,13 @@ fn connect_impl_trait(
 /// has no entry points, since it is just a declaration.
 /// When something eventually calls it, it gets connected to the declaration.
 fn connect_typed_fn_decl(
-    fn_decl: &TypedFunctionDeclaration,
+    fn_decl: &ty::TyFunctionDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
     _span: Span,
 ) -> Result<(), CompileError> {
     let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.as_str()).into());
-    let return_nodes =
-        depth_first_insertion_code_block(&fn_decl.body, graph, &[entry_node], None, None)?.0;
+    let return_nodes = depth_first_insertion_code_block(&fn_decl.body, graph, &[entry_node])?.0;
     for node in return_nodes {
         graph.add_edge(node, fn_exit_node, "return".into());
     }
@@ -350,7 +304,7 @@ fn connect_typed_fn_decl(
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,
         exit_point: fn_exit_node,
-        return_type: resolve_type(fn_decl.return_type, &fn_decl.return_type_span)
+        return_type: to_typeinfo(fn_decl.return_type, &fn_decl.return_type_span)
             .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new())),
     };
     graph
@@ -362,17 +316,14 @@ fn connect_typed_fn_decl(
 type ReturnStatementNodes = Vec<NodeIndex>;
 
 fn depth_first_insertion_code_block(
-    node_content: &TypedCodeBlock,
+    node_content: &ty::TyCodeBlock,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
-    break_to_node: Option<NodeIndex>,
-    continue_to_node: Option<NodeIndex>,
 ) -> Result<(ReturnStatementNodes, Vec<NodeIndex>), CompileError> {
     let mut leaves = leaves.to_vec();
     let mut return_nodes = vec![];
     for node in node_content.contents.iter() {
-        let (this_node, inner_returns) =
-            connect_node(node, graph, &leaves, break_to_node, continue_to_node)?;
+        let (this_node, inner_returns) = connect_node(node, graph, &leaves)?;
         match this_node {
             NodeConnection::NextStep(nodes) => leaves = nodes,
             NodeConnection::Return(node) => {

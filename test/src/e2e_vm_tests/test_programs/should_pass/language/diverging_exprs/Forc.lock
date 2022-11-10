@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-80950B22F23DC017'
+
+[[package]]
+name = 'diverging_exprs'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-80950B22F23DC017'
+dependencies = ['core']

@@ -1,6 +1,6 @@
 contract;
 
-use std::{chain::auth::*, context::call_frames::contract_id, contract_id::ContractId, result::*, revert::revert, identity::Identity};
+use std::{auth::*, call_frames::contract_id};
 
 use reentrancy_target_abi::Target;
 use reentrancy_attacker_abi::Attacker;
@@ -14,7 +14,9 @@ fn get_msg_sender_id_or_panic(result: Result<Identity, AuthError>) -> ContractId
                 _ => revert(0),
             }
         },
-        _ => {revert(0);},
+        _ => {
+            revert(0);
+        },
     }
 }
 
@@ -47,7 +49,7 @@ impl Attacker for Contract {
         let result: Result<Identity, AuthError> = msg_sender();
         let id = get_msg_sender_id_or_panic(result);
 
-        let attacker = abi(Attacker, ~ContractId::into(contract_id()));
+        let attacker = abi(Attacker, ContractId::into(contract_id()));
         attacker.launch_attack(id)
     }
 
@@ -55,7 +57,7 @@ impl Attacker for Contract {
         let result: Result<Identity, AuthError> = msg_sender();
         let id = get_msg_sender_id_or_panic(result);
 
-        let attacker = abi(Attacker, ~ContractId::into(contract_id()));
+        let attacker = abi(Attacker, ContractId::into(contract_id()));
         attacker.launch_thwarted_attack_1(id);
         true
     }
@@ -64,11 +66,10 @@ impl Attacker for Contract {
         let result: Result<Identity, AuthError> = msg_sender();
         let id = get_msg_sender_id_or_panic(result);
 
-        let attacker = abi(Attacker, ~ContractId::into(contract_id()));
+        let attacker = abi(Attacker, ContractId::into(contract_id()));
         attacker.launch_thwarted_attack_1(id);
         true
     }
 
-    fn innocent_callback() {
-    }
+    fn innocent_callback() {}
 }

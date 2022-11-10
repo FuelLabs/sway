@@ -1,3 +1,5 @@
+// all
+//
 // Based on this Sway:
 //
 // script;
@@ -12,30 +14,33 @@
 // }
 
 // regex: VAR=v\d+
-// regex: LABEL=[[:alpha:]0-9]+:
+// regex: LABEL=[[:alpha:]0-9_]+
 
 script {
     fn a(b: u64) -> u64 {
-        entry:
+        entry(b: u64):
         ret u64 b
     }
 
 
 // check: fn main
     fn main() -> u64 {
-        entry:
+        entry():
 
 // check: $(arg0=$VAR) = const u64 11
         v0 = const u64 11
 // not: call
         v1 = call a(v0)
-// check: phi($LABEL $arg0)
+// check: br $(lbl0=$LABEL)($arg0)
 
+// check: $(lbl0)($(arg2=$VAR): u64)
 // check: $(arg1=$VAR) = const u64 22
         v2 = const u64 22
 // not: call
         v3 = call a(v2)
-// check: phi($LABEL $arg1)
+// check: br $(lbl1=$LABEL)($arg1)
+
+// check: $(lbl1)($(arg3=$VAR): u64)
 
         ret u64 v3
     }

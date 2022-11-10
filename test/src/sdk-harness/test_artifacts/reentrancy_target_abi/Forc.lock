@@ -1,11 +1,10 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-838442FFC03D3788'
-dependencies = []
 
 [[package]]
 name = 'reentrancy_target_abi'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

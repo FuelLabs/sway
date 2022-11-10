@@ -9,9 +9,9 @@
 //! [`Aggregate`] is an abstract collection of [`Type`]s used for structs, unions and arrays,
 //! though see below for future improvements around splitting arrays into a different construct.
 
-use crate::context::Context;
+use crate::{context::Context, pretty::DebugWithContext, Pointer};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, DebugWithContext)]
 pub enum Type {
     Unit,
     Bool,
@@ -21,12 +21,17 @@ pub enum Type {
     Array(Aggregate),
     Union(Aggregate),
     Struct(Aggregate),
+    Pointer(Pointer),
+    Slice,
 }
 
 impl Type {
     /// Return whether this is a 'copy' type, one whose value will always fit in a register.
     pub fn is_copy_type(&self) -> bool {
-        matches!(self, Type::Unit | Type::Bool | Type::Uint(_))
+        matches!(
+            self,
+            Type::Unit | Type::Bool | Type::Uint(_) | Type::Pointer(_)
+        )
     }
 
     /// Return a string representation of type, used for printing.
@@ -58,6 +63,8 @@ impl Type {
                 let agg_content = &context.aggregates[agg.0];
                 format!("{{ {} }}", sep_types_str(agg_content, ", "))
             }
+            Type::Pointer(ptr) => ptr.as_string(context, None),
+            Type::Slice => "slice".into(),
         }
     }
 
@@ -81,8 +88,32 @@ impl Type {
                 .field_types()
                 .iter()
                 .any(|field_ty| r.eq(context, field_ty)),
+
+            (Type::Pointer(l), Type::Pointer(r)) => l.is_equivalent(context, r),
+            (Type::Slice, Type::Slice) => true,
             _ => false,
         }
+    }
+
+    pub fn strip_ptr_type(&self, context: &Context) -> Type {
+        if let Type::Pointer(ptr) = self {
+            *ptr.get_type(context)
+        } else {
+            *self
+        }
+    }
+
+    /// Gets the inner pointer type if its a pointer.
+    pub fn get_inner_ptr_type(&self, context: &Context) -> Option<Type> {
+        match self {
+            Type::Pointer(ptr) => Some(*ptr.get_type(context)),
+            _ => None,
+        }
+    }
+
+    /// Returns true if this is a pointer type.
+    pub fn is_ptr_type(&self) -> bool {
+        matches!(self, Type::Pointer(_))
     }
 }
 
@@ -103,11 +134,11 @@ impl Type {
 /// that they represent the same collection of types.  Instead the `is_equivalent()` method is
 /// provided.  XXX Perhaps `Hash` should be impl'd directly without `Eq` if possible?
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct Aggregate(pub generational_arena::Index);
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
+pub struct Aggregate(#[in_context(aggregates)] pub generational_arena::Index);
 
 #[doc(hidden)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, DebugWithContext)]
 pub enum AggregateContent {
     ArrayType(Type, u64),
     FieldTypes(Vec<Type>),
@@ -135,6 +166,11 @@ impl Aggregate {
     /// Tests whether an aggregate has the same sub-types.
     pub fn is_equivalent(&self, context: &Context, other: &Aggregate) -> bool {
         context.aggregates[self.0].eq(context, &context.aggregates[other.0])
+    }
+
+    /// Get a reference to the [`AggregateContent`] for this aggregate.
+    pub fn get_content<'a>(&self, context: &'a Context) -> &'a AggregateContent {
+        &context.aggregates[self.0]
     }
 
     /// Get the type of (nested) aggregate fields, if found.  If an index is into a `Union` then it

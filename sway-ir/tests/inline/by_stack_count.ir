@@ -1,0 +1,99 @@
+// stack 2
+
+script {
+    fn one_local() -> u64 {
+        local ptr u64 num
+
+        entry():
+        v0 = const u64 11
+        ret u64 v0
+    }
+
+    fn two_locals() -> u64 {
+        local ptr u64 num
+        local ptr bool flag
+
+        entry():
+        v0 = const u64 22
+        ret u64 v0
+    }
+
+    fn three_locals() -> u64 {
+        local ptr u64 num
+        local ptr bool flag
+        local ptr string<10> name
+
+        entry():
+        v0 = const u64 33
+        ret u64 v0
+    }
+
+    fn two_struct_locals() -> u64 {
+        local ptr { u64, u64 } pair
+
+        entry():
+        v0 = const u64 44
+        ret u64 v0
+    }
+
+    fn three_struct_locals() -> u64 {
+        local ptr { u64, u64, bool } triple
+
+        entry():
+        v0 = const u64 55
+        ret u64 v0
+    }
+
+    fn two_mixed_locals() -> u64 {
+        local ptr { u64 } single
+        local ptr bool flag
+
+        entry():
+        v0 = const u64 66
+        ret u64 v0
+    }
+
+    fn three_mixed_locals() -> u64 {
+        local ptr { u64, string<10> } pair
+        local ptr bool flag
+
+        entry():
+        v0 = const u64 77
+        ret u64 v0
+    }
+
+    fn main() -> u64 {
+// check: fn main() -> u64
+        entry():
+
+        v0 = call one_local()
+// not: call one_local()
+// check: const u64 11
+
+        v1 = call two_locals()
+// not: call two_locals()
+// check: const u64 22
+
+        v2 = call three_locals()
+// check: call three_locals()
+// not: const u64 33
+
+        v3 = call two_struct_locals()
+// not: call two_struct_locals()
+// check: const u64 44
+
+        v4 = call three_struct_locals()
+// check: call three_struct_locals()
+// not: const u64 55
+
+        v5 = call two_mixed_locals()
+// not: call two_mixed_locals()
+// check: const u64 66
+
+        v6 = call three_mixed_locals()
+// check: call three_mixed_locals()
+// not: const u64 77
+
+        ret u64 v6
+    }
+}

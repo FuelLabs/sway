@@ -12,10 +12,10 @@ fn tuple() {
     let sway = tuple2.2.1;
 
     // Destructure the values from the tuple into variables
-    let(n1, truthness, n2) = tuple1;
+    let (n1, truthness, n2) = tuple1;
 
     // If you do not care about specific values then use "_"
-    let(_, truthness, _) = tuple2;
+    let (_, truthness, _) = tuple2;
 
     // Internally mutate the tuple
     tuple2.1 = false;

@@ -5,7 +5,7 @@ struct A {
 }
 
 impl A {
-    fn f(mut self) {
+    fn f(ref mut self) {
         self.a = 0;
     }
 }
@@ -23,7 +23,7 @@ fn main() {
 // check: call $(f_method=$ID)($a_ptr)
 
 // check: fn $f_method(self $MD: { u64 }) -> ()
-// nextln: entry:
+// nextln: entry(self: { u64 }):
 // nextln: $(zero_val=$VAL) = const u64 0
 // nextln: $VAL = insert_value self, { u64 }, $zero_val, 0
 // nextln: $(res=$VAL) = const unit ()
