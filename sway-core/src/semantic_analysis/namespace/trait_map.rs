@@ -651,7 +651,6 @@ fn are_equal_minus_dynamic_types(left: TypeId, right: TypeId) -> bool {
         (TypeInfo::Unknown, TypeInfo::Unknown) => false,
         (TypeInfo::SelfType, TypeInfo::SelfType) => false,
         (TypeInfo::Numeric, TypeInfo::Numeric) => false,
-        (TypeInfo::UnknownGeneric { .. }, TypeInfo::UnknownGeneric { .. }) => false,
         (TypeInfo::Contract, TypeInfo::Contract) => false,
         (TypeInfo::Storage { .. }, TypeInfo::Storage { .. }) => false,
 
@@ -663,6 +662,10 @@ fn are_equal_minus_dynamic_types(left: TypeId, right: TypeId) -> bool {
         (TypeInfo::UnsignedInteger(l), TypeInfo::UnsignedInteger(r)) => l == r,
         (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
         (TypeInfo::RawUntypedSlice, TypeInfo::RawUntypedSlice) => true,
+        (
+            TypeInfo::UnknownGeneric { name: rname, .. },
+            TypeInfo::UnknownGeneric { name: lname, .. },
+        ) => rname.eq_origin(lname),
 
         // these cases may contain dynamic types
         (

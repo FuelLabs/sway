@@ -104,4 +104,12 @@ impl Ident {
             is_raw_ident: false,
         }
     }
+
+    pub fn eq_origin(&self, other: Self) -> bool {
+        if self.name_override_opt.is_some() || other.name_override_opt.is_some() {
+            false
+        } else {
+            self.span == other.span
+        }
+    }
 }
