@@ -3,7 +3,9 @@ library asset_operations;
 // ANCHOR: mint_import
 use std::token::{mint, mint_to, mint_to_address, mint_to_contract};
 // ANCHOR_END: mint_import
-
+// ANCHOR: burn_import
+use std::token::burn;
+// ANCHOR_END: burn_import
 fn minting() {
     // ANCHOR: mint
     let amount = 10;
@@ -27,7 +29,6 @@ fn minting_to_contract() {
     // ANCHOR_END: mint_to_contract
 }
 
-
 fn minting_to() {
     // ANCHOR: mint_to
     let amount = 10;
@@ -35,4 +36,11 @@ fn minting_to() {
     mint_to(amount, Identity::Address(Address::from(address)));
     mint_to(amount, Identity::ContractId(ContractId::from(address)));
     // ANCHOR_END: mint_to
+}
+
+fn burning() {
+    // ANCHOR: burn
+    let amount = 10;
+    burn(amount);
+    // ANCHOR_END: burn
 }
