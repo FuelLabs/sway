@@ -1,6 +1,6 @@
 [[package]]
 name = 'core'
-source = 'path+from-root-0EEC2240A883E0FE'
+source = 'path+from-root-304A6B2C558319C7'
 
 [[package]]
 name = 'evm_ec_recover'
@@ -9,5 +9,5 @@ dependencies = ['std']
 
 [[package]]
 name = 'std'
-source = 'git+https://github.com/fuellabs/sway?tag=v0.30.1#158f22115bf000d45862be95ff7fdb0ff5bdee4d'
+source = 'path+from-root-304A6B2C558319C7'
 dependencies = ['core']
