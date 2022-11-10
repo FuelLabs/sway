@@ -35,6 +35,12 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
         ..Default::default()
     })
     .await
+    .map(|contract_ids| {
+        contract_ids
+            .first()
+            .map(|contract_id| contract_id.id)
+            .unwrap()
+    })
 }
 
 /// Run a given project against a node. Assumes the node is running at localhost:4000.
@@ -64,7 +70,13 @@ pub(crate) async fn runs_on_node(
         signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
         ..Default::default()
     };
-    run(command).await
+    run(command).await.map(|ran_scripts| {
+        ran_scripts
+            .into_iter()
+            .next()
+            .map(|ran_script| ran_script.receipts)
+            .unwrap()
+    })
 }
 
 /// Very basic check that code does indeed run in the VM.

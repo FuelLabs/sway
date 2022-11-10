@@ -1,6 +1,6 @@
 [package]
 name = "forc-doc"
-version = "0.30.1"
+version = "0.31.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -11,10 +11,10 @@ description = "Build the documentation for the local package and all dependencie
 [dependencies]
 anyhow = "1.0.65"
 clap = { version = "4.0.18", features = ["derive"] }
-forc-pkg = { version = "0.30.1", path = "../../forc-pkg" }
-forc-util = { version = "0.30.1", path = "../../forc-util"}
+forc-pkg = { version = "0.31.0", path = "../../forc-pkg" }
+forc-util = { version = "0.31.0", path = "../../forc-util"}
 horrorshow = "0.8.4"
 opener = "0.5.0"
-sway-core = { version = "0.30.1", path = "../../sway-core" }
-sway-types = { version = "0.30.1", path = "../../sway-types" }
+sway-core = { version = "0.31.0", path = "../../sway-core" }
+sway-types = { version = "0.31.0", path = "../../sway-types" }
 

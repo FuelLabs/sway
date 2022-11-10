@@ -81,6 +81,7 @@ pub struct BuiltPackage {
     pub entries: Vec<FinalizedEntry>,
     pub tree_type: TreeType,
     source_map: SourceMap,
+    pkg_name: String,
 }
 
 /// The result of successfully compiling a workspace.
@@ -427,6 +428,18 @@ impl BuiltPackage {
         }
 
         Ok(())
+    }
+}
+
+impl Built {
+    /// Returns a map between package names and their corresponding `BuiltPackage`.
+    pub fn into_members(self) -> Result<HashMap<String, BuiltPackage>> {
+        match self {
+            Built::Package(built_pkg) => {
+                Ok(std::iter::once((built_pkg.pkg_name.clone(), *built_pkg)).collect())
+            }
+            Built::Workspace(built_workspace) => Ok(built_workspace),
+        }
     }
 }
 const DEFAULT_REMOTE_NAME: &str = "origin";
@@ -2313,6 +2326,7 @@ pub fn compile(
                 tree_type,
                 entries,
                 source_map: source_map.to_owned(),
+                pkg_name: pkg.name.clone(),
             };
             Ok((built_package, namespace))
         }

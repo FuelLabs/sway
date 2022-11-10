@@ -13,6 +13,6 @@ fn main() -> bool {
 
 ## Debugging Predicates
 
-Because they don't have any side effects (they are _pure_), predicates cannot create receipts. Therefore, they cannot have logging or create a stack backtrace. This means that there is no naive way to debug them aside from using a single-stepping debugger (which is a [work-in-progress](https://github.com/FuelLabs/fuel-debugger/pull/1)).
+Because they don't have any side effects (they are _pure_), predicates cannot create receipts. Therefore, they cannot have logging or create a stack backtrace. This means that there is no native way to debug them aside from using a single-stepping debugger (which is a [work-in-progress](https://github.com/FuelLabs/fuel-debugger/pull/1)).
 
 As a workaround, the predicate can be written, tested, and debugged first as a `script`, and then changed back into a `predicate`.
