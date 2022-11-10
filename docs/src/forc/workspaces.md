@@ -7,7 +7,7 @@ The key points for workspaces are:
 * Common `forc` commands available for a single package can also be used for a workspace, like `forc build` or `forc deploy`.
 * All packages share a common `Forc.lock` file which resides in the root directory of the workspace.
 
-For workspaces, `Forc.toml` accepts following fields:
+Workspace manifests are declared within Forc.toml files and support the following fields:
 
 * [`members`](#the-members-field) - Packages to include in the workspace.
 
