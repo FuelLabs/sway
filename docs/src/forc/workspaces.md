@@ -7,13 +7,13 @@ The key points for workspaces are:
 * Common `forc` commands available for a single package can also be used for a workspace, like `forc build` or `forc deploy`.
 * All packages share a common `Forc.lock` file which resides in the root directory of the workspace.
 
-Workspace manifests are declared within Forc.toml files and support the following fields:
+Workspace manifests are declared within `Forc.toml` files and support the following fields:
 
 * [`members`](#the-members-field) - Packages to include in the workspace.
 
 ## The `members` field
 
-The `members` field define which packages are members of the workspace:
+The `members` field defines which packages are members of the workspace:
 
 ```toml
 members = ["member1", "path/to/member2"]
@@ -22,7 +22,7 @@ members = ["member1", "path/to/member2"]
 The `members` field accepts entries to be given in relative path with respect to the workspace root.
 Packages that are located within a workspace directory but are *not* contained within the `members` set are ignored.
 
-## Some forc commands that supports workspaces
+## Some `forc` commands that support workspaces
 
 * `forc build` - Builds an entire workspace.
 * `forc deploy` - Builds and deploys all deployable members (i.e, contracts) of the workspace in the correct order.
