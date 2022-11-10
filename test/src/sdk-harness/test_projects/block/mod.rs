@@ -1,5 +1,6 @@
 use fuels::prelude::*;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tai64::Tai64;
 use tokio::time::{sleep, Duration};
 
 abigen!(
@@ -41,13 +42,11 @@ async fn can_get_block_height() {
 async fn can_get_timestamp() {
     let (instance, _id) = get_block_instance().await;
     let block_0_time = instance.methods().get_timestamp().call().await.unwrap();
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards");
+    let now = Tai64::now();
 
     // This should really be zero in most cases, but be conservative to guarantee the stability of
     // the test
-    assert!(now.as_millis() as u64 - block_0_time.value <= 1000);
+    assert!(now.0 - block_0_time.value <= 1);
 
     // Wait 1 seconds and request another block
     sleep(Duration::from_secs(1)).await;
@@ -56,8 +55,8 @@ async fn can_get_timestamp() {
     // The difference should be 1 second in most cases, but be conservative to guarantee the
     // stability of the test
     assert!(
-        1000 <= block_1_time.value - block_0_time.value
-            && block_1_time.value - block_0_time.value <= 2000
+        1 <= block_1_time.value - block_0_time.value
+            && block_1_time.value - block_0_time.value <= 2
     );
     // Wait 2 seconds and request another block
     sleep(Duration::from_secs(2)).await;
@@ -66,8 +65,8 @@ async fn can_get_timestamp() {
     // The difference should be 2 seconds in most cases, but be conservative to guarantee the
     // stability of the test
     assert!(
-        2000 <= block_2_time.value - block_1_time.value
-            && block_2_time.value - block_1_time.value <= 3000
+        2 <= block_2_time.value - block_1_time.value
+            && block_2_time.value - block_1_time.value <= 3
     );
 }
 

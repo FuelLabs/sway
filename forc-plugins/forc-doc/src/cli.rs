@@ -1,8 +1,13 @@
 use clap::Parser;
 
 #[derive(Debug, Parser)]
+#[clap(
+    name = "forc-doc",
+    about = "Forc plugin for building a Sway package's documentation",
+    version
+)]
 pub struct Command {
-    /// Path to the Forc.toml file. By default, Cargo searches for the Forc.toml
+    /// Path to the Forc.toml file. By default, forc-doc searches for the Forc.toml
     /// file in the current directory or any parent directory.
     #[clap(long)]
     pub manifest_path: Option<String>,

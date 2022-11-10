@@ -3,7 +3,7 @@ use forc_client::ops::{
     deploy::{cmd::DeployCommand, op::deploy},
     run::{cmd::RunCommand, op::run},
 };
-use forc_pkg::{BuiltPackage, PackageManifestFile};
+use forc_pkg::{Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;
 use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
@@ -35,6 +35,12 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
         ..Default::default()
     })
     .await
+    .map(|contract_ids| {
+        contract_ids
+            .first()
+            .map(|contract_id| contract_id.id)
+            .unwrap()
+    })
 }
 
 /// Run a given project against a node. Assumes the node is running at localhost:4000.
@@ -64,7 +70,13 @@ pub(crate) async fn runs_on_node(
         signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
         ..Default::default()
     };
-    run(command).await
+    run(command).await.map(|ran_scripts| {
+        ran_scripts
+            .into_iter()
+            .next()
+            .map(|ran_script| ran_script.receipts)
+            .unwrap()
+    })
 }
 
 /// Very basic check that code does indeed run in the VM.
@@ -102,7 +114,7 @@ pub(crate) fn compile_to_bytes(
     file_name: &str,
     run_config: &RunConfig,
     capture_output: bool,
-) -> (Result<BuiltPackage>, String) {
+) -> (Result<Built>, String) {
     tracing::info!(" Compiling {}", file_name);
 
     let mut buf_stdout: Option<gag::BufferRedirect> = None;
@@ -114,26 +126,19 @@ pub(crate) fn compile_to_bytes(
     }
 
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let path = format!(
-        "{}/src/e2e_vm_tests/test_programs/{}",
-        manifest_dir, file_name
-    );
-    let manifest = PackageManifestFile::from_dir(&PathBuf::from(path)).unwrap();
-    let result = forc_pkg::build_package_with_options(
-        &manifest,
-        forc_pkg::BuildOpts {
-            pkg: forc_pkg::PkgOpts {
-                path: Some(format!(
-                    "{}/src/e2e_vm_tests/test_programs/{}",
-                    manifest_dir, file_name
-                )),
-                locked: run_config.locked,
-                terse: !(capture_output || run_config.verbose),
-                ..Default::default()
-            },
+    let build_opts = forc_pkg::BuildOpts {
+        pkg: forc_pkg::PkgOpts {
+            path: Some(format!(
+                "{}/src/e2e_vm_tests/test_programs/{}",
+                manifest_dir, file_name
+            )),
+            locked: run_config.locked,
+            terse: !(capture_output || run_config.verbose),
             ..Default::default()
         },
-    );
+        ..Default::default()
+    };
+    let result = forc_pkg::build_with_options(build_opts);
 
     let mut output = String::new();
     if capture_output {

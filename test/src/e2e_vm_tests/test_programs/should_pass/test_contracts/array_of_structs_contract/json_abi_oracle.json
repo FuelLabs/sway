@@ -19,21 +19,6 @@
       "inputs": [
         {
           "name": "param",
-          "type": 0,
-          "typeArguments": null
-        }
-      ],
-      "name": "return_element_of_array_of_structs",
-      "output": {
-        "name": "",
-        "type": 4,
-        "typeArguments": null
-      }
-    },
-    {
-      "inputs": [
-        {
-          "name": "param",
           "type": 1,
           "typeArguments": null
         }
@@ -42,6 +27,21 @@
       "output": {
         "name": "",
         "type": 2,
+        "typeArguments": null
+      }
+    },
+    {
+      "inputs": [
+        {
+          "name": "param",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "name": "return_element_of_array_of_structs",
+      "output": {
+        "name": "",
+        "type": 4,
         "typeArguments": null
       }
     }

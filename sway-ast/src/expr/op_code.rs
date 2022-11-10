@@ -178,12 +178,12 @@ define_op_codes!(
     (Xor, XorOpcode, "xor", (ret: reg, lhs: reg, rhs: reg)),
     (Xori, XoriOpcode, "xori", (ret: reg, lhs: reg, rhs: imm)),
     /* Control Flow Instructions */
-    // (Jmp, JmpOpcode, "jmp", (offset: imm)),
-    // (Ji, JiOpcode, "ji", (offset: imm)),
-    // (JNE, JneOpcode, "jne", (lhs: reg, rhs: reg, offset: imm)),
-    // (Jnei, JneiOpcode, "jnei", (lhs: reg, rhs: reg, offset: imm)),
-    // (JNZI, JnziOpcode, "jnzi", (arg: reg, offset: imm)),
-    // (RET, RetOpcode, "ret", (value: reg)),
+    (Jmp, JmpOpcode, "jmp", (offset: reg)),
+    (Ji, JiOpcode, "ji", (offset: imm)),
+    (Jne, JneOpcode, "jne", (lhs: reg, rhs: reg, offset: reg)),
+    (Jnei, JneiOpcode, "jnei", (lhs: reg, rhs: reg, offset: imm)),
+    (Jnzi, JnziOpcode, "jnzi", (arg: reg, offset: imm)),
+    (Ret, RetOpcode, "ret", (value: reg)),
     /* Memory Instructions */
     (Aloc, AlocOpcode, "aloc", (size: reg)),
     (Cfei, CfeiOpcode, "cfei", (size: imm)),
@@ -246,8 +246,8 @@ define_op_codes!(
         (reg_a: reg, reg_b: reg, addr: reg, size: reg)
     ),
     (Mint, MintOpcode, "mint", (coins: reg)),
-    // (Retd, RetdOpcode, "retd", (addr: reg, size: reg)),
-    // (Rvrt, RvrtOpcode, "rvrt", (value: reg)),
+    (Retd, RetdOpcode, "retd", (addr: reg, size: reg)),
+    (Rvrt, RvrtOpcode, "rvrt", (value: reg)),
     (
         Smo,
         SmoOpcode,

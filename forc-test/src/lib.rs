@@ -101,7 +101,7 @@ pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
     let build_opts = opts.into_build_opts();
     let built_pkg = match pkg::build_with_options(build_opts)? {
         pkg::Built::Package(pkg) => pkg,
-        pkg::Built::Workspace => anyhow::bail!("testing workspaces not yet supported"),
+        pkg::Built::Workspace(_) => anyhow::bail!("testing workspaces not yet supported"),
     };
     Ok(BuiltTests { built_pkg })
 }

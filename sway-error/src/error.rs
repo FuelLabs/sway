@@ -51,6 +51,12 @@ pub enum CompileError {
     },
     #[error("Unimplemented feature: {0}")]
     Unimplemented(&'static str, Span),
+    #[error(
+        "Unimplemented feature: {0}\n\
+         help: {1}.\n\
+         "
+    )]
+    UnimplementedWithHelp(&'static str, &'static str, Span),
     #[error("{0}")]
     TypeError(TypeError),
     #[error("Error parsing input: {err:?}")]
@@ -235,6 +241,7 @@ pub enum CompileError {
     MethodNotFound {
         method_name: Ident,
         type_name: String,
+        span: Span,
     },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
@@ -350,6 +357,12 @@ pub enum CompileError {
     UnableToInferGeneric { ty: String, span: Span },
     #[error("The generic type parameter \"{ty}\" is unconstrained.")]
     UnconstrainedGenericParameter { ty: String, span: Span },
+    #[error("Trait \"{trait_name}\" is not implemented for type \"{ty}\".")]
+    TraitConstraintNotSatisfied {
+        ty: String,
+        trait_name: String,
+        span: Span,
+    },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 12-bit immediate spot.")]
@@ -358,18 +371,6 @@ pub enum CompileError {
     Immediate18TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 24-bit immediate spot.")]
     Immediate24TooLarge { val: u64, span: Span },
-    #[error(
-        "The opcode \"ji\" is not valid in inline assembly. Try using function calls instead."
-    )]
-    DisallowedJi { span: Span },
-    #[error("The opcode \"jnei\" is not valid in inline assembly. Use an enclosing if expression instead.")]
-    DisallowedJnei { span: Span },
-    #[error("The opcode \"jnzi\" is not valid in inline assembly. Use an enclosing if expression instead.")]
-    DisallowedJnzi { span: Span },
-    #[error(
-        "The opcode \"lw\" is not valid in inline assembly. Try assigning a static value to a variable instead."
-    )]
-    DisallowedLw { span: Span },
     #[error(
         "This op expects {expected} register(s) as arguments, but you provided {received} register(s)."
     )]
@@ -582,12 +583,6 @@ pub enum CompileError {
     AsteriskWithAlias { span: Span },
     #[error("A trait cannot be a subtrait of an ABI.")]
     AbiAsSupertrait { span: Span },
-    #[error("The trait \"{supertrait_name}\" is not implemented for type \"{type_name}\"")]
-    SupertraitImplMissing {
-        supertrait_name: String,
-        type_name: String,
-        span: Span,
-    },
     #[error(
         "Implementation of trait \"{supertrait_name}\" is required by this bound in \"{trait_name}\""
     )]
@@ -668,13 +663,20 @@ pub enum CompileError {
     ConfigTimeConstantNotALiteral { span: Span },
     #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident },
-    #[error("returning a `raw_ptr` from `main()` is not allowed")]
+    #[error("Returning a `raw_ptr` from `main()` is not allowed.")]
     PointerReturnNotAllowedInMain { span: Span },
+    #[error(
+        "Returning a type containing `raw_slice` from `main()` is not allowed. \
+            Consider converting it into a flat `raw_slice` first."
+    )]
+    NestedSliceReturnNotAllowedInMain { span: Span },
     #[error(
         "Register \"{name}\" is initialized and later reassigned which is not allowed. \
             Consider assigning to a different register inside the ASM block."
     )]
     InitializedRegisterReassignment { name: String, span: Span },
+    #[error("Control flow VM instructions are not allowed in assembly blocks.")]
+    DisallowedControlFlowInstruction { name: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -693,6 +695,7 @@ impl Spanned for CompileError {
             NotAVariable { name, .. } => name.span(),
             NotAFunction { span, .. } => span.clone(),
             Unimplemented(_, span) => span.clone(),
+            UnimplementedWithHelp(_, _, span) => span.clone(),
             TypeError(err) => err.span(),
             ParseError { span, .. } => span.clone(),
             Internal(_, span) => span.clone(),
@@ -731,7 +734,7 @@ impl Spanned for CompileError {
             MethodOnNonValue { span, .. } => span.clone(),
             StructMissingField { span, .. } => span.clone(),
             StructDoesNotHaveField { span, .. } => span.clone(),
-            MethodNotFound { method_name, .. } => method_name.span(),
+            MethodNotFound { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
@@ -754,14 +757,11 @@ impl Spanned for CompileError {
             UnrecognizedOp { span, .. } => span.clone(),
             UnableToInferGeneric { span, .. } => span.clone(),
             UnconstrainedGenericParameter { span, .. } => span.clone(),
+            TraitConstraintNotSatisfied { span, .. } => span.clone(),
             Immediate06TooLarge { span, .. } => span.clone(),
             Immediate12TooLarge { span, .. } => span.clone(),
             Immediate18TooLarge { span, .. } => span.clone(),
             Immediate24TooLarge { span, .. } => span.clone(),
-            DisallowedJi { span, .. } => span.clone(),
-            DisallowedJnei { span, .. } => span.clone(),
-            DisallowedJnzi { span, .. } => span.clone(),
-            DisallowedLw { span, .. } => span.clone(),
             IncorrectNumberOfAsmRegisters { span, .. } => span.clone(),
             UnnecessaryImmediate { span, .. } => span.clone(),
             AmbiguousPath { span, .. } => span.clone(),
@@ -826,7 +826,6 @@ impl Spanned for CompileError {
             IntegerContainsInvalidDigit { span, .. } => span.clone(),
             AsteriskWithAlias { span, .. } => span.clone(),
             AbiAsSupertrait { span, .. } => span.clone(),
-            SupertraitImplMissing { span, .. } => span.clone(),
             SupertraitImplRequired { span, .. } => span.clone(),
             IfLetNonEnum { span, .. } => span.clone(),
             ContractCallParamRepeated { span, .. } => span.clone(),
@@ -856,7 +855,9 @@ impl Spanned for CompileError {
             ConfigTimeConstantNotALiteral { span } => span.clone(),
             RefMutableNotAllowedInMain { param_name } => param_name.span(),
             PointerReturnNotAllowedInMain { span } => span.clone(),
+            NestedSliceReturnNotAllowedInMain { span } => span.clone(),
             InitializedRegisterReassignment { span, .. } => span.clone(),
+            DisallowedControlFlowInstruction { span, .. } => span.clone(),
         }
     }
 }

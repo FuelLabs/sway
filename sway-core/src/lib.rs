@@ -217,6 +217,11 @@ pub fn parsed_to_ast(
         errors.push(e);
     }
 
+    // CEI pattern analysis
+    let cei_analysis_warnings =
+        semantic_analysis::cei_pattern_analysis::analyze_program(&typed_program);
+    warnings.extend(cei_analysis_warnings);
+
     // Check that all storage initializers can be evaluated at compile time.
     let typed_wiss_res = typed_program.get_typed_program_with_initialized_storage_slots(
         &mut ctx,
@@ -232,10 +237,12 @@ pub fn parsed_to_ast(
 
     // All unresolved types lead to compile errors.
     errors.extend(types_metadata.iter().filter_map(|m| match m {
-        TypeMetadata::UnresolvedType(name) => Some(CompileError::UnableToInferGeneric {
-            ty: name.as_str().to_string(),
-            span: name.span(),
-        }),
+        TypeMetadata::UnresolvedType(name, call_site_span_opt) => {
+            Some(CompileError::UnableToInferGeneric {
+                ty: name.as_str().to_string(),
+                span: call_site_span_opt.clone().unwrap_or_else(|| name.span()),
+            })
+        }
         _ => None,
     }));
 
