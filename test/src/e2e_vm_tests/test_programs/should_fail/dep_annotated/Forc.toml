@@ -1,5 +1,5 @@
 [project]
-name = "dep_doc_comment"
+name = "dep_annotated"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"

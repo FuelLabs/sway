@@ -22,6 +22,7 @@ impl Format for Module {
         for item in iter.clone() {
             item.format(formatted_code, formatter)?;
             if let ItemKind::Dependency { .. } = item.value {
+                // Do not print a newline after a dependency
             } else {
                 writeln!(formatted_code)?;
             }

@@ -97,31 +97,45 @@ fn item_to_ast_nodes(
     let contents = match item.value {
         ItemKind::Dependency(dependency) => {
             // Check that Dependency is not annotated
-            if !item.attribute_list.is_empty() {
-                let error = ConvertParseTreeError::CannotDocCommentDepToken {
-                    span: item.attribute_list.last().unwrap().span(),
+            if attributes.contains_key(&AttributeKind::Doc) {
+                let error = ConvertParseTreeError::CannotDocCommentDependency {
+                    span: attributes
+                        .get(&AttributeKind::Doc)
+                        .unwrap()
+                        .last()
+                        .unwrap()
+                        .span
+                        .clone(),
                 };
                 handler.emit_err(error.into());
             }
+            for (attribute_kind, attributes) in attributes.iter() {
+                if attribute_kind != &AttributeKind::Doc {
+                    for attribute in attributes {
+                        let error = ConvertParseTreeError::CannotAnnotateDependency {
+                            span: attribute.span.clone(),
+                        };
+                        handler.emit_err(error.into());
+                    }
+                }
+            }
             // Check that Dependency comes after only other Dependencies
+            let emit_expected_dep_at_beginning = || {
+                let error = ConvertParseTreeError::ExpectedDependencyAtBeginning {
+                    span: dependency.span(),
+                };
+                handler.emit_err(error.into());
+            };
             match prev_item {
                 Some(Annotated {
                     value: ItemKind::Dependency(_),
                     ..
                 }) => (),
-                Some(_) => {
-                    let error = ConvertParseTreeError::ExpectedDependencyAtBeginning {
-                        span: dependency.span(),
-                    };
-                    handler.emit_err(error.into());
-                }
+                Some(_) => emit_expected_dep_at_beginning(),
                 None => (),
             }
             if !is_root {
-                let error = ConvertParseTreeError::ExpectedDependencyAtBeginning {
-                    span: dependency.span(),
-                };
-                handler.emit_err(error.into());
+                emit_expected_dep_at_beginning();
             }
             let incl_stmt = dependency_to_include_statement(&dependency);
             vec![AstNodeContent::IncludeStatement(incl_stmt)]
@@ -3158,6 +3172,7 @@ fn item_attrs_to_map(
         let attribute = Attribute {
             name: attr.name.clone(),
             args,
+            span: attr_decl.span(),
         };
 
         if let Some(attr_kind) = match name {

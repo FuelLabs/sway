@@ -27,7 +27,6 @@ use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use sway_ast::Dependency;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{call_graph, Context, Function, Instruction, Kind, Module, Value};
 
@@ -80,16 +79,15 @@ fn parse_in_memory(handler: &Handler, src: Arc<str>) -> Result<parsed::ParseProg
 }
 
 /// Parse all dependencies `deps` as submodules.
-fn parse_submodules<'a>(
+fn parse_submodules(
     handler: &Handler,
-    dependencies: impl Iterator<Item = &'a Dependency>,
+    module: &sway_ast::Module,
     module_dir: &Path,
 ) -> Vec<(Ident, parsed::ParseSubmodule)> {
-    let deps = dependencies.collect::<Vec<&Dependency>>();
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
-    let mut submods = Vec::with_capacity(deps.len());
+    let mut submods = Vec::with_capacity(module.dependencies().count());
 
-    deps.iter().for_each(|dep| {
+    module.dependencies().for_each(|dep| {
         // Read the source code from the dependency.
         // If we cannot, record as an error, but continue with other files.
         let dep_path = Arc::new(module_path(module_dir, dep));
@@ -143,7 +141,7 @@ fn parse_module_tree(
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
-    let submodules = parse_submodules(handler, module.dependencies(), module_dir);
+    let submodules = parse_submodules(handler, &module, module_dir);
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, module)?;
