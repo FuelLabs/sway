@@ -13,7 +13,7 @@ struct RawVec<T> {
 
 impl<T> RawVec<T> {
     /// Create a new `RawVec` with zero capacity.
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             ptr: alloc::<T>(0),
             cap: 0,
@@ -23,7 +23,7 @@ impl<T> RawVec<T> {
     /// Creates a `RawVec` (on the heap) with exactly the capacity for a
     /// `[T; capacity]`. This is equivalent to calling `RawVec::new` when
     /// `capacity` is `0`.
-    fn with_capacity(capacity: u64) -> Self {
+    pub fn with_capacity(capacity: u64) -> Self {
         Self {
             ptr: alloc::<T>(capacity),
             cap: capacity,
@@ -31,19 +31,19 @@ impl<T> RawVec<T> {
     }
 
     /// Gets the pointer of the allocation.
-    fn ptr(self) -> raw_ptr {
+    pub fn ptr(self) -> raw_ptr {
         self.ptr
     }
 
     /// Gets the capacity of the allocation.
-    fn capacity(self) -> u64 {
+    pub fn capacity(self) -> u64 {
         self.cap
     }
 
     /// Grow the capacity of the vector by doubling its current capacity. The
     /// `realloc` function / allocates memory on the heap and copies the data
     /// from the old allocation to the new allocation
-    fn grow(ref mut self) {
+    pub fn grow(ref mut self) {
         let new_cap = if self.cap == 0 { 1 } else { 2 * self.cap };
 
         self.ptr = realloc::<T>(self.ptr, self.cap, new_cap);
@@ -342,7 +342,7 @@ impl<T> Vec<T> {
     /// assert(res.unwrap() == 5);
     /// assert(vec.is_empty());
     /// ```
-    fn pop(ref mut self) -> Option<T> {
+    pub fn pop(ref mut self) -> Option<T> {
         if self.len == 0 {
             return Option::None;
         }
