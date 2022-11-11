@@ -104,7 +104,7 @@ fn check_predicate_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
         sway_types::span::Span::new("no span found for opcode".into(), 0, 1, None).unwrap();
     let mut errors = vec![];
 
-    for (op, opcode_index) in ops.iter().zip(0u32..) {
+    for (op, opcode_addr) in ops.iter().zip(0u32..) {
         macro_rules! invalid_opcode {
             ($name_str:literal) => {{
                 errors.push(CompileError::InvalidOpcodeFromPredicate {
@@ -146,19 +146,19 @@ fn check_predicate_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
                 });
             }
             JI(imm) => {
-                if imm.value <= opcode_index {
+                if imm.value <= opcode_addr {
                     invalid_backward_jump!("JI");
                 }
             }
             JMP(..) => invalid_opcode!("JMP"),
             JNE(..) => invalid_opcode!("JNE"),
             JNEI(_, _, imm) => {
-                if u32::from(imm.value) <= opcode_index {
+                if u32::from(imm.value) <= opcode_addr {
                     invalid_backward_jump!("JNEI");
                 }
             }
             JNZI(_, imm) => {
-                if imm.value <= opcode_index {
+                if imm.value <= opcode_addr {
                     invalid_backward_jump!("JNZI");
                 }
             }
