@@ -6,7 +6,7 @@ use sway_types::Span;
 use crate::{
     language::ty,
     type_system::{CopyTypes, TypeMapping},
-    ReplaceSelfType, TypeId,
+    ReplaceSelfType, TypeEngine, TypeId,
 };
 
 use super::{DeclMapping, ReplaceDecls};
@@ -62,35 +62,35 @@ impl fmt::Display for DeclarationWrapper {
 }
 
 impl CopyTypes for DeclarationWrapper {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
         match self {
             DeclarationWrapper::Unknown => {}
-            DeclarationWrapper::Function(decl) => decl.copy_types(type_mapping),
-            DeclarationWrapper::Trait(decl) => decl.copy_types(type_mapping),
-            DeclarationWrapper::TraitFn(decl) => decl.copy_types(type_mapping),
-            DeclarationWrapper::ImplTrait(decl) => decl.copy_types(type_mapping),
-            DeclarationWrapper::Struct(decl) => decl.copy_types(type_mapping),
+            DeclarationWrapper::Function(decl) => decl.copy_types(type_mapping, type_engine),
+            DeclarationWrapper::Trait(decl) => decl.copy_types(type_mapping, type_engine),
+            DeclarationWrapper::TraitFn(decl) => decl.copy_types(type_mapping, type_engine),
+            DeclarationWrapper::ImplTrait(decl) => decl.copy_types(type_mapping, type_engine),
+            DeclarationWrapper::Struct(decl) => decl.copy_types(type_mapping, type_engine),
             DeclarationWrapper::Storage(_) => {}
             DeclarationWrapper::Abi(_) => {}
             DeclarationWrapper::Constant(_) => {}
-            DeclarationWrapper::Enum(decl) => decl.copy_types(type_mapping),
+            DeclarationWrapper::Enum(decl) => decl.copy_types(type_mapping, type_engine),
         }
     }
 }
 
 impl ReplaceSelfType for DeclarationWrapper {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
         match self {
             DeclarationWrapper::Unknown => {}
-            DeclarationWrapper::Function(decl) => decl.replace_self_type(self_type),
-            DeclarationWrapper::Trait(decl) => decl.replace_self_type(self_type),
-            DeclarationWrapper::TraitFn(decl) => decl.replace_self_type(self_type),
-            DeclarationWrapper::ImplTrait(decl) => decl.replace_self_type(self_type),
-            DeclarationWrapper::Struct(decl) => decl.replace_self_type(self_type),
+            DeclarationWrapper::Function(decl) => decl.replace_self_type(type_engine, self_type),
+            DeclarationWrapper::Trait(decl) => decl.replace_self_type(type_engine, self_type),
+            DeclarationWrapper::TraitFn(decl) => decl.replace_self_type(type_engine, self_type),
+            DeclarationWrapper::ImplTrait(decl) => decl.replace_self_type(type_engine, self_type),
+            DeclarationWrapper::Struct(decl) => decl.replace_self_type(type_engine, self_type),
             DeclarationWrapper::Storage(_) => {}
             DeclarationWrapper::Abi(_) => {}
             DeclarationWrapper::Constant(_) => {}
-            DeclarationWrapper::Enum(decl) => decl.replace_self_type(self_type),
+            DeclarationWrapper::Enum(decl) => decl.replace_self_type(type_engine, self_type),
         }
     }
 }

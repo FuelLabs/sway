@@ -1,6 +1,7 @@
 use std::sync::RwLock;
 use std::{collections::HashMap, fmt};
 
+use crate::concurrent_slab::ListDisplay;
 use crate::{
     concurrent_slab::ConcurrentSlab, declaration_engine::*, language::ty, namespace::Path,
     type_system::*, Namespace,
@@ -15,7 +16,7 @@ lazy_static! {
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct TypeEngine {
+pub struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
     storage_only_types: ConcurrentSlab<TypeInfo>,
     id_map: RwLock<HashMap<TypeInfo, TypeId>>,
@@ -23,7 +24,11 @@ pub(crate) struct TypeEngine {
 
 impl fmt::Display for TypeEngine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "DeclarationEngine {{\n{}\n}}", self.slab)
+        self.slab.with_slice(|elems| {
+            let list = elems.iter().map(|type_info| self.help_out(type_info));
+            let list = ListDisplay { list };
+            write!(f, "TypeEngine {{\n{}\n}}", list)
+        })
     }
 }
 
@@ -56,30 +61,19 @@ impl TypeEngine {
         TypeId::new(self.slab.insert(ty))
     }
 
-    /// Gets the size of the [TypeEngine].
-    fn size(&self) -> usize {
-        self.slab.size()
-    }
-
     /// Performs a lookup of `id` into the [TypeEngine].
-    pub(crate) fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
+    pub fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
         self.slab.get(*id)
     }
 
     /// Denotes the given [TypeId] as being used with storage.
-    fn set_type_as_storage_only(&self, id: TypeId) {
+    pub(crate) fn set_type_as_storage_only(&self, id: TypeId) {
         self.storage_only_types.insert(self.look_up_type_id(id));
     }
 
-    /// Checks if the given [TypeId] is a storage only type.
-    fn is_type_storage_only(&self, id: TypeId) -> bool {
-        let ti = &self.look_up_type_id(id);
-        self.is_type_info_storage_only(ti)
-    }
-
     /// Checks if the given [TypeInfo] is a storage only type.
-    fn is_type_info_storage_only(&self, ti: &TypeInfo) -> bool {
-        self.storage_only_types.exists(|x| ti.is_subset_of(x))
+    pub(crate) fn is_type_info_storage_only(&self, ti: &TypeInfo) -> bool {
+        self.storage_only_types.exists(|x| ti.is_subset_of(x, self))
     }
 
     /// Given a `value` of type `T` that is able to be monomorphized and a set
@@ -112,7 +106,7 @@ impl TypeEngine {
     ///         the same length
     ///     4b. for each type argument in `type_arguments`, resolve the type
     ///     4c. refresh the generic types with a [TypeMapping]
-    fn monomorphize<T>(
+    pub(crate) fn monomorphize<T>(
         &self,
         value: &mut T,
         type_arguments: &mut [TypeArgument],
@@ -139,8 +133,8 @@ impl TypeEngine {
                     });
                     return err(warnings, errors);
                 }
-                let type_mapping = TypeMapping::from_type_parameters(value.type_parameters());
-                value.copy_types(&type_mapping);
+                let type_mapping = TypeMapping::from_type_parameters(value.type_parameters(), self);
+                value.copy_types(&type_mapping, self);
                 ok((), warnings, errors)
             }
             (true, false) => {
@@ -195,7 +189,7 @@ impl TypeEngine {
                         .map(|type_arg| type_arg.type_id)
                         .collect(),
                 );
-                value.copy_types(&type_mapping);
+                value.copy_types(&type_mapping, self);
                 ok((), warnings, errors)
             }
         }
@@ -204,16 +198,16 @@ impl TypeEngine {
     /// Replace any instances of the [TypeInfo::SelfType] variant with
     /// `self_type` in both `received` and `expected`, then unify `received` and
     /// `expected`.
-    fn unify_with_self(
+    pub(crate) fn unify_with_self(
         &self,
         mut received: TypeId,
         mut expected: TypeId,
         self_type: TypeId,
         span: &Span,
         help_text: &str,
-    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        received.replace_self_type(self_type);
-        expected.replace_self_type(self_type);
+    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
+        received.replace_self_type(self, self_type);
+        expected.replace_self_type(self, self_type);
         self.unify(received, expected, span, help_text)
     }
 
@@ -230,23 +224,25 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
-    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        unify::unify(self, received, expected, span, help_text, false)
+    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
+        normalize_err(unify::unify(
+            self, received, expected, span, help_text, false,
+        ))
     }
 
     /// Replace any instances of the [TypeInfo::SelfType] variant with
     /// `self_type` in both `received` and `expected`, then unify_right
     /// `received` and `expected`.
-    fn unify_right_with_self(
+    pub(crate) fn unify_right_with_self(
         &self,
         mut received: TypeId,
         mut expected: TypeId,
         self_type: TypeId,
         span: &Span,
         help_text: &str,
-    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        received.replace_self_type(self_type);
-        expected.replace_self_type(self_type);
+    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
+        received.replace_self_type(self, self_type);
+        expected.replace_self_type(self, self_type);
         self.unify_right(received, expected, span, help_text)
     }
 
@@ -288,14 +284,16 @@ impl TypeEngine {
     /// `T` is not valid under the type `bool`.
     ///
     /// This is the function that makes that distinction for us!
-    fn unify_right(
+    pub(crate) fn unify_right(
         &self,
         received: TypeId,
         expected: TypeId,
         span: &Span,
         help_text: &str,
-    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        unify::unify_right(self, received, expected, span, help_text)
+    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
+        normalize_err(unify::unify_right(
+            self, received, expected, span, help_text,
+        ))
     }
 
     /// Helper function for making the type of `expected` equivalent to
@@ -342,17 +340,19 @@ impl TypeEngine {
     /// What's important about this is flipping the arguments prioritizes
     /// unifying `expected`, meaning if both `received` and `expected` are
     /// generic types, then `expected` will be replaced with `received`.
-    fn unify_adt(
+    pub(crate) fn unify_adt(
         &self,
         received: TypeId,
         expected: TypeId,
         span: &Span,
         help_text: &str,
-    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        unify::unify(self, expected, received, span, help_text, true)
+    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
+        normalize_err(unify::unify(
+            self, expected, received, span, help_text, true,
+        ))
     }
 
-    pub fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
+    pub(crate) fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
         match self.look_up_type_id(id) {
             TypeInfo::Unknown => Err(TypeError::UnknownType {
                 span: error_span.clone(),
@@ -372,7 +372,7 @@ impl TypeEngine {
     /// Resolve the type of the given [TypeId], replacing any instances of
     /// [TypeInfo::Custom] with either a monomorphized struct, monomorphized
     /// enum, or a reference to a type parameter.
-    fn resolve_type(
+    pub(crate) fn resolve_type(
         &self,
         type_id: TypeId,
         span: &Span,
@@ -384,7 +384,7 @@ impl TypeEngine {
         let mut warnings = vec![];
         let mut errors = vec![];
         let module_path = type_info_prefix.unwrap_or(mod_path);
-        let type_id = match look_up_type_id(type_id) {
+        let type_id = match self.look_up_type_id(type_id) {
             TypeInfo::Custom {
                 name,
                 type_arguments,
@@ -420,10 +420,10 @@ impl TypeEngine {
                         );
 
                         // create the type id from the copy
-                        let type_id = new_copy.create_type_id();
+                        let type_id = new_copy.create_type_id(self);
 
                         // take any trait methods that apply to this type and copy them to the new type
-                        namespace.insert_trait_implementation_for_type(type_id);
+                        namespace.insert_trait_implementation_for_type(self, type_id);
 
                         // return the id
                         type_id
@@ -453,10 +453,10 @@ impl TypeEngine {
                         );
 
                         // create the type id from the copy
-                        let type_id = new_copy.create_type_id();
+                        let type_id = new_copy.create_type_id(self);
 
                         // take any trait methods that apply to this type and copy them to the new type
-                        namespace.insert_trait_implementation_for_type(type_id);
+                        namespace.insert_trait_implementation_for_type(self, type_id);
 
                         // return the id
                         type_id
@@ -513,7 +513,7 @@ impl TypeEngine {
     /// Replace any instances of the [TypeInfo::SelfType] variant with
     /// `self_type` in `type_id`, then resolve `type_id`.
     #[allow(clippy::too_many_arguments)]
-    fn resolve_type_with_self(
+    pub(crate) fn resolve_type_with_self(
         &self,
         mut type_id: TypeId,
         self_type: TypeId,
@@ -523,7 +523,7 @@ impl TypeEngine {
         namespace: &mut Namespace,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
-        type_id.replace_self_type(self_type);
+        type_id.replace_self_type(self, self_type);
         self.resolve_type(
             type_id,
             span,
@@ -533,171 +533,28 @@ impl TypeEngine {
             mod_path,
         )
     }
-}
 
-#[allow(dead_code)]
-pub(crate) fn print_type_engine() {
-    println!("{}", &*TYPE_ENGINE);
-}
-
-pub fn insert_type(ty: TypeInfo) -> TypeId {
-    TYPE_ENGINE.insert_type(ty)
-}
-
-pub fn type_engine_size() -> usize {
-    TYPE_ENGINE.size()
+    /// Helps out some `thing: T` by adding `self` as context.
+    pub fn help_out<T>(&self, thing: T) -> WithTypeEngine<'_, T> {
+        WithTypeEngine {
+            thing,
+            engine: self,
+        }
+    }
 }
 
 pub fn look_up_type_id(id: TypeId) -> TypeInfo {
     TYPE_ENGINE.look_up_type_id(id)
 }
 
-pub fn set_type_as_storage_only(id: TypeId) {
-    TYPE_ENGINE.set_type_as_storage_only(id);
-}
-
-pub fn is_type_storage_only(id: TypeId) -> bool {
-    TYPE_ENGINE.is_type_storage_only(id)
-}
-
-pub fn is_type_info_storage_only(ti: &TypeInfo) -> bool {
-    TYPE_ENGINE.is_type_info_storage_only(ti)
-}
-
-pub(crate) fn monomorphize<T>(
-    value: &mut T,
-    type_arguments: &mut [TypeArgument],
-    enforce_type_arguments: EnforceTypeArguments,
-    call_site_span: &Span,
-    namespace: &mut Namespace,
-    module_path: &Path,
-) -> CompileResult<()>
-where
-    T: MonomorphizeHelper + CopyTypes,
-{
-    TYPE_ENGINE.monomorphize(
-        value,
-        type_arguments,
-        enforce_type_arguments,
-        call_site_span,
-        namespace,
-        module_path,
-    )
-}
-
-pub fn unify_with_self(
-    received: TypeId,
-    expected: TypeId,
-    self_type: TypeId,
-    span: &Span,
-    help_text: &str,
-) -> (Vec<CompileWarning>, Vec<CompileError>) {
-    let (warnings, errors) =
-        TYPE_ENGINE.unify_with_self(received, expected, self_type, span, help_text);
-    (
-        warnings,
-        errors.into_iter().map(|error| error.into()).collect(),
-    )
-}
-
-pub(crate) fn unify(
-    received: TypeId,
-    expected: TypeId,
-    span: &Span,
-    help_text: &str,
-) -> (Vec<CompileWarning>, Vec<CompileError>) {
-    let (warnings, errors) = TYPE_ENGINE.unify(received, expected, span, help_text);
-    (
-        warnings,
-        errors.into_iter().map(|error| error.into()).collect(),
-    )
-}
-
-pub(crate) fn unify_right_with_self(
-    received: TypeId,
-    expected: TypeId,
-    self_type: TypeId,
-    span: &Span,
-    help_text: &str,
-) -> (Vec<CompileWarning>, Vec<CompileError>) {
-    let (warnings, errors) =
-        TYPE_ENGINE.unify_right_with_self(received, expected, self_type, span, help_text);
-    (
-        warnings,
-        errors.into_iter().map(|error| error.into()).collect(),
-    )
-}
-
-pub(crate) fn unify_right(
-    received: TypeId,
-    expected: TypeId,
-    span: &Span,
-    help_text: &str,
-) -> (Vec<CompileWarning>, Vec<CompileError>) {
-    let (warnings, errors) = TYPE_ENGINE.unify_right(received, expected, span, help_text);
-    (
-        warnings,
-        errors.into_iter().map(|error| error.into()).collect(),
-    )
-}
-
-pub(crate) fn unify_adt(
-    received: TypeId,
-    expected: TypeId,
-    span: &Span,
-    help_text: &str,
-) -> (Vec<CompileWarning>, Vec<CompileError>) {
-    let (warnings, errors) = TYPE_ENGINE.unify_adt(received, expected, span, help_text);
-    (
-        warnings,
-        errors.into_iter().map(|error| error.into()).collect(),
-    )
-}
-
-pub(crate) fn to_typeinfo(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
-    TYPE_ENGINE.to_typeinfo(id, error_span)
-}
-
 pub fn clear_type_engine() {
     TYPE_ENGINE.clear();
 }
 
-pub(crate) fn resolve_type(
-    type_id: TypeId,
-    span: &Span,
-    enforce_type_arguments: EnforceTypeArguments,
-    type_info_prefix: Option<&Path>,
-    namespace: &mut Namespace,
-    mod_path: &Path,
-) -> CompileResult<TypeId> {
-    TYPE_ENGINE.resolve_type(
-        type_id,
-        span,
-        enforce_type_arguments,
-        type_info_prefix,
-        namespace,
-        mod_path,
-    )
-}
-
-pub(crate) fn resolve_type_with_self(
-    type_id: TypeId,
-    self_type: TypeId,
-    span: &Span,
-    enforce_type_arguments: EnforceTypeArguments,
-    type_info_prefix: Option<&Path>,
-    namespace: &mut Namespace,
-    mod_path: &Path,
-) -> CompileResult<TypeId> {
-    TYPE_ENGINE.resolve_type_with_self(
-        type_id,
-        self_type,
-        span,
-        enforce_type_arguments,
-        type_info_prefix,
-        namespace,
-        mod_path,
-    )
+fn normalize_err(
+    (w, e): (Vec<CompileWarning>, Vec<TypeError>),
+) -> (Vec<CompileWarning>, Vec<CompileError>) {
+    (w, e.into_iter().map(CompileError::from).collect())
 }
 
 pub(crate) trait MonomorphizeHelper {
@@ -738,4 +595,33 @@ pub(crate) trait MonomorphizeHelper {
 pub(crate) enum EnforceTypeArguments {
     Yes,
     No,
+}
+
+pub(crate) trait DisplayWithTypeEngine {
+    fn fmt_with_type_engine(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        type_engine: &TypeEngine,
+    ) -> fmt::Result;
+}
+
+impl<T: DisplayWithTypeEngine> DisplayWithTypeEngine for &'_ T {
+    fn fmt_with_type_engine(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        type_engine: &TypeEngine,
+    ) -> fmt::Result {
+        (*self).fmt_with_type_engine(f, type_engine)
+    }
+}
+
+pub struct WithTypeEngine<'a, T> {
+    thing: T,
+    engine: &'a TypeEngine,
+}
+
+impl<T: DisplayWithTypeEngine> fmt::Display for WithTypeEngine<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.thing.fmt_with_type_engine(f, self.engine)
+    }
 }

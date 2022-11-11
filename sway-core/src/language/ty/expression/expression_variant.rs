@@ -359,7 +359,7 @@ impl PartialEq for TyExpressionVariant {
 }
 
 impl CopyTypes for TyExpressionVariant {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
         use TyExpressionVariant::*;
         match self {
             Literal(..) => (),
@@ -370,28 +370,32 @@ impl CopyTypes for TyExpressionVariant {
             } => {
                 arguments
                     .iter_mut()
-                    .for_each(|(_ident, expr)| expr.copy_types(type_mapping));
+                    .for_each(|(_ident, expr)| expr.copy_types(type_mapping, type_engine));
                 let new_decl_id = function_decl_id
                     .clone()
-                    .copy_types_and_insert_new(type_mapping);
+                    .copy_types_and_insert_new(type_mapping, type_engine);
                 function_decl_id.replace_id(*new_decl_id);
             }
             LazyOperator { lhs, rhs, .. } => {
-                (*lhs).copy_types(type_mapping);
-                (*rhs).copy_types(type_mapping);
+                (*lhs).copy_types(type_mapping, type_engine);
+                (*rhs).copy_types(type_mapping, type_engine);
             }
             VariableExpression { .. } => (),
-            Tuple { fields } => fields.iter_mut().for_each(|x| x.copy_types(type_mapping)),
-            Array { contents } => contents.iter_mut().for_each(|x| x.copy_types(type_mapping)),
+            Tuple { fields } => fields
+                .iter_mut()
+                .for_each(|x| x.copy_types(type_mapping, type_engine)),
+            Array { contents } => contents
+                .iter_mut()
+                .for_each(|x| x.copy_types(type_mapping, type_engine)),
             ArrayIndex { prefix, index } => {
-                (*prefix).copy_types(type_mapping);
-                (*index).copy_types(type_mapping);
+                (*prefix).copy_types(type_mapping, type_engine);
+                (*index).copy_types(type_mapping, type_engine);
             }
-            StructExpression { fields, .. } => {
-                fields.iter_mut().for_each(|x| x.copy_types(type_mapping))
-            }
+            StructExpression { fields, .. } => fields
+                .iter_mut()
+                .for_each(|x| x.copy_types(type_mapping, type_engine)),
             CodeBlock(block) => {
-                block.copy_types(type_mapping);
+                block.copy_types(type_mapping, type_engine);
             }
             FunctionParameter => (),
             IfExp {
@@ -399,10 +403,10 @@ impl CopyTypes for TyExpressionVariant {
                 then,
                 r#else,
             } => {
-                condition.copy_types(type_mapping);
-                then.copy_types(type_mapping);
+                condition.copy_types(type_mapping, type_engine);
+                then.copy_types(type_mapping, type_engine);
                 if let Some(ref mut r#else) = r#else {
-                    r#else.copy_types(type_mapping);
+                    r#else.copy_types(type_mapping, type_engine);
                 }
             }
             AsmExpression {
@@ -411,7 +415,7 @@ impl CopyTypes for TyExpressionVariant {
             } => {
                 registers
                     .iter_mut()
-                    .for_each(|x| x.copy_types(type_mapping));
+                    .for_each(|x| x.copy_types(type_mapping, type_engine));
             }
             // like a variable expression but it has multiple parts,
             // like looking up a field in a struct
@@ -421,60 +425,60 @@ impl CopyTypes for TyExpressionVariant {
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                resolved_type_of_parent.copy_types(type_mapping);
-                field_to_access.copy_types(type_mapping);
-                prefix.copy_types(type_mapping);
+                resolved_type_of_parent.copy_types(type_mapping, type_engine);
+                field_to_access.copy_types(type_mapping, type_engine);
+                prefix.copy_types(type_mapping, type_engine);
             }
             TupleElemAccess {
                 prefix,
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                resolved_type_of_parent.copy_types(type_mapping);
-                prefix.copy_types(type_mapping);
+                resolved_type_of_parent.copy_types(type_mapping, type_engine);
+                prefix.copy_types(type_mapping, type_engine);
             }
             EnumInstantiation {
                 enum_decl,
                 contents,
                 ..
             } => {
-                enum_decl.copy_types(type_mapping);
+                enum_decl.copy_types(type_mapping, type_engine);
                 if let Some(ref mut contents) = contents {
-                    contents.copy_types(type_mapping)
+                    contents.copy_types(type_mapping, type_engine)
                 };
             }
-            AbiCast { address, .. } => address.copy_types(type_mapping),
+            AbiCast { address, .. } => address.copy_types(type_mapping, type_engine),
             // storage is never generic and cannot be monomorphized
             StorageAccess { .. } => (),
             IntrinsicFunction(kind) => {
-                kind.copy_types(type_mapping);
+                kind.copy_types(type_mapping, type_engine);
             }
             EnumTag { exp } => {
-                exp.copy_types(type_mapping);
+                exp.copy_types(type_mapping, type_engine);
             }
             UnsafeDowncast { exp, variant } => {
-                exp.copy_types(type_mapping);
-                variant.copy_types(type_mapping);
+                exp.copy_types(type_mapping, type_engine);
+                variant.copy_types(type_mapping, type_engine);
             }
             AbiName(_) => (),
             WhileLoop {
                 ref mut condition,
                 ref mut body,
             } => {
-                condition.copy_types(type_mapping);
-                body.copy_types(type_mapping);
+                condition.copy_types(type_mapping, type_engine);
+                body.copy_types(type_mapping, type_engine);
             }
             Break => (),
             Continue => (),
-            Reassignment(reassignment) => reassignment.copy_types(type_mapping),
+            Reassignment(reassignment) => reassignment.copy_types(type_mapping, type_engine),
             StorageReassignment(..) => (),
-            Return(stmt) => stmt.copy_types(type_mapping),
+            Return(stmt) => stmt.copy_types(type_mapping, type_engine),
         }
     }
 }
 
 impl ReplaceSelfType for TyExpressionVariant {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
         use TyExpressionVariant::*;
         match self {
             Literal(..) => (),
@@ -485,32 +489,32 @@ impl ReplaceSelfType for TyExpressionVariant {
             } => {
                 arguments
                     .iter_mut()
-                    .for_each(|(_ident, expr)| expr.replace_self_type(self_type));
+                    .for_each(|(_ident, expr)| expr.replace_self_type(type_engine, self_type));
                 let new_decl_id = function_decl_id
                     .clone()
-                    .replace_self_type_and_insert_new(self_type);
+                    .replace_self_type_and_insert_new(type_engine, self_type);
                 function_decl_id.replace_id(*new_decl_id);
             }
             LazyOperator { lhs, rhs, .. } => {
-                (*lhs).replace_self_type(self_type);
-                (*rhs).replace_self_type(self_type);
+                (*lhs).replace_self_type(type_engine, self_type);
+                (*rhs).replace_self_type(type_engine, self_type);
             }
             VariableExpression { .. } => (),
             Tuple { fields } => fields
                 .iter_mut()
-                .for_each(|x| x.replace_self_type(self_type)),
+                .for_each(|x| x.replace_self_type(type_engine, self_type)),
             Array { contents } => contents
                 .iter_mut()
-                .for_each(|x| x.replace_self_type(self_type)),
+                .for_each(|x| x.replace_self_type(type_engine, self_type)),
             ArrayIndex { prefix, index } => {
-                (*prefix).replace_self_type(self_type);
-                (*index).replace_self_type(self_type);
+                (*prefix).replace_self_type(type_engine, self_type);
+                (*index).replace_self_type(type_engine, self_type);
             }
             StructExpression { fields, .. } => fields
                 .iter_mut()
-                .for_each(|x| x.replace_self_type(self_type)),
+                .for_each(|x| x.replace_self_type(type_engine, self_type)),
             CodeBlock(block) => {
-                block.replace_self_type(self_type);
+                block.replace_self_type(type_engine, self_type);
             }
             FunctionParameter => (),
             IfExp {
@@ -518,16 +522,16 @@ impl ReplaceSelfType for TyExpressionVariant {
                 then,
                 r#else,
             } => {
-                condition.replace_self_type(self_type);
-                then.replace_self_type(self_type);
+                condition.replace_self_type(type_engine, self_type);
+                then.replace_self_type(type_engine, self_type);
                 if let Some(ref mut r#else) = r#else {
-                    r#else.replace_self_type(self_type);
+                    r#else.replace_self_type(type_engine, self_type);
                 }
             }
             AsmExpression { registers, .. } => {
                 registers
                     .iter_mut()
-                    .for_each(|x| x.replace_self_type(self_type));
+                    .for_each(|x| x.replace_self_type(type_engine, self_type));
             }
             StructFieldAccess {
                 prefix,
@@ -535,53 +539,53 @@ impl ReplaceSelfType for TyExpressionVariant {
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                resolved_type_of_parent.replace_self_type(self_type);
-                field_to_access.replace_self_type(self_type);
-                prefix.replace_self_type(self_type);
+                resolved_type_of_parent.replace_self_type(type_engine, self_type);
+                field_to_access.replace_self_type(type_engine, self_type);
+                prefix.replace_self_type(type_engine, self_type);
             }
             TupleElemAccess {
                 prefix,
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                resolved_type_of_parent.replace_self_type(self_type);
-                prefix.replace_self_type(self_type);
+                resolved_type_of_parent.replace_self_type(type_engine, self_type);
+                prefix.replace_self_type(type_engine, self_type);
             }
             EnumInstantiation {
                 enum_decl,
                 contents,
                 ..
             } => {
-                enum_decl.replace_self_type(self_type);
+                enum_decl.replace_self_type(type_engine, self_type);
                 if let Some(ref mut contents) = contents {
-                    contents.replace_self_type(self_type)
+                    contents.replace_self_type(type_engine, self_type)
                 };
             }
-            AbiCast { address, .. } => address.replace_self_type(self_type),
+            AbiCast { address, .. } => address.replace_self_type(type_engine, self_type),
             StorageAccess { .. } => (),
             IntrinsicFunction(kind) => {
-                kind.replace_self_type(self_type);
+                kind.replace_self_type(type_engine, self_type);
             }
             EnumTag { exp } => {
-                exp.replace_self_type(self_type);
+                exp.replace_self_type(type_engine, self_type);
             }
             UnsafeDowncast { exp, variant } => {
-                exp.replace_self_type(self_type);
-                variant.replace_self_type(self_type);
+                exp.replace_self_type(type_engine, self_type);
+                variant.replace_self_type(type_engine, self_type);
             }
             AbiName(_) => (),
             WhileLoop {
                 ref mut condition,
                 ref mut body,
             } => {
-                condition.replace_self_type(self_type);
-                body.replace_self_type(self_type);
+                condition.replace_self_type(type_engine, self_type);
+                body.replace_self_type(type_engine, self_type);
             }
             Break => (),
             Continue => (),
-            Reassignment(reassignment) => reassignment.replace_self_type(self_type),
+            Reassignment(reassignment) => reassignment.replace_self_type(type_engine, self_type),
             StorageReassignment(..) => (),
-            Return(stmt) => stmt.replace_self_type(self_type),
+            Return(stmt) => stmt.replace_self_type(type_engine, self_type),
         }
     }
 }
@@ -682,8 +686,12 @@ impl ReplaceDecls for TyExpressionVariant {
     }
 }
 
-impl fmt::Display for TyExpressionVariant {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl DisplayWithTypeEngine for TyExpressionVariant {
+    fn fmt_with_type_engine(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        type_engine: &TypeEngine,
+    ) -> fmt::Result {
         let s = match self {
             TyExpressionVariant::Literal(lit) => format!("literal {}", lit),
             TyExpressionVariant::FunctionApplication {
@@ -698,7 +706,7 @@ impl fmt::Display for TyExpressionVariant {
             TyExpressionVariant::Tuple { fields } => {
                 let fields = fields
                     .iter()
-                    .map(|field| field.to_string())
+                    .map(|field| type_engine.help_out(field).to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("tuple({})", fields)
@@ -722,7 +730,7 @@ impl fmt::Display for TyExpressionVariant {
             } => {
                 format!(
                     "\"{}.{}\" struct field access",
-                    look_up_type_id(*resolved_type_of_parent),
+                    type_engine.help_out(*resolved_type_of_parent),
                     field_to_access.name
                 )
             }
@@ -733,7 +741,7 @@ impl fmt::Display for TyExpressionVariant {
             } => {
                 format!(
                     "\"{}.{}\" tuple index",
-                    look_up_type_id(*resolved_type_of_parent),
+                    type_engine.help_out(*resolved_type_of_parent),
                     elem_to_access_num
                 )
             }
@@ -756,16 +764,20 @@ impl fmt::Display for TyExpressionVariant {
             TyExpressionVariant::StorageAccess(access) => {
                 format!("storage field {} access", access.storage_field_name())
             }
-            TyExpressionVariant::IntrinsicFunction(kind) => kind.to_string(),
+            TyExpressionVariant::IntrinsicFunction(kind) => type_engine.help_out(kind).to_string(),
             TyExpressionVariant::AbiName(n) => format!("ABI name {}", n),
             TyExpressionVariant::EnumTag { exp } => {
-                format!("({} as tag)", look_up_type_id(exp.return_type))
+                format!("({} as tag)", type_engine.help_out(exp.return_type))
             }
             TyExpressionVariant::UnsafeDowncast { exp, variant } => {
-                format!("({} as {})", look_up_type_id(exp.return_type), variant.name)
+                format!(
+                    "({} as {})",
+                    type_engine.help_out(exp.return_type),
+                    variant.name
+                )
             }
             TyExpressionVariant::WhileLoop { condition, .. } => {
-                format!("while loop on {}", condition)
+                format!("while loop on {}", type_engine.help_out(&**condition))
             }
             TyExpressionVariant::Break => "break".to_string(),
             TyExpressionVariant::Continue => "continue".to_string(),
@@ -793,7 +805,7 @@ impl fmt::Display for TyExpressionVariant {
                 format!("storage reassignment to {}", place)
             }
             TyExpressionVariant::Return(exp) => {
-                format!("return {}", *exp)
+                format!("return {}", type_engine.help_out(&**exp))
             }
         };
         write!(f, "{}", s)

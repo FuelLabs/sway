@@ -299,8 +299,12 @@ impl Default for TypeInfo {
     }
 }
 
-impl fmt::Display for TypeInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl DisplayWithTypeEngine for TypeInfo {
+    fn fmt_with_type_engine(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        type_engine: &TypeEngine,
+    ) -> fmt::Result {
         use TypeInfo::*;
         let s = match self {
             Unknown => "unknown".into(),
@@ -318,7 +322,7 @@ impl fmt::Display for TypeInfo {
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
-                    .map(|field| field.to_string())
+                    .map(|field| type_engine.help_out(field).to_string())
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
@@ -353,7 +357,7 @@ impl fmt::Display for TypeInfo {
                         .unwrap_or_else(|| "None".into())
                 )
             }
-            Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty, count),
+            Array(elem_ty, count, _) => format!("[{}; {}]", type_engine.help_out(elem_ty), count),
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
@@ -363,8 +367,12 @@ impl fmt::Display for TypeInfo {
 }
 
 impl UnconstrainedTypeParameters for TypeInfo {
-    fn type_parameter_is_unconstrained(&self, type_parameter: &TypeParameter) -> bool {
-        let type_parameter_info = look_up_type_id(type_parameter.type_id);
+    fn type_parameter_is_unconstrained(
+        &self,
+        type_engine: &TypeEngine,
+        type_parameter: &TypeParameter,
+    ) -> bool {
+        let type_parameter_info = type_engine.look_up_type_id(type_parameter.type_id);
         match self {
             TypeInfo::UnknownGeneric {
                 trait_constraints, ..
@@ -376,7 +384,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
                             trait_constraint.type_arguments.iter().map(|type_arg| {
                                 type_arg
                                     .type_id
-                                    .type_parameter_is_unconstrained(type_parameter)
+                                    .type_parameter_is_unconstrained(type_engine, type_parameter)
                             })
                         })
                         .any(|x| x)
@@ -391,7 +399,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
                     .map(|type_param| {
                         type_param
                             .type_id
-                            .type_parameter_is_unconstrained(type_parameter)
+                            .type_parameter_is_unconstrained(type_engine, type_parameter)
                     })
                     .any(|x| x);
                 let unconstrained_in_variants = variant_types
@@ -399,7 +407,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
                     .map(|variant| {
                         variant
                             .type_id
-                            .type_parameter_is_unconstrained(type_parameter)
+                            .type_parameter_is_unconstrained(type_engine, type_parameter)
                     })
                     .any(|x| x);
                 unconstrained_in_type_parameters || unconstrained_in_variants
@@ -414,7 +422,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
                     .map(|type_param| {
                         type_param
                             .type_id
-                            .type_parameter_is_unconstrained(type_parameter)
+                            .type_parameter_is_unconstrained(type_engine, type_parameter)
                     })
                     .any(|x| x);
                 let unconstrained_in_fields = fields
@@ -422,14 +430,17 @@ impl UnconstrainedTypeParameters for TypeInfo {
                     .map(|field| {
                         field
                             .type_id
-                            .type_parameter_is_unconstrained(type_parameter)
+                            .type_parameter_is_unconstrained(type_engine, type_parameter)
                     })
                     .any(|x| x);
                 unconstrained_in_type_parameters || unconstrained_in_fields
             }
             TypeInfo::Tuple(elems) => elems
                 .iter()
-                .map(|elem| elem.type_id.type_parameter_is_unconstrained(type_parameter))
+                .map(|elem| {
+                    elem.type_id
+                        .type_parameter_is_unconstrained(type_engine, type_parameter)
+                })
                 .any(|x| x),
             TypeInfo::Custom { type_arguments, .. } => type_arguments
                 .clone()
@@ -438,10 +449,12 @@ impl UnconstrainedTypeParameters for TypeInfo {
                 .map(|type_arg| {
                     type_arg
                         .type_id
-                        .type_parameter_is_unconstrained(type_parameter)
+                        .type_parameter_is_unconstrained(type_engine, type_parameter)
                 })
                 .any(|x| x),
-            TypeInfo::Array(elem, _, _) => elem.type_parameter_is_unconstrained(type_parameter),
+            TypeInfo::Array(elem, _, _) => {
+                elem.type_parameter_is_unconstrained(type_engine, type_parameter)
+            }
             TypeInfo::Unknown
             | TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
@@ -460,7 +473,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
 }
 
 impl TypeInfo {
-    pub fn json_abi_str(&self) -> String {
+    pub fn json_abi_str(&self, type_engine: &TypeEngine) -> String {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
@@ -478,7 +491,7 @@ impl TypeInfo {
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
-                    .map(|field| field.json_abi_str())
+                    .map(|field| field.json_abi_str(type_engine))
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
@@ -496,7 +509,9 @@ impl TypeInfo {
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name)
             }
-            Array(elem_ty, count, _) => format!("[{}; {}]", elem_ty.json_abi_str(), count),
+            Array(elem_ty, count, _) => {
+                format!("[{}; {}]", elem_ty.json_abi_str(type_engine), count)
+            }
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
@@ -504,7 +519,11 @@ impl TypeInfo {
     }
 
     /// maps a type to a name that is used when constructing function selectors
-    pub(crate) fn to_selector_name(&self, error_msg_span: &Span) -> CompileResult<String> {
+    pub(crate) fn to_selector_name(
+        &self,
+        type_engine: &TypeEngine,
+        error_msg_span: &Span,
+    ) -> CompileResult<String> {
         use TypeInfo::*;
         let name = match self {
             Str(len) => format!("str[{}]", len),
@@ -525,9 +544,10 @@ impl TypeInfo {
                     let names = fields
                         .iter()
                         .map(|field_type| {
-                            to_typeinfo(field_type.type_id, error_msg_span)
+                            type_engine
+                                .to_typeinfo(field_type.type_id, error_msg_span)
                                 .expect("unreachable?")
-                                .to_selector_name(error_msg_span)
+                                .to_selector_name(type_engine, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -552,11 +572,11 @@ impl TypeInfo {
                     let names = fields
                         .iter()
                         .map(|ty| {
-                            let ty = match to_typeinfo(ty.type_id, error_msg_span) {
+                            let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(error_msg_span)
+                            ty.to_selector_name(type_engine, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -573,11 +593,11 @@ impl TypeInfo {
                     let type_arguments = type_parameters
                         .iter()
                         .map(|ty| {
-                            let ty = match to_typeinfo(ty.type_id, error_msg_span) {
+                            let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(error_msg_span)
+                            ty.to_selector_name(type_engine, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -605,11 +625,11 @@ impl TypeInfo {
                     let names = variant_types
                         .iter()
                         .map(|ty| {
-                            let ty = match to_typeinfo(ty.type_id, error_msg_span) {
+                            let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(error_msg_span)
+                            ty.to_selector_name(type_engine, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -626,11 +646,11 @@ impl TypeInfo {
                     let type_arguments = type_parameters
                         .iter()
                         .map(|ty| {
-                            let ty = match to_typeinfo(ty.type_id, error_msg_span) {
+                            let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(error_msg_span)
+                            ty.to_selector_name(type_engine, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -653,7 +673,9 @@ impl TypeInfo {
                 }
             }
             Array(type_id, size, _) => {
-                let name = look_up_type_id(*type_id).to_selector_name(error_msg_span);
+                let name = type_engine
+                    .look_up_type_id(*type_id)
+                    .to_selector_name(type_engine, error_msg_span);
                 let name = match name.value {
                     Some(name) => name,
                     None => return name,
@@ -674,34 +696,34 @@ impl TypeInfo {
         ok(name, vec![], vec![])
     }
 
-    pub fn is_uninhabited(&self) -> bool {
+    pub fn is_uninhabited(&self, type_engine: &TypeEngine) -> bool {
+        let id_uninhabited = |id| type_engine.look_up_type_id(id).is_uninhabited(type_engine);
+
         match self {
             TypeInfo::Enum { variant_types, .. } => variant_types
                 .iter()
-                .all(|variant_type| look_up_type_id(variant_type.type_id).is_uninhabited()),
-            TypeInfo::Struct { fields, .. } => fields
-                .iter()
-                .any(|field| look_up_type_id(field.type_id).is_uninhabited()),
+                .all(|variant_type| id_uninhabited(variant_type.type_id)),
+            TypeInfo::Struct { fields, .. } => {
+                fields.iter().any(|field| id_uninhabited(field.type_id))
+            }
             TypeInfo::Tuple(fields) => fields
                 .iter()
-                .any(|field_type| look_up_type_id(field_type.type_id).is_uninhabited()),
-            TypeInfo::Array(type_id, size, _) => {
-                *size > 0 && look_up_type_id(*type_id).is_uninhabited()
-            }
+                .any(|field_type| id_uninhabited(field_type.type_id)),
+            TypeInfo::Array(type_id, size, _) => *size > 0 && id_uninhabited(*type_id),
             _ => false,
         }
     }
 
-    pub fn is_zero_sized(&self) -> bool {
+    pub fn is_zero_sized(&self, type_engine: &TypeEngine) -> bool {
         match self {
             TypeInfo::Enum { variant_types, .. } => {
                 let mut found_unit_variant = false;
                 for variant_type in variant_types {
-                    let type_info = look_up_type_id(variant_type.type_id);
-                    if type_info.is_uninhabited() {
+                    let type_info = type_engine.look_up_type_id(variant_type.type_id);
+                    if type_info.is_uninhabited(type_engine) {
                         continue;
                     }
-                    if type_info.is_zero_sized() && !found_unit_variant {
+                    if type_info.is_zero_sized(type_engine) && !found_unit_variant {
                         found_unit_variant = true;
                         continue;
                     }
@@ -712,11 +734,11 @@ impl TypeInfo {
             TypeInfo::Struct { fields, .. } => {
                 let mut all_zero_sized = true;
                 for field in fields {
-                    let type_info = look_up_type_id(field.type_id);
-                    if type_info.is_uninhabited() {
+                    let type_info = type_engine.look_up_type_id(field.type_id);
+                    if type_info.is_uninhabited(type_engine) {
                         return true;
                     }
-                    if !type_info.is_zero_sized() {
+                    if !type_info.is_zero_sized(type_engine) {
                         all_zero_sized = false;
                     }
                 }
@@ -725,33 +747,41 @@ impl TypeInfo {
             TypeInfo::Tuple(fields) => {
                 let mut all_zero_sized = true;
                 for field in fields {
-                    let field_type = look_up_type_id(field.type_id);
-                    if field_type.is_uninhabited() {
+                    let field_type = type_engine.look_up_type_id(field.type_id);
+                    if field_type.is_uninhabited(type_engine) {
                         return true;
                     }
-                    if !field_type.is_zero_sized() {
+                    if !field_type.is_zero_sized(type_engine) {
                         all_zero_sized = false;
                     }
                 }
                 all_zero_sized
             }
             TypeInfo::Array(type_id, size, _) => {
-                *size == 0 || look_up_type_id(*type_id).is_zero_sized()
+                *size == 0
+                    || type_engine
+                        .look_up_type_id(*type_id)
+                        .is_zero_sized(type_engine)
             }
             _ => false,
         }
     }
 
-    pub fn can_safely_ignore(&self) -> bool {
-        if self.is_zero_sized() {
+    pub fn can_safely_ignore(&self, type_engine: &TypeEngine) -> bool {
+        if self.is_zero_sized(type_engine) {
             return true;
         }
         match self {
-            TypeInfo::Tuple(fields) => fields
-                .iter()
-                .all(|type_argument| look_up_type_id(type_argument.type_id).can_safely_ignore()),
+            TypeInfo::Tuple(fields) => fields.iter().all(|type_argument| {
+                type_engine
+                    .look_up_type_id(type_argument.type_id)
+                    .can_safely_ignore(type_engine)
+            }),
             TypeInfo::Array(type_id, size, _) => {
-                *size == 0 || look_up_type_id(*type_id).can_safely_ignore()
+                *size == 0
+                    || type_engine
+                        .look_up_type_id(*type_id)
+                        .can_safely_ignore(type_engine)
             }
             TypeInfo::ErrorRecovery => true,
             TypeInfo::Unknown => true,
@@ -827,10 +857,10 @@ impl TypeInfo {
 
     /// Given a `TypeInfo` `self`, analyze `self` and return all inner
     /// `TypeId`'s of `self`, not including `self`.
-    pub(crate) fn extract_inner_types(&self) -> HashSet<TypeId> {
-        fn helper(type_id: TypeId) -> HashSet<TypeId> {
+    pub(crate) fn extract_inner_types(&self, type_engine: &TypeEngine) -> HashSet<TypeId> {
+        let helper = |type_id: TypeId| {
             let mut inner_types = HashSet::new();
-            match look_up_type_id(type_id) {
+            match type_engine.look_up_type_id(type_id) {
                 TypeInfo::Enum {
                     type_parameters,
                     variant_types,
@@ -838,11 +868,18 @@ impl TypeInfo {
                 } => {
                     inner_types.insert(type_id);
                     for type_param in type_parameters.iter() {
-                        inner_types
-                            .extend(look_up_type_id(type_param.type_id).extract_inner_types());
+                        inner_types.extend(
+                            type_engine
+                                .look_up_type_id(type_param.type_id)
+                                .extract_inner_types(type_engine),
+                        );
                     }
                     for variant in variant_types.iter() {
-                        inner_types.extend(look_up_type_id(variant.type_id).extract_inner_types());
+                        inner_types.extend(
+                            type_engine
+                                .look_up_type_id(variant.type_id)
+                                .extract_inner_types(type_engine),
+                        );
                     }
                 }
                 TypeInfo::Struct {
@@ -852,36 +889,58 @@ impl TypeInfo {
                 } => {
                     inner_types.insert(type_id);
                     for type_param in type_parameters.iter() {
-                        inner_types
-                            .extend(look_up_type_id(type_param.type_id).extract_inner_types());
+                        inner_types.extend(
+                            type_engine
+                                .look_up_type_id(type_param.type_id)
+                                .extract_inner_types(type_engine),
+                        );
                     }
                     for field in fields.iter() {
-                        inner_types.extend(look_up_type_id(field.type_id).extract_inner_types());
+                        inner_types.extend(
+                            type_engine
+                                .look_up_type_id(field.type_id)
+                                .extract_inner_types(type_engine),
+                        );
                     }
                 }
                 TypeInfo::Custom { type_arguments, .. } => {
                     inner_types.insert(type_id);
                     if let Some(type_arguments) = type_arguments {
                         for type_arg in type_arguments.iter() {
-                            inner_types
-                                .extend(look_up_type_id(type_arg.type_id).extract_inner_types());
+                            inner_types.extend(
+                                type_engine
+                                    .look_up_type_id(type_arg.type_id)
+                                    .extract_inner_types(type_engine),
+                            );
                         }
                     }
                 }
                 TypeInfo::Array(type_id, _, _) => {
                     inner_types.insert(type_id);
-                    inner_types.extend(look_up_type_id(type_id).extract_inner_types());
+                    inner_types.extend(
+                        type_engine
+                            .look_up_type_id(type_id)
+                            .extract_inner_types(type_engine),
+                    );
                 }
                 TypeInfo::Tuple(elems) => {
                     inner_types.insert(type_id);
                     for elem in elems.iter() {
-                        inner_types.extend(look_up_type_id(elem.type_id).extract_inner_types());
+                        inner_types.extend(
+                            type_engine
+                                .look_up_type_id(elem.type_id)
+                                .extract_inner_types(type_engine),
+                        );
                     }
                 }
                 TypeInfo::Storage { fields } => {
                     inner_types.insert(type_id);
                     for field in fields.iter() {
-                        inner_types.extend(look_up_type_id(field.type_id).extract_inner_types());
+                        inner_types.extend(
+                            type_engine
+                                .look_up_type_id(field.type_id)
+                                .extract_inner_types(type_engine),
+                        );
                     }
                 }
                 TypeInfo::Unknown
@@ -901,7 +960,7 @@ impl TypeInfo {
                 TypeInfo::ErrorRecovery => {}
             }
             inner_types
-        }
+        };
 
         let mut inner_types = HashSet::new();
         match self {
@@ -1039,7 +1098,11 @@ impl TypeInfo {
 
     /// Given a `TypeInfo` `self`, analyze `self` and return all nested
     /// `TypeInfo`'s found in `self`, including `self`.
-    pub(crate) fn extract_nested_types(self, span: &Span) -> CompileResult<Vec<TypeInfo>> {
+    pub(crate) fn extract_nested_types(
+        self,
+        type_engine: &TypeEngine,
+        span: &Span,
+    ) -> CompileResult<Vec<TypeInfo>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut all_nested_types = vec![self.clone()];
@@ -1051,7 +1114,9 @@ impl TypeInfo {
             } => {
                 for type_parameter in type_parameters.iter() {
                     let mut nested_types = check!(
-                        look_up_type_id(type_parameter.type_id).extract_nested_types(span),
+                        type_engine
+                            .look_up_type_id(type_parameter.type_id)
+                            .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -1060,7 +1125,9 @@ impl TypeInfo {
                 }
                 for variant_type in variant_types.iter() {
                     let mut nested_types = check!(
-                        look_up_type_id(variant_type.type_id).extract_nested_types(span),
+                        type_engine
+                            .look_up_type_id(variant_type.type_id)
+                            .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -1075,7 +1142,9 @@ impl TypeInfo {
             } => {
                 for type_parameter in type_parameters.iter() {
                     let mut nested_types = check!(
-                        look_up_type_id(type_parameter.type_id).extract_nested_types(span),
+                        type_engine
+                            .look_up_type_id(type_parameter.type_id)
+                            .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -1084,7 +1153,9 @@ impl TypeInfo {
                 }
                 for field in fields.iter() {
                     let mut nested_types = check!(
-                        look_up_type_id(field.type_id).extract_nested_types(span),
+                        type_engine
+                            .look_up_type_id(field.type_id)
+                            .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -1095,7 +1166,9 @@ impl TypeInfo {
             TypeInfo::Tuple(type_arguments) => {
                 for type_argument in type_arguments.iter() {
                     let mut nested_types = check!(
-                        look_up_type_id(type_argument.type_id).extract_nested_types(span),
+                        type_engine
+                            .look_up_type_id(type_argument.type_id)
+                            .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -1105,7 +1178,9 @@ impl TypeInfo {
             }
             TypeInfo::Array(type_id, _, _) => {
                 let mut nested_types = check!(
-                    look_up_type_id(type_id).extract_nested_types(span),
+                    type_engine
+                        .look_up_type_id(type_id)
+                        .extract_nested_types(type_engine, span),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1115,7 +1190,9 @@ impl TypeInfo {
             TypeInfo::Storage { fields } => {
                 for field in fields.iter() {
                     let mut nested_types = check!(
-                        look_up_type_id(field.type_id).extract_nested_types(span),
+                        type_engine
+                            .look_up_type_id(field.type_id)
+                            .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -1129,7 +1206,9 @@ impl TypeInfo {
                 for trait_constraint in trait_constraints.iter() {
                     for type_arg in trait_constraint.type_arguments.iter() {
                         let mut nested_types = check!(
-                            look_up_type_id(type_arg.type_id).extract_nested_types(span),
+                            type_engine
+                                .look_up_type_id(type_arg.type_id)
+                                .extract_nested_types(type_engine, span),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -1160,11 +1239,15 @@ impl TypeInfo {
         ok(all_nested_types, warnings, errors)
     }
 
-    pub(crate) fn extract_nested_generics(&self, span: &Span) -> CompileResult<HashSet<TypeInfo>> {
+    pub(crate) fn extract_nested_generics(
+        &self,
+        type_engine: &TypeEngine,
+        span: &Span,
+    ) -> CompileResult<HashSet<TypeInfo>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let nested_types = check!(
-            self.clone().extract_nested_types(span),
+            self.clone().extract_nested_types(type_engine, span),
             return err(warnings, errors),
             warnings,
             errors
@@ -1252,7 +1335,7 @@ impl TypeInfo {
     /// constraints---if the trait constraints of `other` are a subset of the
     /// trait constraints of `self`, then we know that `other` has unique
     /// methods.
-    pub(crate) fn is_subset_of(&self, other: &TypeInfo) -> bool {
+    pub(crate) fn is_subset_of(&self, other: &TypeInfo, type_engine: &TypeEngine) -> bool {
         // handle the generics cases
         match (self, other) {
             (
@@ -1274,20 +1357,27 @@ impl TypeInfo {
             _ => {}
         }
 
-        self.is_subset_inner(other)
+        self.is_subset_inner(other, type_engine)
     }
 
     /// Given two `TypeInfo`'s `self` and `other`, checks to see if `self` is
     /// unidirectionally a subset of `other`, excluding consideration of generic
     /// types (like in the `is_subset_of` method).
-    pub(crate) fn is_subset_of_for_item_import(&self, other: &TypeInfo) -> bool {
-        self.is_subset_inner(other)
+    pub(crate) fn is_subset_of_for_item_import(
+        &self,
+        other: &TypeInfo,
+        type_engine: &TypeEngine,
+    ) -> bool {
+        self.is_subset_inner(other, type_engine)
     }
 
-    fn is_subset_inner(&self, other: &TypeInfo) -> bool {
+    fn is_subset_inner(&self, other: &TypeInfo, type_engine: &TypeEngine) -> bool {
         match (self, other) {
             (Self::Array(l0, l1, _), Self::Array(r0, r1, _)) => {
-                look_up_type_id(*l0).is_subset_of(&look_up_type_id(*r0)) && l1 == r1
+                type_engine
+                    .look_up_type_id(*l0)
+                    .is_subset_of(&type_engine.look_up_type_id(*r0), type_engine)
+                    && l1 == r1
             }
             (
                 Self::Custom {
@@ -1303,15 +1393,15 @@ impl TypeInfo {
                     .as_ref()
                     .unwrap_or(&vec![])
                     .iter()
-                    .map(|x| look_up_type_id(x.type_id))
+                    .map(|x| type_engine.look_up_type_id(x.type_id))
                     .collect::<Vec<_>>();
                 let r_types = r_type_args
                     .as_ref()
                     .unwrap_or(&vec![])
                     .iter()
-                    .map(|x| look_up_type_id(x.type_id))
+                    .map(|x| type_engine.look_up_type_id(x.type_id))
                     .collect::<Vec<_>>();
-                l_name == r_name && types_are_subset_of(&l_types, &r_types)
+                l_name == r_name && types_are_subset_of(type_engine, &l_types, &r_types)
             }
             (
                 Self::Enum {
@@ -1335,13 +1425,15 @@ impl TypeInfo {
                     .collect::<Vec<_>>();
                 let l_types = l_type_parameters
                     .iter()
-                    .map(|x| look_up_type_id(x.type_id))
+                    .map(|x| type_engine.look_up_type_id(x.type_id))
                     .collect::<Vec<_>>();
                 let r_types = r_type_parameters
                     .iter()
-                    .map(|x| look_up_type_id(x.type_id))
+                    .map(|x| type_engine.look_up_type_id(x.type_id))
                     .collect::<Vec<_>>();
-                l_name == r_name && l_names == r_names && types_are_subset_of(&l_types, &r_types)
+                l_name == r_name
+                    && l_names == r_names
+                    && types_are_subset_of(type_engine, &l_types, &r_types)
             }
             (
                 Self::Struct {
@@ -1359,24 +1451,26 @@ impl TypeInfo {
                 let r_names = r_fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
                 let l_types = l_type_parameters
                     .iter()
-                    .map(|x| look_up_type_id(x.type_id))
+                    .map(|x| type_engine.look_up_type_id(x.type_id))
                     .collect::<Vec<_>>();
                 let r_types = r_type_parameters
                     .iter()
-                    .map(|x| look_up_type_id(x.type_id))
+                    .map(|x| type_engine.look_up_type_id(x.type_id))
                     .collect::<Vec<_>>();
-                l_name == r_name && l_names == r_names && types_are_subset_of(&l_types, &r_types)
+                l_name == r_name
+                    && l_names == r_names
+                    && types_are_subset_of(type_engine, &l_types, &r_types)
             }
             (Self::Tuple(l_types), Self::Tuple(r_types)) => {
                 let l_types = l_types
                     .iter()
-                    .map(|x| look_up_type_id(x.type_id))
+                    .map(|x| type_engine.look_up_type_id(x.type_id))
                     .collect::<Vec<_>>();
                 let r_types = r_types
                     .iter()
-                    .map(|x| look_up_type_id(x.type_id))
+                    .map(|x| type_engine.look_up_type_id(x.type_id))
                     .collect::<Vec<_>>();
-                types_are_subset_of(&l_types, &r_types)
+                types_are_subset_of(type_engine, &l_types, &r_types)
             }
             (a, b) => a == b,
         }
@@ -1395,6 +1489,7 @@ impl TypeInfo {
     /// 3) in the case where a `subfield` does not exist on `self`
     pub(crate) fn apply_subfields(
         &self,
+        type_engine: &TypeEngine,
         subfields: &[Ident],
         span: &Span,
     ) -> CompileResult<ty::TyStructField> {
@@ -1424,7 +1519,11 @@ impl TypeInfo {
                     field
                 } else {
                     check!(
-                        look_up_type_id(field.type_id).apply_subfields(rest, span),
+                        type_engine.look_up_type_id(field.type_id).apply_subfields(
+                            type_engine,
+                            rest,
+                            span
+                        ),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -1438,7 +1537,7 @@ impl TypeInfo {
             }
             (type_info, _) => {
                 errors.push(CompileError::FieldAccessOnNonStruct {
-                    actually: type_info.to_string(),
+                    actually: type_engine.help_out(type_info).to_string(),
                     span: span.clone(),
                 });
                 err(warnings, errors)
@@ -1482,6 +1581,7 @@ impl TypeInfo {
     /// Returns an error if `self` is not a `TypeInfo::Tuple`.
     pub(crate) fn expect_tuple(
         &self,
+        type_engine: &TypeEngine,
         debug_string: impl Into<String>,
         debug_span: &Span,
     ) -> CompileResult<&Vec<TypeArgument>> {
@@ -1495,7 +1595,7 @@ impl TypeInfo {
                 vec![CompileError::NotATuple {
                     name: debug_string.into(),
                     span: debug_span.clone(),
-                    actually: a.to_string(),
+                    actually: type_engine.help_out(a).to_string(),
                 }],
             ),
         }
@@ -1507,6 +1607,7 @@ impl TypeInfo {
     /// Returns an error if `self` is not a `TypeInfo::Enum`.
     pub(crate) fn expect_enum(
         &self,
+        type_engine: &TypeEngine,
         debug_string: impl Into<String>,
         debug_span: &Span,
     ) -> CompileResult<(&Ident, &Vec<ty::TyEnumVariant>)> {
@@ -1524,7 +1625,7 @@ impl TypeInfo {
                 vec![CompileError::NotAnEnum {
                     name: debug_string.into(),
                     span: debug_span.clone(),
-                    actually: a.to_string(),
+                    actually: type_engine.help_out(a).to_string(),
                 }],
             ),
         }
@@ -1537,6 +1638,7 @@ impl TypeInfo {
     #[allow(dead_code)]
     pub(crate) fn expect_struct(
         &self,
+        type_engine: &TypeEngine,
         debug_span: &Span,
     ) -> CompileResult<(&Ident, &Vec<ty::TyStructField>)> {
         let warnings = vec![];
@@ -1548,7 +1650,7 @@ impl TypeInfo {
                 vec![],
                 vec![CompileError::NotAStruct {
                     span: debug_span.clone(),
-                    actually: a.to_string(),
+                    actually: type_engine.help_out(a).to_string(),
                 }],
             ),
         }
@@ -1620,7 +1722,7 @@ impl TypeInfo {
 ///
 /// `left` is a subset of `right`.
 ///
-fn types_are_subset_of(left: &[TypeInfo], right: &[TypeInfo]) -> bool {
+fn types_are_subset_of(type_engine: &TypeEngine, left: &[TypeInfo], right: &[TypeInfo]) -> bool {
     // invariant 1. `left` and and `right` are of the same length _n_
     if left.len() != right.len() {
         return false;
@@ -1633,7 +1735,7 @@ fn types_are_subset_of(left: &[TypeInfo], right: &[TypeInfo]) -> bool {
 
     // invariant 2. For every _i_ in [0, n), `left`ᵢ is a subset of `right`ᵢ
     for (l, r) in left.iter().zip(right.iter()) {
-        if !l.is_subset_of(r) {
+        if !l.is_subset_of(r, type_engine) {
             return false;
         }
     }

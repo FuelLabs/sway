@@ -22,22 +22,29 @@ where
     }
 }
 
-impl<T> fmt::Display for ConcurrentSlab<T>
+impl<T> ConcurrentSlab<T> {
+    pub fn with_slice<R>(&self, run: impl FnOnce(&[T]) -> R) -> R {
+        run(&self.inner.read().unwrap())
+    }
+}
+
+pub struct ListDisplay<I> {
+    pub list: I,
+}
+
+impl<I: IntoIterator + Clone> fmt::Display for ListDisplay<I>
 where
-    T: fmt::Display,
+    I::Item: fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let inner = self.inner.read().unwrap();
-        write!(
-            f,
-            "{}",
-            inner
-                .iter()
-                .enumerate()
-                .map(|(i, value)| { format!("{:<10}\t->\t{}", i, value) })
-                .collect::<Vec<_>>()
-                .join("\n"),
-        )
+        let fmt_elems = self
+            .list
+            .clone()
+            .into_iter()
+            .enumerate()
+            .map(|(i, value)| format!("{:<10}\t->\t{}", i, value))
+            .collect::<Vec<_>>();
+        write!(f, "{}", fmt_elems.join("\n"))
     }
 }
 
@@ -65,11 +72,6 @@ where
     pub fn exists<F: Fn(&T) -> bool>(&self, f: F) -> bool {
         let inner = self.inner.read().unwrap();
         inner.iter().any(f)
-    }
-
-    pub fn size(&self) -> usize {
-        let inner = self.inner.read().unwrap();
-        inner.len()
     }
 }
 

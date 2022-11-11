@@ -11,14 +11,24 @@ pub(crate) struct TypeMapping {
     mapping: Vec<(SourceType, DestinationType)>,
 }
 
-impl fmt::Display for TypeMapping {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl DisplayWithTypeEngine for TypeMapping {
+    fn fmt_with_type_engine(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        type_engine: &TypeEngine,
+    ) -> fmt::Result {
         write!(
             f,
             "TypeMapping {{ {} }}",
             self.mapping
                 .iter()
-                .map(|(source_type, dest_type)| { format!("{} -> {}", source_type, dest_type) })
+                .map(|(source_type, dest_type)| {
+                    format!(
+                        "{} -> {}",
+                        type_engine.help_out(source_type),
+                        type_engine.help_out(dest_type)
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join(", ")
         )
@@ -49,13 +59,16 @@ impl TypeMapping {
     /// `type_parameters`. The [SourceType]s of the resulting [TypeMapping] are
     /// the [TypeId]s from `type_parameters` and the [DestinationType]s are the
     /// new [TypeId]s created from a transformation upon `type_parameters`.
-    pub(crate) fn from_type_parameters(type_parameters: &[TypeParameter]) -> TypeMapping {
+    pub(crate) fn from_type_parameters(
+        type_parameters: &[TypeParameter],
+        type_engine: &TypeEngine,
+    ) -> TypeMapping {
         let mapping = type_parameters
             .iter()
             .map(|x| {
                 (
                     x.type_id,
-                    insert_type(TypeInfo::UnknownGeneric {
+                    type_engine.insert_type(TypeInfo::UnknownGeneric {
                         name: x.name_ident.clone(),
                         trait_constraints: x.trait_constraints.clone().into_iter().collect(),
                     }),
@@ -112,8 +125,15 @@ impl TypeMapping {
     /// `subset`. This [TypeMapping] can be used to complete monomorphization on
     /// methods, etc, that are implemented for the type of `superset` so that
     /// they can be used for `subset`.
-    pub(crate) fn from_superset_and_subset(superset: TypeId, subset: TypeId) -> TypeMapping {
-        match (look_up_type_id(superset), look_up_type_id(subset)) {
+    pub(crate) fn from_superset_and_subset(
+        type_engine: &TypeEngine,
+        superset: TypeId,
+        subset: TypeId,
+    ) -> TypeMapping {
+        match (
+            type_engine.look_up_type_id(superset),
+            type_engine.look_up_type_id(subset),
+        ) {
             (TypeInfo::UnknownGeneric { .. }, _) => TypeMapping {
                 mapping: vec![(superset, subset)],
             },
@@ -257,11 +277,11 @@ impl TypeMapping {
     ///     finds a match in a recursive call to `find_match`
     ///
     /// A match cannot be found in any other circumstance.
-    pub(crate) fn find_match(&self, type_id: TypeId) -> Option<TypeId> {
-        let type_info = look_up_type_id(type_id);
+    pub(crate) fn find_match(&self, type_id: TypeId, type_engine: &TypeEngine) -> Option<TypeId> {
+        let type_info = type_engine.look_up_type_id(type_id);
         match type_info {
-            TypeInfo::Custom { .. } => iter_for_match(self, &type_info),
-            TypeInfo::UnknownGeneric { .. } => iter_for_match(self, &type_info),
+            TypeInfo::Custom { .. } => iter_for_match(type_engine, self, &type_info),
+            TypeInfo::UnknownGeneric { .. } => iter_for_match(type_engine, self, &type_info),
             TypeInfo::Struct {
                 fields,
                 name,
@@ -271,7 +291,7 @@ impl TypeMapping {
                 let fields = fields
                     .into_iter()
                     .map(|mut field| {
-                        if let Some(type_id) = self.find_match(field.type_id) {
+                        if let Some(type_id) = self.find_match(field.type_id, type_engine) {
                             need_to_create_new = true;
                             field.type_id = type_id;
                         }
@@ -281,7 +301,7 @@ impl TypeMapping {
                 let type_parameters = type_parameters
                     .into_iter()
                     .map(|mut type_param| {
-                        if let Some(type_id) = self.find_match(type_param.type_id) {
+                        if let Some(type_id) = self.find_match(type_param.type_id, type_engine) {
                             need_to_create_new = true;
                             type_param.type_id = type_id;
                         }
@@ -289,7 +309,7 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(insert_type(TypeInfo::Struct {
+                    Some(type_engine.insert_type(TypeInfo::Struct {
                         fields,
                         name,
                         type_parameters,
@@ -307,7 +327,7 @@ impl TypeMapping {
                 let variant_types = variant_types
                     .into_iter()
                     .map(|mut variant| {
-                        if let Some(type_id) = self.find_match(variant.type_id) {
+                        if let Some(type_id) = self.find_match(variant.type_id, type_engine) {
                             need_to_create_new = true;
                             variant.type_id = type_id;
                         }
@@ -317,7 +337,7 @@ impl TypeMapping {
                 let type_parameters = type_parameters
                     .into_iter()
                     .map(|mut type_param| {
-                        if let Some(type_id) = self.find_match(type_param.type_id) {
+                        if let Some(type_id) = self.find_match(type_param.type_id, type_engine) {
                             need_to_create_new = true;
                             type_param.type_id = type_id;
                         }
@@ -325,7 +345,7 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(insert_type(TypeInfo::Enum {
+                    Some(type_engine.insert_type(TypeInfo::Enum {
                         variant_types,
                         type_parameters,
                         name,
@@ -335,8 +355,8 @@ impl TypeMapping {
                 }
             }
             TypeInfo::Array(ary_ty_id, count, initial_elem_ty) => {
-                self.find_match(ary_ty_id).map(|matching_id| {
-                    insert_type(TypeInfo::Array(matching_id, count, initial_elem_ty))
+                self.find_match(ary_ty_id, type_engine).map(|matching_id| {
+                    type_engine.insert_type(TypeInfo::Array(matching_id, count, initial_elem_ty))
                 })
             }
             TypeInfo::Tuple(fields) => {
@@ -344,7 +364,7 @@ impl TypeMapping {
                 let fields = fields
                     .into_iter()
                     .map(|mut field| {
-                        if let Some(type_id) = self.find_match(field.type_id) {
+                        if let Some(type_id) = self.find_match(field.type_id, type_engine) {
                             need_to_create_new = true;
                             field.type_id = type_id;
                         }
@@ -352,7 +372,7 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(insert_type(TypeInfo::Tuple(fields)))
+                    Some(type_engine.insert_type(TypeInfo::Tuple(fields)))
                 } else {
                     None
                 }
@@ -362,7 +382,7 @@ impl TypeMapping {
                 let fields = fields
                     .into_iter()
                     .map(|mut field| {
-                        if let Some(type_id) = self.find_match(field.type_id) {
+                        if let Some(type_id) = self.find_match(field.type_id, type_engine) {
                             need_to_create_new = true;
                             field.type_id = type_id;
                         }
@@ -370,7 +390,7 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(insert_type(TypeInfo::Storage { fields }))
+                    Some(type_engine.insert_type(TypeInfo::Storage { fields }))
                 } else {
                     None
                 }
@@ -391,9 +411,13 @@ impl TypeMapping {
     }
 }
 
-fn iter_for_match(type_mapping: &TypeMapping, type_info: &TypeInfo) -> Option<TypeId> {
+fn iter_for_match(
+    type_engine: &TypeEngine,
+    type_mapping: &TypeMapping,
+    type_info: &TypeInfo,
+) -> Option<TypeId> {
     for (source_type, dest_type) in type_mapping.mapping.iter() {
-        if look_up_type_id(*source_type) == *type_info {
+        if type_engine.look_up_type_id(*source_type) == *type_info {
             return Some(*dest_type);
         }
     }

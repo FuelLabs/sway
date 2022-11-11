@@ -3,7 +3,7 @@ use crate::{
     language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
     transform::to_parsed_lang,
-    Ident, Namespace,
+    Ident, Namespace, TypeEngine,
 };
 
 use super::{
@@ -44,10 +44,11 @@ pub struct Module {
 
 impl Module {
     pub fn default_with_constants(
+        type_engine: &TypeEngine,
         constants: BTreeMap<String, ConfigTimeConstant>,
     ) -> Result<Self, vec1::Vec1<CompileError>> {
         let handler = <_>::default();
-        Module::default_with_constants_inner(&handler, constants).map_err(|_| {
+        Module::default_with_constants_inner(&handler, type_engine, constants).map_err(|_| {
             let (errors, warnings) = handler.consume();
             assert!(warnings.is_empty());
 
@@ -58,6 +59,7 @@ impl Module {
 
     fn default_with_constants_inner(
         handler: &Handler,
+        type_engine: &TypeEngine,
         constants: BTreeMap<String, ConfigTimeConstant>,
     ) -> Result<Self, ErrorEmitted> {
         // it would be nice to one day maintain a span from the manifest file, but
@@ -92,7 +94,10 @@ impl Module {
             let attributes = Default::default();
             // convert to const decl
             let const_decl = to_parsed_lang::item_const_to_constant_declaration(
-                handler, const_item, attributes,
+                handler,
+                type_engine,
+                const_item,
+                attributes,
             )?;
 
             // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.
@@ -109,7 +114,7 @@ impl Module {
                 span: const_item_span.clone(),
             };
             let mut ns = Namespace::init_root(Default::default());
-            let type_check_ctx = TypeCheckContext::from_root(&mut ns);
+            let type_check_ctx = TypeCheckContext::from_root(&mut ns, type_engine);
             let typed_node = ty::TyAstNode::type_check(type_check_ctx, ast_node)
                 .unwrap(&mut vec![], &mut vec![]);
             // get the decl out of the typed node:
@@ -279,12 +284,13 @@ impl Module {
     /// import.
     pub(crate) fn self_import(
         &mut self,
+        type_engine: &TypeEngine,
         src: &Path,
         dst: &Path,
         alias: Option<Ident>,
     ) -> CompileResult<()> {
         let (last_item, src) = src.split_last().expect("guaranteed by grammar");
-        self.item_import(src, last_item, dst, alias)
+        self.item_import(type_engine, src, last_item, dst, alias)
     }
 
     /// Pull a single `item` from the given `src` module and import it into the `dst` module.
@@ -292,6 +298,7 @@ impl Module {
     /// Paths are assumed to be relative to `self`.
     pub(crate) fn item_import(
         &mut self,
+        type_engine: &TypeEngine,
         src: &Path,
         item: &Ident,
         dst: &Path,
@@ -328,13 +335,13 @@ impl Module {
                         return ok((), warnings, errors);
                     }
                 }
-                let type_id = decl.return_type(&item.span()).value;
+                let type_id = decl.return_type(&item.span(), type_engine).value;
                 //  if this is an enum or struct or function, import its implementations
                 if let Some(type_id) = type_id {
                     impls_to_insert.extend(
                         src_ns
                             .implemented_traits
-                            .filter_by_type_item_import(type_id),
+                            .filter_by_type_item_import(type_id, type_engine),
                     );
                 }
                 // no matter what, import it this way though.

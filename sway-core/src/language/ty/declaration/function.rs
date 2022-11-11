@@ -59,28 +59,28 @@ impl PartialEq for TyFunctionDeclaration {
 }
 
 impl CopyTypes for TyFunctionDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, type_engine));
         self.parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-        self.return_type.copy_types(type_mapping);
-        self.body.copy_types(type_mapping);
+            .for_each(|x| x.copy_types(type_mapping, type_engine));
+        self.return_type.copy_types(type_mapping, type_engine);
+        self.body.copy_types(type_mapping, type_engine);
     }
 }
 
 impl ReplaceSelfType for TyFunctionDeclaration {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.replace_self_type(self_type));
+            .for_each(|x| x.replace_self_type(type_engine, self_type));
         self.parameters
             .iter_mut()
-            .for_each(|x| x.replace_self_type(self_type));
-        self.return_type.replace_self_type(self_type);
-        self.body.replace_self_type(self_type);
+            .for_each(|x| x.replace_self_type(type_engine, self_type));
+        self.return_type.replace_self_type(type_engine, self_type);
+        self.body.replace_self_type(type_engine, self_type);
     }
 }
 
@@ -107,12 +107,16 @@ impl MonomorphizeHelper for TyFunctionDeclaration {
 }
 
 impl UnconstrainedTypeParameters for TyFunctionDeclaration {
-    fn type_parameter_is_unconstrained(&self, type_parameter: &TypeParameter) -> bool {
-        let type_parameter_info = look_up_type_id(type_parameter.type_id);
+    fn type_parameter_is_unconstrained(
+        &self,
+        type_engine: &TypeEngine,
+        type_parameter: &TypeParameter,
+    ) -> bool {
+        let type_parameter_info = type_engine.look_up_type_id(type_parameter.type_id);
         if self
             .type_parameters
             .iter()
-            .map(|type_param| look_up_type_id(type_param.type_id))
+            .map(|type_param| type_engine.look_up_type_id(type_param.type_id))
             .any(|x| x == type_parameter_info)
         {
             return false;
@@ -120,12 +124,12 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
         if self
             .parameters
             .iter()
-            .map(|param| look_up_type_id(param.type_id))
+            .map(|param| type_engine.look_up_type_id(param.type_id))
             .any(|x| x == type_parameter_info)
         {
             return true;
         }
-        if look_up_type_id(self.return_type) == type_parameter_info {
+        if type_engine.look_up_type_id(self.return_type) == type_parameter_info {
             return true;
         }
 
@@ -136,7 +140,10 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
 impl TyFunctionDeclaration {
     /// Used to create a stubbed out function when the function fails to
     /// compile, preventing cascading namespace errors.
-    pub(crate) fn error(decl: parsed::FunctionDeclaration) -> TyFunctionDeclaration {
+    pub(crate) fn error(
+        decl: parsed::FunctionDeclaration,
+        type_engine: &TypeEngine,
+    ) -> TyFunctionDeclaration {
         let parsed::FunctionDeclaration {
             name,
             return_type,
@@ -146,7 +153,7 @@ impl TyFunctionDeclaration {
             purity,
             ..
         } = decl;
-        let initial_return_type = insert_type(return_type);
+        let initial_return_type = type_engine.insert_type(return_type);
         TyFunctionDeclaration {
             purity,
             name,
@@ -177,12 +184,15 @@ impl TyFunctionDeclaration {
         }
     }
 
-    pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<Vec<u8>> {
+    pub fn to_fn_selector_value_untruncated(
+        &self,
+        type_engine: &TypeEngine,
+    ) -> CompileResult<Vec<u8>> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let mut hasher = Sha256::new();
         let data = check!(
-            self.to_selector_name(),
+            self.to_selector_name(type_engine),
             return err(warnings, errors),
             warnings,
             errors
@@ -195,11 +205,11 @@ impl TyFunctionDeclaration {
     /// Converts a [TyFunctionDeclaration] into a value that is to be used in contract function
     /// selectors.
     /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
-    pub fn to_fn_selector_value(&self) -> CompileResult<[u8; 4]> {
+    pub fn to_fn_selector_value(&self, type_engine: &TypeEngine) -> CompileResult<[u8; 4]> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let hash = check!(
-            self.to_fn_selector_value_untruncated(),
+            self.to_fn_selector_value_untruncated(type_engine),
             return err(warnings, errors),
             warnings,
             errors
@@ -210,7 +220,7 @@ impl TyFunctionDeclaration {
         ok(buf, warnings, errors)
     }
 
-    pub fn to_selector_name(&self) -> CompileResult<String> {
+    pub fn to_selector_name(&self, type_engine: &TypeEngine) -> CompileResult<String> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let named_params = self
@@ -220,9 +230,10 @@ impl TyFunctionDeclaration {
                 |TyFunctionParameter {
                      type_id, type_span, ..
                  }| {
-                    to_typeinfo(*type_id, type_span)
+                    type_engine
+                        .to_typeinfo(*type_id, type_span)
                         .expect("unreachable I think?")
-                        .to_selector_name(type_span)
+                        .to_selector_name(type_engine, type_span)
                 },
             )
             .filter_map(|name| name.ok(&mut warnings, &mut errors))
@@ -237,6 +248,7 @@ impl TyFunctionDeclaration {
 
     pub(crate) fn generate_json_abi_function(
         &self,
+        type_engine: &TypeEngine,
         types: &mut Vec<JsonTypeDeclaration>,
     ) -> JsonABIFunction {
         // A list of all `JsonTypeDeclaration`s needed for inputs
@@ -245,22 +257,34 @@ impl TyFunctionDeclaration {
             .iter()
             .map(|x| JsonTypeDeclaration {
                 type_id: *x.initial_type_id,
-                type_field: x.initial_type_id.get_json_type_str(x.type_id),
-                components: x.initial_type_id.get_json_type_components(types, x.type_id),
-                type_parameters: x.type_id.get_json_type_parameters(types, x.type_id),
+                type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
+                components: x.initial_type_id.get_json_type_components(
+                    type_engine,
+                    types,
+                    x.type_id,
+                ),
+                type_parameters: x
+                    .type_id
+                    .get_json_type_parameters(type_engine, types, x.type_id),
             })
             .collect::<Vec<_>>();
 
         // The single `JsonTypeDeclaration` needed for the output
         let output_type = JsonTypeDeclaration {
             type_id: *self.initial_return_type,
-            type_field: self.initial_return_type.get_json_type_str(self.return_type),
-            components: self
-                .return_type
-                .get_json_type_components(types, self.return_type),
-            type_parameters: self
-                .return_type
-                .get_json_type_parameters(types, self.return_type),
+            type_field: self
+                .initial_return_type
+                .get_json_type_str(type_engine, self.return_type),
+            components: self.return_type.get_json_type_components(
+                type_engine,
+                types,
+                self.return_type,
+            ),
+            type_parameters: self.return_type.get_json_type_parameters(
+                type_engine,
+                types,
+                self.return_type,
+            ),
         };
 
         // Add the new types to `types`
@@ -276,15 +300,21 @@ impl TyFunctionDeclaration {
                 .map(|x| JsonTypeApplication {
                     name: x.name.to_string(),
                     type_id: *x.initial_type_id,
-                    type_arguments: x.initial_type_id.get_json_type_arguments(types, x.type_id),
+                    type_arguments: x.initial_type_id.get_json_type_arguments(
+                        type_engine,
+                        types,
+                        x.type_id,
+                    ),
                 })
                 .collect(),
             output: JsonTypeApplication {
                 name: "".to_string(),
                 type_id: *self.initial_return_type,
-                type_arguments: self
-                    .initial_return_type
-                    .get_json_type_arguments(types, self.return_type),
+                type_arguments: self.initial_return_type.get_json_type_arguments(
+                    type_engine,
+                    types,
+                    self.return_type,
+                ),
             },
         }
     }
@@ -346,14 +376,14 @@ impl PartialEq for TyFunctionParameter {
 }
 
 impl CopyTypes for TyFunctionParameter {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.copy_types(type_mapping);
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+        self.type_id.copy_types(type_mapping, type_engine);
     }
 }
 
 impl ReplaceSelfType for TyFunctionParameter {
-    fn replace_self_type(&mut self, self_type: TypeId) {
-        self.type_id.replace_self_type(self_type);
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+        self.type_id.replace_self_type(type_engine, self_type);
     }
 }
 

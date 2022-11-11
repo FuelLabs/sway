@@ -3,6 +3,7 @@ use crate::{
     language::ty,
     metadata::MetadataManager,
     semantic_analysis::*,
+    TypeEngine,
 };
 
 use super::{convert::convert_literal_to_constant, types::*};
@@ -18,6 +19,7 @@ use sway_types::{ident::Ident, span::Spanned};
 use sway_utils::mapped_stack::MappedStack;
 
 pub(crate) struct LookupEnv<'a> {
+    pub(crate) type_engine: &'a TypeEngine,
     pub(crate) context: &'a mut Context,
     pub(crate) md_mgr: &'a mut MetadataManager,
     pub(crate) module: Module,
@@ -48,6 +50,7 @@ pub(crate) fn compile_const_decl(
             };
             if let Some((name, value)) = decl_name_value {
                 let const_val = compile_constant_expression(
+                    env.type_engine,
                     env.context,
                     env.md_mgr,
                     env.module,
@@ -66,6 +69,7 @@ pub(crate) fn compile_const_decl(
 }
 
 pub(super) fn compile_constant_expression(
+    type_engine: &TypeEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -74,12 +78,19 @@ pub(super) fn compile_constant_expression(
 ) -> Result<Value, CompileError> {
     let span_id_idx = md_mgr.span_to_md(context, &const_expr.span);
 
-    let constant_evaluated =
-        compile_constant_expression_to_constant(context, md_mgr, module, module_ns, const_expr)?;
+    let constant_evaluated = compile_constant_expression_to_constant(
+        type_engine,
+        context,
+        md_mgr,
+        module,
+        module_ns,
+        const_expr,
+    )?;
     Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
 }
 
 pub(crate) fn compile_constant_expression_to_constant(
+    type_engine: &TypeEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -87,6 +98,7 @@ pub(crate) fn compile_constant_expression_to_constant(
     const_expr: &ty::TyExpression,
 ) -> Result<Constant, CompileError> {
     let lookup = &mut LookupEnv {
+        type_engine,
         context,
         md_mgr,
         module,
@@ -185,9 +197,10 @@ fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant.
                 return Ok(None);
             }
-            get_aggregate_for_types(lookup.context, &field_typs).map_or(None, |aggregate| {
-                Some(Constant::new_struct(&aggregate, field_vals))
-            })
+            get_aggregate_for_types(lookup.type_engine, lookup.context, &field_typs)
+                .map_or(None, |aggregate| {
+                    Some(Constant::new_struct(&aggregate, field_vals))
+                })
         }
         ty::TyExpressionVariant::Tuple { fields } => {
             let (mut field_typs, mut field_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
@@ -202,9 +215,10 @@ fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant.
                 return Ok(None);
             }
-            create_tuple_aggregate(lookup.context, field_typs).map_or(None, |aggregate| {
-                Some(Constant::new_struct(&aggregate, field_vals))
-            })
+            create_tuple_aggregate(lookup.type_engine, lookup.context, field_typs)
+                .map_or(None, |aggregate| {
+                    Some(Constant::new_struct(&aggregate, field_vals))
+                })
         }
         ty::TyExpressionVariant::Array { contents } => {
             let (mut element_typs, mut element_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
@@ -222,13 +236,14 @@ fn const_eval_typed_expr(
             let mut element_iter = element_typs.iter();
             let element_type_id = *element_iter.next().unwrap();
             if !element_iter.all(|tid| {
-                crate::type_system::look_up_type_id(*tid)
-                    == crate::type_system::look_up_type_id(element_type_id)
+                lookup.type_engine.look_up_type_id(*tid)
+                    == lookup.type_engine.look_up_type_id(element_type_id)
             }) {
                 // This shouldn't happen if the type checker did its job.
                 return Ok(None);
             }
             create_array_aggregate(
+                lookup.type_engine,
                 lookup.context,
                 element_type_id,
                 element_typs.len().try_into().unwrap(),
@@ -243,7 +258,11 @@ fn const_eval_typed_expr(
             contents,
             ..
         } => {
-            let aggregate = create_enum_aggregate(lookup.context, enum_decl.variants.clone());
+            let aggregate = create_enum_aggregate(
+                lookup.type_engine,
+                lookup.context,
+                enum_decl.variants.clone(),
+            );
             if let Ok(aggregate) = aggregate {
                 let tag_value = Constant::new_uint(64, *tag as u64);
                 let mut fields: Vec<Constant> = vec![tag_value];
@@ -274,11 +293,15 @@ fn const_eval_typed_expr(
                 let field_kind = ty::ProjectionKind::StructField {
                     name: field_to_access.name.clone(),
                 };
-                get_struct_name_field_index_and_type(*resolved_type_of_parent, field_kind)
-                    .and_then(|(_struct_name, field_idx_and_type_opt)| {
-                        field_idx_and_type_opt.map(|(field_idx, _field_type)| field_idx)
-                    })
-                    .and_then(|field_idx| fields.get(field_idx as usize).cloned())
+                get_struct_name_field_index_and_type(
+                    lookup.type_engine,
+                    *resolved_type_of_parent,
+                    field_kind,
+                )
+                .and_then(|(_struct_name, field_idx_and_type_opt)| {
+                    field_idx_and_type_opt.map(|(field_idx, _field_type)| field_idx)
+                })
+                .and_then(|field_idx| fields.get(field_idx as usize).cloned())
             }
             _ => None,
         },

@@ -23,18 +23,18 @@ impl Spanned for TraitConstraint {
 }
 
 impl CopyTypes for TraitConstraint {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
         self.type_arguments
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, type_engine));
     }
 }
 
 impl ReplaceSelfType for TraitConstraint {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
         self.type_arguments
             .iter_mut()
-            .for_each(|x| x.replace_self_type(self_type));
+            .for_each(|x| x.replace_self_type(type_engine, self_type));
     }
 }
 
@@ -116,7 +116,7 @@ impl TraitConstraint {
         for type_argument in self.type_arguments.iter_mut() {
             type_argument.type_id = check!(
                 ctx.resolve_type_without_self(type_argument.type_id, &type_argument.span, None),
-                insert_type(TypeInfo::ErrorRecovery),
+                ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );

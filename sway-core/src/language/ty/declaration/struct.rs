@@ -28,30 +28,30 @@ impl PartialEq for TyStructDeclaration {
 }
 
 impl CopyTypes for TyStructDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
         self.fields
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, type_engine));
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, type_engine));
     }
 }
 
 impl ReplaceSelfType for TyStructDeclaration {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
         self.fields
             .iter_mut()
-            .for_each(|x| x.replace_self_type(self_type));
+            .for_each(|x| x.replace_self_type(type_engine, self_type));
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.replace_self_type(self_type));
+            .for_each(|x| x.replace_self_type(type_engine, self_type));
     }
 }
 
 impl CreateTypeId for TyStructDeclaration {
-    fn create_type_id(&self) -> TypeId {
-        insert_type(TypeInfo::Struct {
+    fn create_type_id(&self, type_engine: &TypeEngine) -> TypeId {
+        type_engine.insert_type(TypeInfo::Struct {
             name: self.name.clone(),
             fields: self.fields.clone(),
             type_parameters: self.type_parameters.clone(),
@@ -132,13 +132,13 @@ impl PartialEq for TyStructField {
 }
 
 impl CopyTypes for TyStructField {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.copy_types(type_mapping);
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+        self.type_id.copy_types(type_mapping, type_engine);
     }
 }
 
 impl ReplaceSelfType for TyStructField {
-    fn replace_self_type(&mut self, self_type: TypeId) {
-        self.type_id.replace_self_type(self_type);
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+        self.type_id.replace_self_type(type_engine, self_type);
     }
 }

@@ -47,20 +47,20 @@ impl PartialEq for TypeParameter {
 }
 
 impl CopyTypes for TypeParameter {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.copy_types(type_mapping);
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+        self.type_id.copy_types(type_mapping, type_engine);
         self.trait_constraints
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, type_engine));
     }
 }
 
 impl ReplaceSelfType for TypeParameter {
-    fn replace_self_type(&mut self, self_type: TypeId) {
-        self.type_id.replace_self_type(self_type);
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+        self.type_id.replace_self_type(type_engine, self_type);
         self.trait_constraints
             .iter_mut()
-            .for_each(|x| x.replace_self_type(self_type));
+            .for_each(|x| x.replace_self_type(type_engine, self_type));
     }
 }
 
@@ -70,9 +70,18 @@ impl Spanned for TypeParameter {
     }
 }
 
-impl fmt::Display for TypeParameter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.name_ident, self.type_id)
+impl DisplayWithTypeEngine for TypeParameter {
+    fn fmt_with_type_engine(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        type_engine: &TypeEngine,
+    ) -> fmt::Result {
+        write!(
+            f,
+            "{}: {}",
+            self.name_ident,
+            type_engine.help_out(self.type_id)
+        )
     }
 }
 
@@ -110,7 +119,7 @@ impl TypeParameter {
 
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
-        let type_id = insert_type(TypeInfo::UnknownGeneric {
+        let type_id = ctx.type_engine.insert_type(TypeInfo::UnknownGeneric {
             name: name_ident.clone(),
             trait_constraints: trait_constraints.clone().into_iter().collect(),
         });
@@ -147,13 +156,21 @@ impl TypeParameter {
 
     /// Returns the initial type ID of a TypeParameter. Also updates the provided list of types to
     /// append the current TypeParameter as a `JsonTypeDeclaration`.
-    pub(crate) fn get_json_type_parameter(&self, types: &mut Vec<JsonTypeDeclaration>) -> usize {
+    pub(crate) fn get_json_type_parameter(
+        &self,
+        type_engine: &TypeEngine,
+        types: &mut Vec<JsonTypeDeclaration>,
+    ) -> usize {
         let type_parameter = JsonTypeDeclaration {
             type_id: *self.initial_type_id,
-            type_field: self.initial_type_id.get_json_type_str(self.type_id),
-            components: self
+            type_field: self
                 .initial_type_id
-                .get_json_type_components(types, self.type_id),
+                .get_json_type_str(type_engine, self.type_id),
+            components: self.initial_type_id.get_json_type_components(
+                type_engine,
+                types,
+                self.type_id,
+            ),
             type_parameters: None,
         };
         types.push(type_parameter);
@@ -186,7 +203,8 @@ impl TypeParameter {
                     .check_if_trait_constraints_are_satisfied_for_type(
                         *type_id,
                         trait_constraints,
-                        access_span
+                        access_span,
+                        ctx.type_engine,
                     ),
                 continue,
                 warnings,

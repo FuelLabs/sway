@@ -256,10 +256,12 @@ pub(super) fn unify(
         (TypeInfo::ErrorRecovery, _) => (vec![], vec![]),
         (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
         (r, e) => {
+            let e = type_engine.help_out(e).to_string();
+            let r = type_engine.help_out(r).to_string();
             let (expected, received) = if !arguments_are_flipped {
-                (e.to_string(), r.to_string())
+                (e, r)
             } else {
-                (r.to_string(), e.to_string())
+                (r, e)
             };
             let errors = vec![TypeError::MismatchedType {
                 expected,
@@ -424,8 +426,8 @@ pub(super) fn unify_right(
         (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
         (r, e) => {
             let errors = vec![TypeError::MismatchedType {
-                expected: e.to_string(),
-                received: r.to_string(),
+                expected: type_engine.help_out(e).to_string(),
+                received: type_engine.help_out(r).to_string(),
                 help_text: help_text.to_string(),
                 span: span.clone(),
             }];

@@ -8,7 +8,10 @@ use lazy_static::lazy_static;
 use sway_error::error::CompileError;
 use sway_types::{Span, Spanned};
 
-use crate::{concurrent_slab::ConcurrentSlab, language::ty};
+use crate::{
+    concurrent_slab::{ConcurrentSlab, ListDisplay},
+    language::ty,
+};
 
 use super::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper};
 
@@ -25,7 +28,10 @@ pub struct DeclarationEngine {
 
 impl fmt::Display for DeclarationEngine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "DeclarationEngine {{\n{}\n}}", self.slab)
+        self.slab.with_slice(|elems| {
+            let list = ListDisplay { list: elems.iter() };
+            write!(f, "DeclarationEngine {{\n{}\n}}", list)
+        })
     }
 }
 

@@ -23,17 +23,17 @@ impl PartialEq for TyAsmRegisterDeclaration {
 }
 
 impl CopyTypes for TyAsmRegisterDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
         if let Some(ref mut initializer) = self.initializer {
-            initializer.copy_types(type_mapping)
+            initializer.copy_types(type_mapping, type_engine)
         }
     }
 }
 
 impl ReplaceSelfType for TyAsmRegisterDeclaration {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
         if let Some(ref mut initializer) = self.initializer {
-            initializer.replace_self_type(self_type)
+            initializer.replace_self_type(type_engine, self_type)
         }
     }
 }

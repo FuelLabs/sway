@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::{self, Debug};
 
 use derivative::Derivative;
 use sway_types::{Ident, Span};
@@ -23,38 +23,51 @@ pub struct TyAstNode {
     pub(crate) span: Span,
 }
 
-impl fmt::Display for TyAstNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl DisplayWithTypeEngine for TyAstNode {
+    fn fmt_with_type_engine(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        type_engine: &TypeEngine,
+    ) -> fmt::Result {
         use TyAstNodeContent::*;
-        let text = match &self.content {
-            Declaration(ref typed_decl) => typed_decl.to_string(),
-            Expression(exp) => exp.to_string(),
-            ImplicitReturnExpression(exp) => format!("return {}", exp),
-            SideEffect => "".into(),
-        };
-        f.write_str(&text)
+        match &self.content {
+            Declaration(ref typed_decl) => typed_decl.fmt_with_type_engine(f, type_engine),
+            Expression(exp) => exp.fmt(f),
+            ImplicitReturnExpression(exp) => write!(f, "return {}", type_engine.help_out(exp)),
+            SideEffect => f.write_str(""),
+        }
     }
 }
 
 impl CopyTypes for TyAstNode {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
         match self.content {
-            TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => exp.copy_types(type_mapping),
-            TyAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
-            TyAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
+            TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
+                exp.copy_types(type_mapping, type_engine)
+            }
+            TyAstNodeContent::Declaration(ref mut decl) => {
+                decl.copy_types(type_mapping, type_engine)
+            }
+            TyAstNodeContent::Expression(ref mut expr) => {
+                expr.copy_types(type_mapping, type_engine)
+            }
             TyAstNodeContent::SideEffect => (),
         }
     }
 }
 
 impl ReplaceSelfType for TyAstNode {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.replace_self_type(self_type)
+                exp.replace_self_type(type_engine, self_type)
             }
-            TyAstNodeContent::Declaration(ref mut decl) => decl.replace_self_type(self_type),
-            TyAstNodeContent::Expression(ref mut expr) => expr.replace_self_type(self_type),
+            TyAstNodeContent::Declaration(ref mut decl) => {
+                decl.replace_self_type(type_engine, self_type)
+            }
+            TyAstNodeContent::Expression(ref mut expr) => {
+                expr.replace_self_type(type_engine, self_type)
+            }
             TyAstNodeContent::SideEffect => (),
         }
     }
@@ -165,15 +178,15 @@ impl TyAstNode {
         }
     }
 
-    pub(crate) fn type_info(&self) -> TypeInfo {
+    pub(crate) fn type_info(&self, type_engine: &TypeEngine) -> TypeInfo {
         // return statement should be ()
         match &self.content {
             TyAstNodeContent::Declaration(_) => TypeInfo::Tuple(Vec::new()),
             TyAstNodeContent::Expression(TyExpression { return_type, .. }) => {
-                look_up_type_id(*return_type)
+                type_engine.look_up_type_id(*return_type)
             }
             TyAstNodeContent::ImplicitReturnExpression(TyExpression { return_type, .. }) => {
-                look_up_type_id(*return_type)
+                type_engine.look_up_type_id(*return_type)
             }
             TyAstNodeContent::SideEffect => TypeInfo::Tuple(Vec::new()),
         }

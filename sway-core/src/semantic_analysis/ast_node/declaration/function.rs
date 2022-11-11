@@ -34,6 +34,8 @@ impl ty::TyFunctionDeclaration {
             purity,
         } = fn_decl;
 
+        let type_engine = ctx.type_engine;
+
         // Warn against non-snake case function names.
         if !is_snake_case(name.as_str()) {
             warnings.push(CompileWarning {
@@ -75,7 +77,7 @@ impl ty::TyFunctionDeclaration {
         }
 
         // type check the return type
-        let initial_return_type = insert_type(return_type);
+        let initial_return_type = type_engine.insert_type(return_type);
         let return_type = check!(
             fn_ctx.resolve_type_with_self(
                 initial_return_type,
@@ -83,7 +85,7 @@ impl ty::TyFunctionDeclaration {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -102,7 +104,7 @@ impl ty::TyFunctionDeclaration {
                 ty::TyCodeBlock::type_check(fn_ctx, body),
                 (
                     ty::TyCodeBlock { contents: vec![] },
-                    insert_type(TypeInfo::ErrorRecovery)
+                    type_engine.insert_type(TypeInfo::ErrorRecovery)
                 ),
                 warnings,
                 errors
@@ -162,9 +164,9 @@ impl ty::TyFunctionDeclaration {
         let mut return_type_namespace = fn_ctx
             .namespace
             .implemented_traits
-            .filter_by_type(function_decl.return_type);
+            .filter_by_type(function_decl.return_type, type_engine);
         for type_param in function_decl.type_parameters.iter() {
-            return_type_namespace.filter_against_type(type_param.type_id);
+            return_type_namespace.filter_against_type(type_engine, type_param.type_id);
         }
         ctx.namespace
             .implemented_traits

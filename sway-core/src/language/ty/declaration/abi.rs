@@ -19,11 +19,11 @@ pub struct TyAbiDeclaration {
 }
 
 impl CreateTypeId for TyAbiDeclaration {
-    fn create_type_id(&self) -> TypeId {
+    fn create_type_id(&self, type_engine: &TypeEngine) -> TypeId {
         let ty = TypeInfo::ContractCaller {
             abi_name: AbiName::Known(self.name.clone().into()),
             address: None,
         };
-        insert_type(ty)
+        type_engine.insert_type(ty)
     }
 }

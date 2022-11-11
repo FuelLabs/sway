@@ -1,5 +1,3 @@
-use std::fmt;
-
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
@@ -28,15 +26,15 @@ pub enum TyDeclaration {
 }
 
 impl CopyTypes for TyDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
         use TyDeclaration::*;
         match self {
-            VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
-            FunctionDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping),
-            TraitDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping),
-            StructDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping),
-            EnumDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping),
-            ImplTrait(decl_id) => decl_id.copy_types(type_mapping),
+            VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping, type_engine),
+            FunctionDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, type_engine),
+            TraitDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, type_engine),
+            StructDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, type_engine),
+            EnumDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, type_engine),
+            ImplTrait(decl_id) => decl_id.copy_types(type_mapping, type_engine),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
             | ConstantDeclaration(_)
@@ -48,15 +46,19 @@ impl CopyTypes for TyDeclaration {
 }
 
 impl ReplaceSelfType for TyDeclaration {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
         use TyDeclaration::*;
         match self {
-            VariableDeclaration(ref mut var_decl) => var_decl.replace_self_type(self_type),
-            FunctionDeclaration(ref mut decl_id) => decl_id.replace_self_type(self_type),
-            TraitDeclaration(ref mut decl_id) => decl_id.replace_self_type(self_type),
-            StructDeclaration(ref mut decl_id) => decl_id.replace_self_type(self_type),
-            EnumDeclaration(ref mut decl_id) => decl_id.replace_self_type(self_type),
-            ImplTrait(decl_id) => decl_id.replace_self_type(self_type),
+            VariableDeclaration(ref mut var_decl) => {
+                var_decl.replace_self_type(type_engine, self_type)
+            }
+            FunctionDeclaration(ref mut decl_id) => {
+                decl_id.replace_self_type(type_engine, self_type)
+            }
+            TraitDeclaration(ref mut decl_id) => decl_id.replace_self_type(type_engine, self_type),
+            StructDeclaration(ref mut decl_id) => decl_id.replace_self_type(type_engine, self_type),
+            EnumDeclaration(ref mut decl_id) => decl_id.replace_self_type(type_engine, self_type),
+            ImplTrait(decl_id) => decl_id.replace_self_type(type_engine, self_type),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
             | ConstantDeclaration(_)
@@ -86,8 +88,12 @@ impl Spanned for TyDeclaration {
     }
 }
 
-impl fmt::Display for TyDeclaration {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl DisplayWithTypeEngine for TyDeclaration {
+    fn fmt_with_type_engine(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+        type_engine: &TypeEngine,
+    ) -> std::fmt::Result {
         write!(
             f,
             "{} declaration ({})",
@@ -111,10 +117,12 @@ impl fmt::Display for TyDeclaration {
                     builder.push_str(name.as_str());
                     builder.push_str(": ");
                     builder.push_str(
-                        &crate::type_system::look_up_type_id(*type_ascription).to_string(),
+                        &type_engine
+                            .help_out(type_engine.look_up_type_id(*type_ascription))
+                            .to_string(),
                     );
                     builder.push_str(" = ");
-                    builder.push_str(&body.to_string());
+                    builder.push_str(&type_engine.help_out(body).to_string());
                     builder
                 }
                 TyDeclaration::FunctionDeclaration(decl_id) => {
@@ -435,7 +443,11 @@ impl TyDeclaration {
         }
     }
 
-    pub(crate) fn return_type(&self, access_span: &Span) -> CompileResult<TypeId> {
+    pub(crate) fn return_type(
+        &self,
+        access_span: &Span,
+        type_engine: &TypeEngine,
+    ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_id = match self {
@@ -456,7 +468,7 @@ impl TyDeclaration {
                     warnings,
                     errors
                 );
-                decl.create_type_id()
+                decl.create_type_id(type_engine)
             }
             TyDeclaration::EnumDeclaration(decl_id) => {
                 let decl = check!(
@@ -465,7 +477,7 @@ impl TyDeclaration {
                     warnings,
                     errors
                 );
-                decl.create_type_id()
+                decl.create_type_id(type_engine)
             }
             TyDeclaration::StorageDeclaration(decl_id) => {
                 let storage_decl = check!(
@@ -474,7 +486,7 @@ impl TyDeclaration {
                     warnings,
                     errors
                 );
-                insert_type(TypeInfo::Storage {
+                type_engine.insert_type(TypeInfo::Storage {
                     fields: storage_decl.fields_as_typed_struct_fields(),
                 })
             }
@@ -482,7 +494,7 @@ impl TyDeclaration {
             decl => {
                 errors.push(CompileError::NotAType {
                     span: decl.span(),
-                    name: decl.to_string(),
+                    name: type_engine.help_out(decl).to_string(),
                     actually_is: decl.friendly_name(),
                 });
                 return err(warnings, errors);

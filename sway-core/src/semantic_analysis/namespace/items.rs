@@ -55,6 +55,7 @@ impl Items {
 
     pub fn apply_storage_load(
         &self,
+        type_engine: &TypeEngine,
         fields: Vec<Ident>,
         storage_fields: &[ty::TyStorageField],
         access_span: &Span,
@@ -69,7 +70,7 @@ impl Items {
                     warnings,
                     errors
                 );
-                storage.apply_storage_load(fields, storage_fields)
+                storage.apply_storage_load(type_engine, fields, storage_fields)
             }
             None => {
                 errors.push(CompileError::NoDeclaredStorage {
@@ -133,6 +134,7 @@ impl Items {
             .ok_or_else(|| CompileError::SymbolNotFound { name: name.clone() })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn insert_trait_implementation(
         &mut self,
         trait_name: CallPath,
@@ -141,6 +143,7 @@ impl Items {
         methods: &[DeclarationId],
         impl_span: &Span,
         is_impl_self: bool,
+        type_engine: &TypeEngine,
     ) -> CompileResult<()> {
         let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
@@ -163,24 +166,39 @@ impl Items {
             methods,
             impl_span,
             is_impl_self,
+            type_engine,
         )
     }
 
-    pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
-        self.implemented_traits.insert_for_type(type_id);
+    pub(crate) fn insert_trait_implementation_for_type(
+        &mut self,
+        type_engine: &TypeEngine,
+        type_id: TypeId,
+    ) {
+        self.implemented_traits
+            .insert_for_type(type_engine, type_id);
     }
 
-    pub(crate) fn get_methods_for_type(&self, type_id: TypeId) -> Vec<DeclarationId> {
-        self.implemented_traits.get_methods_for_type(type_id)
+    pub(crate) fn get_methods_for_type(
+        &self,
+        type_engine: &TypeEngine,
+        type_id: TypeId,
+    ) -> Vec<DeclarationId> {
+        self.implemented_traits
+            .get_methods_for_type(type_engine, type_id)
     }
 
     pub(crate) fn get_methods_for_type_and_trait_name(
         &self,
+        type_engine: &TypeEngine,
         type_id: TypeId,
         trait_name: &CallPath,
     ) -> Vec<DeclarationId> {
-        self.implemented_traits
-            .get_methods_for_type_and_trait_name(type_id, trait_name)
+        self.implemented_traits.get_methods_for_type_and_trait_name(
+            type_engine,
+            type_id,
+            trait_name,
+        )
     }
 
     pub(crate) fn has_storage_declared(&self) -> bool {
@@ -216,6 +234,7 @@ impl Items {
     /// the second is the [ResolvedType] of its parent, for control-flow analysis.
     pub(crate) fn find_subfield_type(
         &self,
+        type_engine: &TypeEngine,
         base_name: &Ident,
         projections: &[ty::ProjectionKind],
     ) -> CompileResult<(TypeId, TypeId)> {
@@ -231,7 +250,7 @@ impl Items {
             }
         };
         let mut symbol = check!(
-            symbol.return_type(&base_name.span()),
+            symbol.return_type(&base_name.span(), type_engine),
             return err(warnings, errors),
             warnings,
             errors
@@ -241,7 +260,7 @@ impl Items {
         let mut full_name_for_error = base_name.to_string();
         let mut full_span_for_error = base_name.span();
         for projection in projections {
-            let resolved_type = match to_typeinfo(symbol, &symbol_span) {
+            let resolved_type = match type_engine.to_typeinfo(symbol, &symbol_span) {
                 Ok(resolved_type) => resolved_type,
                 Err(error) => {
                     errors.push(CompileError::TypeError(error));
@@ -322,7 +341,7 @@ impl Items {
                 (actually, ty::ProjectionKind::StructField { .. }) => {
                     errors.push(CompileError::FieldAccessOnNonStruct {
                         span: full_span_for_error,
-                        actually: actually.to_string(),
+                        actually: type_engine.help_out(actually).to_string(),
                     });
                     return err(warnings, errors);
                 }
@@ -330,7 +349,7 @@ impl Items {
                     errors.push(CompileError::NotATuple {
                         name: full_name_for_error,
                         span: full_span_for_error,
-                        actually: actually.to_string(),
+                        actually: type_engine.help_out(actually).to_string(),
                     });
                     return err(warnings, errors);
                 }

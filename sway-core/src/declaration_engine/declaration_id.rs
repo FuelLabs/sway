@@ -4,7 +4,7 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     type_system::{CopyTypes, TypeMapping},
-    ReplaceSelfType, TypeId,
+    ReplaceSelfType, TypeEngine, TypeId,
 };
 
 use super::{
@@ -59,17 +59,17 @@ impl Spanned for DeclarationId {
 }
 
 impl CopyTypes for DeclarationId {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
         let mut decl = de_look_up_decl_id(self.clone());
-        decl.copy_types(type_mapping);
+        decl.copy_types(type_mapping, type_engine);
         de_replace_decl_id(self.clone(), decl);
     }
 }
 
 impl ReplaceSelfType for DeclarationId {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
         let mut decl = de_look_up_decl_id(self.clone());
-        decl.replace_self_type(self_type);
+        decl.replace_self_type(type_engine, self_type);
         de_replace_decl_id(self.clone(), decl);
     }
 }
@@ -104,15 +104,23 @@ impl DeclarationId {
         self.0 = index;
     }
 
-    pub(crate) fn copy_types_and_insert_new(&self, type_mapping: &TypeMapping) -> DeclarationId {
+    pub(crate) fn copy_types_and_insert_new(
+        &self,
+        type_mapping: &TypeMapping,
+        type_engine: &TypeEngine,
+    ) -> DeclarationId {
         let mut decl = de_look_up_decl_id(self.clone());
-        decl.copy_types(type_mapping);
+        decl.copy_types(type_mapping, type_engine);
         de_insert(decl, self.1.clone()).with_parent(self.clone())
     }
 
-    pub(crate) fn replace_self_type_and_insert_new(&self, self_type: TypeId) -> DeclarationId {
+    pub(crate) fn replace_self_type_and_insert_new(
+        &self,
+        type_engine: &TypeEngine,
+        self_type: TypeId,
+    ) -> DeclarationId {
         let mut decl = de_look_up_decl_id(self.clone());
-        decl.replace_self_type(self_type);
+        decl.replace_self_type(type_engine, self_type);
         de_insert(decl, self.1.clone()).with_parent(self.clone())
     }
 

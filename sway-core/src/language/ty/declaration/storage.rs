@@ -37,6 +37,7 @@ impl TyStorageDeclaration {
     /// been declared as a part of storage, return an error.
     pub fn apply_storage_load(
         &self,
+        type_engine: &TypeEngine,
         fields: Vec<Ident>,
         storage_fields: &[TyStorageField],
     ) -> CompileResult<(TyStorageAccess, TypeId)> {
@@ -72,12 +73,10 @@ impl TyStorageDeclaration {
             span: first_field.span(),
         });
 
-        fn update_available_struct_fields(id: TypeId) -> Vec<TyStructField> {
-            match crate::type_system::look_up_type_id(id) {
-                TypeInfo::Struct { fields, .. } => fields,
-                _ => vec![],
-            }
-        }
+        let update_available_struct_fields = |id: TypeId| match type_engine.look_up_type_id(id) {
+            TypeInfo::Struct { fields, .. } => fields,
+            _ => vec![],
+        };
 
         // if the previously iterated type was a struct, put its fields here so we know that,
         // in the case of a subfield, we can type check the that the subfield exists and its type.

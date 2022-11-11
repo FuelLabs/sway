@@ -19,16 +19,16 @@ pub struct TyReassignment {
 }
 
 impl CopyTypes for TyReassignment {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
-        self.rhs.copy_types(type_mapping);
-        self.lhs_type.copy_types(type_mapping);
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+        self.rhs.copy_types(type_mapping, type_engine);
+        self.lhs_type.copy_types(type_mapping, type_engine);
     }
 }
 
 impl ReplaceSelfType for TyReassignment {
-    fn replace_self_type(&mut self, self_type: TypeId) {
-        self.rhs.replace_self_type(self_type);
-        self.lhs_type.replace_self_type(self_type);
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+        self.rhs.replace_self_type(type_engine, self_type);
+        self.lhs_type.replace_self_type(type_engine, self_type);
     }
 }
 
