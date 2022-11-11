@@ -1,14 +1,10 @@
-use clap::{Parser, Args};
-use anyhow::Result;
 use crate::ops::forc_edit;
+use anyhow::Result;
+use clap::Parser;
 // A utility for managing forc dependencies from the command line.
-#[derive(Debug, Parser)]
-pub enum Command {
-    Add(CommandArgs),
-    Remove(CommandArgs),
-}
+
 /// Add or remove dependencies to a Forc.toml manifest file.
-#[derive(Debug, Args)]
+#[derive(Debug, Parser)]
 #[clap(version)]
 #[clap(setting = clap::AppSettings::DeriveDisplayOrder)]
 #[clap(after_help = "\
@@ -20,7 +16,7 @@ Example:
     forc add [OPTIONS] <DEP_PATH> ...
     forc remove [OPTIONS] <DEP_PATH> ...
 ")]
-pub struct CommandArgs {
+pub struct Command {
     /// Reference to a package to add or remove as a dependency
     ///
     /// You can reference a packages by:
@@ -35,9 +31,7 @@ pub struct CommandArgs {
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {
-    match command {
-        Command::Add(args) => forc_edit::add(args)?,
-        Command::Remove(args) => forc_edit::remove(args)?,
-    }
+    forc_edit::remove(command)?;
+
     Ok(())
 }
