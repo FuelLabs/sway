@@ -144,7 +144,7 @@ impl<K, V> StorageMap<K, V> {
     /// }
     /// ```
     #[storage(write)]
-    fn insert(self, key: K, value: V) {
+    pub fn insert(self, key: K, value: V) {
         let key = sha256((key, __get_storage_key()));
         store::<V>(key, value);
     }
@@ -174,7 +174,7 @@ impl<K, V> StorageMap<K, V> {
     /// }
     /// ```
     #[storage(read)]
-    fn get(self, key: K) -> V {
+    pub fn get(self, key: K) -> V {
         let key = sha256((key, __get_storage_key()));
         get::<V>(key)
     }
