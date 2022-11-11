@@ -64,7 +64,7 @@ impl Position {
 }
 
 /// Represents a span of the source code in a specific file.
-#[derive(Clone, Eq, PartialEq, PartialOrd, Hash)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Span {
     // The original source code.
     src: Arc<str>,

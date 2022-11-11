@@ -56,7 +56,7 @@ impl ty::TyAbiDeclaration {
         let mut new_methods = vec![];
         for method in methods.into_iter() {
             let method = check!(
-                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true),
+                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
                 ty::TyFunctionDeclaration::error(method.clone()),
                 warnings,
                 errors

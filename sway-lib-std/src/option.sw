@@ -167,7 +167,6 @@ impl<T> Option<T> {
         }
     }
 
-
     /// Returns the contained [`Some`] value or a provided default.
     ///
     /// [`unwrap_or`]: Option::unwrap_or

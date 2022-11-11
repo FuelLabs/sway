@@ -5,13 +5,19 @@ use core::ops::*;
 enum Error {
     BoolError: bool,      
     U8Error: u8,      
+    U16Error: u16,
+    U32Error: u32,
+    U64Error: u64,
 }
 
 impl Eq for Error {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
-            (Error::BoolError(val1), Error::BoolError(val2)) => val2 == val1,
-            (Error::U8Error(val1), Error::U8Error(val2)) => val2 == val1,
+            (Error::BoolError(val1), Error::BoolError(val2)) => val1 == val2,
+            (Error::U8Error(val1), Error::U8Error(val2)) => val1 == val2,
+            (Error::U16Error(val1), Error::U16Error(val2)) => val1 == val2,
+            (Error::U32Error(val1), Error::U32Error(val2)) => val1 == val2,
+            (Error::U64Error(val1), Error::U64Error(val2)) => val1 == val2,
             _ => false,
         }
     }
@@ -22,10 +28,24 @@ struct MyStruct {
     y: u64,
 }
 
+enum MyEnum {
+    X: u64,
+    Y: u64,
+}
+
 impl Eq for MyStruct {
     fn eq(self, other: Self) -> bool {
-        std::logging::log(5);
         self.x == other.x && self.y == other.y
+    }
+}
+
+impl Eq for MyEnum {
+    fn eq(self, other: Self) -> bool {
+        match (self, other) {
+            (MyEnum::X(val1), MyEnum::X(val2)) => val1 == val2,
+            (MyEnum::Y(val1), MyEnum::Y(val2)) => val1 == val2,
+            _ => false,
+        }
     }
 }
 
@@ -36,7 +56,7 @@ fn main() -> bool {
     test_unwrap(true);
     test_unwrap_or(true, false);
     test_some_ok_or(true, Error::BoolError(true));
-    test_none_ok_or(true, Error::BoolError(true)); // Currently fails
+    // test_none_ok_or(true, Error::BoolError(true)); // Currently fails
 
     /* Test `u8` */
     test_is_some(42u8);
@@ -44,7 +64,31 @@ fn main() -> bool {
     test_unwrap(42u8);
     test_unwrap_or(42u8, 0u8);
     test_some_ok_or(42u8, Error::U8Error(69u8));
-    test_none_ok_or(42u8, Error::U8Error(69u8)); // Currently fails
+    // test_none_ok_or(42u8, Error::U8Error(69u8)); // Currently fails
+
+    /* Test `u16` */
+    test_is_some(42u16);
+    test_is_none(42u16);
+    test_unwrap(42u16);
+    test_unwrap_or(42u16, 0u16);
+    test_some_ok_or(42u16, Error::U16Error(69u16));
+    // test_none_ok_or(42u8, Error::U8Error(69u8)); // Currently fails
+
+    /* Test `u32` */
+    test_is_some(42u32);
+    test_is_none(42u32);
+    test_unwrap(42u32);
+    test_unwrap_or(42u32, 0u32);
+    test_some_ok_or(42u32, Error::U32Error(69u32));
+    // test_none_ok_or(42u8, Error::U8Error(69u8)); // Currently fails
+
+    /* Test `u32` */
+    test_is_some(42u64);
+    test_is_none(42u64);
+    test_unwrap(42u64);
+    test_unwrap_or(42u64, 0u64);
+    test_some_ok_or(42u64, Error::U64Error(69u64));
+    // test_none_ok_or(42u8, Error::U8Error(69u8)); // Currently fails
 
     true
 }

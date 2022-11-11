@@ -246,6 +246,41 @@ impl CollectTypesMetadata for TyDeclaration {
     }
 }
 
+impl GetDeclIdent for TyDeclaration {
+    fn get_decl_ident(&self) -> Option<Ident> {
+        match self {
+            TyDeclaration::VariableDeclaration(decl) => Some(decl.name.clone()),
+            TyDeclaration::ConstantDeclaration(decl) => {
+                Some(de_get_constant(decl.clone(), &decl.span()).unwrap().name)
+            }
+            TyDeclaration::FunctionDeclaration(decl) => {
+                Some(de_get_function(decl.clone(), &decl.span()).unwrap().name)
+            }
+            TyDeclaration::TraitDeclaration(decl) => {
+                Some(de_get_trait(decl.clone(), &decl.span()).unwrap().name)
+            }
+            TyDeclaration::StructDeclaration(decl) => {
+                Some(de_get_struct(decl.clone(), &decl.span()).unwrap().name)
+            }
+            TyDeclaration::EnumDeclaration(decl) => {
+                Some(de_get_enum(decl.clone(), &decl.span()).unwrap().name)
+            }
+            TyDeclaration::ImplTrait(decl) => Some(
+                de_get_impl_trait(decl.clone(), &decl.span())
+                    .unwrap()
+                    .trait_name
+                    .suffix,
+            ),
+            TyDeclaration::AbiDeclaration(decl) => {
+                Some(de_get_abi(decl.clone(), &decl.span()).unwrap().name)
+            }
+            TyDeclaration::GenericTypeForFunctionScope { name, .. } => Some(name.clone()),
+            TyDeclaration::ErrorRecovery(_) => None,
+            TyDeclaration::StorageDeclaration(_decl) => None,
+        }
+    }
+}
+
 impl TyDeclaration {
     /// Retrieves the declaration as an enum declaration.
     ///
