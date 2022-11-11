@@ -677,6 +677,8 @@ pub enum CompileError {
     InitializedRegisterReassignment { name: String, span: Span },
     #[error("Control flow VM instructions are not allowed in assembly blocks.")]
     DisallowedControlFlowInstruction { name: String, span: Span },
+    #[error("Calling private library method {name} is not allowed.")]
+    CallingPrivateLibraryMethod { name: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -858,6 +860,7 @@ impl Spanned for CompileError {
             NestedSliceReturnNotAllowedInMain { span } => span.clone(),
             InitializedRegisterReassignment { span, .. } => span.clone(),
             DisallowedControlFlowInstruction { span, .. } => span.clone(),
+            CallingPrivateLibraryMethod { span, .. } => span.clone(),
         }
     }
 }
