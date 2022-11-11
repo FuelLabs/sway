@@ -760,7 +760,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Contract => "contract",
         TypeInfo::ErrorRecovery => "err_recov",
         TypeInfo::Unknown => "unknown",
-        TypeInfo::UnknownGeneric { name } => return format!("generic {}", name),
+        TypeInfo::UnknownGeneric { name, .. } => return format!("generic {}", name),
         TypeInfo::ContractCaller { abi_name, .. } => {
             return format!("contract caller {}", abi_name);
         }
@@ -769,6 +769,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Array(..) => "array",
         TypeInfo::Storage { .. } => "contract storage",
         TypeInfo::RawUntypedPtr => "raw untyped ptr",
+        TypeInfo::RawUntypedSlice => "raw untyped slice",
     }
     .to_string()
 }

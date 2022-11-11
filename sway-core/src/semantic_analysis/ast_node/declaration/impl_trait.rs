@@ -129,12 +129,11 @@ impl ty::TyImplTrait {
 
                 let new_methods = check!(
                     type_check_trait_implementation(
-                        ctx,
+                        ctx.by_ref(),
                         &new_impl_type_parameters,
                         &trait_decl.type_parameters,
                         &trait_type_arguments,
                         &trait_decl.supertraits,
-                        implementing_for_type_id,
                         &trait_decl.interface_surface,
                         &trait_decl.methods,
                         &functions,
@@ -176,16 +175,15 @@ impl ty::TyImplTrait {
                     });
                 }
 
-                let ctx = ctx.with_mode(Mode::ImplAbiFn);
+                let mut ctx = ctx.with_mode(Mode::ImplAbiFn);
 
                 let new_methods = check!(
                     type_check_trait_implementation(
-                        ctx,
+                        ctx.by_ref(),
                         &[], // this is empty because abi definitions don't support generics,
                         &[], // this is empty because abi definitions don't support generics,
                         &[], // this is empty because abi definitions don't support generics,
                         &[], // this is empty because abi definitions don't support supertraits,
-                        implementing_for_type_id,
                         &abi.interface_surface,
                         &abi.methods,
                         &functions,
@@ -366,7 +364,7 @@ impl ty::TyImplTrait {
                 | ty::TyDeclaration::ImplTrait(_)
                 | ty::TyDeclaration::AbiDeclaration(_)
                 | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
-                | ty::TyDeclaration::ErrorRecovery
+                | ty::TyDeclaration::ErrorRecovery(_)
                 | ty::TyDeclaration::StorageDeclaration(_) => Ok(false),
             }
         }
@@ -432,14 +430,17 @@ impl ty::TyImplTrait {
                 errors.push(CompileError::WhereClauseNotYetSupported {
                     span: type_parameter.trait_constraints_span,
                 });
-                return err(warnings, errors);
+                continue;
             }
             new_impl_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                return err(warnings, errors),
+                continue,
                 warnings,
                 errors
             ));
+        }
+        if !errors.is_empty() {
+            return err(warnings, errors);
         }
 
         // type check the type that we are implementing for
@@ -485,11 +486,14 @@ impl ty::TyImplTrait {
         let mut methods = vec![];
         for fn_decl in functions.into_iter() {
             methods.push(check!(
-                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, true),
+                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, true, true),
                 continue,
                 warnings,
                 errors
             ));
+        }
+        if !errors.is_empty() {
+            return err(warnings, errors);
         }
 
         check!(
@@ -528,7 +532,6 @@ fn type_check_trait_implementation(
     trait_type_parameters: &[TypeParameter],
     trait_type_arguments: &[TypeArgument],
     trait_supertraits: &[Supertrait],
-    type_implementing_for: TypeId,
     trait_interface_surface: &[DeclarationId],
     trait_methods: &[DeclarationId],
     impl_methods: &[FunctionDeclaration],
@@ -537,6 +540,11 @@ fn type_check_trait_implementation(
     is_contract: bool,
 ) -> CompileResult<Vec<DeclarationId>> {
     use sway_error::error::InterfaceName;
+
+    let mut errors = vec![];
+    let mut warnings = vec![];
+
+    let self_type = ctx.self_type();
     let interface_name = || -> InterfaceName {
         if is_contract {
             InterfaceName::Abi(trait_name.suffix.clone())
@@ -545,17 +553,60 @@ fn type_check_trait_implementation(
         }
     };
 
-    let mut errors = vec![];
-    let mut warnings = vec![];
+    // Check to see if the type that we are implementing for implements the
+    // supertraits of this trait.
+    check!(
+        ctx.namespace
+            .implemented_traits
+            .check_if_trait_constraints_are_satisfied_for_type(
+                self_type,
+                &trait_supertraits
+                    .iter()
+                    .map(|x| x.into())
+                    .collect::<Vec<_>>(),
+                block_span
+            ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
-    let self_type = ctx.self_type();
+    // Gather the supertrait "original_method_ids" and "impld_method_ids".
+    let (supertrait_original_method_ids, supertrait_impld_method_ids) = check!(
+        handle_supertraits(ctx.by_ref(), trait_supertraits),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // Insert the implemented methods for the supertraits into this namespace
+    // so that the methods defined in the impl block can use them.
+    //
+    // We purposefully do not check for errors here because this is a temporary
+    // namespace and not a real impl block defined by the user.
+    ctx.namespace.insert_trait_implementation(
+        trait_name.clone(),
+        trait_type_arguments.to_vec(),
+        self_type,
+        &supertrait_impld_method_ids
+            .values()
+            .cloned()
+            .collect::<Vec<_>>(),
+        &trait_name.span(),
+        false,
+    );
 
     // This map keeps track of the remaining functions in the interface surface
     // that still need to be implemented for the trait to be fully implemented.
-    let mut function_checklist: BTreeMap<Ident, ty::TyTraitFn> = BTreeMap::new();
+    let mut method_checklist: BTreeMap<Ident, ty::TyTraitFn> = BTreeMap::new();
+
     // This map keeps track of the original declaration id's of the original
     // interface surface.
-    let mut decl_id_map: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    let mut original_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+
+    // This map keeps track of the new declaration ids of the implemented
+    // interface surface.
+    let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
 
     for decl_id in trait_interface_surface.iter() {
         let method = check!(
@@ -565,32 +616,9 @@ fn type_check_trait_implementation(
             errors
         );
         let name = method.name.clone();
-        function_checklist.insert(name.clone(), method);
-        decl_id_map.insert(name, decl_id.clone());
+        method_checklist.insert(name.clone(), method);
+        original_method_ids.insert(name, decl_id.clone());
     }
-
-    let mut new_method_ids: Vec<DeclarationId> = vec![];
-    let mut processed_methods: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
-
-    let (original_supertrait_decl_ids, these_supertrait_decl_ids) = check!(
-        handle_supertraits(ctx.by_ref(), trait_supertraits),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    ctx.namespace.insert_trait_implementation(
-        CallPath {
-            prefixes: vec![],
-            suffix: trait_name.suffix.clone(),
-            is_absolute: false,
-        },
-        trait_type_arguments.to_vec(),
-        self_type,
-        &new_method_ids,
-        block_span,
-        false,
-    );
 
     for impl_method in impl_methods {
         let mut ctx = ctx
@@ -600,22 +628,22 @@ fn type_check_trait_implementation(
 
         // type check the function declaration
         let mut impl_method = check!(
-            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), impl_method.clone(), true),
+            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), impl_method.clone(), true, false),
             continue,
             warnings,
             errors
         );
 
         // Ensure that there aren't multiple definitions of this function impl'd
-        if processed_methods.contains_key(&impl_method.name.clone()) {
+        if impld_method_ids.contains_key(&impl_method.name.clone()) {
             errors.push(CompileError::MultipleDefinitionsOfFunction {
                 name: impl_method.name.clone(),
             });
-            return err(warnings, errors);
+            continue;
         }
 
         // remove this function from the "checklist"
-        let mut impl_method_signature = match function_checklist.remove(&impl_method.name) {
+        let mut impl_method_signature = match method_checklist.remove(&impl_method.name) {
             Some(trait_fn) => trait_fn,
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
@@ -623,7 +651,7 @@ fn type_check_trait_implementation(
                     interface_name: interface_name(),
                     span: impl_method.name.span(),
                 });
-                return err(warnings, errors);
+                continue;
             }
         };
 
@@ -747,12 +775,12 @@ fn type_check_trait_implementation(
             .into_iter()
             .cloned()
             .collect();
-        let unconstrained_type_parameters_in_the_type: HashSet<TypeParameter> =
-            type_implementing_for
-                .unconstrained_type_parameters(impl_type_parameters)
-                .into_iter()
-                .cloned()
-                .collect::<HashSet<_>>();
+        let unconstrained_type_parameters_in_the_type: HashSet<TypeParameter> = ctx
+            .self_type()
+            .unconstrained_type_parameters(impl_type_parameters)
+            .into_iter()
+            .cloned()
+            .collect::<HashSet<_>>();
         let mut unconstrained_type_parameters_to_be_added =
             unconstrained_type_parameters_in_this_function
                 .difference(&unconstrained_type_parameters_in_the_type)
@@ -765,14 +793,10 @@ fn type_check_trait_implementation(
 
         let name = impl_method.name.clone();
         let decl_id = de_insert_function(impl_method);
-        new_method_ids.push(decl_id.clone());
-        processed_methods.insert(name, decl_id);
+        impld_method_ids.insert(name, decl_id);
     }
 
-    // This name space is temporary! It is used only so that the below methods
-    // can reference functions from the interface
-    let mut impl_trait_namespace = ctx.namespace.clone();
-    let ctx = ctx.scoped(&mut impl_trait_namespace);
+    let mut all_method_ids: Vec<DeclarationId> = impld_method_ids.values().cloned().collect();
 
     // Retrieve the methods defined on the trait declaration and transform
     // them into the correct typing for this impl block by using the type
@@ -790,11 +814,10 @@ fn type_check_trait_implementation(
             .map(|type_arg| type_arg.type_id)
             .collect(),
     );
-    let mut original_decl_ids = decl_id_map;
-    original_decl_ids.extend(original_supertrait_decl_ids);
-    let mut new_decl_ids = processed_methods;
-    new_decl_ids.extend(these_supertrait_decl_ids);
-    let decl_mapping = DeclMapping::from_original_and_new_decl_ids(original_decl_ids, new_decl_ids);
+    original_method_ids.extend(supertrait_original_method_ids);
+    impld_method_ids.extend(supertrait_impld_method_ids);
+    let decl_mapping =
+        DeclMapping::from_original_and_new_decl_ids(original_method_ids, impld_method_ids);
     for decl_id in trait_methods.iter() {
         let mut method = check!(
             CompileResult::from(de_get_function(decl_id.clone(), block_span)),
@@ -805,14 +828,14 @@ fn type_check_trait_implementation(
         method.replace_decls(&decl_mapping);
         method.copy_types(&type_mapping);
         method.replace_self_type(ctx.self_type());
-        new_method_ids.push(de_insert_function(method).with_parent(decl_id.clone()));
+        all_method_ids.push(de_insert_function(method).with_parent(decl_id.clone()));
     }
 
     // check that the implementation checklist is complete
-    if !function_checklist.is_empty() {
+    if !method_checklist.is_empty() {
         errors.push(CompileError::MissingInterfaceSurfaceMethods {
             span: block_span.clone(),
-            missing_functions: function_checklist
+            missing_functions: method_checklist
                 .into_iter()
                 .map(|(ident, _)| ident.as_str().to_string())
                 .collect::<Vec<_>>()
@@ -820,7 +843,11 @@ fn type_check_trait_implementation(
         });
     }
 
-    ok(new_method_ids, warnings, errors)
+    if errors.is_empty() {
+        ok(all_method_ids, warnings, errors)
+    } else {
+        err(warnings, errors)
+    }
 }
 
 /// Given an array of [TypeParameter] `type_parameters`, checks to see if any of
@@ -923,10 +950,23 @@ fn handle_supertraits(
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
-    let mut original_supertrait_decl_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
-    let mut these_supertrait_decl_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    let mut interface_surface_methods_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    let self_type = ctx.self_type();
 
     for supertrait in supertraits.iter() {
+        // Right now we don't have the ability to support defining a supertrait
+        // using a callpath directly, so we check to see if the user has done
+        // this and we disallow it.
+        if !supertrait.name.prefixes.is_empty() {
+            errors.push(CompileError::UnimplementedWithHelp(
+                "Using module paths to define supertraits is not supported yet.",
+                "try importing the trait with a \"use\" statement instead",
+                supertrait.span(),
+            ));
+            continue;
+        }
+
         match ctx
             .namespace
             .resolve_call_path(&supertrait.name)
@@ -934,54 +974,48 @@ fn handle_supertraits(
             .cloned()
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
-                let ty::TyTraitDeclaration {
-                    interface_surface,
-                    supertraits,
-                    name,
-                    ..
-                } = check!(
+                let trait_decl = check!(
                     CompileResult::from(de_get_trait(decl_id.clone(), &supertrait.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
 
-                // Retrieve the interface surface for this trait.
-                for decl_id in interface_surface.into_iter() {
-                    let method = check!(
-                        CompileResult::from(de_get_trait_fn(decl_id.clone(), &name.span())),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    original_supertrait_decl_ids.insert(method.name, decl_id);
+                // Right now we don't parse type arguments for supertraits, so
+                // we should give this error message to users.
+                if !trait_decl.type_parameters.is_empty() {
+                    errors.push(CompileError::Unimplemented(
+                        "Using generic traits as supertraits is not supported yet.",
+                        supertrait.name.span(),
+                    ));
+                    continue;
                 }
 
-                // Retrieve the implemented methods for the interface surface
-                // for the supertrait and this type.
-                for decl_id in ctx
-                    .namespace
-                    .get_methods_for_type_and_trait_name(ctx.self_type(), &supertrait.name)
-                    .into_iter()
-                {
-                    let method = check!(
-                        CompileResult::from(de_get_function(decl_id.clone(), &name.span())),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    these_supertrait_decl_ids.insert(method.name, decl_id);
-                }
-
-                let (mut next_original_supertrait_decl_ids, mut next_these_supertrait_decl_ids) = check!(
-                    handle_supertraits(ctx.by_ref(), &supertraits),
-                    return err(warnings, errors),
+                // Retrieve the interface surface and implemented method ids for
+                // this trait.
+                let (trait_interface_surface_methods_ids, trait_impld_method_ids) = check!(
+                    trait_decl.retrieve_interface_surface_and_implemented_methods_for_type(
+                        ctx.by_ref(),
+                        self_type,
+                        &supertrait.name
+                    ),
+                    continue,
                     warnings,
                     errors
                 );
+                interface_surface_methods_ids.extend(trait_interface_surface_methods_ids);
+                impld_method_ids.extend(trait_impld_method_ids);
 
-                original_supertrait_decl_ids.append(&mut next_original_supertrait_decl_ids);
-                these_supertrait_decl_ids.append(&mut next_these_supertrait_decl_ids);
+                // Retrieve the interface surfaces and implemented methods for
+                // the supertraits of this type.
+                let (next_original_supertrait_decl_ids, next_these_supertrait_decl_ids) = check!(
+                    handle_supertraits(ctx.by_ref(), &trait_decl.supertraits),
+                    continue,
+                    warnings,
+                    errors
+                );
+                interface_surface_methods_ids.extend(next_original_supertrait_decl_ids);
+                impld_method_ids.extend(next_these_supertrait_decl_ids);
             }
             Some(ty::TyDeclaration::AbiDeclaration(_)) => {
                 errors.push(CompileError::AbiAsSupertrait {
@@ -995,9 +1029,13 @@ fn handle_supertraits(
         }
     }
 
-    ok(
-        (original_supertrait_decl_ids, these_supertrait_decl_ids),
-        warnings,
-        errors,
-    )
+    if errors.is_empty() {
+        ok(
+            (interface_surface_methods_ids, impld_method_ids),
+            warnings,
+            errors,
+        )
+    } else {
+        err(warnings, errors)
+    }
 }

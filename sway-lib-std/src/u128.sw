@@ -95,6 +95,17 @@ impl u64 {
 
 impl U128 {
     /// Initializes a new, zeroed `U128`.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// let new_u128 = U128::new();
+    /// let zero_u128 = U128 { upper: 0, lower: 0 };
+    ///
+    /// assert(new_u128 == zero_u128);
+    /// ```
     pub fn new() -> U128 {
         U128 {
             upper: 0,
@@ -104,6 +115,22 @@ impl U128 {
 
     /// Safely downcast to `u64` without loss of precision.
     /// Returns Err if the number > u64::max()
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::u128::{U128, U128Error};
+    ///
+    /// let zero_u128 = U128 { upper: 0, lower: 0 };
+    /// let zero_u64 = zero_u128.as_u64().unwrap();
+    ///
+    /// assert(zero_u64 == 0);
+    /// 
+    /// let max_u128 = U128::max();
+    /// let result = max_u128.as_u64();
+    ///
+    /// assert(result.is_err()));
+    /// ```
     pub fn as_u64(self) -> Result<u64, U128Error> {
         match self.upper {
             0 => Result::Ok(self.lower),
@@ -112,6 +139,18 @@ impl U128 {
     }
 
     /// The smallest value that can be represented by this integer type.
+    /// Initializes a new, zeroed `U128`.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// let min_u128 = U128::min();
+    /// let zero_u128 = U128 { upper: 0, lower: 0 };
+    ///
+    /// assert(min_u128 == zero_u128);
+    /// ```
     pub fn min() -> U128 {
         U128 {
             upper: 0,
@@ -121,6 +160,17 @@ impl U128 {
 
     /// The largest value that can be represented by this type,
     /// 2<sup>128</sup> - 1.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// let max_u128 = U128::max();
+    /// let maxed_u128 = U128 { upper: u64::max(), lower: u64::max() };
+    ///
+    /// assert(max_u128 == maxed_u128);
+    /// ```
     pub fn max() -> U128 {
         U128 {
             upper: u64::max(),
@@ -129,6 +179,16 @@ impl U128 {
     }
 
     /// The size of this type in bits.
+    ///
+    /// ### Examples
+    /// 
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// let bits = U128::bits();
+    ///
+    /// assert(bits == 128);
+    /// ```
     pub fn bits() -> u32 {
         128
     }
@@ -247,22 +307,18 @@ impl core::ops::Multiply for U128 {
         let zero = U128::from((0, 0));
         let one = U128::from((0, 1));
 
-        let mut total = U128::new();
-        let mut i = 128 - 1;
-        while true {
-            total <<= 1;
-            if (other & (one << i)) != zero {
-                total = total + self;
+        let mut x = self;
+        let mut y = other;
+        let mut result = U128::new();
+        while y != zero {
+            if (y & one).lower != 0 {
+                result += x;
             }
-
-            if i == 0 {
-                break;
-            }
-
-            i -= 1;
+            x <<= 1;
+            y >>= 1;
         }
 
-        total
+        result
     }
 }
 
@@ -270,7 +326,6 @@ impl core::ops::Divide for U128 {
     /// Divide a `U128` by a `U128`. Panics if divisor is zero.
     fn divide(self, divisor: Self) -> Self {
         let zero = U128::from((0, 0));
-        let one = U128::from((0, 1));
 
         assert(divisor != zero);
 
@@ -280,11 +335,11 @@ impl core::ops::Divide for U128 {
         while true {
             quotient <<= 1;
             remainder <<= 1;
-            remainder = remainder | ((self & (one << i)) >> i);
+            remainder.lower = remainder.lower | (self >> i).lower & 1;
             // TODO use >= once OrdEq can be implemented.
             if remainder > divisor || remainder == divisor {
                 remainder -= divisor;
-                quotient = quotient | one;
+                quotient.lower = quotient.lower | 1;
             }
 
             if i == 0 {
@@ -334,16 +389,15 @@ impl Root for U128 {
     /// Newton's method as in https://en.wikipedia.org/wiki/Integer_square_root#Algorithm_using_Newton's_method
     fn sqrt(self) -> Self {
         let zero = U128::from((0, 0));
-        let two = U128::from((0, 2));
-        let mut x0 = self / two;
+        let mut x0 = self >> 1;
         let mut s = self;
 
         if x0 != zero {
-            let mut x1 = (x0 + s / x0) / two;
+            let mut x1 = (x0 + s / x0) >> 1;
 
             while x1 < x0 {
                 x0 = x1;
-                x1 = (x0 + self / x0) / two;
+                x1 = (x0 + self / x0) >> 1;
             }
 
             return x0;

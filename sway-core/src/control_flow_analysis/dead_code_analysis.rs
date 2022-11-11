@@ -265,7 +265,12 @@ fn connect_node(
         ty::TyAstNodeContent::SideEffect => (leaves.to_vec(), exit_node),
         ty::TyAstNodeContent::Declaration(decl) => {
             // all leaves connect to this node, then this node is the singular leaf
-            let decl_node = graph.add_node(node.into());
+            let cfg_node: ControlFlowGraphNode = node.into();
+            // check if node for this decl already exists
+            let decl_node = match graph.get_node_from_decl(&cfg_node) {
+                Some(node) => node,
+                None => graph.add_node(cfg_node),
+            };
             for leaf in leaves {
                 graph.add_edge(*leaf, decl_node, "".into());
             }
@@ -369,7 +374,7 @@ fn connect_declaration(
             connect_storage_declaration(&storage, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
+        ErrorRecovery(_) | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
     }
 }
 

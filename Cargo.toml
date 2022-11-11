@@ -23,7 +23,6 @@ members = [
     "sway-utils",
     "swayfmt",
     "test",
-    "test-sig-gen-util",
 ]
 exclude = [
     "examples/*"

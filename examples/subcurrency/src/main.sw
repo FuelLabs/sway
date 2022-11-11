@@ -66,7 +66,7 @@ impl Token for Contract {
         };
 
         // Increase the balance of receiver
-        storage.balances.insert(receiver, storage.balances.get(receiver) + amount)
+        storage.balances.insert(receiver, storage.balances.get(receiver) + amount);
     }
 
     #[storage(read, write)]

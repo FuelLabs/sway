@@ -41,6 +41,7 @@ pub(super) fn unify(
         (Numeric, Numeric) => (vec![], vec![]),
         (Contract, Contract) => (vec![], vec![]),
         (RawUntypedPtr, RawUntypedPtr) => (vec![], vec![]),
+        (RawUntypedSlice, RawUntypedSlice) => (vec![], vec![]),
         (Str(l), Str(r)) => unify::unify_strs(
             received,
             expected,
@@ -218,11 +219,16 @@ pub(super) fn unify(
             ),
         },
 
-        (UnknownGeneric { name: rn }, UnknownGeneric { name: en })
-            if rn.as_str() == en.as_str() =>
-        {
-            (vec![], vec![])
-        }
+        (
+            UnknownGeneric {
+                name: rn,
+                trait_constraints: rtc,
+            },
+            UnknownGeneric {
+                name: en,
+                trait_constraints: etc,
+            },
+        ) if rn.as_str() == en.as_str() && rtc == etc => (vec![], vec![]),
         (ref r @ UnknownGeneric { .. }, e) => match type_engine.slab.replace(received, r, e) {
             None => (vec![], vec![]),
             Some(_) => unify(
@@ -292,6 +298,7 @@ pub(super) fn unify_right(
         (Numeric, Numeric) => (vec![], vec![]),
         (Contract, Contract) => (vec![], vec![]),
         (RawUntypedPtr, RawUntypedPtr) => (vec![], vec![]),
+        (RawUntypedSlice, RawUntypedSlice) => (vec![], vec![]),
         (Str(l), Str(r)) => unify::unify_strs(received, expected, span, help_text, l, r, false),
         (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
             unify::unify_tuples(help_text, rfs, efs, curried)
@@ -393,11 +400,16 @@ pub(super) fn unify_right(
         },
         (Unknown, _) => (vec![], vec![]),
 
-        (UnknownGeneric { name: rn }, UnknownGeneric { name: en })
-            if rn.as_str() == en.as_str() =>
-        {
-            (vec![], vec![])
-        }
+        (
+            UnknownGeneric {
+                name: rn,
+                trait_constraints: rtc,
+            },
+            UnknownGeneric {
+                name: en,
+                trait_constraints: etc,
+            },
+        ) if rn.as_str() == en.as_str() && rtc == etc => (vec![], vec![]),
         (r, ref e @ UnknownGeneric { .. }) => match type_engine.slab.replace(expected, e, r) {
             None => (vec![], vec![]),
             Some(_) => unify_right(type_engine, received, expected, span, help_text),

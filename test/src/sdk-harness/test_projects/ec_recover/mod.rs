@@ -40,7 +40,7 @@ async fn setup_env() -> Result<
         coins_per_asset,
         amount_per_coin,
     );
-    let (provider, _socket_addr) = setup_test_provider(coins.clone(), vec![], None).await;
+    let (provider, _socket_addr) = setup_test_provider(coins.clone(), vec![], None, None).await;
     wallet.set_provider(provider);
 
     let contract_id = Contract::deploy(
