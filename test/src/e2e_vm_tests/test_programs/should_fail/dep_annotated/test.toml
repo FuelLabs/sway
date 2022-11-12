@@ -1,0 +1,13 @@
+category = "fail"
+
+# check: pub dep baz;
+# nextln: $()Unnecessary visibility qualifier, `pub` is implied here.
+
+# check: /// should return a parser error
+# nextln: $()Cannot attach a documentation comment to a dependency.
+
+# check: #[inline(never)]
+# nextln: $()Cannot annotate a dependency.
+
+# check: 0 // Test that recovery reaches type checking.
+# nextln: $()Mismatched types.
