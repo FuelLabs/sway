@@ -1,5 +1,3 @@
-library option;
-
 //! Optional values.
 //!
 //! Type [`Option`] represents an optional value: every [`Option`]
@@ -55,7 +53,7 @@ library option;
 //! These methods extract the contained value in an [`Option<T>`] when it
 //! is the [`Some`] variant. If the [`Option`] is [`None`]:
 //!
-//! * [`unwrap`] panics with a generic message
+//! * [`unwrap`] reverts
 //! * [`unwrap_or`] returns the provided default value
 //!
 //! [`unwrap`]: Option::unwrap
@@ -67,36 +65,32 @@ library option;
 //!
 //! * [`ok_or`] transforms [`Some(v)`] to [`Ok(v)`], and [`None`] to
 //!   [`Err(err)`] using the provided default `err` value
-//! * [`transpose`] transposes an [`Option`] of a [`Result`] into a
-//!   [`Result`] of an [`Option`]
 //!
 //! [`Err(err)`]: Err
 //! [`Ok(v)`]: Ok
 //! [`Some(v)`]: Some
 //! [`ok_or`]: Option::ok_or
-//! [`transpose`]: Option::transpose
+library option;
 
 use ::convert::From;
-use ::revert::revert;
 use ::result::Result;
+use ::revert::revert;
 
 /// The `Option` type. See [the module level documentation](self) for more.
 pub enum Option<T> {
     /// No value.
     None: (),
-    /// Some value of type `T`. 
+    /// Some value of type `T`.
     Some: T,
 }
 
 /////////////////////////////////////////////////////////////////////////////
 // Type implementation
 /////////////////////////////////////////////////////////////////////////////
-
 impl<T> Option<T> {
     /////////////////////////////////////////////////////////////////////////
     // Querying the contained values
     /////////////////////////////////////////////////////////////////////////
-
     /// Returns `true` if the option is a [`Some`] value.
     ///
     /// # Examples
@@ -136,7 +130,6 @@ impl<T> Option<T> {
     /////////////////////////////////////////////////////////////////////////
     // Getting to contained values
     /////////////////////////////////////////////////////////////////////////
-
     /// Returns the contained [`Some`] value, consuming the `self` value.
     ///
     /// Because this function may revert, its use is generally discouraged.
@@ -145,20 +138,20 @@ impl<T> Option<T> {
     ///
     /// [`unwrap_or`]: Option::unwrap_or
     ///
-    /// # Reverts 
+    /// # Reverts
     ///
     /// Reverts if the self value equals [`None`].
     ///
     /// # Examples
     ///
     /// ```
-    /// let x = Option::Some("air");
-    /// assert_eq!(x.unwrap(), "air");
+    /// let x = Option::Some(42);
+    /// assert(x.unwrap() == 42);
     /// ```
     ///
-    /// ```should_panic
-    /// let x: Option<&str> = Option::None;
-    /// assert_eq!(x.unwrap(), "air"); // fails
+    /// ```
+    /// let x: Option<u64> = Option::None;
+    /// assert(x.unwrap() == 42); // fails
     /// ```
     pub fn unwrap(self) -> T {
         match self {
@@ -174,8 +167,8 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// assert(Option::Some(42).unwrap_or(69), 42);
-    /// assert(Option::None.unwrap_or(69), 69);
+    /// assert(Option::Some(42).unwrap_or(69) == 42);
+    /// assert(Option::None::<u64>().unwrap_or(69) == 69);
     /// ```
     pub fn unwrap_or(self, default: T) -> T {
         match self {
@@ -187,7 +180,6 @@ impl<T> Option<T> {
     /////////////////////////////////////////////////////////////////////////
     // Transforming contained values
     /////////////////////////////////////////////////////////////////////////
-    
     /// Transforms the `Option<T>` into a [`Result<T, E>`], mapping [`Some(v)`] to
     /// [`Ok(v)`] and [`None`] to [`Err(err)`].
     ///
