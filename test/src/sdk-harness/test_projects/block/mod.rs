@@ -1,5 +1,4 @@
 use fuels::prelude::*;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tai64::Tai64;
 use tokio::time::{sleep, Duration};
 
