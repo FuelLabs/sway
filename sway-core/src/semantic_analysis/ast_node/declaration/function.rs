@@ -180,6 +180,9 @@ impl ty::TyFunctionDeclaration {
 fn test_function_selector_behavior() {
     use crate::language::Visibility;
     use sway_types::{integer_bits::IntegerBits, Ident, Span};
+
+    let type_engine = TypeEngine::default();
+
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_no_span("foo"),
@@ -195,7 +198,7 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
     };
 
-    let selector_text = match decl.to_selector_name().value {
+    let selector_text = match decl.to_selector_name(&type_engine).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };
@@ -212,8 +215,8 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
-                initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
+                type_id: type_engine.insert_type(TypeInfo::Str(5)),
+                initial_type_id: type_engine.insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
             ty::TyFunctionParameter {
@@ -221,8 +224,8 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
-                initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
+                type_id: type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
+                initial_type_id: type_engine.insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
         ],
@@ -236,7 +239,7 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
     };
 
-    let selector_text = match decl.to_selector_name().value {
+    let selector_text = match decl.to_selector_name(&type_engine).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };

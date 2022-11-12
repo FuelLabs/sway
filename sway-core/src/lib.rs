@@ -744,6 +744,7 @@ fn module_return_path_analysis(
 
 #[test]
 fn test_basic_prog() {
+    let type_engine = TypeEngine::default();
     let prog = parse(
         r#"
         contract;
@@ -825,6 +826,7 @@ fn test_basic_prog() {
     }
     "#
         .into(),
+        &type_engine,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -833,6 +835,7 @@ fn test_basic_prog() {
 }
 #[test]
 fn test_parenthesized() {
+    let type_engine = TypeEngine::default();
     let prog = parse(
         r#"
         contract;
@@ -842,6 +845,7 @@ fn test_parenthesized() {
         }
     "#
         .into(),
+        &type_engine,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -853,6 +857,7 @@ fn test_parenthesized() {
 fn test_unary_ordering() {
     use crate::language::{self, parsed};
 
+    let type_engine = TypeEngine::default();
     let prog = parse(
         r#"
     script;
@@ -862,6 +867,7 @@ fn test_unary_ordering() {
         !a && b;
     }"#
         .into(),
+        &type_engine,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();

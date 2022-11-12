@@ -1892,19 +1892,26 @@ mod tests {
     use super::*;
     use sway_error::type_error::TypeError;
 
-    fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<ty::TyExpression> {
+    fn do_type_check(
+        type_engine: &TypeEngine,
+        expr: Expression,
+        type_annotation: TypeId,
+    ) -> CompileResult<ty::TyExpression> {
         let mut namespace = Namespace::init_root(namespace::Module::default());
-        let ctx = TypeCheckContext::from_root(&mut namespace).with_type_annotation(type_annotation);
+        let ctx = TypeCheckContext::from_root(&mut namespace, type_engine)
+            .with_type_annotation(type_annotation);
         ty::TyExpression::type_check(ctx, expr)
     }
 
     fn do_type_check_for_boolx2(expr: Expression) -> CompileResult<ty::TyExpression> {
+        let type_engine = TypeEngine::default();
         do_type_check(
+            &type_engine,
             expr,
-            insert_type(TypeInfo::Array(
-                insert_type(TypeInfo::Boolean),
+            type_engine.insert_type(TypeInfo::Array(
+                type_engine.insert_type(TypeInfo::Boolean),
                 2,
-                insert_type(TypeInfo::Boolean),
+                type_engine.insert_type(TypeInfo::Boolean),
             )),
         )
     }
@@ -2011,12 +2018,14 @@ mod tests {
             span: Span::dummy(),
         };
 
+        let type_engine = TypeEngine::default();
         let comp_res = do_type_check(
+            &type_engine,
             expr,
-            insert_type(TypeInfo::Array(
-                insert_type(TypeInfo::Boolean),
+            type_engine.insert_type(TypeInfo::Array(
+                type_engine.insert_type(TypeInfo::Boolean),
                 0,
-                insert_type(TypeInfo::Boolean),
+                type_engine.insert_type(TypeInfo::Boolean),
             )),
         );
         assert!(comp_res.warnings.is_empty() && comp_res.errors.is_empty());
