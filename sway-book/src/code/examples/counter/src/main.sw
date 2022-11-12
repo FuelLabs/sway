@@ -2,10 +2,10 @@ contract;
 
 // ANCHOR: abi
 abi Counter {
-    #[storage(write)]
+    #[storage(read, write)]
     fn increment();
 
-    #[storage(write)]
+    #[storage(read, write)]
     fn decrement();
     
     #[storage(read)]
@@ -19,12 +19,12 @@ storage {
 }
 
 impl Counter for Contract {
-    #[storage(write)]
+    #[storage(read, write)]
     fn increment() {
         storage.counter += 1;
     }
 
-    #[storage(write)]
+    #[storage(read, write)]
     fn decrement() {
         storage.counter -= 1;
     }
