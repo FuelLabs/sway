@@ -15,7 +15,7 @@ use crate::{
 };
 use std::collections::HashSet;
 use sway_error::warning::{CompileWarning, Warning};
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 enum Effect {
@@ -196,6 +196,7 @@ fn analyze_expression(
             arguments,
             function_decl_id,
             selector,
+            call_path,
             ..
         } => {
             use crate::declaration_engine::de_get_function;
@@ -215,7 +216,14 @@ fn analyze_expression(
 
             if args_effs.contains(&Effect::Interaction) {
                 // TODO: interaction span has to be more precise and point to an argument which performs interaction
-                warn_after_interaction(&fn_effs, &expr.span, &func.span, block_name, warnings)
+                let last_arg_span = &arguments.last().unwrap().1.span;
+                warn_after_interaction(
+                    &fn_effs,
+                    &call_path.span(),
+                    last_arg_span,
+                    block_name,
+                    warnings,
+                )
             }
 
             let mut result_effs = set_union(fn_effs, args_effs);
