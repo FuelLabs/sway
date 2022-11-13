@@ -281,27 +281,28 @@ fn analyze_expression(
             set_union(cond_then_effs, cond_else_effs)
         }
         WhileLoop { condition, body } => {
+            // if the loop (condition + body) contains both interaction and storage operations
+            // in _any_ order, we report CEI pattern violation
             let cond_effs = analyze_expression(condition, block_name, warnings);
             let body_effs = analyze_code_block(body, block_name, warnings);
-            if cond_effs.contains(&Effect::Interaction) {
-                warn_after_interaction(
-                    &body_effs,
-                    &condition.span,
-                    &expr.span,
-                    block_name,
-                    warnings,
-                );
+            let res_effs = set_union(cond_effs, body_effs);
+            if res_effs.is_superset(&HashSet::from([Effect::Interaction, Effect::StorageRead])) {
+                warnings.push(CompileWarning {
+                    span: expr.span.clone(),
+                    warning_content: Warning::StorageReadAfterInteraction {
+                        block_name: block_name.clone(),
+                    },
+                });
             };
-            if body_effs.contains(&Effect::Interaction) {
-                warn_after_interaction(
-                    &cond_effs,
-                    &expr.span,
-                    &condition.span,
-                    block_name,
-                    warnings,
-                );
+            if res_effs.is_superset(&HashSet::from([Effect::Interaction, Effect::StorageWrite])) {
+                warnings.push(CompileWarning {
+                    span: expr.span.clone(),
+                    warning_content: Warning::StorageWriteAfterInteraction {
+                        block_name: block_name.clone(),
+                    },
+                });
             };
-            set_union(cond_effs, body_effs)
+            res_effs
         }
         AsmExpression {
             registers, body, ..
