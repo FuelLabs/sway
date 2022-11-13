@@ -3,7 +3,10 @@
 # Introduction
 
 - [Welcome!](./index.md)
-- [Installation](./documentation/introduction/installation.md)
+- [Installation](./documentation/introduction/installation/index.md)
+  - [Fuelup](./documentation/introduction/installation/fuelup.md)
+  - [Cargo](./documentation/introduction/installation/cargo.md)
+  - [Tab Completion](./documentation/introduction/installation/tab-completion.md)
 
 # The Sway Programming Language
 
