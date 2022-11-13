@@ -1,10 +1,34 @@
 # Contract Ownership
 
-<!-- TODO: ignore, planning on working on this soon, haven't made any adjustments from the current book -->
+THe following example implements access control to restrict functionality to a priviledged user.
 
-<!-- Many contracts require some form of ownership for access control. To accomplish this, it is recommended that a storage variable of type `Option<Identity>` is used to keep track of the owner. This allows setting and revoking ownership using the variants `Some(..)` and `None` respectively. This is better, safer, and more readable than using the `Identity` type directly where revoking ownership has to be done using some magic value such as `std::constants::ZERO_B256` or otherwise.
+ ## ABI
 
-The following is an example of how to properly set ownership of a contract:
+The [`interface`](../language/program-types/contract.md) contains a function to set the owner and a function that only the owner can use.
 
+```sway
+{{#include ../../code/examples/access-control/ownership/src/main.sw:abi}}
+```
 
-The following is an example of how to properly revoke ownership of a contract:
+## Identity
+
+We must keep track of the owner in storage and compare them against the caller via [`msg_sender()`](../operations/call-data/msg-sender.md).
+
+Initially there is no owner so we'll set them to `None`.
+
+```sway
+{{#include ../../code/examples/access-control/ownership/src/main.sw:identity}}
+```
+
+## Implementation
+
+To set the owner one of two conditions must be met:
+
+- There is no owner
+- The current owner is calling the function
+
+To call our `action()` function the caller must be the owner of the contract.
+
+```sway
+{{#include ../../code/examples/access-control/ownership/src/main.sw:implementation}}
+```
