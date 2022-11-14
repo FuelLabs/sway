@@ -2,6 +2,7 @@
 //!
 //! This is _not_ the place for optimization passes.
 use sway_error::error::CompileError;
+use sway_types::Span;
 
 use crate::asm_generation::{FinalizedAsm, ProgramKind};
 use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
@@ -31,41 +32,27 @@ pub fn check_invalid_opcodes(asm: &FinalizedAsm) -> CompileResult<()> {
 /// ```
 fn check_script_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
     use AllocatedOpcode::*;
-    let default_span =
-        sway_types::span::Span::new("no span found for opcode".into(), 0, 1, None).unwrap();
     let mut errors = vec![];
     for op in ops {
         match op.opcode {
             GM(_, VirtualImmediate18 { value: 1..=2 }) => {
                 errors.push(CompileError::GMFromExternalContract {
-                    span: op
-                        .owning_span
-                        .clone()
-                        .unwrap_or_else(|| default_span.clone()),
+                    span: get_op_span(op),
                 });
             }
             MINT(..) => {
                 errors.push(CompileError::MintFromExternalContext {
-                    span: op
-                        .owning_span
-                        .clone()
-                        .unwrap_or_else(|| default_span.clone()),
+                    span: get_op_span(op),
                 });
             }
             BURN(..) => {
                 errors.push(CompileError::BurnFromExternalContext {
-                    span: op
-                        .owning_span
-                        .clone()
-                        .unwrap_or_else(|| default_span.clone()),
+                    span: get_op_span(op),
                 });
             }
             SWW(..) | SRW(..) | SRWQ(..) | SWWQ(..) => {
                 errors.push(CompileError::ContractStorageFromExternalContext {
-                    span: op
-                        .owning_span
-                        .clone()
-                        .unwrap_or_else(|| default_span.clone()),
+                    span: get_op_span(op),
                 });
             }
             _ => (),
@@ -100,8 +87,6 @@ fn check_script_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
 /// See: https://fuellabs.github.io/fuel-specs/master/vm/index.html?highlight=predicate#predicate-verification
 fn check_predicate_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
     use AllocatedOpcode::*;
-    let default_span =
-        sway_types::span::Span::new("no span found for opcode".into(), 0, 1, None).unwrap();
     let mut errors = vec![];
 
     for (op, opcode_addr) in ops.iter().zip(0u32..) {
@@ -109,10 +94,7 @@ fn check_predicate_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
             ($name_str:literal) => {{
                 errors.push(CompileError::InvalidOpcodeFromPredicate {
                     opcode: $name_str.to_string(),
-                    span: op
-                        .owning_span
-                        .clone()
-                        .unwrap_or_else(|| default_span.clone()),
+                    span: get_op_span(op),
                 });
             }};
         }
@@ -120,10 +102,7 @@ fn check_predicate_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
             ($name_str:literal) => {{
                 errors.push(CompileError::InvalidBackwardJumpFromPredicate {
                     opcode: $name_str.to_string(),
-                    span: op
-                        .owning_span
-                        .clone()
-                        .unwrap_or_else(|| default_span.clone()),
+                    span: get_op_span(op),
                 });
             }};
         }
@@ -139,29 +118,16 @@ fn check_predicate_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
             CSIZ(..) => invalid_opcode!("CSIZ"),
             GM(_, VirtualImmediate18 { value: 1..=2 }) => {
                 errors.push(CompileError::GMFromExternalContract {
-                    span: op
-                        .owning_span
-                        .clone()
-                        .unwrap_or_else(|| default_span.clone()),
+                    span: get_op_span(op),
                 });
             }
-            JI(imm) => {
-                if imm.value <= opcode_addr {
-                    invalid_backward_jump!("JI");
-                }
-            }
+            JI(imm) if imm.value <= opcode_addr => invalid_backward_jump!("JI"),
             JMP(..) => invalid_opcode!("JMP"),
             JNE(..) => invalid_opcode!("JNE"),
-            JNEI(_, _, imm) => {
-                if u32::from(imm.value) <= opcode_addr {
-                    invalid_backward_jump!("JNEI");
-                }
+            JNEI(_, _, imm) if u32::from(imm.value) <= opcode_addr => {
+                invalid_backward_jump!("JNEI")
             }
-            JNZI(_, imm) => {
-                if imm.value <= opcode_addr {
-                    invalid_backward_jump!("JNZI");
-                }
-            }
+            JNZI(_, imm) if imm.value <= opcode_addr => invalid_backward_jump!("JNZI"),
             LDC(..) => invalid_opcode!("LDC"),
             LOG(..) => invalid_opcode!("LOG"),
             LOGD(..) => invalid_opcode!("LOGD"),
@@ -186,4 +152,12 @@ fn check_predicate_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
         // Preemptively avoids the creation of predicates with opcodes not allowed at runtime.
         err(vec![], errors)
     }
+}
+
+fn get_op_span(op: &AllocatedOp) -> Span {
+    let default_span =
+        sway_types::span::Span::new("no span found for opcode".into(), 0, 1, None).unwrap();
+    op.owning_span
+        .clone()
+        .unwrap_or_else(|| default_span.clone())
 }
