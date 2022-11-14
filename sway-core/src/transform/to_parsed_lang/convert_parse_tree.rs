@@ -5,6 +5,7 @@ use crate::{
 };
 
 use sway_ast::{
+    attribute::Annotated,
     expr::{ReassignmentOp, ReassignmentOpVariant},
     ty::TyTupleDescriptor,
     AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
@@ -61,21 +62,12 @@ pub fn module_to_sway_parse_tree(
 ) -> Result<ParseTree, ErrorEmitted> {
     let span = module.span();
     let root_nodes = {
-        let mut root_nodes: Vec<AstNode> = {
-            module
-                .dependencies
-                .iter()
-                .map(|dependency| {
-                    let span = dependency.span();
-                    let incl_stmt = dependency_to_include_statement(dependency);
-                    let content = AstNodeContent::IncludeStatement(incl_stmt);
-                    AstNode { content, span }
-                })
-                .collect()
-        };
+        let mut root_nodes: Vec<AstNode> = vec![];
+        let mut prev_item: Option<Annotated<ItemKind>> = None;
         for item in module.items {
-            let ast_nodes = item_to_ast_nodes(handler, item)?;
+            let ast_nodes = item_to_ast_nodes(handler, item.clone(), true, prev_item)?;
             root_nodes.extend(ast_nodes);
+            prev_item = Some(item);
         }
         root_nodes
     };
@@ -91,13 +83,63 @@ fn ast_node_is_test_fn(node: &AstNode) -> bool {
     false
 }
 
-fn item_to_ast_nodes(handler: &Handler, item: Item) -> Result<Vec<AstNode>, ErrorEmitted> {
+fn item_to_ast_nodes(
+    handler: &Handler,
+    item: Item,
+    is_root: bool,
+    prev_item: Option<Annotated<ItemKind>>,
+) -> Result<Vec<AstNode>, ErrorEmitted> {
     let attributes = item_attrs_to_map(handler, &item.attribute_list)?;
 
     let decl = |d| vec![AstNodeContent::Declaration(d)];
 
     let span = item.span();
     let contents = match item.value {
+        ItemKind::Dependency(dependency) => {
+            // Check that Dependency is not annotated
+            if attributes.contains_key(&AttributeKind::Doc) {
+                let error = ConvertParseTreeError::CannotDocCommentDependency {
+                    span: attributes
+                        .get(&AttributeKind::Doc)
+                        .unwrap()
+                        .last()
+                        .unwrap()
+                        .span
+                        .clone(),
+                };
+                handler.emit_err(error.into());
+            }
+            for (attribute_kind, attributes) in attributes.iter() {
+                if attribute_kind != &AttributeKind::Doc {
+                    for attribute in attributes {
+                        let error = ConvertParseTreeError::CannotAnnotateDependency {
+                            span: attribute.span.clone(),
+                        };
+                        handler.emit_err(error.into());
+                    }
+                }
+            }
+            // Check that Dependency comes after only other Dependencies
+            let emit_expected_dep_at_beginning = || {
+                let error = ConvertParseTreeError::ExpectedDependencyAtBeginning {
+                    span: dependency.span(),
+                };
+                handler.emit_err(error.into());
+            };
+            match prev_item {
+                Some(Annotated {
+                    value: ItemKind::Dependency(_),
+                    ..
+                }) => (),
+                Some(_) => emit_expected_dep_at_beginning(),
+                None => (),
+            }
+            if !is_root {
+                emit_expected_dep_at_beginning();
+            }
+            let incl_stmt = dependency_to_include_statement(&dependency);
+            vec![AstNodeContent::IncludeStatement(incl_stmt)]
+        }
         ItemKind::Use(item_use) => item_use_to_use_statements(handler, item_use)?
             .into_iter()
             .map(AstNodeContent::UseStatement)
@@ -1729,7 +1771,7 @@ fn statement_to_ast_nodes(
     let ast_nodes = match statement {
         Statement::Let(statement_let) => statement_let_to_ast_nodes(handler, statement_let)?,
         Statement::Item(item) => {
-            let nodes = item_to_ast_nodes(handler, item)?;
+            let nodes = item_to_ast_nodes(handler, item, false, None)?;
             nodes.iter().fold(Ok(()), |res, node| {
                 if ast_node_is_test_fn(node) {
                     let span = node.span.clone();
@@ -3130,6 +3172,7 @@ fn item_attrs_to_map(
         let attribute = Attribute {
             name: attr.name.clone(),
             args,
+            span: attr_decl.span(),
         };
 
         if let Some(attr_kind) = match name {
