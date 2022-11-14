@@ -20,7 +20,7 @@ use super::RunConfig;
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
 pub const SECRET_KEY: &str = "de97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
 
-pub(crate) async fn run_and_capture_output<F, Fut, T: Sized>(func: F) -> (T, String)
+pub(crate) async fn run_and_capture_output<F, Fut, T>(func: F) -> (T, String)
 where
     F: FnOnce() -> Fut,
     Fut: Future<Output = T>,

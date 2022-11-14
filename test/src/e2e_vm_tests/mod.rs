@@ -74,14 +74,16 @@ struct TestContext {
 impl TestContext {
     async fn deploy_contract(&self, contract_path: String) -> Result<ContractId> {
         let mut deployed_contracts = self.deployed_contracts.lock().await;
-        if let Some(contract_id) = deployed_contracts.get(&contract_path) {
-            Ok(*contract_id)
-        } else {
-            let result = harness::deploy_contract(contract_path.as_str(), &self.run_config).await;
-            let contract_id = result?;
-            deployed_contracts.insert(contract_path, contract_id);
-            Ok(contract_id)
-        }
+        Ok(
+            if let Some(contract_id) = deployed_contracts.get(&contract_path) {
+                *contract_id
+            } else {
+                let contract_id =
+                    harness::deploy_contract(contract_path.as_str(), &self.run_config).await?;
+                deployed_contracts.insert(contract_path, contract_id);
+                contract_id
+            },
+        )
     }
     async fn run(&self, test: TestDescription, output: &mut String) -> Result<()> {
         let context = self;
@@ -109,8 +111,8 @@ impl TestContext {
                     ),
                 };
 
-                let (result, out) = run_and_capture_output(|| async {
-                    harness::compile_to_bytes(&name, &context.run_config).await
+                let (result, out) = run_and_capture_output(|| {
+                    harness::compile_to_bytes(&name, &context.run_config)
                 })
                 .await;
                 *output = out;
@@ -152,8 +154,8 @@ impl TestContext {
             }
 
             TestCategory::Compiles => {
-                let (result, out) = run_and_capture_output(|| async {
-                    harness::compile_to_bytes(&name, &context.run_config).await
+                let (result, out) = run_and_capture_output(|| {
+                    harness::compile_to_bytes(&name, &context.run_config)
                 })
                 .await;
 
@@ -194,8 +196,8 @@ impl TestContext {
             }
 
             TestCategory::FailsToCompile => {
-                let (result, out) = run_and_capture_output(|| async {
-                    harness::compile_to_bytes(&name, &context.run_config).await
+                let (result, out) = run_and_capture_output(|| {
+                    harness::compile_to_bytes(&name, &context.run_config)
                 })
                 .await;
                 *output = out;
