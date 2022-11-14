@@ -8,6 +8,7 @@ dep revert;
 dep assert;
 dep result;
 dep option;
+dep never;
 dep alloc;
 dep contract_id;
 dep constants;
