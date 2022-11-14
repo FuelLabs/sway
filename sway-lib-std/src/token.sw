@@ -25,7 +25,7 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 /// * `to` - The `Identity` to which to send the tokens
 ///
 /// ### Examples
-/// 
+///
 /// ```sway
 /// use std::{constants::ZERO_B256, token::mint_to};
 ///
@@ -55,7 +55,7 @@ pub fn mint_to(amount: u64, to: Identity) {
 /// * `to` - The `ContractId` to which to send the tokens
 ///
 /// ### Examples
-/// 
+///
 /// ```sway
 /// use std::{constants::ZERO_B256, token::mint_to_contract};
 ///
@@ -77,7 +77,7 @@ pub fn mint_to_contract(amount: u64, to: ContractId) {
 /// * `to` - The `Address` to which to send the tokens
 ///
 /// ### Examples
-/// 
+///
 /// ```sway
 /// use std::{constants::ZERO_B256, token::mint_to_address};
 ///
@@ -97,7 +97,7 @@ pub fn mint_to_address(amount: u64, to: Address) {
 /// * `amount` - The amount of tokens to mint
 ///
 /// ### Examples
-/// 
+///
 /// ```sway
 /// use std::token::mint;
 ///
@@ -120,7 +120,7 @@ pub fn mint(amount: u64) {
 /// Reverts if the contract balance is less than `amount`
 ///
 /// ### Examples
-/// 
+///
 /// ```sway
 /// use std::token::burn;
 ///
@@ -146,7 +146,7 @@ pub fn burn(amount: u64) {
 ///
 /// * `amount` - The amount of tokens to transfer
 /// * `asset_id` - The `ContractId` of the token to transfer
-/// * `to` - The `Identity` of the recipient 
+/// * `to` - The `Identity` of the recipient
 ///
 /// ### Reverts
 ///
@@ -155,7 +155,7 @@ pub fn burn(amount: u64) {
 /// * If there are no free variable outputs when transferring to an `Address`
 ///
 /// ### Examples
-/// 
+///
 /// ```sway
 /// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::transfer};
 ///
@@ -185,15 +185,15 @@ pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
 ///
 /// * `amount` - The amount of tokens to transfer
 /// * `asset_id` - The `ContractId` of the token to transfer
-/// * `to` - The `ContractId` of the recipient contract 
+/// * `to` - The `ContractId` of the recipient contract
 ///
 /// ### Reverts
 ///
 /// * If `amount` is greater than the contract balance for `asset_id`
-/// * If `amount` is equal to 0 
+/// * If `amount` is equal to 0
 ///
 /// ### Examples
-/// 
+///
 /// ```sway
 /// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::force_transfer_to_contract};
 ///
@@ -214,7 +214,7 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: Contrac
 ///
 /// * `amount` - The amount of tokens to transfer
 /// * `asset_id` - The `ContractId` of the token to transfer
-/// * `to` - The `Address` of the recipient user 
+/// * `to` - The `Address` of the recipient user
 ///
 /// ### Reverts
 ///
@@ -223,7 +223,7 @@ pub fn force_transfer_to_contract(amount: u64, asset_id: ContractId, to: Contrac
 /// * If there are no free variable outputs
 ///
 /// ### Examples
-/// 
+///
 /// ```sway
 /// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::transfer_to_address};
 ///

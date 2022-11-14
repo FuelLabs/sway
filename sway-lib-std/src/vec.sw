@@ -2,7 +2,6 @@ library vec;
 
 use ::alloc::{alloc, realloc};
 use ::assert::assert;
-use ::intrinsics::size_of;
 use ::option::Option;
 use ::convert::From;
 
@@ -63,7 +62,7 @@ impl<T> Vec<T> {
     /// The vector will not allocate until elements are pushed onto it.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::vec::Vec;
     ///
@@ -87,7 +86,7 @@ impl<T> Vec<T> {
     /// *capacity* specified, the vector will have a zero *length*.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::vec::Vec;
     ///
@@ -107,7 +106,7 @@ impl<T> Vec<T> {
     /// Appends an element to the back of a collection.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::vec::Vec;
     ///
@@ -136,7 +135,7 @@ impl<T> Vec<T> {
     /// Gets the capacity of the allocation.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::vec::Vec;
     ///
@@ -154,7 +153,7 @@ impl<T> Vec<T> {
     /// of the vector.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::vec::Vec;
     ///
@@ -171,7 +170,7 @@ impl<T> Vec<T> {
     /// bounds.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::vec::Vec;
     ///
@@ -201,7 +200,7 @@ impl<T> Vec<T> {
     /// as its 'length'.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::vec::Vec;
     ///
@@ -218,7 +217,7 @@ impl<T> Vec<T> {
     /// Returns `true` if the vector contains no elements.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::vec::Vec;
     ///
@@ -235,13 +234,13 @@ impl<T> Vec<T> {
 
     /// Removes and returns the element at position `index` within the vector,
     /// shifting all elements after it to the left.
-    /// 
+    ///
     /// ### Reverts
     ///
     /// * If `index >= self.len`
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::vec::Vec;
     ///
@@ -282,7 +281,7 @@ impl<T> Vec<T> {
     /// Panics if `index > len`.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::vec::Vec;
     ///
@@ -328,7 +327,7 @@ impl<T> Vec<T> {
     /// is empty.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::vec::Vec;
     ///
@@ -362,7 +361,7 @@ impl<T> Vec<T> {
     /// * If `element1_index` or `element2_index` is greater than or equal to the length of vector.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::vec::Vec;
     ///
@@ -403,7 +402,7 @@ impl<T> Vec<T> {
     /// * If `index` is greater than or equal to the length of vector.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::vec::Vec;
     ///
