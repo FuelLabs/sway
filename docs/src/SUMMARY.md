@@ -45,6 +45,7 @@
   - [Storage Maps](./common-collections/storage_map.md)
 - [Testing](./testing/index.md)
   - [Testing with Rust](./testing/testing-with-rust.md)
+  - [Unit Testing](./testing/unit-testing.md)
 - [Application Frontend](./frontend/index.md)
   - [TypeScript SDK](./frontend/typescript_sdk.md)
 - [Sway Reference](./reference/index.md)
