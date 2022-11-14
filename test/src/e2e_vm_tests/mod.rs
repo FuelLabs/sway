@@ -3,6 +3,7 @@
 mod harness;
 mod util;
 
+use crate::e2e_vm_tests::harness::run_and_capture_output;
 use crate::{FilterConfig, RunConfig};
 
 use anyhow::{anyhow, bail, Result};
@@ -12,6 +13,8 @@ use core::fmt;
 use fuel_vm::fuel_tx;
 use fuel_vm::prelude::*;
 use regex::Regex;
+use std::io::stdout;
+use std::io::Write;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -69,19 +72,18 @@ struct TestContext {
 }
 
 impl TestContext {
-    async fn deploy_contract(&self, contract_path: String) -> ContractId {
+    async fn deploy_contract(&self, contract_path: String) -> Result<ContractId> {
         let mut deployed_contracts = self.deployed_contracts.lock().await;
         if let Some(contract_id) = deployed_contracts.get(&contract_path) {
-            *contract_id
+            Ok(*contract_id)
         } else {
-            let contract_id = harness::deploy_contract(contract_path.as_str(), &self.run_config)
-                .await
-                .unwrap();
+            let result = harness::deploy_contract(contract_path.as_str(), &self.run_config).await;
+            let contract_id = result?;
             deployed_contracts.insert(contract_path, contract_id);
-            contract_id
+            Ok(contract_id)
         }
     }
-    async fn run(&self, test: TestDescription) -> Result<()> {
+    async fn run(&self, test: TestDescription, output: &mut String) -> Result<()> {
         let context = self;
         let TestDescription {
             name,
@@ -107,16 +109,22 @@ impl TestContext {
                     ),
                 };
 
-                let (result, ..) = harness::compile_to_bytes(&name, &context.run_config, false);
-                assert_matches!(result, Ok(_));
-                let compiled = match result.unwrap() {
+                let (result, out) = run_and_capture_output(|| async {
+                    harness::compile_to_bytes(&name, &context.run_config).await
+                })
+                .await;
+                *output = out;
+
+                let compiled = result?;
+
+                let compiled = match compiled {
                     forc_pkg::Built::Package(built_pkg) => *built_pkg,
                     forc_pkg::Built::Workspace(_) => {
                         panic!("workspaces are not supported in the test suite yet")
                     }
                 };
 
-                let (state, receipts, pkg) = harness::runs_in_vm(compiled, script_data);
+                let (state, receipts, pkg) = harness::runs_in_vm(compiled, script_data)?;
                 let result = match state {
                     ProgramState::Return(v) => TestResult::Return(v),
                     ProgramState::ReturnData(digest) => {
@@ -132,42 +140,72 @@ impl TestContext {
                     ProgramState::Revert(v) => TestResult::Revert(v),
                 };
                 assert_eq!(result, res);
+
                 if validate_abi {
-                    assert_matches!(harness::test_json_abi(&name, &pkg), Ok(_));
+                    let (result, out) =
+                        run_and_capture_output(|| async { harness::test_json_abi(&name, &pkg) })
+                            .await;
+                    result?;
+                    output.push_str(&out);
                 }
                 Ok(())
             }
 
             TestCategory::Compiles => {
-                let (result, output) = harness::compile_to_bytes(&name, &context.run_config, true);
-                assert_matches!(result, Ok(_));
-                let compiled_pkgs = match result.unwrap() {
+                let (result, out) = run_and_capture_output(|| async {
+                    harness::compile_to_bytes(&name, &context.run_config).await
+                })
+                .await;
+
+                let compiled_pkgs = match result? {
                     forc_pkg::Built::Package(built_pkg) => vec![(name.clone(), *built_pkg)],
                     forc_pkg::Built::Workspace(built_workspace) => built_workspace
                         .iter()
                         .map(|(n, b)| (n.clone(), b.clone()))
                         .collect(),
                 };
-                check_file_checker(checker, &name, &output);
+
+                *output = out;
+
+                check_file_checker(checker, &name, output)?;
 
                 if validate_abi {
                     for (name, built_pkg) in &compiled_pkgs {
-                        assert_matches!(harness::test_json_abi(name, built_pkg), Ok(_));
+                        let (result, out) = run_and_capture_output(|| async {
+                            harness::test_json_abi(name, built_pkg)
+                        })
+                        .await;
+                        result?;
+                        output.push_str(&out);
                     }
                 }
+
                 if validate_storage_slots {
                     for (name, built_pkg) in &compiled_pkgs {
-                        assert_matches!(harness::test_json_storage_slots(name, built_pkg), Ok(_));
+                        let (result, out) = run_and_capture_output(|| async {
+                            harness::test_json_storage_slots(name, built_pkg)
+                        })
+                        .await;
+                        result?;
+                        output.push_str(&out);
                     }
                 }
                 Ok(())
             }
 
             TestCategory::FailsToCompile => {
-                let (result, output) = harness::compile_to_bytes(&name, &context.run_config, true);
-                assert_matches!(result, Err(_));
-                check_file_checker(checker, &name, &output);
-                Ok(())
+                let (result, out) = run_and_capture_output(|| async {
+                    harness::compile_to_bytes(&name, &context.run_config).await
+                })
+                .await;
+                *output = out;
+
+                if result.is_ok() {
+                    Err(anyhow::Error::msg("Test compiles but is expected to fail"))
+                } else {
+                    check_file_checker(checker, &name, output)?;
+                    Ok(())
+                }
             }
 
             TestCategory::RunsWithContract => {
@@ -187,29 +225,38 @@ impl TestContext {
                     );
                 }
 
-                let contract_ids = contract_paths
-                    .clone()
-                    .into_iter()
-                    .map(|contract_path| context.deploy_contract(contract_path))
-                    .collect::<Vec<_>>();
-                let contract_ids = futures::future::join_all(contract_ids).await;
+                let mut contract_ids = Vec::new();
+                for contract_path in contract_paths.clone() {
+                    let (result, out) = run_and_capture_output(|| async {
+                        context.deploy_contract(contract_path).await
+                    })
+                    .await;
+                    output.push_str(&out);
+                    contract_ids.push(result);
+                }
+                let contract_ids: Result<Vec<ContractId>, anyhow::Error> =
+                    contract_ids.into_iter().collect();
+                let (result, out) =
+                    harness::runs_on_node(&name, &context.run_config, &contract_ids?).await;
+                output.push_str(&out);
 
-                let result = harness::runs_on_node(&name, &context.run_config, &contract_ids).await;
-                assert_matches!(result, Ok(_));
-                let result = result.unwrap();
-                assert!(result.iter().all(|res| !matches!(
+                let receipt = result?;
+                assert!(receipt.iter().all(|res| !matches!(
                     res,
                     fuel_tx::Receipt::Revert { .. } | fuel_tx::Receipt::Panic { .. }
                 )));
-                assert!(result.len() >= 2);
-                assert_matches!(result[result.len() - 2], fuel_tx::Receipt::Return { .. });
-                assert_eq!(result[result.len() - 2].val().unwrap(), val);
+                assert!(receipt.len() >= 2);
+                assert_matches!(receipt[receipt.len() - 2], fuel_tx::Receipt::Return { .. });
+                assert_eq!(receipt[receipt.len() - 2].val().unwrap(), val);
 
                 Ok(())
             }
 
             TestCategory::UnitTestsPass => {
-                let result = harness::compile_and_run_unit_tests(&name, &context.run_config, false);
+                let (result, out) =
+                    harness::compile_and_run_unit_tests(&name, &context.run_config, true).await;
+                *output = out;
+
                 let tested_pkg = result.expect("failed to compile and run unit tests");
                 let failed: Vec<String> = tested_pkg
                     .tests
@@ -233,9 +280,10 @@ impl TestContext {
                 Ok(())
             }
 
-            category => {
-                bail!("Unexpected test category: {:?}", category);
-            }
+            category => Err(anyhow::Error::msg(format!(
+                "Unexpected test category: {:?}",
+                category,
+            ))),
         }
     }
 }
@@ -289,14 +337,32 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         deployed_contracts: Default::default(),
     };
     let mut number_of_tests_executed = 0;
+    let mut number_of_tests_failed = 0;
+
     for (i, test) in tests.into_iter().enumerate() {
-        if !filter_config.first_only {
+        print!("Testing {} ...", test.name.bold());
+        stdout().flush().unwrap();
+
+        let mut output = String::new();
+        let result = if !filter_config.first_only {
             context
-                .run(test)
+                .run(test, &mut output)
                 .instrument(tracing::trace_span!("E2E", i))
-                .await?;
+                .await
         } else {
-            context.run(test).await?;
+            context.run(test, &mut output).await
+        };
+        if let Err(err) = result {
+            println!(" {}", "failed".red().bold());
+            println!("  {}", err);
+            number_of_tests_failed += 1;
+        } else {
+            println!(" {}", "ok".green().bold());
+        }
+
+        // If verbosity is requested then print it out.
+        if run_config.verbose {
+            println!("{}", textwrap::indent(&output, "     "));
         }
 
         number_of_tests_executed += 1;
@@ -333,11 +399,16 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         );
     } else {
         tracing::info!("_________________________________");
-        tracing::info!("{}", "Tests passed.".green().bold());
         tracing::info!(
-            "Ran {number_of_tests_executed} \
-            out of {total_number_of_tests} tests \
-            ({} disabled).",
+            "Sway tests result: {}. {} total, {} passed; {} failed; {} disabled",
+            if number_of_tests_failed == 0 {
+                "ok".green().bold()
+            } else {
+                "failed".red().bold()
+            },
+            total_number_of_tests,
+            number_of_tests_executed - number_of_tests_failed,
+            number_of_tests_failed,
             disabled_tests.len()
         );
     }
@@ -392,15 +463,15 @@ fn build_file_checker(content: &str) -> Result<filecheck::Checker> {
 /// along with the output of the compilation, and checks the output for the
 /// FileCheck directives that were found in the test.toml file, panicking
 /// if the checking fails.
-fn check_file_checker(checker: filecheck::Checker, name: &String, output: &str) {
+fn check_file_checker(checker: filecheck::Checker, name: &String, output: &str) -> Result<()> {
     match checker.explain(output, filecheck::NO_VARIABLES) {
-        Ok((success, report)) if !success => {
-            panic!("For {name}:\nFilecheck failed:\n{report}");
-        }
+        Ok((success, report)) if !success => Err(anyhow::Error::msg(format!(
+            "For {name}:\nFilecheck failed:\n{report}"
+        ))),
         Err(e) => {
             panic!("For {name}:\nFilecheck directive error: {e}");
         }
-        _ => (),
+        _ => Ok(()),
     }
 }
 
