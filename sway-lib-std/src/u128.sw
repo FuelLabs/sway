@@ -97,7 +97,7 @@ impl U128 {
     /// Initializes a new, zeroed `U128`.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::u128::U128;
     ///
@@ -117,7 +117,7 @@ impl U128 {
     /// Returns Err if the number > u64::max()
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::u128::{U128, U128Error};
     ///
@@ -125,7 +125,7 @@ impl U128 {
     /// let zero_u64 = zero_u128.as_u64().unwrap();
     ///
     /// assert(zero_u64 == 0);
-    /// 
+    ///
     /// let max_u128 = U128::max();
     /// let result = max_u128.as_u64();
     ///
@@ -142,7 +142,7 @@ impl U128 {
     /// Initializes a new, zeroed `U128`.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::u128::U128;
     ///
@@ -162,7 +162,7 @@ impl U128 {
     /// 2<sup>128</sup> - 1.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::u128::U128;
     ///
@@ -181,7 +181,7 @@ impl U128 {
     /// The size of this type in bits.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::u128::U128;
     ///

@@ -20,7 +20,7 @@ use ::error_signals::FAILED_REQUIRE_SIGNAL;
 /// Panics when called in a predicate
 ///
 /// ### Examples
-/// 
+///
 /// ```sway
 /// fn foo(should_revert: bool) {
 ///     match should_revert {
@@ -45,7 +45,7 @@ pub fn revert(code: u64) {
 /// Reverts when `condition` is false
 ///
 /// ### Examples
-/// 
+///
 /// ```sway
 /// fn foo(a: u64, b: u64) {
 ///     require(a == b, "a was not equal to b");

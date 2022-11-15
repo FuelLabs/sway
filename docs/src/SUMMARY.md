@@ -55,6 +55,7 @@
   - [Contributing To Sway](./reference/contributing_to_sway.md)
 - [Forc Reference](./forc/index.md)
   - [Manifest Reference](./forc/manifest_reference.md)
+  - [Workspaces](./forc/workspaces.md)
   - [Dependencies](./forc/dependencies.md)
   - [Commands](./forc/commands/index.md)
     - [forc addr2line](./forc/commands/forc_addr2line.md)
