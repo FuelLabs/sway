@@ -329,27 +329,33 @@ impl core::ops::Divide for U128 {
 
         assert(divisor != zero);
 
-        let mut quotient = U128::new();
-        let mut remainder = U128::new();
-        let mut i = 128 - 1;
-        while true {
-            quotient <<= 1;
-            remainder <<= 1;
-            remainder.lower = remainder.lower | (self >> i).lower & 1;
-            // TODO use >= once OrdEq can be implemented.
-            if remainder > divisor || remainder == divisor {
-                remainder -= divisor;
-                quotient.lower = quotient.lower | 1;
+        if self.upper == 0 && divisor.upper == 0 {
+            U128::from((0, self.lower / divisor.lower))
+        } else if self < divisor {
+            U128::new()
+        } else {
+            let mut quotient = U128::new();
+            let mut remainder = U128::new();
+            let mut i = 128 - 1;
+            while true {
+                quotient <<= 1;
+                remainder <<= 1;
+                remainder.lower = remainder.lower | (self >> i).lower & 1;
+                // TODO use >= once OrdEq can be implemented.
+                if remainder > divisor || remainder == divisor {
+                    remainder -= divisor;
+                    quotient.lower = quotient.lower | 1;
+                }
+
+                if i == 0 {
+                    break;
+                }
+
+                i -= 1;
             }
 
-            if i == 0 {
-                break;
-            }
-
-            i -= 1;
+            quotient
         }
-
-        quotient
     }
 }
 
