@@ -48,6 +48,7 @@
 - [Application Frontend](./frontend/index.md)
   - [TypeScript SDK](./frontend/typescript_sdk.md)
 - [Sway Reference](./reference/index.md)
+  - [Compiler Intrinsics](./reference/compiler_intrinsics.md)
   - [Style Guide](./reference/style_guide.md)
   - [Known Issues and Workarounds](./reference/known_issues_and_workarounds.md)
   - [Differences From Solidity](./reference/solidity_differences.md)
