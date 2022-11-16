@@ -1,6 +1,6 @@
 # Contract Ownership
 
-THe following example implements access control to restrict functionality to a priviledged user.
+The following example implements access control to restrict functionality to a privileged user.
 
  ## ABI
 
