@@ -15,7 +15,7 @@ use ::revert::revert;
 /// Reverts when `condition` is `false`
 ///
 /// ### Examples
-/// 
+///
 /// ```sway
 /// fn foo(a: u64, b: u64) {
 ///     assert(a == b);

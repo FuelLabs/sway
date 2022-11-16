@@ -4,17 +4,16 @@ use ::alloc::alloc;
 use ::assert::assert;
 use ::hash::sha256;
 use ::option::Option;
-use ::result::Result;
 
 /// Store a stack value in storage. Will not work for heap values.
-/// 
+///
 /// ### Arguments
 ///
 /// * `key` - The storage slot at which the variable will be stored
 /// * `value` - The value to be stored
 ///
 /// ### Examples
-/// 
+///
 /// ```sway
 /// use std::{storage::{store, get}, constants::ZERO_B256};
 ///
@@ -70,7 +69,7 @@ pub fn store<T>(key: b256, value: T) {
 /// * `key` - The storage slot to load the value from
 ///
 /// ### Examples
-/// 
+///
 /// ```sway
 /// use std::{storage::{store, get}, constants::ZERO_B256};
 ///
@@ -122,19 +121,19 @@ pub struct StorageMap<K, V> {}
 
 impl<K, V> StorageMap<K, V> {
     /// Inserts a key-value pair into the map.
-    /// 
+    ///
     /// ### Arguments
     ///
     /// * `key` - The key to which the value is paired
     /// * `value` - The value to be stored
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// storage {
-    ///     map: StorageMap<u64, bool> = StorageMap {} 
+    ///     map: StorageMap<u64, bool> = StorageMap {}
     /// }
-    /// 
+    ///
     /// fn foo() {
     ///     let key = 5_u64;
     ///     let value = true;
@@ -144,27 +143,27 @@ impl<K, V> StorageMap<K, V> {
     /// }
     /// ```
     #[storage(write)]
-    fn insert(self, key: K, value: V) {
+    pub fn insert(self, key: K, value: V) {
         let key = sha256((key, __get_storage_key()));
         store::<V>(key, value);
     }
 
     /// Retrieves a value previously stored using a key
-    /// 
+    ///
     /// If no value was previously stored using the key, a byte representation of all zeroes is returned
     /// Read more [here](https://fuellabs.github.io/sway/master/common-collections/storage_map.html#accessing-values-in-a-storage-map)
-    /// 
+    ///
     /// ### Arguments
     ///
     /// * `key` - The key to which the value is paired
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// storage {
-    ///     map: StorageMap<u64, bool> = StorageMap {} 
+    ///     map: StorageMap<u64, bool> = StorageMap {}
     /// }
-    /// 
+    ///
     /// fn foo() {
     ///     let key = 5_u64;
     ///     let value = true;
@@ -174,7 +173,7 @@ impl<K, V> StorageMap<K, V> {
     /// }
     /// ```
     #[storage(read)]
-    fn get(self, key: K) -> V {
+    pub fn get(self, key: K) -> V {
         let key = sha256((key, __get_storage_key()));
         get::<V>(key)
     }
@@ -191,14 +190,14 @@ impl<V> StorageVec<V> {
     /// * `value` - The item being added to the end of the vector
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {} 
+    ///     vec: StorageVec<u64> = StorageVec {}
     /// }
-    /// 
+    ///
     /// fn foo() {
     ///     let five = 5_u64;
     ///     storage.vec.push(five);
@@ -222,14 +221,14 @@ impl<V> StorageVec<V> {
     /// Removes the last element of the vector and returns it, None if empty
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {} 
+    ///     vec: StorageVec<u64> = StorageVec {}
     /// }
-    /// 
+    ///
     /// fn foo() {
     ///     let five = 5_u64;
     ///     storage.vec.push(five);
@@ -261,14 +260,14 @@ impl<V> StorageVec<V> {
     /// * `index` - The index of the vec to retrieve the item from
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {} 
+    ///     vec: StorageVec<u64> = StorageVec {}
     /// }
-    /// 
+    ///
     /// fn foo() {
     ///     let five = 5_u64;
     ///     storage.vec.push(five);
@@ -306,14 +305,14 @@ impl<V> StorageVec<V> {
     /// Reverts if index is larger or equal to length of the vec
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {} 
+    ///     vec: StorageVec<u64> = StorageVec {}
     /// }
-    /// 
+    ///
     /// fn foo() {
     ///     storage.vec.push(5);
     ///     storage.vec.push(10);
@@ -362,14 +361,14 @@ impl<V> StorageVec<V> {
     /// Reverts if index is larger or equal to length of the vec
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {} 
+    ///     vec: StorageVec<u64> = StorageVec {}
     /// }
-    /// 
+    ///
     /// fn foo() {
     ///     storage.vec.push(5);
     ///     storage.vec.push(10);
@@ -410,14 +409,14 @@ impl<V> StorageVec<V> {
     /// Reverts if index is larger than or equal to the length of the vec
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {} 
+    ///     vec: StorageVec<u64> = StorageVec {}
     /// }
-    /// 
+    ///
     /// fn foo() {
     ///     storage.vec.push(5);
     ///     storage.vec.push(10);
@@ -455,18 +454,18 @@ impl<V> StorageVec<V> {
     /// Reverts if index is larger than length of the vec
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {} 
+    ///     vec: StorageVec<u64> = StorageVec {}
     /// }
-    /// 
+    ///
     /// fn foo() {
     ///     storage.vec.push(5);
     ///     storage.vec.push(15);
-    ///     
+    ///
     ///     storage.vec.insert(1, 10);
     ///
     ///     assert(5 == storage.vec.get(0));
@@ -514,20 +513,20 @@ impl<V> StorageVec<V> {
     /// Returns the length of the vector
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {} 
+    ///     vec: StorageVec<u64> = StorageVec {}
     /// }
-    /// 
+    ///
     /// fn foo() {
     ///     assert(0 == storage.vec.len());
     ///     storage.vec.push(5);
     ///     assert(1 == storage.vec.len());
     ///     storage.vec.push(10);
-    ///     assert(2 == storage.vec.len());    
+    ///     assert(2 == storage.vec.len());
     /// }
     /// ```
     #[storage(read)]
@@ -538,14 +537,14 @@ impl<V> StorageVec<V> {
     /// Checks whether the len is 0 or not
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {} 
+    ///     vec: StorageVec<u64> = StorageVec {}
     /// }
-    /// 
+    ///
     /// fn foo() {
     ///     assert(true == storage.vec.is_empty());
     ///
@@ -554,7 +553,7 @@ impl<V> StorageVec<V> {
     ///     assert(false == storage.vec.is_empty());
     ///
     ///     storage.vec.clear();
-    /// 
+    ///
     ///     assert(true == storage.vec.is_empty());
     /// }
     /// ```
@@ -567,14 +566,14 @@ impl<V> StorageVec<V> {
     /// Sets the len to 0
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::storage::StorageVec;
     ///
     /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {} 
+    ///     vec: StorageVec<u64> = StorageVec {}
     /// }
-    /// 
+    ///
     /// fn foo() {
     ///     assert(0 == storage.vec.len());
     ///     storage.vec.push(5);

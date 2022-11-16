@@ -26,6 +26,7 @@ regex = "1"
 serde_json = "1.0.73"
 sway-core = { path = "../sway-core" }
 sway-ir = { path = "../sway-ir" }
+textwrap = "0.16.0"
 tokio = "1.12"
 toml = "0.5"
 tracing = "0.1"

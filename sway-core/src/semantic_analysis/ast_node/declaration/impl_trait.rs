@@ -486,7 +486,7 @@ impl ty::TyImplTrait {
         let mut methods = vec![];
         for fn_decl in functions.into_iter() {
             methods.push(check!(
-                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, true),
+                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, true, true),
                 continue,
                 warnings,
                 errors
@@ -628,7 +628,7 @@ fn type_check_trait_implementation(
 
         // type check the function declaration
         let mut impl_method = check!(
-            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), impl_method.clone(), true),
+            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), impl_method.clone(), true, false),
             continue,
             warnings,
             errors

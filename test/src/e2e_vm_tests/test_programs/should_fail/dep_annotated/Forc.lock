@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-9F7B606EF4FC7423'
+
+[[package]]
+name = 'dep_annotated'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-9F7B606EF4FC7423'
+dependencies = ['core']
