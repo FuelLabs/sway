@@ -200,11 +200,11 @@ async fn can_mint_and_send_to_address() {
 
     assert_eq!(
         wallet
-            .get_spendable_coins(AssetId::from(asset_id_array), 1)
+            .get_spendable_resources(AssetId::from(asset_id_array), 1)
             .await
             .unwrap()[0]
-            .amount,
-        amount.into()
+            .amount(),
+        amount
     );
 }
 
@@ -227,11 +227,11 @@ async fn can_perform_generic_mint_to_with_address() {
 
     assert_eq!(
         wallet
-            .get_spendable_coins(AssetId::from(asset_id_array), 1)
+            .get_spendable_resources(AssetId::from(asset_id_array), 1)
             .await
             .unwrap()[0]
-            .amount,
-        amount.into()
+            .amount(),
+        amount
     );
 }
 
@@ -247,7 +247,7 @@ async fn can_perform_generic_mint_to_with_contract_id() {
         Some(amount_per_coin),
     );
 
-    let wallets = launch_custom_provider_and_get_wallets(config, None).await;
+    let wallets = launch_custom_provider_and_get_wallets(config, None, None).await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
     let balance_id = get_balance_contract_id(wallets[0].clone()).await;
     let amount = 55u64;
@@ -299,11 +299,11 @@ async fn can_perform_generic_transfer_to_address() {
 
     assert_eq!(
         wallet
-            .get_spendable_coins(AssetId::from(asset_id_array), 1)
+            .get_spendable_resources(AssetId::from(asset_id_array), 1)
             .await
             .unwrap()[0]
-            .amount,
-        amount.into()
+            .amount(),
+        amount
     );
 }
 
@@ -318,7 +318,7 @@ async fn can_perform_generic_transfer_to_contract() {
         Some(coins_per_wallet),
         Some(amount_per_coin),
     );
-    let wallets = launch_custom_provider_and_get_wallets(config, None).await;
+    let wallets = launch_custom_provider_and_get_wallets(config, None, None).await;
 
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
     let balance_id = get_balance_contract_id(wallets[0].clone()).await;
@@ -364,7 +364,7 @@ async fn can_send_message_output_with_data() {
         Some(amount_per_coin),
     );
 
-    let wallets = launch_custom_provider_and_get_wallets(config, None).await;
+    let wallets = launch_custom_provider_and_get_wallets(config, None, None).await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
 
     let amount = 33u64;
@@ -406,7 +406,7 @@ async fn can_send_message_output_without_data() {
         Some(amount_per_coin),
     );
 
-    let wallets = launch_custom_provider_and_get_wallets(config, None).await;
+    let wallets = launch_custom_provider_and_get_wallets(config, None, None).await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
 
     let amount = 33u64;

@@ -23,7 +23,7 @@ pub enum TyDeclaration {
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
     GenericTypeForFunctionScope { name: Ident, type_id: TypeId },
-    ErrorRecovery,
+    ErrorRecovery(Span),
     StorageDeclaration(DeclarationId),
 }
 
@@ -42,7 +42,7 @@ impl CopyTypes for TyDeclaration {
             | ConstantDeclaration(_)
             | StorageDeclaration(..)
             | GenericTypeForFunctionScope { .. }
-            | ErrorRecovery => (),
+            | ErrorRecovery(_) => (),
         }
     }
 }
@@ -62,7 +62,7 @@ impl ReplaceSelfType for TyDeclaration {
             | ConstantDeclaration(_)
             | StorageDeclaration(..)
             | GenericTypeForFunctionScope { .. }
-            | ErrorRecovery => (),
+            | ErrorRecovery(_) => (),
         }
     }
 }
@@ -80,9 +80,8 @@ impl Spanned for TyDeclaration {
             AbiDeclaration(decl_id) => decl_id.span(),
             ImplTrait(decl_id) => decl_id.span(),
             StorageDeclaration(decl) => decl.span(),
-            ErrorRecovery | GenericTypeForFunctionScope { .. } => {
-                unreachable!("No span exists for these ast node types")
-            }
+            GenericTypeForFunctionScope { name, .. } => name.span(),
+            ErrorRecovery(span) => span.clone(),
         }
     }
 }
@@ -230,7 +229,7 @@ impl CollectTypesMetadata for TyDeclaration {
                     }
                 }
             }
-            ErrorRecovery
+            ErrorRecovery(_)
             | StorageDeclaration(_)
             | TraitDeclaration(_)
             | StructDeclaration(_)
@@ -247,6 +246,41 @@ impl CollectTypesMetadata for TyDeclaration {
     }
 }
 
+impl GetDeclIdent for TyDeclaration {
+    fn get_decl_ident(&self) -> Option<Ident> {
+        match self {
+            TyDeclaration::VariableDeclaration(decl) => Some(decl.name.clone()),
+            TyDeclaration::ConstantDeclaration(decl) => {
+                Some(de_get_constant(decl.clone(), &decl.span()).unwrap().name)
+            }
+            TyDeclaration::FunctionDeclaration(decl) => {
+                Some(de_get_function(decl.clone(), &decl.span()).unwrap().name)
+            }
+            TyDeclaration::TraitDeclaration(decl) => {
+                Some(de_get_trait(decl.clone(), &decl.span()).unwrap().name)
+            }
+            TyDeclaration::StructDeclaration(decl) => {
+                Some(de_get_struct(decl.clone(), &decl.span()).unwrap().name)
+            }
+            TyDeclaration::EnumDeclaration(decl) => {
+                Some(de_get_enum(decl.clone(), &decl.span()).unwrap().name)
+            }
+            TyDeclaration::ImplTrait(decl) => Some(
+                de_get_impl_trait(decl.clone(), &decl.span())
+                    .unwrap()
+                    .trait_name
+                    .suffix,
+            ),
+            TyDeclaration::AbiDeclaration(decl) => {
+                Some(de_get_abi(decl.clone(), &decl.span()).unwrap().name)
+            }
+            TyDeclaration::GenericTypeForFunctionScope { name, .. } => Some(name.clone()),
+            TyDeclaration::ErrorRecovery(_) => None,
+            TyDeclaration::StorageDeclaration(_decl) => None,
+        }
+    }
+}
+
 impl TyDeclaration {
     /// Retrieves the declaration as an enum declaration.
     ///
@@ -256,6 +290,7 @@ impl TyDeclaration {
             TyDeclaration::EnumDeclaration(decl_id) => {
                 CompileResult::from(de_get_enum(decl_id.clone(), access_span))
             }
+            TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => err(
                 vec![],
                 vec![CompileError::DeclIsNotAnEnum {
@@ -282,6 +317,7 @@ impl TyDeclaration {
                 );
                 ok(decl, warnings, errors)
             }
+            TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => {
                 errors.push(CompileError::DeclIsNotAStruct {
                     actually: decl.friendly_name().to_string(),
@@ -311,6 +347,7 @@ impl TyDeclaration {
                 );
                 ok(decl, warnings, errors)
             }
+            TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => {
                 errors.push(CompileError::DeclIsNotAFunction {
                     actually: decl.friendly_name().to_string(),
@@ -329,6 +366,7 @@ impl TyDeclaration {
         let mut errors = vec![];
         match self {
             TyDeclaration::VariableDeclaration(decl) => ok(decl, warnings, errors),
+            TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => {
                 errors.push(CompileError::DeclIsNotAVariable {
                     actually: decl.friendly_name().to_string(),
@@ -347,6 +385,7 @@ impl TyDeclaration {
             TyDeclaration::AbiDeclaration(decl_id) => {
                 CompileResult::from(de_get_abi(decl_id.clone(), access_span))
             }
+            TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => err(
                 vec![],
                 vec![CompileError::DeclIsNotAnAbi {
@@ -365,6 +404,7 @@ impl TyDeclaration {
             TyDeclaration::ConstantDeclaration(decl) => {
                 CompileResult::from(de_get_constant(decl.clone(), access_span))
             }
+            TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => {
                 let errors = vec![
                     (CompileError::DeclIsNotAConstant {
@@ -390,7 +430,7 @@ impl TyDeclaration {
             ImplTrait { .. } => "impl trait",
             AbiDeclaration(..) => "abi",
             GenericTypeForFunctionScope { .. } => "generic type parameter",
-            ErrorRecovery => "error",
+            ErrorRecovery(_) => "error",
             StorageDeclaration(_) => "contract storage declaration",
         }
     }
@@ -505,7 +545,7 @@ impl TyDeclaration {
             | ImplTrait { .. }
             | StorageDeclaration { .. }
             | AbiDeclaration(..)
-            | ErrorRecovery => Visibility::Public,
+            | ErrorRecovery(_) => Visibility::Public,
             VariableDeclaration(decl) => decl.mutability.visibility(),
         };
         ok(visibility, warnings, errors)

@@ -34,13 +34,31 @@ impl From<usize> for TypeId {
 impl CollectTypesMetadata for TypeId {
     fn collect_types_metadata(
         &self,
-        _ctx: &mut CollectTypesMetadataContext,
+        ctx: &mut CollectTypesMetadataContext,
     ) -> CompileResult<Vec<TypeMetadata>> {
-        let res = match look_up_type_id(*self) {
-            TypeInfo::UnknownGeneric { name } => vec![TypeMetadata::UnresolvedType(name)],
-            _ => vec![],
-        };
-        ok(res, vec![], vec![])
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut res = vec![];
+        if let TypeInfo::UnknownGeneric {
+            name,
+            trait_constraints,
+        } = look_up_type_id(*self)
+        {
+            res.push(TypeMetadata::UnresolvedType(name, ctx.call_site_get(self)));
+            for trait_constraint in trait_constraints.iter() {
+                res.extend(check!(
+                    trait_constraint.collect_types_metadata(ctx),
+                    continue,
+                    warnings,
+                    errors
+                ));
+            }
+        }
+        if errors.is_empty() {
+            ok(res, warnings, errors)
+        } else {
+            err(warnings, errors)
+        }
     }
 }
 
@@ -103,6 +121,7 @@ impl ReplaceSelfType for TypeId {
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery => {}
         }

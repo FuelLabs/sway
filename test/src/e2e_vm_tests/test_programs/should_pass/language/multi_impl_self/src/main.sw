@@ -17,5 +17,5 @@ fn fun() -> u64 {
 }
 
 fn main() -> u64 {
-    ~MyStruct::my_fun()
+    MyStruct::my_fun()
 }

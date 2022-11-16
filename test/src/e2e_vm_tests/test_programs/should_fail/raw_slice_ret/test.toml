@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: fn main() -> HasRawSlice {
+# nextln: $()Returning a type containing `raw_slice` from `main()` is not allowed. Consider converting it into a flat `raw_slice` first.

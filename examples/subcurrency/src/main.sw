@@ -1,12 +1,12 @@
 // ANCHOR: body
 contract;
 
-use std::{chain::auth::{AuthError, msg_sender}, hash::sha256, logging::log};
+use std::{auth::{AuthError, msg_sender}, hash::sha256, logging::log};
 
 ////////////////////////////////////////
 // Event declarations
 ////////////////////////////////////////
-// 
+//
 // Events allow clients to react to changes in the contract.
 // Unlike Solidity, events are simply structs.
 //
@@ -37,7 +37,7 @@ abi Token {
 // Constants
 ////////////////////////////////////////
 /// Address of contract creator.
-const MINTER = ~Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
+const MINTER = Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
 
 ////////////////////////////////////////
 // Contract storage
@@ -66,7 +66,7 @@ impl Token for Contract {
         };
 
         // Increase the balance of receiver
-        storage.balances.insert(receiver, storage.balances.get(receiver) + amount)
+        storage.balances.insert(receiver, storage.balances.get(receiver) + amount);
     }
 
     #[storage(read, write)]

@@ -1,6 +1,6 @@
 [[package]]
 name = 'call_frames'
-source = 'root'
+source = 'member'
 dependencies = [
     'call_frames_test_abi',
     'std',

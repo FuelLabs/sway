@@ -11,7 +11,7 @@ enum SimpleEnum {
     X: (),
     Y: b256,
     Z: (b256,
-    b256), 
+    b256),
 }
 
 fn main() -> bool {
@@ -20,7 +20,7 @@ fn main() -> bool {
 }
 
 fn test_vector_new_u8() {
-    let mut vector = ~Vec::new();
+    let mut vector = Vec::new();
 
     let number0 = 0u8;
     let number1 = 1u8;
@@ -48,7 +48,7 @@ fn test_vector_new_u8() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Option::Some(val) => assert(val == number0), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number0), Option::None => revert(0),
     }
 
     // Push after get
@@ -59,11 +59,11 @@ fn test_vector_new_u8() {
     vector.push("this should break it 1");
 
     match vector.get(4) {
-        Option::Some(val) => assert(val == number4), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number4), Option::None => revert(0),
     }
 
     match vector.get(number6) {
-        Option::Some(val) => assert(val == number6), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number6), Option::None => revert(0),
     }
 
     assert(vector.len() == 9);
@@ -72,11 +72,11 @@ fn test_vector_new_u8() {
 
     // Test after capacity change
     match vector.get(4) {
-        Option::Some(val) => assert(val == number4), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number4), Option::None => revert(0),
     }
 
     match vector.get(6) {
-        Option::Some(val) => assert(val == number6), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number6), Option::None => revert(0),
     }
 
     vector.clear();
@@ -87,7 +87,7 @@ fn test_vector_new_u8() {
     assert(vector.is_empty() == true);
 
     match vector.get(0) {
-        Option::Some(val) => revert(0), Option::None => (), 
+        Option::Some(val) => revert(0), Option::None => (),
     }
 
     // Make sure pushing again after clear() works
@@ -103,11 +103,11 @@ fn test_vector_new_u8() {
     assert(vector.is_empty() == false);
 
     match vector.get(4) {
-        Option::Some(val) => assert(val == number4), Option::None => revert(0), 
+        Option::Some(val) => assert(val == number4), Option::None => revert(0),
     }
 
     // Out of bounds access
     match vector.get(5) {
-        Option::Some(val) => revert(0), Option::None => (), 
+        Option::Some(val) => revert(0), Option::None => (),
     }
 }

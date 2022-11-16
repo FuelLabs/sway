@@ -1,4 +1,4 @@
 category = "fail"
 
-# check: fn foo<T>() {
+# check: foo()
 # nextln: $()Cannot infer type for type parameter "T". Insufficient type information provided. Try annotating its type.

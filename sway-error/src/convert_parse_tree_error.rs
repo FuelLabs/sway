@@ -9,8 +9,6 @@ pub enum ConvertParseTreeError {
     FunctionArbitraryExpression { span: Span },
     #[error("generics are not supported here")]
     GenericsNotSupportedHere { span: Span },
-    #[error("fully qualified paths are not supported here")]
-    FullyQualifiedPathsNotSupportedHere { span: Span },
     #[error("tuple index out of range")]
     TupleIndexOutOfRange { span: Span },
     #[error("shift-left expressions are not implemented")]
@@ -25,8 +23,6 @@ pub enum ConvertParseTreeError {
     IntLiteralOutOfRange { span: Span },
     #[error("expected an integer literal")]
     IntLiteralExpected { span: Span },
-    #[error("fully qualified traits are not supported")]
-    FullyQualifiedTraitsNotSupported { span: Span },
     #[error("qualified path roots are not implemented")]
     QualifiedPathRootsNotImplemented { span: Span },
     #[error("char literals are not implemented")]
@@ -95,6 +91,12 @@ pub enum ConvertParseTreeError {
     TestFnOnlyAllowedAtModuleLevel { span: Span },
     #[error("`impl Self` for contracts is not supported")]
     SelfImplForContract { span: Span },
+    #[error("Cannot attach a documentation comment to a dependency.")]
+    CannotDocCommentDependency { span: Span },
+    #[error("Cannot annotate a dependency.")]
+    CannotAnnotateDependency { span: Span },
+    #[error("Expected dependency at the beginning before any other items.")]
+    ExpectedDependencyAtBeginning { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -103,7 +105,6 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
             ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
             ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
-            ConvertParseTreeError::FullyQualifiedPathsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::TupleIndexOutOfRange { span } => span.clone(),
             ConvertParseTreeError::ShlNotImplemented { span } => span.clone(),
             ConvertParseTreeError::ShrNotImplemented { span } => span.clone(),
@@ -111,7 +112,6 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::IntTySuffixNotSupported { span } => span.clone(),
             ConvertParseTreeError::IntLiteralOutOfRange { span } => span.clone(),
             ConvertParseTreeError::IntLiteralExpected { span } => span.clone(),
-            ConvertParseTreeError::FullyQualifiedTraitsNotSupported { span } => span.clone(),
             ConvertParseTreeError::QualifiedPathRootsNotImplemented { span } => span.clone(),
             ConvertParseTreeError::CharLiteralsNotImplemented { span } => span.clone(),
             ConvertParseTreeError::HexLiteralLength { span } => span.clone(),
@@ -146,6 +146,9 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::SelfParameterNotAllowedForFreeFn { span, .. } => span.clone(),
             ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span } => span.clone(),
             ConvertParseTreeError::SelfImplForContract { span, .. } => span.clone(),
+            ConvertParseTreeError::CannotDocCommentDependency { span } => span.clone(),
+            ConvertParseTreeError::CannotAnnotateDependency { span } => span.clone(),
+            ConvertParseTreeError::ExpectedDependencyAtBeginning { span } => span.clone(),
         }
     }
 }

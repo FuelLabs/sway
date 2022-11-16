@@ -265,7 +265,12 @@ fn connect_node(
         ty::TyAstNodeContent::SideEffect => (leaves.to_vec(), exit_node),
         ty::TyAstNodeContent::Declaration(decl) => {
             // all leaves connect to this node, then this node is the singular leaf
-            let decl_node = graph.add_node(node.into());
+            let cfg_node: ControlFlowGraphNode = node.into();
+            // check if node for this decl already exists
+            let decl_node = match graph.get_node_from_decl(&cfg_node) {
+                Some(node) => node,
+                None => graph.add_node(cfg_node),
+            };
             for leaf in leaves {
                 graph.add_edge(*leaf, decl_node, "".into());
             }
@@ -369,7 +374,7 @@ fn connect_declaration(
             connect_storage_declaration(&storage, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
+        ErrorRecovery(_) | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
     }
 }
 
@@ -764,27 +769,27 @@ fn connect_expression(
             r#else,
         } => {
             let condition_expr = connect_expression(
-                &(*condition).expression,
+                &condition.expression,
                 graph,
                 leaves,
                 exit_node,
                 "",
                 tree_type,
-                (*condition).span.clone(),
+                condition.span.clone(),
             )?;
             let then_expr = connect_expression(
-                &(*then).expression,
+                &then.expression,
                 graph,
                 leaves,
                 exit_node,
                 "then branch",
                 tree_type,
-                (*then).span.clone(),
+                then.span.clone(),
             )?;
 
             let else_expr = if let Some(else_expr) = r#else {
                 connect_expression(
-                    &(*else_expr).expression,
+                    &else_expr.expression,
                     graph,
                     leaves,
                     exit_node,
@@ -1147,7 +1152,7 @@ fn connect_intrinsic_function(
     let mut result = vec![node];
     let _ = arguments.iter().try_fold(&mut result, |accum, exp| {
         let mut res = connect_expression(
-            &(*exp).expression,
+            &exp.expression,
             graph,
             leaves,
             exit_node,

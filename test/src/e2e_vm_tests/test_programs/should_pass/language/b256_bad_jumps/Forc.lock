@@ -1,6 +1,6 @@
 [[package]]
 name = 'b256_bad_jumps'
-source = 'root'
+source = 'member'
 dependencies = ['core']
 
 [[package]]

@@ -1,16 +1,17 @@
 use crate::{
+    declaration_engine::ReplaceDecls,
     error::*,
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
-use std::collections::{hash_map::RandomState, HashMap, VecDeque};
+use std::collections::HashMap;
 use sway_error::error::CompileError;
-use sway_types::{state::StateIndex, Spanned};
+use sway_types::Spanned;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
-    function_decl: ty::TyFunctionDeclaration,
+    mut function_decl: ty::TyFunctionDeclaration,
     call_path: CallPath,
     arguments: Vec<Expression>,
 ) -> CompileResult<ty::TyExpression> {
@@ -33,10 +34,9 @@ pub(crate) fn instantiate_function_application(
         errors
     );
 
-    // type check arguments in function application vs arguments in function
-    // declaration. Use parameter type annotations as annotations for the
-    // arguments
-    let typed_arguments = arguments
+    // Type check the arguments from the function application and unify them with
+    // the arguments from the function application.
+    let typed_arguments: Vec<(Ident, ty::TyExpression)> = arguments
         .into_iter()
         .zip(function_decl.parameters.iter())
         .map(|(arg, param)| {
@@ -78,57 +78,37 @@ pub(crate) fn instantiate_function_application(
         })
         .collect();
 
-    let span = function_decl.span.clone();
-    let exp = instantiate_function_application_inner(
-        call_path,
-        HashMap::new(),
-        typed_arguments,
-        function_decl,
-        None,
-        None,
-        span,
-    );
-
-    ok(exp, warnings, errors)
-}
-
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn instantiate_function_application_simple(
-    call_path: CallPath,
-    contract_call_params: HashMap<String, ty::TyExpression, RandomState>,
-    arguments: VecDeque<ty::TyExpression>,
-    function_decl: ty::TyFunctionDeclaration,
-    selector: Option<ty::ContractCallParams>,
-    self_state_idx: Option<StateIndex>,
-    span: Span,
-) -> CompileResult<ty::TyExpression> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
-    // check that the number of parameters and the number of the arguments is the same
-    check!(
-        check_function_arguments_arity(arguments.len(), &function_decl, &call_path),
+    // Handle the trait constraints. This includes checking to see if the trait
+    // constraints are satisfied and replacing old decl ids based on the
+    // constraint with new decl ids based on the new type.
+    let decl_mapping = check!(
+        TypeParameter::gather_decl_mapping_from_trait_constraints(
+            ctx.by_ref(),
+            &function_decl.type_parameters,
+            &call_path.span()
+        ),
         return err(warnings, errors),
         warnings,
         errors
     );
+    function_decl.replace_decls(&decl_mapping);
+    let return_type = function_decl.return_type;
+    let span = function_decl.span.clone();
+    let new_decl_id = de_insert_function(function_decl);
 
-    let args_and_names = function_decl
-        .parameters
-        .iter()
-        .zip(arguments.into_iter())
-        .map(|(param, arg)| (param.name.clone(), arg))
-        .collect::<Vec<(_, _)>>();
-
-    let exp = instantiate_function_application_inner(
-        call_path,
-        contract_call_params,
-        args_and_names,
-        function_decl,
-        selector,
-        self_state_idx,
+    let exp = ty::TyExpression {
+        expression: ty::TyExpressionVariant::FunctionApplication {
+            call_path,
+            contract_call_params: HashMap::new(),
+            arguments: typed_arguments,
+            function_decl_id: new_decl_id,
+            self_state_idx: None,
+            selector: None,
+        },
+        return_type,
         span,
-    );
+    };
+
     ok(exp, warnings, errors)
 }
 
@@ -159,29 +139,5 @@ pub(crate) fn check_function_arguments_arity(
             });
             err(warnings, errors)
         }
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn instantiate_function_application_inner(
-    call_path: CallPath,
-    contract_call_params: HashMap<String, ty::TyExpression, RandomState>,
-    arguments: Vec<(Ident, ty::TyExpression)>,
-    function_decl: ty::TyFunctionDeclaration,
-    selector: Option<ty::ContractCallParams>,
-    self_state_idx: Option<StateIndex>,
-    span: Span,
-) -> ty::TyExpression {
-    ty::TyExpression {
-        expression: ty::TyExpressionVariant::FunctionApplication {
-            call_path,
-            contract_call_params,
-            arguments,
-            function_decl_id: de_insert_function(function_decl.clone()),
-            self_state_idx,
-            selector,
-        },
-        return_type: function_decl.return_type,
-        span,
     }
 }

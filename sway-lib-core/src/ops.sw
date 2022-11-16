@@ -320,17 +320,6 @@ impl Ord for b256 {
     }
 }
 
-impl b256 {
-    fn neq(self, other: Self) -> bool {
-        // Both self and other are addresses of the values, so we can use MEQ.
-        asm(r1: self, r2: other, r3, r4) {
-            addi r3 zero i32;
-            meq r4 r1 r2 r3;
-            r4: bool
-        }.not()
-    }
-}
-
 pub trait BitwiseAnd {
     fn binary_and(self, other: Self) -> Self;
 }
@@ -381,7 +370,7 @@ impl Not for u64 {
 
 impl Not for u32 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: ~u32::max(), r4) {
+        asm(r1: self, r2, r3: u32::max(), r4) {
             not r2 r1;
             and r4 r2 r3;
             r4: u32
@@ -391,7 +380,7 @@ impl Not for u32 {
 
 impl Not for u16 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: ~u16::max(), r4) {
+        asm(r1: self, r2, r3: u16::max(), r4) {
             not r2 r1;
             and r4 r2 r3;
             r4: u16
@@ -401,7 +390,7 @@ impl Not for u16 {
 
 impl Not for u8 {
     fn not(self) -> Self {
-        asm(r1: self, r2, r3: ~u8::max(), r4) {
+        asm(r1: self, r2, r3: u8::max(), r4) {
             not r2 r1;
             and r4 r2 r3;
             r4: u8
@@ -417,7 +406,7 @@ impl BitwiseAnd for b256 {
         let word_2 = value_word_2.binary_and(other_word_2);
         let word_3 = value_word_3.binary_and(other_word_3);
         let word_4 = value_word_4.binary_and(other_word_4);
-        let rebuilt = compose(word_1, word_2, word_3, word_4);
+        let rebuilt = compose((word_1, word_2, word_3, word_4));
         rebuilt
     }
 }
@@ -430,7 +419,7 @@ impl BitwiseOr for b256 {
         let word_2 = value_word_2.binary_or(other_word_2);
         let word_3 = value_word_3.binary_or(other_word_3);
         let word_4 = value_word_4.binary_or(other_word_4);
-        let rebuilt = compose(word_1, word_2, word_3, word_4);
+        let rebuilt = compose((word_1, word_2, word_3, word_4));
         rebuilt
     }
 }
@@ -443,7 +432,7 @@ impl BitwiseXor for b256 {
         let word_2 = value_word_2.binary_xor(other_word_2);
         let word_3 = value_word_3.binary_xor(other_word_3);
         let word_4 = value_word_4.binary_xor(other_word_4);
-        let rebuilt = compose(word_1, word_2, word_3, word_4);
+        let rebuilt = compose((word_1, word_2, word_3, word_4));
         rebuilt
     }
 }
@@ -570,7 +559,7 @@ impl Shiftable for b256 {
             ();
         };
 
-        compose(w1, w2, w3, w4)
+        compose((w1, w2, w3, w4))
     }
 
     fn rsh(self, shift_amount: u64) -> Self {
@@ -608,7 +597,7 @@ impl Shiftable for b256 {
             ();
         };
 
-        compose(w1, w2, w3, w4)
+        compose((w1, w2, w3, w4))
     }
 }
 
@@ -632,33 +621,31 @@ fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     (shifted, carry)
 }
 
-/// Extract a single 64 bit word from a b256 value using the specified offset.
-fn get_word_from_b256(val: b256, offset: u64) -> u64 {
-    let mut empty: u64 = 0;
-    asm(r1: val, offset: offset, r2, res: empty) {
-        add r2 r1 offset;
-        lw res r2 i0;
-        res: u64
-    }
+/// Build a single b256 value from a tuple of 4 u64 values.
+fn compose(words: (u64, u64, u64, u64)) -> b256 {
+    asm(r1: __addr_of(words)) { r1: b256 }
 }
 
-/// Build a single b256 value from 4 64 bit words.
-fn compose(word_1: u64, word_2: u64, word_3: u64, word_4: u64) -> b256 {
-    let res: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
-    asm(w1: word_1, w2: word_2, w3: word_3, w4: word_4, result: res) {
-        sw result w1 i0;
-        sw result w2 i1;
-        sw result w3 i2;
-        sw result w4 i3;
-        result: b256
-    }
-}
-
-/// Get 4 64 bit words from a single b256 value.
+/// Get a tuple of 4 u64 values from a single b256 value.
 fn decompose(val: b256) -> (u64, u64, u64, u64) {
-    let w1 = get_word_from_b256(val, 0);
-    let w2 = get_word_from_b256(val, 8);
-    let w3 = get_word_from_b256(val, 16);
-    let w4 = get_word_from_b256(val, 24);
-    (w1, w2, w3, w4)
+    asm(r1: __addr_of(val)) { r1: (u64, u64, u64, u64) }
+}
+
+#[test]
+fn test_compose()  {
+    let expected: b256 = 0x0000000000000001_0000000000000002_0000000000000003_0000000000000004;
+    let composed = compose((1, 2, 3, 4));
+    if composed.neq(expected) {
+        __revert(0)
+    }
+}
+
+#[test]
+fn test_decompose()  {
+    let initial: b256 = 0x0000000000000001_0000000000000002_0000000000000003_0000000000000004;
+    let expected = (1, 2, 3, 4);
+    let decomposed = decompose(initial);
+    if decomposed.0.neq(expected.0) && decomposed.1.neq(expected.1) && decomposed.2.neq(expected.2) && decomposed.3.neq(expected.3) {
+        __revert(0)
+    }
 }

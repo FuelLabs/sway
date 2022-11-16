@@ -2,7 +2,7 @@ use super::{
     asm_builder::AsmBuilder,
     checks::check_invalid_opcodes,
     finalized_asm::FinalizedAsm,
-    programs::{AbstractProgram, ProgramKind},
+    programs::{AbstractEntry, AbstractProgram, ProgramKind},
     register_sequencer::RegisterSequencer,
     DataId, DataSection,
 };
@@ -109,14 +109,20 @@ fn compile_module_to_asm(
         .into_iter()
         .map(|(func, label, ops)| {
             let selector = func.get_selector(context);
-            (selector, label, ops)
+            let name = func.get_name(context).to_string();
+            AbstractEntry {
+                selector,
+                label,
+                ops,
+                name,
+            }
         })
         .collect();
     let kind = match module.get_kind(context) {
         Kind::Contract => ProgramKind::Contract,
-        Kind::Script => ProgramKind::Script,
+        Kind::Library => ProgramKind::Library,
         Kind::Predicate => ProgramKind::Predicate,
-        Kind::Library => todo!("libraries coming soon!"),
+        Kind::Script => ProgramKind::Script,
     };
 
     ok(
@@ -161,6 +167,7 @@ pub enum StateAccessType {
 pub(crate) fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
     match ty {
         Type::Unit | Type::Bool | Type::Uint(_) | Type::Pointer(_) => 8,
+        Type::Slice => 16,
         Type::B256 => 32,
         Type::String(n) => size_bytes_round_up_to_word_alignment!(n),
         Type::Array(aggregate) => {

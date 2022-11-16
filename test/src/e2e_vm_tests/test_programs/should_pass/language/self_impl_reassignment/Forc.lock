@@ -4,7 +4,7 @@ source = 'path+from-root-5305FB95C746F4C1'
 
 [[package]]
 name = 'self_impl_reassignment'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

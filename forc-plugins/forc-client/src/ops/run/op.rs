@@ -1,27 +1,59 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
 use fuel_gql_client::client::FuelClient;
-use fuel_tx::{ContractId, Transaction, TransactionBuilder};
+use fuel_tx::{ContractId, Transaction, TransactionBuilder, UniqueIdentifier};
 use futures::TryFutureExt;
+use pkg::BuiltPackage;
+use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
 use sway_core::language::parsed::TreeType;
+use tokio::time::timeout;
 use tracing::info;
 
-use crate::ops::tx_util::{TransactionBuilderExt, TxParameters};
+use crate::ops::pkg_util::built_pkgs_with_manifest;
+use crate::ops::tx_util::{TransactionBuilderExt, TxParameters, TX_SUBMIT_TIMEOUT_MS};
 
 use super::cmd::RunCommand;
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
 
-pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
-    let path_dir = if let Some(path) = &command.path {
+pub struct RanScript {
+    pub receipts: Vec<fuel_tx::Receipt>,
+}
+
+/// Builds and runs script(s). If given path corresponds to a workspace, all runnable members will
+/// be built and deployed.
+///
+/// Upon success, returns the receipts of each script in the order they are executed.
+///
+/// When running a single script, only that script's receipts are returned.
+pub async fn run(command: RunCommand) -> Result<Vec<RanScript>> {
+    let mut receipts = Vec::new();
+    let curr_dir = if let Some(path) = &command.path {
         PathBuf::from(path)
     } else {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
-    let manifest = PackageManifestFile::from_dir(&path_dir)?;
-    manifest.check_program_type(vec![TreeType::Script])?;
+    let build_opts = build_opts_from_cmd(&command);
+    let built_pkgs_with_manifest = built_pkgs_with_manifest(&curr_dir, build_opts)?;
+    for (member_manifest, built_pkg) in built_pkgs_with_manifest {
+        if member_manifest
+            .check_program_type(vec![TreeType::Script])
+            .is_ok()
+        {
+            let pkg_receipts = run_pkg(&command, &member_manifest, &built_pkg).await?;
+            receipts.push(pkg_receipts);
+        }
+    }
 
+    Ok(receipts)
+}
+
+pub async fn run_pkg(
+    command: &RunCommand,
+    manifest: &PackageManifestFile,
+    compiled: &BuiltPackage,
+) -> Result<RanScript> {
     let input_data = command.data.as_deref().unwrap_or("");
     let data = format_hex_data(input_data);
     let script_data = hex::decode(data).expect("Invalid hex");
@@ -32,27 +64,28 @@ pub async fn run(command: RunCommand) -> Result<Vec<fuel_tx::Receipt>> {
         .or_else(|| manifest.network.as_ref().map(|nw| &nw.url[..]))
         .unwrap_or(NODE_URL);
     let client = FuelClient::new(node_url)?;
-
-    let build_opts = build_opts_from_cmd(&command);
-    let compiled = forc_pkg::build_package_with_options(&manifest, build_opts)?;
-
-    let contract_ids: Vec<ContractId> = command
+    let contract_ids = command
         .contract
-        .unwrap_or_default()
-        .iter()
-        .map(|contract_id| ContractId::from_str(contract_id).unwrap())
-        .collect();
-    let tx = TransactionBuilder::script(compiled.bytecode, script_data)
+        .as_ref()
+        .into_iter()
+        .flat_map(|contracts| contracts.iter())
+        .map(|contract| {
+            ContractId::from_str(contract)
+                .map_err(|e| anyhow!("Failed to parse contract id: {}", e))
+        })
+        .collect::<Result<Vec<ContractId>>>()?;
+    let tx = TransactionBuilder::script(compiled.bytecode.clone(), script_data)
         .params(TxParameters::new(command.gas_limit, command.gas_price))
         .add_contracts(contract_ids)
         .finalize_signed(client.clone(), command.unsigned, command.signing_key)
         .await?;
-
     if command.dry_run {
         info!("{:?}", tx);
-        Ok(vec![])
+        Ok(RanScript { receipts: vec![] })
     } else {
-        try_send_tx(node_url, &tx, command.pretty_print, command.simulate).await
+        let receipts =
+            try_send_tx(node_url, &tx.into(), command.pretty_print, command.simulate).await?;
+        Ok(RanScript { receipts })
     }
 }
 
@@ -65,7 +98,12 @@ async fn try_send_tx(
     let client = FuelClient::new(node_url)?;
 
     match client.health().await {
-        Ok(_) => send_tx(&client, tx, pretty_print, simulate).await,
+        Ok(_) => timeout(
+            Duration::from_millis(TX_SUBMIT_TIMEOUT_MS),
+            send_tx(&client, tx, pretty_print, simulate),
+        )
+        .await
+        .with_context(|| format!("timeout waiting for {} to be included in a block", tx.id()))?,
         Err(_) => Err(fuel_core_not_running(node_url)),
     }
 }
@@ -80,7 +118,7 @@ async fn send_tx(
     let outputs = {
         if !simulate {
             client
-                .submit(tx)
+                .submit_and_await_commit(tx)
                 .and_then(|_| client.receipts(id.as_str()))
                 .await
         } else {
@@ -106,7 +144,7 @@ fn format_hex_data(data: &str) -> &str {
 }
 
 fn print_receipt_output(receipts: &Vec<fuel_tx::Receipt>, pretty_print: bool) -> Result<()> {
-    let mut receipt_to_json_array = serde_json::to_value(&receipts)?;
+    let mut receipt_to_json_array = serde_json::to_value(receipts)?;
     for (rec_index, receipt) in receipts.iter().enumerate() {
         let rec_value = receipt_to_json_array.get_mut(rec_index).ok_or_else(|| {
             anyhow!(

@@ -1,3 +1,3 @@
 category = "run"
-expected_result = { action = "return_data", value = [ 251, 57, 24, 241, 63, 94, 17, 102, 252, 182, 8, 110, 140, 105, 102, 105, 138, 202, 155, 39, 97, 32, 94, 129, 141, 144, 190, 142, 33, 32, 33, 75 ] }
+expected_result = { action = "return_data", value = "000000000001869fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" }
 validate_abi = true

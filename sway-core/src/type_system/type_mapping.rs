@@ -57,6 +57,7 @@ impl TypeMapping {
                     x.type_id,
                     insert_type(TypeInfo::UnknownGeneric {
                         name: x.name_ident.clone(),
+                        trait_constraints: x.trait_constraints.clone().into_iter().collect(),
                     }),
                 )
             })
@@ -383,6 +384,7 @@ impl TypeMapping {
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery => None,
         }

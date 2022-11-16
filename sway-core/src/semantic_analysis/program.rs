@@ -26,10 +26,11 @@ impl ty::TyProgram {
         let mod_span = root.tree.span.clone();
         let mod_res = ty::TyModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
-            let kind_res = Self::validate_root(&root, kind.clone(), mod_span);
-            kind_res.map(|kind| Self {
+            let res = Self::validate_root(&root, kind.clone(), mod_span);
+            res.map(|(kind, declarations)| Self {
                 kind,
                 root,
+                declarations,
                 storage_slots: vec![],
                 logged_types: vec![],
             })
@@ -37,7 +38,7 @@ impl ty::TyProgram {
     }
 
     pub(crate) fn get_typed_program_with_initialized_storage_slots(
-        &self,
+        self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
@@ -45,8 +46,9 @@ impl ty::TyProgram {
         let mut warnings = vec![];
         let mut errors = vec![];
         match &self.kind {
-            ty::TyProgramKind::Contract { declarations, .. } => {
-                let storage_decl = declarations
+            ty::TyProgramKind::Contract { .. } => {
+                let storage_decl = self
+                    .declarations
                     .iter()
                     .find(|decl| matches!(decl, ty::TyDeclaration::StorageDeclaration(_)));
 
@@ -70,10 +72,8 @@ impl ty::TyProgram {
                         storage_slots.sort();
                         ok(
                             Self {
-                                kind: self.kind.clone(),
-                                root: self.root.clone(),
                                 storage_slots,
-                                logged_types: self.logged_types.clone(),
+                                ..self
                             },
                             warnings,
                             errors,
@@ -81,10 +81,8 @@ impl ty::TyProgram {
                     }
                     _ => ok(
                         Self {
-                            kind: self.kind.clone(),
-                            root: self.root.clone(),
                             storage_slots: vec![],
-                            logged_types: self.logged_types.clone(),
+                            ..self
                         },
                         warnings,
                         errors,
@@ -93,10 +91,8 @@ impl ty::TyProgram {
             }
             _ => ok(
                 Self {
-                    kind: self.kind.clone(),
-                    root: self.root.clone(),
                     storage_slots: vec![],
-                    logged_types: self.logged_types.clone(),
+                    ..self
                 },
                 warnings,
                 errors,

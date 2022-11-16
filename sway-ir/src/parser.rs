@@ -56,7 +56,8 @@ mod ir_builder {
                 }
 
             rule fn_decl() -> IrAstFnDecl
-                = "pub fn" _ name:id() _ selector:selector_id()? _ "(" _
+                = is_public:is_public() _ is_entry:is_entry() _ "fn" _
+                        name:id() _ selector:selector_id()? _ "(" _
                         args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
                             metadata:comma_metadata_idx()? "{" _
                         locals:fn_local()*
@@ -66,30 +67,22 @@ mod ir_builder {
                         name,
                         args,
                         ret_type,
-                        is_public: true,
+                        is_public,
                         metadata,
                         locals,
                         blocks,
-                        selector
+                        selector,
+                        is_entry
                     }
                 }
-                / "fn" _ name:id() _ selector:selector_id()? _ "(" _
-                        args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
-                            metadata:comma_metadata_idx()? "{" _
-                        locals:fn_local()*
-                        blocks:block_decl()*
-                    "}" _ {
-                    IrAstFnDecl {
-                        name,
-                        args,
-                        ret_type,
-                        is_public: false,
-                        metadata,
-                        locals,
-                        blocks,
-                        selector
-                    }
-                }
+
+            rule is_public() -> bool
+                = "pub" _ { true }
+                / "" _ { false }
+
+            rule is_entry() -> bool
+                = "entry" _ { true }
+                / "" _ { false }
 
             rule selector_id() -> [u8; 4]
                 = "<" _ s:$(['0'..='9' | 'a'..='f' | 'A'..='F']*<8>) _ ">" _ {
@@ -530,7 +523,8 @@ mod ir_builder {
                     IrMetadatum::Index(idx)
                 }
                 / ['"'] s:$(([^ '"' | '\\'] / ['\\'] ['\\' | '"' ])+) ['"'] __ {
-                    IrMetadatum::String(s.to_owned())
+                    // Metadata strings are printed with '\\' escaped on parsing we unescape it.
+                    IrMetadatum::String(s.to_owned().replace("\\\\", "\\"))
                 }
                 / tag:$(id_char0() id_char()*) __ els:metadata_item()* {
                     IrMetadatum::Struct(tag.to_owned(), els)
@@ -624,6 +618,7 @@ mod ir_builder {
         locals: Vec<(IrAstTy, String, bool, Option<IrAstOperation>)>,
         blocks: Vec<IrAstBlock>,
         selector: Option<[u8; 4]>,
+        is_entry: bool,
     }
 
     #[derive(Debug)]
@@ -883,6 +878,7 @@ mod ir_builder {
                 ret_type,
                 fn_decl.selector,
                 fn_decl.is_public,
+                fn_decl.is_entry,
                 convert_md_idx(&fn_decl.metadata),
             );
 
@@ -1296,11 +1292,7 @@ mod ir_builder {
         context: &mut Context,
         ir_metadata: Vec<(MdIdxRef, IrMetadatum)>,
     ) -> HashMap<MdIdxRef, MetadataIndex> {
-        fn convert_md(
-            context: &mut Context,
-            md: IrMetadatum,
-            md_map: &mut HashMap<MdIdxRef, MetadataIndex>,
-        ) -> Metadatum {
+        fn convert_md(md: IrMetadatum, md_map: &mut HashMap<MdIdxRef, MetadataIndex>) -> Metadatum {
             match md {
                 IrMetadatum::Integer(i) => Metadatum::Integer(i),
                 IrMetadatum::Index(idx) => Metadatum::Index(
@@ -1313,7 +1305,7 @@ mod ir_builder {
                 IrMetadatum::Struct(tag, els) => Metadatum::Struct(
                     tag,
                     els.into_iter()
-                        .map(|el_md| convert_md(context, el_md, md_map))
+                        .map(|el_md| convert_md(el_md, md_map))
                         .collect(),
                 ),
                 IrMetadatum::List(idcs) => Metadatum::List(
@@ -1332,7 +1324,7 @@ mod ir_builder {
         let mut md_map = HashMap::new();
 
         for (ir_idx, ir_md) in ir_metadata {
-            let md = convert_md(context, ir_md, &mut md_map);
+            let md = convert_md(ir_md, &mut md_map);
             let md_idx = MetadataIndex(context.metadata.insert(md));
             md_map.insert(ir_idx, md_idx);
         }

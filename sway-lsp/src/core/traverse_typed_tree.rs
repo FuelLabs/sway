@@ -195,7 +195,7 @@ fn handle_declaration(declaration: &ty::TyDeclaration, tokens: &TokenMap) {
                 token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
             }
         }
-        ty::TyDeclaration::ErrorRecovery => {}
+        ty::TyDeclaration::ErrorRecovery(_) => {}
         ty::TyDeclaration::StorageDeclaration(decl_id) => {
             if let Ok(storage_decl) =
                 declaration_engine::de_get_storage(decl_id.clone(), &decl_id.span())

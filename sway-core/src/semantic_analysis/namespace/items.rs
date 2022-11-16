@@ -138,8 +138,9 @@ impl Items {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
-        methods: Vec<ty::TyFunctionDeclaration>,
+        methods: &[DeclarationId],
         impl_span: &Span,
+        is_impl_self: bool,
     ) -> CompileResult<()> {
         let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
@@ -155,27 +156,31 @@ impl Items {
             suffix: trait_name.suffix,
             is_absolute: trait_name.is_absolute,
         };
-        self.implemented_traits
-            .insert(trait_name, trait_type_args, type_id, methods, impl_span)
+        self.implemented_traits.insert(
+            trait_name,
+            trait_type_args,
+            type_id,
+            methods,
+            impl_span,
+            is_impl_self,
+        )
     }
 
     pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
         self.implemented_traits.insert_for_type(type_id);
     }
 
-    pub(crate) fn get_methods_for_type(
-        &self,
-        implementing_for_type_id: TypeId,
-    ) -> Vec<ty::TyFunctionDeclaration> {
-        self.implemented_traits
-            .get_methods_for_type(implementing_for_type_id)
+    pub(crate) fn get_methods_for_type(&self, type_id: TypeId) -> Vec<DeclarationId> {
+        self.implemented_traits.get_methods_for_type(type_id)
     }
 
-    pub(crate) fn get_canonical_path(&self, symbol: &Ident) -> &[Ident] {
-        self.use_synonyms
-            .get(symbol)
-            .map(|v| &v.0[..])
-            .unwrap_or(&[])
+    pub(crate) fn get_methods_for_type_and_trait_name(
+        &self,
+        type_id: TypeId,
+        trait_name: &CallPath,
+    ) -> Vec<DeclarationId> {
+        self.implemented_traits
+            .get_methods_for_type_and_trait_name(type_id, trait_name)
     }
 
     pub(crate) fn has_storage_declared(&self) -> bool {

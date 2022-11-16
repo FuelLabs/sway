@@ -1,10 +1,7 @@
 mod function_parameter;
 
 pub use function_parameter::*;
-use sway_error::{
-    error::CompileError,
-    warning::{CompileWarning, Warning},
-};
+use sway_error::warning::{CompileWarning, Warning};
 
 use crate::{
     error::*,
@@ -19,6 +16,7 @@ impl ty::TyFunctionDeclaration {
         mut ctx: TypeCheckContext,
         fn_decl: FunctionDeclaration,
         is_method: bool,
+        is_in_impl_self: bool,
     ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -51,18 +49,15 @@ impl ty::TyFunctionDeclaration {
         // type check the type parameters, which will also insert them into the namespace
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
-            if !type_parameter.trait_constraints.is_empty() {
-                errors.push(CompileError::WhereClauseNotYetSupported {
-                    span: type_parameter.trait_constraints_span,
-                });
-                return err(warnings, errors);
-            }
             new_type_parameters.push(check!(
                 TypeParameter::type_check(fn_ctx.by_ref(), type_parameter),
-                return err(warnings, errors),
+                continue,
                 warnings,
                 errors
             ));
+        }
+        if !errors.is_empty() {
+            return err(warnings, errors);
         }
 
         // type check the function parameters, which will also insert them into the namespace
@@ -74,6 +69,9 @@ impl ty::TyFunctionDeclaration {
                 warnings,
                 errors
             ));
+        }
+        if !errors.is_empty() {
+            return err(warnings, errors);
         }
 
         // type check the return type
@@ -134,7 +132,11 @@ impl ty::TyFunctionDeclaration {
         }
 
         let (visibility, is_contract_call) = if is_method {
-            (Visibility::Public, false)
+            if is_in_impl_self {
+                (visibility, false)
+            } else {
+                (Visibility::Public, false)
+            }
         } else {
             (visibility, fn_ctx.mode() == Mode::ImplAbiFn)
         };
@@ -155,13 +157,18 @@ impl ty::TyFunctionDeclaration {
         };
 
         // Retrieve the implemented traits for the type of the return type and
-        // insert them in the broader namespace.
-        ctx.namespace.implemented_traits.extend(
-            fn_ctx
-                .namespace
-                .implemented_traits
-                .filter_by_type(function_decl.return_type),
-        );
+        // insert them in the broader namespace. We don't want to include any
+        // type parameters, so we filter them out.
+        let mut return_type_namespace = fn_ctx
+            .namespace
+            .implemented_traits
+            .filter_by_type(function_decl.return_type);
+        for type_param in function_decl.type_parameters.iter() {
+            return_type_namespace.filter_against_type(type_param.type_id);
+        }
+        ctx.namespace
+            .implemented_traits
+            .extend(return_type_namespace);
 
         ok(function_decl, warnings, errors)
     }

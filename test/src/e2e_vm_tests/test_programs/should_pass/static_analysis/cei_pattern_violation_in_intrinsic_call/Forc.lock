@@ -1,0 +1,13 @@
+[[package]]
+name = 'cei_pattern_violation_in_intrinsic_call'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-8075CAB8EEC6376F'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-8075CAB8EEC6376F'
+dependencies = ['core']

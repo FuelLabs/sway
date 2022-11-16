@@ -4,5 +4,5 @@ source = 'path+from-root-C382FF45EDC7C1B7'
 
 [[package]]
 name = 'main_args_ref_copy'
-source = 'root'
+source = 'member'
 dependencies = ['core']

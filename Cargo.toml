@@ -4,10 +4,10 @@ members = [
     "forc",
     "forc-pkg",
     "forc-plugins/forc-client",
-    "forc-plugins/forc-explore",
+    "forc-plugins/forc-doc",
     "forc-plugins/forc-fmt",
     "forc-plugins/forc-lsp",
-    "forc-plugins/forc-doc",
+    "forc-test",
     "forc-tracing",
     "forc-util",
     "scripts/examples-checker",
@@ -23,7 +23,6 @@ members = [
     "sway-utils",
     "swayfmt",
     "test",
-    "test-sig-gen-util",
 ]
 exclude = [
     "examples/*"
