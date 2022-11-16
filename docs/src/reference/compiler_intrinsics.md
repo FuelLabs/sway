@@ -34,7 +34,6 @@ __is_reference_type<T>() -> bool
 
 ___
 
-
 ```sway
 __eq<T>(lhs: T, rhs: T) -> bool`
 ```
@@ -79,7 +78,7 @@ ___
 __state_load_quad(key: b256, ptr: raw_ptr)`
 ```
 
-**Description:** Reads a `b256` from storage at key `key` and stores it in memory at address `raw_ptr` 
+**Description:** Reads a `b256` from storage at key `key` and stores it in memory at address `raw_ptr`
 
 **Constraints:** None.
 
@@ -169,7 +168,7 @@ ___
 __ptr_add(ptr: raw_ptr, offset: u64)`
 ```
 
-**Description:** Adds `offset` to the raw value of pointer `ptr`. 
+**Description:** Adds `offset` to the raw value of pointer `ptr`.
 
 **Constraints:** None.
 
@@ -179,7 +178,7 @@ ___
 __ptr_sub(ptr: raw_ptr, offset: u64)`
 ```
 
-**Description:** Subtracts `offset` to the raw value of pointer `ptr`. 
+**Description:** Subtracts `offset` to the raw value of pointer `ptr`.
 
 **Constraints:** None.
 

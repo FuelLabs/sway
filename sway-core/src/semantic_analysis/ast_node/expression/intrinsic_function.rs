@@ -11,15 +11,9 @@ use crate::{
     CompileResult,
 };
 
-#[derive(Clone)]
-enum ExpectedType {
-    NonGeneric(TypeInfo),
-    Generic(u64),
-}
-
 impl ty::TyIntrinsicFunctionKind {
     pub(crate) fn type_check(
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         kind_binding: TypeBinding<Intrinsic>,
         arguments: Vec<Expression>,
         span: Span,
@@ -42,33 +36,14 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::GetStorageKey => {
                 type_check_get_storage_key(ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::Eq => type_check_eq(ctx, kind, arguments, type_arguments, span),
-            Intrinsic::Gtf => {
-                let expected_arg_types = [
-                    ExpectedType::NonGeneric(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-                    ExpectedType::NonGeneric(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-                ]
-                .to_vec();
-                let expected_return_type = ExpectedType::Generic(0);
-                type_check_intrinsic(
-                    ctx,
-                    kind,
-                    arguments,
-                    expected_arg_types,
-                    expected_return_type,
-                    type_arguments,
-                    span,
-                )
-                //                type_check_gtf(ctx, kind, arguments, type_arguments, span)
-            }
-            Intrinsic::AddrOf => type_check_addr_of(ctx, kind, arguments, type_arguments, span),
-            Intrinsic::StateLoadWord => {
-                type_check_state_load_word(ctx, kind, arguments, type_arguments, span)
-            }
+            Intrinsic::Eq => type_check_eq(ctx, kind, arguments, span),
+            Intrinsic::Gtf => type_check_gtf(ctx, kind, arguments, type_arguments, span),
+            Intrinsic::AddrOf => type_check_addr_of(ctx, kind, arguments, span),
+            Intrinsic::StateLoadWord => type_check_state_load_word(ctx, kind, arguments, span),
             Intrinsic::StateStoreWord | Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
                 type_check_state_store_or_quad(ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::Log => type_check_log(ctx, kind, arguments, type_arguments, span),
+            Intrinsic::Log => type_check_log(ctx, kind, arguments, span),
             Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
                 type_check_binary_op(ctx, kind, arguments, type_arguments, span)
             }
@@ -78,88 +53,6 @@ impl ty::TyIntrinsicFunctionKind {
             }
         }
     }
-}
-
-fn type_check_intrinsic(
-    mut ctx: TypeCheckContext,
-    kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
-    expected_arg_types: Vec<ExpectedType>,
-    expected_return_type: ExpectedType,
-    type_arguments: Vec<TypeArgument>,
-    span: Span,
-) -> CompileResult<(ty::TyIntrinsicFunctionKind, TypeId)> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
-    if arguments.len() != expected_arg_types.len() {
-        errors.push(CompileError::IntrinsicIncorrectNumArgs {
-            name: kind.to_string(),
-            expected: expected_arg_types.len() as u64,
-            span,
-        });
-        return err(warnings, errors);
-    }
-
-    if type_arguments.len() != 1 {
-        errors.push(CompileError::IntrinsicIncorrectNumTArgs {
-            name: kind.to_string(),
-            expected: 1,
-            span,
-        });
-        return err(warnings, errors);
-    }
-
-    let mut args = Vec::new();
-    for (ty, arg) in expected_arg_types.iter().zip(arguments.iter()) {
-        // Type check the first argument which is the index
-        let extracted_type = match ty {
-            ExpectedType::NonGeneric(non_generic) => non_generic.clone(),
-            ExpectedType::Generic(_) => TypeInfo::Unknown,
-        };
-        let mut ctx = ctx
-            .by_ref()
-            .with_type_annotation(insert_type(extracted_type));
-        args.push(check!(
-            ty::TyExpression::type_check(ctx.by_ref(), arg.clone()),
-            return err(warnings, errors),
-            warnings,
-            errors
-        ));
-    }
-
-    let targ = type_arguments[0].clone();
-    let initial_type_info = check!(
-        CompileResult::from(to_typeinfo(targ.type_id, &targ.span).map_err(CompileError::from)),
-        TypeInfo::ErrorRecovery,
-        warnings,
-        errors
-    );
-    let initial_type_id = insert_type(initial_type_info);
-    let type_id = check!(
-        ctx.resolve_type_with_self(initial_type_id, &targ.span, EnforceTypeArguments::Yes, None),
-        insert_type(TypeInfo::ErrorRecovery),
-        warnings,
-        errors,
-    );
-
-    ok(
-        (
-            ty::TyIntrinsicFunctionKind {
-                kind,
-                arguments: args,
-                type_arguments: vec![TypeArgument {
-                    type_id,
-                    initial_type_id,
-                    span: targ.span,
-                }],
-                span,
-            },
-            type_id,
-        ),
-        warnings,
-        errors,
-    )
 }
 
 fn type_check_size_of_val(
@@ -309,9 +202,6 @@ fn type_check_get_storage_key(
     _type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> CompileResult<(ty::TyIntrinsicFunctionKind, TypeId)> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
     ok(
         (
             ty::TyIntrinsicFunctionKind {
@@ -322,8 +212,8 @@ fn type_check_get_storage_key(
             },
             insert_type(TypeInfo::B256),
         ),
-        warnings,
-        errors,
+        vec![],
+        vec![],
     )
 }
 
@@ -331,7 +221,6 @@ fn type_check_eq(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: Vec<Expression>,
-    type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> CompileResult<(ty::TyIntrinsicFunctionKind, TypeId)> {
     let mut warnings = vec![];
@@ -527,10 +416,9 @@ fn type_check_gtf(
 }
 
 fn type_check_addr_of(
-    mut ctx: TypeCheckContext,
+    ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: Vec<Expression>,
-    type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> CompileResult<(ty::TyIntrinsicFunctionKind, TypeId)> {
     let mut warnings = vec![];
@@ -579,10 +467,9 @@ fn type_check_addr_of(
 }
 
 fn type_check_state_load_word(
-    mut ctx: TypeCheckContext,
+    ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: Vec<Expression>,
-    type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> CompileResult<(ty::TyIntrinsicFunctionKind, TypeId)> {
     let mut warnings = vec![];
@@ -629,7 +516,7 @@ fn type_check_state_load_word(
 }
 
 fn type_check_state_store_or_quad(
-    mut ctx: TypeCheckContext,
+    ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: Vec<Expression>,
     type_arguments: Vec<TypeArgument>,
@@ -727,7 +614,6 @@ fn type_check_log(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: Vec<Expression>,
-    type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> CompileResult<(ty::TyIntrinsicFunctionKind, TypeId)> {
     let mut warnings = vec![];
