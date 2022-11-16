@@ -21,14 +21,16 @@
 //!   #[foo(bar, bar)]
 
 use std::{collections::HashMap, sync::Arc};
-use sway_types::Ident;
+use sway_types::{Ident, Span};
 
-/// An attribute has a name (i.e "doc", "storage") and
-/// a vector of possible arguments.
+/// An attribute has a name (i.e "doc", "storage"),
+/// a vector of possible arguments and
+/// a span from its declaration.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Attribute {
     pub name: Ident,
     pub args: Vec<Ident>,
+    pub span: Span,
 }
 
 /// Valid kinds of attributes supported by the compiler
