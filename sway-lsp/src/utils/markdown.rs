@@ -3,7 +3,7 @@ const SWAYDOC_FENCES: [&str; 2] = ["```", "~~~"];
 
 /// Transforms markdown and takes care of any code blocks
 /// to allow for syntax highlighting.
-pub(crate) fn format_docs(src: &str) -> String {
+pub fn format_docs(src: &str) -> String {
     let mut processed_lines = Vec::new();
     let mut in_code_block = false;
     let mut is_sway = false;
