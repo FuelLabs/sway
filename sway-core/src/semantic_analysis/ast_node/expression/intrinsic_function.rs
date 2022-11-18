@@ -23,8 +23,8 @@ impl ty::TyIntrinsicFunctionKind {
             type_arguments,
             ..
         } = kind_binding;
-        match kind {
-            Intrinsic::SizeOfVal => {
+            match kind {
+                Intrinsic::SizeOfVal => {
                 type_check_size_of_val(ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::SizeOfType => {
@@ -55,6 +55,9 @@ impl ty::TyIntrinsicFunctionKind {
     }
 }
 
+/// Signature: `__size_of_val<T>(val: T) -> u64`
+/// Description: Return the size of type `T` in bytes.
+/// Constraints: None.
 fn type_check_size_of_val(
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -92,6 +95,9 @@ fn type_check_size_of_val(
     ok((intrinsic_function, return_type), warnings, errors)
 }
 
+/// Signature: `__size_of<T>() -> u64`
+/// Description: Return the size of type `T` in bytes.
+/// Constraints: None.
 fn type_check_size_of_type(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -146,6 +152,9 @@ fn type_check_size_of_type(
     ok((intrinsic_function, return_type), warnings, errors)
 }
 
+/// Signature: `__is_reference_type<T>() -> bool`
+/// Description: Returns `true` if `T` is a _reference type_ and `false` otherwise.
+/// Constraints: None.
 fn type_check_is_reference_type(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -195,6 +204,10 @@ fn type_check_is_reference_type(
     )
 }
 
+/// Signature: `__get_storage_key() -> b256`
+/// Description: Returns the storage key used by a given `struct` in storage when called from a
+///              method on that `struct`.
+/// Constraints: None.
 fn type_check_get_storage_key(
     mut _ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -217,6 +230,9 @@ fn type_check_get_storage_key(
     )
 }
 
+/// Signature: `__eq<T>(lhs: T, rhs: T) -> bool`
+/// Description: Returns whether `lhs` and `rhs` are equal.
+/// Constraints: `T` is `bool`, `u8`, `u16`, `u32`, `u64`, or `raw_ptr`.
 fn type_check_eq(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -291,6 +307,12 @@ fn type_check_eq(
     )
 }
 
+/// Signature: `__gtf<T>(index: u64, tx_field_id: u64) -> T`
+/// Description: Returns transaction field with ID `tx_field_id` at index `index`, if applicable.
+///              This is a wrapper around FuelVM's `gtf` instruction:
+///              https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#gtf-get-transaction-fields.
+///              The resuting field is cast to `T`.
+/// Constraints: None.
 fn type_check_gtf(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -415,6 +437,9 @@ fn type_check_gtf(
     )
 }
 
+/// Signature: `__addr_of<T>(val: T) -> raw_ptr`
+/// Description: Returns the address in memory where `val` is stored.
+/// Constraints: `T` is a reference type.
 fn type_check_addr_of(
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -466,6 +491,9 @@ fn type_check_addr_of(
     ok((intrinsic_function, return_type), warnings, errors)
 }
 
+/// Signature: `__state_load_word(key: b256) -> u64`
+/// Description: Reads and returns a single word from storage at key `key`.
+/// Constraints: None.
 fn type_check_state_load_word(
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -515,6 +543,18 @@ fn type_check_state_load_word(
     ok((intrinsic_function, return_type), warnings, errors)
 }
 
+/// Signature: `__state_load_quad(key: b256, ptr: raw_ptr)`
+/// Description: Reads a `b256` from storage at key `key` and stores it in memory at address
+///              `raw_ptr`
+/// Constraints: None.
+///
+/// Signature: `__state_store_word(key: b256, val: u64)`
+/// Description: Stores a single word `val` into storage at key `key`.
+/// Constraints: None.
+///
+/// Signature: `__state_store_quad(key: b256, ptr: raw_ptr)`
+/// Description: Stores a `b256` from address `ptr` in memory into storage at key `key`.
+/// Constraints: None.
 fn type_check_state_store_or_quad(
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -610,6 +650,9 @@ fn type_check_state_store_or_quad(
     ok((intrinsic_function, return_type), warnings, errors)
 }
 
+/// Signature: `__log<T>(val: T)`
+/// Description: Logs value `val`.
+/// Constraints: None.
 fn type_check_log(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -647,6 +690,21 @@ fn type_check_log(
     ok((intrinsic_function, return_type), warnings, errors)
 }
 
+/// Signature: `__add<T>(lhs: T, rhs: T) -> T`
+/// Description: Adds `lhs` and `rhs` and returns the result.
+/// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+/// 
+/// Signature: `__sub<T>(lhs: T, rhs: T) -> T`
+/// Description: Subtracts `lhs` and `rhs` and returns the result.
+/// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+///
+/// Signature: `__mul<T>(lhs: T, rhs: T) -> T`
+/// Description: Multiplies `lhs` and `rhs` and returns the result.
+/// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+///
+/// Signature: `__div<T>(lhs: T, rhs: T) -> T`
+/// Description: Divides `lhs` and `rhs` and returns the result.
+/// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
 fn type_check_binary_op(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -729,6 +787,9 @@ fn type_check_binary_op(
     )
 }
 
+/// Signature: `__revert(code: u64)`
+/// Description: Reverts with error code `code`.
+/// Constraints: None.
 fn type_check_revert(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -796,6 +857,13 @@ fn type_check_revert(
     )
 }
 
+/// Signature: `__ptr_add(ptr: raw_ptr, offset: u64)`
+/// Description: Adds `offset` to the raw value of pointer `ptr`.
+/// Constraints: None.
+///
+/// Signature: `__ptr_sub(ptr: raw_ptr, offset: u64)`
+/// Description: Subtracts `offset` to the raw value of pointer `ptr`.
+/// Constraints: None.
 fn type_check_ptr_ops(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
