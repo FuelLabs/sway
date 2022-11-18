@@ -22,6 +22,12 @@ pub struct Command {
     /// Terse mode. Limited warning and error output.
     #[clap(long = "terse", short = 't')]
     pub terse_mode: bool,
+    /// TODO remove this when we remove lazy statics from the compiler.
+    /// This is just an implementation detail for improving LSP performance
+    /// we let the lazy statics continually leak in order to allow for parallel
+    /// project compilation
+    #[clap(hide = true, long = "preserve-statics")]
+    pub preserve_statics: bool,
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {

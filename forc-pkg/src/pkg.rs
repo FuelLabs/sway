@@ -2681,9 +2681,15 @@ type ParseAndTypedPrograms = CompileResult<(ParseProgram, Option<ty::TyProgram>)
 /// Compile the entire forc package and return the parse and typed programs
 /// of the dependancies and project.
 /// The final item in the returned vector is the project.
-pub fn check(plan: &BuildPlan, terse_mode: bool) -> anyhow::Result<Vec<ParseAndTypedPrograms>> {
+pub fn check(
+    plan: &BuildPlan,
+    terse_mode: bool,
+    preserve_statics: bool,
+) -> anyhow::Result<Vec<ParseAndTypedPrograms>> {
     //TODO remove once type engine isn't global anymore.
-    sway_core::clear_lazy_statics();
+    if !preserve_statics {
+        sway_core::clear_lazy_statics();
+    }
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     // During `check`, we don't compile so this stays empty.

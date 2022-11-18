@@ -219,7 +219,8 @@ impl Session {
                 .map_err(LanguageServerError::BuildPlanFailed)?;
 
         let mut diagnostics = Vec::new();
-        let results = pkg::check(&plan, true).map_err(LanguageServerError::FailedToCompile)?;
+        let results =
+            pkg::check(&plan, true, true).map_err(LanguageServerError::FailedToCompile)?;
         let results_len = results.len();
         for (i, res) in results.into_iter().enumerate() {
             // We can convert these destructured elements to a Vec<Diagnostic> later on.

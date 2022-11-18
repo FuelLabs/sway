@@ -292,6 +292,7 @@ fn compile_core() -> namespace::Module {
         offline_mode: true,
         terse_mode: true,
         locked: false,
+        preserve_statics: false,
     };
 
     let res = forc::test::forc_check::check(check_cmd)

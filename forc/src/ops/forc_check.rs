@@ -11,6 +11,7 @@ pub fn check(command: CheckCommand) -> Result<CompileResult<ty::TyProgram>> {
         offline_mode: offline,
         terse_mode,
         locked,
+        preserve_statics,
     } = command;
 
     let this_dir = if let Some(ref path) = path {
@@ -24,7 +25,7 @@ pub fn check(command: CheckCommand) -> Result<CompileResult<ty::TyProgram>> {
     let plan =
         pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
 
-    let mut v = pkg::check(&plan, terse_mode)?;
+    let mut v = pkg::check(&plan, terse_mode, preserve_statics)?;
     let res = v
         .pop()
         .expect("there is guaranteed to be at least one elem in the vector")

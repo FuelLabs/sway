@@ -54,7 +54,7 @@ pub fn main() -> Result<()> {
     let lock_path = manifest.lock_path()?;
     let plan =
         pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
-    let compilation = pkg::check(&plan, silent)?
+    let compilation = pkg::check(&plan, silent, false)?
         .pop()
         .expect("there is guaranteed to be at least one elem in the vector");
     let raw_docs: Documentation = Document::from_ty_program(&compilation, no_deps)?;
