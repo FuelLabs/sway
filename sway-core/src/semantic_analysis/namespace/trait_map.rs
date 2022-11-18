@@ -679,7 +679,10 @@ impl TraitMap {
                 suffix: e.key.name.suffix.name.clone(),
                 is_absolute: e.key.name.is_absolute,
             };
-            if &map_trait_name == trait_name
+            let are_same_name_traits = (trait_name.prefixes.is_empty()
+                && map_trait_name.suffix == trait_name.suffix)
+                || &map_trait_name == trait_name;
+            if are_same_name_traits
                 && are_equal_minus_dynamic_types(type_engine, type_id, e.key.type_id)
             {
                 let mut trait_methods = e.value.values().cloned().into_iter().collect::<Vec<_>>();
