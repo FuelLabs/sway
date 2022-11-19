@@ -316,8 +316,8 @@ pub(crate) fn type_check_method_application(
         if !new_errors.is_empty() {
             errors.push(CompileError::ArgumentParameterTypeMismatch {
                 span: arg.span.clone(),
-                provided: arg.return_type.to_string(),
-                should_be: param.type_id.to_string(),
+                provided: type_engine.help_out(arg.return_type).to_string(),
+                should_be: type_engine.help_out(param.type_id).to_string(),
             });
         }
     }

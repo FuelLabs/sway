@@ -178,7 +178,7 @@ impl TraitMap {
                 );
                 errors.push(CompileError::ConflictingImplsForTraitAndType {
                     trait_name: trait_name_str,
-                    type_implementing_for: type_id.to_string(),
+                    type_implementing_for: type_engine.help_out(type_id).to_string(),
                     second_impl_span: impl_span.clone(),
                 });
             } else if types_are_subset {
@@ -192,7 +192,7 @@ impl TraitMap {
                         );
                         errors.push(CompileError::DuplicateMethodsDefinedForType {
                             func_name: method.name.to_string(),
-                            type_implementing_for: type_id.to_string(),
+                            type_implementing_for: type_engine.help_out(type_id).to_string(),
                             span: method.name.span(),
                         });
                     }
@@ -745,7 +745,7 @@ impl TraitMap {
         for trait_name in required_traits.difference(&found_traits) {
             // TODO: use a better span
             errors.push(CompileError::TraitConstraintNotSatisfied {
-                ty: type_id.to_string(),
+                ty: type_engine.help_out(type_id).to_string(),
                 trait_name: trait_name.to_string(),
                 span: access_span.clone(),
             });
@@ -760,7 +760,7 @@ impl TraitMap {
 }
 
 fn are_equal_minus_dynamic_types(type_engine: &TypeEngine, left: TypeId, right: TypeId) -> bool {
-    if *left == *right {
+    if left.index() == right.index() {
         return true;
     }
     match (

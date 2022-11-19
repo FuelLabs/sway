@@ -3,33 +3,16 @@ use std::fmt;
 use sway_types::{JsonTypeApplication, JsonTypeDeclaration};
 
 /// A identifier to uniquely refer to our type terms
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
 pub struct TypeId(usize);
 
-impl std::ops::Deref for TypeId {
-    type Target = usize;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 impl DisplayWithTypeEngine for TypeId {
-    fn fmt(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        type_engine: &TypeEngine,
-    ) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         write!(
             f,
             "{}",
             type_engine.help_out(type_engine.look_up_type_id(*self))
         )
-    }
-}
-
-impl fmt::Debug for TypeId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", look_up_type_id(*self))
     }
 }
 
@@ -161,6 +144,11 @@ impl TypeId {
         TypeId(index)
     }
 
+    /// Returns the index that identifies the type.
+    pub fn index(&self) -> usize {
+        self.0
+    }
+
     pub(crate) fn get_type_parameters(
         &self,
         type_engine: &TypeEngine,
@@ -221,7 +209,7 @@ impl TypeId {
                 let variants = variant_types
                     .iter()
                     .map(|x| JsonTypeDeclaration {
-                        type_id: *x.initial_type_id,
+                        type_id: x.initial_type_id.index(),
                         type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
                         components: x.initial_type_id.get_json_type_components(
                             type_engine,
@@ -244,7 +232,7 @@ impl TypeId {
                         .iter()
                         .map(|x| JsonTypeApplication {
                             name: x.name.to_string(),
-                            type_id: *x.initial_type_id,
+                            type_id: x.initial_type_id.index(),
                             type_arguments: x.initial_type_id.get_json_type_arguments(
                                 type_engine,
                                 types,
@@ -259,7 +247,7 @@ impl TypeId {
                 let field_types = fields
                     .iter()
                     .map(|x| JsonTypeDeclaration {
-                        type_id: *x.initial_type_id,
+                        type_id: x.initial_type_id.index(),
                         type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
                         components: x.initial_type_id.get_json_type_components(
                             type_engine,
@@ -282,7 +270,7 @@ impl TypeId {
                         .iter()
                         .map(|x| JsonTypeApplication {
                             name: x.name.to_string(),
-                            type_id: *x.initial_type_id,
+                            type_id: x.initial_type_id.index(),
                             type_arguments: x.initial_type_id.get_json_type_arguments(
                                 type_engine,
                                 types,
@@ -298,7 +286,7 @@ impl TypeId {
                 {
                     // The `JsonTypeDeclaration`s needed for the array element type
                     let elem_ty = JsonTypeDeclaration {
-                        type_id: *initial_type_id,
+                        type_id: initial_type_id.index(),
                         type_field: initial_type_id.get_json_type_str(type_engine, type_id),
                         components: initial_type_id.get_json_type_components(
                             type_engine,
@@ -317,7 +305,7 @@ impl TypeId {
                     // `JsonTypeApplication` for the array element type
                     Some(vec![JsonTypeApplication {
                         name: "__array_element".to_string(),
-                        type_id: *initial_type_id,
+                        type_id: initial_type_id.index(),
                         type_arguments: initial_type_id.get_json_type_arguments(
                             type_engine,
                             types,
@@ -334,7 +322,7 @@ impl TypeId {
                     let fields_types = fields
                         .iter()
                         .map(|x| JsonTypeDeclaration {
-                            type_id: *x.initial_type_id,
+                            type_id: x.initial_type_id.index(),
                             type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
                             components: x.initial_type_id.get_json_type_components(
                                 type_engine,
@@ -357,7 +345,7 @@ impl TypeId {
                             .iter()
                             .map(|x| JsonTypeApplication {
                                 name: "__tuple_element".to_string(),
-                                type_id: *x.initial_type_id,
+                                type_id: x.initial_type_id.index(),
                                 type_arguments: x.initial_type_id.get_json_type_arguments(
                                     type_engine,
                                     types,
@@ -383,7 +371,7 @@ impl TypeId {
                                 .iter(),
                         )
                         .map(|(v, p)| JsonTypeDeclaration {
-                            type_id: *v.initial_type_id,
+                            type_id: v.initial_type_id.index(),
                             type_field: v.initial_type_id.get_json_type_str(type_engine, p.type_id),
                             components: v.initial_type_id.get_json_type_components(
                                 type_engine,
@@ -449,7 +437,7 @@ impl TypeId {
                     .iter()
                     .zip(resolved_params.iter())
                     .map(|(v, p)| JsonTypeDeclaration {
-                        type_id: *v.initial_type_id,
+                        type_id: v.initial_type_id.index(),
                         type_field: v.initial_type_id.get_json_type_str(type_engine, p.type_id),
                         components: v.initial_type_id.get_json_type_components(
                             type_engine,
@@ -469,7 +457,7 @@ impl TypeId {
                     .iter()
                     .map(|arg| JsonTypeApplication {
                         name: "".to_string(),
-                        type_id: *arg.initial_type_id,
+                        type_id: arg.initial_type_id.index(),
                         type_arguments: arg.initial_type_id.get_json_type_arguments(
                             type_engine,
                             types,
@@ -488,7 +476,7 @@ impl TypeId {
                 let json_type_arguments = type_parameters
                     .iter()
                     .map(|v| JsonTypeDeclaration {
-                        type_id: *v.type_id,
+                        type_id: v.type_id.index(),
                         type_field: v.type_id.get_json_type_str(type_engine, v.type_id),
                         components: v.type_id.get_json_type_components(
                             type_engine,
@@ -509,7 +497,7 @@ impl TypeId {
                         .iter()
                         .map(|arg| JsonTypeApplication {
                             name: "".to_string(),
-                            type_id: *arg.type_id,
+                            type_id: arg.type_id.index(),
                             type_arguments: arg.type_id.get_json_type_arguments(
                                 type_engine,
                                 types,

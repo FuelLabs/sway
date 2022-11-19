@@ -654,7 +654,6 @@ pub fn asm_to_bytecode(
 }
 
 pub fn clear_lazy_statics() {
-    type_system::clear_type_engine();
     declaration_engine::declaration_engine::de_clear();
 }
 

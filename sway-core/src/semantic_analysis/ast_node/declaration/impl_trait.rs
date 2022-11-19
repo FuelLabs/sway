@@ -178,7 +178,7 @@ impl ty::TyImplTrait {
                 {
                     errors.push(CompileError::ImplAbiForNonContract {
                         span: type_implementing_for_span.clone(),
-                        ty: implementing_for_type_id.to_string(),
+                        ty: type_engine.help_out(implementing_for_type_id).to_string(),
                     });
                 }
 
@@ -726,8 +726,10 @@ fn type_check_trait_implementation(
                 errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
                     span: impl_method_param.type_span.clone(),
-                    given: impl_method_param.type_id.to_string(),
-                    expected: impl_method_signature_param.type_id.to_string(),
+                    given: type_engine.help_out(impl_method_param.type_id).to_string(),
+                    expected: type_engine
+                        .help_out(impl_method_signature_param.type_id)
+                        .to_string(),
                 });
                 continue;
             }
@@ -766,8 +768,10 @@ fn type_check_trait_implementation(
             errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                 interface_name: interface_name(),
                 span: impl_method.return_type_span.clone(),
-                expected: impl_method_signature.return_type.to_string(),
-                given: impl_method.return_type.to_string(),
+                expected: type_engine
+                    .help_out(impl_method_signature.return_type)
+                    .to_string(),
+                given: type_engine.help_out(impl_method.return_type).to_string(),
             });
             continue;
         }

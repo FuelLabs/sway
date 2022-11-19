@@ -262,7 +262,7 @@ impl TyFunctionDeclaration {
             .parameters
             .iter()
             .map(|x| JsonTypeDeclaration {
-                type_id: *x.initial_type_id,
+                type_id: x.initial_type_id.index(),
                 type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
                 components: x.initial_type_id.get_json_type_components(
                     type_engine,
@@ -277,7 +277,7 @@ impl TyFunctionDeclaration {
 
         // The single `JsonTypeDeclaration` needed for the output
         let output_type = JsonTypeDeclaration {
-            type_id: *self.initial_return_type,
+            type_id: self.initial_return_type.index(),
             type_field: self
                 .initial_return_type
                 .get_json_type_str(type_engine, self.return_type),
@@ -305,7 +305,7 @@ impl TyFunctionDeclaration {
                 .iter()
                 .map(|x| JsonTypeApplication {
                     name: x.name.to_string(),
-                    type_id: *x.initial_type_id,
+                    type_id: x.initial_type_id.index(),
                     type_arguments: x.initial_type_id.get_json_type_arguments(
                         type_engine,
                         types,
@@ -315,7 +315,7 @@ impl TyFunctionDeclaration {
                 .collect(),
             output: JsonTypeApplication {
                 name: "".to_string(),
-                type_id: *self.initial_return_type,
+                type_id: self.initial_return_type.index(),
                 type_arguments: self.initial_return_type.get_json_type_arguments(
                     type_engine,
                     types,

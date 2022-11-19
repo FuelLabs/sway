@@ -12,13 +12,8 @@ use crate::{
     type_system::*, Namespace,
 };
 
-use lazy_static::lazy_static;
 use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
 use sway_types::{span::Span, Ident, Spanned};
-
-lazy_static! {
-    static ref TYPE_ENGINE: TypeEngine = TypeEngine::default();
-}
 
 #[derive(Debug, Default)]
 pub struct TypeEngine {
@@ -88,7 +83,7 @@ impl TypeEngine {
 
     /// Performs a lookup of `id` into the [TypeEngine].
     pub fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
-        self.slab.get(*id)
+        self.slab.get(id.index())
     }
 
     /// Denotes the given [TypeId] as being used with storage.
@@ -386,14 +381,6 @@ impl TypeEngine {
         }
     }
 
-    /// Clear the [TypeEngine].
-    fn clear(&self) {
-        self.slab.clear();
-        self.storage_only_types.clear();
-        let mut id_map = self.id_map.write().unwrap();
-        id_map.clear();
-    }
-
     /// Resolve the type of the given [TypeId], replacing any instances of
     /// [TypeInfo::Custom] with either a monomorphized struct, monomorphized
     /// enum, or a reference to a type parameter.
@@ -566,14 +553,6 @@ impl TypeEngine {
             engine: self,
         }
     }
-}
-
-pub fn look_up_type_id(id: TypeId) -> TypeInfo {
-    TYPE_ENGINE.look_up_type_id(id)
-}
-
-pub fn clear_type_engine() {
-    TYPE_ENGINE.clear();
 }
 
 fn normalize_err(

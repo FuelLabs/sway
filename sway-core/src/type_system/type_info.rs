@@ -384,6 +384,7 @@ impl DisplayWithTypeEngine for TypeInfo {
                 type_parameters,
                 ..
             } => print_inner_types(
+                type_engine,
                 name.as_str().to_string(),
                 type_parameters.iter().map(|x| x.type_id),
             ),
@@ -392,6 +393,7 @@ impl DisplayWithTypeEngine for TypeInfo {
                 type_parameters,
                 ..
             } => print_inner_types(
+                type_engine,
                 name.as_str().to_string(),
                 type_parameters.iter().map(|x| x.type_id),
             ),
@@ -1816,8 +1818,14 @@ fn types_are_subset_of(type_engine: &TypeEngine, left: &[TypeInfo], right: &[Typ
     true
 }
 
-fn print_inner_types(name: String, inner_types: impl Iterator<Item = TypeId>) -> String {
-    let inner_types = inner_types.map(|x| x.to_string()).collect::<Vec<_>>();
+fn print_inner_types(
+    type_engine: &TypeEngine,
+    name: String,
+    inner_types: impl Iterator<Item = TypeId>,
+) -> String {
+    let inner_types = inner_types
+        .map(|x| type_engine.help_out(x).to_string())
+        .collect::<Vec<_>>();
     format!(
         "{}{}",
         name,

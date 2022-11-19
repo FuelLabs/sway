@@ -165,7 +165,7 @@ impl TypeParameter {
         types: &mut Vec<JsonTypeDeclaration>,
     ) -> usize {
         let type_parameter = JsonTypeDeclaration {
-            type_id: *self.initial_type_id,
+            type_id: self.initial_type_id.index(),
             type_field: self
                 .initial_type_id
                 .get_json_type_str(type_engine, self.type_id),
@@ -177,7 +177,7 @@ impl TypeParameter {
             type_parameters: None,
         };
         types.push(type_parameter);
-        *self.initial_type_id
+        self.initial_type_id.index()
     }
 
     /// Creates a [DeclMapping] from a list of [TypeParameter]s.

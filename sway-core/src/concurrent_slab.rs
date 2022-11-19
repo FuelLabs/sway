@@ -83,6 +83,7 @@ impl ConcurrentSlab<TypeInfo> {
         new_value: TypeInfo,
         type_engine: &TypeEngine,
     ) -> Option<TypeInfo> {
+        let index = index.index();
         // The comparison below ends up calling functions in the slab, which
         // can lead to deadlocks if we used a single read/write lock.
         // So we split the operation: we do the read only operations with
@@ -90,14 +91,14 @@ impl ConcurrentSlab<TypeInfo> {
         // we get a write lock for writing into the slab.
         {
             let inner = self.inner.read().unwrap();
-            let actual_prev_value = &inner[*index];
+            let actual_prev_value = &inner[index];
             if !actual_prev_value.eq(prev_value, type_engine) {
                 return Some(actual_prev_value.clone());
             }
         }
 
         let mut inner = self.inner.write().unwrap();
-        inner[*index] = new_value;
+        inner[index] = new_value;
         None
     }
 }

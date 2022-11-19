@@ -370,7 +370,7 @@ impl TyProgram {
             .logged_types
             .iter()
             .map(|(_, type_id)| JsonTypeDeclaration {
-                type_id: **type_id,
+                type_id: type_id.index(),
                 type_field: type_id.get_json_type_str(type_engine, *type_id),
                 components: type_id.get_json_type_components(type_engine, types, *type_id),
                 type_parameters: type_id.get_json_type_parameters(type_engine, types, *type_id),
@@ -387,7 +387,7 @@ impl TyProgram {
                 log_id: **log_id,
                 logged_type: JsonTypeApplication {
                     name: "".to_string(),
-                    type_id: **type_id,
+                    type_id: type_id.index(),
                     type_arguments: type_id.get_json_type_arguments(type_engine, types, *type_id),
                 },
             })
