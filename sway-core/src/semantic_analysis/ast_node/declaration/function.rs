@@ -170,7 +170,7 @@ impl ty::TyFunctionDeclaration {
         }
         ctx.namespace
             .implemented_traits
-            .extend(return_type_namespace);
+            .extend(return_type_namespace, type_engine);
 
         ok(function_decl, warnings, errors)
     }

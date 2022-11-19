@@ -8,7 +8,7 @@ use crate::{
     type_system::*,
 };
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum TyDeclaration {
     VariableDeclaration(Box<TyVariableDeclaration>),
     ConstantDeclaration(DeclarationId),
@@ -23,6 +23,35 @@ pub enum TyDeclaration {
     GenericTypeForFunctionScope { name: Ident, type_id: TypeId },
     ErrorRecovery(Span),
     StorageDeclaration(DeclarationId),
+}
+
+impl EqWithTypeEngine for TyDeclaration {}
+impl PartialEqWithTypeEngine for TyDeclaration {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        match (self, rhs) {
+            (Self::VariableDeclaration(x), Self::VariableDeclaration(y)) => x.eq(y, type_engine),
+            (Self::ConstantDeclaration(x), Self::ConstantDeclaration(y)) => x.eq(y, type_engine),
+            (Self::FunctionDeclaration(x), Self::FunctionDeclaration(y)) => x.eq(y, type_engine),
+            (Self::TraitDeclaration(x), Self::TraitDeclaration(y)) => x.eq(y, type_engine),
+            (Self::StructDeclaration(x), Self::StructDeclaration(y)) => x.eq(y, type_engine),
+            (Self::EnumDeclaration(x), Self::EnumDeclaration(y)) => x.eq(y, type_engine),
+            (Self::ImplTrait(x), Self::ImplTrait(y)) => x.eq(y, type_engine),
+            (Self::AbiDeclaration(x), Self::AbiDeclaration(y)) => x.eq(y, type_engine),
+            (Self::StorageDeclaration(x), Self::StorageDeclaration(y)) => x.eq(y, type_engine),
+            (
+                Self::GenericTypeForFunctionScope {
+                    name: xn,
+                    type_id: xti,
+                },
+                Self::GenericTypeForFunctionScope {
+                    name: yn,
+                    type_id: yti,
+                },
+            ) => xn == yn && xti == yti,
+            (Self::ErrorRecovery(x), Self::ErrorRecovery(y)) => x == y,
+            _ => false,
+        }
+    }
 }
 
 impl CopyTypes for TyDeclaration {
@@ -89,11 +118,7 @@ impl Spanned for TyDeclaration {
 }
 
 impl DisplayWithTypeEngine for TyDeclaration {
-    fn fmt_with_type_engine(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-        type_engine: &TypeEngine,
-    ) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, type_engine: &TypeEngine) -> std::fmt::Result {
         write!(
             f,
             "{} declaration ({})",

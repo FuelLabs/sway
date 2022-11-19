@@ -5,9 +5,16 @@ use crate::{
     types::DeterministicallyAborts,
 };
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct TyCodeBlock {
     pub contents: Vec<TyAstNode>,
+}
+
+impl EqWithTypeEngine for TyCodeBlock {}
+impl PartialEqWithTypeEngine for TyCodeBlock {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        self.contents.eq(&rhs.contents, type_engine)
+    }
 }
 
 impl CopyTypes for TyCodeBlock {
@@ -27,10 +34,10 @@ impl ReplaceSelfType for TyCodeBlock {
 }
 
 impl ReplaceDecls for TyCodeBlock {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, type_engine: &TypeEngine) {
         self.contents
             .iter_mut()
-            .for_each(|x| x.replace_decls(decl_mapping));
+            .for_each(|x| x.replace_decls(decl_mapping, type_engine));
     }
 }
 

@@ -28,7 +28,7 @@ use sway_types::{span::Span, ConfigTimeConstant, Spanned};
 ///
 /// A `Module` contains a set of all items that exist within the lexical scope via declaration or
 /// importing, along with a map of each of its submodules.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default)]
 pub struct Module {
     /// Submodules of the current module represented as an ordered map from each submodule's name
     /// to the associated `Module`.
@@ -189,7 +189,12 @@ impl Module {
     /// This is used when an import path contains an asterisk.
     ///
     /// Paths are assumed to be relative to `self`.
-    pub(crate) fn star_import(&mut self, src: &Path, dst: &Path) -> CompileResult<()> {
+    pub(crate) fn star_import(
+        &mut self,
+        src: &Path,
+        dst: &Path,
+        type_engine: &TypeEngine,
+    ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let src_ns = check!(
@@ -214,7 +219,9 @@ impl Module {
         }
 
         let dst_ns = &mut self[dst];
-        dst_ns.implemented_traits.extend(implemented_traits);
+        dst_ns
+            .implemented_traits
+            .extend(implemented_traits, type_engine);
         for symbol in symbols {
             dst_ns
                 .use_synonyms
@@ -230,7 +237,12 @@ impl Module {
     /// This is used when an import path contains an asterisk.
     ///
     /// Paths are assumed to be relative to `self`.
-    pub fn star_import_with_reexports(&mut self, src: &Path, dst: &Path) -> CompileResult<()> {
+    pub fn star_import_with_reexports(
+        &mut self,
+        src: &Path,
+        dst: &Path,
+        type_engine: &TypeEngine,
+    ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let src_ns = check!(
@@ -256,7 +268,9 @@ impl Module {
         }
 
         let dst_ns = &mut self[dst];
-        dst_ns.implemented_traits.extend(implemented_traits);
+        dst_ns
+            .implemented_traits
+            .extend(implemented_traits, type_engine);
         let mut try_add = |symbol, path| {
             dst_ns.use_synonyms.insert(symbol, (path, GlobImport::Yes));
         };
@@ -342,6 +356,7 @@ impl Module {
                         src_ns
                             .implemented_traits
                             .filter_by_type_item_import(type_id, type_engine),
+                        type_engine,
                     );
                 }
                 // no matter what, import it this way though.
@@ -371,7 +386,9 @@ impl Module {
         };
 
         let dst_ns = &mut self[dst];
-        dst_ns.implemented_traits.extend(impls_to_insert);
+        dst_ns
+            .implemented_traits
+            .extend(impls_to_insert, type_engine);
 
         ok((), warnings, errors)
     }

@@ -433,7 +433,7 @@ impl ty::TyIntrinsicFunctionKind {
                     warnings,
                     errors
                 );
-                if key_ty != TypeInfo::B256 {
+                if !key_ty.eq(&TypeInfo::B256, type_engine) {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
@@ -489,7 +489,7 @@ impl ty::TyIntrinsicFunctionKind {
                     warnings,
                     errors
                 );
-                if key_ty != TypeInfo::B256 {
+                if !key_ty.eq(&TypeInfo::B256, type_engine) {
                     errors.push(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,

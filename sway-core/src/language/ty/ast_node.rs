@@ -1,6 +1,5 @@
 use std::fmt::{self, Debug};
 
-use derivative::Derivative;
 use sway_types::{Ident, Span};
 
 use crate::{
@@ -15,24 +14,25 @@ pub trait GetDeclIdent {
     fn get_decl_ident(&self) -> Option<Ident>;
 }
 
-#[derive(Clone, Debug, Eq, Derivative)]
-#[derivative(PartialEq)]
+#[derive(Clone, Debug)]
 pub struct TyAstNode {
     pub content: TyAstNodeContent,
-    #[derivative(PartialEq = "ignore")]
     pub(crate) span: Span,
 }
 
+impl EqWithTypeEngine for TyAstNode {}
+impl PartialEqWithTypeEngine for TyAstNode {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        self.content.eq(&rhs.content, type_engine)
+    }
+}
+
 impl DisplayWithTypeEngine for TyAstNode {
-    fn fmt_with_type_engine(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        type_engine: &TypeEngine,
-    ) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         use TyAstNodeContent::*;
         match &self.content {
-            Declaration(ref typed_decl) => typed_decl.fmt_with_type_engine(f, type_engine),
-            Expression(exp) => exp.fmt(f),
+            Declaration(typed_decl) => DisplayWithTypeEngine::fmt(typed_decl, f, type_engine),
+            Expression(exp) => DisplayWithTypeEngine::fmt(exp, f, type_engine),
             ImplicitReturnExpression(exp) => write!(f, "return {}", type_engine.help_out(exp)),
             SideEffect => f.write_str(""),
         }
@@ -74,13 +74,13 @@ impl ReplaceSelfType for TyAstNode {
 }
 
 impl ReplaceDecls for TyAstNode {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, type_engine: &TypeEngine) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.replace_decls(decl_mapping)
+                exp.replace_decls(decl_mapping, type_engine)
             }
             TyAstNodeContent::Declaration(_) => {}
-            TyAstNodeContent::Expression(ref mut expr) => expr.replace_decls(decl_mapping),
+            TyAstNodeContent::Expression(ref mut expr) => expr.replace_decls(decl_mapping, type_engine),
             TyAstNodeContent::SideEffect => (),
         }
     }
@@ -193,13 +193,28 @@ impl TyAstNode {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum TyAstNodeContent {
     Declaration(TyDeclaration),
     Expression(TyExpression),
     ImplicitReturnExpression(TyExpression),
     // a no-op node used for something that just issues a side effect, like an import statement.
     SideEffect,
+}
+
+impl EqWithTypeEngine for TyAstNodeContent {}
+impl PartialEqWithTypeEngine for TyAstNodeContent {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        match (self, rhs) {
+            (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, type_engine),
+            (Self::Expression(x), Self::Expression(y)) => x.eq(y, type_engine),
+            (Self::ImplicitReturnExpression(x), Self::ImplicitReturnExpression(y)) => {
+                x.eq(y, type_engine)
+            }
+            (Self::SideEffect, Self::SideEffect) => true,
+            _ => false,
+        }
+    }
 }
 
 impl CollectTypesMetadata for TyAstNodeContent {

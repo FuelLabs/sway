@@ -15,7 +15,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-#[derive(Clone, Eq)]
+#[derive(Clone)]
 pub struct TypeParameter {
     pub type_id: TypeId,
     pub(crate) initial_type_id: TypeId,
@@ -27,22 +27,29 @@ pub struct TypeParameter {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl Hash for TypeParameter {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        look_up_type_id(self.type_id).hash(state);
+impl HashWithTypeEngine for TypeParameter {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        type_engine
+            .look_up_type_id(self.type_id)
+            .hash(state, type_engine);
         self.name_ident.hash(state);
-        self.trait_constraints.hash(state);
+        self.trait_constraints.hash(state, type_engine);
     }
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypeParameter {
-    fn eq(&self, other: &Self) -> bool {
-        look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+impl EqWithTypeEngine for TypeParameter {}
+impl PartialEqWithTypeEngine for TypeParameter {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        type_engine
+            .look_up_type_id(self.type_id)
+            .eq(&type_engine.look_up_type_id(other.type_id), type_engine)
             && self.name_ident == other.name_ident
-            && self.trait_constraints == other.trait_constraints
+            && self
+                .trait_constraints
+                .eq(&other.trait_constraints, type_engine)
     }
 }
 
@@ -71,11 +78,7 @@ impl Spanned for TypeParameter {
 }
 
 impl DisplayWithTypeEngine for TypeParameter {
-    fn fmt_with_type_engine(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        type_engine: &TypeEngine,
-    ) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         write!(
             f,
             "{}: {}",
@@ -121,7 +124,7 @@ impl TypeParameter {
 
         let type_id = ctx.type_engine.insert_type(TypeInfo::UnknownGeneric {
             name: name_ident.clone(),
-            trait_constraints: trait_constraints.clone().into_iter().collect(),
+            trait_constraints: VecSet(trait_constraints.clone()),
         });
 
         // Insert the trait constraints into the namespace.

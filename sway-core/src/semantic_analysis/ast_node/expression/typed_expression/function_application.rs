@@ -93,7 +93,7 @@ pub(crate) fn instantiate_function_application(
         warnings,
         errors
     );
-    function_decl.replace_decls(&decl_mapping);
+    function_decl.replace_decls(&decl_mapping, type_engine);
     let return_type = function_decl.return_type;
     let span = function_decl.span.clone();
     let new_decl_id = de_insert_function(function_decl);

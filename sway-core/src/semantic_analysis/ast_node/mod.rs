@@ -34,7 +34,7 @@ impl ty::TyAstNode {
                         ctx.namespace.find_module_path(&a.call_path)
                     };
                     let mut res = match a.import_type {
-                        ImportType::Star => ctx.namespace.star_import(&path),
+                        ImportType::Star => ctx.namespace.star_import(&path, type_engine),
                         ImportType::SelfImport => {
                             ctx.namespace.self_import(ctx.type_engine, &path, a.alias)
                         }

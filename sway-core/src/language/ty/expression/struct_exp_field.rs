@@ -6,10 +6,17 @@ use crate::{
     type_system::*,
 };
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct TyStructExpressionField {
     pub name: Ident,
     pub value: TyExpression,
+}
+
+impl EqWithTypeEngine for TyStructExpressionField {}
+impl PartialEqWithTypeEngine for TyStructExpressionField {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        self.name == rhs.name && self.value.eq(&rhs.value, type_engine)
+    }
 }
 
 impl CopyTypes for TyStructExpressionField {
@@ -25,7 +32,7 @@ impl ReplaceSelfType for TyStructExpressionField {
 }
 
 impl ReplaceDecls for TyStructExpressionField {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
-        self.value.replace_decls(decl_mapping);
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, type_engine: &TypeEngine) {
+        self.value.replace_decls(decl_mapping, type_engine);
     }
 }

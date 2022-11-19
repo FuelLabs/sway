@@ -8,20 +8,77 @@ use crate::{
     error::*,
     language::CallPath,
     type_system::{CopyTypes, TypeId},
-    ReplaceSelfType, TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeMapping,
+    OrdWithTypeEngine, PartialEqWithTypeEngine, ReplaceSelfType, TraitConstraint, TypeArgument,
+    TypeEngine, TypeInfo, TypeMapping,
 };
 
-type TraitName = CallPath<(Ident, Vec<TypeArgument>)>;
+#[derive(Clone, Debug)]
+struct TraitSuffix {
+    name: Ident,
+    args: Vec<TypeArgument>,
+}
+impl PartialEqWithTypeEngine for TraitSuffix {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        self.name == rhs.name && self.args.eq(&rhs.args, type_engine)
+    }
+}
+impl OrdWithTypeEngine for TraitSuffix {
+    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
+        self.name
+            .cmp(&rhs.name)
+            .then_with(|| self.args.cmp(&rhs.args, type_engine))
+    }
+}
+
+impl<T: PartialEqWithTypeEngine> PartialEqWithTypeEngine for CallPath<T> {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        self.prefixes == rhs.prefixes
+            && self.suffix.eq(&rhs.suffix, type_engine)
+            && self.is_absolute == rhs.is_absolute
+    }
+}
+impl<T: OrdWithTypeEngine> OrdWithTypeEngine for CallPath<T> {
+    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
+        self.prefixes
+            .cmp(&rhs.prefixes)
+            .then_with(|| self.suffix.cmp(&rhs.suffix, type_engine))
+            .then_with(|| self.is_absolute.cmp(&rhs.is_absolute))
+    }
+}
+
+type TraitName = CallPath<TraitSuffix>;
+
+#[derive(Clone, Debug)]
+struct TraitKey {
+    name: TraitName,
+    type_id: TypeId,
+}
+
+impl OrdWithTypeEngine for TraitKey {
+    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
+        self.name
+            .cmp(&rhs.name, type_engine)
+            .then_with(|| self.type_id.cmp(&rhs.type_id))
+    }
+}
+
 /// Map of function name to [TyFunctionDeclaration](ty::TyFunctionDeclaration)
 type TraitMethods = im::HashMap<String, DeclarationId>;
+
+#[derive(Clone, Debug)]
+struct TraitEntry {
+    key: TraitKey,
+    value: TraitMethods,
+}
+
 /// Map of trait name and type to [TraitMethods].
-type TraitImpls = im::OrdMap<(TraitName, TypeId), TraitMethods>;
+type TraitImpls = Vec<TraitEntry>;
 
 /// Map holding trait implementations for types.
 ///
 /// Note: "impl self" blocks are considered traits and are stored in the
 /// [TraitMap].
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct TraitMap {
     trait_impls: TraitImpls,
 }
@@ -69,9 +126,21 @@ impl TraitMap {
                 Some(trait_type_args.clone())
             },
         });
-        for ((map_trait_name, map_type_id), map_trait_methods) in self.trait_impls.iter() {
+        for TraitEntry {
+            key:
+                TraitKey {
+                    name: map_trait_name,
+                    type_id: map_type_id,
+                },
+            value: map_trait_methods,
+        } in self.trait_impls.iter()
+        {
             let CallPath {
-                suffix: (map_trait_name_suffix, map_trait_type_args),
+                suffix:
+                    TraitSuffix {
+                        name: map_trait_name_suffix,
+                        args: map_trait_type_args,
+                    },
                 ..
             } = map_trait_name;
             let map_trait_type_id = type_engine.insert_type(TypeInfo::Custom {
@@ -132,12 +201,15 @@ impl TraitMap {
         }
         let trait_name: TraitName = CallPath {
             prefixes: trait_name.prefixes,
-            suffix: (trait_name.suffix, trait_type_args),
+            suffix: TraitSuffix {
+                name: trait_name.suffix,
+                args: trait_type_args,
+            },
             is_absolute: trait_name.is_absolute,
         };
 
         // even if there is a conflicting definition, add the trait anyway
-        self.insert_inner(trait_name, type_id, trait_methods);
+        self.insert_inner(trait_name, type_id, trait_methods, type_engine);
 
         if errors.is_empty() {
             ok((), warnings, errors)
@@ -151,11 +223,20 @@ impl TraitMap {
         trait_name: TraitName,
         type_id: TypeId,
         trait_methods: TraitMethods,
+        type_engine: &TypeEngine,
     ) {
-        let trait_impls: TraitImpls =
-            std::iter::once(((trait_name, type_id), trait_methods)).collect();
+        let key = TraitKey {
+            name: trait_name,
+            type_id,
+        };
+        let entry = TraitEntry {
+            key,
+            value: trait_methods,
+        };
+        let trait_impls: TraitImpls = vec![entry];
         let trait_map = TraitMap { trait_impls };
-        self.extend(trait_map);
+
+        self.extend(trait_map, type_engine);
     }
 
     /// Given a [TypeId] `type_id`, retrieves entries in the [TraitMap] `self`
@@ -245,17 +326,21 @@ impl TraitMap {
     /// `Data<T, T>` needs to be able to call methods that are defined in the
     /// impl block of `Data<T, F>`
     pub(crate) fn insert_for_type(&mut self, type_engine: &TypeEngine, type_id: TypeId) {
-        self.extend(self.filter_by_type(type_id, type_engine));
+        self.extend(self.filter_by_type(type_id, type_engine), type_engine);
     }
 
     /// Given [TraitMap]s `self` and `other`, extend `self` with `other`,
     /// extending existing entries when possible.
-    pub(crate) fn extend(&mut self, other: TraitMap) {
-        for (key, other_trait_methods) in other.trait_impls.into_iter() {
-            self.trait_impls
-                .entry(key)
-                .or_insert(other_trait_methods.clone())
-                .extend(other_trait_methods.into_iter());
+    pub(crate) fn extend(&mut self, other: TraitMap, type_engine: &TypeEngine) {
+        for oe in other.trait_impls.into_iter() {
+            let pos = self
+                .trait_impls
+                .binary_search_by(|se| se.key.cmp(&oe.key, type_engine));
+
+            match pos {
+                Ok(pos) => self.trait_impls[pos].value.extend(oe.value.into_iter()),
+                Err(pos) => self.trait_impls.insert(pos, oe),
+            }
         }
     }
 
@@ -457,7 +542,10 @@ impl TraitMap {
         let decider2 = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
             type_info.is_subset_of(map_type_info, type_engine)
         };
-        trait_map.extend(self.filter_by_type_inner(type_engine, all_types, decider2));
+        trait_map.extend(
+            self.filter_by_type_inner(type_engine, all_types, decider2),
+            type_engine,
+        );
         trait_map
     }
 
@@ -468,7 +556,15 @@ impl TraitMap {
         decider: impl Fn(&TypeInfo, &TypeInfo) -> bool,
     ) -> TraitMap {
         let mut trait_map = TraitMap::default();
-        for ((map_trait_name, map_type_id), map_trait_methods) in self.trait_impls.iter() {
+        for TraitEntry {
+            key:
+                TraitKey {
+                    name: map_trait_name,
+                    type_id: map_type_id,
+                },
+            value: map_trait_methods,
+        } in self.trait_impls.iter()
+        {
             for type_id in all_types.iter_mut() {
                 let type_info = type_engine.look_up_type_id(*type_id);
                 if !type_info.can_change() && *type_id == *map_type_id {
@@ -476,6 +572,7 @@ impl TraitMap {
                         map_trait_name.clone(),
                         *type_id,
                         map_trait_methods.clone(),
+                        type_engine,
                     );
                 } else if decider(&type_info, &type_engine.look_up_type_id(*map_type_id)) {
                     let type_mapping =
@@ -492,7 +589,12 @@ impl TraitMap {
                             (name, de_insert(decl, decl_id.span()).with_parent(decl_id))
                         })
                         .collect();
-                    trait_map.insert_inner(map_trait_name.clone(), *type_id, trait_methods);
+                    trait_map.insert_inner(
+                        map_trait_name.clone(),
+                        *type_id,
+                        trait_methods,
+                        type_engine,
+                    );
                 }
             }
         }
@@ -504,21 +606,11 @@ impl TraitMap {
     /// constraints and is coupled with `filter_by_type` and
     /// `filter_by_type_item_import`.
     pub(crate) fn filter_against_type(&mut self, type_engine: &TypeEngine, type_id: TypeId) {
-        // this collect is actually needed and causes an error if removed
-        #[allow(clippy::needless_collect)]
-        let filtered_keys = self
-            .trait_impls
-            .keys()
-            .cloned()
-            .filter(|(_, map_type_id)| {
-                type_engine
-                    .look_up_type_id(type_id)
-                    .is_subset_of(&type_engine.look_up_type_id(*map_type_id), type_engine)
-            })
-            .collect::<Vec<_>>();
-        for key in filtered_keys.into_iter() {
-            self.trait_impls.remove(&key);
-        }
+        self.trait_impls.retain(|e| {
+            !type_engine
+                .look_up_type_id(type_id)
+                .is_subset_of(&type_engine.look_up_type_id(e.key.type_id), type_engine)
+        });
     }
 
     /// Find the entries in `self` that are equivalent to `type_id`.
@@ -537,12 +629,16 @@ impl TraitMap {
     ) -> Vec<DeclarationId> {
         let mut methods = vec![];
         // small performance gain in bad case
-        if type_engine.look_up_type_id(type_id) == TypeInfo::ErrorRecovery {
+        if type_engine
+            .look_up_type_id(type_id)
+            .eq(&TypeInfo::ErrorRecovery, type_engine)
+        {
             return methods;
         }
-        for ((_, map_type_id), map_trait_methods) in self.trait_impls.iter() {
-            if are_equal_minus_dynamic_types(type_engine, type_id, *map_type_id) {
-                let mut trait_methods = map_trait_methods
+        for entry in self.trait_impls.iter() {
+            if are_equal_minus_dynamic_types(type_engine, type_id, entry.key.type_id) {
+                let mut trait_methods = entry
+                    .value
                     .values()
                     .cloned()
                     .into_iter()
@@ -571,23 +667,22 @@ impl TraitMap {
     ) -> Vec<DeclarationId> {
         let mut methods = vec![];
         // small performance gain in bad case
-        if type_engine.look_up_type_id(type_id) == TypeInfo::ErrorRecovery {
+        if type_engine
+            .look_up_type_id(type_id)
+            .eq(&TypeInfo::ErrorRecovery, type_engine)
+        {
             return methods;
         }
-        for ((map_trait_name, map_type_id), map_trait_methods) in self.trait_impls.iter() {
+        for e in self.trait_impls.iter() {
             let map_trait_name = CallPath {
-                prefixes: map_trait_name.prefixes.clone(),
-                suffix: map_trait_name.suffix.0.clone(),
-                is_absolute: map_trait_name.is_absolute,
+                prefixes: e.key.name.prefixes.clone(),
+                suffix: e.key.name.suffix.name.clone(),
+                is_absolute: e.key.name.is_absolute,
             };
             if &map_trait_name == trait_name
-                && are_equal_minus_dynamic_types(type_engine, type_id, *map_type_id)
+                && are_equal_minus_dynamic_types(type_engine, type_id, e.key.type_id)
             {
-                let mut trait_methods = map_trait_methods
-                    .values()
-                    .cloned()
-                    .into_iter()
-                    .collect::<Vec<_>>();
+                let mut trait_methods = e.value.values().cloned().into_iter().collect::<Vec<_>>();
                 methods.append(&mut trait_methods);
             }
         }
@@ -625,20 +720,17 @@ impl TraitMap {
                     Some(constraint_type_arguments.clone())
                 },
             });
-            for (map_trait_name, map_type_id) in self.trait_impls.keys() {
-                let CallPath {
-                    suffix: (map_trait_name_suffix, map_trait_type_args),
-                    ..
-                } = map_trait_name;
+            for key in self.trait_impls.iter().map(|e| &e.key) {
+                let suffix = &key.name.suffix;
                 let map_trait_type_id = type_engine.insert_type(TypeInfo::Custom {
-                    name: map_trait_name_suffix.clone(),
-                    type_arguments: if map_trait_type_args.is_empty() {
+                    name: suffix.name.clone(),
+                    type_arguments: if suffix.args.is_empty() {
                         None
                     } else {
-                        Some(map_trait_type_args.to_vec())
+                        Some(suffix.args.to_vec())
                     },
                 });
-                if are_equal_minus_dynamic_types(type_engine, type_id, *map_type_id)
+                if are_equal_minus_dynamic_types(type_engine, type_id, key.type_id)
                     && are_equal_minus_dynamic_types(
                         type_engine,
                         constraint_type_id,

@@ -3,7 +3,7 @@ use std::{fmt, sync::RwLock};
 use crate::{
     declaration_engine::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper},
     type_system::TypeId,
-    TypeInfo,
+    PartialEqWithTypeEngine, TypeEngine, TypeInfo,
 };
 
 #[derive(Debug)]
@@ -81,6 +81,7 @@ impl ConcurrentSlab<TypeInfo> {
         index: TypeId,
         prev_value: &TypeInfo,
         new_value: TypeInfo,
+        type_engine: &TypeEngine,
     ) -> Option<TypeInfo> {
         // The comparison below ends up calling functions in the slab, which
         // can lead to deadlocks if we used a single read/write lock.
@@ -90,7 +91,7 @@ impl ConcurrentSlab<TypeInfo> {
         {
             let inner = self.inner.read().unwrap();
             let actual_prev_value = &inner[*index];
-            if actual_prev_value != prev_value {
+            if !actual_prev_value.eq(prev_value, type_engine) {
                 return Some(actual_prev_value.clone());
             }
         }

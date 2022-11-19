@@ -3,7 +3,7 @@ use crate::{
     language::ty,
     metadata::MetadataManager,
     semantic_analysis::*,
-    TypeEngine,
+    PartialEqWithTypeEngine, TypeEngine,
 };
 
 use super::{convert::convert_literal_to_constant, types::*};
@@ -236,8 +236,10 @@ fn const_eval_typed_expr(
             let mut element_iter = element_typs.iter();
             let element_type_id = *element_iter.next().unwrap();
             if !element_iter.all(|tid| {
-                lookup.type_engine.look_up_type_id(*tid)
-                    == lookup.type_engine.look_up_type_id(element_type_id)
+                lookup.type_engine.look_up_type_id(*tid).eq(
+                    &lookup.type_engine.look_up_type_id(element_type_id),
+                    lookup.type_engine,
+                )
             }) {
                 // This shouldn't happen if the type checker did its job.
                 return Ok(None);

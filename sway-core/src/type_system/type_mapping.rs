@@ -12,11 +12,7 @@ pub(crate) struct TypeMapping {
 }
 
 impl DisplayWithTypeEngine for TypeMapping {
-    fn fmt_with_type_engine(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        type_engine: &TypeEngine,
-    ) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         write!(
             f,
             "TypeMapping {{ {} }}",
@@ -70,7 +66,7 @@ impl TypeMapping {
                     x.type_id,
                     type_engine.insert_type(TypeInfo::UnknownGeneric {
                         name: x.name_ident.clone(),
-                        trait_constraints: x.trait_constraints.clone().into_iter().collect(),
+                        trait_constraints: VecSet(x.trait_constraints.clone()),
                     }),
                 )
             })
@@ -417,7 +413,10 @@ fn iter_for_match(
     type_info: &TypeInfo,
 ) -> Option<TypeId> {
     for (source_type, dest_type) in type_mapping.mapping.iter() {
-        if type_engine.look_up_type_id(*source_type) == *type_info {
+        if type_engine
+            .look_up_type_id(*source_type)
+            .eq(type_info, type_engine)
+        {
             return Some(*dest_type);
         }
     }

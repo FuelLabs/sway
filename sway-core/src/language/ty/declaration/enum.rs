@@ -3,9 +3,10 @@ use std::hash::{Hash, Hasher};
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
+use crate::PartialEqWithTypeEngine;
 use crate::{error::*, language::Visibility, transform, type_system::*};
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug)]
 pub struct TyEnumDeclaration {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
@@ -18,11 +19,12 @@ pub struct TyEnumDeclaration {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyEnumDeclaration {
-    fn eq(&self, other: &Self) -> bool {
+impl EqWithTypeEngine for TyEnumDeclaration {}
+impl PartialEqWithTypeEngine for TyEnumDeclaration {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && self.type_parameters == other.type_parameters
-            && self.variants == other.variants
+            && self.type_parameters.eq(&other.type_parameters, type_engine)
+            && self.variants.eq(&other.variants, type_engine)
             && self.visibility == other.visibility
     }
 }
@@ -100,7 +102,7 @@ impl TyEnumDeclaration {
     }
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone)]
 pub struct TyEnumVariant {
     pub name: Ident,
     pub type_id: TypeId,
@@ -114,10 +116,12 @@ pub struct TyEnumVariant {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl Hash for TyEnumVariant {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+impl HashWithTypeEngine for TyEnumVariant {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.name.hash(state);
-        look_up_type_id(self.type_id).hash(state);
+        type_engine
+            .look_up_type_id(self.type_id)
+            .hash(state, type_engine);
         self.tag.hash(state);
     }
 }
@@ -125,10 +129,13 @@ impl Hash for TyEnumVariant {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyEnumVariant {
-    fn eq(&self, other: &Self) -> bool {
+impl EqWithTypeEngine for TyEnumVariant {}
+impl PartialEqWithTypeEngine for TyEnumVariant {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+            && type_engine
+                .look_up_type_id(self.type_id)
+                .eq(&type_engine.look_up_type_id(other.type_id), type_engine)
             && self.tag == other.tag
     }
 }

@@ -1,17 +1,20 @@
-use derivative::Derivative;
 use sway_error::error::CompileError;
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
 use crate::{error::*, language::ty::*, transform, type_system::*};
 
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct TyStorageDeclaration {
     pub fields: Vec<TyStorageField>,
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
     pub span: Span,
     pub attributes: transform::AttributesMap,
+}
+
+impl EqWithTypeEngine for TyStorageDeclaration {}
+impl PartialEqWithTypeEngine for TyStorageDeclaration {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        self.fields.eq(&rhs.fields, type_engine) && self.attributes == rhs.attributes
+    }
 }
 
 impl Spanned for TyStorageDeclaration {
@@ -151,7 +154,7 @@ impl TyStorageDeclaration {
     }
 }
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug)]
 pub struct TyStorageField {
     pub name: Ident,
     pub type_id: TypeId,
@@ -164,10 +167,13 @@ pub struct TyStorageField {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyStorageField {
-    fn eq(&self, other: &Self) -> bool {
+impl EqWithTypeEngine for TyStorageField {}
+impl PartialEqWithTypeEngine for TyStorageField {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
-            && self.initializer == other.initializer
+            && type_engine
+                .look_up_type_id(self.type_id)
+                .eq(&type_engine.look_up_type_id(other.type_id), type_engine)
+            && self.initializer.eq(&other.initializer, type_engine)
     }
 }

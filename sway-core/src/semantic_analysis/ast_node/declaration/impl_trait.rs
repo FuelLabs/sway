@@ -172,7 +172,10 @@ impl ty::TyImplTrait {
                     errors
                 );
 
-                if type_engine.look_up_type_id(implementing_for_type_id) != TypeInfo::Contract {
+                if !type_engine
+                    .look_up_type_id(implementing_for_type_id)
+                    .eq(&TypeInfo::Contract, type_engine)
+                {
                     errors.push(CompileError::ImplAbiForNonContract {
                         span: type_implementing_for_span.clone(),
                         ty: implementing_for_type_id.to_string(),
@@ -783,22 +786,27 @@ fn type_check_trait_implementation(
         //
         // *This will change* when either https://github.com/FuelLabs/sway/issues/1267
         // or https://github.com/FuelLabs/sway/issues/2814 goes in.
-        let unconstrained_type_parameters_in_this_function: HashSet<TypeParameter> = impl_method
+        let unconstrained_type_parameters_in_this_function: HashSet<
+            WithTypeEngine<'_, TypeParameter>,
+        > = impl_method
             .unconstrained_type_parameters(type_engine, impl_type_parameters)
             .into_iter()
             .cloned()
+            .map(|x| WithTypeEngine::new(x, type_engine))
             .collect();
-        let unconstrained_type_parameters_in_the_type: HashSet<TypeParameter> = ctx
-            .self_type()
-            .unconstrained_type_parameters(type_engine, impl_type_parameters)
-            .into_iter()
-            .cloned()
-            .collect::<HashSet<_>>();
+        let unconstrained_type_parameters_in_the_type: HashSet<WithTypeEngine<'_, TypeParameter>> =
+            ctx.self_type()
+                .unconstrained_type_parameters(type_engine, impl_type_parameters)
+                .into_iter()
+                .cloned()
+                .map(|x| WithTypeEngine::new(x, type_engine))
+                .collect::<HashSet<_>>();
         let mut unconstrained_type_parameters_to_be_added =
             unconstrained_type_parameters_in_this_function
                 .difference(&unconstrained_type_parameters_in_the_type)
                 .cloned()
                 .into_iter()
+                .map(|x| x.thing)
                 .collect::<Vec<_>>();
         impl_method
             .type_parameters
@@ -838,7 +846,7 @@ fn type_check_trait_implementation(
             warnings,
             errors
         );
-        method.replace_decls(&decl_mapping);
+        method.replace_decls(&decl_mapping, type_engine);
         method.copy_types(&type_mapping, ctx.type_engine);
         method.replace_self_type(type_engine, ctx.self_type());
         all_method_ids.push(de_insert_function(method).with_parent(decl_id.clone()));
@@ -908,10 +916,11 @@ fn check_for_unconstrained_type_parameters(
     let mut errors = vec![];
 
     // create a list of defined generics, with the generic and a span
-    let mut defined_generics: HashMap<TypeInfo, Span> = HashMap::from_iter(
+    let mut defined_generics: HashMap<_, _> = HashMap::from_iter(
         type_parameters
             .iter()
-            .map(|x| (type_engine.look_up_type_id(x.type_id), x.span())),
+            .map(|x| (type_engine.look_up_type_id(x.type_id), x.span()))
+            .map(|(thing, sp)| (WithTypeEngine::new(thing, type_engine), sp)),
     );
 
     // create a list of the generics in use in the impl signature
@@ -946,7 +955,7 @@ fn check_for_unconstrained_type_parameters(
     // create an error for all of the leftover generics
     for (k, v) in defined_generics.into_iter() {
         errors.push(CompileError::UnconstrainedGenericParameter {
-            ty: format!("{}", type_engine.help_out(k)),
+            ty: format!("{}", k),
             span: v,
         });
     }

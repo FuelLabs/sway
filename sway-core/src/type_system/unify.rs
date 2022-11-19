@@ -58,7 +58,7 @@ pub(super) fn unify(
             unify::unify_unsigned_ints(span, r, e, arguments_are_flipped)
         }
         (Numeric, e @ UnsignedInteger(_)) => {
-            match type_engine.slab.replace(received, &Numeric, e) {
+            match type_engine.slab.replace(received, &Numeric, e, type_engine) {
                 None => (vec![], vec![]),
                 Some(_) => unify(
                     type_engine,
@@ -71,7 +71,7 @@ pub(super) fn unify(
             }
         }
         (r @ UnsignedInteger(_), Numeric) => {
-            match type_engine.slab.replace(expected, &Numeric, r) {
+            match type_engine.slab.replace(expected, &Numeric, r, type_engine) {
                 None => (vec![], vec![]),
                 Some(_) => unify(
                     type_engine,
@@ -145,10 +145,12 @@ pub(super) fn unify(
             },
         ) if (ran == ean && rra.is_none()) || matches!(ran, AbiName::Deferred) => {
             // if one address is empty, coerce to the other one
-            match type_engine
-                .slab
-                .replace(received, r, type_engine.slab.get(*expected))
-            {
+            match type_engine.slab.replace(
+                received,
+                r,
+                type_engine.slab.get(*expected),
+                type_engine,
+            ) {
                 None => (vec![], vec![]),
                 Some(_) => unify(
                     type_engine,
@@ -170,10 +172,12 @@ pub(super) fn unify(
             },
         ) if (ran == ean && ea.is_none()) || matches!(ean, AbiName::Deferred) => {
             // if one address is empty, coerce to the other one
-            match type_engine
-                .slab
-                .replace(expected, e, type_engine.slab.get(*received))
-            {
+            match type_engine.slab.replace(
+                expected,
+                e,
+                type_engine.slab.get(*received),
+                type_engine,
+            ) {
                 None => (vec![], vec![]),
                 Some(_) => unify(
                     type_engine,
@@ -186,7 +190,7 @@ pub(super) fn unify(
             }
         }
         (ref r @ TypeInfo::ContractCaller { .. }, ref e @ TypeInfo::ContractCaller { .. })
-            if r == e =>
+            if r.eq(e, type_engine) =>
         {
             // if they are the same, then it's ok
             (vec![], vec![])
@@ -196,7 +200,7 @@ pub(super) fn unify(
         // they match and make the one we know nothing about reference the
         // one we may know something about
         (Unknown, Unknown) => (vec![], vec![]),
-        (Unknown, e) => match type_engine.slab.replace(received, &Unknown, e) {
+        (Unknown, e) => match type_engine.slab.replace(received, &Unknown, e, type_engine) {
             None => (vec![], vec![]),
             Some(_) => unify(
                 type_engine,
@@ -207,7 +211,7 @@ pub(super) fn unify(
                 arguments_are_flipped,
             ),
         },
-        (r, Unknown) => match type_engine.slab.replace(expected, &Unknown, r) {
+        (r, Unknown) => match type_engine.slab.replace(expected, &Unknown, r, type_engine) {
             None => (vec![], vec![]),
             Some(_) => unify(
                 type_engine,
@@ -228,29 +232,33 @@ pub(super) fn unify(
                 name: en,
                 trait_constraints: etc,
             },
-        ) if rn.as_str() == en.as_str() && rtc == etc => (vec![], vec![]),
-        (ref r @ UnknownGeneric { .. }, e) => match type_engine.slab.replace(received, r, e) {
-            None => (vec![], vec![]),
-            Some(_) => unify(
-                type_engine,
-                received,
-                expected,
-                span,
-                help_text,
-                arguments_are_flipped,
-            ),
-        },
-        (r, ref e @ UnknownGeneric { .. }) => match type_engine.slab.replace(expected, e, r) {
-            None => (vec![], vec![]),
-            Some(_) => unify(
-                type_engine,
-                received,
-                expected,
-                span,
-                help_text,
-                arguments_are_flipped,
-            ),
-        },
+        ) if rn.as_str() == en.as_str() && rtc.eq(&etc, type_engine) => (vec![], vec![]),
+        (ref r @ UnknownGeneric { .. }, e) => {
+            match type_engine.slab.replace(received, r, e, type_engine) {
+                None => (vec![], vec![]),
+                Some(_) => unify(
+                    type_engine,
+                    received,
+                    expected,
+                    span,
+                    help_text,
+                    arguments_are_flipped,
+                ),
+            }
+        }
+        (r, ref e @ UnknownGeneric { .. }) => {
+            match type_engine.slab.replace(expected, e, r, type_engine) {
+                None => (vec![], vec![]),
+                Some(_) => unify(
+                    type_engine,
+                    received,
+                    expected,
+                    span,
+                    help_text,
+                    arguments_are_flipped,
+                ),
+            }
+        }
 
         // If no previous attempts to unify were successful, raise an error
         (TypeInfo::ErrorRecovery, _) => (vec![], vec![]),
@@ -308,7 +316,7 @@ pub(super) fn unify_right(
         (UnsignedInteger(r), UnsignedInteger(e)) => unify::unify_unsigned_ints(span, r, e, false),
         (Numeric, UnsignedInteger(_)) => (vec![], vec![]),
         (r @ UnsignedInteger(_), Numeric) => {
-            match type_engine.slab.replace(expected, &Numeric, r) {
+            match type_engine.slab.replace(expected, &Numeric, r, type_engine) {
                 None => (vec![], vec![]),
                 Some(_) => unify_right(type_engine, received, expected, span, help_text),
             }
@@ -368,10 +376,12 @@ pub(super) fn unify_right(
             },
         ) if (ran == ean && ea.is_none()) || matches!(ean, AbiName::Deferred) => {
             // if one address is empty, coerce to the other one
-            match type_engine
-                .slab
-                .replace(expected, e, type_engine.slab.get(*received))
-            {
+            match type_engine.slab.replace(
+                expected,
+                e,
+                type_engine.slab.get(*received),
+                type_engine,
+            ) {
                 None => (vec![], vec![]),
                 Some(_) => unify_right(type_engine, received, expected, span, help_text),
             }
@@ -386,7 +396,7 @@ pub(super) fn unify_right(
             },
         ) if (ran == ean && ra.is_none()) || matches!(ran, AbiName::Deferred) => (vec![], vec![]),
         (ref r @ TypeInfo::ContractCaller { .. }, ref e @ TypeInfo::ContractCaller { .. })
-            if r == e =>
+            if r.eq(e, type_engine) =>
         {
             // if they are the same, then it's ok
             (vec![], vec![])
@@ -396,7 +406,7 @@ pub(super) fn unify_right(
         // they match and make the one we know nothing about reference the
         // one we may know something about
         (Unknown, Unknown) => (vec![], vec![]),
-        (r, Unknown) => match type_engine.slab.replace(expected, &Unknown, r) {
+        (r, Unknown) => match type_engine.slab.replace(expected, &Unknown, r, type_engine) {
             None => (vec![], vec![]),
             Some(_) => unify_right(type_engine, received, expected, span, help_text),
         },
@@ -411,11 +421,13 @@ pub(super) fn unify_right(
                 name: en,
                 trait_constraints: etc,
             },
-        ) if rn.as_str() == en.as_str() && rtc == etc => (vec![], vec![]),
-        (r, ref e @ UnknownGeneric { .. }) => match type_engine.slab.replace(expected, e, r) {
-            None => (vec![], vec![]),
-            Some(_) => unify_right(type_engine, received, expected, span, help_text),
-        },
+        ) if rn.as_str() == en.as_str() && rtc.eq(&etc, type_engine) => (vec![], vec![]),
+        (r, ref e @ UnknownGeneric { .. }) => {
+            match type_engine.slab.replace(expected, e, r, type_engine) {
+                None => (vec![], vec![]),
+                Some(_) => unify_right(type_engine, received, expected, span, help_text),
+            }
+        }
         // this case is purposefully removed because it should cause an
         // error. trying to unify_right a generic with anything other an an
         // unknown or another generic is a type error

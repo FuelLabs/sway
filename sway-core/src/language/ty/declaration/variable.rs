@@ -2,7 +2,7 @@ use sway_types::{Ident, Span};
 
 use crate::{language::ty::*, type_system::*};
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug)]
 pub struct TyVariableDeclaration {
     pub name: Ident,
     pub body: TyExpression,
@@ -14,12 +14,16 @@ pub struct TyVariableDeclaration {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyVariableDeclaration {
-    fn eq(&self, other: &Self) -> bool {
+impl EqWithTypeEngine for TyVariableDeclaration {}
+impl PartialEqWithTypeEngine for TyVariableDeclaration {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && self.body == other.body
+            && self.body.eq(&other.body, type_engine)
             && self.mutability == other.mutability
-            && look_up_type_id(self.type_ascription) == look_up_type_id(other.type_ascription)
+            && type_engine.look_up_type_id(self.type_ascription).eq(
+                &type_engine.look_up_type_id(other.type_ascription),
+                type_engine,
+            )
     }
 }
 

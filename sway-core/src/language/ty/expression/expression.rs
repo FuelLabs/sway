@@ -10,7 +10,7 @@ use crate::{
     types::DeterministicallyAborts,
 };
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug)]
 pub struct TyExpression {
     pub expression: TyExpressionVariant,
     pub return_type: TypeId,
@@ -20,10 +20,13 @@ pub struct TyExpression {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyExpression {
-    fn eq(&self, other: &Self) -> bool {
-        self.expression == other.expression
-            && look_up_type_id(self.return_type) == look_up_type_id(other.return_type)
+impl EqWithTypeEngine for TyExpression {}
+impl PartialEqWithTypeEngine for TyExpression {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        self.expression.eq(&other.expression, type_engine)
+            && type_engine
+                .look_up_type_id(self.return_type)
+                .eq(&type_engine.look_up_type_id(other.return_type), type_engine)
     }
 }
 
@@ -42,17 +45,13 @@ impl ReplaceSelfType for TyExpression {
 }
 
 impl ReplaceDecls for TyExpression {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
-        self.expression.replace_decls(decl_mapping);
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, type_engine: &TypeEngine) {
+        self.expression.replace_decls(decl_mapping, type_engine);
     }
 }
 
 impl DisplayWithTypeEngine for TyExpression {
-    fn fmt_with_type_engine(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        type_engine: &TypeEngine,
-    ) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         write!(
             f,
             "{} ({})",

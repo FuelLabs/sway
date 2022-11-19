@@ -11,7 +11,7 @@ use crate::{
 
 use sway_types::constants::{INLINE_ALWAYS_NAME, INLINE_NEVER_NAME};
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug)]
 pub struct TyFunctionDeclaration {
     pub name: Ident,
     pub body: TyCodeBlock,
@@ -45,13 +45,16 @@ impl From<&TyFunctionDeclaration> for TyAstNode {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyFunctionDeclaration {
-    fn eq(&self, other: &Self) -> bool {
+impl EqWithTypeEngine for TyFunctionDeclaration {}
+impl PartialEqWithTypeEngine for TyFunctionDeclaration {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && self.body == other.body
-            && self.parameters == other.parameters
-            && look_up_type_id(self.return_type) == look_up_type_id(other.return_type)
-            && self.type_parameters == other.type_parameters
+            && self.body.eq(&other.body, type_engine)
+            && self.parameters.eq(&other.parameters, type_engine)
+            && type_engine
+                .look_up_type_id(self.return_type)
+                .eq(&type_engine.look_up_type_id(other.return_type), type_engine)
+            && self.type_parameters.eq(&other.type_parameters, type_engine)
             && self.visibility == other.visibility
             && self.is_contract_call == other.is_contract_call
             && self.purity == other.purity
@@ -85,8 +88,8 @@ impl ReplaceSelfType for TyFunctionDeclaration {
 }
 
 impl ReplaceDecls for TyFunctionDeclaration {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
-        self.body.replace_decls(decl_mapping);
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, type_engine: &TypeEngine) {
+        self.body.replace_decls(decl_mapping, type_engine);
     }
 }
 
@@ -117,7 +120,7 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
             .type_parameters
             .iter()
             .map(|type_param| type_engine.look_up_type_id(type_param.type_id))
-            .any(|x| x == type_parameter_info)
+            .any(|x| x.eq(&type_parameter_info, type_engine))
         {
             return false;
         }
@@ -125,11 +128,14 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
             .parameters
             .iter()
             .map(|param| type_engine.look_up_type_id(param.type_id))
-            .any(|x| x == type_parameter_info)
+            .any(|x| x.eq(&type_parameter_info, type_engine))
         {
             return true;
         }
-        if type_engine.look_up_type_id(self.return_type) == type_parameter_info {
+        if type_engine
+            .look_up_type_id(self.return_type)
+            .eq(&type_parameter_info, type_engine)
+        {
             return true;
         }
 
@@ -353,7 +359,7 @@ impl TyFunctionDeclaration {
     }
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone)]
 pub struct TyFunctionParameter {
     pub name: Ident,
     pub is_reference: bool,
@@ -367,10 +373,13 @@ pub struct TyFunctionParameter {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyFunctionParameter {
-    fn eq(&self, other: &Self) -> bool {
+impl EqWithTypeEngine for TyFunctionParameter {}
+impl PartialEqWithTypeEngine for TyFunctionParameter {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+            && type_engine
+                .look_up_type_id(self.type_id)
+                .eq(&type_engine.look_up_type_id(other.type_id), type_engine)
             && self.is_mutable == other.is_mutable
     }
 }

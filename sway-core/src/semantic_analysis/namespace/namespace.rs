@@ -14,7 +14,7 @@ use sway_types::{span::Span, Spanned};
 use std::collections::VecDeque;
 
 /// The set of items that represent the namespace context passed throughout type checking.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Namespace {
     /// An immutable namespace that consists of the names that should always be present, no matter
     /// what module or scope we are currently checking.
@@ -219,10 +219,10 @@ impl Namespace {
             }
         }
 
-        if args_buf
+        if !args_buf
             .get(0)
             .map(|x| type_engine.look_up_type_id(x.return_type))
-            != Some(TypeInfo::ErrorRecovery)
+            .eq(&Some(TypeInfo::ErrorRecovery), type_engine)
         {
             errors.push(CompileError::MethodNotFound {
                 method_name: method_name.clone(),
@@ -234,8 +234,12 @@ impl Namespace {
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
-    pub(crate) fn star_import(&mut self, src: &Path) -> CompileResult<()> {
-        self.root.star_import(src, &self.mod_path)
+    pub(crate) fn star_import(
+        &mut self,
+        src: &Path,
+        type_engine: &TypeEngine,
+    ) -> CompileResult<()> {
+        self.root.star_import(src, &self.mod_path, type_engine)
     }
 
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.

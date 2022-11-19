@@ -1,4 +1,3 @@
-use derivative::Derivative;
 use sway_types::{Ident, Span};
 
 use crate::{
@@ -7,17 +6,25 @@ use crate::{
     type_system::*,
 };
 
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct TyTraitFn {
     pub name: Ident,
     pub(crate) purity: Purity,
     pub parameters: Vec<TyFunctionParameter>,
     pub return_type: TypeId,
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
     pub return_type_span: Span,
     pub attributes: transform::AttributesMap,
+}
+
+impl EqWithTypeEngine for TyTraitFn {}
+impl PartialEqWithTypeEngine for TyTraitFn {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        self.name == rhs.name
+            && self.purity == rhs.purity
+            && self.parameters.eq(&rhs.parameters, type_engine)
+            && self.return_type == rhs.return_type
+            && self.attributes == rhs.attributes
+    }
 }
 
 impl CopyTypes for TyTraitFn {

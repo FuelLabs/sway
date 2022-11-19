@@ -14,7 +14,7 @@ impl std::ops::Deref for TypeId {
 }
 
 impl DisplayWithTypeEngine for TypeId {
-    fn fmt_with_type_engine(
+    fn fmt(
         &self,
         f: &mut fmt::Formatter<'_>,
         type_engine: &TypeEngine,

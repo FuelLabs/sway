@@ -2,7 +2,7 @@ use sway_types::Span;
 
 use crate::{declaration_engine::DeclarationId, language::CallPath, type_system::*};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct TyImplTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,
@@ -11,6 +11,22 @@ pub struct TyImplTrait {
     pub implementing_for_type_id: TypeId,
     pub type_implementing_for_span: Span,
     pub span: Span,
+}
+
+impl EqWithTypeEngine for TyImplTrait {}
+impl PartialEqWithTypeEngine for TyImplTrait {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        self.impl_type_parameters
+            .eq(&rhs.impl_type_parameters, type_engine)
+            && self.trait_name == rhs.trait_name
+            && self
+                .trait_type_arguments
+                .eq(&rhs.trait_type_arguments, type_engine)
+            && self.methods.eq(&rhs.methods, type_engine)
+            && self.implementing_for_type_id == rhs.implementing_for_type_id
+            && self.type_implementing_for_span == rhs.type_implementing_for_span
+            && self.span == rhs.span
+    }
 }
 
 impl CopyTypes for TyImplTrait {

@@ -156,7 +156,7 @@ fn check_type(
         errors
     );
     for ty in nested_types {
-        if ignore_self && ty == type_info {
+        if ignore_self && ty.eq(&type_info, ty_engine) {
             continue;
         }
         if ty_engine.is_type_info_storage_only(&ty) {

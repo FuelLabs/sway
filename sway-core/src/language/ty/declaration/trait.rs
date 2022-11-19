@@ -1,4 +1,3 @@
-use derivative::Derivative;
 use sway_types::{Ident, Span};
 
 use crate::{
@@ -8,8 +7,7 @@ use crate::{
     type_system::*,
 };
 
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct TyTraitDeclaration {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
@@ -19,6 +17,22 @@ pub struct TyTraitDeclaration {
     pub visibility: Visibility,
     pub attributes: transform::AttributesMap,
     pub span: Span,
+}
+
+impl EqWithTypeEngine for TyTraitDeclaration {}
+impl PartialEqWithTypeEngine for TyTraitDeclaration {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        self.name == rhs.name
+            && self.type_parameters.eq(&rhs.type_parameters, type_engine)
+            && self
+                .interface_surface
+                .eq(&rhs.interface_surface, type_engine)
+            && self.methods.eq(&rhs.methods, type_engine)
+            && self.supertraits == rhs.supertraits
+            && self.visibility == rhs.visibility
+            && self.attributes == rhs.attributes
+            && self.span == rhs.span
+    }
 }
 
 impl CopyTypes for TyTraitDeclaration {

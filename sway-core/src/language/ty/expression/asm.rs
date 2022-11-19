@@ -11,11 +11,11 @@ pub struct TyAsmRegisterDeclaration {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyAsmRegisterDeclaration {
-    fn eq(&self, other: &Self) -> bool {
+impl PartialEqWithTypeEngine for TyAsmRegisterDeclaration {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && if let (Some(l), Some(r)) = (self.initializer.clone(), other.initializer.clone()) {
-                l == r
+            && if let (Some(l), Some(r)) = (&self.initializer, &other.initializer) {
+                l.eq(r, type_engine)
             } else {
                 true
             }

@@ -71,7 +71,9 @@ impl ty::TyTraitFn {
             .namespace
             .implemented_traits
             .filter_by_type(trait_fn.return_type, type_engine);
-        ctx.namespace.implemented_traits.extend(trait_map);
+        ctx.namespace
+            .implemented_traits
+            .extend(trait_map, type_engine);
 
         ok(trait_fn, warnings, errors)
     }

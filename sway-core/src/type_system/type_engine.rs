@@ -1,5 +1,10 @@
+use core::fmt;
+use core::hash::{Hash, Hasher};
+use hashbrown::hash_map::RawEntryMut;
+use hashbrown::HashMap;
+use std::cmp::Ordering;
+use std::hash::BuildHasher;
 use std::sync::RwLock;
-use std::{collections::HashMap, fmt};
 
 use crate::concurrent_slab::ListDisplay;
 use crate::{
@@ -32,20 +37,40 @@ impl fmt::Display for TypeEngine {
     }
 }
 
+fn make_hasher<'a: 'b, 'b, K>(
+    hash_builder: &'a impl BuildHasher,
+    type_engine: &'b TypeEngine,
+) -> impl Fn(&K) -> u64 + 'b
+where
+    K: HashWithTypeEngine + ?Sized,
+{
+    move |key: &K| {
+        let mut state = hash_builder.build_hasher();
+        key.hash(&mut state, type_engine);
+        state.finish()
+    }
+}
+
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
     pub(crate) fn insert_type(&self, ty: TypeInfo) -> TypeId {
         let mut id_map = self.id_map.write().unwrap();
-        if let Some(type_id) = id_map.get(&ty) {
-            return *type_id;
-        }
-        if ty.can_change() {
-            TypeId::new(self.slab.insert(ty))
-        } else {
-            let type_id = TypeId::new(self.slab.insert(ty.clone()));
-            id_map.insert(ty, type_id);
-            type_id
+
+        let hash_builder = id_map.hasher().clone();
+        let ty_hash = make_hasher(&hash_builder, self)(&ty);
+
+        let raw_entry = id_map
+            .raw_entry_mut()
+            .from_hash(ty_hash, |x| x.eq(&ty, self));
+        match raw_entry {
+            RawEntryMut::Occupied(o) => return *o.get(),
+            RawEntryMut::Vacant(_) if ty.can_change() => TypeId::new(self.slab.insert(ty)),
+            RawEntryMut::Vacant(v) => {
+                let type_id = TypeId::new(self.slab.insert(ty.clone()));
+                v.insert_with_hasher(ty_hash, ty, type_id, make_hasher(&hash_builder, self));
+                type_id
+            }
         }
     }
 
@@ -598,30 +623,123 @@ pub(crate) enum EnforceTypeArguments {
 }
 
 pub(crate) trait DisplayWithTypeEngine {
-    fn fmt_with_type_engine(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        type_engine: &TypeEngine,
-    ) -> fmt::Result;
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result;
 }
 
-impl<T: DisplayWithTypeEngine> DisplayWithTypeEngine for &'_ T {
-    fn fmt_with_type_engine(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        type_engine: &TypeEngine,
-    ) -> fmt::Result {
-        (*self).fmt_with_type_engine(f, type_engine)
+impl<T: DisplayWithTypeEngine> DisplayWithTypeEngine for &T {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
+        (*self).fmt(f, type_engine)
     }
 }
 
+pub trait HashWithTypeEngine {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine);
+}
+
+impl<T: HashWithTypeEngine + ?Sized> HashWithTypeEngine for &T {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        (*self).hash(state, type_engine)
+    }
+}
+
+impl<T: HashWithTypeEngine> HashWithTypeEngine for Option<T> {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        match self {
+            None => state.write_u8(0),
+            Some(x) => x.hash(state, type_engine),
+        }
+    }
+}
+
+impl<T: HashWithTypeEngine> HashWithTypeEngine for [T] {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        for x in self {
+            x.hash(state, type_engine)
+        }
+    }
+}
+
+pub trait EqWithTypeEngine: PartialEqWithTypeEngine {}
+
+pub trait PartialEqWithTypeEngine {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool;
+}
+
+pub trait OrdWithTypeEngine {
+    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> Ordering;
+}
+
+impl<T: EqWithTypeEngine + ?Sized> EqWithTypeEngine for &T {}
+impl<T: PartialEqWithTypeEngine + ?Sized> PartialEqWithTypeEngine for &T {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        (*self).eq(*rhs, type_engine)
+    }
+}
+impl<T: OrdWithTypeEngine + ?Sized> OrdWithTypeEngine for &T {
+    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> Ordering {
+        (*self).cmp(*rhs, type_engine)
+    }
+}
+
+impl<T: EqWithTypeEngine> EqWithTypeEngine for Option<T> {}
+impl<T: PartialEqWithTypeEngine> PartialEqWithTypeEngine for Option<T> {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        match (self, rhs) {
+            (None, None) => true,
+            (Some(x), Some(y)) => x.eq(y, type_engine),
+            _ => false,
+        }
+    }
+}
+
+impl<T: EqWithTypeEngine> EqWithTypeEngine for [T] {}
+impl<T: PartialEqWithTypeEngine> PartialEqWithTypeEngine for [T] {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        self.len() == rhs.len()
+            && self
+                .iter()
+                .zip(rhs.iter())
+                .all(|(x, y)| x.eq(y, type_engine))
+    }
+}
+impl<T: OrdWithTypeEngine> OrdWithTypeEngine for [T] {
+    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> Ordering {
+        self.iter()
+            .zip(rhs.iter())
+            .map(|(x, y)| x.cmp(y, type_engine))
+            .find(|o| o.is_ne())
+            .unwrap_or_else(|| self.len().cmp(&rhs.len()))
+    }
+}
+
+#[derive(Clone, Copy)]
 pub struct WithTypeEngine<'a, T> {
-    thing: T,
-    engine: &'a TypeEngine,
+    pub thing: T,
+    pub engine: &'a TypeEngine,
+}
+
+impl<'a, T> WithTypeEngine<'a, T> {
+    pub fn new(thing: T, engine: &'a TypeEngine) -> Self {
+        WithTypeEngine { thing, engine }
+    }
 }
 
 impl<T: DisplayWithTypeEngine> fmt::Display for WithTypeEngine<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.thing.fmt_with_type_engine(f, self.engine)
+        self.thing.fmt(f, self.engine)
     }
 }
+
+impl<T: HashWithTypeEngine> Hash for WithTypeEngine<'_, T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.thing.hash(state, self.engine)
+    }
+}
+
+impl<T: PartialEqWithTypeEngine> PartialEq for WithTypeEngine<'_, T> {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.thing.eq(&rhs.thing, self.engine)
+    }
+}
+
+impl<T: EqWithTypeEngine> Eq for WithTypeEngine<'_, T> {}

@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 use sway_error::error::CompileError;
 use sway_types::{Span, Spanned};
 
@@ -10,10 +12,24 @@ use crate::{
     CompileResult,
 };
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone)]
 pub struct TraitConstraint {
     pub(crate) trait_name: CallPath,
     pub(crate) type_arguments: Vec<TypeArgument>,
+}
+
+impl HashWithTypeEngine for TraitConstraint {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.trait_name.hash(state);
+        self.type_arguments.hash(state, type_engine);
+    }
+}
+impl EqWithTypeEngine for TraitConstraint {}
+impl PartialEqWithTypeEngine for TraitConstraint {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        self.trait_name == rhs.trait_name
+            && self.type_arguments.eq(&rhs.type_arguments, type_engine)
+    }
 }
 
 impl Spanned for TraitConstraint {

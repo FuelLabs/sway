@@ -5,12 +5,21 @@ use itertools::Itertools;
 use sway_ast::Intrinsic;
 use sway_types::Span;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct TyIntrinsicFunctionKind {
     pub kind: Intrinsic,
     pub arguments: Vec<TyExpression>,
     pub type_arguments: Vec<TypeArgument>,
     pub span: Span,
+}
+
+impl EqWithTypeEngine for TyIntrinsicFunctionKind {}
+impl PartialEqWithTypeEngine for TyIntrinsicFunctionKind {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        self.kind == rhs.kind
+            && self.arguments.eq(&rhs.arguments, type_engine)
+            && self.type_arguments.eq(&rhs.type_arguments, type_engine)
+    }
 }
 
 impl CopyTypes for TyIntrinsicFunctionKind {
@@ -36,11 +45,7 @@ impl ReplaceSelfType for TyIntrinsicFunctionKind {
 }
 
 impl DisplayWithTypeEngine for TyIntrinsicFunctionKind {
-    fn fmt_with_type_engine(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        type_engine: &TypeEngine,
-    ) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         let targs = self
             .type_arguments
             .iter()
