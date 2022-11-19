@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::{Ident};
+use crate::Ident;
 
 use sway_types::{span::Span, Spanned};
 

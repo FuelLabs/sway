@@ -80,7 +80,9 @@ impl ReplaceDecls for TyAstNode {
                 exp.replace_decls(decl_mapping, type_engine)
             }
             TyAstNodeContent::Declaration(_) => {}
-            TyAstNodeContent::Expression(ref mut expr) => expr.replace_decls(decl_mapping, type_engine),
+            TyAstNodeContent::Expression(ref mut expr) => {
+                expr.replace_decls(decl_mapping, type_engine)
+            }
             TyAstNodeContent::SideEffect => (),
         }
     }
