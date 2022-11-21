@@ -471,6 +471,7 @@ pub(super) fn unify_right(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn unify_strs(
     received: TypeId,
     expected: TypeId,

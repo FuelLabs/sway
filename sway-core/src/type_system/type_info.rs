@@ -42,7 +42,7 @@ impl<T: fmt::Debug> fmt::Debug for VecSet<T> {
 impl<T> core::ops::Deref for VecSet<T> {
     type Target = [T];
     fn deref(&self) -> &Self::Target {
-        &*self.0
+        &self.0
     }
 }
 
@@ -257,7 +257,7 @@ impl PartialEqWithTypeEngine for TypeInfo {
                     name: r,
                     trait_constraints: rtc,
                 },
-            ) => l == r && ltc.eq(&rtc, type_engine),
+            ) => l == r && ltc.eq(rtc, type_engine),
             (
                 Self::Custom {
                     name: l_name,

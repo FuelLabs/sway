@@ -366,7 +366,7 @@ impl PartialEqWithTypeEngine for TyExpressionVariant {
                     body: r_body,
                     condition: r_condition,
                 },
-            ) => l_body.eq(&r_body, type_engine) && l_condition.eq(r_condition, type_engine),
+            ) => l_body.eq(r_body, type_engine) && l_condition.eq(r_condition, type_engine),
             _ => false,
         }
     }
