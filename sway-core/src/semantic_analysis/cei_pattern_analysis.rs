@@ -15,7 +15,7 @@ use crate::{
 };
 use std::collections::HashSet;
 use sway_error::warning::{CompileWarning, Warning};
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 enum Effect {
@@ -196,6 +196,7 @@ fn analyze_expression(
             arguments,
             function_decl_id,
             selector,
+            call_path,
             ..
         } => {
             use crate::declaration_engine::de_get_function;
@@ -215,7 +216,14 @@ fn analyze_expression(
 
             if args_effs.contains(&Effect::Interaction) {
                 // TODO: interaction span has to be more precise and point to an argument which performs interaction
-                warn_after_interaction(&fn_effs, &expr.span, &func.span, block_name, warnings)
+                let last_arg_span = &arguments.last().unwrap().1.span;
+                warn_after_interaction(
+                    &fn_effs,
+                    &call_path.span(),
+                    last_arg_span,
+                    block_name,
+                    warnings,
+                )
             }
 
             let mut result_effs = set_union(fn_effs, args_effs);
@@ -273,27 +281,28 @@ fn analyze_expression(
             set_union(cond_then_effs, cond_else_effs)
         }
         WhileLoop { condition, body } => {
+            // if the loop (condition + body) contains both interaction and storage operations
+            // in _any_ order, we report CEI pattern violation
             let cond_effs = analyze_expression(condition, block_name, warnings);
             let body_effs = analyze_code_block(body, block_name, warnings);
-            if cond_effs.contains(&Effect::Interaction) {
-                warn_after_interaction(
-                    &body_effs,
-                    &condition.span,
-                    &expr.span,
-                    block_name,
-                    warnings,
-                );
+            let res_effs = set_union(cond_effs, body_effs);
+            if res_effs.is_superset(&HashSet::from([Effect::Interaction, Effect::StorageRead])) {
+                warnings.push(CompileWarning {
+                    span: expr.span.clone(),
+                    warning_content: Warning::StorageReadAfterInteraction {
+                        block_name: block_name.clone(),
+                    },
+                });
             };
-            if body_effs.contains(&Effect::Interaction) {
-                warn_after_interaction(
-                    &cond_effs,
-                    &expr.span,
-                    &condition.span,
-                    block_name,
-                    warnings,
-                );
+            if res_effs.is_superset(&HashSet::from([Effect::Interaction, Effect::StorageWrite])) {
+                warnings.push(CompileWarning {
+                    span: expr.span.clone(),
+                    warning_content: Warning::StorageWriteAfterInteraction {
+                        block_name: block_name.clone(),
+                    },
+                });
             };
-            set_union(cond_effs, body_effs)
+            res_effs
         }
         AsmExpression {
             registers, body, ..
