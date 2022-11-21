@@ -97,6 +97,73 @@ impl ContractB for Contract {
 }
 ```
 
+### CEI pattern violation static analysis
+
+Another way of avoiding re-entrancy-related attacks is to follow the so-called
+*CEI* pattern. CEI stands for "Checks, Effects, Interactions", meaning that the
+contract code should first perform safety checks, also known as
+"pre-conditions", then perform effects, i.e. modify or read the contract storage
+and execute external contract calls (interaction) only at the very end of the
+function/method.
+
+Please see this [blog post](https://fravoll.github.io/solidity-patterns/checks_effects_interactions.html)
+for more detail on some vulnerabilities in case of storage modification after
+interaction and this [blog post](https://chainsecurity.com/curve-lp-oracle-manipulation-post-mortem) for
+more information on storage reads after interaction.
+
+The Sway compiler implements a check that the CEI pattern is not violated in the
+user contract and issues warnings if it's the case.
+
+For example, in the following contract the CEI pattern is violated, because an
+external contract call is executed before a storage write.
+
+```sway
+contract;
+
+use std::storage::store;
+
+abi TestAbi {
+    #[storage(write)]
+    fn deposit();
+}
+
+impl TestAbi for Contract {
+    #[storage(write)]
+    fn deposit() {
+        let storage_key = 0x3dba0a4455b598b7655a7fb430883d96c9527ef275b49739e7b0ad12f8280eae;
+        let other_contract = abi(TestAbi, storage_key);
+
+        // interaction
+        other_contract.deposit();
+
+        // effect -- therefore violation of CEI where effect should go before interaction
+        store(storage_key, ());
+    }
+}
+```
+
+The CEI pattern analyzer issues a warning as follows, pointing to the
+interaction before a storage modification:
+
+```
+warning
+  --> /path/to/contract/main.sw:17:9
+   |
+15 |
+16 |           // interaction
+17 |           other_contract.deposit();
+   |  _________-
+18 | |         // effect -- therefore violation of CEI where effect should go before interaction
+19 | |         store(storage_key, ());
+   | |______________________________- Storage modification after external contract interaction in function or method "deposit". Consider making all storage writes before calling another contract
+20 |       }
+21 |   }
+   |
+____
+```
+
+In case there is a storage read after an interaction, the CEI analyzer will issue a similar warning.
+
 ## Differences from the EVM
 
 While the Fuel contract calling paradigm is similar to the EVM's (using an ABI, forwarding gas and data), it differs in _two_ key ways:
