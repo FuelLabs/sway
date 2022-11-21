@@ -5,6 +5,7 @@ use std::{
 };
 
 use anyhow::Result;
+use colored::Colorize;
 use sway_core::{
     compile_ir_to_asm, compile_to_ast, inline_function_calls, ir_generation::compile_program,
     namespace,
@@ -103,8 +104,8 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
         })
         .for_each(
             |(path, sway_str, ir_checker, opt_asm_checker, optimisation_inline)| {
-                let test_file_name = path.file_name().unwrap().to_string_lossy();
-                tracing::info!("* {test_file_name}");
+                let test_file_name = path.file_name().unwrap().to_string_lossy().to_string();
+                tracing::info!("Testing {} ...", test_file_name.bold());
 
                 // Compile to AST.  We need to provide a faux build config otherwise the IR will have
                 // no span metdata.
@@ -250,7 +251,15 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
             total_test_count,
         );
     } else {
-        tracing::info!("Ran {run_test_count} out of {total_test_count} IR generation tests.");
+        tracing::info!("_________________________________");
+        tracing::info!(
+            "IR tests result: {}. {} total, {} passed; {} failed; {} disabled",
+            "ok".green().bold(),
+            total_test_count,
+            run_test_count,
+            0,
+            total_test_count - run_test_count
+        );
     }
     Ok(())
 }
