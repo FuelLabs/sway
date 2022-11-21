@@ -683,6 +683,8 @@ pub enum CompileError {
     DisallowedControlFlowInstruction { name: String, span: Span },
     #[error("Calling private library method {name} is not allowed.")]
     CallingPrivateLibraryMethod { name: String, span: Span },
+    #[error("Using \"while\" in a predicate is not allowed.")]
+    DisallowedWhileInPredicate { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -867,6 +869,7 @@ impl Spanned for CompileError {
             InitializedRegisterReassignment { span, .. } => span.clone(),
             DisallowedControlFlowInstruction { span, .. } => span.clone(),
             CallingPrivateLibraryMethod { span, .. } => span.clone(),
+            DisallowedWhileInPredicate { span } => span.clone(),
         }
     }
 }

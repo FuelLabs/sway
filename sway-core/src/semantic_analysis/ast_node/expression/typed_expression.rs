@@ -1632,6 +1632,10 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        if let Some(TreeType::Predicate) = ctx.kind() {
+            errors.push(CompileError::DisallowedWhileInPredicate { span: span.clone() });
+        }
+
         let type_engine = ctx.type_engine;
         let typed_condition = {
             let ctx = ctx
