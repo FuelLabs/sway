@@ -197,7 +197,7 @@ Note the contract ID — you will need it if you want to build out a frontend to
 
 ## Testing Your Contract
 
-We will cover how to test your contract later but, if you are eager to take a look, see [Testing with Rust](../testing/testing-with-rust.md).
+We will cover how to test your contract later but, if you are eager to take a look, see [Unit Testing](../testing/unit-testing.md) and [Testing with Rust](../testing/testing-with-rust.md).
 
 ## Next Steps
 
