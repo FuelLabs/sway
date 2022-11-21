@@ -1,0 +1,4 @@
+category = "compile"
+
+# check: $()Storage modification after external contract interaction in function or method "withdraw". Consider making all storage writes before calling another contract
+# check: $()Storage modification after external contract interaction in function or method "withdraw". Consider making all storage writes before calling another contract

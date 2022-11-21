@@ -12,6 +12,7 @@ use crate::{
         ty::{self, TyFunctionDeclaration},
         AsmOp,
     },
+    look_up_type_id,
 };
 use std::collections::HashSet;
 use sway_error::warning::{CompileWarning, Warning};
@@ -213,7 +214,6 @@ fn analyze_expression(
                 block_name,
                 warnings,
             );
-
             if args_effs.contains(&Effect::Interaction) {
                 // TODO: interaction span has to be more precise and point to an argument which performs interaction
                 let last_arg_span = &arguments.last().unwrap().1.span;
@@ -462,7 +462,10 @@ fn effects_of_expression(expr: &ty::TyExpression) -> HashSet<Effect> {
         | AbiName(_) => HashSet::new(),
         // this type of assignment only mutates local variables and not storage
         Reassignment(reassgn) => effects_of_expression(&reassgn.rhs),
-        StorageAccess(_) => HashSet::from([Effect::StorageRead]),
+        StorageAccess(_) => match look_up_type_id(expr.return_type) {
+            crate::TypeInfo::Struct { .. } => HashSet::new(),
+            _ => HashSet::from([Effect::StorageRead]),
+        },
         StorageReassignment(storage_reassign) => {
             let mut effs = HashSet::from([Effect::StorageWrite]);
             effs.extend(effects_of_expression(&storage_reassign.rhs));
@@ -548,9 +551,9 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
     use sway_ast::Intrinsic::*;
     match intr {
         StateStoreWord | StateStoreQuad => HashSet::from([Effect::StorageWrite]),
-        StateLoadWord | StateLoadQuad | GetStorageKey => HashSet::from([Effect::StorageRead]),
+        StateLoadWord | StateLoadQuad => HashSet::from([Effect::StorageRead]),
         Revert | IsReferenceType | SizeOfType | SizeOfVal | Eq | Gtf | AddrOf | Log | Add | Sub
-        | Mul | Div | PtrAdd | PtrSub => HashSet::new(),
+        | Mul | Div | PtrAdd | PtrSub | GetStorageKey => HashSet::new(),
     }
 }
 
