@@ -53,7 +53,7 @@ pub mod fuel_prelude {
 /// # use sway_core::parse;
 /// # fn main() {
 ///     let input = "script; fn main() -> bool { true }";
-///     let result = parse(input.into(), Default::default());
+///     let result = parse(input.into(), &<_>::default(), None);
 /// # }
 /// ```
 ///
