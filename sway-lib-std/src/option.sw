@@ -5,7 +5,7 @@
 //! does not. [`Option`] types are very common in Sway code, as
 //! they have a number of uses:
 //!
-//! * Initial values
+//! * Initial values where [`None`] can be used as an initizlier
 //! * Return value for otherwise reporting simple errors, where [`None`] is
 //!   returned on error
 //! * Optional struct fields
@@ -23,15 +23,17 @@
 //!     }
 //! }
 //!
-//! // The return value of the function is an option
-//! let result = divide(6, 2);
+//! fn call_divide() {
+//!     // The return value of the function is an option
+//!     let result = divide(6, 2);
 //!
-//! // Pattern match to retrieve the value
-//! match result {
-//!     // The division was valid
-//!     Option::Some(x) => std::logging::log(x),
-//!     // The division was invalid
-//!     Option::None    => std::logging::log("Cannot divide by 0"),
+//!     // Pattern match to retrieve the value
+//!     match result {
+//!         // The division was valid
+//!         Option::Some(x) => std::logging::log(x),
+//!         // The division was invalid
+//!         Option::None    => std::logging::log("Cannot divide by 0"),
+//!     }
 //! }
 //! ```
 //!
