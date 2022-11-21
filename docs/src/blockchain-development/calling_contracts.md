@@ -100,7 +100,7 @@ impl ContractB for Contract {
 ### CEI pattern violation static analysis
 
 Another way of avoiding re-entrancy-related attacks is to follow the so-called
-*CEI* pattern. CEI stands for "Checks, Effects, Interactions", meaning that the
+_CEI_ pattern. CEI stands for "Checks, Effects, Interactions", meaning that the
 contract code should first perform safety checks, also known as
 "pre-conditions", then perform effects, i.e. modify or read the contract storage
 and execute external contract calls (interaction) only at the very end of the
@@ -145,7 +145,7 @@ impl TestAbi for Contract {
 The CEI pattern analyzer issues a warning as follows, pointing to the
 interaction before a storage modification:
 
-```
+```sh
 warning
   --> /path/to/contract/main.sw:17:9
    |
