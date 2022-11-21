@@ -90,57 +90,53 @@ fn check_predicate_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
     let mut errors = vec![];
 
     for (op, opcode_addr) in ops.iter().zip(0u32..) {
-        macro_rules! invalid_opcode {
-            ($name_str:literal) => {{
-                errors.push(CompileError::InvalidOpcodeFromPredicate {
-                    opcode: $name_str.to_string(),
-                    span: get_op_span(op),
-                });
-            }};
-        }
-        macro_rules! invalid_backward_jump {
-            ($name_str:literal) => {{
-                errors.push(CompileError::InvalidBackwardJumpFromPredicate {
-                    opcode: $name_str.to_string(),
-                    span: get_op_span(op),
-                });
-            }};
-        }
+        let invalid_opcode = |name_str: &str, errors: &mut Vec<CompileError>| {
+            errors.push(CompileError::InvalidOpcodeFromPredicate {
+                opcode: name_str.to_string(),
+                span: get_op_span(op),
+            });
+        };
+        let invalid_backward_jump = |name_str: &str, errors: &mut Vec<CompileError>| {
+            errors.push(CompileError::InvalidBackwardJumpFromPredicate {
+                opcode: name_str.to_string(),
+                span: get_op_span(op),
+            });
+        };
         match op.opcode.clone() {
-            BAL(..) => invalid_opcode!("BAL"),
-            BHEI(..) => invalid_opcode!("BHEI"),
-            BHSH(..) => invalid_opcode!("BHSH"),
-            BURN(..) => invalid_opcode!("BURN"),
-            CALL(..) => invalid_opcode!("CALL"),
-            CB(..) => invalid_opcode!("CB"),
-            CCP(..) => invalid_opcode!("CCP"),
-            CROO(..) => invalid_opcode!("CROO"),
-            CSIZ(..) => invalid_opcode!("CSIZ"),
+            BAL(..) => invalid_opcode("BAL", &mut errors),
+            BHEI(..) => invalid_opcode("BHEI", &mut errors),
+            BHSH(..) => invalid_opcode("BHSH", &mut errors),
+            BURN(..) => invalid_opcode("BURN", &mut errors),
+            CALL(..) => invalid_opcode("CALL", &mut errors),
+            CB(..) => invalid_opcode("CB", &mut errors),
+            CCP(..) => invalid_opcode("CCP", &mut errors),
+            CROO(..) => invalid_opcode("CROO", &mut errors),
+            CSIZ(..) => invalid_opcode("CSIZ", &mut errors),
             GM(_, VirtualImmediate18 { value: 1..=2 }) => {
                 errors.push(CompileError::GMFromExternalContract {
                     span: get_op_span(op),
                 });
             }
-            JI(imm) if imm.value <= opcode_addr => invalid_backward_jump!("JI"),
-            JMP(..) => invalid_opcode!("JMP"),
-            JNE(..) => invalid_opcode!("JNE"),
+            JI(imm) if imm.value <= opcode_addr => invalid_backward_jump("JI", &mut errors),
+            JMP(..) => invalid_opcode("JMP", &mut errors),
+            JNE(..) => invalid_opcode("JNE", &mut errors),
             JNEI(_, _, imm) if u32::from(imm.value) <= opcode_addr => {
-                invalid_backward_jump!("JNEI")
+                invalid_backward_jump("JNEI", &mut errors)
             }
-            JNZI(_, imm) if imm.value <= opcode_addr => invalid_backward_jump!("JNZI"),
-            LDC(..) => invalid_opcode!("LDC"),
-            LOG(..) => invalid_opcode!("LOG"),
-            LOGD(..) => invalid_opcode!("LOGD"),
-            MINT(..) => invalid_opcode!("MINT"),
-            RETD(..) => invalid_opcode!("RETD"),
-            SMO(..) => invalid_opcode!("SMO"),
-            SRW(..) => invalid_opcode!("SRW"),
-            SRWQ(..) => invalid_opcode!("SRWQ"),
-            SWW(..) => invalid_opcode!("SWW"),
-            SWWQ(..) => invalid_opcode!("SWWQ"),
-            TIME(..) => invalid_opcode!("TIME"),
-            TR(..) => invalid_opcode!("TR"),
-            TRO(..) => invalid_opcode!("TRO"),
+            JNZI(_, imm) if imm.value <= opcode_addr => invalid_backward_jump("JNZI", &mut errors),
+            LDC(..) => invalid_opcode("LDC", &mut errors),
+            LOG(..) => invalid_opcode("LOG", &mut errors),
+            LOGD(..) => invalid_opcode("LOGD", &mut errors),
+            MINT(..) => invalid_opcode("MINT", &mut errors),
+            RETD(..) => invalid_opcode("RETD", &mut errors),
+            SMO(..) => invalid_opcode("SMO", &mut errors),
+            SRW(..) => invalid_opcode("SRW", &mut errors),
+            SRWQ(..) => invalid_opcode("SRWQ", &mut errors),
+            SWW(..) => invalid_opcode("SWW", &mut errors),
+            SWWQ(..) => invalid_opcode("SWWQ", &mut errors),
+            TIME(..) => invalid_opcode("TIME", &mut errors),
+            TR(..) => invalid_opcode("TR", &mut errors),
+            TRO(..) => invalid_opcode("TRO", &mut errors),
             _ => (),
         };
     }
