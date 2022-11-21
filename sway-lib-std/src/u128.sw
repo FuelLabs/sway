@@ -311,11 +311,11 @@ impl core::ops::Multiply for U128 {
 
         let mut result = self.lower.overflowing_mul(other.lower);
         if self.upper == 0 {
-            let self_lower_other_upper = self.lower * other.upper; // will panic in case of overflow
-            result.upper += self_lower_other_upper; // will panic in case of overflow
+            // panic in case of overflow
+            result.upper += self.lower * other.upper;
         } else if other.upper == 0 {
-            let self_upper_other_lower = self.upper * other.lower; // will panic in case of overflow
-            result.upper += self_upper_other_lower; // will panic in case of overflow
+            // panic in case of overflow
+            result.upper += self.upper * other.lower;
         }
 
         result
