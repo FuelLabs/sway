@@ -138,22 +138,6 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="the-fuel-toolchain"><a class="header" href="#the-fuel-toolchain">The Fuel Toolchain</a></h1>
-<p>The Fuel toolchain consists of several components.</p>
-<h2 id="forc-forc"><a class="header" href="#forc-forc">Forc (<code>forc</code>)</a></h2>
-<p>The &quot;Fuel Orchestrator&quot; <a href="https://github.com/FuelLabs/sway/tree/master/forc">Forc</a> is our equivalent of Rust's <a href="https://doc.rust-lang.org/cargo/">Cargo</a>. It is the primary entry point for creating, building, testing, and deploying Sway projects.</p>
-<h2 id="sway-language-server-forc-lsp"><a class="header" href="#sway-language-server-forc-lsp">Sway Language Server (<code>forc-lsp</code>)</a></h2>
-<p>The Sway Language Server <code>forc-lsp</code> is provided to expose features to IDEs. <a href="./installation.html">Installation instructions</a>.</p>
-<p>Currently, only <a href="https://marketplace.visualstudio.com/items?itemName=FuelLabs.sway-vscode-plugin">Visual Studio Code is supported through a plugin</a>. Vim support is forthcoming, though <a href="https://github.com/FuelLabs/sway.vim">syntax highlighting is provided</a>.</p>
-<blockquote>
-<p><strong>Note</strong>: There is no need to manually run <code>forc-lsp</code> (the plugin will automatically start it), however both <code>forc</code> and <code>forc-lsp</code> must be in your <code>$PATH</code>. To check if <code>forc</code> is in your <code>$PATH</code>, type <code>forc --help</code> in your terminal.</p>
-</blockquote>
-<h2 id="sway-formatter-forc-fmt"><a class="header" href="#sway-formatter-forc-fmt">Sway Formatter (<code>forc-fmt</code>)</a></h2>
-<p>A canonical formatter is provided with <code>forc-fmt</code>. <a href="./installation.html">Installation instructions</a>. It can be run manually with</p>
-<pre><code class="language-sh">forc fmt
-</code></pre>
-<p>The <a href="https://marketplace.visualstudio.com/items?itemName=FuelLabs.sway-vscode-plugin">Visual Studio Code plugin</a> will automatically format Sway files with <code>forc-fmt</code> on save.</p>
-<h2 id="fuel-core-fuel-core"><a class="header" href="#fuel-core-fuel-core">Fuel Core (<code>fuel-core</code>)</a></h2>
-<p>An implementation of the Fuel protocol, <a href="https://github.com/FuelLabs/fuel-core">Fuel Core</a>, is provided together with the <em>Sway toolchain</em> to form the <em>Fuel toolchain</em>. <a href="https://github.com/FuelLabs/fuels-rs">The Rust SDK</a> will automatically start and stop an instance of the node during tests, so there is no need to manually run a node unless using Forc directly without the SDK.</p>
 
                     </main>
 
