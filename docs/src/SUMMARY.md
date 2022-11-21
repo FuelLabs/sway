@@ -44,6 +44,7 @@
   - [Storage Vectors](./common-collections/storage_vec.md)
   - [Storage Maps](./common-collections/storage_map.md)
 - [Testing](./testing/index.md)
+  - [Unit Testing](./testing/unit-testing.md)
   - [Testing with Rust](./testing/testing-with-rust.md)
 - [Application Frontend](./frontend/index.md)
   - [TypeScript SDK](./frontend/typescript_sdk.md)
