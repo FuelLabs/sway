@@ -1,6 +1,6 @@
 library never;
 
-use core::ops::*;
+use ::ops::*;
 
 pub enum Never {}
 

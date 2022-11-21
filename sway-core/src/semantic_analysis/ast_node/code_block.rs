@@ -58,7 +58,7 @@ impl ty::TyCodeBlock {
                 if node_deterministically_aborts {
                     // grab the declaration
                     let never_mod_path = vec![
-                        Ident::new_with_override("std", span.clone()),
+                        Ident::new_with_override("core", span.clone()),
                         Ident::new_with_override("never", span.clone()),
                     ];
                     let never_ident = Ident::new_with_override("Never", span.clone());
