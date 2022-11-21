@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{fmt::Write, path::PathBuf};
 
 use crate::{descriptor::DescriptorType, doc::Documentation};
 use comrak::{markdown_to_html, ComrakOptions};
@@ -355,10 +355,9 @@ fn docs_to_html(attributes: &AttributesMap) -> String {
     let mut docs = String::new();
 
     if let Some(vec_attrs) = attributes {
-        for attribute in vec_attrs {
-            for ident in &attribute.args {
-                docs.push_str(&format!("{}\n", ident.as_str()))
-            }
+        for ident in vec_attrs.iter().flat_map(|attribute| &attribute.args) {
+            writeln!(docs, "{}", ident.as_str())
+                .expect("problem appending `ident.as_str()` to `docs` with `writeln` macro.");
         }
     }
 
