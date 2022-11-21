@@ -23,8 +23,8 @@ impl ty::TyIntrinsicFunctionKind {
             type_arguments,
             ..
         } = kind_binding;
-            match kind {
-                Intrinsic::SizeOfVal => {
+        match kind {
+            Intrinsic::SizeOfVal => {
                 type_check_size_of_val(ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::SizeOfType => {
@@ -693,7 +693,7 @@ fn type_check_log(
 /// Signature: `__add<T>(lhs: T, rhs: T) -> T`
 /// Description: Adds `lhs` and `rhs` and returns the result.
 /// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
-/// 
+///
 /// Signature: `__sub<T>(lhs: T, rhs: T) -> T`
 /// Description: Subtracts `lhs` and `rhs` and returns the result.
 /// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
