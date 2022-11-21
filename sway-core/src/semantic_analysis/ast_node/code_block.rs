@@ -74,15 +74,17 @@ impl ty::TyCodeBlock {
                         if let Ok(never_decl) =
                             declaration_engine.get_enum(never_decl_id.clone(), &span)
                         {
-                            never_decl.create_type_id(ctx.engines())
-                        } else {
-                            ctx.type_engine
-                                .insert_type(declaration_engine, TypeInfo::Unknown)
+                            return never_decl.create_type_id(ctx.engines());
                         }
-                    } else {
-                        ctx.type_engine
-                            .insert_type(declaration_engine, TypeInfo::Unknown)
                     }
+
+                    errors.push(CompileError::Internal(
+                        "Could not found Never type.",
+                        span.clone(),
+                    ));
+
+                    ctx.type_engine
+                        .insert_type(declaration_engine, TypeInfo::Unknown)
                 } else {
                     ctx.type_engine
                         .insert_type(declaration_engine, TypeInfo::Tuple(Vec::new()))
