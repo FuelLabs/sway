@@ -195,6 +195,10 @@ TransactionId(HexFormatted(7cef24ea33513733ab78c5daa5328d622d4b38187d0f0d1857b27
 
 Note the contract ID — you will need it if you want to build out a frontend to interact with this contract.
 
+## Testing Your Contract
+
+We will cover how to test your contract later but, if you are eager to take a look, see [Testing with Rust](../testing/testing-with-rust.md).
+
 ## Next Steps
 
 Now that you've written a smart contract with Sway and deployed it to a local Fuel node, try out building a fullstack dapp deployed to the testnet. A step-by-step guide to write your smart contract, deploy to testnet, set up a wallet, and build a frontend can be found in the [Developer Quickstart Guide](https://fuellabs.github.io/fuel-docs/master/developer-quickstart.html).
