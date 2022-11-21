@@ -307,7 +307,7 @@ impl core::ops::Multiply for U128 {
         // in case both of the `U128` upper parts are bigger than zero,
         // it automatically means overflow, as any `U128` value
         // is upper part multiplied by 2 ^ 64 + lower part
-        assert(!(self.upper != 0 && other.upper != 0));
+        assert(self.upper == 0 || other.upper == 0);
 
         let mut result = self.lower.overflowing_mul(other.lower);
         if self.upper == 0 {
