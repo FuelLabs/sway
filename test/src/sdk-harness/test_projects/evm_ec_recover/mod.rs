@@ -111,5 +111,5 @@ async fn can_recover_evm_address() {
         .await
         .unwrap();
 
-    assert_eq!(response.value.value, Bits256(evm_address));
+    assert_eq!(response.value, EvmAddress::from(Bits256(evm_address)));
 }

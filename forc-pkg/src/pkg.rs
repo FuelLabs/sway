@@ -2630,11 +2630,9 @@ fn update_all_types(
         update_json_type_declaration(decl, old_to_new_id);
     }
     if let Some(logged_types) = &mut json_abi_program.logged_types {
-            for logged_type in logged_types.iter_mut() {
-                update_json_type_application(&mut logged_type.application, old_to_new_id);
-            }
+        for logged_type in logged_types.iter_mut() {
+            update_json_type_application(&mut logged_type.application, old_to_new_id);
         }
-        None => (),
     }
 }
 
