@@ -6,7 +6,7 @@ use crate::{
     PartialEqWithTypeEngine, TypeEngine,
 };
 
-use super::{convert::convert_literal_to_constant, types::*};
+use super::{convert::convert_literal_to_constant, function::FnCompiler, types::*};
 
 use sway_error::error::CompileError;
 use sway_ir::{
@@ -14,6 +14,7 @@ use sway_ir::{
     context::Context,
     module::Module,
     value::Value,
+    Instruction,
 };
 use sway_types::{ident::Ident, span::Spanned};
 use sway_utils::mapped_stack::MappedStack;
@@ -24,6 +25,7 @@ pub(crate) struct LookupEnv<'a> {
     pub(crate) md_mgr: &'a mut MetadataManager,
     pub(crate) module: Module,
     pub(crate) module_ns: Option<&'a namespace::Module>,
+    pub(crate) function_compiler: Option<&'a FnCompiler<'a>>,
     pub(crate) lookup: fn(&mut LookupEnv, &Ident) -> Result<Option<Value>, CompileError>,
 }
 
@@ -31,6 +33,53 @@ pub(crate) fn compile_const_decl(
     env: &mut LookupEnv,
     name: &Ident,
 ) -> Result<Option<Value>, CompileError> {
+    // Check if it's a processed local constant.
+    if let Some(fn_compiler) = env.function_compiler {
+        let mut found_local = false;
+        if let Some(ptr) = fn_compiler.get_function_ptr(env.context, name.as_str()) {
+            found_local = true;
+            if !ptr.is_mutable(env.context) {
+                if let Some(constant) = ptr.get_initializer(env.context) {
+                    return Ok(Some(Value::new_constant(env.context, constant.clone())));
+                }
+            }
+
+            // Check if a constant was stored to the pointer in the current block
+            let mut stored_const_opt: Option<&Constant> = None;
+            for ins in fn_compiler.current_block.instruction_iter(env.context) {
+                if let Some(Instruction::Store {
+                    dst_val,
+                    stored_val,
+                }) = ins.get_instruction(env.context)
+                {
+                    if let Some(Instruction::GetPointer {
+                        base_ptr: base_ptr_2,
+                        ..
+                    }) = dst_val.get_instruction(env.context)
+                    {
+                        if &ptr == base_ptr_2 {
+                            stored_const_opt = stored_val.get_constant(env.context);
+                        }
+                    }
+                }
+            }
+            if let Some(constant) = stored_const_opt {
+                return Ok(Some(Value::new_constant(env.context, constant.clone())));
+            }
+        }
+
+        if let Some(value) = fn_compiler.get_function_arg(env.context, name.as_str()) {
+            found_local = true;
+            if value.get_constant(env.context).is_some() {
+                return Ok(Some(value));
+            }
+        }
+
+        if found_local {
+            return Ok(None);
+        }
+    }
+
     // Check if it's a processed global constant.
     match (
         env.module.get_global_constant(env.context, name.as_str()),
@@ -55,6 +104,7 @@ pub(crate) fn compile_const_decl(
                     env.md_mgr,
                     env.module,
                     env.module_ns,
+                    env.function_compiler,
                     &value,
                 )?;
                 env.module
@@ -74,6 +124,7 @@ pub(super) fn compile_constant_expression(
     md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: Option<&namespace::Module>,
+    function_compiler: Option<&FnCompiler>,
     const_expr: &ty::TyExpression,
 ) -> Result<Value, CompileError> {
     let span_id_idx = md_mgr.span_to_md(context, &const_expr.span);
@@ -84,6 +135,7 @@ pub(super) fn compile_constant_expression(
         md_mgr,
         module,
         module_ns,
+        function_compiler,
         const_expr,
     )?;
     Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
@@ -95,6 +147,7 @@ pub(crate) fn compile_constant_expression_to_constant(
     md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: Option<&namespace::Module>,
+    function_compiler: Option<&FnCompiler>,
     const_expr: &ty::TyExpression,
 ) -> Result<Constant, CompileError> {
     let lookup = &mut LookupEnv {
@@ -103,6 +156,7 @@ pub(crate) fn compile_constant_expression_to_constant(
         md_mgr,
         module,
         module_ns,
+        function_compiler,
         lookup: compile_const_decl,
     };
 

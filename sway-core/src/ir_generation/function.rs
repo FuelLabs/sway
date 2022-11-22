@@ -30,7 +30,7 @@ use sway_types::{
 
 use std::collections::HashMap;
 
-pub(super) struct FnCompiler<'te> {
+pub(crate) struct FnCompiler<'te> {
     type_engine: &'te TypeEngine,
     module: Module,
     pub(super) function: Function,
@@ -506,6 +506,7 @@ impl<'te> FnCompiler<'te> {
                     context,
                     md_mgr,
                     self.module,
+                    None,
                     None,
                     &arguments[1],
                 )?;
@@ -1376,6 +1377,16 @@ impl<'te> FnCompiler<'te> {
         Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
     }
 
+    pub fn get_function_ptr(&self, context: &mut Context, name: &str) -> Option<Pointer> {
+        self.lexical_map
+            .get(name)
+            .and_then(|local_name| self.function.get_local_ptr(context, local_name))
+    }
+
+    pub fn get_function_arg(&self, context: &mut Context, name: &str) -> Option<Value> {
+        self.function.get_arg(context, name)
+    }
+
     fn compile_var_expr(
         &mut self,
         context: &mut Context,
@@ -1384,11 +1395,7 @@ impl<'te> FnCompiler<'te> {
     ) -> Result<Value, CompileError> {
         // We need to check the symbol map first, in case locals are shadowing the args, other
         // locals or even constants.
-        if let Some(ptr) = self
-            .lexical_map
-            .get(name)
-            .and_then(|local_name| self.function.get_local_ptr(context, local_name))
-        {
+        if let Some(ptr) = self.get_function_ptr(context, name) {
             let ptr_ty = *ptr.get_type(context);
             let ptr_val = self
                 .current_block
@@ -1513,6 +1520,7 @@ impl<'te> FnCompiler<'te> {
             context,
             md_mgr,
             self.module,
+            None,
             None,
             &value,
         )?;
@@ -1756,17 +1764,26 @@ impl<'te> FnCompiler<'te> {
             ))
         }?;
 
-        // Check for out of bounds if we have a literal index.
-        let (_, count) = aggregate.get_content(context).array_type();
-        if let ty::TyExpressionVariant::Literal(Literal::U64(index)) = index_expr.expression {
-            if index >= *count {
-                // XXX Here is a very specific case where we want to return an Error enum
-                // specifically, if not an actual CompileError.  This should be a
-                // CompileError::ArrayOutOfBounds, or at least converted to one.
+        let index_expr_span = index_expr.span.clone();
+
+        if let Ok(Constant {
+            value: ConstantValue::Uint(constant_value),
+            ..
+        }) = compile_constant_expression_to_constant(
+            self.type_engine,
+            context,
+            md_mgr,
+            self.module,
+            None,
+            Some(self),
+            &index_expr,
+        ) {
+            let (_, count) = aggregate.get_content(context).array_type();
+            if constant_value >= *count {
                 return Err(CompileError::ArrayOutOfBounds {
-                    index,
+                    index: constant_value,
                     count: *count,
-                    span: index_expr.span,
+                    span: index_expr_span,
                 });
             }
         }
