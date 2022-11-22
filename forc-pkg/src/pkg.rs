@@ -2119,7 +2119,7 @@ pub fn dependency_namespace(
 
                 // Construct namespace with contract id
                 let contract_dep_constant_name = "CONTRACT_ID";
-                let contract_id_value = format!("\"{dep_contract_id}\"");
+                let contract_id_value = format!("0x{dep_contract_id}");
                 let contract_id_constant = ConfigTimeConstant {
                     r#type: "b256".to_string(),
                     value: contract_id_value,
