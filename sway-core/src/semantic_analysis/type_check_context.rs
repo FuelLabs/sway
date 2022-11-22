@@ -48,7 +48,7 @@ pub struct TypeCheckContext<'a> {
     purity: Purity,
     /// Provides the kind of the module.
     /// This is useful for example to throw an error when while loops are present in predicates.
-    kind: Option<TreeType>,
+    kind: TreeType,
     /// The type engine storing types.
     pub(crate) type_engine: &'a TypeEngine,
 }
@@ -76,7 +76,7 @@ impl<'a> TypeCheckContext<'a> {
             self_type: type_engine.insert_type(TypeInfo::Contract),
             mode: Mode::NonAbi,
             purity: Purity::default(),
-            kind: None,
+            kind: TreeType::Contract,
         }
     }
 
@@ -158,10 +158,7 @@ impl<'a> TypeCheckContext<'a> {
 
     /// Map this `TypeCheckContext` instance to a new one with the given module kind.
     pub(crate) fn with_kind(self, kind: TreeType) -> Self {
-        Self {
-            kind: Some(kind),
-            ..self
-        }
+        Self { kind, ..self }
     }
 
     /// Map this `TypeCheckContext` instance to a new one with the given purity.
@@ -188,7 +185,7 @@ impl<'a> TypeCheckContext<'a> {
         self.purity
     }
 
-    pub(crate) fn kind(&self) -> Option<TreeType> {
+    pub(crate) fn kind(&self) -> TreeType {
         self.kind.clone()
     }
 

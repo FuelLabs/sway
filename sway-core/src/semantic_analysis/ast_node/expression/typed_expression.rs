@@ -1632,7 +1632,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        if let Some(TreeType::Predicate) = ctx.kind() {
+        if ctx.kind() == TreeType::Predicate {
             errors.push(CompileError::DisallowedWhileInPredicate { span: span.clone() });
         }
 
