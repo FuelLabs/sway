@@ -1,15 +1,16 @@
 [workspace]
 resolver = "2"
 members = [
-    "forc",
     "forc-pkg",
     "forc-plugins/forc-client",
     "forc-plugins/forc-doc",
     "forc-plugins/forc-fmt",
+    "forc-plugins/forc-index",
     "forc-plugins/forc-lsp",
     "forc-test",
     "forc-tracing",
     "forc-util",
+    "forc",
     "scripts/examples-checker",
     "scripts/mdbook-forc-documenter",
     "sway-ast",

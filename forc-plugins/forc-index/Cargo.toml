@@ -1,0 +1,35 @@
+[package]
+name = "forc-index"
+version = "0.1.4"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "A `forc` plugin for basic Fuel Indexer interaction."
+
+[dependencies]
+anyhow = "1"
+clap = { version = "3", features = ["derive", "env"] }
+forc-tracing = { version = "0.31.1", path = "../../forc-tracing" }
+forc-util = { version = "0.31.1", path = "../../forc-util" }
+fuel-tx = { version = "0.23", features = ["builder"] }
+fuels-types = "0.31"
+hex = "0.4.3"
+hyper-rustls = { version = "0.23", features = ["http2"] }
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls", "multipart", "blocking"] }
+serde = "1.0"
+serde_json = "1.0.73"
+serde_yaml = "0.8"
+sway-core = { version = "0.31.1", path = "../../sway-core" }
+sway-types = { version = "0.31.1", path = "../../sway-types" }
+sway-utils = { version = "0.31.1", path = "../../sway-utils" }
+tokio = { version = "1.8", features = ["macros", "rt-multi-thread", "process"] }
+tracing = "0.1"
+
+[[bin]]
+name = "forc-index"
+path = "src/bin/forc-index.rs"
+
+[lib]
+path = "src/lib.rs"
