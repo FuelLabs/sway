@@ -3,6 +3,7 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     declaration_engine::*,
+    engine_threading::*,
     error::*,
     language::{parsed, ty::*, Inline, Purity, Visibility},
     transform,
@@ -45,8 +46,8 @@ impl From<&TyFunctionDeclaration> for TyAstNode {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TyFunctionDeclaration {}
-impl PartialEqWithTypeEngine for TyFunctionDeclaration {
+impl EqWithEngines for TyFunctionDeclaration {}
+impl PartialEqWithEngines for TyFunctionDeclaration {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
             && self.body.eq(&other.body, type_engine)
@@ -373,8 +374,8 @@ pub struct TyFunctionParameter {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TyFunctionParameter {}
-impl PartialEqWithTypeEngine for TyFunctionParameter {
+impl EqWithEngines for TyFunctionParameter {}
+impl PartialEqWithEngines for TyFunctionParameter {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
             && type_engine

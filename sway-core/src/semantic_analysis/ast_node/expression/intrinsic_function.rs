@@ -4,6 +4,7 @@ use sway_types::integer_bits::IntegerBits;
 use sway_types::Span;
 
 use crate::{
+    engine_threading::*,
     error::{err, ok},
     language::{parsed::Expression, ty},
     semantic_analysis::TypeCheckContext,

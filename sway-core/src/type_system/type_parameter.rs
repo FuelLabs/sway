@@ -1,5 +1,6 @@
 use crate::{
     declaration_engine::*,
+    engine_threading::*,
     error::*,
     language::{ty, CallPath},
     semantic_analysis::*,
@@ -27,7 +28,7 @@ pub struct TypeParameter {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl HashWithTypeEngine for TypeParameter {
+impl HashWithEngines for TypeParameter {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         type_engine
             .look_up_type_id(self.type_id)
@@ -40,8 +41,8 @@ impl HashWithTypeEngine for TypeParameter {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TypeParameter {}
-impl PartialEqWithTypeEngine for TypeParameter {
+impl EqWithEngines for TypeParameter {}
+impl PartialEqWithEngines for TypeParameter {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         type_engine
             .look_up_type_id(self.type_id)
@@ -77,7 +78,7 @@ impl Spanned for TypeParameter {
     }
 }
 
-impl DisplayWithTypeEngine for TypeParameter {
+impl DisplayWithEngines for TypeParameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         write!(
             f,

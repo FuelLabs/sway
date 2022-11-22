@@ -1,11 +1,12 @@
 use super::*;
+use crate::engine_threading::*;
 use std::fmt;
 
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
 pub struct TypeId(usize);
 
-impl DisplayWithTypeEngine for TypeId {
+impl DisplayWithEngines for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         write!(
             f,

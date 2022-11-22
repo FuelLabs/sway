@@ -1,5 +1,6 @@
 use super::*;
 use crate::{
+    engine_threading::*,
     language::{ty, CallPath},
     Ident,
 };
@@ -46,7 +47,7 @@ impl<T> core::ops::Deref for VecSet<T> {
     }
 }
 
-impl<T: PartialEqWithTypeEngine> VecSet<T> {
+impl<T: PartialEqWithEngines> VecSet<T> {
     pub fn is_subset(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.0.len() <= rhs.0.len()
             && self
@@ -56,7 +57,7 @@ impl<T: PartialEqWithTypeEngine> VecSet<T> {
     }
 }
 
-impl<T: PartialEqWithTypeEngine> PartialEqWithTypeEngine for VecSet<T> {
+impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.is_subset(rhs, type_engine) && rhs.is_subset(self, type_engine)
     }
@@ -130,7 +131,7 @@ pub enum TypeInfo {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl HashWithTypeEngine for TypeInfo {
+impl HashWithEngines for TypeInfo {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         match self {
             TypeInfo::Str(len) => {
@@ -233,8 +234,8 @@ impl HashWithTypeEngine for TypeInfo {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TypeInfo {}
-impl PartialEqWithTypeEngine for TypeInfo {
+impl EqWithEngines for TypeInfo {}
+impl PartialEqWithEngines for TypeInfo {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         match (self, other) {
             (Self::Unknown, Self::Unknown)
@@ -347,7 +348,7 @@ impl Default for TypeInfo {
     }
 }
 
-impl DisplayWithTypeEngine for TypeInfo {
+impl DisplayWithEngines for TypeInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         use TypeInfo::*;
         let s = match self {
@@ -1291,7 +1292,7 @@ impl TypeInfo {
         &self,
         type_engine: &'a TypeEngine,
         span: &Span,
-    ) -> CompileResult<HashSet<WithTypeEngine<'a, TypeInfo>>> {
+    ) -> CompileResult<HashSet<WithEngines<'a, TypeInfo>>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let nested_types = check!(
@@ -1304,7 +1305,7 @@ impl TypeInfo {
             nested_types
                 .into_iter()
                 .filter(|x| matches!(x, TypeInfo::UnknownGeneric { .. }))
-                .map(|thing| WithTypeEngine {
+                .map(|thing| WithEngines {
                     thing,
                     engine: type_engine,
                 }),

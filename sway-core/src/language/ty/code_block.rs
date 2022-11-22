@@ -1,5 +1,6 @@
 use crate::{
     declaration_engine::{DeclMapping, ReplaceDecls},
+    engine_threading::*,
     language::ty::*,
     type_system::*,
     types::DeterministicallyAborts,
@@ -10,8 +11,8 @@ pub struct TyCodeBlock {
     pub contents: Vec<TyAstNode>,
 }
 
-impl EqWithTypeEngine for TyCodeBlock {}
-impl PartialEqWithTypeEngine for TyCodeBlock {
+impl EqWithEngines for TyCodeBlock {}
+impl PartialEqWithEngines for TyCodeBlock {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.contents.eq(&rhs.contents, type_engine)
     }

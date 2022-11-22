@@ -1,4 +1,4 @@
-use crate::type_system::*;
+use crate::{engine_threading::*, type_system::*};
 use std::{fmt, hash::Hasher};
 use sway_types::{Span, Spanned};
 
@@ -18,7 +18,7 @@ impl Spanned for TypeArgument {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl HashWithTypeEngine for TypeArgument {
+impl HashWithEngines for TypeArgument {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         type_engine
             .look_up_type_id(self.type_id)
@@ -29,15 +29,15 @@ impl HashWithTypeEngine for TypeArgument {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TypeArgument {}
-impl PartialEqWithTypeEngine for TypeArgument {
+impl EqWithEngines for TypeArgument {}
+impl PartialEqWithEngines for TypeArgument {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         type_engine
             .look_up_type_id(self.type_id)
             .eq(&type_engine.look_up_type_id(other.type_id), type_engine)
     }
 }
-impl OrdWithTypeEngine for TypeArgument {
+impl OrdWithEngines for TypeArgument {
     fn cmp(&self, rhs: &Self, _: &TypeEngine) -> std::cmp::Ordering {
         self.type_id
             .cmp(&rhs.type_id)
@@ -45,7 +45,7 @@ impl OrdWithTypeEngine for TypeArgument {
     }
 }
 
-impl DisplayWithTypeEngine for TypeArgument {
+impl DisplayWithEngines for TypeArgument {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         write!(
             f,

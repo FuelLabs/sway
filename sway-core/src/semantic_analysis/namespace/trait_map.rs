@@ -5,11 +5,11 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     declaration_engine::{de_get_function, de_insert, de_look_up_decl_id, DeclarationId},
+    engine_threading::*,
     error::*,
     language::CallPath,
     type_system::{CopyTypes, TypeId},
-    OrdWithTypeEngine, PartialEqWithTypeEngine, ReplaceSelfType, TraitConstraint, TypeArgument,
-    TypeEngine, TypeInfo, TypeMapping,
+    ReplaceSelfType, TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeMapping,
 };
 
 #[derive(Clone, Debug)]
@@ -17,12 +17,12 @@ struct TraitSuffix {
     name: Ident,
     args: Vec<TypeArgument>,
 }
-impl PartialEqWithTypeEngine for TraitSuffix {
+impl PartialEqWithEngines for TraitSuffix {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.name == rhs.name && self.args.eq(&rhs.args, type_engine)
     }
 }
-impl OrdWithTypeEngine for TraitSuffix {
+impl OrdWithEngines for TraitSuffix {
     fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
         self.name
             .cmp(&rhs.name)
@@ -30,14 +30,14 @@ impl OrdWithTypeEngine for TraitSuffix {
     }
 }
 
-impl<T: PartialEqWithTypeEngine> PartialEqWithTypeEngine for CallPath<T> {
+impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.prefixes == rhs.prefixes
             && self.suffix.eq(&rhs.suffix, type_engine)
             && self.is_absolute == rhs.is_absolute
     }
 }
-impl<T: OrdWithTypeEngine> OrdWithTypeEngine for CallPath<T> {
+impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
     fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
         self.prefixes
             .cmp(&rhs.prefixes)
@@ -54,7 +54,7 @@ struct TraitKey {
     type_id: TypeId,
 }
 
-impl OrdWithTypeEngine for TraitKey {
+impl OrdWithEngines for TraitKey {
     fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
         self.name
             .cmp(&rhs.name, type_engine)

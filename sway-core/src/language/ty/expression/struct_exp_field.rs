@@ -2,6 +2,7 @@ use sway_types::Ident;
 
 use crate::{
     declaration_engine::{DeclMapping, ReplaceDecls},
+    engine_threading::*,
     language::ty::*,
     type_system::*,
 };
@@ -12,8 +13,8 @@ pub struct TyStructExpressionField {
     pub value: TyExpression,
 }
 
-impl EqWithTypeEngine for TyStructExpressionField {}
-impl PartialEqWithTypeEngine for TyStructExpressionField {
+impl EqWithEngines for TyStructExpressionField {}
+impl PartialEqWithEngines for TyStructExpressionField {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.name == rhs.name && self.value.eq(&rhs.value, type_engine)
     }

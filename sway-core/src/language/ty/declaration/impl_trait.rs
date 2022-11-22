@@ -1,6 +1,8 @@
 use sway_types::Span;
 
-use crate::{declaration_engine::DeclarationId, language::CallPath, type_system::*};
+use crate::{
+    declaration_engine::DeclarationId, engine_threading::*, language::CallPath, type_system::*,
+};
 
 #[derive(Clone, Debug)]
 pub struct TyImplTrait {
@@ -13,8 +15,8 @@ pub struct TyImplTrait {
     pub span: Span,
 }
 
-impl EqWithTypeEngine for TyImplTrait {}
-impl PartialEqWithTypeEngine for TyImplTrait {
+impl EqWithEngines for TyImplTrait {}
+impl PartialEqWithEngines for TyImplTrait {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.impl_type_parameters
             .eq(&rhs.impl_type_parameters, type_engine)

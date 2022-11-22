@@ -4,6 +4,7 @@ use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
 use crate::{
     declaration_engine::{DeclMapping, ReplaceDecls},
+    engine_threading::*,
     language::ty::*,
     type_system::*,
 };
@@ -18,8 +19,8 @@ pub struct TyReassignment {
     pub rhs: TyExpression,
 }
 
-impl EqWithTypeEngine for TyReassignment {}
-impl PartialEqWithTypeEngine for TyReassignment {
+impl EqWithEngines for TyReassignment {}
+impl PartialEqWithEngines for TyReassignment {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.lhs_base_name == rhs.lhs_base_name
             && self.lhs_type == rhs.lhs_type
@@ -63,8 +64,8 @@ pub enum ProjectionKind {
     },
 }
 
-impl EqWithTypeEngine for ProjectionKind {}
-impl PartialEqWithTypeEngine for ProjectionKind {
+impl EqWithEngines for ProjectionKind {}
+impl PartialEqWithEngines for ProjectionKind {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         match (self, other) {
             (
@@ -124,8 +125,8 @@ pub struct TyStorageReassignment {
     pub rhs: TyExpression,
 }
 
-impl EqWithTypeEngine for TyStorageReassignment {}
-impl PartialEqWithTypeEngine for TyStorageReassignment {
+impl EqWithEngines for TyStorageReassignment {}
+impl PartialEqWithEngines for TyStorageReassignment {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.fields.eq(&rhs.fields, type_engine)
             && self.ix == rhs.ix
@@ -164,8 +165,8 @@ pub struct TyStorageReassignDescriptor {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TyStorageReassignDescriptor {}
-impl PartialEqWithTypeEngine for TyStorageReassignDescriptor {
+impl EqWithEngines for TyStorageReassignDescriptor {}
+impl PartialEqWithEngines for TyStorageReassignDescriptor {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
             && type_engine

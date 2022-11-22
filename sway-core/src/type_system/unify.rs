@@ -4,7 +4,7 @@ use sway_error::{
 };
 use sway_types::{integer_bits::IntegerBits, Ident, Span};
 
-use crate::{language::ty, type_system::*};
+use crate::{engine_threading::*, language::ty, type_system::*};
 use sway_types::Spanned;
 
 pub(super) fn unify(

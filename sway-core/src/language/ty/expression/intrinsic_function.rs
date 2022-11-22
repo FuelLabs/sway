@@ -1,6 +1,8 @@
 use std::fmt;
 
-use crate::{error::*, language::ty::*, type_system::*, types::DeterministicallyAborts};
+use crate::{
+    engine_threading::*, error::*, language::ty::*, type_system::*, types::DeterministicallyAborts,
+};
 use itertools::Itertools;
 use sway_ast::Intrinsic;
 use sway_types::Span;
@@ -13,8 +15,8 @@ pub struct TyIntrinsicFunctionKind {
     pub span: Span,
 }
 
-impl EqWithTypeEngine for TyIntrinsicFunctionKind {}
-impl PartialEqWithTypeEngine for TyIntrinsicFunctionKind {
+impl EqWithEngines for TyIntrinsicFunctionKind {}
+impl PartialEqWithEngines for TyIntrinsicFunctionKind {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.kind == rhs.kind
             && self.arguments.eq(&rhs.arguments, type_engine)
@@ -44,7 +46,7 @@ impl ReplaceSelfType for TyIntrinsicFunctionKind {
     }
 }
 
-impl DisplayWithTypeEngine for TyIntrinsicFunctionKind {
+impl DisplayWithEngines for TyIntrinsicFunctionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         let targs = self
             .type_arguments

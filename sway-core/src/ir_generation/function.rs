@@ -8,6 +8,7 @@ use super::{
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     declaration_engine::declaration_engine,
+    engine_threading::*,
     fuel_prelude::fuel_types,
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -19,7 +20,7 @@ use crate::{
     metadata::MetadataManager,
     type_system::{LogId, TypeId, TypeInfo},
     types::DeterministicallyAborts,
-    PartialEqWithTypeEngine, TypeEngine,
+    TypeEngine,
 };
 use declaration_engine::de_get_function;
 use sway_ast::intrinsics::Intrinsic;

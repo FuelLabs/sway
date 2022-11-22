@@ -3,8 +3,9 @@ use std::fmt;
 use sway_types::{Span, Spanned};
 
 use crate::{
+    engine_threading::*,
     type_system::{CopyTypes, TypeMapping},
-    EqWithTypeEngine, PartialEqWithTypeEngine, ReplaceSelfType, TypeEngine, TypeId,
+    ReplaceSelfType, TypeEngine, TypeId,
 };
 
 use super::{
@@ -26,8 +27,8 @@ impl Clone for DeclarationId {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for DeclarationId {}
-impl PartialEqWithTypeEngine for DeclarationId {
+impl EqWithEngines for DeclarationId {}
+impl PartialEqWithEngines for DeclarationId {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         de_look_up_decl_id(self.clone()).eq(&de_look_up_decl_id(other.clone()), type_engine)
     }

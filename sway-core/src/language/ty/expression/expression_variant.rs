@@ -7,6 +7,7 @@ use sway_types::{state::StateIndex, Ident, Span};
 
 use crate::{
     declaration_engine::{de_get_function, DeclMapping, DeclarationId, ReplaceDecls},
+    engine_threading::*,
     language::{ty::*, *},
     type_system::*,
 };
@@ -124,8 +125,8 @@ pub enum TyExpressionVariant {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TyExpressionVariant {}
-impl PartialEqWithTypeEngine for TyExpressionVariant {
+impl EqWithEngines for TyExpressionVariant {}
+impl PartialEqWithEngines for TyExpressionVariant {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         match (self, other) {
             (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
@@ -700,7 +701,7 @@ impl ReplaceDecls for TyExpressionVariant {
     }
 }
 
-impl DisplayWithTypeEngine for TyExpressionVariant {
+impl DisplayWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         let s = match self {
             TyExpressionVariant::Literal(lit) => format!("literal {}", lit),

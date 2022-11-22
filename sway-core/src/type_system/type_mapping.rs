@@ -1,6 +1,7 @@
 use std::fmt;
 
 use super::*;
+use crate::engine_threading::*;
 
 type SourceType = TypeId;
 type DestinationType = TypeId;
@@ -11,7 +12,7 @@ pub(crate) struct TypeMapping {
     mapping: Vec<(SourceType, DestinationType)>,
 }
 
-impl DisplayWithTypeEngine for TypeMapping {
+impl DisplayWithEngines for TypeMapping {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         write!(
             f,

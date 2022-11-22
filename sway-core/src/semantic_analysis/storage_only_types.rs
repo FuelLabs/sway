@@ -2,7 +2,10 @@ use sway_error::error::CompileError;
 use sway_error::warning::CompileWarning;
 use sway_types::{Span, Spanned};
 
-use crate::{declaration_engine::declaration_engine::*, error::*, language::ty, type_system::*};
+use crate::{
+    declaration_engine::declaration_engine::*, engine_threading::*, error::*, language::ty,
+    type_system::*,
+};
 
 fn ast_node_validate(ty_engine: &TypeEngine, x: &ty::TyAstNodeContent) -> CompileResult<()> {
     let errors: Vec<CompileError> = vec![];

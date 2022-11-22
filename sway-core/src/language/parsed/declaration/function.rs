@@ -1,4 +1,5 @@
 use crate::{
+    engine_threading::*,
     language::{parsed::*, *},
     transform,
     type_system::*,
@@ -29,8 +30,8 @@ pub struct FunctionParameter {
     pub type_span: Span,
 }
 
-impl EqWithTypeEngine for FunctionParameter {}
-impl PartialEqWithTypeEngine for FunctionParameter {
+impl EqWithEngines for FunctionParameter {}
+impl PartialEqWithEngines for FunctionParameter {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.name == rhs.name
             && self.is_reference == rhs.is_reference

@@ -4,6 +4,7 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     declaration_engine::{de_get_function, DeclMapping, ReplaceDecls},
+    engine_threading::*,
     error::*,
     language::{ty::*, Literal},
     type_system::*,
@@ -20,8 +21,8 @@ pub struct TyExpression {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TyExpression {}
-impl PartialEqWithTypeEngine for TyExpression {
+impl EqWithEngines for TyExpression {}
+impl PartialEqWithEngines for TyExpression {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.expression.eq(&other.expression, type_engine)
             && type_engine
@@ -50,7 +51,7 @@ impl ReplaceDecls for TyExpression {
     }
 }
 
-impl DisplayWithTypeEngine for TyExpression {
+impl DisplayWithEngines for TyExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         write!(
             f,

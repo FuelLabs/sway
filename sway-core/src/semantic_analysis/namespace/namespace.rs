@@ -1,5 +1,6 @@
 use crate::{
     declaration_engine::{de_get_function, DeclarationId},
+    engine_threading::*,
     error::*,
     language::{ty, CallPath},
     type_system::*,

@@ -1,6 +1,7 @@
 use sway_types::{Ident, Span};
 
 use crate::{
+    engine_threading::*,
     language::{ty::*, Purity},
     transform,
     type_system::*,
@@ -16,8 +17,8 @@ pub struct TyTraitFn {
     pub attributes: transform::AttributesMap,
 }
 
-impl EqWithTypeEngine for TyTraitFn {}
-impl PartialEqWithTypeEngine for TyTraitFn {
+impl EqWithEngines for TyTraitFn {}
+impl PartialEqWithEngines for TyTraitFn {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.name == rhs.name
             && self.purity == rhs.purity

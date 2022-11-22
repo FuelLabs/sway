@@ -10,8 +10,9 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     concurrent_slab::{ConcurrentSlab, ListDisplay},
+    engine_threading::*,
     language::ty,
-    PartialEqWithTypeEngine, TypeEngine,
+    TypeEngine,
 };
 
 use super::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper};

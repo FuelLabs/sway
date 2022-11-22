@@ -5,6 +5,7 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     declaration_engine::*,
+    engine_threading::*,
     error::*,
     language::{parsed::Supertrait, ty, CallPath},
     semantic_analysis::{declaration::insert_supertraits_into_namespace, TypeCheckContext},
@@ -18,14 +19,14 @@ pub struct TraitConstraint {
     pub(crate) type_arguments: Vec<TypeArgument>,
 }
 
-impl HashWithTypeEngine for TraitConstraint {
+impl HashWithEngines for TraitConstraint {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.trait_name.hash(state);
         self.type_arguments.hash(state, type_engine);
     }
 }
-impl EqWithTypeEngine for TraitConstraint {}
-impl PartialEqWithTypeEngine for TraitConstraint {
+impl EqWithEngines for TraitConstraint {}
+impl PartialEqWithEngines for TraitConstraint {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.trait_name == rhs.trait_name
             && self.type_arguments.eq(&rhs.type_arguments, type_engine)

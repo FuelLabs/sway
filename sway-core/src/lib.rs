@@ -7,6 +7,7 @@ mod build_config;
 mod concurrent_slab;
 mod control_flow_analysis;
 pub mod declaration_engine;
+mod engine_threading;
 pub mod ir_generation;
 pub mod language;
 mod metadata;

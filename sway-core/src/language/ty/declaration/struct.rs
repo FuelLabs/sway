@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{error::*, language::Visibility, transform, type_system::*};
+use crate::{engine_threading::*, error::*, language::Visibility, transform, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyStructDeclaration {
@@ -18,8 +18,8 @@ pub struct TyStructDeclaration {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TyStructDeclaration {}
-impl PartialEqWithTypeEngine for TyStructDeclaration {
+impl EqWithEngines for TyStructDeclaration {}
+impl PartialEqWithEngines for TyStructDeclaration {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
             && self.fields.eq(&other.fields, type_engine)
@@ -116,7 +116,7 @@ pub struct TyStructField {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl HashWithTypeEngine for TyStructField {
+impl HashWithEngines for TyStructField {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.name.hash(state);
         type_engine
@@ -128,8 +128,8 @@ impl HashWithTypeEngine for TyStructField {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TyStructField {}
-impl PartialEqWithTypeEngine for TyStructField {
+impl EqWithEngines for TyStructField {}
+impl PartialEqWithEngines for TyStructField {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
             && type_engine

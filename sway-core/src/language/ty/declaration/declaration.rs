@@ -3,6 +3,7 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     declaration_engine::*,
+    engine_threading::*,
     error::*,
     language::{ty::*, Visibility},
     type_system::*,
@@ -25,8 +26,8 @@ pub enum TyDeclaration {
     StorageDeclaration(DeclarationId),
 }
 
-impl EqWithTypeEngine for TyDeclaration {}
-impl PartialEqWithTypeEngine for TyDeclaration {
+impl EqWithEngines for TyDeclaration {}
+impl PartialEqWithEngines for TyDeclaration {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         match (self, rhs) {
             (Self::VariableDeclaration(x), Self::VariableDeclaration(y)) => x.eq(y, type_engine),
@@ -117,7 +118,7 @@ impl Spanned for TyDeclaration {
     }
 }
 
-impl DisplayWithTypeEngine for TyDeclaration {
+impl DisplayWithEngines for TyDeclaration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, type_engine: &TypeEngine) -> std::fmt::Result {
         write!(
             f,

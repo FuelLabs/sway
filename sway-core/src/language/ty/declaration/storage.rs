@@ -1,7 +1,7 @@
 use sway_error::error::CompileError;
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
-use crate::{error::*, language::ty::*, transform, type_system::*};
+use crate::{engine_threading::*, error::*, language::ty::*, transform, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyStorageDeclaration {
@@ -10,8 +10,8 @@ pub struct TyStorageDeclaration {
     pub attributes: transform::AttributesMap,
 }
 
-impl EqWithTypeEngine for TyStorageDeclaration {}
-impl PartialEqWithTypeEngine for TyStorageDeclaration {
+impl EqWithEngines for TyStorageDeclaration {}
+impl PartialEqWithEngines for TyStorageDeclaration {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.fields.eq(&rhs.fields, type_engine) && self.attributes == rhs.attributes
     }
@@ -167,8 +167,8 @@ pub struct TyStorageField {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TyStorageField {}
-impl PartialEqWithTypeEngine for TyStorageField {
+impl EqWithEngines for TyStorageField {}
+impl PartialEqWithEngines for TyStorageField {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
             && type_engine

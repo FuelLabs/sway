@@ -1,9 +1,10 @@
 use crate::{
     declaration_engine::{de_get_function, declaration_engine::de_get_constant},
+    engine_threading::*,
     language::ty,
     metadata::MetadataManager,
     semantic_analysis::*,
-    PartialEqWithTypeEngine, TypeEngine,
+    TypeEngine,
 };
 
 use super::{convert::convert_literal_to_constant, function::FnCompiler, types::*};

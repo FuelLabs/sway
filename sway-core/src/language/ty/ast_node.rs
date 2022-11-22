@@ -4,6 +4,7 @@ use sway_types::{Ident, Span};
 
 use crate::{
     declaration_engine::{de_get_function, DeclMapping, ReplaceDecls},
+    engine_threading::*,
     error::*,
     language::{parsed, ty::*},
     transform::AttributeKind,
@@ -21,19 +22,19 @@ pub struct TyAstNode {
     pub(crate) span: Span,
 }
 
-impl EqWithTypeEngine for TyAstNode {}
-impl PartialEqWithTypeEngine for TyAstNode {
+impl EqWithEngines for TyAstNode {}
+impl PartialEqWithEngines for TyAstNode {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.content.eq(&rhs.content, type_engine)
     }
 }
 
-impl DisplayWithTypeEngine for TyAstNode {
+impl DisplayWithEngines for TyAstNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         use TyAstNodeContent::*;
         match &self.content {
-            Declaration(typed_decl) => DisplayWithTypeEngine::fmt(typed_decl, f, type_engine),
-            Expression(exp) => DisplayWithTypeEngine::fmt(exp, f, type_engine),
+            Declaration(typed_decl) => DisplayWithEngines::fmt(typed_decl, f, type_engine),
+            Expression(exp) => DisplayWithEngines::fmt(exp, f, type_engine),
             ImplicitReturnExpression(exp) => write!(f, "return {}", type_engine.help_out(exp)),
             SideEffect => f.write_str(""),
         }
@@ -233,8 +234,8 @@ pub enum TyAstNodeContent {
     SideEffect,
 }
 
-impl EqWithTypeEngine for TyAstNodeContent {}
-impl PartialEqWithTypeEngine for TyAstNodeContent {
+impl EqWithEngines for TyAstNodeContent {}
+impl PartialEqWithEngines for TyAstNodeContent {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         match (self, rhs) {
             (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, type_engine),

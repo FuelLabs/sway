@@ -3,8 +3,7 @@ use std::hash::{Hash, Hasher};
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
-use crate::PartialEqWithTypeEngine;
-use crate::{error::*, language::Visibility, transform, type_system::*};
+use crate::{engine_threading::*, error::*, language::Visibility, transform, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyEnumDeclaration {
@@ -19,8 +18,8 @@ pub struct TyEnumDeclaration {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TyEnumDeclaration {}
-impl PartialEqWithTypeEngine for TyEnumDeclaration {
+impl EqWithEngines for TyEnumDeclaration {}
+impl PartialEqWithEngines for TyEnumDeclaration {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
             && self.type_parameters.eq(&other.type_parameters, type_engine)
@@ -116,7 +115,7 @@ pub struct TyEnumVariant {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl HashWithTypeEngine for TyEnumVariant {
+impl HashWithEngines for TyEnumVariant {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.name.hash(state);
         type_engine
@@ -129,8 +128,8 @@ impl HashWithTypeEngine for TyEnumVariant {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TyEnumVariant {}
-impl PartialEqWithTypeEngine for TyEnumVariant {
+impl EqWithEngines for TyEnumVariant {}
+impl PartialEqWithEngines for TyEnumVariant {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
             && type_engine

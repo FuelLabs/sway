@@ -4,9 +4,10 @@ use sway_error::error::CompileError;
 use sway_types::Span;
 
 use crate::{
+    engine_threading::*,
     language::ty,
     type_system::{CopyTypes, TypeMapping},
-    PartialEqWithTypeEngine, ReplaceSelfType, TypeEngine, TypeId,
+    ReplaceSelfType, TypeEngine, TypeId,
 };
 
 use super::{DeclMapping, ReplaceDecls};
@@ -37,7 +38,7 @@ impl Default for DeclarationWrapper {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEqWithTypeEngine for DeclarationWrapper {
+impl PartialEqWithEngines for DeclarationWrapper {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         match (self, other) {
             (DeclarationWrapper::Unknown, DeclarationWrapper::Unknown) => true,

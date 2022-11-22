@@ -2,6 +2,7 @@ use sway_types::{Ident, Span};
 
 use crate::{
     declaration_engine::DeclarationId,
+    engine_threading::*,
     language::{parsed, Visibility},
     transform,
     type_system::*,
@@ -19,8 +20,8 @@ pub struct TyTraitDeclaration {
     pub span: Span,
 }
 
-impl EqWithTypeEngine for TyTraitDeclaration {}
-impl PartialEqWithTypeEngine for TyTraitDeclaration {
+impl EqWithEngines for TyTraitDeclaration {}
+impl PartialEqWithEngines for TyTraitDeclaration {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.name == rhs.name
             && self.type_parameters.eq(&rhs.type_parameters, type_engine)

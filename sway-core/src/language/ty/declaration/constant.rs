@@ -1,10 +1,10 @@
 use sway_types::{Ident, Span};
 
 use crate::{
+    engine_threading::*,
     language::{ty::*, Visibility},
     transform,
     type_system::*,
-    EqWithTypeEngine, PartialEqWithTypeEngine,
 };
 
 #[derive(Clone, Debug)]
@@ -17,8 +17,8 @@ pub struct TyConstantDeclaration {
     pub span: Span,
 }
 
-impl EqWithTypeEngine for TyConstantDeclaration {}
-impl PartialEqWithTypeEngine for TyConstantDeclaration {
+impl EqWithEngines for TyConstantDeclaration {}
+impl PartialEqWithEngines for TyConstantDeclaration {
     fn eq(&self, rhs: &Self, type_engine: &crate::TypeEngine) -> bool {
         self.name == rhs.name
             && self.value.eq(&rhs.value, type_engine)

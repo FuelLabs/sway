@@ -5,6 +5,7 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     declaration_engine::{declaration_engine::*, DeclMapping, DeclarationId, ReplaceDecls},
+    engine_threading::*,
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::{Mode, TypeCheckContext},
@@ -791,19 +792,19 @@ fn type_check_trait_implementation(
         // *This will change* when either https://github.com/FuelLabs/sway/issues/1267
         // or https://github.com/FuelLabs/sway/issues/2814 goes in.
         let unconstrained_type_parameters_in_this_function: HashSet<
-            WithTypeEngine<'_, TypeParameter>,
+            WithEngines<'_, TypeParameter>,
         > = impl_method
             .unconstrained_type_parameters(type_engine, impl_type_parameters)
             .into_iter()
             .cloned()
-            .map(|x| WithTypeEngine::new(x, type_engine))
+            .map(|x| WithEngines::new(x, type_engine))
             .collect();
-        let unconstrained_type_parameters_in_the_type: HashSet<WithTypeEngine<'_, TypeParameter>> =
+        let unconstrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParameter>> =
             ctx.self_type()
                 .unconstrained_type_parameters(type_engine, impl_type_parameters)
                 .into_iter()
                 .cloned()
-                .map(|x| WithTypeEngine::new(x, type_engine))
+                .map(|x| WithEngines::new(x, type_engine))
                 .collect::<HashSet<_>>();
         let mut unconstrained_type_parameters_to_be_added =
             unconstrained_type_parameters_in_this_function
@@ -924,7 +925,7 @@ fn check_for_unconstrained_type_parameters(
         type_parameters
             .iter()
             .map(|x| (type_engine.look_up_type_id(x.type_id), x.span()))
-            .map(|(thing, sp)| (WithTypeEngine::new(thing, type_engine), sp)),
+            .map(|(thing, sp)| (WithEngines::new(thing, type_engine), sp)),
     );
 
     // create a list of the generics in use in the impl signature

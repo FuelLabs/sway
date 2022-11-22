@@ -2,8 +2,9 @@ use std::{fmt, sync::RwLock};
 
 use crate::{
     declaration_engine::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper},
+    engine_threading::*,
     type_system::TypeId,
-    PartialEqWithTypeEngine, TypeEngine, TypeInfo,
+    TypeEngine, TypeInfo,
 };
 
 #[derive(Debug)]

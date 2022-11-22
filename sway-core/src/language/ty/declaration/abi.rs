@@ -1,6 +1,6 @@
 use sway_types::{Ident, Span};
 
-use crate::{declaration_engine::DeclarationId, transform, type_system::*};
+use crate::{declaration_engine::DeclarationId, engine_threading::*, transform, type_system::*};
 
 /// A [TyAbiDeclaration] contains the type-checked version of the parse tree's `AbiDeclaration`.
 #[derive(Clone, Debug)]
@@ -14,8 +14,8 @@ pub struct TyAbiDeclaration {
     pub attributes: transform::AttributesMap,
 }
 
-impl EqWithTypeEngine for TyAbiDeclaration {}
-impl PartialEqWithTypeEngine for TyAbiDeclaration {
+impl EqWithEngines for TyAbiDeclaration {}
+impl PartialEqWithEngines for TyAbiDeclaration {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.name == rhs.name
         && self.interface_surface.eq(&rhs.interface_surface, type_engine)
