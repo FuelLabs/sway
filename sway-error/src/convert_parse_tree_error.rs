@@ -91,6 +91,12 @@ pub enum ConvertParseTreeError {
     TestFnOnlyAllowedAtModuleLevel { span: Span },
     #[error("`impl Self` for contracts is not supported")]
     SelfImplForContract { span: Span },
+    #[error("Cannot attach a documentation comment to a dependency.")]
+    CannotDocCommentDependency { span: Span },
+    #[error("Cannot annotate a dependency.")]
+    CannotAnnotateDependency { span: Span },
+    #[error("Expected dependency at the beginning before any other items.")]
+    ExpectedDependencyAtBeginning { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -140,6 +146,9 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::SelfParameterNotAllowedForFreeFn { span, .. } => span.clone(),
             ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span } => span.clone(),
             ConvertParseTreeError::SelfImplForContract { span, .. } => span.clone(),
+            ConvertParseTreeError::CannotDocCommentDependency { span } => span.clone(),
+            ConvertParseTreeError::CannotAnnotateDependency { span } => span.clone(),
+            ConvertParseTreeError::ExpectedDependencyAtBeginning { span } => span.clone(),
         }
     }
 }

@@ -4,10 +4,10 @@ library inputs;
 
 use ::address::Address;
 use ::assert::assert;
+use ::option::Option;
 use ::revert::revert;
 use ::contract_id::ContractId;
 use ::constants::BASE_ASSET_ID;
-use ::option::Option;
 use ::tx::{
     GTF_CREATE_INPUT_AT_INDEX,
     GTF_CREATE_INPUTS_COUNT,

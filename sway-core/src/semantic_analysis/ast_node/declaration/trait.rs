@@ -40,7 +40,7 @@ impl ty::TyTraitDeclaration {
         }
 
         // A temporary namespace for checking within the trait's scope.
-        let self_type = insert_type(TypeInfo::SelfType);
+        let self_type = ctx.type_engine.insert_type(TypeInfo::SelfType);
         let mut trait_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut trait_namespace).with_self_type(self_type);
 
@@ -93,7 +93,8 @@ impl ty::TyTraitDeclaration {
                 self_type,
                 &dummy_interface_surface,
                 &span,
-                false
+                false,
+                ctx.type_engine,
             ),
             return err(warnings, errors),
             warnings,
@@ -105,7 +106,7 @@ impl ty::TyTraitDeclaration {
         for method in methods.into_iter() {
             let method = check!(
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
-                ty::TyFunctionDeclaration::error(method),
+                ty::TyFunctionDeclaration::error(method, ctx.type_engine),
                 warnings,
                 errors
             );
@@ -158,7 +159,7 @@ impl ty::TyTraitDeclaration {
         // Retrieve the implemented methods for this type.
         for decl_id in ctx
             .namespace
-            .get_methods_for_type_and_trait_name(type_id, call_path)
+            .get_methods_for_type_and_trait_name(ctx.type_engine, type_id, call_path)
             .into_iter()
         {
             let method = check!(
@@ -235,7 +236,7 @@ impl ty::TyTraitDeclaration {
         );
         for decl_id in ctx
             .namespace
-            .get_methods_for_type_and_trait_name(type_id, call_path)
+            .get_methods_for_type_and_trait_name(ctx.type_engine, type_id, call_path)
             .into_iter()
         {
             let mut method = check!(
@@ -244,7 +245,7 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            method.copy_types(&type_mapping);
+            method.copy_types(&type_mapping, ctx.type_engine);
             impld_method_ids.insert(
                 method.name.clone(),
                 de_insert_function(method).with_parent(decl_id),
@@ -267,6 +268,8 @@ impl ty::TyTraitDeclaration {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let type_engine = ctx.type_engine;
 
         let ty::TyTraitDeclaration {
             interface_surface,
@@ -297,8 +300,8 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            method.replace_self_type(type_id);
-            method.copy_types(&type_mapping);
+            method.replace_self_type(type_engine, type_id);
+            method.copy_types(&type_mapping, type_engine);
             all_methods.push(
                 de_insert_function(method.to_dummy_func(Mode::NonAbi)).with_parent(decl_id.clone()),
             );
@@ -310,8 +313,8 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            method.replace_self_type(type_id);
-            method.copy_types(&type_mapping);
+            method.replace_self_type(type_engine, type_id);
+            method.copy_types(&type_mapping, type_engine);
             all_methods.push(de_insert_function(method).with_parent(decl_id.clone()));
         }
 
@@ -326,6 +329,7 @@ impl ty::TyTraitDeclaration {
             &all_methods,
             &trait_name.span(),
             false,
+            type_engine,
         );
 
         if errors.is_empty() {

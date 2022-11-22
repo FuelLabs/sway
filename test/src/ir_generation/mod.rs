@@ -5,14 +5,16 @@ use std::{
 };
 
 use anyhow::Result;
+use colored::Colorize;
 use sway_core::{
     compile_ir_to_asm, compile_to_ast, inline_function_calls, ir_generation::compile_program,
-    namespace,
+    namespace, TypeEngine,
 };
 
 pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
     // Compile core library and reuse it when compiling tests.
-    let core_lib = compile_core();
+    let type_engine = TypeEngine::default();
+    let core_lib = compile_core(&type_engine);
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -103,8 +105,8 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
         })
         .for_each(
             |(path, sway_str, ir_checker, opt_asm_checker, optimisation_inline)| {
-                let test_file_name = path.file_name().unwrap().to_string_lossy();
-                tracing::info!("* {test_file_name}");
+                let test_file_name = path.file_name().unwrap().to_string_lossy().to_string();
+                tracing::info!("Testing {} ...", test_file_name.bold());
 
                 // Compile to AST.  We need to provide a faux build config otherwise the IR will have
                 // no span metdata.
@@ -113,8 +115,12 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     PathBuf::from("/"),
                 );
                 let sway_str = String::from_utf8_lossy(&sway_str);
-                let typed_res =
-                    compile_to_ast(Arc::from(sway_str), core_lib.clone(), Some(&bld_cfg));
+                let typed_res = compile_to_ast(
+                    &type_engine,
+                    Arc::from(sway_str),
+                    core_lib.clone(),
+                    Some(&bld_cfg),
+                );
                 if !typed_res.errors.is_empty() {
                     panic!(
                         "Failed to compile test {}:\n{}",
@@ -136,7 +142,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                 // Compile to IR.
                 let include_tests = false;
-                let mut ir = compile_program(typed_program, include_tests)
+                let mut ir = compile_program(typed_program, include_tests, &type_engine)
                     .unwrap_or_else(|e| {
                         panic!("Failed to compile test {}:\n{e}", path.display());
                     })
@@ -250,7 +256,15 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
             total_test_count,
         );
     } else {
-        tracing::info!("Ran {run_test_count} out of {total_test_count} IR generation tests.");
+        tracing::info!("_________________________________");
+        tracing::info!(
+            "IR tests result: {}. {} total, {} passed; {} failed; {} disabled",
+            "ok".green().bold(),
+            total_test_count,
+            run_test_count,
+            0,
+            total_test_count - run_test_count
+        );
     }
     Ok(())
 }
@@ -274,7 +288,7 @@ fn discover_test_files() -> Vec<PathBuf> {
     test_files
 }
 
-fn compile_core() -> namespace::Module {
+fn compile_core(type_engine: &TypeEngine) -> namespace::Module {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
 
@@ -285,7 +299,7 @@ fn compile_core() -> namespace::Module {
         locked: false,
     };
 
-    let res = forc::test::forc_check::check(check_cmd)
+    let res = forc::test::forc_check::check(check_cmd, type_engine)
         .expect("Failed to compile sway-lib-core for IR tests.");
 
     match res.value {

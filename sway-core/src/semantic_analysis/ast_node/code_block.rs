@@ -37,7 +37,7 @@ impl ty::TyCodeBlock {
             .iter()
             .find_map(|node| {
                 if node.deterministically_aborts() {
-                    Some(insert_type(TypeInfo::Unknown))
+                    Some(ctx.type_engine.insert_type(TypeInfo::Unknown))
                 } else {
                     match node {
                         ty::TyAstNode {
@@ -52,7 +52,7 @@ impl ty::TyCodeBlock {
                     }
                 }
             })
-            .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
+            .unwrap_or_else(|| ctx.type_engine.insert_type(TypeInfo::Tuple(Vec::new())));
 
         append!(ctx.unify_with_self(block_type, &span), warnings, errors);
 

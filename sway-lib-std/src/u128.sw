@@ -97,7 +97,7 @@ impl U128 {
     /// Initializes a new, zeroed `U128`.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::u128::U128;
     ///
@@ -117,7 +117,7 @@ impl U128 {
     /// Returns Err if the number > u64::max()
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::u128::{U128, U128Error};
     ///
@@ -125,7 +125,7 @@ impl U128 {
     /// let zero_u64 = zero_u128.as_u64().unwrap();
     ///
     /// assert(zero_u64 == 0);
-    /// 
+    ///
     /// let max_u128 = U128::max();
     /// let result = max_u128.as_u64();
     ///
@@ -142,7 +142,7 @@ impl U128 {
     /// Initializes a new, zeroed `U128`.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::u128::U128;
     ///
@@ -162,7 +162,7 @@ impl U128 {
     /// 2<sup>128</sup> - 1.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::u128::U128;
     ///
@@ -181,7 +181,7 @@ impl U128 {
     /// The size of this type in bits.
     ///
     /// ### Examples
-    /// 
+    ///
     /// ```sway
     /// use std::u128::U128;
     ///
@@ -304,18 +304,18 @@ impl core::ops::Subtract for U128 {
 impl core::ops::Multiply for U128 {
     /// Multiply a `U128` with a `U128`. Panics of overflow.
     fn multiply(self, other: Self) -> Self {
-        let zero = U128::from((0, 0));
-        let one = U128::from((0, 1));
+        // in case both of the `U128` upper parts are bigger than zero,
+        // it automatically means overflow, as any `U128` value
+        // is upper part multiplied by 2 ^ 64 + lower part
+        assert(self.upper == 0 || other.upper == 0);
 
-        let mut x = self;
-        let mut y = other;
-        let mut result = U128::new();
-        while y != zero {
-            if (y & one).lower != 0 {
-                result += x;
-            }
-            x <<= 1;
-            y >>= 1;
+        let mut result = self.lower.overflowing_mul(other.lower);
+        if self.upper == 0 {
+            // panic in case of overflow
+            result.upper += self.lower * other.upper;
+        } else if other.upper == 0 {
+            // panic in case of overflow
+            result.upper += self.upper * other.lower;
         }
 
         result
