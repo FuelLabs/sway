@@ -118,28 +118,13 @@ For example, in the following contract the CEI pattern is violated, because an
 external contract call is executed before a storage write.
 
 ```sway
-contract;
+{{#include ../../../examples/cei_analysis/src/main.sw}}
+```
 
-use std::storage::store;
+Here, `other_contract` is defined as follows:
 
-abi TestAbi {
-    #[storage(write)]
-    fn deposit();
-}
-
-impl TestAbi for Contract {
-    #[storage(write)]
-    fn deposit() {
-        let storage_key = 0x3dba0a4455b598b7655a7fb430883d96c9527ef275b49739e7b0ad12f8280eae;
-        let other_contract = abi(TestAbi, storage_key);
-
-        // interaction
-        other_contract.deposit();
-
-        // effect -- therefore violation of CEI where effect should go before interaction
-        store(storage_key, ());
-    }
-}
+```sway
+{{#include ../../../examples/cei_analysis/src/other_contract.sw}}
 ```
 
 The CEI pattern analyzer issues a warning as follows, pointing to the
@@ -147,17 +132,18 @@ interaction before a storage modification:
 
 ```sh
 warning
-  --> /path/to/contract/main.sw:17:9
+  --> /path/to/contract/main.sw:28:9
    |
-15 |
-16 |           // interaction
-17 |           other_contract.deposit();
+26 |
+27 |           let caller = abi(OtherContract, external_contract_id.into());
+28 |           caller.external_call { coins: bal }();
    |  _________-
-18 | |         // effect -- therefore violation of CEI where effect should go before interaction
-19 | |         store(storage_key, ());
-   | |______________________________- Storage modification after external contract interaction in function or method "deposit". Consider making all storage writes before calling another contract
-20 |       }
-21 |   }
+29 | |
+30 | |         // Storage update _after_ external call
+31 | |         storage.balances.insert(sender, 0);
+   | |__________________________________________- Storage modification after external contract interaction in function or method "withdraw". Consider making all storage writes before calling another contract
+32 |       }
+33 |   }
    |
 ____
 ```
