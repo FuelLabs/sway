@@ -1481,7 +1481,7 @@ impl FnCompiler {
         // globals like other const decls.
         let ty::TyConstantDeclaration { name, value, .. } = ast_const_decl;
         let const_expr_val =
-            compile_constant_expression(context, md_mgr, self.module, None, None, &value)?;
+            compile_constant_expression(context, md_mgr, self.module, None, Some(self), &value)?;
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
         let return_type = convert_resolved_typeid(context, &value.return_type, &value.span)?;
 
