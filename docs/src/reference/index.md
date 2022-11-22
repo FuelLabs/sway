@@ -1,5 +1,6 @@
 # Sway Reference
 
+- [Compiler Intrinsics](./compiler_intrinsics.md)
 - [Style Guide](./style_guide.md)
 - [Known Issues and Workarounds](./known_issues_and_workarounds.md)
 - [Differences from Rust](./rust_differences.md)
