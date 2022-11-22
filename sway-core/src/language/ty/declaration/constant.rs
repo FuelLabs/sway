@@ -19,7 +19,7 @@ pub struct TyConstantDeclaration {
 
 impl EqWithEngines for TyConstantDeclaration {}
 impl PartialEqWithEngines for TyConstantDeclaration {
-    fn eq(&self, rhs: &Self, type_engine: &crate::TypeEngine) -> bool {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.name == rhs.name
             && self.value.eq(&rhs.value, type_engine)
             && self.visibility == rhs.visibility

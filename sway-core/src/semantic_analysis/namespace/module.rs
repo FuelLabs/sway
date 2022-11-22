@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::DeclarationEngine,
     error::*,
     language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
@@ -45,21 +46,24 @@ pub struct Module {
 impl Module {
     pub fn default_with_constants(
         type_engine: &TypeEngine,
+        declaration_engine: &DeclarationEngine,
         constants: BTreeMap<String, ConfigTimeConstant>,
     ) -> Result<Self, vec1::Vec1<CompileError>> {
         let handler = <_>::default();
-        Module::default_with_constants_inner(&handler, type_engine, constants).map_err(|_| {
-            let (errors, warnings) = handler.consume();
-            assert!(warnings.is_empty());
+        Module::default_with_constants_inner(&handler, type_engine, declaration_engine, constants)
+            .map_err(|_| {
+                let (errors, warnings) = handler.consume();
+                assert!(warnings.is_empty());
 
-            // Invariant: `.value == None` => `!errors.is_empty()`.
-            vec1::Vec1::try_from_vec(errors).unwrap()
-        })
+                // Invariant: `.value == None` => `!errors.is_empty()`.
+                vec1::Vec1::try_from_vec(errors).unwrap()
+            })
     }
 
     fn default_with_constants_inner(
         handler: &Handler,
         type_engine: &TypeEngine,
+        declaration_engine: &DeclarationEngine,
         constants: BTreeMap<String, ConfigTimeConstant>,
     ) -> Result<Self, ErrorEmitted> {
         // it would be nice to one day maintain a span from the manifest file, but
@@ -114,7 +118,8 @@ impl Module {
                 span: const_item_span.clone(),
             };
             let mut ns = Namespace::init_root(Default::default());
-            let type_check_ctx = TypeCheckContext::from_root(&mut ns, type_engine);
+            let type_check_ctx =
+                TypeCheckContext::from_root(&mut ns, type_engine, declaration_engine);
             let typed_node = ty::TyAstNode::type_check(type_check_ctx, ast_node)
                 .unwrap(&mut vec![], &mut vec![]);
             // get the decl out of the typed node:

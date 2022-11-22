@@ -24,6 +24,7 @@ use asm_generation::FinalizedAsm;
 pub use asm_generation::FinalizedEntry;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
+use declaration_engine::DeclarationEngine;
 use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -186,6 +187,7 @@ pub struct CompiledBytecode(pub Vec<u8>);
 
 pub fn parsed_to_ast(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     parse_program: &parsed::ParseProgram,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
@@ -195,7 +197,12 @@ pub fn parsed_to_ast(
         value: typed_program_opt,
         mut warnings,
         mut errors,
-    } = ty::TyProgram::type_check(type_engine, parse_program, initial_namespace);
+    } = ty::TyProgram::type_check(
+        type_engine,
+        declaration_engine,
+        parse_program,
+        initial_namespace,
+    );
     let mut typed_program = match typed_program_opt {
         Some(typed_program) => typed_program,
         None => return err(warnings, errors),
@@ -287,6 +294,7 @@ pub fn parsed_to_ast(
 
 pub fn compile_to_ast(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
@@ -303,7 +311,13 @@ pub fn compile_to_ast(
     };
 
     // Type check (+ other static analysis) the CST to a typed AST.
-    let typed_res = parsed_to_ast(type_engine, &parse_program, initial_namespace, build_config);
+    let typed_res = parsed_to_ast(
+        type_engine,
+        declaration_engine,
+        &parse_program,
+        initial_namespace,
+        build_config,
+    );
     errors.extend(typed_res.errors);
     warnings.extend(typed_res.warnings);
     let typed_program = match typed_res.value {
@@ -323,11 +337,18 @@ pub fn compile_to_ast(
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn compile_to_asm(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
 ) -> CompileResult<CompiledAsm> {
-    let ast_res = compile_to_ast(type_engine, input, initial_namespace, Some(&build_config));
+    let ast_res = compile_to_ast(
+        type_engine,
+        declaration_engine,
+        input,
+        initial_namespace,
+        Some(&build_config),
+    );
     ast_to_asm(type_engine, &ast_res, &build_config)
 }
 
@@ -628,12 +649,19 @@ fn simplify_cfg(
 /// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn compile_to_bytecode(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
 ) -> CompileResult<CompiledBytecode> {
-    let asm_res = compile_to_asm(type_engine, input, initial_namespace, build_config);
+    let asm_res = compile_to_asm(
+        type_engine,
+        declaration_engine,
+        input,
+        initial_namespace,
+        build_config,
+    );
     let result = asm_to_bytecode(asm_res, source_map);
     clear_lazy_statics();
     result

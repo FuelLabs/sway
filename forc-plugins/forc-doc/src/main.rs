@@ -11,7 +11,7 @@ use std::{
     process::Command as Process,
     {fs, path::PathBuf},
 };
-use sway_core::TypeEngine;
+use sway_core::{declaration_engine::DeclarationEngine, TypeEngine};
 
 use crate::{
     doc::{Document, Documentation},
@@ -56,7 +56,8 @@ pub fn main() -> Result<()> {
     let plan =
         pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
     let type_engine = TypeEngine::default();
-    let compilation = pkg::check(&plan, silent, &type_engine)?
+    let declaration_engine = DeclarationEngine::default();
+    let compilation = pkg::check(&plan, silent, &type_engine, &declaration_engine)?
         .pop()
         .expect("there is guaranteed to be at least one elem in the vector");
     let raw_docs: Documentation = Document::from_ty_program(&compilation, no_deps)?;

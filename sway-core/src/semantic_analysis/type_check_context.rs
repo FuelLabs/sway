@@ -1,4 +1,5 @@
 use crate::{
+    declaration_engine::DeclarationEngine,
     language::{parsed::TreeType, Purity},
     namespace::Path,
     semantic_analysis::{ast_node::Mode, Namespace},
@@ -21,6 +22,12 @@ pub struct TypeCheckContext<'a> {
     /// - A `mod_path` that represents the current module being type-checked. This is automatically
     ///   updated upon entering/exiting submodules via the `enter_submodule` method.
     pub(crate) namespace: &'a mut Namespace,
+
+    /// The type engine storing types.
+    pub(crate) type_engine: &'a TypeEngine,
+
+    /// The declaration engine holds declarations.
+    pub(crate) declaration_engine: &'a DeclarationEngine,
 
     // The following set of fields are intentionally private. When a `TypeCheckContext` is passed
     // into a new node during type checking, these fields should be updated using the `with_*`
@@ -49,8 +56,6 @@ pub struct TypeCheckContext<'a> {
     /// Provides the kind of the module.
     /// This is useful for example to throw an error when while loops are present in predicates.
     kind: TreeType,
-    /// The type engine storing types.
-    pub(crate) type_engine: &'a TypeEngine,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -62,14 +67,23 @@ impl<'a> TypeCheckContext<'a> {
     /// - mode: NoneAbi
     /// - help_text: ""
     /// - purity: Pure
-    pub fn from_root(root_namespace: &'a mut Namespace, type_engine: &'a TypeEngine) -> Self {
-        Self::from_module_namespace(root_namespace, type_engine)
+    pub fn from_root(
+        root_namespace: &'a mut Namespace,
+        type_engine: &'a TypeEngine,
+        declaration_engine: &'a DeclarationEngine,
+    ) -> Self {
+        Self::from_module_namespace(root_namespace, type_engine, declaration_engine)
     }
 
-    fn from_module_namespace(namespace: &'a mut Namespace, type_engine: &'a TypeEngine) -> Self {
+    fn from_module_namespace(
+        namespace: &'a mut Namespace,
+        type_engine: &'a TypeEngine,
+        declaration_engine: &'a DeclarationEngine,
+    ) -> Self {
         Self {
             namespace,
             type_engine,
+            declaration_engine,
             type_annotation: type_engine.insert_type(TypeInfo::Unknown),
             help_text: "",
             // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
@@ -98,6 +112,7 @@ impl<'a> TypeCheckContext<'a> {
             purity: self.purity,
             kind: self.kind.clone(),
             type_engine: self.type_engine,
+            declaration_engine: self.declaration_engine,
         }
     }
 
@@ -112,6 +127,7 @@ impl<'a> TypeCheckContext<'a> {
             purity: self.purity,
             kind: self.kind,
             type_engine: self.type_engine,
+            declaration_engine: self.declaration_engine,
         }
     }
 
@@ -129,7 +145,11 @@ impl<'a> TypeCheckContext<'a> {
         // engine here once they're added.
         let Self { namespace, .. } = self;
         let mut submod_ns = namespace.enter_submodule(dep_name);
-        let submod_ctx = TypeCheckContext::from_module_namespace(&mut submod_ns, self.type_engine);
+        let submod_ctx = TypeCheckContext::from_module_namespace(
+            &mut submod_ns,
+            self.type_engine,
+            self.declaration_engine,
+        );
         with_submod_ctx(submod_ctx)
     }
 

@@ -6,6 +6,38 @@ use std::{
 
 use crate::TypeEngine;
 
+#[derive(Clone, Copy)]
+pub struct WithEngines<'a, T> {
+    pub thing: T,
+    pub engine: &'a TypeEngine,
+}
+
+impl<'a, T> WithEngines<'a, T> {
+    pub fn new(thing: T, engine: &'a TypeEngine) -> Self {
+        WithEngines { thing, engine }
+    }
+}
+
+impl<T: DisplayWithEngines> fmt::Display for WithEngines<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.thing.fmt(f, self.engine)
+    }
+}
+
+impl<T: HashWithEngines> Hash for WithEngines<'_, T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.thing.hash(state, self.engine)
+    }
+}
+
+impl<T: PartialEqWithEngines> PartialEq for WithEngines<'_, T> {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.thing.eq(&rhs.thing, self.engine)
+    }
+}
+
+impl<T: EqWithEngines> Eq for WithEngines<'_, T> {}
+
 pub(crate) trait DisplayWithEngines {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result;
 }
@@ -95,35 +127,3 @@ impl<T: OrdWithEngines> OrdWithEngines for [T] {
             .unwrap_or_else(|| self.len().cmp(&rhs.len()))
     }
 }
-
-#[derive(Clone, Copy)]
-pub struct WithEngines<'a, T> {
-    pub thing: T,
-    pub engine: &'a TypeEngine,
-}
-
-impl<'a, T> WithEngines<'a, T> {
-    pub fn new(thing: T, engine: &'a TypeEngine) -> Self {
-        WithEngines { thing, engine }
-    }
-}
-
-impl<T: DisplayWithEngines> fmt::Display for WithEngines<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.thing.fmt(f, self.engine)
-    }
-}
-
-impl<T: HashWithEngines> Hash for WithEngines<'_, T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.thing.hash(state, self.engine)
-    }
-}
-
-impl<T: PartialEqWithEngines> PartialEq for WithEngines<'_, T> {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.thing.eq(&rhs.thing, self.engine)
-    }
-}
-
-impl<T: EqWithEngines> Eq for WithEngines<'_, T> {}

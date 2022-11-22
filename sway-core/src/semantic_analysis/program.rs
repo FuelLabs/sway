@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::declaration_engine::de_get_storage,
+    declaration_engine::{declaration_engine::de_get_storage, DeclarationEngine},
     error::*,
     language::{parsed::ParseProgram, ty},
     metadata::MetadataManager,
@@ -19,12 +19,13 @@ impl ty::TyProgram {
     /// It should contain a submodule for each library package dependency.
     pub fn type_check(
         type_engine: &TypeEngine,
+        declaration_engine: &DeclarationEngine,
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx =
-            TypeCheckContext::from_root(&mut namespace, type_engine).with_kind(parsed.kind.clone());
+        let ctx = TypeCheckContext::from_root(&mut namespace, type_engine, declaration_engine)
+            .with_kind(parsed.kind.clone());
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
         let mod_res = ty::TyModule::type_check(ctx, root);

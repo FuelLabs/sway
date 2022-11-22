@@ -1916,19 +1916,22 @@ mod tests {
 
     fn do_type_check(
         type_engine: &TypeEngine,
+        declaration_engine: &DeclarationEngine,
         expr: Expression,
         type_annotation: TypeId,
     ) -> CompileResult<ty::TyExpression> {
         let mut namespace = Namespace::init_root(namespace::Module::default());
-        let ctx = TypeCheckContext::from_root(&mut namespace, type_engine)
+        let ctx = TypeCheckContext::from_root(&mut namespace, type_engine, declaration_engine)
             .with_type_annotation(type_annotation);
         ty::TyExpression::type_check(ctx, expr)
     }
 
     fn do_type_check_for_boolx2(expr: Expression) -> CompileResult<ty::TyExpression> {
         let type_engine = TypeEngine::default();
+        let declaration_engine = DeclarationEngine::default();
         do_type_check(
             &type_engine,
+            &declaration_engine,
             expr,
             type_engine.insert_type(TypeInfo::Array(
                 TypeArgument {
@@ -2044,8 +2047,10 @@ mod tests {
         };
 
         let type_engine = TypeEngine::default();
+        let declaration_engine = DeclarationEngine::default();
         let comp_res = do_type_check(
             &type_engine,
+            &declaration_engine,
             expr,
             type_engine.insert_type(TypeInfo::Array(
                 TypeArgument {

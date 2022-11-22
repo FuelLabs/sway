@@ -26,6 +26,7 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
+    declaration_engine::DeclarationEngine,
     fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
@@ -2110,8 +2111,10 @@ pub fn dependency_namespace(
     node: NodeIx,
     constants: BTreeMap<String, ConfigTimeConstant>,
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
-    let mut namespace = namespace::Module::default_with_constants(type_engine, constants)?;
+    let mut namespace =
+        namespace::Module::default_with_constants(type_engine, declaration_engine, constants)?;
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -2142,7 +2145,11 @@ pub fn dependency_namespace(
                     public: true,
                 };
                 constants.insert(contract_dep_constant_name.to_string(), contract_id_constant);
-                namespace::Module::default_with_constants(type_engine, constants)?
+                namespace::Module::default_with_constants(
+                    type_engine,
+                    declaration_engine,
+                    constants,
+                )?
             }
         };
         namespace.insert_submodule(dep_name, dep_namespace);
@@ -2232,6 +2239,7 @@ fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
 /// Compiles the package to an AST.
 pub fn compile_ast(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     manifest: &PackageManifestFile,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
@@ -2239,8 +2247,13 @@ pub fn compile_ast(
     let source = manifest.entry_string()?;
     let sway_build_config =
         sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
-    let ast_res =
-        sway_core::compile_to_ast(type_engine, source, namespace, Some(&sway_build_config));
+    let ast_res = sway_core::compile_to_ast(
+        type_engine,
+        declaration_engine,
+        source,
+        namespace,
+        Some(&sway_build_config),
+    );
     Ok(ast_res)
 }
 
@@ -2268,6 +2281,7 @@ pub fn compile(
     build_profile: &BuildProfile,
     namespace: namespace::Module,
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     source_map: &mut SourceMap,
 ) -> Result<(BuiltPackage, namespace::Root)> {
     // Time the given expression and print the result if `build_config.time_phases` is true.
@@ -2302,7 +2316,13 @@ pub fn compile(
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(type_engine, manifest, build_profile, namespace)?
+        compile_ast(
+            type_engine,
+            declaration_engine,
+            manifest,
+            build_profile,
+            namespace
+        )?
     );
     let typed_program = match ast_res.value.as_ref() {
         None => return fail(&ast_res.warnings, &ast_res.errors),
@@ -2540,6 +2560,7 @@ pub fn build(
         .collect();
 
     let type_engine = TypeEngine::default();
+    let declaration_engine = DeclarationEngine::default();
     let mut lib_namespace_map = Default::default();
     let mut compiled_contract_deps = HashMap::new();
     for &node in plan
@@ -2558,6 +2579,7 @@ pub fn build(
             node,
             constants,
             &type_engine,
+            &declaration_engine,
         ) {
             Ok(o) => o,
             Err(errs) => {
@@ -2571,6 +2593,7 @@ pub fn build(
             profile,
             dep_namespace,
             &type_engine,
+            &declaration_engine,
             &mut source_map,
         )?;
         let (mut built_package, namespace) = res;
@@ -2725,6 +2748,7 @@ pub fn check(
     plan: &BuildPlan,
     terse_mode: bool,
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
 ) -> anyhow::Result<Vec<ParseAndTypedPrograms>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
@@ -2745,6 +2769,7 @@ pub fn check(
             node,
             constants,
             type_engine,
+            declaration_engine,
         )
         .expect("failed to create dependency namespace");
         let CompileResult {
@@ -2761,7 +2786,13 @@ pub fn check(
             Some(program) => program,
         };
 
-        let ast_result = sway_core::parsed_to_ast(type_engine, &parse_program, dep_namespace, None);
+        let ast_result = sway_core::parsed_to_ast(
+            type_engine,
+            declaration_engine,
+            &parse_program,
+            dep_namespace,
+            None,
+        );
         warnings.extend(ast_result.warnings);
         errors.extend(ast_result.errors);
 

@@ -19,6 +19,7 @@ use parking_lot::RwLock;
 use pkg::manifest::ManifestFile;
 use std::{path::PathBuf, sync::Arc};
 use sway_core::{
+    declaration_engine::DeclarationEngine,
     language::{
         parsed::{AstNode, ParseProgram},
         ty,
@@ -49,6 +50,7 @@ pub struct Session {
     pub compiled_program: RwLock<CompiledProgram>,
     pub sync: SyncWorkspace,
     pub type_engine: RwLock<TypeEngine>,
+    pub declaration_engine: RwLock<DeclarationEngine>,
 }
 
 impl Session {
@@ -60,11 +62,14 @@ impl Session {
             compiled_program: RwLock::new(Default::default()),
             sync: SyncWorkspace::new(),
             type_engine: <_>::default(),
+            declaration_engine: <_>::default(),
         }
     }
 
     pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
         *self.type_engine.write() = <_>::default();
+
+        *self.declaration_engine.write() = <_>::default();
 
         let manifest_dir = PathBuf::from(uri.path());
         // Create a new temp dir that clones the current workspace
@@ -226,8 +231,9 @@ impl Session {
 
         let mut diagnostics = Vec::new();
         let type_engine = &*self.type_engine.read();
-        let results =
-            pkg::check(&plan, true, type_engine).map_err(LanguageServerError::FailedToCompile)?;
+        let declaration_engine = &*self.declaration_engine.read();
+        let results = pkg::check(&plan, true, type_engine, declaration_engine)
+            .map_err(LanguageServerError::FailedToCompile)?;
         let results_len = results.len();
         for (i, res) in results.into_iter().enumerate() {
             // We can convert these destructured elements to a Vec<Diagnostic> later on.

@@ -7,14 +7,15 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
-    compile_ir_to_asm, compile_to_ast, inline_function_calls, ir_generation::compile_program,
-    namespace, TypeEngine,
+    compile_ir_to_asm, compile_to_ast, declaration_engine::DeclarationEngine,
+    inline_function_calls, ir_generation::compile_program, namespace, TypeEngine,
 };
 
 pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
     // Compile core library and reuse it when compiling tests.
     let type_engine = TypeEngine::default();
-    let core_lib = compile_core(&type_engine);
+    let declaration_engine = DeclarationEngine::default();
+    let core_lib = compile_core(&type_engine, &declaration_engine);
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -117,6 +118,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let typed_res = compile_to_ast(
                     &type_engine,
+                    &declaration_engine,
                     Arc::from(sway_str),
                     core_lib.clone(),
                     Some(&bld_cfg),
@@ -289,7 +291,10 @@ fn discover_test_files() -> Vec<PathBuf> {
     test_files
 }
 
-fn compile_core(type_engine: &TypeEngine) -> namespace::Module {
+fn compile_core(
+    type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
+) -> namespace::Module {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
 
@@ -300,7 +305,7 @@ fn compile_core(type_engine: &TypeEngine) -> namespace::Module {
         locked: false,
     };
 
-    let res = forc::test::forc_check::check(check_cmd, type_engine)
+    let res = forc::test::forc_check::check(check_cmd, type_engine, declaration_engine)
         .expect("Failed to compile sway-lib-core for IR tests.");
 
     match res.value {
