@@ -12,7 +12,7 @@ use crate::{
         ty::{self, TyFunctionDeclaration},
         AsmOp,
     },
-    look_up_type_id,
+    TypeEngine,
 };
 use std::collections::HashSet;
 use sway_error::warning::{CompileWarning, Warning};
@@ -34,21 +34,24 @@ enum CEIAnalysisState {
     LookingForStorageReadOrWrite,
 }
 
-pub(crate) fn analyze_program(prog: &ty::TyProgram) -> Vec<CompileWarning> {
+pub(crate) fn analyze_program(
+    type_engine: &TypeEngine,
+    prog: &ty::TyProgram,
+) -> Vec<CompileWarning> {
     match &prog.kind {
         // Libraries, scripts, or predicates can't access storage
         // so we don't analyze these
         ty::TyProgramKind::Library { .. }
         | ty::TyProgramKind::Script { .. }
         | ty::TyProgramKind::Predicate { .. } => vec![],
-        ty::TyProgramKind::Contract { .. } => analyze_contract(&prog.root.all_nodes),
+        ty::TyProgramKind::Contract { .. } => analyze_contract(type_engine, &prog.root.all_nodes),
     }
 }
 
-fn analyze_contract(ast_nodes: &[ty::TyAstNode]) -> Vec<CompileWarning> {
+fn analyze_contract(type_engine: &TypeEngine, ast_nodes: &[ty::TyAstNode]) -> Vec<CompileWarning> {
     let mut warnings: Vec<CompileWarning> = vec![];
     for fn_decl in contract_entry_points(ast_nodes) {
-        analyze_code_block(&fn_decl.body, &fn_decl.name, &mut warnings);
+        analyze_code_block(type_engine, &fn_decl.body, &fn_decl.name, &mut warnings);
     }
     warnings
 }
@@ -93,6 +96,7 @@ fn impl_trait_methods<'a>(
 // This is the main part of the analysis algorithm:
 // we are looking for state effects after contract interaction
 fn analyze_code_block(
+    type_engine: &TypeEngine,
     codeblock: &ty::TyCodeBlock,
     block_name: &Ident,
     warnings: &mut Vec<CompileWarning>,
@@ -102,7 +106,8 @@ fn analyze_code_block(
     let mut analysis_state: CEIAnalysisState = CEIAnalysisState::LookingForInteraction;
 
     for ast_node in &codeblock.contents {
-        let codeblock_entry_effects = analyze_code_block_entry(ast_node, block_name, warnings);
+        let codeblock_entry_effects =
+            analyze_code_block_entry(type_engine, ast_node, block_name, warnings);
         match analysis_state {
             CEIAnalysisState::LookingForInteraction => {
                 if codeblock_entry_effects.contains(&Effect::Interaction) {
@@ -124,23 +129,25 @@ fn analyze_code_block(
 }
 
 fn analyze_code_block_entry(
+    type_engine: &TypeEngine,
     entry: &ty::TyAstNode,
     block_name: &Ident,
     warnings: &mut Vec<CompileWarning>,
 ) -> HashSet<Effect> {
     match &entry.content {
         ty::TyAstNodeContent::Declaration(decl) => {
-            analyze_codeblock_decl(decl, block_name, warnings)
+            analyze_codeblock_decl(type_engine, decl, block_name, warnings)
         }
         ty::TyAstNodeContent::Expression(expr)
         | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
-            analyze_expression(expr, block_name, warnings)
+            analyze_expression(type_engine, expr, block_name, warnings)
         }
         ty::TyAstNodeContent::SideEffect => HashSet::new(),
     }
 }
 
 fn analyze_codeblock_decl(
+    type_engine: &TypeEngine,
     decl: &ty::TyDeclaration,
     block_name: &Ident,
     warnings: &mut Vec<CompileWarning>,
@@ -148,12 +155,15 @@ fn analyze_codeblock_decl(
     // Declarations (except variable declarations) are not allowed in a codeblock
     use crate::ty::TyDeclaration::*;
     match decl {
-        VariableDeclaration(var_decl) => analyze_expression(&var_decl.body, block_name, warnings),
+        VariableDeclaration(var_decl) => {
+            analyze_expression(type_engine, &var_decl.body, block_name, warnings)
+        }
         _ => HashSet::new(),
     }
 }
 
 fn analyze_expression(
+    type_engine: &TypeEngine,
     expr: &ty::TyExpression,
     block_name: &Ident,
     warnings: &mut Vec<CompileWarning>,
@@ -167,11 +177,13 @@ fn analyze_expression(
         | StorageAccess(_)
         | Break
         | Continue
-        | AbiName(_) => effects_of_expression(expr),
-        Reassignment(reassgn) => analyze_expression(&reassgn.rhs, block_name, warnings),
+        | AbiName(_) => effects_of_expression(type_engine, expr),
+        Reassignment(reassgn) => {
+            analyze_expression(type_engine, &reassgn.rhs, block_name, warnings)
+        }
         StorageReassignment(reassgn) => {
             let storage_effs = HashSet::from([Effect::StorageWrite]);
-            let rhs_effs = analyze_expression(&reassgn.rhs, block_name, warnings);
+            let rhs_effs = analyze_expression(type_engine, &reassgn.rhs, block_name, warnings);
             if rhs_effs.contains(&Effect::Interaction) {
                 warn_after_interaction(
                     &storage_effs,
@@ -183,7 +195,7 @@ fn analyze_expression(
             };
             set_union(storage_effs, rhs_effs)
         }
-        CodeBlock(codeblock) => analyze_code_block(codeblock, block_name, warnings),
+        CodeBlock(codeblock) => analyze_code_block(type_engine, codeblock, block_name, warnings),
         LazyOperator {
             lhs: left,
             rhs: right,
@@ -192,7 +204,7 @@ fn analyze_expression(
         | ArrayIndex {
             prefix: left,
             index: right,
-        } => analyze_two_expressions(left, right, block_name, warnings),
+        } => analyze_two_expressions(type_engine, left, right, block_name, warnings),
         FunctionApplication {
             arguments,
             function_decl_id,
@@ -205,11 +217,12 @@ fn analyze_expression(
             // we don't need to run full analysis on the function body as it will be covered
             // as a separate step of the whole contract analysis
             // we just need function's effects at this point
-            let fn_effs = effects_of_codeblock(&func.body);
+            let fn_effs = effects_of_codeblock(type_engine, &func.body);
 
             // assuming left-to-right arguments evaluation
             // we run CEI violation analysis as if the arguments form a code block
             let args_effs = analyze_expressions(
+                type_engine,
                 arguments.iter().map(|(_, e)| e).collect(),
                 block_name,
                 warnings,
@@ -236,8 +249,12 @@ fn analyze_expression(
         IntrinsicFunction(intrinsic) => {
             let intr_effs = effects_of_intrinsic(&intrinsic.kind);
             // assuming left-to-right arguments evaluation
-            let args_effs =
-                analyze_expressions(intrinsic.arguments.iter().collect(), block_name, warnings);
+            let args_effs = analyze_expressions(
+                type_engine,
+                intrinsic.arguments.iter().collect(),
+                block_name,
+                warnings,
+            );
             if args_effs.contains(&Effect::Interaction) {
                 // TODO: interaction span has to be more precise and point to an argument which performs interaction
                 warn_after_interaction(&intr_effs, &expr.span, &expr.span, block_name, warnings)
@@ -246,11 +263,12 @@ fn analyze_expression(
         }
         Tuple { fields: exprs } | Array { contents: exprs } => {
             // assuming left-to-right fields/elements evaluation
-            analyze_expressions(exprs.iter().collect(), block_name, warnings)
+            analyze_expressions(type_engine, exprs.iter().collect(), block_name, warnings)
         }
         StructExpression { fields, .. } => {
             // assuming left-to-right fields evaluation
             analyze_expressions(
+                type_engine,
                 fields.iter().map(|e| &e.value).collect(),
                 block_name,
                 warnings,
@@ -261,9 +279,11 @@ fn analyze_expression(
         | Return(expr)
         | EnumTag { exp: expr }
         | UnsafeDowncast { exp: expr, .. }
-        | AbiCast { address: expr, .. } => analyze_expression(expr, block_name, warnings),
+        | AbiCast { address: expr, .. } => {
+            analyze_expression(type_engine, expr, block_name, warnings)
+        }
         EnumInstantiation { contents, .. } => match contents {
-            Some(expr) => analyze_expression(expr, block_name, warnings),
+            Some(expr) => analyze_expression(type_engine, expr, block_name, warnings),
             None => HashSet::new(),
         },
         IfExp {
@@ -271,10 +291,11 @@ fn analyze_expression(
             then,
             r#else,
         } => {
-            let cond_then_effs = analyze_two_expressions(condition, then, block_name, warnings);
+            let cond_then_effs =
+                analyze_two_expressions(type_engine, condition, then, block_name, warnings);
             let cond_else_effs = match r#else {
                 Some(else_exp) => {
-                    analyze_two_expressions(condition, else_exp, block_name, warnings)
+                    analyze_two_expressions(type_engine, condition, else_exp, block_name, warnings)
                 }
                 None => HashSet::new(),
             };
@@ -283,8 +304,8 @@ fn analyze_expression(
         WhileLoop { condition, body } => {
             // if the loop (condition + body) contains both interaction and storage operations
             // in _any_ order, we report CEI pattern violation
-            let cond_effs = analyze_expression(condition, block_name, warnings);
-            let body_effs = analyze_code_block(body, block_name, warnings);
+            let cond_effs = analyze_expression(type_engine, condition, block_name, warnings);
+            let body_effs = analyze_code_block(type_engine, body, block_name, warnings);
             let res_effs = set_union(cond_effs, body_effs);
             if res_effs.is_superset(&HashSet::from([Effect::Interaction, Effect::StorageRead])) {
                 warnings.push(CompileWarning {
@@ -311,7 +332,7 @@ fn analyze_expression(
                 .iter()
                 .filter_map(|rdecl| rdecl.initializer.as_ref())
                 .collect();
-            let init_effs = analyze_expressions(init_exprs, block_name, warnings);
+            let init_effs = analyze_expressions(type_engine, init_exprs, block_name, warnings);
             let asmblock_effs = analyze_asm_block(body, block_name, warnings);
             if init_effs.contains(&Effect::Interaction) {
                 // TODO: improve locations accuracy
@@ -323,13 +344,14 @@ fn analyze_expression(
 }
 
 fn analyze_two_expressions(
+    type_engine: &TypeEngine,
     first: &ty::TyExpression,
     second: &ty::TyExpression,
     block_name: &Ident,
     warnings: &mut Vec<CompileWarning>,
 ) -> HashSet<Effect> {
-    let first_effs = analyze_expression(first, block_name, warnings);
-    let second_effs = analyze_expression(second, block_name, warnings);
+    let first_effs = analyze_expression(type_engine, first, block_name, warnings);
+    let second_effs = analyze_expression(type_engine, second, block_name, warnings);
     if first_effs.contains(&Effect::Interaction) {
         warn_after_interaction(
             &second_effs,
@@ -346,6 +368,7 @@ fn analyze_two_expressions(
 // TODO: analyze_expressions, analyze_codeblock and analyze_asm_block (see below) are very similar in structure
 //       looks like the algorithm implementation should be generalized
 fn analyze_expressions(
+    type_engine: &TypeEngine,
     expressions: Vec<&ty::TyExpression>,
     block_name: &Ident,
     warnings: &mut Vec<CompileWarning>,
@@ -355,7 +378,7 @@ fn analyze_expressions(
     let mut analysis_state: CEIAnalysisState = CEIAnalysisState::LookingForInteraction;
 
     for expr in expressions {
-        let expr_effs = analyze_expression(expr, block_name, warnings);
+        let expr_effs = analyze_expression(type_engine, expr, block_name, warnings);
         match analysis_state {
             CEIAnalysisState::LookingForInteraction => {
                 if expr_effs.contains(&Effect::Interaction) {
@@ -433,25 +456,33 @@ fn warn_after_interaction(
     }
 }
 
-fn effects_of_codeblock_entry(ast_node: &ty::TyAstNode) -> HashSet<Effect> {
+fn effects_of_codeblock_entry(
+    type_engine: &TypeEngine,
+    ast_node: &ty::TyAstNode,
+) -> HashSet<Effect> {
     match &ast_node.content {
-        ty::TyAstNodeContent::Declaration(decl) => effects_of_codeblock_decl(decl),
+        ty::TyAstNodeContent::Declaration(decl) => effects_of_codeblock_decl(type_engine, decl),
         ty::TyAstNodeContent::Expression(expr)
-        | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => effects_of_expression(expr),
+        | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
+            effects_of_expression(type_engine, expr)
+        }
         ty::TyAstNodeContent::SideEffect => HashSet::new(),
     }
 }
 
-fn effects_of_codeblock_decl(decl: &ty::TyDeclaration) -> HashSet<Effect> {
+fn effects_of_codeblock_decl(
+    type_engine: &TypeEngine,
+    decl: &ty::TyDeclaration,
+) -> HashSet<Effect> {
     use crate::ty::TyDeclaration::*;
     match decl {
-        VariableDeclaration(var_decl) => effects_of_expression(&var_decl.body),
+        VariableDeclaration(var_decl) => effects_of_expression(type_engine, &var_decl.body),
         // Declarations (except variable declarations) are not allowed in the body of a function
         _ => HashSet::new(),
     }
 }
 
-fn effects_of_expression(expr: &ty::TyExpression) -> HashSet<Effect> {
+fn effects_of_expression(type_engine: &TypeEngine, expr: &ty::TyExpression) -> HashSet<Effect> {
     use crate::ty::TyExpressionVariant::*;
     match &expr.expression {
         Literal(_)
@@ -461,8 +492,8 @@ fn effects_of_expression(expr: &ty::TyExpression) -> HashSet<Effect> {
         | Continue
         | AbiName(_) => HashSet::new(),
         // this type of assignment only mutates local variables and not storage
-        Reassignment(reassgn) => effects_of_expression(&reassgn.rhs),
-        StorageAccess(_) => match look_up_type_id(expr.return_type) {
+        Reassignment(reassgn) => effects_of_expression(type_engine, &reassgn.rhs),
+        StorageAccess(_) => match type_engine.look_up_type_id(expr.return_type) {
             // accessing a storage map's method (or a storage vector's method),
             // which is represented using a struct with empty fields
             // does not result in a storage read
@@ -476,7 +507,7 @@ fn effects_of_expression(expr: &ty::TyExpression) -> HashSet<Effect> {
         },
         StorageReassignment(storage_reassign) => {
             let mut effs = HashSet::from([Effect::StorageWrite]);
-            effs.extend(effects_of_expression(&storage_reassign.rhs));
+            effs.extend(effects_of_expression(type_engine, &storage_reassign.rhs));
             effs
         }
         LazyOperator { lhs, rhs, .. }
@@ -484,23 +515,25 @@ fn effects_of_expression(expr: &ty::TyExpression) -> HashSet<Effect> {
             prefix: lhs,
             index: rhs,
         } => {
-            let mut effs = effects_of_expression(lhs);
-            let rhs_effs = effects_of_expression(rhs);
+            let mut effs = effects_of_expression(type_engine, lhs);
+            let rhs_effs = effects_of_expression(type_engine, rhs);
             effs.extend(rhs_effs);
             effs
         }
-        Tuple { fields: exprs } | Array { contents: exprs } => effects_of_expressions(exprs),
-        StructExpression { fields, .. } => effects_of_struct_expressions(fields),
-        CodeBlock(codeblock) => effects_of_codeblock(codeblock),
+        Tuple { fields: exprs } | Array { contents: exprs } => {
+            effects_of_expressions(type_engine, exprs)
+        }
+        StructExpression { fields, .. } => effects_of_struct_expressions(type_engine, fields),
+        CodeBlock(codeblock) => effects_of_codeblock(type_engine, codeblock),
         IfExp {
             condition,
             then,
             r#else,
         } => {
-            let mut effs = effects_of_expression(condition);
-            effs.extend(effects_of_expression(then));
+            let mut effs = effects_of_expression(type_engine, condition);
+            effs.extend(effects_of_expression(type_engine, then));
             let else_effs = match r#else {
-                Some(expr) => effects_of_expression(expr),
+                Some(expr) => effects_of_expression(type_engine, expr),
                 None => HashSet::new(),
             };
             effs.extend(else_effs);
@@ -510,18 +543,18 @@ fn effects_of_expression(expr: &ty::TyExpression) -> HashSet<Effect> {
         | TupleElemAccess { prefix: expr, .. }
         | EnumTag { exp: expr }
         | UnsafeDowncast { exp: expr, .. }
-        | Return(expr) => effects_of_expression(expr),
+        | Return(expr) => effects_of_expression(type_engine, expr),
         EnumInstantiation { contents, .. } => match contents {
-            Some(expr) => effects_of_expression(expr),
+            Some(expr) => effects_of_expression(type_engine, expr),
             None => HashSet::new(),
         },
-        AbiCast { address, .. } => effects_of_expression(address),
-        IntrinsicFunction(intr_fn) => effects_of_expressions(&intr_fn.arguments)
+        AbiCast { address, .. } => effects_of_expression(type_engine, address),
+        IntrinsicFunction(intr_fn) => effects_of_expressions(type_engine, &intr_fn.arguments)
             .union(&effects_of_intrinsic(&intr_fn.kind))
             .cloned()
             .collect(),
-        WhileLoop { condition, body } => effects_of_expression(condition)
-            .union(&effects_of_codeblock(body))
+        WhileLoop { condition, body } => effects_of_expression(type_engine, condition)
+            .union(&effects_of_codeblock(type_engine, body))
             .cloned()
             .collect(),
         FunctionApplication {
@@ -534,8 +567,9 @@ fn effects_of_expression(expr: &ty::TyExpression) -> HashSet<Effect> {
             let fn_body = de_get_function(function_decl_id.clone(), &expr.span)
                 .unwrap()
                 .body;
-            let mut effs = effects_of_codeblock(&fn_body);
-            let args_effs = map_hashsets_union(arguments, |e| effects_of_expression(&e.1));
+            let mut effs = effects_of_codeblock(type_engine, &fn_body);
+            let args_effs =
+                map_hashsets_union(arguments, |e| effects_of_expression(type_engine, &e.1));
             effs.extend(args_effs);
             if selector.is_some() {
                 // external contract call (a.k.a. interaction)
@@ -548,7 +582,7 @@ fn effects_of_expression(expr: &ty::TyExpression) -> HashSet<Effect> {
             body,
             whole_block_span: _,
             ..
-        } => effects_of_register_initializers(registers)
+        } => effects_of_register_initializers(type_engine, registers)
             .union(&effects_of_asm_ops(body))
             .cloned()
             .collect(),
@@ -592,16 +626,23 @@ where
         .fold(HashSet::new(), |set, e| set_union(to_set(e), set))
 }
 
-fn effects_of_codeblock(codeblock: &ty::TyCodeBlock) -> HashSet<Effect> {
-    map_hashsets_union(&codeblock.contents, effects_of_codeblock_entry)
+fn effects_of_codeblock(type_engine: &TypeEngine, codeblock: &ty::TyCodeBlock) -> HashSet<Effect> {
+    map_hashsets_union(&codeblock.contents, |entry| {
+        effects_of_codeblock_entry(type_engine, entry)
+    })
 }
 
-fn effects_of_expressions(exprs: &[ty::TyExpression]) -> HashSet<Effect> {
-    map_hashsets_union(exprs, effects_of_expression)
+fn effects_of_expressions(type_engine: &TypeEngine, exprs: &[ty::TyExpression]) -> HashSet<Effect> {
+    map_hashsets_union(exprs, |e| effects_of_expression(type_engine, e))
 }
 
-fn effects_of_struct_expressions(struct_exprs: &[ty::TyStructExpressionField]) -> HashSet<Effect> {
-    map_hashsets_union(struct_exprs, |se| effects_of_expression(&se.value))
+fn effects_of_struct_expressions(
+    type_engine: &TypeEngine,
+    struct_exprs: &[ty::TyStructExpressionField],
+) -> HashSet<Effect> {
+    map_hashsets_union(struct_exprs, |se| {
+        effects_of_expression(type_engine, &se.value)
+    })
 }
 
 fn effects_of_asm_ops(asm_ops: &[AsmOp]) -> HashSet<Effect> {
@@ -609,12 +650,13 @@ fn effects_of_asm_ops(asm_ops: &[AsmOp]) -> HashSet<Effect> {
 }
 
 fn effects_of_register_initializers(
+    type_engine: &TypeEngine,
     initializers: &[ty::TyAsmRegisterDeclaration],
 ) -> HashSet<Effect> {
     map_hashsets_union(initializers, |asm_reg_decl| {
         asm_reg_decl
             .initializer
             .as_ref()
-            .map_or(HashSet::new(), effects_of_expression)
+            .map_or(HashSet::new(), |e| effects_of_expression(type_engine, e))
     })
 }
