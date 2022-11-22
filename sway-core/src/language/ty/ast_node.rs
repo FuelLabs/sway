@@ -1,6 +1,5 @@
-use std::fmt;
+use std::fmt::{self, Debug};
 
-use derivative::Derivative;
 use sway_types::{Ident, Span};
 
 use crate::{
@@ -15,59 +14,75 @@ pub trait GetDeclIdent {
     fn get_decl_ident(&self) -> Option<Ident>;
 }
 
-#[derive(Clone, Debug, Eq, Derivative)]
-#[derivative(PartialEq)]
+#[derive(Clone, Debug)]
 pub struct TyAstNode {
     pub content: TyAstNodeContent,
-    #[derivative(PartialEq = "ignore")]
     pub(crate) span: Span,
 }
 
-impl fmt::Display for TyAstNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl EqWithTypeEngine for TyAstNode {}
+impl PartialEqWithTypeEngine for TyAstNode {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        self.content.eq(&rhs.content, type_engine)
+    }
+}
+
+impl DisplayWithTypeEngine for TyAstNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         use TyAstNodeContent::*;
-        let text = match &self.content {
-            Declaration(ref typed_decl) => typed_decl.to_string(),
-            Expression(exp) => exp.to_string(),
-            ImplicitReturnExpression(exp) => format!("return {}", exp),
-            SideEffect => "".into(),
-        };
-        f.write_str(&text)
+        match &self.content {
+            Declaration(typed_decl) => DisplayWithTypeEngine::fmt(typed_decl, f, type_engine),
+            Expression(exp) => DisplayWithTypeEngine::fmt(exp, f, type_engine),
+            ImplicitReturnExpression(exp) => write!(f, "return {}", type_engine.help_out(exp)),
+            SideEffect => f.write_str(""),
+        }
     }
 }
 
 impl CopyTypes for TyAstNode {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
         match self.content {
-            TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => exp.copy_types(type_mapping),
-            TyAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
-            TyAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
+            TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
+                exp.copy_types(type_mapping, type_engine)
+            }
+            TyAstNodeContent::Declaration(ref mut decl) => {
+                decl.copy_types(type_mapping, type_engine)
+            }
+            TyAstNodeContent::Expression(ref mut expr) => {
+                expr.copy_types(type_mapping, type_engine)
+            }
             TyAstNodeContent::SideEffect => (),
         }
     }
 }
 
 impl ReplaceSelfType for TyAstNode {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.replace_self_type(self_type)
+                exp.replace_self_type(type_engine, self_type)
             }
-            TyAstNodeContent::Declaration(ref mut decl) => decl.replace_self_type(self_type),
-            TyAstNodeContent::Expression(ref mut expr) => expr.replace_self_type(self_type),
+            TyAstNodeContent::Declaration(ref mut decl) => {
+                decl.replace_self_type(type_engine, self_type)
+            }
+            TyAstNodeContent::Expression(ref mut expr) => {
+                expr.replace_self_type(type_engine, self_type)
+            }
             TyAstNodeContent::SideEffect => (),
         }
     }
 }
 
 impl ReplaceDecls for TyAstNode {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, type_engine: &TypeEngine) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.replace_decls(decl_mapping)
+                exp.replace_decls(decl_mapping, type_engine)
             }
             TyAstNodeContent::Declaration(_) => {}
-            TyAstNodeContent::Expression(ref mut expr) => expr.replace_decls(decl_mapping),
+            TyAstNodeContent::Expression(ref mut expr) => {
+                expr.replace_decls(decl_mapping, type_engine)
+            }
             TyAstNodeContent::SideEffect => (),
         }
     }
@@ -165,28 +180,43 @@ impl TyAstNode {
         }
     }
 
-    pub(crate) fn type_info(&self) -> TypeInfo {
+    pub(crate) fn type_info(&self, type_engine: &TypeEngine) -> TypeInfo {
         // return statement should be ()
         match &self.content {
             TyAstNodeContent::Declaration(_) => TypeInfo::Tuple(Vec::new()),
             TyAstNodeContent::Expression(TyExpression { return_type, .. }) => {
-                look_up_type_id(*return_type)
+                type_engine.look_up_type_id(*return_type)
             }
             TyAstNodeContent::ImplicitReturnExpression(TyExpression { return_type, .. }) => {
-                look_up_type_id(*return_type)
+                type_engine.look_up_type_id(*return_type)
             }
             TyAstNodeContent::SideEffect => TypeInfo::Tuple(Vec::new()),
         }
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum TyAstNodeContent {
     Declaration(TyDeclaration),
     Expression(TyExpression),
     ImplicitReturnExpression(TyExpression),
     // a no-op node used for something that just issues a side effect, like an import statement.
     SideEffect,
+}
+
+impl EqWithTypeEngine for TyAstNodeContent {}
+impl PartialEqWithTypeEngine for TyAstNodeContent {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        match (self, rhs) {
+            (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, type_engine),
+            (Self::Expression(x), Self::Expression(y)) => x.eq(y, type_engine),
+            (Self::ImplicitReturnExpression(x), Self::ImplicitReturnExpression(y)) => {
+                x.eq(y, type_engine)
+            }
+            (Self::SideEffect, Self::SideEffect) => true,
+            _ => false,
+        }
+    }
 }
 
 impl CollectTypesMetadata for TyAstNodeContent {

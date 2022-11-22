@@ -18,6 +18,8 @@ pub(crate) fn instantiate_function_application(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let type_engine = ctx.type_engine;
+
     // 'purity' is that of the callee, 'opts.purity' of the caller.
     if !ctx.purity().can_call(function_decl.purity) {
         errors.push(CompileError::StorageAccessMismatch {
@@ -47,15 +49,15 @@ pub(crate) fn instantiate_function_application(
                     not match the declared type of the parameter in the function \
                     declaration.",
                 )
-                .with_type_annotation(insert_type(TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
             let exp = check!(
                 ty::TyExpression::type_check(ctx, arg.clone()),
-                ty::TyExpression::error(arg.span()),
+                ty::TyExpression::error(arg.span(), type_engine),
                 warnings,
                 errors
             );
             append!(
-                unify_right(
+                type_engine.unify_right(
                     exp.return_type,
                     param.type_id,
                     &exp.span,
@@ -91,7 +93,7 @@ pub(crate) fn instantiate_function_application(
         warnings,
         errors
     );
-    function_decl.replace_decls(&decl_mapping);
+    function_decl.replace_decls(&decl_mapping, type_engine);
     let return_type = function_decl.return_type;
     let span = function_decl.span.clone();
     let new_decl_id = de_insert_function(function_decl);

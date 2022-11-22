@@ -14,7 +14,8 @@ use crate::{
     },
     language::{ty, *},
     metadata::MetadataManager,
-    type_system::{look_up_type_id, to_typeinfo, LogId, TypeId, TypeInfo},
+    type_system::{LogId, TypeId, TypeInfo},
+    PartialEqWithTypeEngine, TypeEngine,
 };
 use declaration_engine::de_get_function;
 use sway_ast::intrinsics::Intrinsic;
@@ -29,7 +30,8 @@ use sway_types::{
 
 use std::collections::HashMap;
 
-pub(crate) struct FnCompiler {
+pub(crate) struct FnCompiler<'te> {
+    type_engine: &'te TypeEngine,
     module: Module,
     pub(super) function: Function,
     pub(super) current_block: Block,
@@ -43,8 +45,9 @@ pub(crate) struct FnCompiler {
     logged_types_map: HashMap<TypeId, LogId>,
 }
 
-impl FnCompiler {
+impl<'te> FnCompiler<'te> {
     pub(super) fn new(
+        type_engine: &'te TypeEngine,
         context: &mut Context,
         module: Module,
         function: Function,
@@ -57,6 +60,7 @@ impl FnCompiler {
                 .map(|(name, _value)| name.clone()),
         );
         FnCompiler {
+            type_engine,
             module,
             function,
             current_block: function.get_entry_block(context),
@@ -153,7 +157,7 @@ impl FnCompiler {
                 }
                 ty::TyDeclaration::EnumDeclaration(decl_id) => {
                     let ted = declaration_engine::de_get_enum(decl_id, &ast_node.span)?;
-                    create_enum_aggregate(context, ted.variants).map(|_| ())?;
+                    create_enum_aggregate(self.type_engine, context, ted.variants).map(|_| ())?;
                     Ok(None)
                 }
                 ty::TyDeclaration::ImplTrait(_) => {
@@ -444,7 +448,12 @@ impl FnCompiler {
             Intrinsic::SizeOfVal => {
                 let exp = arguments[0].clone();
                 // Compile the expression in case of side-effects but ignore its value.
-                let ir_type = convert_resolved_typeid(context, &exp.return_type, &exp.span)?;
+                let ir_type = convert_resolved_typeid(
+                    self.type_engine,
+                    context,
+                    &exp.return_type,
+                    &exp.span,
+                )?;
                 self.compile_expression(context, md_mgr, exp)?;
                 Ok(Constant::get_uint(
                     context,
@@ -454,7 +463,8 @@ impl FnCompiler {
             }
             Intrinsic::SizeOfType => {
                 let targ = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(context, &targ.type_id, &targ.span)?;
+                let ir_type =
+                    convert_resolved_typeid(self.type_engine, context, &targ.type_id, &targ.span)?;
                 Ok(Constant::get_uint(
                     context,
                     64,
@@ -463,7 +473,8 @@ impl FnCompiler {
             }
             Intrinsic::IsReferenceType => {
                 let targ = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(context, &targ.type_id, &targ.span)?;
+                let ir_type =
+                    convert_resolved_typeid(self.type_engine, context, &targ.type_id, &targ.span)?;
                 Ok(Constant::get_bool(context, !ir_type.is_copy_type()))
             }
             Intrinsic::GetStorageKey => {
@@ -491,6 +502,7 @@ impl FnCompiler {
                 // The tx field ID has to be a compile-time constant because it becomes an
                 // immediate
                 let tx_field_id_constant = compile_constant_expression_to_constant(
+                    self.type_engine,
                     context,
                     md_mgr,
                     self.module,
@@ -511,8 +523,12 @@ impl FnCompiler {
 
                 // Get the target type from the type argument provided
                 let target_type = type_arguments[0].clone();
-                let target_ir_type =
-                    convert_resolved_typeid(context, &target_type.type_id, &target_type.span)?;
+                let target_ir_type = convert_resolved_typeid(
+                    self.type_engine,
+                    context,
+                    &target_type.type_id,
+                    &target_type.span,
+                )?;
 
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
@@ -561,7 +577,7 @@ impl FnCompiler {
                 let val_exp = arguments[1].clone();
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = to_typeinfo(val_exp.return_type, &span)?;
+                let val_ty = self.type_engine.to_typeinfo(val_exp.return_type, &span)?;
                 if !val_ty.is_copy_type() {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
@@ -584,8 +600,8 @@ impl FnCompiler {
                 let val_exp = arguments[1].clone();
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = to_typeinfo(val_exp.return_type, &span)?;
-                if val_ty != TypeInfo::RawUntypedPtr {
+                let val_ty = self.type_engine.to_typeinfo(val_exp.return_type, &span)?;
+                if !val_ty.eq(&TypeInfo::RawUntypedPtr, self.type_engine) {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
@@ -685,7 +701,8 @@ impl FnCompiler {
                 };
 
                 let len = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(context, &len.type_id, &len.span)?;
+                let ir_type =
+                    convert_resolved_typeid(self.type_engine, context, &len.type_id, &len.span)?;
                 let len_value =
                     Constant::get_uint(context, 64, ir_type_size_in_bytes(context, &ir_type));
 
@@ -1026,7 +1043,7 @@ impl FnCompiler {
                 .add_metadatum(context, span_md_idx),
         };
 
-        let return_type = convert_resolved_typeid_no_span(context, &return_type)?;
+        let return_type = convert_resolved_typeid_no_span(self.type_engine, context, &return_type)?;
 
         // Insert the contract_call instruction
         Ok(self
@@ -1090,6 +1107,7 @@ impl FnCompiler {
                 };
                 let is_entry = false;
                 let new_func = compile_function(
+                    self.type_engine,
                     context,
                     md_mgr,
                     self.module,
@@ -1241,7 +1259,12 @@ impl FnCompiler {
         variant: ty::TyEnumVariant,
     ) -> Result<Value, CompileError> {
         // retrieve the aggregate info for the enum
-        let enum_aggregate = match convert_resolved_typeid(context, &exp.return_type, &exp.span)? {
+        let enum_aggregate = match convert_resolved_typeid(
+            self.type_engine,
+            context,
+            &exp.return_type,
+            &exp.span,
+        )? {
             Type::Struct(aggregate) => aggregate,
             _ => {
                 return Err(CompileError::Internal(
@@ -1267,7 +1290,12 @@ impl FnCompiler {
         exp: Box<ty::TyExpression>,
     ) -> Result<Value, CompileError> {
         let tag_span_md_idx = md_mgr.span_to_md(context, &exp.span);
-        let enum_aggregate = match convert_resolved_typeid(context, &exp.return_type, &exp.span)? {
+        let enum_aggregate = match convert_resolved_typeid(
+            self.type_engine,
+            context,
+            &exp.return_type,
+            &exp.span,
+        )? {
             Type::Struct(aggregate) => aggregate,
             _ => {
                 return Err(CompileError::Internal("Expected enum type here.", exp.span));
@@ -1376,7 +1404,10 @@ impl FnCompiler {
                 .add_metadatum(context, span_md_idx);
             let fn_param = self.current_fn_param.as_ref();
             let is_ref_primitive = fn_param.is_some()
-                && look_up_type_id(fn_param.unwrap().type_id).is_copy_type()
+                && self
+                    .type_engine
+                    .look_up_type_id(fn_param.unwrap().type_id)
+                    .is_copy_type()
                 && fn_param.unwrap().is_reference
                 && fn_param.unwrap().is_mutable;
             Ok(if ptr.is_aggregate_ptr(context) || is_ref_primitive {
@@ -1424,16 +1455,20 @@ impl FnCompiler {
         // Nothing to do for an abi cast declarations. The address specified in them is already
         // provided in each contract call node in the AST.
         if matches!(
-            &to_typeinfo(body.return_type, &body.span).map_err(|ty_err| {
-                CompileError::InternalOwned(format!("{:?}", ty_err), body.span.clone())
-            })?,
+            &self
+                .type_engine
+                .to_typeinfo(body.return_type, &body.span)
+                .map_err(|ty_err| {
+                    CompileError::InternalOwned(format!("{:?}", ty_err), body.span.clone())
+                })?,
             TypeInfo::ContractCaller { .. }
         ) {
             return Ok(None);
         }
 
         // Grab these before we move body into compilation.
-        let return_type = convert_resolved_typeid(context, &body.return_type, &body.span)?;
+        let return_type =
+            convert_resolved_typeid(self.type_engine, context, &body.return_type, &body.span)?;
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
@@ -1480,10 +1515,18 @@ impl FnCompiler {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         let ty::TyConstantDeclaration { name, value, .. } = ast_const_decl;
-        let const_expr_val =
-            compile_constant_expression(context, md_mgr, self.module, None, Some(self), &value)?;
+        let const_expr_val = compile_constant_expression(
+            self.type_engine,
+            context,
+            md_mgr,
+            self.module,
+            None,
+            Some(self),
+            &value,
+        )?;
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
-        let return_type = convert_resolved_typeid(context, &value.return_type, &value.span)?;
+        let return_type =
+            convert_resolved_typeid(self.type_engine, context, &value.return_type, &value.span)?;
 
         // We compile consts the same as vars are compiled. This is because ASM generation
         // cannot handle
@@ -1564,6 +1607,7 @@ impl FnCompiler {
             // field indices.  The struct type from the previous iteration is used to determine the
             // field type for the current iteration.
             let field_idcs = get_indices_for_struct_access(
+                self.type_engine,
                 ast_reassignment.lhs_type,
                 &ast_reassignment.lhs_indices,
             )?;
@@ -1610,6 +1654,7 @@ impl FnCompiler {
 
         // Get the type of the access which can be a subfield
         let access_type = convert_resolved_typeid_no_span(
+            self.type_engine,
             context,
             &fields.last().expect("guaranteed by grammar").type_id,
         )?;
@@ -1617,7 +1662,7 @@ impl FnCompiler {
         // Get the list of indices used to access the storage field. This will be empty
         // if the storage field type is not a struct.
         let base_type = fields[0].type_id;
-        let field_idcs = get_indices_for_struct_access(base_type, &fields[1..])?;
+        let field_idcs = get_indices_for_struct_access(self.type_engine, base_type, &fields[1..])?;
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to store each primitive type in the storage field in its own storage slot.
@@ -1646,7 +1691,7 @@ impl FnCompiler {
             // we'll just use Unit.
             Type::Unit
         } else {
-            convert_resolved_typeid_no_span(context, &contents[0].return_type)?
+            convert_resolved_typeid_no_span(self.type_engine, context, &contents[0].return_type)?
         };
         let aggregate = Aggregate::new_array(context, elem_type, contents.len() as u64);
 
@@ -1725,6 +1770,7 @@ impl FnCompiler {
             value: ConstantValue::Uint(constant_value),
             ..
         }) = compile_constant_expression_to_constant(
+            self.type_engine,
             context,
             md_mgr,
             self.module,
@@ -1782,7 +1828,7 @@ impl FnCompiler {
         }
 
         // Start with a temporary empty struct and then fill in the values.
-        let aggregate = get_aggregate_for_types(context, &field_types)?;
+        let aggregate = get_aggregate_for_types(self.type_engine, context, &field_types)?;
         let temp_name = self.lexical_map.insert_anon();
         let struct_ptr = self
             .function
@@ -1841,7 +1887,11 @@ impl FnCompiler {
         let field_kind = ty::ProjectionKind::StructField {
             name: ast_field.name.clone(),
         };
-        let field_idx = match get_struct_name_field_index_and_type(struct_type_id, field_kind) {
+        let field_idx = match get_struct_name_field_index_and_type(
+            self.type_engine,
+            struct_type_id,
+            field_kind,
+        ) {
             None => Err(CompileError::Internal(
                 "Unknown struct in field expression.",
                 ast_field.span,
@@ -1880,7 +1930,7 @@ impl FnCompiler {
         // we could potentially use the wrong aggregate with the same name, different module...
         // dunno.
         let span_md_idx = md_mgr.span_to_md(context, &enum_decl.span);
-        let aggregate = create_enum_aggregate(context, enum_decl.variants)?;
+        let aggregate = create_enum_aggregate(self.type_engine, context, enum_decl.variants)?;
         let tag_value =
             Constant::get_uint(context, 64, tag as u64).add_metadatum(context, span_md_idx);
 
@@ -1942,7 +1992,11 @@ impl FnCompiler {
             let mut init_values = Vec::with_capacity(fields.len());
             let mut init_types = Vec::with_capacity(fields.len());
             for field_expr in fields {
-                let init_type = convert_resolved_typeid_no_span(context, &field_expr.return_type)?;
+                let init_type = convert_resolved_typeid_no_span(
+                    self.type_engine,
+                    context,
+                    &field_expr.return_type,
+                )?;
                 let init_value = self.compile_expression(context, md_mgr, field_expr)?;
                 if init_value.is_diverging(context) {
                     return Ok(init_value);
@@ -1988,7 +2042,9 @@ impl FnCompiler {
         span: Span,
     ) -> Result<Value, CompileError> {
         let tuple_value = self.compile_expression(context, md_mgr, tuple)?;
-        if let Type::Struct(aggregate) = convert_resolved_typeid(context, &tuple_type, &span)? {
+        if let Type::Struct(aggregate) =
+            convert_resolved_typeid(self.type_engine, context, &tuple_type, &span)?
+        {
             let span_md_idx = md_mgr.span_to_md(context, &span);
             Ok(self
                 .current_block
@@ -2013,6 +2069,7 @@ impl FnCompiler {
     ) -> Result<Value, CompileError> {
         // Get the type of the access which can be a subfield
         let access_type = convert_resolved_typeid_no_span(
+            self.type_engine,
             context,
             &fields.last().expect("guaranteed by grammar").type_id,
         )?;
@@ -2021,7 +2078,7 @@ impl FnCompiler {
         // if the storage field type is not a struct.
         // FIXME: shouldn't have to extract the first field like this.
         let base_type = fields[0].type_id;
-        let field_idcs = get_indices_for_struct_access(base_type, &fields[1..])?;
+        let field_idcs = get_indices_for_struct_access(self.type_engine, base_type, &fields[1..])?;
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to load each primitive type in the storage field in its own storage slot.
@@ -2076,7 +2133,7 @@ impl FnCompiler {
         let returns = returns
             .as_ref()
             .map(|(_, asm_reg_span)| Ident::new(asm_reg_span.clone()));
-        let return_type = convert_resolved_typeid_no_span(context, &return_type)?;
+        let return_type = convert_resolved_typeid_no_span(self.type_engine, context, &return_type)?;
         Ok(self
             .current_block
             .ins(context)
