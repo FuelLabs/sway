@@ -253,6 +253,12 @@ pub enum CompileError {
         span: Span,
         actually: String,
     },
+    #[error("\"{name}\" is a {actually}, which is not an indexable expression.")]
+    NotIndexable {
+        name: String,
+        span: Span,
+        actually: String,
+    },
     #[error("\"{name}\" is a {actually}, not an enum.")]
     NotAnEnum {
         name: String,
@@ -744,6 +750,7 @@ impl Spanned for CompileError {
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
+            NotIndexable { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
             FieldNotFound { field_name, .. } => field_name.span(),
             SymbolNotFound { name, .. } => name.span(),
