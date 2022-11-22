@@ -4,8 +4,8 @@ use fuel_vm::{
 use fuels::{
     prelude::*,
     tx::{
-        field::Script as ScriptField, Bytes32, ConsensusParameters, Contract as TxContract,
-        ContractId, Input as TxInput, Output as TxOutput, TxPointer, UniqueIdentifier, UtxoId,
+        field::Witnesses, Bytes32, ConsensusParameters, Contract as TxContract, ContractId,
+        Input as TxInput, Output as TxOutput, TxPointer, UniqueIdentifier, UtxoId,
     },
 };
 use std::str::FromStr;
@@ -293,15 +293,15 @@ mod tx {
             .await
             .unwrap();
 
-        // let mut witness_first = Bits256(witnesses[0].clone().as_ref());
         let mut witness_first = witnesses[0].clone().into_inner();
         let witness_second = witness_first.split_off(32);
 
         let first_witness_array = witness_first.try_into().unwrap();
         let second_witness_array = witness_second.try_into().unwrap();
+        let expected_b512 =
+            B512::from((Bits256(first_witness_array), Bits256(second_witness_array)));
 
-        assert_eq!(result.value.bytes[0], Bits256(first_witness_array));
-        assert_eq!(result.value.bytes[1], Bits256(second_witness_array));
+        assert_eq!(result.value, expected_b512);
     }
 
     #[tokio::test]
