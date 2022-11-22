@@ -2,6 +2,11 @@
 //! This includes InputCoins, InputMessages and InputContracts.
 library inputs;
 
+use ::address::Address;
+use ::assert::assert;
+use ::option::Option;
+use ::revert::revert;
+use ::contract_id::ContractId;
 use ::constants::BASE_ASSET_ID;
 use ::tx::{
     GTF_CREATE_INPUT_AT_INDEX,
