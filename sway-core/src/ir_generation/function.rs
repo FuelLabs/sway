@@ -1521,7 +1521,7 @@ impl<'te> FnCompiler<'te> {
             md_mgr,
             self.module,
             None,
-            None,
+            Some(self),
             &value,
         )?;
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
