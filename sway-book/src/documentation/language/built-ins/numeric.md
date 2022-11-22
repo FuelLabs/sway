@@ -22,7 +22,7 @@ Sway does not natively support signed integers however there is nothing stopping
 
 ## Unsigned Integers
 
-An unsigned integer is a whole number which can take the value of zero and any positive number, but cannot be negative. This allows for one more _bit_ of values to be used for the positive numbers and thus the positive range is significantly larger than for signed integers.
+An unsigned integer is a whole number which can take the value of zero or any positive number, but cannot be negative. This allows for one more _bit_ of values to be used for the positive numbers and thus the positive range is significantly larger than for signed integers.
 
 An example of available values is:
 

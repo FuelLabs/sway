@@ -1,4 +1,4 @@
-# looping
+# Looping
 
 A loop is a type of operation which allows us to perform computation a certain number of times. For example, given a collection of items we could call a method on the first item and iterate until the method has been called on each item.
 

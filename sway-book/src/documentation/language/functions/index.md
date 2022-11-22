@@ -8,12 +8,12 @@ The distinction between a function, method and associated function is as follows
 - A [method](method.md) is a function that is associated with an object and it uses `self` as the first parameter
 - An [associated function](associated-function.md) is a method but without the `self` parameter
 
-## Function Decleration
+## Function Declaration
 
-A function decleration consists of a few components
+A function declaration consists of a few components
 
 - The `fn` keyword
-- A unqiue name for the function
+- A unique name for the function
 - Comma separated optional parameters, and their types, inside `()`
 - An optional return type
 

@@ -5,13 +5,13 @@ A Sway program is a file ending with the extension `.sw`, e.g. `main.sw`, and th
 A Sway program can be one of four types:
 
 - [contract](contract.md)
-  - Primarily used for protocols or systems that operate within a fixed set of rules e.g. staking contracts, decentralized exchanges
+  - Primarily used for protocols or systems that operate within a fixed set of rules e.g. staking contracts, decentralized exchanges, etc.
 - [library](libraries/index.md)
   - Reusable code for handling common operations
 - [script](script.md)
-  - Used for complex, multi-step, on-chain interactions that won't persist e.g. using a decentralized exchange to create a leveraged position (borrow, swap, re-collateralize, borrow)
+  - Used for complex, multi-step, on-chain interactions that won't persist, such as using a decentralized exchange to create a leveraged position (borrow, swap, re-collateralize, borrow)
 - [predicate](predicate.md)
-  - A set of preconditions to the construction of transaction, the result of which must be a boolean value of `true` in order for the transaction to be considered valid
+  - A set of preconditions to the construction of a transaction, the result of which must be a Boolean value of `true` in order for the transaction to be considered valid
 
 ## Sway Project Types
 
