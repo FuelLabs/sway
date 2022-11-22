@@ -463,7 +463,15 @@ fn effects_of_expression(expr: &ty::TyExpression) -> HashSet<Effect> {
         // this type of assignment only mutates local variables and not storage
         Reassignment(reassgn) => effects_of_expression(&reassgn.rhs),
         StorageAccess(_) => match look_up_type_id(expr.return_type) {
-            crate::TypeInfo::Struct { .. } => HashSet::new(),
+            // accessing a storage map's method (or a storage vector's method),
+            // which is represented using a struct with empty fields
+            // does not result in a storage read
+            crate::TypeInfo::Struct { fields, .. } if fields.is_empty() => HashSet::new(),
+            // if it's an empty enum then it cannot be constructed and hence cannot be read
+            // adding this check here just to be on the safe side
+            crate::TypeInfo::Enum { variant_types, .. } if variant_types.is_empty() => {
+                HashSet::new()
+            }
             _ => HashSet::from([Effect::StorageRead]),
         },
         StorageReassignment(storage_reassign) => {

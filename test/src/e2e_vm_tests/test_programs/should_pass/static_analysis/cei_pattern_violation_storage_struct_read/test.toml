@@ -1,0 +1,3 @@
+category = "compile"
+
+# check: $()Storage read after external contract interaction in function or method "withdraw". Consider making all storage reads before calling another contract
