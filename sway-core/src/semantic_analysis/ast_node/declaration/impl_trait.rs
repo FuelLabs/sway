@@ -29,6 +29,8 @@ impl ty::TyImplTrait {
             block_span,
         } = impl_trait;
 
+        let type_engine = ctx.type_engine;
+
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
         let mut ctx = ctx.by_ref().scoped(&mut impl_namespace);
@@ -63,7 +65,7 @@ impl ty::TyImplTrait {
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
             ctx.resolve_type_without_self(
-                insert_type(type_implementing_for),
+                type_engine.insert_type(type_implementing_for),
                 &type_implementing_for_span,
                 None
             ),
@@ -74,7 +76,8 @@ impl ty::TyImplTrait {
 
         // check to see if this type is supported in impl blocks
         check!(
-            look_up_type_id(implementing_for_type_id)
+            type_engine
+                .look_up_type_id(implementing_for_type_id)
                 .expect_is_supported_in_impl_blocks_self(&type_implementing_for_span),
             return err(warnings, errors),
             warnings,
@@ -84,6 +87,7 @@ impl ty::TyImplTrait {
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
+                type_engine,
                 &new_impl_type_parameters,
                 &trait_type_arguments,
                 implementing_for_type_id,
@@ -98,7 +102,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for_type_id)
             .with_help_text("")
-            .with_type_annotation(insert_type(TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
 
         let impl_trait = match ctx
             .namespace
@@ -168,10 +172,13 @@ impl ty::TyImplTrait {
                     errors
                 );
 
-                if look_up_type_id(implementing_for_type_id) != TypeInfo::Contract {
+                if !type_engine
+                    .look_up_type_id(implementing_for_type_id)
+                    .eq(&TypeInfo::Contract, type_engine)
+                {
                     errors.push(CompileError::ImplAbiForNonContract {
                         span: type_implementing_for_span.clone(),
-                        ty: implementing_for_type_id.to_string(),
+                        ty: type_engine.help_out(implementing_for_type_id).to_string(),
                     });
                 }
 
@@ -220,6 +227,7 @@ impl ty::TyImplTrait {
     // impl_typ can only be a storage type.
     // This is noted down in the type engine.
     fn gather_storage_only_types(
+        type_engine: &TypeEngine,
         impl_typ: TypeId,
         methods: &[ty::TyFunctionDeclaration],
         access_span: &Span,
@@ -386,7 +394,7 @@ impl ty::TyImplTrait {
             let contains_get_storage_index =
                 codeblock_contains_get_storage_index(&method.body, access_span)?;
             if contains_get_storage_index {
-                set_type_as_storage_only(impl_typ);
+                type_engine.set_type_as_storage_only(impl_typ);
                 return Ok(());
             }
         }
@@ -408,6 +416,8 @@ impl ty::TyImplTrait {
             functions,
             block_span,
         } = impl_self;
+
+        let type_engine = ctx.type_engine;
 
         // create the namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
@@ -446,7 +456,7 @@ impl ty::TyImplTrait {
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
             ctx.resolve_type_without_self(
-                insert_type(type_implementing_for),
+                type_engine.insert_type(type_implementing_for),
                 &type_implementing_for_span,
                 None
             ),
@@ -457,7 +467,8 @@ impl ty::TyImplTrait {
 
         // check to see if this type is supported in impl blocks
         check!(
-            look_up_type_id(implementing_for_type_id)
+            type_engine
+                .look_up_type_id(implementing_for_type_id)
                 .expect_is_supported_in_impl_blocks_self(&type_implementing_for_span),
             return err(warnings, errors),
             warnings,
@@ -467,6 +478,7 @@ impl ty::TyImplTrait {
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
+                type_engine,
                 &new_impl_type_parameters,
                 &[],
                 implementing_for_type_id,
@@ -480,7 +492,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for_type_id)
             .with_help_text("")
-            .with_type_annotation(insert_type(TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
 
         // type check the methods inside of the impl block
         let mut methods = vec![];
@@ -498,6 +510,7 @@ impl ty::TyImplTrait {
 
         check!(
             CompileResult::from(Self::gather_storage_only_types(
+                type_engine,
                 implementing_for_type_id,
                 &methods,
                 &type_implementing_for_span,
@@ -544,6 +557,7 @@ fn type_check_trait_implementation(
     let mut errors = vec![];
     let mut warnings = vec![];
 
+    let type_engine = ctx.type_engine;
     let self_type = ctx.self_type();
     let interface_name = || -> InterfaceName {
         if is_contract {
@@ -564,7 +578,8 @@ fn type_check_trait_implementation(
                     .iter()
                     .map(|x| x.into())
                     .collect::<Vec<_>>(),
-                block_span
+                block_span,
+                type_engine,
             ),
         return err(warnings, errors),
         warnings,
@@ -594,6 +609,7 @@ fn type_check_trait_implementation(
             .collect::<Vec<_>>(),
         &trait_name.span(),
         false,
+        type_engine,
     );
 
     // This map keeps track of the remaining functions in the interface surface
@@ -624,7 +640,7 @@ fn type_check_trait_implementation(
         let mut ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(insert_type(TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
 
         // type check the function declaration
         let mut impl_method = check!(
@@ -658,7 +674,7 @@ fn type_check_trait_implementation(
         // replace instances of `TypeInfo::SelfType` with a fresh
         // `TypeInfo::SelfType` to avoid replacing types in the original trait
         // declaration
-        impl_method_signature.replace_self_type(ctx.self_type());
+        impl_method_signature.replace_self_type(type_engine, ctx.self_type());
 
         // ensure this fn decl's parameters and signature lines up with the one
         // in the trait
@@ -699,7 +715,7 @@ fn type_check_trait_implementation(
                 });
             }
 
-            let (new_warnings, new_errors) = unify_right_with_self(
+            let (new_warnings, new_errors) = type_engine.unify_right_with_self(
                 impl_method_param.type_id,
                 impl_method_signature_param.type_id,
                 ctx.self_type(),
@@ -710,8 +726,10 @@ fn type_check_trait_implementation(
                 errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
                     span: impl_method_param.type_span.clone(),
-                    given: impl_method_param.type_id.to_string(),
-                    expected: impl_method_signature_param.type_id.to_string(),
+                    given: type_engine.help_out(impl_method_param.type_id).to_string(),
+                    expected: type_engine
+                        .help_out(impl_method_signature_param.type_id)
+                        .to_string(),
                 });
                 continue;
             }
@@ -739,7 +757,7 @@ fn type_check_trait_implementation(
 
         // unify the return type of the implemented function and the return
         // type of the signature
-        let (new_warnings, new_errors) = unify_right_with_self(
+        let (new_warnings, new_errors) = type_engine.unify_right_with_self(
             impl_method.return_type,
             impl_method_signature.return_type,
             ctx.self_type(),
@@ -750,8 +768,10 @@ fn type_check_trait_implementation(
             errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                 interface_name: interface_name(),
                 span: impl_method.return_type_span.clone(),
-                expected: impl_method_signature.return_type.to_string(),
-                given: impl_method.return_type.to_string(),
+                expected: type_engine
+                    .help_out(impl_method_signature.return_type)
+                    .to_string(),
+                given: type_engine.help_out(impl_method.return_type).to_string(),
             });
             continue;
         }
@@ -770,22 +790,27 @@ fn type_check_trait_implementation(
         //
         // *This will change* when either https://github.com/FuelLabs/sway/issues/1267
         // or https://github.com/FuelLabs/sway/issues/2814 goes in.
-        let unconstrained_type_parameters_in_this_function: HashSet<TypeParameter> = impl_method
-            .unconstrained_type_parameters(impl_type_parameters)
+        let unconstrained_type_parameters_in_this_function: HashSet<
+            WithTypeEngine<'_, TypeParameter>,
+        > = impl_method
+            .unconstrained_type_parameters(type_engine, impl_type_parameters)
             .into_iter()
             .cloned()
+            .map(|x| WithTypeEngine::new(x, type_engine))
             .collect();
-        let unconstrained_type_parameters_in_the_type: HashSet<TypeParameter> = ctx
-            .self_type()
-            .unconstrained_type_parameters(impl_type_parameters)
-            .into_iter()
-            .cloned()
-            .collect::<HashSet<_>>();
+        let unconstrained_type_parameters_in_the_type: HashSet<WithTypeEngine<'_, TypeParameter>> =
+            ctx.self_type()
+                .unconstrained_type_parameters(type_engine, impl_type_parameters)
+                .into_iter()
+                .cloned()
+                .map(|x| WithTypeEngine::new(x, type_engine))
+                .collect::<HashSet<_>>();
         let mut unconstrained_type_parameters_to_be_added =
             unconstrained_type_parameters_in_this_function
                 .difference(&unconstrained_type_parameters_in_the_type)
                 .cloned()
                 .into_iter()
+                .map(|x| x.thing)
                 .collect::<Vec<_>>();
         impl_method
             .type_parameters
@@ -825,9 +850,9 @@ fn type_check_trait_implementation(
             warnings,
             errors
         );
-        method.replace_decls(&decl_mapping);
-        method.copy_types(&type_mapping);
-        method.replace_self_type(ctx.self_type());
+        method.replace_decls(&decl_mapping, type_engine);
+        method.copy_types(&type_mapping, ctx.type_engine);
+        method.replace_self_type(type_engine, ctx.self_type());
         all_method_ids.push(de_insert_function(method).with_parent(decl_id.clone()));
     }
 
@@ -885,6 +910,7 @@ fn type_check_trait_implementation(
 /// }
 /// ```
 fn check_for_unconstrained_type_parameters(
+    type_engine: &TypeEngine,
     type_parameters: &[TypeParameter],
     trait_type_arguments: &[TypeArgument],
     self_type: TypeId,
@@ -894,24 +920,29 @@ fn check_for_unconstrained_type_parameters(
     let mut errors = vec![];
 
     // create a list of defined generics, with the generic and a span
-    let mut defined_generics: HashMap<TypeInfo, Span> = HashMap::from_iter(
+    let mut defined_generics: HashMap<_, _> = HashMap::from_iter(
         type_parameters
             .iter()
-            .map(|x| (look_up_type_id(x.type_id), x.span())),
+            .map(|x| (type_engine.look_up_type_id(x.type_id), x.span()))
+            .map(|(thing, sp)| (WithTypeEngine::new(thing, type_engine), sp)),
     );
 
     // create a list of the generics in use in the impl signature
     let mut generics_in_use = HashSet::new();
     for type_arg in trait_type_arguments.iter() {
         generics_in_use.extend(check!(
-            look_up_type_id(type_arg.type_id).extract_nested_generics(&type_arg.span),
+            type_engine
+                .look_up_type_id(type_arg.type_id)
+                .extract_nested_generics(type_engine, &type_arg.span),
             HashSet::new(),
             warnings,
             errors
         ));
     }
     generics_in_use.extend(check!(
-        look_up_type_id(self_type).extract_nested_generics(self_type_span),
+        type_engine
+            .look_up_type_id(self_type)
+            .extract_nested_generics(type_engine, self_type_span),
         HashSet::new(),
         warnings,
         errors

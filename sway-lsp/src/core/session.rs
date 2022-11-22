@@ -23,7 +23,7 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty,
     },
-    CompileResult,
+    CompileResult, TypeEngine,
 };
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::helpers::get_sway_files;
@@ -48,6 +48,7 @@ pub struct Session {
     pub runnables: DashMap<RunnableType, Runnable>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub sync: SyncWorkspace,
+    pub type_engine: RwLock<TypeEngine>,
 }
 
 impl Session {
@@ -58,10 +59,13 @@ impl Session {
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
             sync: SyncWorkspace::new(),
+            type_engine: <_>::default(),
         }
     }
 
     pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
+        *self.type_engine.write() = <_>::default();
+
         let manifest_dir = PathBuf::from(uri.path());
         // Create a new temp dir that clones the current workspace
         // and store manifest and temp paths
@@ -144,7 +148,9 @@ impl Session {
     /// Return the `Ident` of the declaration of the provided token.
     pub fn declared_token_ident(&self, token: &Token) -> Option<Ident> {
         token.type_def.as_ref().and_then(|type_def| match type_def {
-            TypeDefinition::TypeId(type_id) => utils::token::ident_of_type_id(type_id),
+            TypeDefinition::TypeId(type_id) => {
+                utils::token::ident_of_type_id(&self.type_engine.read(), type_id)
+            }
             TypeDefinition::Ident(ident) => Some(ident.clone()),
         })
     }
@@ -155,7 +161,7 @@ impl Session {
     pub fn declared_token_span(&self, token: &Token) -> Option<Span> {
         token.type_def.as_ref().and_then(|type_def| match type_def {
             TypeDefinition::TypeId(type_id) => {
-                Some(utils::token::ident_of_type_id(type_id)?.span())
+                Some(utils::token::ident_of_type_id(&self.type_engine.read(), type_id)?.span())
             }
             TypeDefinition::Ident(ident) => Some(ident.span()),
         })
@@ -219,7 +225,9 @@ impl Session {
                 .map_err(LanguageServerError::BuildPlanFailed)?;
 
         let mut diagnostics = Vec::new();
-        let results = pkg::check(&plan, true).map_err(LanguageServerError::FailedToCompile)?;
+        let type_engine = &*self.type_engine.read();
+        let results =
+            pkg::check(&plan, true, type_engine).map_err(LanguageServerError::FailedToCompile)?;
         let results_len = results.len();
         for (i, res) in results.into_iter().enumerate() {
             // We can convert these destructured elements to a Vec<Diagnostic> later on.
@@ -245,11 +253,15 @@ impl Session {
             // The final element in the results is the main program.
             if i == results_len - 1 {
                 // First, populate our token_map with un-typed ast nodes.
-                self.parse_ast_to_tokens(parse_program, traverse_parse_tree::traverse_node);
+                self.parse_ast_to_tokens(parse_program, |an, tm| {
+                    traverse_parse_tree::traverse_node(type_engine, an, tm)
+                });
 
                 // Next, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
-                self.parse_ast_to_typed_tokens(typed_program, traverse_typed_tree::traverse_node);
+                self.parse_ast_to_typed_tokens(typed_program, |an, tm| {
+                    traverse_typed_tree::traverse_node(type_engine, an, tm)
+                });
 
                 self.save_parse_program(parse_program.to_owned().clone());
                 self.save_typed_program(typed_program.to_owned().clone());

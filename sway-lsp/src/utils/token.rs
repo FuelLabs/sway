@@ -3,6 +3,7 @@ use sway_core::{
     declaration_engine,
     language::ty,
     type_system::{TypeId, TypeInfo},
+    TypeEngine,
 };
 use sway_types::{ident::Ident, span::Span, Spanned};
 
@@ -42,10 +43,11 @@ pub(crate) fn to_ident_key(ident: &Ident) -> (Ident, Span) {
 
 /// Uses the TypeId to find the associated TypedDeclaration in the TokenMap.
 pub(crate) fn declaration_of_type_id(
+    type_engine: &TypeEngine,
     type_id: &TypeId,
     tokens: &TokenMap,
 ) -> Option<ty::TyDeclaration> {
-    ident_of_type_id(type_id)
+    ident_of_type_id(type_engine, type_id)
         .and_then(|decl_ident| tokens.try_get(&to_ident_key(&decl_ident)).try_unwrap())
         .map(|item| item.value().clone())
         .and_then(|token| token.typed)
@@ -58,10 +60,11 @@ pub(crate) fn declaration_of_type_id(
 /// Returns the TypedStructDeclaration associated with the TypeId if it
 /// exists within the TokenMap.
 pub(crate) fn struct_declaration_of_type_id(
+    type_engine: &TypeEngine,
     type_id: &TypeId,
     tokens: &TokenMap,
 ) -> Option<ty::TyStructDeclaration> {
-    declaration_of_type_id(type_id, tokens).and_then(|decl| match decl {
+    declaration_of_type_id(type_engine, type_id, tokens).and_then(|decl| match decl {
         ty::TyDeclaration::StructDeclaration(ref decl_id) => {
             declaration_engine::de_get_struct(decl_id.clone(), &decl_id.span()).ok()
         }
@@ -70,9 +73,8 @@ pub(crate) fn struct_declaration_of_type_id(
 }
 
 /// Use the TypeId to look up the associated TypeInfo and return the Ident if one is found.
-pub(crate) fn ident_of_type_id(type_id: &TypeId) -> Option<Ident> {
-    let type_info = sway_core::type_system::look_up_type_id(*type_id);
-    match type_info {
+pub(crate) fn ident_of_type_id(type_engine: &TypeEngine, type_id: &TypeId) -> Option<Ident> {
+    match type_engine.look_up_type_id(*type_id) {
         TypeInfo::UnknownGeneric { name, .. }
         | TypeInfo::Enum { name, .. }
         | TypeInfo::Struct { name, .. }
@@ -81,7 +83,10 @@ pub(crate) fn ident_of_type_id(type_id: &TypeId) -> Option<Ident> {
     }
 }
 
-pub(crate) fn type_info_to_symbol_kind(type_info: &TypeInfo) -> SymbolKind {
+pub(crate) fn type_info_to_symbol_kind(
+    type_engine: &TypeEngine,
+    type_info: &TypeInfo,
+) -> SymbolKind {
     match type_info {
         TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::Str(..) | TypeInfo::B256 => {
             SymbolKind::BuiltinType
@@ -90,8 +95,8 @@ pub(crate) fn type_info_to_symbol_kind(type_info: &TypeInfo) -> SymbolKind {
         TypeInfo::Custom { .. } | TypeInfo::Struct { .. } => SymbolKind::Struct,
         TypeInfo::Enum { .. } => SymbolKind::Enum,
         TypeInfo::Array(type_id, ..) => {
-            let type_info = sway_core::type_system::look_up_type_id(*type_id);
-            type_info_to_symbol_kind(&type_info)
+            let type_info = type_engine.look_up_type_id(*type_id);
+            type_info_to_symbol_kind(type_engine, &type_info)
         }
         _ => SymbolKind::Unknown,
     }

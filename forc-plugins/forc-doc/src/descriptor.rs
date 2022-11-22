@@ -10,10 +10,10 @@ use sway_core::{
 };
 use sway_types::Spanned;
 
-#[derive(Eq, PartialEq, Debug)]
 // TODO: See if there's a way we can use the TyDeclarations directly
 //
 /// The type of [TyDeclaration] documented by the [Descriptor].
+#[derive(Debug)]
 pub(crate) enum DescriptorType {
     Struct(TyStructDeclaration),
     Enum(TyEnumDeclaration),
@@ -24,6 +24,7 @@ pub(crate) enum DescriptorType {
     Function(TyFunctionDeclaration),
     Const(Box<TyConstantDeclaration>),
 }
+
 impl DescriptorType {
     /// Converts the [DescriptorType] to a `&str` name for HTML file name creation.
     pub fn as_str(&self) -> &'static str {
@@ -41,7 +42,6 @@ impl DescriptorType {
     }
 }
 
-#[derive(Eq, PartialEq)]
 /// Used in deciding whether or not a [Declaration] is documentable.
 pub(crate) enum Descriptor {
     Documentable {
@@ -52,6 +52,7 @@ pub(crate) enum Descriptor {
     },
     NonDocumentable,
 }
+
 impl Descriptor {
     pub(crate) fn from_typed_decl(d: &TyDeclaration, module_prefix: Vec<String>) -> Result<Self> {
         use TyDeclaration::*;
