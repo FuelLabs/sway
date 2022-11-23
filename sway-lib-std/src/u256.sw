@@ -395,28 +395,24 @@ impl core::ops::Subtract for U256 {
 impl core::ops::Multiply for U256 {
     /// Multiply a `U256` with a `U256`. Panics on overflow.
     fn multiply(self, other: Self) -> Self {
-        // both of the upper words cannot be nonzero
-        // otherwise overflow is automatic
+        // Both upper words cannot be non-zero simultaneously. Otherwise, overflow is guaranteed.
         assert(self.a == 0 || other.a == 0);
 
         if self.a != 0 {
-            // in case self.a is nonzero, all of the
-            // words of other, except for d, should be 
-            // zero otherwise overflow is automatic
+            // If `self.a` is non-zero, all words of `other`, except for `d`, should be zero. 
+            // Otherwise, overflow is guaranteed.
             assert(other.b == 0 && other.c == 0);
             U256::from((self.a * other.d, 0, 0, 0))
         } else if other.a != 0 {
-            // in case other.a is nonzero, all of the
-            // words of self, except for d, should be 
-            // zero otherwise overflow is automatic
+            // If `other.a` is non-zero, all words of `self`, except for `d`, should be zero.
+            // Otherwise, overflow is guaranteed.
             assert(self.b == 0 && self.c == 0);
             U256::from((other.a * self.d, 0, 0, 0))
         } else {
             if self.b != 0 {
-                // in case self.b is nonzero, other.b has 
-                // to be zero, otherwise overflow is automatic
-                // due to the fact that other.b * 2 ^ (64 * 2) *
-                // self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)
+                // If `self.b` is non-zero, `other.b` has  to be zero. Otherwise, overflow is 
+                // guaranteed because:
+                // `other.b * 2 ^ (64 * 2) * self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)`
                 assert(other.b == 0);
                 let result_b_d = self.b.overflowing_mul(other.d);
                 let result_c_c = self.c.overflowing_mul(other.d);
@@ -431,10 +427,9 @@ impl core::ops::Multiply for U256 {
                     result_d_d.lower,
                 ))
             } else if other.b != 0 {
-                // in case other.b is nonzero, self.b has 
-                // to be zero, otherwise overflow is automatic
-                // due to the fact that other.b * 2 ^ (64 * 2) *
-                // self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)
+                // If `other.b` is nonzero, `self.b` has to be zero. Otherwise, overflow is 
+                // guaranteed because: 
+                // `other.b * 2 ^ (64 * 2) * self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)`.
                 assert(self.b == 0);
                 let result_b_d = other.b.overflowing_mul(self.d);
                 let result_c_c = other.c.overflowing_mul(self.d);
