@@ -4,7 +4,7 @@ Associated functions are similar to methods in that they are also defined in the
 
 Associated functions could be standalone functions, but they are included in a specific type for organizational or semantic reasons.
 
-## Decleration
+## Declaration
 
 In this example we will take a look at a struct however an enum will work in the same way.
 

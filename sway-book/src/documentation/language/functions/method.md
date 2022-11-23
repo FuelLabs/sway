@@ -4,7 +4,7 @@ Methods are defined within the context of a [struct](../built-ins/structs.md) (o
 
 The first parameter of a method is always `self`, which represents the instance of the type the method is being called on.
 
-## Decleration
+## Declaration
 
 In this example we will take a look at a struct however an enum will work in the same way.
 
