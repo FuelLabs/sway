@@ -1,5 +1,5 @@
 use crate::cli::InitCommand;
-use crate::utils::{defaults, program_type::ProgramType::*};
+use crate::utils::{defaults, program_type::ProgramType};
 use anyhow::{Context, Result};
 use forc_util::validate_name;
 use std::fs;
@@ -7,6 +7,13 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use sway_utils::constants;
 use tracing::{debug, info};
+
+#[derive(Debug)]
+/// Type of the project that is going to be initialized.
+enum ProjectType {
+    Package(ProgramType),
+    Workspace,
+}
 
 fn print_welcome_message() {
     let read_the_docs = format!(
@@ -70,62 +77,73 @@ pub fn init(command: InitCommand) -> Result<()> {
 
     validate_name(&project_name, "project name")?;
 
-    let program_type = match (
+    let project_type = match (
         command.contract,
         command.script,
         command.predicate,
         command.library,
+        command.workspace,
     ) {
-        (_, false, false, false) => Contract,
-        (false, true, false, false) => Script,
-        (false, false, true, false) => Predicate,
-        (false, false, false, true) => Library,
+        (_, false, false, false, false) => ProjectType::Package(ProgramType::Contract),
+        (false, true, false, false, false) => ProjectType::Package(ProgramType::Script),
+        (false, false, true, false, false) => ProjectType::Package(ProgramType::Predicate),
+        (false, false, false, true, false) => ProjectType::Package(ProgramType::Library),
+        (false, false, false, false, true) => ProjectType::Workspace,
         _ => anyhow::bail!(
-            "Multiple types detected, please specify only one program type: \
-        \n Possible Types:\n - contract\n - script\n - predicate\n - library"
+            "Multiple types detected, please specify only one project type: \
+        \n Possible Types:\n - contract\n - script\n - predicate\n - library\n - workspace"
         ),
     };
 
     // Make a new directory for the project
-    fs::create_dir_all(Path::new(&project_dir).join("src"))?;
+    let dir_to_create = match project_type {
+        ProjectType::Package(_) => project_dir.join("src"),
+        ProjectType::Workspace => project_dir.clone(),
+    };
+    fs::create_dir_all(dir_to_create)?;
 
     // Insert default manifest file
-    match program_type {
-        Library => fs::write(
+    match project_type {
+        ProjectType::Workspace => fs::write(
             Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
-            defaults::default_manifest(&project_name, constants::LIB_ENTRY),
+            defaults::default_workspace_manifest(),
+        )?,
+        ProjectType::Package(ProgramType::Library) => fs::write(
+            Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
+            defaults::default_pkg_manifest(&project_name, constants::LIB_ENTRY),
         )?,
         _ => fs::write(
             Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
-            defaults::default_manifest(&project_name, constants::MAIN_ENTRY),
+            defaults::default_pkg_manifest(&project_name, constants::MAIN_ENTRY),
         )?,
     }
 
-    match program_type {
-        Contract => fs::write(
+    match project_type {
+        ProjectType::Package(ProgramType::Contract) => fs::write(
             Path::new(&project_dir)
                 .join("src")
                 .join(constants::MAIN_ENTRY),
             defaults::default_contract(),
         )?,
-        Script => fs::write(
+        ProjectType::Package(ProgramType::Script) => fs::write(
             Path::new(&project_dir)
                 .join("src")
                 .join(constants::MAIN_ENTRY),
             defaults::default_script(),
         )?,
-        Library => fs::write(
+        ProjectType::Package(ProgramType::Library) => fs::write(
             Path::new(&project_dir)
                 .join("src")
                 .join(constants::LIB_ENTRY),
             defaults::default_library(&project_name),
         )?,
-        Predicate => fs::write(
+        ProjectType::Package(ProgramType::Predicate) => fs::write(
             Path::new(&project_dir)
                 .join("src")
                 .join(constants::MAIN_ENTRY),
             defaults::default_predicate(),
         )?,
+        _ => {}
     }
 
     // Ignore default `out` and `target` directories created by forc and cargo.
@@ -143,7 +161,7 @@ pub fn init(command: InitCommand) -> Result<()> {
         gitignore_path.canonicalize()?.display()
     );
 
-    debug!("\nSuccessfully created {program_type}: {project_name}",);
+    debug!("\nSuccessfully created {project_type:?}: {project_name}",);
 
     print_welcome_message();
 
