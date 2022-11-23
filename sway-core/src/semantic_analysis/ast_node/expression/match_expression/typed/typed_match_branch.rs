@@ -4,7 +4,6 @@ use crate::{
     error::{err, ok},
     language::{parsed::MatchBranch, ty},
     semantic_analysis::*,
-    type_system::insert_type,
     types::DeterministicallyAborts,
     CompileResult, TypeInfo,
 };
@@ -26,6 +25,8 @@ impl ty::TyMatchBranch {
             span: branch_span,
         } = branch;
 
+        let type_engine = ctx.type_engine;
+
         // type check the scrutinee
         let typed_scrutinee = check!(
             ty::TyScrutinee::type_check(ctx.by_ref(), scrutinee),
@@ -36,7 +37,12 @@ impl ty::TyMatchBranch {
 
         // calculate the requirements map and the declarations map
         let (match_req_map, match_decl_map) = check!(
-            matcher(typed_value, typed_scrutinee.clone(), ctx.namespace),
+            matcher(
+                type_engine,
+                typed_value,
+                typed_scrutinee.clone(),
+                ctx.namespace
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -71,7 +77,7 @@ impl ty::TyMatchBranch {
         let typed_result = {
             let ctx = ctx
                 .by_ref()
-                .with_type_annotation(insert_type(TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, result),
                 return err(warnings, errors),
