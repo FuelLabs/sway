@@ -176,8 +176,10 @@ pub(crate) fn type_check_method_application(
 
     // If this function is being called with method call syntax, a.b(c),
     // then make sure the first parameter is self, else issue an error.
+    let mut is_method_call_syntax_used = false;
     if !method.is_contract_call {
         if let MethodName::FromModule { ref method_name } = method_name_binding.inner {
+            is_method_call_syntax_used = true;
             let is_first_param_self = method
                 .parameters
                 .get(0)
@@ -297,7 +299,12 @@ pub(crate) fn type_check_method_application(
 
     // check that the number of parameters and the number of the arguments is the same
     check!(
-        check_function_arguments_arity(args_buf.len(), &method, &call_path),
+        check_function_arguments_arity(
+            args_buf.len(),
+            &method,
+            &call_path,
+            is_method_call_syntax_used
+        ),
         return err(warnings, errors),
         warnings,
         errors
