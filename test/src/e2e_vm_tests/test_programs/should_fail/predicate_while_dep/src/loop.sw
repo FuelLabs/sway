@@ -1,6 +1,6 @@
-predicate;
+library loop;
 
-fn main() -> bool {
+pub fn loop() -> bool {
     let mut x = 0;
     while true { x += 1; }
 
