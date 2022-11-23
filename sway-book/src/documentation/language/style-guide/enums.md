@@ -22,4 +22,4 @@ Key points to note:
 
 - You must import all of the enums i.e. `Error`, `StateError` & `UserError`
 - The lines may get unnecessarily long (depending on the names)
-- The syntax unergonomic
+- The syntax is unergonomic
