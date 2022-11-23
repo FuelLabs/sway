@@ -10,7 +10,7 @@ We can declare a variable that cannot have its value changed in the following wa
 {{#include ../../../code/language/variables/src/lib.sw:immutable}}
 ```
 
-By default `foo` is an immutable [`u64`](../built-ins/index.md#primitive-types) with the value of `5`. This means that we can pass `foo` around and its value can be read however it cannot have its value changed from `5` to any other number.
+By default `foo` is an immutable [`u64`](../built-ins/index.md#primitive-types) with the value of `5`. This means that we can pass `foo` around and its value can be read, but it cannot have its value changed from `5` to any other value.
 
 ## Mutable
 

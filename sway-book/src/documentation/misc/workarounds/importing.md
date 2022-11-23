@@ -2,7 +2,7 @@
 
 In [external libraries](../../language/program-types/libraries/external.md) we have looked at how a library can be imported into a project so that code can be reused.
 
-When it comes to importing only external libraries can be imported and any other type of program will result in an error.
+When it comes to importing only external libraries can be imported; any other type of program will result in an error.
 
 This means that the following projects cannot be imported:
 

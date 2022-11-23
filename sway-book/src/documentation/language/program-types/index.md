@@ -38,4 +38,4 @@ An entry point is the starting point of execution for a program.
 
 Since a library is not directly deployable to the blockchain it does not have an entry point and instead its code is exported for use within other programs.
 
-Unlike the library; the contract, script and predicate all have an entry point. The contract exposes an `Application Binary Interface (ABI)` while the script and predicate expose a `main()` function for entry.
+Unlike libraries; contracts, scripts and predicates all have an entry point. Contracts expose an `Application Binary Interface (ABI)` while scripts and predicates expose a `main()` function for entry.
