@@ -1,12 +1,12 @@
 contract;
 
 abi MyContract {
-    #[storage(read)]
+    #[storage(read, write)]
     fn foo() -> u64;
 }
 
 impl MyContract for Contract {
-    #[storage(read)]
+    #[storage(read, write)]
     fn foo() -> u64 {
         0
     }
