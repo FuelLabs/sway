@@ -395,21 +395,58 @@ impl core::ops::Subtract for U256 {
 impl core::ops::Multiply for U256 {
     /// Multiply a `U256` with a `U256`. Panics on overflow.
     fn multiply(self, other: Self) -> Self {
-        let zero = U256::from((0, 0, 0, 0));
-        let one = U256::from((0, 0, 0, 1));
+        // both of the upper words cannot be nonzero
+        // otherwise overflow is automatic
+        assert(self.a == 0 || other.a == 0);
 
-        let mut x = self;
-        let mut y = other;
-        let mut result = U256::new();
-        while y != zero {
-            if (y & one).d != 0 {
-                result += x;
+        if self.a != 0 {
+            // in case self.a is nonzero, all of the
+            // words of other, except for d, should be 
+            // zero otherwise overflow is automatic
+            assert(other.b == 0 && other.c == 0);
+            U256::from((self.a * other.d, 0, 0, 0))
+        } else if other.a != 0 {
+            // in case other.a is nonzero, all of the
+            // words of self, except for d, should be 
+            // zero otherwise overflow is automatic
+            assert(self.b == 0 && self.c == 0);
+            U256::from((other.a * self.d, 0, 0, 0))
+        } else {
+            if self.b != 0 {
+                // in case self.b is nonzero, other.b has 
+                // to be zero, otherwise overflow is automatic
+                // due to the fact that other.b * 2 ^ (64 * 2) *
+                // self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)
+                assert(other.b == 0);
+                let result_b_d = self.b.overflowing_mul(other.d);
+                let result_c_c = self.c.overflowing_mul(other.d);
+                let result_c_d = self.c.overflowing_mul(other.d);
+                let result_d_c = self.d.overflowing_mul(other.c);
+                let result_d_d = self.d.overflowing_mul(other.d);
+
+                U256::from((self.b * other.c + result_b_d.upper, result_b_d.lower + result_c_d.upper + result_d_c.upper, result_d_d.upper + result_c_d.lower + result_d_c.lower, result_d_d.lower))
+            } else if other.b != 0 {
+                // in case other.b is nonzero, self.b has 
+                // to be zero, otherwise overflow is automatic
+                // due to the fact that other.b * 2 ^ (64 * 2) *
+                // self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)
+                assert(self.b == 0);
+                let result_b_d = other.b.overflowing_mul(self.d);
+                let result_c_c = other.c.overflowing_mul(self.d);
+                let result_c_d = other.c.overflowing_mul(self.d);
+                let result_d_c = other.d.overflowing_mul(self.c);
+                let result_d_d = other.d.overflowing_mul(self.d);
+
+                U256::from((other.b * self.c + result_b_d.upper, result_b_d.lower + result_c_d.upper + result_d_c.upper, result_d_d.upper + result_c_d.lower + result_d_c.lower, result_d_d.lower))
+            } else {
+                let result_c_c = other.c.overflowing_mul(self.d);
+                let result_c_d = self.c.overflowing_mul(other.d);
+                let result_d_c = self.d.overflowing_mul(other.c);
+                let result_d_d = self.d.overflowing_mul(other.d);
+                
+                U256::from((result_c_c.upper, result_c_c.lower + result_c_d.upper + result_d_c.upper, result_d_d.upper + result_c_d.lower + result_d_c.lower, result_d_d.lower))
             }
-            x <<= 1;
-            y >>= 1;
         }
-
-        result
     }
 }
 
