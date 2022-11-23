@@ -424,7 +424,12 @@ impl core::ops::Multiply for U256 {
                 let result_d_c = self.d.overflowing_mul(other.c);
                 let result_d_d = self.d.overflowing_mul(other.d);
 
-                U256::from((self.b * other.c + result_b_d.upper, result_b_d.lower + result_c_d.upper + result_d_c.upper, result_d_d.upper + result_c_d.lower + result_d_c.lower, result_d_d.lower))
+                U256::from((
+                    self.b * other.c + result_b_d.upper,
+                    result_b_d.lower + result_c_d.upper + result_d_c.upper,
+                    result_d_d.upper + result_c_d.lower + result_d_c.lower,
+                    result_d_d.lower,
+                ))
             } else if other.b != 0 {
                 // in case other.b is nonzero, self.b has 
                 // to be zero, otherwise overflow is automatic
@@ -437,14 +442,24 @@ impl core::ops::Multiply for U256 {
                 let result_d_c = other.d.overflowing_mul(self.c);
                 let result_d_d = other.d.overflowing_mul(self.d);
 
-                U256::from((other.b * self.c + result_b_d.upper, result_b_d.lower + result_c_d.upper + result_d_c.upper, result_d_d.upper + result_c_d.lower + result_d_c.lower, result_d_d.lower))
+                U256::from((
+                    other.b * self.c + result_b_d.upper,
+                    result_b_d.lower + result_c_d.upper + result_d_c.upper,
+                    result_d_d.upper + result_c_d.lower + result_d_c.lower,
+                    result_d_d.lower,
+                ))
             } else {
                 let result_c_c = other.c.overflowing_mul(self.d);
                 let result_c_d = self.c.overflowing_mul(other.d);
                 let result_d_c = self.d.overflowing_mul(other.c);
                 let result_d_d = self.d.overflowing_mul(other.d);
-                
-                U256::from((result_c_c.upper, result_c_c.lower + result_c_d.upper + result_d_c.upper, result_d_d.upper + result_c_d.lower + result_d_c.lower, result_d_d.lower))
+
+                U256::from((
+                    result_c_c.upper,
+                    result_c_c.lower + result_c_d.upper + result_d_c.upper,
+                    result_d_d.upper + result_c_d.lower + result_d_c.lower,
+                    result_d_d.lower,
+                ))
             }
         }
     }
