@@ -1,6 +1,6 @@
 # Sway Program Types
 
-A Sway program is a file ending with the extension `.sw`, e.g. `main.sw`, and the first line of the file is a decleration of the _type_ of program that it is.
+A Sway program is a file ending with the extension `.sw`, e.g. `main.sw`, and the first line of the file is a declaration of the _type_ of program.
 
 A Sway program can be one of four types:
 

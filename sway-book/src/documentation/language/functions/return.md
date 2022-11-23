@@ -1,6 +1,6 @@
 # Returning from functions
 
-In the previous sections we have seen how functions return values without much information. In this section we will take a closer look at how we can return data from a function.
+In the previous sections we have seen how functions return values without going into detail. In this section we will take a closer look at how we can return data from a function.
 
 There are two ways to return:
 

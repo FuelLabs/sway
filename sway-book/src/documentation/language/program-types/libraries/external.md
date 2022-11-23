@@ -8,17 +8,14 @@ $ tree
 ├── my_library
 │   ├── Cargo.toml
 │   ├── Forc.toml
-│   ├── src
-│   │   └── lib.sw
-│   └── tests
-│       └── harness.rs
+│   └─── src
+│       └── lib.sw
+│
 └── my_other_library
     ├── Cargo.toml
     ├── Forc.toml
-    ├── src
-    │   └── lib.sw
-    └── tests
-        └── harness.rs
+    └─── src
+        └── lib.sw
 ```
 
 ## Libraries

@@ -29,7 +29,7 @@ fn shadowing() {
     // ANCHOR: shadowing
     let foo = 5;
     const bar = 5;
-    {
+     {
         let foo = 42;
         const bar = 42;
     }
@@ -40,6 +40,6 @@ fn shadowing() {
 
 fn constants() {
     // ANCHOR: constants
-    const foo = 5;
+    const FOO = 5;
     // ANCHOR_END: constants
 }

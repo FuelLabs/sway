@@ -10,7 +10,7 @@ Unlike scripts, predicates are stateless functions which means they can neither 
 
 ## Example
 
-The following example demonstrates a predicate which takes one argument and returns the boolean value of `true`.
+The following example demonstrates a predicate which takes one argument and returns the Boolean value of `true`.
 
 ```sway
 {{#include ../../../code/language/program-types/predicates/simple/src/main.sw}}

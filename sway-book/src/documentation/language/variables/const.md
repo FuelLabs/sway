@@ -1,6 +1,6 @@
-# const
+# Constants
 
-A `const` is similar to an [immutable let](./let.md#immutable) however there are a few differences.
+Constants are similar to [immutable let](./let.md#immutable) variables; however, there are a few differences:
 
 - The constant is evaluated at compile-time
 - A constant can be declared in any scope i.e. inside of a [function](../functions/index.md) and outside

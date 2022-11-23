@@ -8,7 +8,6 @@ fn subtract(a: u64, b: u64) -> u64 {
     a - b
 }
 // ANCHOR_END: assert
-
 fn reverts() {
     // ANCHOR: revert
     revert(42);

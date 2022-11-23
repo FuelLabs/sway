@@ -8,8 +8,6 @@ enum State {
     Other: u64,
 }
 // ANCHOR_END: state
-
-
 // ANCHOR: fizzbuzz
 fn fizzbuzz(input: u64) -> State {
     if input % 15 == 0 {

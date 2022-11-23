@@ -9,7 +9,6 @@ enum Color {
     Grey: (),
 }
 // ANCHOR_END: definition
-
 fn main() {
     // ANCHOR: init
     // To instantiate an enum with a variant of the unit type the syntax is

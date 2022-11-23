@@ -4,7 +4,7 @@ dep explicit;
 dep implicit;
 
 // ANCHOR: definition
-fn my_function(my_parameter: u64, /* ... */ ) -> u64 {
+fn my_function(my_parameter: u64 /* ... */) -> u64 {
     // function code
     42
 }

@@ -40,7 +40,7 @@ fn destructuring() {
     };
 
     // bar and baz are now accessible as variables
-    let Foo{bar, baz} = foo;
+    let Foo { bar, baz } = foo;
 
     if baz {
         let quix = bar * 2;
@@ -48,6 +48,6 @@ fn destructuring() {
 
     // You may use `..` to omit the remaining fields if the types match
     // The compiler will fill them in for you
-    let Foo{bar, ..} = foo;
+    let Foo { bar, .. } = foo;
 }
 // ANCHOR_END: destructuring

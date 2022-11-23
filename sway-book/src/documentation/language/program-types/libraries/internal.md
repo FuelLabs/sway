@@ -7,11 +7,9 @@ $ tree
 .
 ├── Cargo.toml
 ├── Forc.toml
-├── src
-│   ├── lib.sw
-│   └── my_library.sw
-└── tests
-    └── harness.rs
+└── src
+    ├── lib.sw
+    └── my_library.sw
 ```
 
 To be able to use our library `my_library.sw` in `lib.sw` there are two steps to take:

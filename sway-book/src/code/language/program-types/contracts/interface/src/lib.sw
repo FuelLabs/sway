@@ -6,9 +6,9 @@ abi Wallet {
     fn receive_funds();
 
     /// Sends `amount_to_send` of the BASE_ASSET to `recipient`
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// - `amount_to_send`: amount of BASE_ASSET to send
     /// - `recipient`: user to send the BASE_ASSET to
     ///
