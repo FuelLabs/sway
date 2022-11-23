@@ -56,7 +56,6 @@ impl ty::TyCodeBlock {
             })
             .unwrap_or_else(|| {
                 if node_deterministically_aborts {
-                    // grab the declaration
                     let never_mod_path = vec![
                         Ident::new_with_override("core", span.clone()),
                         Ident::new_with_override("never", span.clone()),
@@ -77,11 +76,6 @@ impl ty::TyCodeBlock {
                             return never_decl.create_type_id(ctx.engines());
                         }
                     }
-
-                    errors.push(CompileError::Internal(
-                        "Could not found Never type.",
-                        span.clone(),
-                    ));
 
                     ctx.type_engine
                         .insert_type(declaration_engine, TypeInfo::Unknown)
