@@ -132,9 +132,7 @@ impl TxContractTest for Contract {
         asm(ptr: tx_script_start_pointer()) { ptr: u64 }
     }
     fn get_tx_script_data_start_pointer() -> u64 {
-        asm(r1: tx_script_data_start_pointer()) {
-            r1: u64
-        }
+        asm(r1: tx_script_data_start_pointer()) { r1: u64 }
     }
     fn get_tx_id() -> b256 {
         tx_id()
@@ -155,9 +153,7 @@ impl TxContractTest for Contract {
         input_amount(index).unwrap()
     }
     fn get_tx_input_predicate_data_pointer(index: u64) -> u64 {
-        asm(r1: input_predicate_data_pointer(index).unwrap()) {
-            r1: u64
-        }
+        asm(r1: input_predicate_data_pointer(index).unwrap()) { r1: u64 }
     }
     fn get_input_message_msg_id(index: u64) -> b256 {
         input_message_msg_id(index)
@@ -183,11 +179,9 @@ impl TxContractTest for Contract {
     fn get_input_predicate_data_length(index: u64) -> u16 {
         input_predicate_data_length(index).unwrap()
     }
-    // @review return type ! (lib func is generic)
     fn get_input_message_data(index: u64, offset: u64) -> [u8; 3] {
         input_message_data::<[u8; 3]>(index, offset)
     }
-    // @review return type ! (lib func is generic)
     fn get_input_predicate(index: u64) -> b256 {
         input_predicate(index)
     }

@@ -1,11 +1,11 @@
-use fuel_vm::{
-    consts::REG_ONE, fuel_asm::Opcode, fuel_crypto::Hasher, fuel_tx::Transaction as FuelTransaction,
-};
+use fuel_vm::{consts::REG_ONE, fuel_asm::Opcode, fuel_crypto::Hasher};
 use fuels::{
     prelude::*,
+    signers::WalletUnlocked,
     tx::{
-        field::Witnesses, Bytes32, ConsensusParameters, Contract as TxContract, ContractId,
-        Input as TxInput, Output as TxOutput, TxPointer, UniqueIdentifier, UtxoId,
+        field::Script as ScriptField, field::Witnesses, field::*, Bytes32, ConsensusParameters,
+        Contract as TxContract, ContractId, Input as TxInput, Output as TxOutput, TxPointer,
+        UniqueIdentifier, UtxoId,
     },
 };
 use std::str::FromStr;
@@ -38,12 +38,11 @@ async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
         "test_artifacts/tx_contract/out/debug/tx_contract.bin",
         &wallet,
         TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "test_artifacts/tx_contract/out/debug/tx_contract-storage_slots.json".to_string(),
-        )),
+        StorageConfiguration::default(),
     )
     .await
     .unwrap();
+
     let instance = TxContractTest::new(contract_id.clone(), wallet.clone());
 
     (instance, contract_id.into(), wallet)
@@ -347,13 +346,12 @@ mod tx {
             .await
             .unwrap()
             .tx;
-        let hash = match tx {
-            FuelTransaction::Script { script, .. } => {
-                // Make sure script is actually something fairly substantial
-                assert!(script.len() > 1);
-                Hasher::hash(&script)
-            }
-            _ => Hasher::hash(&vec![]),
+
+        let script = tx.script();
+        let hash = if script.len() > 1 {
+            Hasher::hash(&script)
+        } else {
+            Hasher::hash(&vec![])
         };
 
         let result = contract_instance
@@ -485,20 +483,19 @@ mod inputs {
 
             // Add predicate coin to inputs and call contract
             let call_handler = contract_instance.methods().get_input_predicate(2);
-            let mut script = call_handler.get_call_execution_script().await.unwrap();
+            let script = call_handler.get_call_execution_script().await.unwrap();
 
             let new_outputs = generate_outputs();
 
-            if let FuelTransaction::Script {
-                inputs, outputs, ..
-            } = &mut script.tx
-            {
-                inputs.push(predicate_coin);
-                inputs.push(predicate_message);
-                for output in new_outputs {
-                    outputs.push(output);
-                }
-            };
+            let inputs = script.tx.inputs();
+            let outputs = script.tx.outputs();
+
+            inputs.clone().push(predicate_coin);
+            inputs.clone().push(predicate_message);
+            for output in new_outputs {
+                outputs.clone().push(output);
+            }
+
             let result = call_handler
                 .get_response(script.call(provider).await.unwrap())
                 .unwrap();
@@ -509,7 +506,6 @@ mod inputs {
             use super::*;
 
             #[tokio::test]
-            #[ignore]
             async fn can_get_input_message_msg_id() -> Result<(), Error> {
                 let (contract_instance, _, wallet) = get_contracts().await;
                 let result = contract_instance
@@ -519,10 +515,9 @@ mod inputs {
                     .await
                     .unwrap();
                 let messages = wallet.get_messages().await?;
-                let inputs = wallet.get_inputs_for_messages(0).await?;
-                // let contract_bytes: [u8; 32] = result.value.into();
-                // let message_id: [u8; 32] = *inputs[0].message_id().unwrap().into();
-                // assert_eq!(result.value, Bits256(message_id));
+                let message_id: [u8; 32] = *messages[0].message_id.0 .0;
+                ();
+                assert_eq!(result.value, Bits256(message_id));
                 Ok(())
             }
 
@@ -559,7 +554,6 @@ mod inputs {
             }
 
             #[tokio::test]
-            #[ignore]
             async fn can_get_input_message_nonce() -> Result<(), Error> {
                 let (contract_instance, _, wallet) = get_contracts().await;
                 let result = contract_instance
@@ -574,7 +568,6 @@ mod inputs {
             }
 
             #[tokio::test]
-            #[ignore]
             async fn can_get_input_message_witness_index() -> Result<(), Error> {
                 let (contract_instance, _, wallet) = get_contracts().await;
                 let result = contract_instance
@@ -652,13 +645,20 @@ mod inputs {
                 let predicate_bytes: [u8; 32] = predicate_bytecode.try_into().unwrap();
 
                 // Add predicate coin to inputs and call contract
-                // TODO: Fix this, failing with "enough coins could not be found"
                 let call_handler = contract_instance.methods().get_input_predicate(1);
-                let mut script = call_handler.get_call_execution_script().await.unwrap();
-                if let FuelTransaction::Script { inputs, .. } = &mut script.tx {
-                    inputs.push(predicate_coin);
-                    inputs.push(predicate_message);
-                };
+                let script = call_handler.get_call_execution_script().await.unwrap();
+
+                let new_outputs = generate_outputs();
+
+                let inputs = script.tx.inputs();
+                let outputs = script.tx.outputs();
+
+                inputs.clone().push(predicate_coin);
+                inputs.clone().push(predicate_message);
+                for output in new_outputs {
+                    outputs.clone().push(output);
+                }
+
                 let result = call_handler
                     .get_response(script.call(provider).await.unwrap())
                     .unwrap();
