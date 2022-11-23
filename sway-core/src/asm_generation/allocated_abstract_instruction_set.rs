@@ -167,8 +167,48 @@ impl AllocatedAbstractInstructionSet {
         self
     }
 
-    /// Relocate code to keep as much control flow below the magic 1MB address space accessible by
-    /// a `JNZI` instruction.
+    /// Relocate code to keep as much control flow possible using a `JNZI` instruction.
+    ///
+    /// If a `JNZI` or `JNEI` instruction would be unable to store its destination offset in its
+    /// immediate operand then we have two remediation options; relocate blocks which don't use
+    /// control flow to the end of the address space, or to store the large offsets in the data
+    /// section and use dynamic jumps.  This function performs the former transformation while
+    /// `rewrite_far_jumps()` performs the latter.
+    ///
+    /// For example, if a bytecode binary reaches more than 1MB in size then to perform conditional
+    /// controlflow using `JNZI` the destination offset may be to an instruction index of more than
+    /// 256K, as each instruction is a 32bit word.  Values larger than 256K require 19bits of
+    /// representation which is too large to fit in the 18bit immediate operand of `JNZI`.
+    ///
+    /// Here we use the convenience of `JI` being able to jump to a 24bit offset.  Say we had the
+    /// following bytecode straddling the 256K instruction boundary:
+    ///
+    /// ```
+    /// 0003fffd JNZI label_A       ; jump to symbolic offset at label_A
+    /// 0003fffe NOOP               ; very important work
+    /// 0003ffff NOOP
+    /// 00040000 NOOP
+    /// 00040001 NOOP
+    ///          label_A:           ; label which turns out to be at offset 256K + 2
+    /// 00040002 RET 42             ; return the 'answer'.
+    /// ```
+    ///
+    /// We would not be able to encode the `JNZI` because `label_A` is too far.
+    /// `relocate_control_flow()` would transform this bytecode into the following to fix the
+    /// problem:
+    ///
+    /// ```
+    /// 0003fffd JNZI label_A       ; jump to symbolic offset at label_A
+    /// 0003fffe JI label_B         ; jump to the important work with a 24bit offset.
+    ///          label_A:           ; label which is now (just) below 256K.
+    /// 0003ffff RET 42             ; return the 'answer'.
+    ///          label_B:
+    /// 00040000 NOOP               ; very important work
+    /// 00040001 NOOP
+    /// 00040002 NOOP
+    /// 00040003 NOOP
+    /// 00040004 JI label_A         ; jump back now we're done.
+    /// ```
     pub(crate) fn relocate_control_flow(mut self, data_section: &DataSection) -> Self {
         // Do an analysis pass, gathering basic block offsets and whether any jumps are going to be
         // a problem.
@@ -204,6 +244,13 @@ impl AllocatedAbstractInstructionSet {
         let mut moved_ops: Vec<AllocatedAbstractOp> =
             Vec::with_capacity(blocks_to_move.len() + instructions_to_move_count as usize);
 
+        // A util function to wrap the new control flow opcodes.
+        let mk_op = |opcode| AllocatedAbstractOp {
+            opcode: Either::Right(opcode),
+            comment: String::new(),
+            owning_span: None,
+        };
+
         // Use a large number for our new moved labels, one which shouldn't be in the existing ops.
         // This is a little bit hacky. :/
         let mut new_label_idx = self.ops.len();
@@ -225,21 +272,13 @@ impl AllocatedAbstractInstructionSet {
                     // to jump to.
                     let moved_block_label = Label(new_label_idx);
                     new_label_idx += 1;
-                    moved_ops.push(AllocatedAbstractOp {
-                        opcode: Either::Right(ControlFlowOp::Label(moved_block_label)),
-                        comment: String::new(),
-                        owning_span: None,
-                    });
+                    moved_ops.push(mk_op(ControlFlowOp::Label(moved_block_label)));
 
                     // Now add all the instruction in this block to the moved list.
                     moved_ops.extend_from_slice(&self.ops[read_idx..(read_idx + count)]);
 
                     // Replace the block with a jump to the new label.
-                    new_ops.push(AllocatedAbstractOp {
-                        opcode: Either::Right(ControlFlowOp::Jump(moved_block_label)),
-                        comment: String::new(),
-                        owning_span: None,
-                    });
+                    new_ops.push(mk_op(ControlFlowOp::Jump(moved_block_label)));
 
                     // Move the `read_idx` to beyond the block we just moved.
                     read_idx += count;
@@ -252,11 +291,7 @@ impl AllocatedAbstractInstructionSet {
                         Either::Right(ControlFlowOp::Label(return_lab)) => {
                             // Do _not_ increment read_idx; we need to copy this label to the
                             // `new_ops` next iteration.
-                            moved_ops.push(AllocatedAbstractOp {
-                                opcode: Either::Right(ControlFlowOp::Jump(*return_lab)),
-                                comment: String::new(),
-                                owning_span: None,
-                            })
+                            moved_ops.push(mk_op(ControlFlowOp::Jump(*return_lab)));
                         }
 
                         Either::Right(ControlFlowOp::JumpIfNotEq(..))
@@ -264,16 +299,8 @@ impl AllocatedAbstractInstructionSet {
                             // Also don't increment read_idx to let it be copied next iteration.
                             let jump_back_label = Label(new_label_idx);
                             new_label_idx += 1;
-                            new_ops.push(AllocatedAbstractOp {
-                                opcode: Either::Right(ControlFlowOp::Label(moved_block_label)),
-                                comment: String::new(),
-                                owning_span: None,
-                            });
-                            moved_ops.push(AllocatedAbstractOp {
-                                opcode: Either::Right(ControlFlowOp::Label(jump_back_label)),
-                                comment: String::new(),
-                                owning_span: None,
-                            });
+                            new_ops.push(mk_op(ControlFlowOp::Label(moved_block_label)));
+                            moved_ops.push(mk_op(ControlFlowOp::Label(jump_back_label)));
                         }
 
                         Either::Right(ControlFlowOp::Jump(_)) => {
@@ -448,10 +475,9 @@ impl AllocatedAbstractInstructionSet {
 
         for (op_idx, op) in self.ops.iter().enumerate() {
             // If we're seeing a control flow op then it's the end of the block.
-            if matches!(
-                op.opcode,
-                Either::Right(Label(_) | Jump(_) | JumpIfNotEq(..) | JumpIfNotZero(..))
-            ) {
+            if let Either::Right(Label(_) | Jump(_) | JumpIfNotEq(..) | JumpIfNotZero(..)) =
+                op.opcode
+            {
                 if let Some((lab, idx, offs)) = cur_basic_block {
                     // Insert the previous basic block.
                     labelled_blocks.insert(
@@ -485,12 +511,10 @@ impl AllocatedAbstractInstructionSet {
                 // Another special case for the blob opcode, used for testing.
                 Either::Left(AllocatedOpcode::BLOB(ref count)) => cur_offset += count.value as u64,
 
-                // these ops will end up being exactly one op, so the cur_offset goes up one
-                Either::Right(Jump(..))
-                | Either::Right(JumpIfNotZero(..))
-                | Either::Right(Call(..))
-                | Either::Right(MoveAddress(..))
-                | Either::Right(LoadLabel(..))
+                // These ops will end up being exactly one op, so the cur_offset goes up one.
+                Either::Right(
+                    Jump(..) | JumpIfNotZero(..) | Call(..) | MoveAddress(..) | LoadLabel(..),
+                )
                 | Either::Left(_) => {
                     cur_offset += 1;
                 }
@@ -537,7 +561,7 @@ impl AllocatedAbstractInstructionSet {
 
     /// If an instruction uses a label which can't fit in its immediate value then translate it
     /// into an instruction which loads the offset from the data section into a register and then
-    /// uses the equivalent non-immediate instruction with the register.
+    /// use the equivalent non-immediate instruction with the register.
     fn rewrite_far_jumps(&mut self, label_offsets: &LabeledBlocks) -> bool {
         let min_ops = self.ops.len();
         let mut modified = false;
