@@ -21,6 +21,8 @@ pub(crate) fn instantiate_enum(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let type_engine = ctx.type_engine;
+
     let enum_variant = check!(
         enum_decl
             .expect_variant_from_name(&enum_variant_name)
@@ -33,10 +35,10 @@ pub(crate) fn instantiate_enum(
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.
 
-    match (&args[..], look_up_type_id(enum_variant.type_id)) {
+    match (&args[..], type_engine.look_up_type_id(enum_variant.type_id)) {
         ([], ty) if ty.is_unit() => ok(
             ty::TyExpression {
-                return_type: enum_decl.create_type_id(),
+                return_type: enum_decl.create_type_id(ctx.type_engine),
                 expression: ty::TyExpressionVariant::EnumInstantiation {
                     tag: enum_variant.tag,
                     contents: None,
@@ -53,7 +55,7 @@ pub(crate) fn instantiate_enum(
         ([single_expr], _) => {
             let ctx = ctx
                 .with_help_text("Enum instantiator must match its declared variant type.")
-                .with_type_annotation(insert_type(TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
             let typed_expr = check!(
                 ty::TyExpression::type_check(ctx, single_expr.clone()),
                 return err(warnings, errors),
@@ -61,7 +63,7 @@ pub(crate) fn instantiate_enum(
                 errors
             );
             append!(
-                unify_adt(
+                type_engine.unify_adt(
                     typed_expr.return_type,
                     enum_variant.type_id,
                     &typed_expr.span,
@@ -76,7 +78,7 @@ pub(crate) fn instantiate_enum(
 
             ok(
                 ty::TyExpression {
-                    return_type: enum_decl.create_type_id(),
+                    return_type: enum_decl.create_type_id(type_engine),
                     expression: ty::TyExpressionVariant::EnumInstantiation {
                         tag: enum_variant.tag,
                         contents: Some(Box::new(typed_expr)),
@@ -106,7 +108,7 @@ pub(crate) fn instantiate_enum(
         (_too_many_expressions, ty) => {
             errors.push(CompileError::MoreThanOneEnumInstantiator {
                 span: enum_variant_name.span(),
-                ty: ty.to_string(),
+                ty: type_engine.help_out(ty).to_string(),
             });
             err(warnings, errors)
         }

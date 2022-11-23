@@ -2,10 +2,11 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
 use crate::type_system::{TypeArgument, TypeParameter};
+use crate::TypeEngine;
 use crate::{
     error::*,
     language::{parsed::*, CallPath},
-    type_system::{look_up_type_id, AbiName},
+    type_system::AbiName,
     TypeInfo,
 };
 
@@ -18,9 +19,15 @@ use sway_types::{ident::Ident, span::Span};
 /// Take a list of nodes and reorder them so that they may be semantically analysed without any
 /// dependencies breaking.
 
-pub(crate) fn order_ast_nodes_by_dependency(nodes: Vec<AstNode>) -> CompileResult<Vec<AstNode>> {
-    let decl_dependencies =
-        DependencyMap::from_iter(nodes.iter().filter_map(Dependencies::gather_from_decl_node));
+pub(crate) fn order_ast_nodes_by_dependency(
+    type_engine: &TypeEngine,
+    nodes: Vec<AstNode>,
+) -> CompileResult<Vec<AstNode>> {
+    let decl_dependencies = DependencyMap::from_iter(
+        nodes
+            .iter()
+            .filter_map(|node| Dependencies::gather_from_decl_node(type_engine, node)),
+    );
 
     // Check here for recursive calls now that we have a nice map of the dependencies to help us.
     let mut errors = find_recursive_decls(&decl_dependencies);
@@ -265,7 +272,10 @@ struct Dependencies {
 }
 
 impl Dependencies {
-    fn gather_from_decl_node(node: &AstNode) -> Option<(DependentSymbol, Dependencies)> {
+    fn gather_from_decl_node(
+        type_engine: &TypeEngine,
+        node: &AstNode,
+    ) -> Option<(DependentSymbol, Dependencies)> {
         match &node.content {
             AstNodeContent::Declaration(decl) => decl_name(decl).map(|name| {
                 (
@@ -273,37 +283,39 @@ impl Dependencies {
                     Dependencies {
                         deps: HashSet::new(),
                     }
-                    .gather_from_decl(decl),
+                    .gather_from_decl(type_engine, decl),
                 )
             }),
             _ => None,
         }
     }
 
-    fn gather_from_decl(self, decl: &Declaration) -> Self {
+    fn gather_from_decl(self, type_engine: &TypeEngine, decl: &Declaration) -> Self {
         match decl {
             Declaration::VariableDeclaration(VariableDeclaration {
                 type_ascription,
                 body,
                 ..
             }) => self
-                .gather_from_typeinfo(type_ascription)
-                .gather_from_expr(body),
+                .gather_from_typeinfo(type_engine, type_ascription)
+                .gather_from_expr(type_engine, body),
             Declaration::ConstantDeclaration(ConstantDeclaration {
                 type_ascription,
                 value,
                 ..
             }) => self
-                .gather_from_typeinfo(type_ascription)
-                .gather_from_expr(value),
-            Declaration::FunctionDeclaration(fn_decl) => self.gather_from_fn_decl(fn_decl),
+                .gather_from_typeinfo(type_engine, type_ascription)
+                .gather_from_expr(type_engine, value),
+            Declaration::FunctionDeclaration(fn_decl) => {
+                self.gather_from_fn_decl(type_engine, fn_decl)
+            }
             Declaration::StructDeclaration(StructDeclaration {
                 fields,
                 type_parameters,
                 ..
             }) => self
                 .gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_typeinfo(&field.type_info)
+                    deps.gather_from_typeinfo(type_engine, &field.type_info)
                 })
                 .gather_from_type_parameters(type_parameters),
             Declaration::EnumDeclaration(EnumDeclaration {
@@ -312,7 +324,7 @@ impl Dependencies {
                 ..
             }) => self
                 .gather_from_iter(variants.iter(), |deps, variant| {
-                    deps.gather_from_typeinfo(&variant.type_info)
+                    deps.gather_from_typeinfo(type_engine, &variant.type_info)
                 })
                 .gather_from_type_parameters(type_parameters),
             Declaration::TraitDeclaration(TraitDeclaration {
@@ -326,12 +338,12 @@ impl Dependencies {
                 })
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                        deps.gather_from_typeinfo(&param.type_info)
+                        deps.gather_from_typeinfo(type_engine, &param.type_info)
                     })
-                    .gather_from_typeinfo(&sig.return_type)
+                    .gather_from_typeinfo(type_engine, &sig.return_type)
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
-                    deps.gather_from_fn_decl(fn_decl)
+                    deps.gather_from_fn_decl(type_engine, fn_decl)
                 }),
             Declaration::ImplTrait(ImplTrait {
                 impl_type_parameters,
@@ -341,19 +353,19 @@ impl Dependencies {
                 ..
             }) => self
                 .gather_from_call_path(trait_name, false, false)
-                .gather_from_typeinfo(type_implementing_for)
+                .gather_from_typeinfo(type_engine, type_implementing_for)
                 .gather_from_type_parameters(impl_type_parameters)
                 .gather_from_iter(functions.iter(), |deps, fn_decl| {
-                    deps.gather_from_fn_decl(fn_decl)
+                    deps.gather_from_fn_decl(type_engine, fn_decl)
                 }),
             Declaration::ImplSelf(ImplSelf {
                 type_implementing_for,
                 functions,
                 ..
             }) => self
-                .gather_from_typeinfo(type_implementing_for)
+                .gather_from_typeinfo(type_engine, type_implementing_for)
                 .gather_from_iter(functions.iter(), |deps, fn_decl| {
-                    deps.gather_from_fn_decl(fn_decl)
+                    deps.gather_from_fn_decl(type_engine, fn_decl)
                 }),
             Declaration::AbiDeclaration(AbiDeclaration {
                 interface_surface,
@@ -362,21 +374,21 @@ impl Dependencies {
             }) => self
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                        deps.gather_from_typeinfo(&param.type_info)
+                        deps.gather_from_typeinfo(type_engine, &param.type_info)
                     })
-                    .gather_from_typeinfo(&sig.return_type)
+                    .gather_from_typeinfo(type_engine, &sig.return_type)
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
-                    deps.gather_from_fn_decl(fn_decl)
+                    deps.gather_from_fn_decl(type_engine, fn_decl)
                 }),
             Declaration::StorageDeclaration(StorageDeclaration { fields, .. }) => self
                 .gather_from_iter(fields.iter(), |deps, StorageField { ref type_info, .. }| {
-                    deps.gather_from_typeinfo(type_info)
+                    deps.gather_from_typeinfo(type_engine, type_info)
                 }),
         }
     }
 
-    fn gather_from_fn_decl(self, fn_decl: &FunctionDeclaration) -> Self {
+    fn gather_from_fn_decl(self, type_engine: &TypeEngine, fn_decl: &FunctionDeclaration) -> Self {
         let FunctionDeclaration {
             parameters,
             return_type,
@@ -385,14 +397,14 @@ impl Dependencies {
             ..
         } = fn_decl;
         self.gather_from_iter(parameters.iter(), |deps, param| {
-            deps.gather_from_typeinfo(&param.type_info)
+            deps.gather_from_typeinfo(type_engine, &param.type_info)
         })
-        .gather_from_typeinfo(return_type)
-        .gather_from_block(body)
+        .gather_from_typeinfo(type_engine, return_type)
+        .gather_from_block(type_engine, body)
         .gather_from_type_parameters(type_parameters)
     }
 
-    fn gather_from_expr(self, expr: &Expression) -> Self {
+    fn gather_from_expr(self, type_engine: &TypeEngine, expr: &Expression) -> Self {
         match &expr.kind {
             ExpressionKind::Variable(name) => {
                 // in the case of ABI variables, we actually want to check if the ABI needs to be
@@ -405,51 +417,54 @@ impl Dependencies {
                     arguments,
                 } = &**function_application_expression;
                 self.gather_from_call_path(&call_path_binding.inner, false, true)
-                    .gather_from_type_arguments(&call_path_binding.type_arguments)
-                    .gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg))
+                    .gather_from_type_arguments(type_engine, &call_path_binding.type_arguments)
+                    .gather_from_iter(arguments.iter(), |deps, arg| {
+                        deps.gather_from_expr(type_engine, arg)
+                    })
             }
-            ExpressionKind::LazyOperator(LazyOperatorExpression { lhs, rhs, .. }) => {
-                self.gather_from_expr(lhs).gather_from_expr(rhs)
-            }
+            ExpressionKind::LazyOperator(LazyOperatorExpression { lhs, rhs, .. }) => self
+                .gather_from_expr(type_engine, lhs)
+                .gather_from_expr(type_engine, rhs),
             ExpressionKind::If(IfExpression {
                 condition,
                 then,
                 r#else,
                 ..
             }) => if let Some(else_expr) = r#else {
-                self.gather_from_expr(else_expr)
+                self.gather_from_expr(type_engine, else_expr)
             } else {
                 self
             }
-            .gather_from_expr(condition)
-            .gather_from_expr(then),
+            .gather_from_expr(type_engine, condition)
+            .gather_from_expr(type_engine, then),
             ExpressionKind::Match(MatchExpression {
                 value, branches, ..
             }) => self
-                .gather_from_expr(value)
+                .gather_from_expr(type_engine, value)
                 .gather_from_iter(branches.iter(), |deps, branch| {
-                    deps.gather_from_match_branch(branch)
+                    deps.gather_from_match_branch(type_engine, branch)
                 }),
-            ExpressionKind::CodeBlock(contents) => self.gather_from_block(contents),
-            ExpressionKind::Array(contents) => {
-                self.gather_from_iter(contents.iter(), |deps, expr| deps.gather_from_expr(expr))
-            }
-            ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index, .. }) => {
-                self.gather_from_expr(prefix).gather_from_expr(index)
-            }
+            ExpressionKind::CodeBlock(contents) => self.gather_from_block(type_engine, contents),
+            ExpressionKind::Array(contents) => self
+                .gather_from_iter(contents.iter(), |deps, expr| {
+                    deps.gather_from_expr(type_engine, expr)
+                }),
+            ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index, .. }) => self
+                .gather_from_expr(type_engine, prefix)
+                .gather_from_expr(type_engine, index),
             ExpressionKind::Struct(struct_expression) => {
                 let StructExpression {
                     call_path_binding,
                     fields,
                 } = &**struct_expression;
                 self.gather_from_call_path(&call_path_binding.inner, false, false)
-                    .gather_from_type_arguments(&call_path_binding.type_arguments)
+                    .gather_from_type_arguments(type_engine, &call_path_binding.type_arguments)
                     .gather_from_iter(fields.iter(), |deps, field| {
-                        deps.gather_from_expr(&field.value)
+                        deps.gather_from_expr(type_engine, &field.value)
                     })
             }
             ExpressionKind::Subfield(SubfieldExpression { prefix, .. }) => {
-                self.gather_from_expr(prefix)
+                self.gather_from_expr(type_engine, prefix)
             }
             ExpressionKind::AmbiguousPathExpression(e) => {
                 let AmbiguousPathExpression {
@@ -465,8 +480,10 @@ impl Dependencies {
                         call_path_binding.inner.suffix.before.inner.clone(),
                     ));
                 }
-                this.gather_from_type_arguments(&call_path_binding.type_arguments)
-                    .gather_from_iter(args.iter(), |deps, arg| deps.gather_from_expr(arg))
+                this.gather_from_type_arguments(type_engine, &call_path_binding.type_arguments)
+                    .gather_from_iter(args.iter(), |deps, arg| {
+                        deps.gather_from_expr(type_engine, arg)
+                    })
             }
             ExpressionKind::DelineatedPath(delineated_path_expression) => {
                 let DelineatedPathExpression {
@@ -477,19 +494,21 @@ impl Dependencies {
                 // case we're interested in the enum name and initialiser args, ignoring the
                 // variant name.
                 self.gather_from_call_path(&call_path_binding.inner, true, false)
-                    .gather_from_type_arguments(&call_path_binding.type_arguments)
-                    .gather_from_iter(args.iter(), |deps, arg| deps.gather_from_expr(arg))
+                    .gather_from_type_arguments(type_engine, &call_path_binding.type_arguments)
+                    .gather_from_iter(args.iter(), |deps, arg| {
+                        deps.gather_from_expr(type_engine, arg)
+                    })
             }
             ExpressionKind::MethodApplication(method_application_expression) => self
                 .gather_from_iter(
                     method_application_expression.arguments.iter(),
-                    |deps, arg| deps.gather_from_expr(arg),
+                    |deps, arg| deps.gather_from_expr(type_engine, arg),
                 ),
             ExpressionKind::Asm(asm) => self
                 .gather_from_iter(asm.registers.iter(), |deps, register| {
-                    deps.gather_from_opt_expr(register.initializer.as_ref())
+                    deps.gather_from_opt_expr(type_engine, register.initializer.as_ref())
                 })
-                .gather_from_typeinfo(&asm.return_type),
+                .gather_from_typeinfo(type_engine, &asm.return_type),
 
             // we should do address someday, but due to the whole `re_parse_expression` thing
             // it isn't possible right now
@@ -503,52 +522,60 @@ impl Dependencies {
             | ExpressionKind::StorageAccess(_)
             | ExpressionKind::Error(_) => self,
 
-            ExpressionKind::Tuple(fields) => {
-                self.gather_from_iter(fields.iter(), |deps, field| deps.gather_from_expr(field))
-            }
+            ExpressionKind::Tuple(fields) => self.gather_from_iter(fields.iter(), |deps, field| {
+                deps.gather_from_expr(type_engine, field)
+            }),
             ExpressionKind::TupleIndex(TupleIndexExpression { prefix, .. }) => {
-                self.gather_from_expr(prefix)
+                self.gather_from_expr(type_engine, prefix)
             }
             ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
                 arguments, ..
-            }) => self.gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
+            }) => self.gather_from_iter(arguments.iter(), |deps, arg| {
+                deps.gather_from_expr(type_engine, arg)
+            }),
             ExpressionKind::WhileLoop(WhileLoopExpression {
                 condition, body, ..
-            }) => self.gather_from_expr(condition).gather_from_block(body),
-            ExpressionKind::Reassignment(reassignment) => self.gather_from_expr(&reassignment.rhs),
-            ExpressionKind::Return(expr) => self.gather_from_expr(expr),
+            }) => self
+                .gather_from_expr(type_engine, condition)
+                .gather_from_block(type_engine, body),
+            ExpressionKind::Reassignment(reassignment) => {
+                self.gather_from_expr(type_engine, &reassignment.rhs)
+            }
+            ExpressionKind::Return(expr) => self.gather_from_expr(type_engine, expr),
         }
     }
 
-    fn gather_from_match_branch(self, branch: &MatchBranch) -> Self {
+    fn gather_from_match_branch(self, type_engine: &TypeEngine, branch: &MatchBranch) -> Self {
         let MatchBranch {
             scrutinee, result, ..
         } = branch;
         self.gather_from_iter(
             scrutinee.gather_approximate_typeinfo_dependencies().iter(),
-            |deps, type_info| deps.gather_from_typeinfo(type_info),
+            |deps, type_info| deps.gather_from_typeinfo(type_engine, type_info),
         )
-        .gather_from_expr(result)
+        .gather_from_expr(type_engine, result)
     }
 
-    fn gather_from_opt_expr(self, opt_expr: Option<&Expression>) -> Self {
+    fn gather_from_opt_expr(self, type_engine: &TypeEngine, opt_expr: Option<&Expression>) -> Self {
         match opt_expr {
             None => self,
-            Some(expr) => self.gather_from_expr(expr),
+            Some(expr) => self.gather_from_expr(type_engine, expr),
         }
     }
 
-    fn gather_from_block(self, block: &CodeBlock) -> Self {
+    fn gather_from_block(self, type_engine: &TypeEngine, block: &CodeBlock) -> Self {
         self.gather_from_iter(block.contents.iter(), |deps, node| {
-            deps.gather_from_node(node)
+            deps.gather_from_node(type_engine, node)
         })
     }
 
-    fn gather_from_node(self, node: &AstNode) -> Self {
+    fn gather_from_node(self, type_engine: &TypeEngine, node: &AstNode) -> Self {
         match &node.content {
-            AstNodeContent::Expression(expr) => self.gather_from_expr(expr),
-            AstNodeContent::ImplicitReturnExpression(expr) => self.gather_from_expr(expr),
-            AstNodeContent::Declaration(decl) => self.gather_from_decl(decl),
+            AstNodeContent::Expression(expr) => self.gather_from_expr(type_engine, expr),
+            AstNodeContent::ImplicitReturnExpression(expr) => {
+                self.gather_from_expr(type_engine, expr)
+            }
+            AstNodeContent::Declaration(decl) => self.gather_from_decl(type_engine, decl),
 
             // No deps from these guys.
             AstNodeContent::UseStatement(_) => self,
@@ -587,13 +614,20 @@ impl Dependencies {
         })
     }
 
-    fn gather_from_type_arguments(self, type_arguments: &[TypeArgument]) -> Self {
+    fn gather_from_type_arguments(
+        self,
+        type_engine: &TypeEngine,
+        type_arguments: &[TypeArgument],
+    ) -> Self {
         self.gather_from_iter(type_arguments.iter(), |deps, type_argument| {
-            deps.gather_from_typeinfo(&look_up_type_id(type_argument.type_id))
+            deps.gather_from_typeinfo(
+                type_engine,
+                &type_engine.look_up_type_id(type_argument.type_id),
+            )
         })
     }
 
-    fn gather_from_typeinfo(mut self, type_info: &TypeInfo) -> Self {
+    fn gather_from_typeinfo(mut self, type_engine: &TypeEngine, type_info: &TypeInfo) -> Self {
         match type_info {
             TypeInfo::ContractCaller {
                 abi_name: AbiName::Known(abi_name),
@@ -605,22 +639,34 @@ impl Dependencies {
             } => {
                 self.deps.insert(DependentSymbol::Symbol(name.clone()));
                 match type_arguments {
-                    Some(type_arguments) => self.gather_from_type_arguments(type_arguments),
+                    Some(type_arguments) => {
+                        self.gather_from_type_arguments(type_engine, type_arguments)
+                    }
                     None => self,
                 }
             }
             TypeInfo::Tuple(elems) => self.gather_from_iter(elems.iter(), |deps, elem| {
-                deps.gather_from_typeinfo(&look_up_type_id(elem.type_id))
+                deps.gather_from_typeinfo(type_engine, &type_engine.look_up_type_id(elem.type_id))
             }),
-            TypeInfo::Array(type_id, _, _) => self.gather_from_typeinfo(&look_up_type_id(*type_id)),
-            TypeInfo::Struct { fields, .. } => self
-                .gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_typeinfo(&look_up_type_id(field.type_id))
-                }),
-            TypeInfo::Enum { variant_types, .. } => self
-                .gather_from_iter(variant_types.iter(), |deps, variant| {
-                    deps.gather_from_typeinfo(&look_up_type_id(variant.type_id))
-                }),
+            TypeInfo::Array(type_id, _, _) => {
+                self.gather_from_typeinfo(type_engine, &type_engine.look_up_type_id(*type_id))
+            }
+            TypeInfo::Struct { fields, .. } => {
+                self.gather_from_iter(fields.iter(), |deps, field| {
+                    deps.gather_from_typeinfo(
+                        type_engine,
+                        &type_engine.look_up_type_id(field.type_id),
+                    )
+                })
+            }
+            TypeInfo::Enum { variant_types, .. } => {
+                self.gather_from_iter(variant_types.iter(), |deps, variant| {
+                    deps.gather_from_typeinfo(
+                        type_engine,
+                        &type_engine.look_up_type_id(variant.type_id),
+                    )
+                })
+            }
             _ => self,
         }
     }
