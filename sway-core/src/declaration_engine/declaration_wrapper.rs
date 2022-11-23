@@ -6,7 +6,7 @@ use sway_types::Span;
 use crate::{
     language::ty,
     type_system::{CopyTypes, TypeMapping},
-    ReplaceSelfType, TypeId,
+    PartialEqWithTypeEngine, ReplaceSelfType, TypeEngine, TypeId,
 };
 
 use super::{DeclMapping, ReplaceDecls};
@@ -37,19 +37,29 @@ impl Default for DeclarationWrapper {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for DeclarationWrapper {
-    fn eq(&self, other: &Self) -> bool {
+impl PartialEqWithTypeEngine for DeclarationWrapper {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         match (self, other) {
             (DeclarationWrapper::Unknown, DeclarationWrapper::Unknown) => true,
-            (DeclarationWrapper::Function(l), DeclarationWrapper::Function(r)) => l == r,
-            (DeclarationWrapper::Trait(l), DeclarationWrapper::Trait(r)) => l == r,
-            (DeclarationWrapper::TraitFn(l), DeclarationWrapper::TraitFn(r)) => l == r,
-            (DeclarationWrapper::ImplTrait(l), DeclarationWrapper::ImplTrait(r)) => l == r,
-            (DeclarationWrapper::Struct(l), DeclarationWrapper::Struct(r)) => l == r,
-            (DeclarationWrapper::Storage(l), DeclarationWrapper::Storage(r)) => l == r,
-            (DeclarationWrapper::Abi(l), DeclarationWrapper::Abi(r)) => l == r,
-            (DeclarationWrapper::Constant(l), DeclarationWrapper::Constant(r)) => l == r,
-            (DeclarationWrapper::Enum(l), DeclarationWrapper::Enum(r)) => l == r,
+            (DeclarationWrapper::Function(l), DeclarationWrapper::Function(r)) => {
+                l.eq(r, type_engine)
+            }
+            (DeclarationWrapper::Trait(l), DeclarationWrapper::Trait(r)) => l.eq(r, type_engine),
+            (DeclarationWrapper::TraitFn(l), DeclarationWrapper::TraitFn(r)) => {
+                l.eq(r, type_engine)
+            }
+            (DeclarationWrapper::ImplTrait(l), DeclarationWrapper::ImplTrait(r)) => {
+                l.eq(r, type_engine)
+            }
+            (DeclarationWrapper::Struct(l), DeclarationWrapper::Struct(r)) => l.eq(r, type_engine),
+            (DeclarationWrapper::Storage(l), DeclarationWrapper::Storage(r)) => {
+                l.eq(r, type_engine)
+            }
+            (DeclarationWrapper::Abi(l), DeclarationWrapper::Abi(r)) => l.eq(r, type_engine),
+            (DeclarationWrapper::Constant(l), DeclarationWrapper::Constant(r)) => {
+                l.eq(r, type_engine)
+            }
+            (DeclarationWrapper::Enum(l), DeclarationWrapper::Enum(r)) => l.eq(r, type_engine),
             _ => false,
         }
     }
@@ -62,43 +72,43 @@ impl fmt::Display for DeclarationWrapper {
 }
 
 impl CopyTypes for DeclarationWrapper {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
         match self {
             DeclarationWrapper::Unknown => {}
-            DeclarationWrapper::Function(decl) => decl.copy_types(type_mapping),
-            DeclarationWrapper::Trait(decl) => decl.copy_types(type_mapping),
-            DeclarationWrapper::TraitFn(decl) => decl.copy_types(type_mapping),
-            DeclarationWrapper::ImplTrait(decl) => decl.copy_types(type_mapping),
-            DeclarationWrapper::Struct(decl) => decl.copy_types(type_mapping),
+            DeclarationWrapper::Function(decl) => decl.copy_types(type_mapping, type_engine),
+            DeclarationWrapper::Trait(decl) => decl.copy_types(type_mapping, type_engine),
+            DeclarationWrapper::TraitFn(decl) => decl.copy_types(type_mapping, type_engine),
+            DeclarationWrapper::ImplTrait(decl) => decl.copy_types(type_mapping, type_engine),
+            DeclarationWrapper::Struct(decl) => decl.copy_types(type_mapping, type_engine),
             DeclarationWrapper::Storage(_) => {}
             DeclarationWrapper::Abi(_) => {}
             DeclarationWrapper::Constant(_) => {}
-            DeclarationWrapper::Enum(decl) => decl.copy_types(type_mapping),
+            DeclarationWrapper::Enum(decl) => decl.copy_types(type_mapping, type_engine),
         }
     }
 }
 
 impl ReplaceSelfType for DeclarationWrapper {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
         match self {
             DeclarationWrapper::Unknown => {}
-            DeclarationWrapper::Function(decl) => decl.replace_self_type(self_type),
-            DeclarationWrapper::Trait(decl) => decl.replace_self_type(self_type),
-            DeclarationWrapper::TraitFn(decl) => decl.replace_self_type(self_type),
-            DeclarationWrapper::ImplTrait(decl) => decl.replace_self_type(self_type),
-            DeclarationWrapper::Struct(decl) => decl.replace_self_type(self_type),
+            DeclarationWrapper::Function(decl) => decl.replace_self_type(type_engine, self_type),
+            DeclarationWrapper::Trait(decl) => decl.replace_self_type(type_engine, self_type),
+            DeclarationWrapper::TraitFn(decl) => decl.replace_self_type(type_engine, self_type),
+            DeclarationWrapper::ImplTrait(decl) => decl.replace_self_type(type_engine, self_type),
+            DeclarationWrapper::Struct(decl) => decl.replace_self_type(type_engine, self_type),
             DeclarationWrapper::Storage(_) => {}
             DeclarationWrapper::Abi(_) => {}
             DeclarationWrapper::Constant(_) => {}
-            DeclarationWrapper::Enum(decl) => decl.replace_self_type(self_type),
+            DeclarationWrapper::Enum(decl) => decl.replace_self_type(type_engine, self_type),
         }
     }
 }
 
 impl ReplaceDecls for DeclarationWrapper {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, type_engine: &TypeEngine) {
         if let DeclarationWrapper::Function(decl) = self {
-            decl.replace_decls(decl_mapping);
+            decl.replace_decls(decl_mapping, type_engine);
         }
     }
 }

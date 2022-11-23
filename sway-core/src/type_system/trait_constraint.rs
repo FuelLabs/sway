@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 use sway_error::error::CompileError;
 use sway_types::{Span, Spanned};
 
@@ -10,10 +12,24 @@ use crate::{
     CompileResult,
 };
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone)]
 pub struct TraitConstraint {
     pub(crate) trait_name: CallPath,
     pub(crate) type_arguments: Vec<TypeArgument>,
+}
+
+impl HashWithTypeEngine for TraitConstraint {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.trait_name.hash(state);
+        self.type_arguments.hash(state, type_engine);
+    }
+}
+impl EqWithTypeEngine for TraitConstraint {}
+impl PartialEqWithTypeEngine for TraitConstraint {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        self.trait_name == rhs.trait_name
+            && self.type_arguments.eq(&rhs.type_arguments, type_engine)
+    }
 }
 
 impl Spanned for TraitConstraint {
@@ -23,18 +39,18 @@ impl Spanned for TraitConstraint {
 }
 
 impl CopyTypes for TraitConstraint {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
         self.type_arguments
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, type_engine));
     }
 }
 
 impl ReplaceSelfType for TraitConstraint {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
         self.type_arguments
             .iter_mut()
-            .for_each(|x| x.replace_self_type(self_type));
+            .for_each(|x| x.replace_self_type(type_engine, self_type));
     }
 }
 
@@ -116,7 +132,7 @@ impl TraitConstraint {
         for type_argument in self.type_arguments.iter_mut() {
             type_argument.type_id = check!(
                 ctx.resolve_type_without_self(type_argument.type_id, &type_argument.span, None),
-                insert_type(TypeInfo::ErrorRecovery),
+                ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );

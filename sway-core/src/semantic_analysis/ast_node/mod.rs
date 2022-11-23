@@ -24,6 +24,7 @@ impl ty::TyAstNode {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
+        let type_engine = ctx.type_engine;
         let node = ty::TyAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
@@ -33,9 +34,13 @@ impl ty::TyAstNode {
                         ctx.namespace.find_module_path(&a.call_path)
                     };
                     let mut res = match a.import_type {
-                        ImportType::Star => ctx.namespace.star_import(&path),
-                        ImportType::SelfImport => ctx.namespace.self_import(&path, a.alias),
-                        ImportType::Item(s) => ctx.namespace.item_import(&path, &s, a.alias),
+                        ImportType::Star => ctx.namespace.star_import(&path, type_engine),
+                        ImportType::SelfImport => {
+                            ctx.namespace.self_import(ctx.type_engine, &path, a.alias)
+                        }
+                        ImportType::Item(s) => {
+                            ctx.namespace.item_import(type_engine, &path, &s, a.alias)
+                        }
                     };
                     warnings.append(&mut res.warnings);
                     errors.append(&mut res.errors);
@@ -50,11 +55,11 @@ impl ty::TyAstNode {
                 )),
                 AstNodeContent::Expression(expr) => {
                     let ctx = ctx
-                        .with_type_annotation(insert_type(TypeInfo::Unknown))
+                        .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown))
                         .with_help_text("");
                     let inner = check!(
                         ty::TyExpression::type_check(ctx, expr.clone()),
-                        ty::TyExpression::error(expr.span()),
+                        ty::TyExpression::error(expr.span(), type_engine),
                         warnings,
                         errors
                     );
@@ -65,7 +70,7 @@ impl ty::TyAstNode {
                         ctx.with_help_text("Implicit return must match up with block's type.");
                     let typed_expr = check!(
                         ty::TyExpression::type_check(ctx, expr.clone()),
-                        ty::TyExpression::error(expr.span()),
+                        ty::TyExpression::error(expr.span(), type_engine),
                         warnings,
                         errors
                     );
@@ -81,10 +86,12 @@ impl ty::TyAstNode {
         } = node
         {
             let warning = Warning::UnusedReturnValue {
-                r#type: node.type_info().to_string(),
+                r#type: type_engine
+                    .help_out(node.type_info(type_engine))
+                    .to_string(),
             };
             assert_or_warn!(
-                node.type_info().can_safely_ignore(),
+                node.type_info(type_engine).can_safely_ignore(type_engine),
                 warnings,
                 node.span.clone(),
                 warning
@@ -103,6 +110,8 @@ pub(crate) fn reassign_storage_subfield(
 ) -> CompileResult<ty::TyStorageReassignment> {
     let mut errors = vec![];
     let mut warnings = vec![];
+
+    let type_engine = ctx.type_engine;
     if !ctx.namespace.has_storage_declared() {
         errors.push(CompileError::NoDeclaredStorage { span });
 
@@ -144,12 +153,10 @@ pub(crate) fn reassign_storage_subfield(
         span: first_field.span(),
     });
 
-    fn update_available_struct_fields(id: TypeId) -> Vec<ty::TyStructField> {
-        match look_up_type_id(id) {
-            TypeInfo::Struct { fields, .. } => fields,
-            _ => vec![],
-        }
-    }
+    let update_available_struct_fields = |id: TypeId| match type_engine.look_up_type_id(id) {
+        TypeInfo::Struct { fields, .. } => fields,
+        _ => vec![],
+    };
     let mut curr_type = *initial_field_type;
 
     // if the previously iterated type was a struct, put its fields here so we know that,
@@ -189,7 +196,7 @@ pub(crate) fn reassign_storage_subfield(
     let ctx = ctx.with_type_annotation(curr_type).with_help_text("");
     let rhs = check!(
         ty::TyExpression::type_check(ctx, rhs),
-        ty::TyExpression::error(span),
+        ty::TyExpression::error(span, type_engine),
         warnings,
         errors
     );
