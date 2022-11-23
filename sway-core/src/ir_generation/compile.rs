@@ -3,7 +3,8 @@ use crate::{
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
-    type_system::{look_up_type_id, LogId, TypeId},
+    type_system::{LogId, TypeId},
+    TypeEngine,
 };
 
 use super::{
@@ -19,6 +20,7 @@ use sway_types::{span::Span, Spanned};
 use std::collections::HashMap;
 
 pub(super) fn compile_script(
+    type_engine: &TypeEngine,
     context: &mut Context,
     main_function: ty::TyFunctionDeclaration,
     namespace: &namespace::Module,
@@ -29,21 +31,37 @@ pub(super) fn compile_script(
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(context, &mut md_mgr, module, namespace)?;
-    compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
+    compile_constants(type_engine, context, &mut md_mgr, module, namespace)?;
+    compile_declarations(
+        type_engine,
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+        declarations,
+    )?;
     compile_entry_function(
+        type_engine,
         context,
         &mut md_mgr,
         module,
         main_function,
         logged_types_map,
     )?;
-    compile_tests(context, &mut md_mgr, module, logged_types_map, test_fns)?;
+    compile_tests(
+        type_engine,
+        context,
+        &mut md_mgr,
+        module,
+        logged_types_map,
+        test_fns,
+    )?;
 
     Ok(module)
 }
 
 pub(super) fn compile_predicate(
+    type_engine: &TypeEngine,
     context: &mut Context,
     main_function: ty::TyFunctionDeclaration,
     namespace: &namespace::Module,
@@ -54,10 +72,31 @@ pub(super) fn compile_predicate(
     let module = Module::new(context, Kind::Predicate);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(context, &mut md_mgr, module, namespace)?;
-    compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
-    compile_entry_function(context, &mut md_mgr, module, main_function, &HashMap::new())?;
-    compile_tests(context, &mut md_mgr, module, logged_types, test_fns)?;
+    compile_constants(type_engine, context, &mut md_mgr, module, namespace)?;
+    compile_declarations(
+        type_engine,
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+        declarations,
+    )?;
+    compile_entry_function(
+        type_engine,
+        context,
+        &mut md_mgr,
+        module,
+        main_function,
+        &HashMap::new(),
+    )?;
+    compile_tests(
+        type_engine,
+        context,
+        &mut md_mgr,
+        module,
+        logged_types,
+        test_fns,
+    )?;
 
     Ok(module)
 }
@@ -69,21 +108,44 @@ pub(super) fn compile_contract(
     declarations: Vec<ty::TyDeclaration>,
     logged_types_map: &HashMap<TypeId, LogId>,
     test_fns: Vec<ty::TyFunctionDeclaration>,
+    type_engine: &TypeEngine,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(context, &mut md_mgr, module, namespace)?;
-    compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
+    compile_constants(type_engine, context, &mut md_mgr, module, namespace)?;
+    compile_declarations(
+        type_engine,
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+        declarations,
+    )?;
     for decl in abi_entries {
-        compile_abi_method(context, &mut md_mgr, module, decl, logged_types_map)?;
+        compile_abi_method(
+            context,
+            &mut md_mgr,
+            module,
+            decl,
+            logged_types_map,
+            type_engine,
+        )?;
     }
-    compile_tests(context, &mut md_mgr, module, logged_types_map, test_fns)?;
+    compile_tests(
+        type_engine,
+        context,
+        &mut md_mgr,
+        module,
+        logged_types_map,
+        test_fns,
+    )?;
 
     Ok(module)
 }
 
 pub(super) fn compile_library(
+    type_engine: &TypeEngine,
     context: &mut Context,
     namespace: &namespace::Module,
     declarations: Vec<ty::TyDeclaration>,
@@ -93,14 +155,29 @@ pub(super) fn compile_library(
     let module = Module::new(context, Kind::Library);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(context, &mut md_mgr, module, namespace)?;
-    compile_declarations(context, &mut md_mgr, module, namespace, declarations)?;
-    compile_tests(context, &mut md_mgr, module, logged_types_map, test_fns)?;
+    compile_constants(type_engine, context, &mut md_mgr, module, namespace)?;
+    compile_declarations(
+        type_engine,
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+        declarations,
+    )?;
+    compile_tests(
+        type_engine,
+        context,
+        &mut md_mgr,
+        module,
+        logged_types_map,
+        test_fns,
+    )?;
 
     Ok(module)
 }
 
 pub(crate) fn compile_constants(
+    type_engine: &TypeEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -109,6 +186,7 @@ pub(crate) fn compile_constants(
     for decl_name in module_ns.get_all_declared_symbols() {
         compile_const_decl(
             &mut LookupEnv {
+                type_engine,
                 context,
                 md_mgr,
                 module,
@@ -121,7 +199,7 @@ pub(crate) fn compile_constants(
     }
 
     for submodule_ns in module_ns.submodules().values() {
-        compile_constants(context, md_mgr, module, submodule_ns)?;
+        compile_constants(type_engine, context, md_mgr, module, submodule_ns)?;
     }
 
     Ok(())
@@ -137,6 +215,7 @@ pub(crate) fn compile_constants(
 // they are monomorphised only at the instantation site.  We must ignore the generic declarations
 // altogether anyway.
 fn compile_declarations(
+    type_engine: &TypeEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -149,6 +228,7 @@ fn compile_declarations(
                 let decl = de_get_constant(decl_id.clone(), &declaration.span())?;
                 compile_const_decl(
                     &mut LookupEnv {
+                        type_engine,
                         context,
                         md_mgr,
                         module,
@@ -192,6 +272,7 @@ fn compile_declarations(
 }
 
 pub(super) fn compile_function(
+    type_engine: &TypeEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -207,10 +288,11 @@ pub(super) fn compile_function(
         let args = ast_fn_decl
             .parameters
             .iter()
-            .map(|param| convert_fn_param(context, param))
+            .map(|param| convert_fn_param(type_engine, context, param))
             .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
         compile_fn_with_args(
+            type_engine,
             context,
             md_mgr,
             module,
@@ -225,6 +307,7 @@ pub(super) fn compile_function(
 }
 
 pub(super) fn compile_entry_function(
+    type_engine: &TypeEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -233,6 +316,7 @@ pub(super) fn compile_entry_function(
 ) -> Result<Function, CompileError> {
     let is_entry = true;
     compile_function(
+        type_engine,
         context,
         md_mgr,
         module,
@@ -244,6 +328,7 @@ pub(super) fn compile_entry_function(
 }
 
 pub(super) fn compile_tests(
+    type_engine: &TypeEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -253,19 +338,27 @@ pub(super) fn compile_tests(
     test_fns
         .into_iter()
         .map(|ast_fn_decl| {
-            compile_entry_function(context, md_mgr, module, ast_fn_decl, logged_types_map)
+            compile_entry_function(
+                type_engine,
+                context,
+                md_mgr,
+                module,
+                ast_fn_decl,
+                logged_types_map,
+            )
         })
         .collect()
 }
 
 fn convert_fn_param(
+    type_engine: &TypeEngine,
     context: &mut Context,
     param: &ty::TyFunctionParameter,
 ) -> Result<(String, Type, Span), CompileError> {
-    convert_resolved_typeid(context, &param.type_id, &param.type_span).map(|ty| {
+    convert_resolved_typeid(type_engine, context, &param.type_id, &param.type_span).map(|ty| {
         (
             param.name.as_str().into(),
-            if param.is_reference && look_up_type_id(param.type_id).is_copy_type() {
+            if param.is_reference && type_engine.look_up_type_id(param.type_id).is_copy_type() {
                 Type::Pointer(Pointer::new(context, ty, param.is_mutable, None))
             } else {
                 ty
@@ -277,6 +370,7 @@ fn convert_fn_param(
 
 #[allow(clippy::too_many_arguments)]
 fn compile_fn_with_args(
+    type_engine: &TypeEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -303,7 +397,7 @@ fn compile_fn_with_args(
         .map(|(name, ty, span)| (name, ty, md_mgr.span_to_md(context, &span)))
         .collect::<Vec<_>>();
 
-    let ret_type = convert_resolved_typeid(context, &return_type, &return_type_span)?;
+    let ret_type = convert_resolved_typeid(type_engine, context, &return_type, &return_type_span)?;
 
     let returns_by_ref = !is_entry && !ret_type.is_copy_type();
     if returns_by_ref {
@@ -336,7 +430,14 @@ fn compile_fn_with_args(
         metadata,
     );
 
-    let mut compiler = FnCompiler::new(context, module, func, returns_by_ref, logged_types_map);
+    let mut compiler = FnCompiler::new(
+        type_engine,
+        context,
+        module,
+        func,
+        returns_by_ref,
+        logged_types_map,
+    );
     let mut ret_val = compiler.compile_code_block(context, md_mgr, body)?;
 
     // Special case: sometimes the returned value at the end of the function block is hacked
@@ -414,9 +515,10 @@ fn compile_abi_method(
     module: Module,
     ast_fn_decl: ty::TyFunctionDeclaration,
     logged_types_map: &HashMap<TypeId, LogId>,
+    type_engine: &TypeEngine,
 ) -> Result<Function, CompileError> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
-    let get_selector_result = ast_fn_decl.to_fn_selector_value();
+    let get_selector_result = ast_fn_decl.to_fn_selector_value(type_engine);
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let selector = match get_selector_result.ok(&mut warnings, &mut errors) {
@@ -443,12 +545,13 @@ fn compile_abi_method(
         .parameters
         .iter()
         .map(|param| {
-            convert_resolved_typeid(context, &param.type_id, &param.type_span)
+            convert_resolved_typeid(type_engine, context, &param.type_id, &param.type_span)
                 .map(|ty| (param.name.as_str().into(), ty, param.name.span()))
         })
         .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
     compile_fn_with_args(
+        type_engine,
         context,
         md_mgr,
         module,

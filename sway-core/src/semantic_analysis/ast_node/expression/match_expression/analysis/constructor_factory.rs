@@ -3,12 +3,7 @@ use std::collections::HashSet;
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span};
 
-use crate::{
-    error::*,
-    language::ty,
-    type_system::{look_up_type_id, TypeId},
-    TypeInfo,
-};
+use crate::{error::*, language::ty, type_system::TypeId, TypeEngine, TypeInfo};
 
 use super::{
     patstack::PatStack,
@@ -21,11 +16,17 @@ pub(crate) struct ConstructorFactory {
 }
 
 impl ConstructorFactory {
-    pub(crate) fn new(type_id: TypeId, span: &Span) -> CompileResult<Self> {
+    pub(crate) fn new(
+        type_engine: &TypeEngine,
+        type_id: TypeId,
+        span: &Span,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let possible_types = check!(
-            look_up_type_id(type_id).extract_nested_types(span),
+            type_engine
+                .look_up_type_id(type_id)
+                .extract_nested_types(type_engine, span),
             return err(warnings, errors),
             warnings,
             errors
@@ -73,6 +74,7 @@ impl ConstructorFactory {
     /// ```
     pub(crate) fn create_pattern_not_present(
         &self,
+        type_engine: &TypeEngine,
         sigma: PatStack,
         span: &Span,
     ) -> CompileResult<Pattern> {
@@ -289,7 +291,7 @@ impl ConstructorFactory {
                     errors
                 );
                 let (enum_name, enum_variants) = check!(
-                    type_info.expect_enum("", span),
+                    type_info.expect_enum(type_engine, "", span),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -394,6 +396,7 @@ impl ConstructorFactory {
     /// from the "`Tuple` with 2 sub-patterns" type.
     pub(crate) fn is_complete_signature(
         &self,
+        type_engine: &TypeEngine,
         pat_stack: &PatStack,
         span: &Span,
     ) -> CompileResult<bool> {
@@ -526,7 +529,7 @@ impl ConstructorFactory {
                     errors
                 );
                 let (enum_name, enum_variants) = check!(
-                    type_info.expect_enum("", span),
+                    type_info.expect_enum(type_engine, "", span),
                     return err(warnings, errors),
                     warnings,
                     errors
