@@ -413,21 +413,25 @@ pub enum CompileError {
     TraitNotFound { name: String, span: Span },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
     InvalidExpressionOnLhs { span: Span },
-    #[error(
-        "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
+    #[error("{} \"{method_name}\" expects {expected} {} but you provided {received}.",
+        if *dot_syntax_used { "Method" } else { "Function" },
+        if *expected == 1usize { "argument" } else {"arguments"},
     )]
     TooManyArgumentsForFunction {
         span: Span,
         method_name: Ident,
+        dot_syntax_used: bool,
         expected: usize,
         received: usize,
     },
-    #[error(
-        "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
+    #[error("{} \"{method_name}\" expects {expected} {} but you provided {received}.",
+        if *dot_syntax_used { "Method" } else { "Function" },
+        if *expected == 1usize { "argument" } else {"arguments"},
     )]
     TooFewArgumentsForFunction {
         span: Span,
         method_name: Ident,
+        dot_syntax_used: bool,
         expected: usize,
         received: usize,
     },
