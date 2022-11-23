@@ -413,21 +413,25 @@ pub enum CompileError {
     TraitNotFound { name: String, span: Span },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
     InvalidExpressionOnLhs { span: Span },
-    #[error(
-        "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
+    #[error("{} \"{method_name}\" expects {expected} {} but you provided {received}.",
+        if *dot_syntax_used { "Method" } else { "Function" },
+        if *expected == 1usize { "argument" } else {"arguments"},
     )]
     TooManyArgumentsForFunction {
         span: Span,
         method_name: Ident,
+        dot_syntax_used: bool,
         expected: usize,
         received: usize,
     },
-    #[error(
-        "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
+    #[error("{} \"{method_name}\" expects {expected} {} but you provided {received}.",
+        if *dot_syntax_used { "Method" } else { "Function" },
+        if *expected == 1usize { "argument" } else {"arguments"},
     )]
     TooFewArgumentsForFunction {
         span: Span,
         method_name: Ident,
+        dot_syntax_used: bool,
         expected: usize,
         received: usize,
     },
@@ -498,6 +502,10 @@ pub enum CompileError {
     BurnFromExternalContext { span: Span },
     #[error("Contract storage cannot be used in an external context.")]
     ContractStorageFromExternalContext { span: Span },
+    #[error("The {opcode} opcode cannot be used in a predicate.")]
+    InvalidOpcodeFromPredicate { opcode: String, span: Span },
+    #[error("The {opcode} opcode cannot jump backwards in a predicate.")]
+    InvalidBackwardJumpFromPredicate { opcode: String, span: Span },
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
     #[error("Tuple index out of bounds; the arity is {count} but the index is {index}.")]
@@ -799,6 +807,8 @@ impl Spanned for CompileError {
             MintFromExternalContext { span, .. } => span.clone(),
             BurnFromExternalContext { span, .. } => span.clone(),
             ContractStorageFromExternalContext { span, .. } => span.clone(),
+            InvalidOpcodeFromPredicate { span, .. } => span.clone(),
+            InvalidBackwardJumpFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),

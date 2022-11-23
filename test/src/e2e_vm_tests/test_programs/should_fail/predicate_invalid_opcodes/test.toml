@@ -1,0 +1,75 @@
+category = "fail"
+
+# check: $()This function performs a storage read & write but does not have the required attribute(s).
+
+# check: bal r1 r2 r3;
+# nextln: $()The BAL opcode cannot be used in a predicate.
+
+# check: bhei r1;
+# nextln: $()The BHEI opcode cannot be used in a predicate.
+
+# check: bhsh r1 r2;
+# nextln: $()The BHSH opcode cannot be used in a predicate.
+
+# check: burn r1;
+# nextln: $()The BURN opcode cannot be used in a predicate.
+
+# check: call r1 r2 r3 r4;
+# nextln: $()The CALL opcode cannot be used in a predicate.
+
+# check: cb r1;
+# nextln: $()The CB opcode cannot be used in a predicate.
+
+# check: ccp r1 r2 r3 r4;
+# nextln: $()The CCP opcode cannot be used in a predicate.
+
+# check: croo r1 r2;
+# nextln: $()The CROO opcode cannot be used in a predicate.
+
+# check: csiz r1 r2;
+# nextln: $()The CSIZ opcode cannot be used in a predicate.
+
+# check: gm r1 i1;
+# nextln: $()The GM (get-metadata) opcode, when called from an external context, will cause the VM to panic.
+
+# check: gm r1 i2;
+# nextln: $()The GM (get-metadata) opcode, when called from an external context, will cause the VM to panic.
+
+# not: $()The GM (get-metadata) opcode, when called from an external context, will cause the VM to panic.
+
+# check: ldc r1 r2 r3;
+# nextln: $()The LDC opcode cannot be used in a predicate.
+
+# check: log r1 r2 r3 r4;
+# nextln: $()The LOG opcode cannot be used in a predicate.
+
+# check: logd r1 r2 r3 r4;
+# nextln: $()The LOGD opcode cannot be used in a predicate.
+
+# check: mint r1;
+# nextln: $()The MINT opcode cannot be used in a predicate.
+
+# check: smo r1 r2 r3 r4;
+# nextln: $()The SMO opcode cannot be used in a predicate.
+
+# check: srw r1 r2 r3;
+# nextln: $()The SRW opcode cannot be used in a predicate.
+
+# check: srwq r1 r2 r3 r4;
+# nextln: $()The SRWQ opcode cannot be used in a predicate.
+
+# check: sww r1 r2 r3;
+# nextln: $()The SWW opcode cannot be used in a predicate.
+
+# check: swwq r1 r2 r3 r4;
+# nextln: $()The SWWQ opcode cannot be used in a predicate.
+
+# check: time r1 r2;
+# nextln: $()The TIME opcode cannot be used in a predicate.
+
+# check: tr r1 r2 r3;
+# nextln: $()The TR opcode cannot be used in a predicate.
+
+# check: $()The JI opcode cannot jump backwards in a predicate.
+
+

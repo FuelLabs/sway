@@ -1,6 +1,6 @@
 # Sway Quickstart
 
-Follow this guide to write, test, and deploy a simple smart contract in Sway.
+Follow this guide to write and deploy a simple smart contract in Sway.
 
 Check out the [Developer Quickstart Guide](https://fuellabs.github.io/fuel-docs/master/developer-quickstart.html) for a step-by-step guide on building a fullstack dapp on Fuel. The guide will walk you through writing a smart contract, setting up a wallet, and building a frontend to interact with your contract.
 
@@ -48,12 +48,9 @@ Here is the project that Forc has initialized:
 ```console
 $ cd counter_contract
 $ tree .
-├── Cargo.toml
 ├── Forc.toml
-├── src
-│   └── main.sw
-└── tests
-    └── harness.rs
+└── src
+    └── main.sw
 ```
 
 `Forc.toml` is the _manifest file_ (similar to `Cargo.toml` for Cargo or `package.json` for Node), and defines project metadata such as the project name and dependencies.
@@ -196,46 +193,11 @@ Logs:
 TransactionId(HexFormatted(7cef24ea33513733ab78c5daa5328d622d4b38187d0f0d1857b272090d99f96a))
 ```
 
-Note the contract ID—you will need it if you want to build out a frontend to interact with this contract.
+Note the contract ID — you will need it if you want to build out a frontend to interact with this contract.
 
-## Testing your Contract
+## Testing Your Contract
 
-In the directory `tests`, navigate to `harness.rs.` Here you'll see there is some boilerplate code to help you start interacting with and testing your contract.
-
-At the bottom of the file, define the body of `can_get_contract_instance`. Here is what your code should look like to verify that the value of the counter did get incremented:
-
-```sway
-#[tokio::test]
-async fn can_get_contract_instance() {
-    // Increment the counter
-    let _result = instance.increment().call().await.unwrap();
-
-    // Get the current value of the counter
-    let result = instance.counter().call().await.unwrap();
-    assert!(result.value > 0);
-}
-```
-
-Run the following command in the terminal: `forc test`.
-
-You'll see something like this as your output:
-
-```console
-  Compiled library "core".
-  Compiled library "std".
-  Compiled contract "counter_contract".
-  Bytecode size is 224 bytes.
-   Compiling counter_contract v0.1.0 (<path/to/counter_contract>)
-    Finished test [unoptimized + debuginfo] target(s) in 4.55s
-     Running tests/harness.rs (target/debug/deps/integration_tests-7a2922c770587b45)
-
-running 1 test
-test can_get_contract_id ... ok
-
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
-```
-
-Congratulations, you've just created and tested your first Sway smart contract 🎉.
+We will cover how to test your contract later but, if you are eager to take a look, see [Unit Testing](../testing/unit-testing.md) and [Testing with Rust](../testing/testing-with-rust.md).
 
 ## Next Steps
 

@@ -5,7 +5,7 @@ use itertools::Itertools;
 use sway_ast::Intrinsic;
 use sway_types::Span;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct TyIntrinsicFunctionKind {
     pub kind: Intrinsic,
     pub arguments: Vec<TyExpression>,
@@ -13,36 +13,49 @@ pub struct TyIntrinsicFunctionKind {
     pub span: Span,
 }
 
+impl EqWithTypeEngine for TyIntrinsicFunctionKind {}
+impl PartialEqWithTypeEngine for TyIntrinsicFunctionKind {
+    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+        self.kind == rhs.kind
+            && self.arguments.eq(&rhs.arguments, type_engine)
+            && self.type_arguments.eq(&rhs.type_arguments, type_engine)
+    }
+}
+
 impl CopyTypes for TyIntrinsicFunctionKind {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
         for arg in &mut self.arguments {
-            arg.copy_types(type_mapping);
+            arg.copy_types(type_mapping, type_engine);
         }
         for targ in &mut self.type_arguments {
-            targ.type_id.copy_types(type_mapping);
+            targ.type_id.copy_types(type_mapping, type_engine);
         }
     }
 }
 
 impl ReplaceSelfType for TyIntrinsicFunctionKind {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
         for arg in &mut self.arguments {
-            arg.replace_self_type(self_type);
+            arg.replace_self_type(type_engine, self_type);
         }
         for targ in &mut self.type_arguments {
-            targ.type_id.replace_self_type(self_type);
+            targ.type_id.replace_self_type(type_engine, self_type);
         }
     }
 }
 
-impl fmt::Display for TyIntrinsicFunctionKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl DisplayWithTypeEngine for TyIntrinsicFunctionKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
         let targs = self
             .type_arguments
             .iter()
-            .map(|targ| look_up_type_id(targ.type_id))
+            .map(|targ| type_engine.help_out(targ.type_id))
             .join(", ");
-        let args = self.arguments.iter().map(|e| format!("{}", e)).join(", ");
+        let args = self
+            .arguments
+            .iter()
+            .map(|e| format!("{}", type_engine.help_out(e)))
+            .join(", ");
 
         write!(f, "{}::<{}>::({})", self.kind, targs, args)
     }

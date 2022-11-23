@@ -141,16 +141,22 @@ impl TestContext {
                     }
                     ProgramState::Revert(v) => TestResult::Revert(v),
                 };
-                assert_eq!(result, res);
-
-                if validate_abi {
-                    let (result, out) =
-                        run_and_capture_output(|| async { harness::test_json_abi(&name, &pkg) })
-                            .await;
-                    result?;
-                    output.push_str(&out);
+                if result != res {
+                    Err(anyhow::Error::msg(format!(
+                        "expected: {:?}\nactual: {:?}",
+                        res, result
+                    )))
+                } else {
+                    if validate_abi {
+                        let (result, out) = run_and_capture_output(|| async {
+                            harness::test_json_abi(&name, &pkg)
+                        })
+                        .await;
+                        result?;
+                        output.push_str(&out);
+                    }
+                    Ok(())
                 }
-                Ok(())
             }
 
             TestCategory::Compiles => {
@@ -158,6 +164,7 @@ impl TestContext {
                     harness::compile_to_bytes(&name, &context.run_config)
                 })
                 .await;
+                *output = out;
 
                 let compiled_pkgs = match result? {
                     forc_pkg::Built::Package(built_pkg) => vec![(name.clone(), *built_pkg)],
@@ -166,8 +173,6 @@ impl TestContext {
                         .map(|(n, b)| (n.clone(), b.clone()))
                         .collect(),
                 };
-
-                *output = out;
 
                 check_file_checker(checker, &name, output)?;
 
@@ -354,17 +359,19 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         } else {
             context.run(test, &mut output).await
         };
+
         if let Err(err) = result {
             println!(" {}", "failed".red().bold());
-            println!("  {}", err);
+            println!("{}", textwrap::indent(err.to_string().as_str(), "     "));
+            println!("{}", textwrap::indent(&output, "          "));
             number_of_tests_failed += 1;
         } else {
             println!(" {}", "ok".green().bold());
-        }
 
-        // If verbosity is requested then print it out.
-        if run_config.verbose {
-            println!("{}", textwrap::indent(&output, "     "));
+            // If verbosity is requested then print it out.
+            if run_config.verbose {
+                println!("{}", textwrap::indent(&output, "     "));
+            }
         }
 
         number_of_tests_executed += 1;
