@@ -1,6 +1,6 @@
 # match
 
-[If expressions](if-expressions.md) can be used to check a large number of conditions however there is an alternative syntax which allows us to perform advanced pattern matching.
+[If expressions](../if-expressions.md) can be used to check a large number of conditions however, there is an alternative syntax which allows us to perform advanced pattern matching.
 
 A `match` expression matches on a variable and checks each case, also known as an `arm`, to see which branch of logic should be performed.
 

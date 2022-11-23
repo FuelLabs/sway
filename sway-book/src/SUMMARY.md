@@ -116,7 +116,6 @@
 - [Fizzbuzz](./documentation/examples/fizzbuzz.md)
 - [Contract Ownership](./documentation/examples/contract-ownership.md)
 - [Wallet](./documentation/examples/wallet.md)
-- [Subcurrency](./documentation/examples/subcurrency.md)
 - [Liquidity Pool](./documentation/examples/liquidity-pool.md)
 
 # Miscellaneous

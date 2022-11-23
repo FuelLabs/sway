@@ -24,7 +24,7 @@ In [Conditional Branching](#conditional-branching) we have opted to call some fu
 
 ### if let
 
-In the following example we combine `if` and `let` into `if let` followed by some comparison which must evaluate to a [boolean](../built-ins/boolean.md).
+In the following examples we combine `if` and `let` into `if let` followed by some comparison which must evaluate to a [boolean](../built-ins/boolean.md).
 
 ```sway
 {{#include ../../../code/language/control_flow/src/lib.sw:if_let_enum}}
