@@ -2067,6 +2067,81 @@ impl ContractB for Contract {
     }
 }
 </code></pre>
+<h3 id="cei-pattern-violation-static-analysis"><a class="header" href="#cei-pattern-violation-static-analysis">CEI pattern violation static analysis</a></h3>
+<p>Another way of avoiding re-entrancy-related attacks is to follow the so-called
+<em>CEI</em> pattern. CEI stands for &quot;Checks, Effects, Interactions&quot;, meaning that the
+contract code should first perform safety checks, also known as
+&quot;pre-conditions&quot;, then perform effects, i.e. modify or read the contract storage
+and execute external contract calls (interaction) only at the very end of the
+function/method.</p>
+<p>Please see this <a href="https://fravoll.github.io/solidity-patterns/checks_effects_interactions.html">blog post</a>
+for more detail on some vulnerabilities in case of storage modification after
+interaction and this <a href="https://chainsecurity.com/curve-lp-oracle-manipulation-post-mortem">blog post</a> for
+more information on storage reads after interaction.</p>
+<p>The Sway compiler implements a check that the CEI pattern is not violated in the
+user contract and issues warnings if that's the case.</p>
+<p>For example, in the following contract the CEI pattern is violated, because an
+external contract call is executed before a storage write.</p>
+<pre><code class="language-sway">contract;
+
+dep other_contract;
+
+use other_contract::*;
+
+use std::auth::msg_sender;
+
+abi MyContract {
+    #[storage(read, write)]
+    fn withdraw(external_contract_id: ContractId);
+}
+
+storage {
+    balances: StorageMap&lt;Identity, u64&gt; = StorageMap {},
+}
+
+impl MyContract for Contract {
+    #[storage(read, write)]
+    fn withdraw(external_contract_id: ContractId) {
+        let sender = msg_sender().unwrap();
+        let bal = storage.balances.get(sender);
+
+        assert(bal &gt; 0);
+
+        // External call
+        let caller = abi(OtherContract, external_contract_id.into());
+        caller.external_call { coins: bal }();
+
+        // Storage update _after_ external call
+        storage.balances.insert(sender, 0);
+    }
+}
+</code></pre>
+<p>Here, <code>other_contract</code> is defined as follows:</p>
+<pre><code class="language-sway">library other_contract;
+
+abi OtherContract {
+    fn external_call();
+}
+</code></pre>
+<p>The CEI pattern analyzer issues a warning as follows, pointing to the
+interaction before a storage modification:</p>
+<pre><code class="language-sh">warning
+  --&gt; /path/to/contract/main.sw:28:9
+   |
+26 |
+27 |           let caller = abi(OtherContract, external_contract_id.into());
+28 |           caller.external_call { coins: bal }();
+   |  _________-
+29 | |
+30 | |         // Storage update _after_ external call
+31 | |         storage.balances.insert(sender, 0);
+   | |__________________________________________- Storage modification after external contract interaction in function or method &quot;withdraw&quot;. Consider making all storage writes before calling another contract
+32 |       }
+33 |   }
+   |
+____
+</code></pre>
+<p>In case there is a storage read after an interaction, the CEI analyzer will issue a similar warning.</p>
 <h2 id="differences-from-the-evm"><a class="header" href="#differences-from-the-evm">Differences from the EVM</a></h2>
 <p>While the Fuel contract calling paradigm is similar to the EVM's (using an ABI, forwarding gas and data), it differs in <em>two</em> key ways:</p>
 <ol>
