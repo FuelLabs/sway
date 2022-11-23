@@ -112,7 +112,7 @@ interaction and this [blog post](https://chainsecurity.com/curve-lp-oracle-manip
 more information on storage reads after interaction.
 
 The Sway compiler implements a check that the CEI pattern is not violated in the
-user contract and issues warnings if it's the case.
+user contract and issues warnings if that's the case.
 
 For example, in the following contract the CEI pattern is violated, because an
 external contract call is executed before a storage write.
