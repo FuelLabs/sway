@@ -217,7 +217,7 @@ impl fmt::Display for Warning {
             ),
             DeadStorageDeclarationForFunction { unneeded_attrib } => write!(
                 f,
-                "This function's storage attributes declaration does not match this function's \
+                "This function's storage attributes declaration does not match its \
                  actual storage access pattern: '{unneeded_attrib}' attribute(s) can be removed."
             ),
             MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
