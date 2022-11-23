@@ -1,1 +1,2 @@
+[workspace]
 members = ["test_contract", "test_script", "test_lib"] 
