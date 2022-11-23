@@ -225,24 +225,31 @@ impl AllocatedAbstractInstructionSet {
         let reduction_target = furthest_offset - consts::EIGHTEEN_BITS;
 
         // We create a map of blocks to move but storing the _abstract_ size of the block.
-        let mut instructions_to_move_count = 0;
+        let mut reduced_count = 0;
         let blocks_to_move: HashMap<Label, usize> = HashMap::from_iter(
             sorted_blocks
                 .into_iter()
                 .take_while(|(_lab, blk)| {
-                    let keep_going = instructions_to_move_count < reduction_target;
-                    instructions_to_move_count += blk.final_len;
+                    // We replace the block with a `JI` so the per-block reduction is
+                    // `final_len` - 1.
+                    let keep_going = reduced_count < reduction_target;
+                    reduced_count += blk.final_len - 1;
                     keep_going
                 })
                 .map(|(lab, blk)| (lab, blk.abstract_len)),
         );
 
+        if reduced_count < reduction_target {
+            // We weren't able to find enough blocks to successfully fix anything.  Don't bother.
+            return self;
+        }
+
         // This is all very imperative, but we're trying to keep it efficient.  We expect the
-        // number of instructions in the `moved_ops` list to be `instructions_to_move_count` plus a
+        // number of instructions in the `moved_ops` list to be around about `reduced_count` plus a
         // label op for each block which is moved.
         let mut new_ops: Vec<AllocatedAbstractOp> = Vec::with_capacity(self.ops.len());
         let mut moved_ops: Vec<AllocatedAbstractOp> =
-            Vec::with_capacity(blocks_to_move.len() + instructions_to_move_count as usize);
+            Vec::with_capacity(blocks_to_move.len() + reduced_count as usize);
 
         // A util function to wrap the new control flow opcodes.
         let mk_op = |opcode| AllocatedAbstractOp {
