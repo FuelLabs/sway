@@ -183,7 +183,7 @@ impl AllocatedAbstractInstructionSet {
     /// Here we use the convenience of `JI` being able to jump to a 24bit offset.  Say we had the
     /// following bytecode straddling the 256K instruction boundary:
     ///
-    /// ```
+    /// ```text
     /// 0003fffd JNZI label_A       ; jump to symbolic offset at label_A
     /// 0003fffe NOOP               ; very important work
     /// 0003ffff NOOP
@@ -197,7 +197,7 @@ impl AllocatedAbstractInstructionSet {
     /// `relocate_control_flow()` would transform this bytecode into the following to fix the
     /// problem:
     ///
-    /// ```
+    /// ```text
     /// 0003fffd JNZI label_A       ; jump to symbolic offset at label_A
     /// 0003fffe JI label_B         ; jump to the important work with a 24bit offset.
     ///          label_A:           ; label which is now (just) below 256K.
