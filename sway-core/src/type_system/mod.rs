@@ -69,6 +69,7 @@ fn generic_enum_resolution() {
             name_ident: Ident::new_no_span("T"),
             trait_constraints: vec![],
             trait_constraints_span: Span::dummy(),
+            is_from_parent: false,
         }],
     });
 
@@ -91,6 +92,7 @@ fn generic_enum_resolution() {
             name_ident: Ident::new_no_span("T"),
             trait_constraints: vec![],
             trait_constraints_span: Span::dummy(),
+            is_from_parent: false,
         }],
     });
 

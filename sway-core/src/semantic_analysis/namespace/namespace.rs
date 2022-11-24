@@ -40,9 +40,13 @@ pub struct Namespace {
 
 impl Namespace {
     /// Initialise the namespace at its root from the given initial namespace.
-    pub fn init_root(init: Module) -> Self {
-        let root = Root::from(init.clone());
+    pub fn init_root(init: Module, pkg_name_opt: Option<String>) -> Self {
+        let mut root = Root::from(init.clone());
         let mod_path = vec![];
+        if let Some(pkg_name) = pkg_name_opt {
+            root.pkg_name = Some(Ident::new_no_span(Box::leak(pkg_name.into_boxed_str())))
+        }
+
         Self {
             init,
             root,
@@ -289,6 +293,43 @@ impl Namespace {
             namespace: self,
             parent_mod_path,
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn insert_trait_implementation<'a>(
+        &mut self,
+        trait_name: CallPath,
+        trait_type_args: Vec<TypeArgument>,
+        type_id: TypeId,
+        methods: &[DeclarationId],
+        impl_span: &Span,
+        is_impl_self: bool,
+        engines: Engines<'a>,
+    ) -> CompileResult<()> {
+        let full_trait_name = trait_name.to_fullpath(self);
+
+        self.implemented_traits.insert(
+            full_trait_name,
+            trait_type_args,
+            type_id,
+            methods,
+            impl_span,
+            is_impl_self,
+            engines,
+        )
+    }
+
+    pub(crate) fn get_methods_for_type_and_trait_name(
+        &mut self,
+        engines: Engines<'_>,
+        type_id: TypeId,
+        trait_name: &CallPath,
+    ) -> Vec<DeclarationId> {
+        // Use trait name with module path as this is expected in get_methods_for_type_and_trait_name
+        let trait_name = trait_name.to_fullpath(self);
+
+        self.implemented_traits
+            .get_methods_for_type_and_trait_name(engines, type_id, &trait_name)
     }
 }
 

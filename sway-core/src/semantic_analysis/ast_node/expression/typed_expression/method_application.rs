@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::DeclarationId,
+    declaration_engine::{DeclarationId, ReplaceDecls},
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -49,7 +49,7 @@ pub(crate) fn type_check_method_application(
         warnings,
         errors
     );
-    let method = check!(
+    let mut method = check!(
         CompileResult::from(
             declaration_engine.get_function(decl_id.clone(), &method_name_binding.span())
         ),
@@ -296,7 +296,7 @@ pub(crate) fn type_check_method_application(
                 _ => {
                     errors.push(CompileError::Internal(
                         "Attempted to find contract address of non-contract-call.",
-                        span.clone(),
+                        span,
                     ));
                     None
                 }
@@ -364,16 +364,38 @@ pub(crate) fn type_check_method_application(
         .map(|(param, arg)| (param.name.clone(), arg))
         .collect::<Vec<(_, _)>>();
 
+    // Handle the trait constraints. This includes checking to see if the trait
+    // constraints are satisfied and replacing old decl ids based on the
+    // constraint with new decl ids based on the new type.
+    let decl_mapping = check!(
+        TypeParameter::gather_decl_mapping_from_trait_constraints(
+            ctx.by_ref(),
+            &method.type_parameters,
+            &call_path.span()
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    method.replace_decls(&decl_mapping, ctx.engines());
+    let return_type = method.return_type;
+    let span = method.span.clone();
+    let new_decl_id = if decl_mapping.is_empty() {
+        decl_id
+    } else {
+        ctx.declaration_engine.insert_function(method)
+    };
+
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path,
             contract_call_params: contract_call_params_map,
             arguments: args_and_names,
-            function_decl_id: decl_id,
+            function_decl_id: new_decl_id,
             self_state_idx,
             selector,
         },
-        return_type: method.return_type,
+        return_type,
         span,
     };
 

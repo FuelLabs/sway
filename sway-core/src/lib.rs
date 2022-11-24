@@ -191,13 +191,14 @@ pub fn parsed_to_ast(
     parse_program: &parsed::ParseProgram,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
+    pkg_name: Option<String>,
 ) -> CompileResult<ty::TyProgram> {
     // Type check the program.
     let CompileResult {
         value: typed_program_opt,
         mut warnings,
         mut errors,
-    } = ty::TyProgram::type_check(engines, parse_program, initial_namespace);
+    } = ty::TyProgram::type_check(engines, parse_program, initial_namespace, pkg_name);
     let mut typed_program = match typed_program_opt {
         Some(typed_program) => typed_program,
         None => return err(warnings, errors),
@@ -301,6 +302,7 @@ pub fn compile_to_ast(
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
+    pkg_name: Option<String>,
 ) -> CompileResult<ty::TyProgram> {
     // Parse the program to a concrete syntax tree (CST).
     let CompileResult {
@@ -314,7 +316,13 @@ pub fn compile_to_ast(
     };
 
     // Type check (+ other static analysis) the CST to a typed AST.
-    let typed_res = parsed_to_ast(engines, &parse_program, initial_namespace, build_config);
+    let typed_res = parsed_to_ast(
+        engines,
+        &parse_program,
+        initial_namespace,
+        build_config,
+        pkg_name,
+    );
     errors.extend(typed_res.errors);
     warnings.extend(typed_res.warnings);
     let typed_program = match typed_res.value {
@@ -337,8 +345,15 @@ pub fn compile_to_asm(
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
+    pkg_name: Option<String>,
 ) -> CompileResult<CompiledAsm> {
-    let ast_res = compile_to_ast(engines, input, initial_namespace, Some(&build_config));
+    let ast_res = compile_to_ast(
+        engines,
+        input,
+        initial_namespace,
+        Some(&build_config),
+        pkg_name,
+    );
     ast_to_asm(engines, &ast_res, &build_config)
 }
 
@@ -645,8 +660,9 @@ pub fn compile_to_bytecode(
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
+    pkg_name: Option<String>,
 ) -> CompileResult<CompiledBytecode> {
-    let asm_res = compile_to_asm(engines, input, initial_namespace, build_config);
+    let asm_res = compile_to_asm(engines, input, initial_namespace, build_config, pkg_name);
     asm_to_bytecode(asm_res, source_map)
 }
 

@@ -111,7 +111,7 @@ impl Module {
                 content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl)),
                 span: const_item_span.clone(),
             };
-            let mut ns = Namespace::init_root(Default::default());
+            let mut ns = Namespace::init_root(Default::default(), None);
             let type_check_ctx = TypeCheckContext::from_root(&mut ns, engines);
             let typed_node = ty::TyAstNode::type_check(type_check_ctx, ast_node)
                 .unwrap(&mut vec![], &mut vec![]);

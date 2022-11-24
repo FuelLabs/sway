@@ -1999,7 +1999,7 @@ mod tests {
         expr: Expression,
         type_annotation: TypeId,
     ) -> CompileResult<ty::TyExpression> {
-        let mut namespace = Namespace::init_root(namespace::Module::default());
+        let mut namespace = Namespace::init_root(namespace::Module::default(), None);
         let ctx = TypeCheckContext::from_root(&mut namespace, engines)
             .with_type_annotation(type_annotation);
         ty::TyExpression::type_check(ctx, expr)

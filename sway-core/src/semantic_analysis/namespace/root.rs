@@ -16,6 +16,7 @@ use super::{module::Module, namespace::Namespace, Path};
 #[derive(Clone, Debug)]
 pub struct Root {
     pub(crate) module: Module,
+    pub(crate) pkg_name: Option<Ident>,
 }
 
 impl Root {
@@ -76,7 +77,10 @@ impl std::ops::DerefMut for Root {
 
 impl From<Module> for Root {
     fn from(module: Module) -> Self {
-        Root { module }
+        Root {
+            module,
+            pkg_name: None,
+        }
     }
 }
 

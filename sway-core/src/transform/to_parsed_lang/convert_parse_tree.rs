@@ -162,7 +162,7 @@ fn item_to_ast_nodes(
         )),
         ItemKind::Fn(item_fn) => {
             let function_declaration =
-                item_fn_to_function_declaration(handler, engines, item_fn, attributes)?;
+                item_fn_to_function_declaration(handler, engines, item_fn, attributes, None)?;
             error_if_self_param_is_not_allowed(
                 handler,
                 &function_declaration.parameters,
@@ -327,6 +327,7 @@ fn item_struct_to_struct_declaration(
             handler,
             engines,
             item_struct.generics,
+            None,
             item_struct.where_clause_opt,
         )?,
         visibility: pub_token_opt_to_visibility(item_struct.visibility),
@@ -381,6 +382,7 @@ fn item_enum_to_enum_declaration(
             handler,
             engines,
             item_enum.generics,
+            None,
             item_enum.where_clause_opt,
         )?,
         variants,
@@ -396,6 +398,7 @@ fn item_fn_to_function_declaration(
     engines: Engines<'_>,
     item_fn: ItemFn,
     attributes: AttributesMap,
+    parent_generic_params_opt: Option<GenericParams>,
 ) -> Result<FunctionDeclaration, ErrorEmitted> {
     let span = item_fn.span();
     let return_type_span = match &item_fn.fn_signature.return_type_opt {
@@ -422,6 +425,7 @@ fn item_fn_to_function_declaration(
             handler,
             engines,
             item_fn.fn_signature.generics,
+            parent_generic_params_opt,
             item_fn.fn_signature.where_clause_opt,
         )?,
         return_type_span,
@@ -471,7 +475,8 @@ fn item_trait_to_trait_declaration(
     let type_parameters = generic_params_opt_to_type_parameters(
         handler,
         engines,
-        item_trait.generics,
+        item_trait.generics.clone(),
+        None,
         item_trait.where_clause_opt,
     )?;
     let interface_surface = {
@@ -492,7 +497,13 @@ fn item_trait_to_trait_declaration(
             .into_iter()
             .map(|item_fn| {
                 let attributes = item_attrs_to_map(handler, &item_fn.attribute_list)?;
-                item_fn_to_function_declaration(handler, engines, item_fn.value, attributes)
+                item_fn_to_function_declaration(
+                    handler,
+                    engines,
+                    item_fn.value,
+                    attributes,
+                    item_trait.generics.clone(),
+                )
             })
             .collect::<Result<_, _>>()?,
     };
@@ -527,7 +538,13 @@ fn item_impl_to_declaration(
         .into_iter()
         .map(|item| {
             let attributes = item_attrs_to_map(handler, &item.attribute_list)?;
-            item_fn_to_function_declaration(handler, engines, item.value, attributes)
+            item_fn_to_function_declaration(
+                handler,
+                engines,
+                item.value,
+                attributes,
+                item_impl.generic_params_opt.clone(),
+            )
         })
         .collect::<Result<_, _>>()?;
 
@@ -535,6 +552,7 @@ fn item_impl_to_declaration(
         handler,
         engines,
         item_impl.generic_params_opt,
+        None,
         item_impl.where_clause_opt,
     )?;
 
@@ -645,6 +663,7 @@ fn item_abi_to_abi_declaration(
                         engines,
                         item_fn.value,
                         attributes,
+                        None,
                     )?;
                     error_if_self_param_is_not_allowed(
                         handler,
@@ -754,6 +773,7 @@ fn generic_params_opt_to_type_parameters(
     handler: &Handler,
     engines: Engines<'_>,
     generic_params_opt: Option<GenericParams>,
+    parent_generic_params_opt: Option<GenericParams>,
     where_clause_opt: Option<WhereClause>,
 ) -> Result<Vec<TypeParameter>, ErrorEmitted> {
     let type_engine = engines.te();
@@ -767,8 +787,8 @@ fn generic_params_opt_to_type_parameters(
             .collect::<Vec<_>>(),
         None => Vec::new(),
     };
-
-    let mut params = match generic_params_opt {
+    let generics_to_params = |generics: Option<GenericParams>, is_from_parent: bool| match generics
+    {
         Some(generic_params) => generic_params
             .parameters
             .into_inner()
@@ -787,26 +807,35 @@ fn generic_params_opt_to_type_parameters(
                     name_ident: ident,
                     trait_constraints: Vec::new(),
                     trait_constraints_span: Span::dummy(),
+                    is_from_parent,
                 }
             })
             .collect::<Vec<_>>(),
         None => Vec::new(),
     };
 
+    let mut params = generics_to_params(generic_params_opt, false);
+    let parent_params = generics_to_params(parent_generic_params_opt, true);
+
     let mut errors = Vec::new();
     for (ty_name, bounds) in trait_constraints.into_iter() {
-        let param_to_edit = match params
+        let param_to_edit = if let Some(o) = params
             .iter_mut()
             .find(|TypeParameter { name_ident, .. }| name_ident.as_str() == ty_name.as_str())
         {
-            Some(o) => o,
-            None => {
-                errors.push(ConvertParseTreeError::ConstrainedNonExistentType {
-                    ty_name: ty_name.clone(),
-                    span: ty_name.span().clone(),
-                });
-                continue;
-            }
+            o
+        } else if let Some(o2) = parent_params
+            .iter()
+            .find(|TypeParameter { name_ident, .. }| name_ident.as_str() == ty_name.as_str())
+        {
+            params.push(o2.clone());
+            params.last_mut().unwrap()
+        } else {
+            errors.push(ConvertParseTreeError::ConstrainedNonExistentType {
+                ty_name: ty_name.clone(),
+                span: ty_name.span().clone(),
+            });
+            continue;
         };
 
         param_to_edit.trait_constraints_span = Span::join(ty_name.span(), bounds.span());
@@ -2935,6 +2964,7 @@ fn ty_to_type_parameter(
                 name_ident: underscore_token.into(),
                 trait_constraints: Default::default(),
                 trait_constraints_span: Span::dummy(),
+                is_from_parent: false,
             });
         }
         Ty::Tuple(..) => panic!("tuple types are not allowed in this position"),
@@ -2954,6 +2984,7 @@ fn ty_to_type_parameter(
         name_ident,
         trait_constraints: Vec::new(),
         trait_constraints_span: Span::dummy(),
+        is_from_parent: false,
     })
 }
 

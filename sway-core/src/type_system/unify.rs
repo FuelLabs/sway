@@ -251,6 +251,8 @@ pub(super) fn unify(
             (vec![], vec![])
         }
         (ref r @ UnknownGeneric { .. }, e) => {
+            type_engine.insert_unified_type(received, expected);
+            type_engine.insert_unified_type(expected, received);
             match type_engine.slab.replace(received, r, e, engines) {
                 None => (vec![], vec![]),
                 Some(_) => unify(
@@ -264,6 +266,8 @@ pub(super) fn unify(
             }
         }
         (r, ref e @ UnknownGeneric { .. }) => {
+            type_engine.insert_unified_type(received, expected);
+            type_engine.insert_unified_type(expected, received);
             match type_engine.slab.replace(expected, e, r, engines) {
                 None => (vec![], vec![]),
                 Some(_) => unify(

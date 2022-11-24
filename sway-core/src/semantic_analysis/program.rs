@@ -20,8 +20,9 @@ impl ty::TyProgram {
         engines: Engines<'_>,
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
+        pkg_name_opt: Option<String>,
     ) -> CompileResult<Self> {
-        let mut namespace = Namespace::init_root(initial_namespace);
+        let mut namespace = Namespace::init_root(initial_namespace, pkg_name_opt);
         let ctx =
             TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
         let ParseProgram { root, kind } = parsed;

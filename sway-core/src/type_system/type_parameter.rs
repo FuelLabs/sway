@@ -23,6 +23,7 @@ pub struct TypeParameter {
     pub name_ident: Ident,
     pub(crate) trait_constraints: Vec<TraitConstraint>,
     pub(crate) trait_constraints_span: Span,
+    pub(crate) is_from_parent: bool,
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
@@ -105,6 +106,7 @@ impl TypeParameter {
             name_ident,
             mut trait_constraints,
             trait_constraints_span,
+            is_from_parent,
             ..
         } = type_parameter;
 
@@ -138,15 +140,43 @@ impl TypeParameter {
             );
         }
 
-        // Insert the type parameter into the namespace as a dummy type
-        // declaration.
-        let type_parameter_decl = ty::TyDeclaration::GenericTypeForFunctionScope {
-            name: name_ident.clone(),
-            type_id,
-        };
-        ctx.namespace
-            .insert_symbol(name_ident.clone(), type_parameter_decl)
-            .ok(&mut warnings, &mut errors);
+        if is_from_parent {
+            if let Some(sy) = ctx.namespace.symbols.get(&name_ident) {
+                match sy {
+                    ty::TyDeclaration::GenericTypeForFunctionScope {
+                        type_id: sy_type_id,
+                        ..
+                    } => {
+                        append!(
+                            ctx.type_engine.unify(
+                                ctx.declaration_engine,
+                                type_id,
+                                *sy_type_id,
+                                &trait_constraints_span,
+                                ""
+                            ),
+                            warnings,
+                            errors
+                        );
+                    }
+                    _ => errors.push(CompileError::Internal(
+                        "Unexpected TyDeclaration for TypeParameter.",
+                        name_ident.span(),
+                    )),
+                }
+            }
+        } else {
+            // Insert the type parameter into the namespace as a dummy type
+            // declaration.
+            let type_parameter_decl = ty::TyDeclaration::GenericTypeForFunctionScope {
+                name: name_ident.clone(),
+                type_id,
+            };
+
+            ctx.namespace
+                .insert_symbol(name_ident.clone(), type_parameter_decl)
+                .ok(&mut warnings, &mut errors);
+        }
 
         let type_parameter = TypeParameter {
             name_ident,
@@ -154,6 +184,7 @@ impl TypeParameter {
             initial_type_id,
             trait_constraints,
             trait_constraints_span,
+            is_from_parent,
         };
         ok(type_parameter, warnings, errors)
     }
@@ -221,34 +252,8 @@ impl TypeParameter {
                     type_arguments: trait_type_arguments,
                 } = trait_constraint;
 
-                // Use trait name with module path as this is expected in get_methods_for_type_and_trait_name
-                let mut full_trait_name = trait_name.clone();
-                if trait_name.prefixes.is_empty() {
-                    if let Some(use_synonym) = ctx.namespace.use_synonyms.get(&trait_name.suffix) {
-                        let mut prefixes = use_synonym.0.clone();
-                        for mod_path in ctx.namespace.mod_path() {
-                            if prefixes[0].as_str() == mod_path.as_str() {
-                                prefixes.drain(0..1);
-                            } else {
-                                prefixes = use_synonym.0.clone();
-                                break;
-                            }
-                        }
-                        full_trait_name = CallPath {
-                            prefixes,
-                            suffix: trait_name.suffix.clone(),
-                            is_absolute: false,
-                        }
-                    }
-                }
-
                 let (trait_original_method_ids, trait_impld_method_ids) = check!(
-                    handle_trait(
-                        ctx.by_ref(),
-                        *type_id,
-                        &full_trait_name,
-                        trait_type_arguments
-                    ),
+                    handle_trait(ctx.by_ref(), *type_id, trait_name, trait_type_arguments),
                     continue,
                     warnings,
                     errors

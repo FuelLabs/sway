@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::Ident;
+use crate::{Ident, Namespace};
 
 use sway_types::{span::Span, Spanned};
 
@@ -45,7 +45,11 @@ impl<T: Spanned> Spanned for CallPath<T> {
         if self.prefixes.is_empty() {
             self.suffix.span()
         } else {
-            let prefixes_spans = self.prefixes.iter().map(|x| x.span());
+            let prefixes_spans = self
+                .prefixes
+                .iter()
+                .map(|x| x.span())
+                .filter(|x| x.path() == self.suffix.span().path());
             Span::join(Span::join_all(prefixes_spans), self.suffix.span())
         }
     }
@@ -64,5 +68,40 @@ impl CallPath {
                 is_absolute: self.is_absolute,
             }
         }
+    }
+
+    pub fn to_fullpath(&self, namespace: &mut Namespace) -> CallPath {
+        let mut full_trait_name = self.clone();
+        if self.prefixes.is_empty() {
+            let mut synonym_prefixes = vec![];
+            if let Some(use_synonym) = namespace.use_synonyms.get(&self.suffix) {
+                synonym_prefixes = use_synonym.0.clone();
+                for mod_path in namespace.mod_path() {
+                    if synonym_prefixes[0].as_str() == mod_path.as_str() {
+                        synonym_prefixes.drain(0..1);
+                    } else {
+                        synonym_prefixes = use_synonym.0.clone();
+                        break;
+                    }
+                }
+            }
+
+            let mut prefixes: Vec<Ident> = match &namespace.root().pkg_name {
+                Some(pkg_name) if synonym_prefixes.is_empty() => vec![pkg_name.clone()],
+                _ => vec![],
+            };
+
+            for mod_path in namespace.mod_path() {
+                prefixes.push(mod_path.clone());
+            }
+            prefixes.extend(synonym_prefixes);
+
+            full_trait_name = CallPath {
+                prefixes,
+                suffix: self.suffix.clone(),
+                is_absolute: false,
+            }
+        }
+        full_trait_name
     }
 }

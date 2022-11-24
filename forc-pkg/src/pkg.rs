@@ -2289,11 +2289,18 @@ pub fn compile_ast(
     manifest: &PackageManifestFile,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
+    pkg_name: Option<String>,
 ) -> Result<CompileResult<ty::TyProgram>> {
     let source = manifest.entry_string()?;
     let sway_build_config =
         sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
-    let ast_res = sway_core::compile_to_ast(engines, source, namespace, Some(&sway_build_config));
+    let ast_res = sway_core::compile_to_ast(
+        engines,
+        source,
+        namespace,
+        Some(&sway_build_config),
+        pkg_name,
+    );
     Ok(ast_res)
 }
 
@@ -2355,7 +2362,13 @@ pub fn compile(
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(engines, manifest, build_profile, namespace)?
+        compile_ast(
+            engines,
+            manifest,
+            build_profile,
+            namespace,
+            Some(pkg.name.clone())
+        )?
     );
     let typed_program = match ast_res.value.as_ref() {
         None => return fail(&ast_res.warnings, &ast_res.errors),
@@ -2843,7 +2856,13 @@ pub fn check(
             Some(program) => program,
         };
 
-        let ast_result = sway_core::parsed_to_ast(engines, &parse_program, dep_namespace, None);
+        let ast_result = sway_core::parsed_to_ast(
+            engines,
+            &parse_program,
+            dep_namespace,
+            None,
+            Some(pkg.name.clone()),
+        );
         warnings.extend(ast_result.warnings);
         errors.extend(ast_result.errors);
 
