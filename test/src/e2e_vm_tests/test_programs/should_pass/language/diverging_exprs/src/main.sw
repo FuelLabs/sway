@@ -233,6 +233,36 @@ fn diverge_with_if_else(b: bool) -> u64 {
     return x;
 }
 
+fn diverge_in_eq() -> u64 {
+    let mut b: bool = true;
+    b = {
+        return 5;
+    } == {
+        return 6;
+    };
+    123
+}
+
+fn diverge_in_lt() -> u64 {
+    let mut b: bool = true;
+    b = {
+        return 5;
+    } < {
+        return 6;
+    };
+    123
+}
+
+fn diverge_in_gt() -> u64 {
+    let mut b: bool = true;
+    b = {
+        return 5;
+    } > {
+        return 6;
+    };
+    123
+}
+
 fn main() -> u64 {
     assert(5 == diverge_in_let_body());
     assert(5 == diverge_in_struct_0());
@@ -262,6 +292,9 @@ fn main() -> u64 {
     assert(5 == diverge_in_logical_or_lhs());
     assert(5 == diverge_in_logical_or_rhs());
     assert(5 == diverge_in_reassignment());
+    assert(5 == diverge_in_eq());
+    assert(5 == diverge_in_lt());
+    assert(5 == diverge_in_gt());
 
     42
 }
