@@ -1,7 +1,6 @@
 use fuel_vm::{consts::REG_ONE, fuel_asm::Opcode, fuel_crypto::Hasher};
 use fuels::{
     prelude::*,
-    signers::WalletUnlocked,
     tx::{
         field::Script as ScriptField, field::Witnesses, field::*, Bytes32, ConsensusParameters,
         Contract as TxContract, ContractId, Input as TxInput, Output as TxOutput, TxPointer,
