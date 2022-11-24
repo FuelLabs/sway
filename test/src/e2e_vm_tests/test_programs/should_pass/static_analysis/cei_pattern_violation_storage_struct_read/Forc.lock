@@ -1,0 +1,13 @@
+[[package]]
+name = 'cei_pattern_violation_storage_struct_read'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-CBC22BC7FE54BF44'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-CBC22BC7FE54BF44'
+dependencies = ['core']
