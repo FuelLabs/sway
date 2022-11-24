@@ -3,8 +3,8 @@ script;
 use core::ops::*;
 
 enum Error {
-    BoolError: bool,      
-    U8Error: u8,      
+    BoolError: bool,
+    U8Error: u8,
 }
 
 impl Eq for Error {

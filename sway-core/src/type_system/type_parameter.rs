@@ -220,8 +220,25 @@ impl TypeParameter {
                     type_arguments: trait_type_arguments,
                 } = trait_constraint;
 
+                // Use trait name with module path as this is expected in get_methods_for_type_and_trait_name
+                let mut full_trait_name = trait_name.clone();
+                if trait_name.prefixes.is_empty() {
+                    if let Some(vec) = ctx.namespace.use_synonyms.get(&trait_name.suffix) {
+                        full_trait_name = CallPath {
+                            prefixes: vec.0.clone(),
+                            suffix: trait_name.suffix.clone(),
+                            is_absolute: false,
+                        }
+                    }
+                }
+
                 let (trait_original_method_ids, trait_impld_method_ids) = check!(
-                    handle_trait(ctx.by_ref(), *type_id, trait_name, trait_type_arguments),
+                    handle_trait(
+                        ctx.by_ref(),
+                        *type_id,
+                        &full_trait_name,
+                        trait_type_arguments
+                    ),
                     continue,
                     warnings,
                     errors
