@@ -10,7 +10,6 @@ pub struct Bytes {
 }
 
 impl Bytes {
-
     // fn new(len: u64) -> Bytes {
     //     let i = len;
     //     while i > 0 {
@@ -21,9 +20,7 @@ impl Bytes {
     // if ptr + len > cap then we need to alloc more memory
         if self.ptr + self.len > self.ptr + self.cap {
             self.cap = self.cap * 2;
-            self.ptr = asm(r1: alloc(self.cap)) {
-                r1: u64
-            };
+            self.ptr = asm(r1: alloc(self.cap)) { r1: u64 };
         }
 
         asm(r1: self.ptr + self.len, r2: item) {
@@ -31,7 +28,6 @@ impl Bytes {
         }
         self.len = self.len + 1;
     }
-
 
 //   fn pop_byte(ref mut self) -> u8 {
 //       asm(r1: self.ptr + self.len - 1, r2) {
@@ -42,7 +38,11 @@ impl Bytes {
   // can use From trait when generic traits are in
     fn from_vec_u8(raw: Vec<u8>) -> Self {
     // TODO
-        Bytes { ptr: 0, len: 0, cap: 0}
+        Bytes {
+            ptr: 0,
+            len: 0,
+            cap: 0,
+        }
     }
 
 //   fn into::<T>(self) -> Vec<u8> {
@@ -51,10 +51,10 @@ impl Bytes {
 
 #[test()]
 fn test_bytes_literal_intantiation() {
-   let bytes =  Bytes {
+    let bytes = Bytes {
         ptr: 11,
         len: 42,
-        cap: 42
+        cap: 42,
     };
     assert(bytes.ptr == 11);
     assert(bytes.len == 42);
