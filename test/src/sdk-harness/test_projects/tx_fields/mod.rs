@@ -19,6 +19,8 @@ abigen!(
 async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
     let mut wallet = WalletUnlocked::new_random(None);
 
+    let coins = setup_single_asset_coins(wallet.address(), BASE_ASSET_ID, 1, 10);
+
     let messages = setup_single_message(
         &Bech32Address {
             hrp: "".to_string(),
@@ -30,7 +32,8 @@ async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
         MESSAGE_DATA.to_vec(),
     );
 
-    let (provider, _address) = setup_test_provider(vec![], messages.clone(), None, None).await;
+    let (provider, _address) =
+        setup_test_provider(coins.clone(), messages.clone(), None, None).await;
     wallet.set_provider(provider);
 
     let contract_id = Contract::deploy(
