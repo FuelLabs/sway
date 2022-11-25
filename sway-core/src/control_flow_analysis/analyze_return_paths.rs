@@ -138,46 +138,20 @@ fn connect_node(
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());
             }
-            Ok((NodeConnection::Return(this_index), vec![]))
+            Ok((NodeConnection::Return(this_index), vec![this_index]))
         }
         ty::TyAstNodeContent::Expression(ty::TyExpression {
-            expression: ty::TyExpressionVariant::WhileLoop { body, .. },
+            expression: ty::TyExpressionVariant::WhileLoop { .. },
             ..
         }) => {
-            // This is very similar to the dead code analysis for a while loop.
-            let entry = graph.add_node(node.into());
-            let while_loop_exit = graph.add_node("while loop exit".to_string().into());
+            // An abridged version of the dead code analysis for a while loop
+            // since we don't really care about what the loop body contains when detecting
+            // divergent paths
+            let node = graph.add_node(node.into());
             for leaf in leaves {
-                graph.add_edge(*leaf, entry, "".into());
+                graph.add_edge(*leaf, node, "while loop entry".into());
             }
-            // it is possible for a whole while loop to be skipped so add edge from
-            // beginning of while loop straight to exit
-            graph.add_edge(
-                entry,
-                while_loop_exit,
-                "condition is initially false".into(),
-            );
-            let mut leaves = vec![entry];
-
-            // We need to dig into the body of the while loop in case there is a break or a
-            // continue at some level.
-            let (l_leaves, inner_returns) =
-                depth_first_insertion_code_block(type_engine, body, graph, &leaves)?;
-
-            // insert edges from end of block back to beginning of it
-            for leaf in &l_leaves {
-                graph.add_edge(*leaf, entry, "loop repeats".into());
-            }
-
-            leaves = l_leaves;
-            for leaf in leaves {
-                graph.add_edge(leaf, while_loop_exit, "".into());
-            }
-
-            Ok((
-                NodeConnection::NextStep(vec![while_loop_exit]),
-                inner_returns,
-            ))
+            Ok((NodeConnection::NextStep(vec![node]), vec![]))
         }
         ty::TyAstNodeContent::Expression(ty::TyExpression { .. }) => {
             let entry = graph.add_node(node.into());
@@ -318,7 +292,7 @@ fn connect_typed_fn_decl(
 ) -> Result<(), CompileError> {
     let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.as_str()).into());
     let return_nodes =
-        depth_first_insertion_code_block(type_engine, &fn_decl.body, graph, &[entry_node])?.0;
+        depth_first_insertion_code_block(type_engine, &fn_decl.body, graph, &[entry_node])?;
     for node in return_nodes {
         graph.add_edge(node, fn_exit_node, "return".into());
     }
@@ -343,7 +317,7 @@ fn depth_first_insertion_code_block(
     node_content: &ty::TyCodeBlock,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
-) -> Result<(ReturnStatementNodes, Vec<NodeIndex>), CompileError> {
+) -> Result<ReturnStatementNodes, CompileError> {
     let mut leaves = leaves.to_vec();
     let mut return_nodes = vec![];
     for node in node_content.contents.iter() {
@@ -356,5 +330,5 @@ fn depth_first_insertion_code_block(
         }
         return_nodes.extend(inner_returns);
     }
-    Ok((return_nodes, leaves))
+    Ok(return_nodes)
 }
