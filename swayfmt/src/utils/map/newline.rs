@@ -39,16 +39,20 @@ fn newline_map_from_src(unformatted_input: &str) -> Result<NewlineMap, Formatter
     let mut input_iter = unformatted_input.chars().enumerate().peekable();
     let mut current_sequence_length = 0;
     let mut in_sequence = false;
+    let mut is_comment = false;
     let mut sequence_start = 0;
     while let Some((char_index, char)) = input_iter.next() {
         let next_char = input_iter.peek().map(|(_, input_char)| *input_char);
-        if (char == '}' || char == ';') && next_char == Some('\n') {
+        if (char == '}' || char == ';' || is_comment) && next_char == Some('\n') {
             if !in_sequence {
                 sequence_start = char_index + 1;
                 in_sequence = true;
             }
         } else if char == '\n' && in_sequence {
             current_sequence_length += 1;
+            if is_comment {
+                is_comment = false;
+            }
         }
         if (Some('}') == next_char || Some('(') == next_char) && in_sequence {
             // If we are in a sequence and find `}`, abort the sequence
@@ -70,6 +74,10 @@ fn newline_map_from_src(unformatted_input: &str) -> Result<NewlineMap, Formatter
             newline_map.insert(byte_span, newline_sequence);
             current_sequence_length = 0;
             in_sequence = false;
+            is_comment = false;
+        }
+        if char == '/' && next_char == Some('/') {
+            is_comment = true;
         }
     }
     Ok(newline_map)
