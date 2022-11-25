@@ -30,7 +30,7 @@ pub(crate) fn instantiate_function_application(
 
     // check that the number of parameters and the number of the arguments is the same
     check!(
-        check_function_arguments_arity(arguments.len(), &function_decl, &call_path),
+        check_function_arguments_arity(arguments.len(), &function_decl, &call_path, false),
         return err(warnings, errors),
         warnings,
         errors
@@ -118,17 +118,26 @@ pub(crate) fn check_function_arguments_arity(
     arguments_len: usize,
     function_decl: &ty::TyFunctionDeclaration,
     call_path: &CallPath,
+    is_method_call_syntax_used: bool,
 ) -> CompileResult<()> {
     let warnings = vec![];
     let mut errors = vec![];
-    match arguments_len.cmp(&function_decl.parameters.len()) {
+    // if is_method_call_syntax_used then we have the guarantee
+    // that at least the self argument is passed
+    let (expected, received) = if is_method_call_syntax_used {
+        (function_decl.parameters.len() - 1, arguments_len - 1)
+    } else {
+        (function_decl.parameters.len(), arguments_len)
+    };
+    match expected.cmp(&received) {
         std::cmp::Ordering::Equal => ok((), warnings, errors),
         std::cmp::Ordering::Less => {
             errors.push(CompileError::TooFewArgumentsForFunction {
                 span: call_path.span(),
                 method_name: function_decl.name.clone(),
-                expected: function_decl.parameters.len(),
-                received: arguments_len,
+                dot_syntax_used: is_method_call_syntax_used,
+                expected,
+                received,
             });
             err(warnings, errors)
         }
@@ -136,8 +145,9 @@ pub(crate) fn check_function_arguments_arity(
             errors.push(CompileError::TooManyArgumentsForFunction {
                 span: call_path.span(),
                 method_name: function_decl.name.clone(),
-                expected: function_decl.parameters.len(),
-                received: arguments_len,
+                dot_syntax_used: is_method_call_syntax_used,
+                expected,
+                received,
             });
             err(warnings, errors)
         }

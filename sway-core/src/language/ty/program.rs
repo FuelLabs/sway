@@ -327,8 +327,8 @@ impl TyProgram {
     pub fn generate_json_abi_program(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<JsonTypeDeclaration>,
-    ) -> JsonABIProgram {
+        types: &mut Vec<fuels_types::TypeDeclaration>,
+    ) -> fuels_types::ProgramABI {
         match &self.kind {
             TyProgramKind::Contract { abi_entries, .. } => {
                 let functions = abi_entries
@@ -336,26 +336,26 @@ impl TyProgram {
                     .map(|x| x.generate_json_abi_function(type_engine, types))
                     .collect();
                 let logged_types = self.generate_json_logged_types(type_engine, types);
-                JsonABIProgram {
+                fuels_types::ProgramABI {
                     types: types.to_vec(),
                     functions,
-                    logged_types,
+                    logged_types: Some(logged_types),
                 }
             }
             TyProgramKind::Script { main_function, .. }
             | TyProgramKind::Predicate { main_function, .. } => {
                 let functions = vec![main_function.generate_json_abi_function(type_engine, types)];
                 let logged_types = self.generate_json_logged_types(type_engine, types);
-                JsonABIProgram {
+                fuels_types::ProgramABI {
                     types: types.to_vec(),
                     functions,
-                    logged_types,
+                    logged_types: Some(logged_types),
                 }
             }
-            _ => JsonABIProgram {
+            _ => fuels_types::ProgramABI {
                 types: vec![],
                 functions: vec![],
-                logged_types: vec![],
+                logged_types: None,
             },
         }
     }
@@ -363,13 +363,13 @@ impl TyProgram {
     fn generate_json_logged_types(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<JsonTypeDeclaration>,
-    ) -> Vec<JsonLoggedType> {
-        // A list of all `JsonTypeDeclaration`s needed for the logged types
+        types: &mut Vec<fuels_types::TypeDeclaration>,
+    ) -> Vec<fuels_types::LoggedType> {
+        // A list of all `fuels_types::TypeDeclaration`s needed for the logged types
         let logged_types = self
             .logged_types
             .iter()
-            .map(|(_, type_id)| JsonTypeDeclaration {
+            .map(|(_, type_id)| fuels_types::TypeDeclaration {
                 type_id: type_id.index(),
                 type_field: type_id.get_json_type_str(type_engine, *type_id),
                 components: type_id.get_json_type_components(type_engine, types, *type_id),
@@ -383,9 +383,9 @@ impl TyProgram {
         // Generate the JSON data for the logged types
         self.logged_types
             .iter()
-            .map(|(log_id, type_id)| JsonLoggedType {
-                log_id: **log_id,
-                logged_type: JsonTypeApplication {
+            .map(|(log_id, type_id)| fuels_types::LoggedType {
+                log_id: **log_id as u64,
+                application: fuels_types::TypeApplication {
                     name: "".to_string(),
                     type_id: type_id.index(),
                     type_arguments: type_id.get_json_type_arguments(type_engine, types, *type_id),
