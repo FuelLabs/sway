@@ -20,6 +20,7 @@ pub fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
     completion_items
 }
 
+/// Given a `SymbolKind`, return the `lsp_types::CompletionItemKind` that corresponds to it.
 pub(crate) fn completion_item_kind(symbol_kind: &SymbolKind) -> Option<CompletionItemKind> {
     match symbol_kind {
         SymbolKind::Field => Some(CompletionItemKind::FIELD),

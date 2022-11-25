@@ -1,11 +1,10 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-369A2B47EEBEB803'
-dependencies = []
 
 [[package]]
 name = 'retd_b256'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

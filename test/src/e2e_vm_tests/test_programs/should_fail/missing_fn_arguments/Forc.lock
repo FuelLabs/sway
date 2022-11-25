@@ -1,9 +1,8 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-535272951E66DE82'
-dependencies = []
 
 [[package]]
 name = 'missing_fn_arguments'
-source = 'root'
+source = 'member'
 dependencies = ['core']

@@ -1,11 +1,10 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-C569FB5C26218A1B'
-dependencies = []
 
 [[package]]
 name = 'impl_with_semantic_type_constraints'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

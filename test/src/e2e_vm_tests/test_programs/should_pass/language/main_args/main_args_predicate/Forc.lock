@@ -1,9 +1,8 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-B4CCC05C094317B7'
-dependencies = []
 
 [[package]]
 name = 'main_args_predicate'
-source = 'root'
+source = 'member'
 dependencies = ['core']

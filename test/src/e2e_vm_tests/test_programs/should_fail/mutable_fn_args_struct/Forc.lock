@@ -1,4 +1,3 @@
 [[package]]
 name = 'mutable_fn_args_struct'
-source = 'root'
-dependencies = []
+source = 'member'

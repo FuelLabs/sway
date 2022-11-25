@@ -196,9 +196,14 @@ impl<'a> InstructionVerifier<'a> {
                         log_ty,
                         log_id,
                     } => self.verify_log(log_val, log_ty, log_id)?,
+                    Instruction::MemCopy {
+                        dst_val,
+                        src_val,
+                        byte_len,
+                    } => self.verify_mem_copy(dst_val, src_val, byte_len)?,
                     Instruction::Nop => (),
                     Instruction::ReadRegister(_) => (),
-                    Instruction::Ret(val, ty) => self.verify_ret(self.cur_function, val, ty)?,
+                    Instruction::Ret(val, ty) => self.verify_ret(val, ty)?,
                     Instruction::Revert(val) => self.verify_revert(val)?,
                     Instruction::StateLoadWord(key) => self.verify_state_load_word(key)?,
                     Instruction::StateLoadQuadWord {
@@ -265,7 +270,8 @@ impl<'a> InstructionVerifier<'a> {
             | Type::Array(_)
             | Type::Union(_)
             | Type::Struct(_)
-            | Type::Pointer(_) => false,
+            | Type::Pointer(_)
+            | Type::Slice => false,
         };
         if !is_valid {
             Err(IrError::VerifyBitcastBetweenInvalidTypes(
@@ -612,7 +618,7 @@ impl<'a> InstructionVerifier<'a> {
     }
 
     fn verify_load(&self, src_val: &Value) -> Result<(), IrError> {
-        let src_ptr = self.get_pointer(src_val);
+        let src_ptr = src_val.get_pointer(self.context);
         if src_ptr.is_none() {
             if !self.is_ptr_argument(src_val) {
                 Err(IrError::VerifyLoadFromNonPointer)
@@ -623,6 +629,7 @@ impl<'a> InstructionVerifier<'a> {
             Ok(())
         }
     }
+
     fn verify_log(&self, log_val: &Value, log_ty: &Type, log_id: &Value) -> Result<(), IrError> {
         if !matches!(log_id.get_type(self.context), Some(Type::Uint(64))) {
             return Err(IrError::VerifyLogId);
@@ -635,16 +642,52 @@ impl<'a> InstructionVerifier<'a> {
         Ok(())
     }
 
-    fn verify_ret(
+    fn verify_mem_copy(
         &self,
-        function: &FunctionContent,
-        val: &Value,
-        ty: &Type,
+        _dst_val: &Value,
+        _src_val: &Value,
+        _byte_len: &u64,
     ) -> Result<(), IrError> {
-        if !function.return_type.eq(self.context, ty)
-            || self.opt_ty_not_eq(&val.get_stripped_ptr_type(self.context), &Some(*ty))
+        // We should perhaps verify that the pointer types are the same size in bytes, or at least
+        // the dst is equal to or larger than the src.
+        //
+        //| XXX Pointers are broken, pending https://github.com/FuelLabs/sway/issues/2819
+        //| So here we may still get non-pointers, but still ref-types, passed as the source for
+        //| mem_copy, especially when dealing with constant b256s or similar.
+        //|if !dst_val.get_pointer(self.context).is_some()
+        //|    || !(src_val.get_pointer(self.context).is_some()
+        //|        || matches!(
+        //|            src_val.get_instruction(self.context),
+        //|            Some(Instruction::GetStorageKey) | Some(Instruction::IntToPtr(..))
+        //|        ))
+        //|{
+        //|    Err(IrError::VerifyGetNonExistentPointer)
+        //|} else {
+        //|    Ok(())
+        //|}
+        Ok(())
+    }
+
+    fn verify_ret(&self, val: &Value, ty: &Type) -> Result<(), IrError> {
+        //| XXX Also waiting for better pointers in https://github.com/FuelLabs/sway/issues/2819
+        //| We should disallow returning ref types, as we're using 'out' parameters for anything
+        //| that doesn't fit in a reg. So we should instead return pointers to those ref type
+        //| values.  But we need better support from a data section for constant ref-type values,
+        //| which is currently handled in ASMgen, but should be handled here in IR.
+        //|
+        //|if !self.cur_func_is_entry() && !ty.is_copy_type() {
+        //|    Err(IrError::VerifyReturnRefTypeValue(
+        //|        self.cur_function.name.clone(),
+        //|        ty.as_string(self.context),
+        //|    ))
+        //|} else
+        if !self.cur_function.return_type.eq(self.context, ty)
+            || (self.opt_ty_not_eq(&val.get_type(self.context), &Some(*ty))
+                && self.opt_ty_not_eq(&val.get_stripped_ptr_type(self.context), &Some(*ty)))
         {
-            Err(IrError::VerifyMismatchedReturnTypes(function.name.clone()))
+            Err(IrError::VerifyMismatchedReturnTypes(
+                self.cur_function.name.clone(),
+            ))
         } else {
             Ok(())
         }
@@ -707,17 +750,6 @@ impl<'a> InstructionVerifier<'a> {
         }
     }
 
-    fn get_pointer(&self, ptr_val: &Value) -> Option<Pointer> {
-        match &self.context.values[ptr_val.0].value {
-            ValueDatum::Instruction(Instruction::GetPointer { base_ptr, .. }) => Some(*base_ptr),
-            ValueDatum::Argument(BlockArgument {
-                ty: Type::Pointer(ptr),
-                ..
-            }) => Some(*ptr),
-            _otherwise => None,
-        }
-    }
-
     // This is a temporary workaround due to the fact that we don't support pointer arguments yet.
     // We do treat non-copy types as references anyways though so this is fine. Eventually, we
     // should allow function arguments to also be Pointer.
@@ -761,4 +793,13 @@ impl<'a> InstructionVerifier<'a> {
     fn opt_ty_not_eq(&self, l_ty: &Option<Type>, r_ty: &Option<Type>) -> bool {
         l_ty.is_none() || r_ty.is_none() || !l_ty.unwrap().eq(self.context, r_ty.as_ref().unwrap())
     }
+
+    //| XXX Will be used by verify_ret() when we have proper pointers fixed.
+    //|fn cur_func_is_entry(&self) -> bool {
+    //|    match self.cur_module.kind {
+    //|        Kind::Script | Kind::Predicate => self.cur_function.name == "main",
+    //|        Kind::Contract => self.cur_function.selector.is_some(),
+    //|        Kind::Library => false,
+    //|    }
+    //|}
 }

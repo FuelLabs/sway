@@ -1,12 +1,11 @@
 [[package]]
 name = 'asm_expr_basic'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
 source = 'path+from-root-C1BABCC798F19F0B'
-dependencies = []
 
 [[package]]
 name = 'std'

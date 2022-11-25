@@ -11,18 +11,19 @@ pub use check::Command as CheckCommand;
 use clap::{Parser, Subcommand};
 pub use clean::Command as CleanCommand;
 pub use completions::Command as CompletionsCommand;
-use forc_util::{init_tracing_subscriber, TracingSubscriberOptions};
+use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions};
 pub use init::Command as InitCommand;
 pub use new::Command as NewCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use plugins::Command as PluginsCommand;
 pub use template::Command as TemplateCommand;
-use test::Command as TestCommand;
+pub use test::Command as TestCommand;
 use tracing::metadata::LevelFilter;
 pub use update::Command as UpdateCommand;
 
 mod commands;
 mod plugin;
+pub mod shared;
 
 #[derive(Debug, Parser)]
 #[clap(name = "forc", about = "Fuel Orchestrator", version)]
@@ -79,6 +80,7 @@ pub async fn run_cli() -> Result<()> {
         verbosity: Some(opt.verbose),
         silent: Some(opt.silent),
         log_level: opt.log_level,
+        ..Default::default()
     };
 
     init_tracing_subscriber(tracing_options);

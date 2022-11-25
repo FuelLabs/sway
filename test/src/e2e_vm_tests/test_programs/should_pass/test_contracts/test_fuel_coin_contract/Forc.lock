@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-C35C1CB8B551E0E6'
-dependencies = []
 
 [[package]]
 name = 'std'
@@ -15,7 +14,7 @@ dependencies = ['std']
 
 [[package]]
 name = 'test_fuel_coin_contract'
-source = 'root'
+source = 'member'
 dependencies = [
     'std',
     'test_fuel_coin_abi',

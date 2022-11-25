@@ -8,53 +8,69 @@ use super::{
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
     declaration_engine::declaration_engine,
+    fuel_prelude::fuel_types,
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
     },
     language::{ty, *},
     metadata::MetadataManager,
-    type_system::{look_up_type_id, to_typeinfo, TypeId, TypeInfo},
+    type_system::{LogId, TypeId, TypeInfo},
+    PartialEqWithTypeEngine, TypeEngine,
 };
+use declaration_engine::de_get_function;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::{CompileError, Hint};
 use sway_ir::{Context, *};
 use sway_types::{
     constants,
     ident::Ident,
-    integer_bits::IntegerBits,
     span::{Span, Spanned},
     state::StateIndex,
 };
 
 use std::collections::HashMap;
 
-pub(super) struct FnCompiler {
+pub(crate) struct FnCompiler<'te> {
+    type_engine: &'te TypeEngine,
     module: Module,
     pub(super) function: Function,
     pub(super) current_block: Block,
-    pub(super) block_to_break_to: Option<Block>,
-    pub(super) block_to_continue_to: Option<Block>,
-    pub(super) current_fn_param: Option<ty::TyFunctionParameter>,
+    block_to_break_to: Option<Block>,
+    block_to_continue_to: Option<Block>,
+    current_fn_param: Option<ty::TyFunctionParameter>,
+    returns_by_ref: bool,
     lexical_map: LexicalMap,
     recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
+    // This is a map from the type IDs of a logged type and the ID of the corresponding log
+    logged_types_map: HashMap<TypeId, LogId>,
 }
 
-impl FnCompiler {
-    pub(super) fn new(context: &mut Context, module: Module, function: Function) -> Self {
+impl<'te> FnCompiler<'te> {
+    pub(super) fn new(
+        type_engine: &'te TypeEngine,
+        context: &mut Context,
+        module: Module,
+        function: Function,
+        returns_by_ref: bool,
+        logged_types_map: &HashMap<TypeId, LogId>,
+    ) -> Self {
         let lexical_map = LexicalMap::from_iter(
             function
                 .args_iter(context)
                 .map(|(name, _value)| name.clone()),
         );
         FnCompiler {
+            type_engine,
             module,
             function,
             current_block: function.get_entry_block(context),
             block_to_break_to: None,
             block_to_continue_to: None,
             lexical_map,
+            returns_by_ref,
             recreated_fns: HashMap::new(),
             current_fn_param: None,
+            logged_types_map: logged_types_map.clone(),
         }
     }
 
@@ -141,7 +157,7 @@ impl FnCompiler {
                 }
                 ty::TyDeclaration::EnumDeclaration(decl_id) => {
                     let ted = declaration_engine::de_get_enum(decl_id, &ast_node.span)?;
-                    create_enum_aggregate(context, ted.variants).map(|_| ())?;
+                    create_enum_aggregate(self.type_engine, context, ted.variants).map(|_| ())?;
                     Ok(None)
                 }
                 ty::TyDeclaration::ImplTrait(_) => {
@@ -185,8 +201,7 @@ impl FnCompiler {
                 }
             }
             ty::TyAstNodeContent::ImplicitReturnExpression(te) => {
-                let value = self.compile_expression(context, md_mgr, te)?;
-                Ok(Some(value))
+                self.compile_expression(context, md_mgr, te).map(Some)
             }
             // a side effect can be () because it just impacts the type system/namespacing.
             // There should be no new IR generated.
@@ -209,7 +224,7 @@ impl FnCompiler {
                 call_path: name,
                 contract_call_params,
                 arguments,
-                function_decl,
+                function_decl_id,
                 self_state_idx,
                 selector,
             } => {
@@ -225,6 +240,7 @@ impl FnCompiler {
                         span_md_idx,
                     )
                 } else {
+                    let function_decl = de_get_function(function_decl_id, &ast_expr.span)?;
                     self.compile_fn_call(
                         context,
                         md_mgr,
@@ -432,7 +448,12 @@ impl FnCompiler {
             Intrinsic::SizeOfVal => {
                 let exp = arguments[0].clone();
                 // Compile the expression in case of side-effects but ignore its value.
-                let ir_type = convert_resolved_typeid(context, &exp.return_type, &exp.span)?;
+                let ir_type = convert_resolved_typeid(
+                    self.type_engine,
+                    context,
+                    &exp.return_type,
+                    &exp.span,
+                )?;
                 self.compile_expression(context, md_mgr, exp)?;
                 Ok(Constant::get_uint(
                     context,
@@ -442,7 +463,8 @@ impl FnCompiler {
             }
             Intrinsic::SizeOfType => {
                 let targ = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(context, &targ.type_id, &targ.span)?;
+                let ir_type =
+                    convert_resolved_typeid(self.type_engine, context, &targ.type_id, &targ.span)?;
                 Ok(Constant::get_uint(
                     context,
                     64,
@@ -451,7 +473,8 @@ impl FnCompiler {
             }
             Intrinsic::IsReferenceType => {
                 let targ = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(context, &targ.type_id, &targ.span)?;
+                let ir_type =
+                    convert_resolved_typeid(self.type_engine, context, &targ.type_id, &targ.span)?;
                 Ok(Constant::get_bool(context, !ir_type.is_copy_type()))
             }
             Intrinsic::GetStorageKey => {
@@ -479,9 +502,11 @@ impl FnCompiler {
                 // The tx field ID has to be a compile-time constant because it becomes an
                 // immediate
                 let tx_field_id_constant = compile_constant_expression_to_constant(
+                    self.type_engine,
                     context,
                     md_mgr,
                     self.module,
+                    None,
                     None,
                     &arguments[1],
                 )?;
@@ -498,8 +523,12 @@ impl FnCompiler {
 
                 // Get the target type from the type argument provided
                 let target_type = type_arguments[0].clone();
-                let target_ir_type =
-                    convert_resolved_typeid(context, &target_type.type_id, &target_type.span)?;
+                let target_ir_type = convert_resolved_typeid(
+                    self.type_engine,
+                    context,
+                    &target_type.type_id,
+                    &target_type.span,
+                )?;
 
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
@@ -548,7 +577,7 @@ impl FnCompiler {
                 let val_exp = arguments[1].clone();
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = to_typeinfo(val_exp.return_type, &span)?;
+                let val_ty = self.type_engine.to_typeinfo(val_exp.return_type, &span)?;
                 if !val_ty.is_copy_type() {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
@@ -571,12 +600,12 @@ impl FnCompiler {
                 let val_exp = arguments[1].clone();
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = to_typeinfo(val_exp.return_type, &span)?;
-                if val_ty != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) {
+                let val_ty = self.type_engine.to_typeinfo(val_exp.return_type, &span)?;
+                if !val_ty.eq(&TypeInfo::RawUntypedPtr, self.type_engine) {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
-                        hint: Hint::new("This argument must be u64".to_string()),
+                        hint: Hint::new("This argument must be raw_ptr".to_string()),
                     });
                 }
                 let key_value = self.compile_expression(context, md_mgr, key_exp)?;
@@ -606,10 +635,17 @@ impl FnCompiler {
             Intrinsic::Log => {
                 // The log value and the log ID are just Value.
                 let log_val = self.compile_expression(context, md_mgr, arguments[0].clone())?;
-                let log_id = convert_literal_to_value(
-                    context,
-                    &Literal::U64(*arguments[0].return_type as u64),
-                );
+                let log_id = match self.logged_types_map.get(&arguments[0].return_type) {
+                    None => {
+                        return Err(CompileError::Internal(
+                            "Unable to determine ID for log instance.",
+                            span,
+                        ))
+                    }
+                    Some(log_id) => {
+                        convert_literal_to_value(context, &Literal::U64(**log_id as u64))
+                    }
+                };
 
                 match log_val.get_stripped_ptr_type(context) {
                     None => Err(CompileError::Internal(
@@ -657,6 +693,33 @@ impl FnCompiler {
                     .revert(revert_code_val)
                     .add_metadatum(context, span_md_idx))
             }
+            Intrinsic::PtrAdd | Intrinsic::PtrSub => {
+                let op = match kind {
+                    Intrinsic::PtrAdd => BinaryOpKind::Add,
+                    Intrinsic::PtrSub => BinaryOpKind::Sub,
+                    _ => unreachable!(),
+                };
+
+                let len = type_arguments[0].clone();
+                let ir_type =
+                    convert_resolved_typeid(self.type_engine, context, &len.type_id, &len.span)?;
+                let len_value =
+                    Constant::get_uint(context, 64, ir_type_size_in_bytes(context, &ir_type));
+
+                let lhs = arguments[0].clone();
+                let count = arguments[1].clone();
+                let lhs_value = self.compile_expression(context, md_mgr, lhs)?;
+                let count_value = self.compile_expression(context, md_mgr, count)?;
+                let rhs_value = self.current_block.ins(context).binary_op(
+                    BinaryOpKind::Mul,
+                    len_value,
+                    count_value,
+                );
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .binary_op(op, lhs_value, rhs_value))
+            }
         }
     }
 
@@ -672,23 +735,48 @@ impl FnCompiler {
         }
 
         let ret_value = self.compile_expression(context, md_mgr, ast_expr.clone())?;
+
         if ret_value.is_diverging(context) {
             return Ok(ret_value);
         }
+
+        let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
+
+        if self.returns_by_ref {
+            // We need to copy the actual return value to the out parameter.
+            self.compile_copy_to_last_arg(context, ret_value, span_md_idx);
+        }
+
         match ret_value.get_stripped_ptr_type(context) {
             None => Err(CompileError::Internal(
                 "Unable to determine type for return statement expression.",
                 ast_expr.span,
             )),
-            Some(ret_ty) => {
-                let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
-                Ok(self
-                    .current_block
-                    .ins(context)
-                    .ret(ret_value, ret_ty)
-                    .add_metadatum(context, span_md_idx))
-            }
+            Some(ret_ty) => Ok(self
+                .current_block
+                .ins(context)
+                .ret(ret_value, ret_ty)
+                .add_metadatum(context, span_md_idx)),
         }
+    }
+
+    pub(super) fn compile_copy_to_last_arg(
+        &mut self,
+        context: &mut Context,
+        ret_val: Value,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Value {
+        let dst_val = self.function.args_iter(context).last().unwrap().1;
+        let src_val = ret_val;
+        let byte_len =
+            ir_type_size_in_bytes(context, &src_val.get_stripped_ptr_type(context).unwrap());
+
+        self.current_block
+            .ins(context)
+            .mem_copy(dst_val, src_val, byte_len)
+            .add_metadatum(context, span_md_idx);
+
+        dst_val
     }
 
     fn compile_lazy_op(
@@ -955,7 +1043,7 @@ impl FnCompiler {
                 .add_metadatum(context, span_md_idx),
         };
 
-        let return_type = convert_resolved_typeid_no_span(context, &return_type)?;
+        let return_type = convert_resolved_typeid_no_span(self.type_engine, context, &return_type)?;
 
         // Insert the contract_call instruction
         Ok(self
@@ -1017,15 +1105,24 @@ impl FnCompiler {
                     parameters: callee.parameters.clone(),
                     ..callee
                 };
-                let new_func =
-                    compile_function(context, md_mgr, self.module, callee_fn_decl)?.unwrap();
+                let is_entry = false;
+                let new_func = compile_function(
+                    self.type_engine,
+                    context,
+                    md_mgr,
+                    self.module,
+                    callee_fn_decl,
+                    &self.logged_types_map,
+                    is_entry,
+                )?
+                .unwrap();
                 self.recreated_fns.insert(fn_key, new_func);
                 new_func
             }
         };
 
         // Now actually call the new function.
-        let args = {
+        let mut args = {
             let mut args = Vec::with_capacity(ast_args.len());
             for ((_, expr), param) in ast_args.into_iter().zip(callee.parameters.into_iter()) {
                 self.current_fn_param = Some(param);
@@ -1038,12 +1135,37 @@ impl FnCompiler {
             }
             args
         };
-        let state_idx_md_idx = match self_state_idx {
-            Some(self_state_idx) => {
-                md_mgr.storage_key_to_md(context, self_state_idx.to_usize() as u64)
+
+        // If there is an 'unexpected' extra arg in the callee and it's a pointer then we need to
+        // set up returning by reference.
+        if args.len() + 1 == new_callee.num_args(context) {
+            if let Some(Type::Pointer(ptr)) = new_callee
+                .args_iter(context)
+                .last()
+                .unwrap()
+                .1
+                .get_argument_type(context)
+            {
+                // Create a local to pass in as the 'out' parameter.
+                let ptr_type = *ptr.get_type(context);
+                let local_name = format!("__ret_val_{}", new_callee.get_name(context));
+                let local_ptr = self
+                    .function
+                    .new_unique_local_ptr(context, local_name, ptr_type, true, None);
+
+                // Pass it as the final arg.
+                args.push(
+                    self.current_block
+                        .ins(context)
+                        .get_ptr(local_ptr, ptr_type, 0),
+                );
             }
-            None => None,
-        };
+        }
+
+        let state_idx_md_idx = self_state_idx.and_then(|self_state_idx| {
+            md_mgr.storage_key_to_md(context, self_state_idx.to_usize() as u64)
+        });
+
         Ok(self
             .current_block
             .ins(context)
@@ -1137,7 +1259,12 @@ impl FnCompiler {
         variant: ty::TyEnumVariant,
     ) -> Result<Value, CompileError> {
         // retrieve the aggregate info for the enum
-        let enum_aggregate = match convert_resolved_typeid(context, &exp.return_type, &exp.span)? {
+        let enum_aggregate = match convert_resolved_typeid(
+            self.type_engine,
+            context,
+            &exp.return_type,
+            &exp.span,
+        )? {
             Type::Struct(aggregate) => aggregate,
             _ => {
                 return Err(CompileError::Internal(
@@ -1163,7 +1290,12 @@ impl FnCompiler {
         exp: Box<ty::TyExpression>,
     ) -> Result<Value, CompileError> {
         let tag_span_md_idx = md_mgr.span_to_md(context, &exp.span);
-        let enum_aggregate = match convert_resolved_typeid(context, &exp.return_type, &exp.span)? {
+        let enum_aggregate = match convert_resolved_typeid(
+            self.type_engine,
+            context,
+            &exp.return_type,
+            &exp.span,
+        )? {
             Type::Struct(aggregate) => aggregate,
             _ => {
                 return Err(CompileError::Internal("Expected enum type here.", exp.span));
@@ -1245,6 +1377,16 @@ impl FnCompiler {
         Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
     }
 
+    pub fn get_function_ptr(&self, context: &mut Context, name: &str) -> Option<Pointer> {
+        self.lexical_map
+            .get(name)
+            .and_then(|local_name| self.function.get_local_ptr(context, local_name))
+    }
+
+    pub fn get_function_arg(&self, context: &mut Context, name: &str) -> Option<Value> {
+        self.function.get_arg(context, name)
+    }
+
     fn compile_var_expr(
         &mut self,
         context: &mut Context,
@@ -1253,11 +1395,7 @@ impl FnCompiler {
     ) -> Result<Value, CompileError> {
         // We need to check the symbol map first, in case locals are shadowing the args, other
         // locals or even constants.
-        if let Some(ptr) = self
-            .lexical_map
-            .get(name)
-            .and_then(|local_name| self.function.get_local_ptr(context, local_name))
-        {
+        if let Some(ptr) = self.get_function_ptr(context, name) {
             let ptr_ty = *ptr.get_type(context);
             let ptr_val = self
                 .current_block
@@ -1266,7 +1404,10 @@ impl FnCompiler {
                 .add_metadatum(context, span_md_idx);
             let fn_param = self.current_fn_param.as_ref();
             let is_ref_primitive = fn_param.is_some()
-                && look_up_type_id(fn_param.unwrap().type_id).is_copy_type()
+                && self
+                    .type_engine
+                    .look_up_type_id(fn_param.unwrap().type_id)
+                    .is_copy_type()
                 && fn_param.unwrap().is_reference
                 && fn_param.unwrap().is_mutable;
             Ok(if ptr.is_aggregate_ptr(context) || is_ref_primitive {
@@ -1314,16 +1455,20 @@ impl FnCompiler {
         // Nothing to do for an abi cast declarations. The address specified in them is already
         // provided in each contract call node in the AST.
         if matches!(
-            &to_typeinfo(body.return_type, &body.span).map_err(|ty_err| {
-                CompileError::InternalOwned(format!("{:?}", ty_err), body.span.clone())
-            })?,
+            &self
+                .type_engine
+                .to_typeinfo(body.return_type, &body.span)
+                .map_err(|ty_err| {
+                    CompileError::InternalOwned(format!("{:?}", ty_err), body.span.clone())
+                })?,
             TypeInfo::ContractCaller { .. }
         ) {
             return Ok(None);
         }
 
         // Grab these before we move body into compilation.
-        let return_type = convert_resolved_typeid(context, &body.return_type, &body.span)?;
+        let return_type =
+            convert_resolved_typeid(self.type_engine, context, &body.return_type, &body.span)?;
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
@@ -1370,10 +1515,18 @@ impl FnCompiler {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         let ty::TyConstantDeclaration { name, value, .. } = ast_const_decl;
-        let const_expr_val =
-            compile_constant_expression(context, md_mgr, self.module, None, &value)?;
+        let const_expr_val = compile_constant_expression(
+            self.type_engine,
+            context,
+            md_mgr,
+            self.module,
+            None,
+            Some(self),
+            &value,
+        )?;
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
-        let return_type = convert_resolved_typeid(context, &value.return_type, &value.span)?;
+        let return_type =
+            convert_resolved_typeid(self.type_engine, context, &value.return_type, &value.span)?;
 
         // We compile consts the same as vars are compiled. This is because ASM generation
         // cannot handle
@@ -1454,6 +1607,7 @@ impl FnCompiler {
             // field indices.  The struct type from the previous iteration is used to determine the
             // field type for the current iteration.
             let field_idcs = get_indices_for_struct_access(
+                self.type_engine,
                 ast_reassignment.lhs_type,
                 &ast_reassignment.lhs_indices,
             )?;
@@ -1500,6 +1654,7 @@ impl FnCompiler {
 
         // Get the type of the access which can be a subfield
         let access_type = convert_resolved_typeid_no_span(
+            self.type_engine,
             context,
             &fields.last().expect("guaranteed by grammar").type_id,
         )?;
@@ -1507,7 +1662,7 @@ impl FnCompiler {
         // Get the list of indices used to access the storage field. This will be empty
         // if the storage field type is not a struct.
         let base_type = fields[0].type_id;
-        let field_idcs = get_indices_for_struct_access(base_type, &fields[1..])?;
+        let field_idcs = get_indices_for_struct_access(self.type_engine, base_type, &fields[1..])?;
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to store each primitive type in the storage field in its own storage slot.
@@ -1536,7 +1691,7 @@ impl FnCompiler {
             // we'll just use Unit.
             Type::Unit
         } else {
-            convert_resolved_typeid_no_span(context, &contents[0].return_type)?
+            convert_resolved_typeid_no_span(self.type_engine, context, &contents[0].return_type)?
         };
         let aggregate = Aggregate::new_array(context, elem_type, contents.len() as u64);
 
@@ -1609,17 +1764,26 @@ impl FnCompiler {
             ))
         }?;
 
-        // Check for out of bounds if we have a literal index.
-        let (_, count) = aggregate.get_content(context).array_type();
-        if let ty::TyExpressionVariant::Literal(Literal::U64(index)) = index_expr.expression {
-            if index >= *count {
-                // XXX Here is a very specific case where we want to return an Error enum
-                // specifically, if not an actual CompileError.  This should be a
-                // CompileError::ArrayOutOfBounds, or at least converted to one.
+        let index_expr_span = index_expr.span.clone();
+
+        if let Ok(Constant {
+            value: ConstantValue::Uint(constant_value),
+            ..
+        }) = compile_constant_expression_to_constant(
+            self.type_engine,
+            context,
+            md_mgr,
+            self.module,
+            None,
+            Some(self),
+            &index_expr,
+        ) {
+            let (_, count) = aggregate.get_content(context).array_type();
+            if constant_value >= *count {
                 return Err(CompileError::ArrayOutOfBounds {
-                    index,
+                    index: constant_value,
                     count: *count,
-                    span: index_expr.span,
+                    span: index_expr_span,
                 });
             }
         }
@@ -1664,7 +1828,7 @@ impl FnCompiler {
         }
 
         // Start with a temporary empty struct and then fill in the values.
-        let aggregate = get_aggregate_for_types(context, &field_types)?;
+        let aggregate = get_aggregate_for_types(self.type_engine, context, &field_types)?;
         let temp_name = self.lexical_map.insert_anon();
         let struct_ptr = self
             .function
@@ -1723,7 +1887,11 @@ impl FnCompiler {
         let field_kind = ty::ProjectionKind::StructField {
             name: ast_field.name.clone(),
         };
-        let field_idx = match get_struct_name_field_index_and_type(struct_type_id, field_kind) {
+        let field_idx = match get_struct_name_field_index_and_type(
+            self.type_engine,
+            struct_type_id,
+            field_kind,
+        ) {
             None => Err(CompileError::Internal(
                 "Unknown struct in field expression.",
                 ast_field.span,
@@ -1762,7 +1930,7 @@ impl FnCompiler {
         // we could potentially use the wrong aggregate with the same name, different module...
         // dunno.
         let span_md_idx = md_mgr.span_to_md(context, &enum_decl.span);
-        let aggregate = create_enum_aggregate(context, enum_decl.variants)?;
+        let aggregate = create_enum_aggregate(self.type_engine, context, enum_decl.variants)?;
         let tag_value =
             Constant::get_uint(context, 64, tag as u64).add_metadatum(context, span_md_idx);
 
@@ -1824,7 +1992,11 @@ impl FnCompiler {
             let mut init_values = Vec::with_capacity(fields.len());
             let mut init_types = Vec::with_capacity(fields.len());
             for field_expr in fields {
-                let init_type = convert_resolved_typeid_no_span(context, &field_expr.return_type)?;
+                let init_type = convert_resolved_typeid_no_span(
+                    self.type_engine,
+                    context,
+                    &field_expr.return_type,
+                )?;
                 let init_value = self.compile_expression(context, md_mgr, field_expr)?;
                 if init_value.is_diverging(context) {
                     return Ok(init_value);
@@ -1870,7 +2042,9 @@ impl FnCompiler {
         span: Span,
     ) -> Result<Value, CompileError> {
         let tuple_value = self.compile_expression(context, md_mgr, tuple)?;
-        if let Type::Struct(aggregate) = convert_resolved_typeid(context, &tuple_type, &span)? {
+        if let Type::Struct(aggregate) =
+            convert_resolved_typeid(self.type_engine, context, &tuple_type, &span)?
+        {
             let span_md_idx = md_mgr.span_to_md(context, &span);
             Ok(self
                 .current_block
@@ -1895,6 +2069,7 @@ impl FnCompiler {
     ) -> Result<Value, CompileError> {
         // Get the type of the access which can be a subfield
         let access_type = convert_resolved_typeid_no_span(
+            self.type_engine,
             context,
             &fields.last().expect("guaranteed by grammar").type_id,
         )?;
@@ -1903,7 +2078,7 @@ impl FnCompiler {
         // if the storage field type is not a struct.
         // FIXME: shouldn't have to extract the first field like this.
         let base_type = fields[0].type_id;
-        let field_idcs = get_indices_for_struct_access(base_type, &fields[1..])?;
+        let field_idcs = get_indices_for_struct_access(self.type_engine, base_type, &fields[1..])?;
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to load each primitive type in the storage field in its own storage slot.
@@ -1958,7 +2133,7 @@ impl FnCompiler {
         let returns = returns
             .as_ref()
             .map(|(_, asm_reg_span)| Ident::new(asm_reg_span.clone()));
-        let return_type = convert_resolved_typeid_no_span(context, &return_type)?;
+        let return_type = convert_resolved_typeid_no_span(self.type_engine, context, &return_type)?;
         Ok(self
             .current_block
             .ins(context)
@@ -1969,7 +2144,7 @@ impl FnCompiler {
     fn compile_storage_read(
         &mut self,
         context: &mut Context,
-        md_mgr: &mut MetadataManager,
+        _md_mgr: &mut MetadataManager,
         ix: &StateIndex,
         indices: &[u64],
         ty: &Type,
@@ -2001,7 +2176,7 @@ impl FnCompiler {
 
                     let val_to_insert = self.compile_storage_read(
                         context,
-                        md_mgr,
+                        _md_mgr,
                         ix,
                         &new_indices,
                         &field_type,
@@ -2063,6 +2238,10 @@ impl FnCompiler {
                         "Pointers in storage have not been implemented yet.",
                         Span::dummy(),
                     )),
+                    Type::Slice => Err(CompileError::Internal(
+                        "Slices in storage have not been implemented yet.",
+                        Span::dummy(),
+                    )),
                     Type::B256 => self.compile_b256_storage_read(
                         context,
                         ix,
@@ -2099,7 +2278,7 @@ impl FnCompiler {
     fn compile_storage_write(
         &mut self,
         context: &mut Context,
-        md_mgr: &mut MetadataManager,
+        _md_mgr: &mut MetadataManager,
         ix: &StateIndex,
         indices: &[u64],
         ty: &Type,
@@ -2125,7 +2304,7 @@ impl FnCompiler {
 
                     self.compile_storage_write(
                         context,
-                        md_mgr,
+                        _md_mgr,
                         ix,
                         &new_indices,
                         &field_type,
@@ -2179,6 +2358,10 @@ impl FnCompiler {
                     )),
                     Type::Pointer(_) => Err(CompileError::Internal(
                         "Pointers in storage have not been implemented yet.",
+                        Span::dummy(),
+                    )),
+                    Type::Slice => Err(CompileError::Internal(
+                        "Slices in storage have not been implemented yet.",
                         Span::dummy(),
                     )),
                     Type::B256 => self.compile_b256_storage_write(

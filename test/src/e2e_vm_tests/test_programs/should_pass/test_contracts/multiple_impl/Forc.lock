@@ -1,11 +1,10 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-8E8009A1AAF68612'
-dependencies = []
 
 [[package]]
 name = 'multiple_impl'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

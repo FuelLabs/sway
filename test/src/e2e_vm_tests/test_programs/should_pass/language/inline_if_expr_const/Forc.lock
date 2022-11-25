@@ -1,11 +1,10 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-D43362F14BA36B33'
-dependencies = []
 
 [[package]]
 name = 'inline_if_expr_const'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

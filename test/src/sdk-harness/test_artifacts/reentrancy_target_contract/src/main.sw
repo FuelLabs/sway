@@ -1,6 +1,6 @@
 contract;
 
-use std::{chain::auth::*, context::{call_frames::contract_id, gas}, reentrancy::*};
+use std::{auth::*, call_frames::contract_id, context::gas, reentrancy::*};
 
 use reentrancy_attacker_abi::Attacker;
 use reentrancy_target_abi::Target;
@@ -63,7 +63,7 @@ impl Target for Contract {
     }
 
     fn intra_contract_call() {
-        let this = abi(Target, ~ContractId::into(contract_id()));
+        let this = abi(Target, ContractId::into(contract_id()));
         this.cross_function_reentrance_denied();
     }
 

@@ -2,7 +2,7 @@ use super::{
     asm_builder::AsmBuilder,
     checks::check_invalid_opcodes,
     finalized_asm::FinalizedAsm,
-    programs::{AbstractProgram, ProgramKind},
+    programs::{AbstractEntry, AbstractProgram, ProgramKind},
     register_sequencer::RegisterSequencer,
     DataId, DataSection,
 };
@@ -41,7 +41,12 @@ pub fn compile_ir_to_asm(
         println!("{abstract_program}\n");
     }
 
-    let allocated_program = abstract_program.into_allocated_program();
+    let allocated_program = check!(
+        CompileResult::from(abstract_program.into_allocated_program()),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     if build_config
         .map(|cfg| cfg.print_intermediate_asm)
@@ -51,7 +56,12 @@ pub fn compile_ir_to_asm(
         println!("{allocated_program}");
     }
 
-    let final_program = allocated_program.into_final_program();
+    let final_program = check!(
+        CompileResult::from(allocated_program.into_final_program()),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     if build_config
         .map(|cfg| cfg.print_finalized_asm)
@@ -104,13 +114,20 @@ fn compile_module_to_asm(
         .into_iter()
         .map(|(func, label, ops)| {
             let selector = func.get_selector(context);
-            (selector, label, ops)
+            let name = func.get_name(context).to_string();
+            AbstractEntry {
+                selector,
+                label,
+                ops,
+                name,
+            }
         })
         .collect();
     let kind = match module.get_kind(context) {
         Kind::Contract => ProgramKind::Contract,
+        Kind::Library => ProgramKind::Library,
+        Kind::Predicate => ProgramKind::Predicate,
         Kind::Script => ProgramKind::Script,
-        Kind::Library | Kind::Predicate => todo!("libraries and predicates coming soon!"),
     };
 
     ok(
@@ -155,6 +172,7 @@ pub enum StateAccessType {
 pub(crate) fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
     match ty {
         Type::Unit | Type::Bool | Type::Uint(_) | Type::Pointer(_) => 8,
+        Type::Slice => 16,
         Type::B256 => 32,
         Type::String(n) => size_bytes_round_up_to_word_alignment!(n),
         Type::Array(aggregate) => {
@@ -237,67 +255,3 @@ pub(crate) fn aggregate_idcs_to_field_layout(
             _otherwise => panic!("Attempt to access field in non-aggregate."),
         })
 }
-
-// -------------------------------------------------------------------------------------------------
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use sway_ir::parser::parse;
-
-    use std::path::PathBuf;
-
-    #[test]
-    fn ir_to_asm_tests() {
-        let manifest_dir = env!("CARGO_MANIFEST_DIR");
-        let dir: PathBuf = format!("{}/tests/ir_to_asm", manifest_dir).into();
-        for entry in std::fs::read_dir(dir).unwrap() {
-            // We're only interested in the `.sw` files here.
-            let path = entry.unwrap().path();
-            match path.extension().unwrap().to_str() {
-                Some("ir") => {
-                    //
-                    // Run the tests!
-                    //
-                    println!("---- IR To ASM: {:?} ----", path);
-                    test_ir_to_asm(path);
-                }
-                Some("asm") | Some("disabled") => (),
-                _ => panic!(
-                    "File with invalid extension in tests dir: {:?}",
-                    path.file_name().unwrap_or(path.as_os_str())
-                ),
-            }
-        }
-    }
-
-    fn test_ir_to_asm(mut path: PathBuf) {
-        let input_bytes = std::fs::read(&path).unwrap();
-        let input = String::from_utf8_lossy(&input_bytes);
-
-        path.set_extension("asm");
-
-        let expected_bytes = std::fs::read(&path).unwrap();
-        let expected = String::from_utf8_lossy(&expected_bytes);
-
-        let ir = parse(&input).expect("parsed ir");
-        let asm_result = compile_ir_to_asm(&ir, None);
-
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
-        let asm = asm_result.unwrap(&mut warnings, &mut errors);
-        assert!(warnings.is_empty() && errors.is_empty());
-
-        let asm_script = format!("{}", asm);
-        if asm_script != expected {
-            print!(
-                "{}\n{}",
-                path.display(),
-                prettydiff::diff_lines(&expected, &asm_script)
-            );
-            panic!();
-        }
-    }
-}
-
-// =================================================================================================

@@ -5,17 +5,19 @@ use sway_error::warning::{CompileWarning, Warning};
 
 use crate::{
     error::*,
-    language::{parsed::*, ty},
+    language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
     type_system::*,
 };
-use sha2::{Digest, Sha256};
-use sway_types::{
-    style::is_snake_case, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned,
-};
+use sway_types::{style::is_snake_case, Spanned};
 
 impl ty::TyFunctionDeclaration {
-    pub fn type_check(ctx: TypeCheckContext, fn_decl: FunctionDeclaration) -> CompileResult<Self> {
+    pub fn type_check(
+        mut ctx: TypeCheckContext,
+        fn_decl: FunctionDeclaration,
+        is_method: bool,
+        is_in_impl_self: bool,
+    ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -30,8 +32,9 @@ impl ty::TyFunctionDeclaration {
             return_type_span,
             visibility,
             purity,
-            ..
         } = fn_decl;
+
+        let type_engine = ctx.type_engine;
 
         // Warn against non-snake case function names.
         if !is_snake_case(name.as_str()) {
@@ -43,42 +46,46 @@ impl ty::TyFunctionDeclaration {
 
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut fn_namespace).with_purity(purity);
+        let mut fn_ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
 
-        // type check the type parameters
-        // insert them into the namespace
+        // type check the type parameters, which will also insert them into the namespace
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
             new_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
-        }
-
-        // type check the function parameters
-        // insert them into the namespace
-        let mut new_parameters = vec![];
-        for parameter in parameters.into_iter() {
-            new_parameters.push(check!(
-                ty::TyFunctionParameter::type_check(ctx.by_ref(), parameter),
+                TypeParameter::type_check(fn_ctx.by_ref(), type_parameter),
                 continue,
                 warnings,
                 errors
             ));
         }
+        if !errors.is_empty() {
+            return err(warnings, errors);
+        }
+
+        // type check the function parameters, which will also insert them into the namespace
+        let mut new_parameters = vec![];
+        for parameter in parameters.into_iter() {
+            new_parameters.push(check!(
+                ty::TyFunctionParameter::type_check(fn_ctx.by_ref(), parameter, is_method),
+                continue,
+                warnings,
+                errors
+            ));
+        }
+        if !errors.is_empty() {
+            return err(warnings, errors);
+        }
 
         // type check the return type
-        let initial_return_type = insert_type(return_type);
+        let initial_return_type = type_engine.insert_type(return_type);
         let return_type = check!(
-            ctx.resolve_type_with_self(
+            fn_ctx.resolve_type_with_self(
                 initial_return_type,
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -88,15 +95,16 @@ impl ty::TyFunctionDeclaration {
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
         let (body, _implicit_block_return) = {
-            let ctx = ctx
+            let fn_ctx = fn_ctx
                 .by_ref()
+                .with_purity(purity)
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
                 .with_type_annotation(return_type);
             check!(
-                ty::TyCodeBlock::type_check(ctx, body),
+                ty::TyCodeBlock::type_check(fn_ctx, body),
                 (
                     ty::TyCodeBlock { contents: vec![] },
-                    insert_type(TypeInfo::ErrorRecovery)
+                    type_engine.insert_type(TypeInfo::ErrorRecovery)
                 ),
                 warnings,
                 errors
@@ -113,7 +121,8 @@ impl ty::TyFunctionDeclaration {
         // unify the types of the return statements with the function return type
         for stmt in return_statements {
             append!(
-                ctx.by_ref()
+                fn_ctx
+                    .by_ref()
                     .with_type_annotation(return_type)
                     .with_help_text(
                         "Return statement must return the declared function return type."
@@ -123,6 +132,16 @@ impl ty::TyFunctionDeclaration {
                 errors
             );
         }
+
+        let (visibility, is_contract_call) = if is_method {
+            if is_in_impl_self {
+                (visibility, false)
+            } else {
+                (Visibility::Public, false)
+            }
+        } else {
+            (visibility, fn_ctx.mode() == Mode::ImplAbiFn)
+        };
 
         let function_decl = ty::TyFunctionDeclaration {
             name,
@@ -135,143 +154,35 @@ impl ty::TyFunctionDeclaration {
             type_parameters: new_type_parameters,
             return_type_span,
             visibility,
-            // if this is for a contract, then it is a contract call
-            is_contract_call: ctx.mode() == Mode::ImplAbiFn,
+            is_contract_call,
             purity,
         };
 
+        // Retrieve the implemented traits for the type of the return type and
+        // insert them in the broader namespace. We don't want to include any
+        // type parameters, so we filter them out.
+        let mut return_type_namespace = fn_ctx
+            .namespace
+            .implemented_traits
+            .filter_by_type(function_decl.return_type, type_engine);
+        for type_param in function_decl.type_parameters.iter() {
+            return_type_namespace.filter_against_type(type_engine, type_param.type_id);
+        }
+        ctx.namespace
+            .implemented_traits
+            .extend(return_type_namespace, type_engine);
+
         ok(function_decl, warnings, errors)
-    }
-
-    /// If there are parameters, join their spans. Otherwise, use the fn name span.
-    pub(crate) fn parameters_span(&self) -> Span {
-        if !self.parameters.is_empty() {
-            self.parameters.iter().fold(
-                self.parameters[0].name.span(),
-                |acc, ty::TyFunctionParameter { type_span, .. }| Span::join(acc, type_span.clone()),
-            )
-        } else {
-            self.name.span()
-        }
-    }
-
-    pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<Vec<u8>> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-        let mut hasher = Sha256::new();
-        let data = check!(
-            self.to_selector_name(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        hasher.update(data);
-        let hash = hasher.finalize();
-        ok(hash.to_vec(), warnings, errors)
-    }
-
-    /// Converts a [ty::TyFunctionDeclaration] into a value that is to be used in contract function
-    /// selectors.
-    /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
-    pub fn to_fn_selector_value(&self) -> CompileResult<[u8; 4]> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-        let hash = check!(
-            self.to_fn_selector_value_untruncated(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        // 4 bytes truncation via copying into a 4 byte buffer
-        let mut buf = [0u8; 4];
-        buf.copy_from_slice(&hash[..4]);
-        ok(buf, warnings, errors)
-    }
-
-    pub fn to_selector_name(&self) -> CompileResult<String> {
-        let mut errors = vec![];
-        let mut warnings = vec![];
-        let named_params = self
-            .parameters
-            .iter()
-            .map(
-                |ty::TyFunctionParameter {
-                     type_id, type_span, ..
-                 }| {
-                    to_typeinfo(*type_id, type_span)
-                        .expect("unreachable I think?")
-                        .to_selector_name(type_span)
-                },
-            )
-            .filter_map(|name| name.ok(&mut warnings, &mut errors))
-            .collect::<Vec<String>>();
-
-        ok(
-            format!("{}({})", self.name.as_str(), named_params.join(","),),
-            warnings,
-            errors,
-        )
-    }
-
-    pub(crate) fn generate_json_abi_function(
-        &self,
-        types: &mut Vec<JsonTypeDeclaration>,
-    ) -> JsonABIFunction {
-        // A list of all `JsonTypeDeclaration`s needed for inputs
-        let input_types = self
-            .parameters
-            .iter()
-            .map(|x| JsonTypeDeclaration {
-                type_id: *x.initial_type_id,
-                type_field: x.initial_type_id.get_json_type_str(x.type_id),
-                components: x.initial_type_id.get_json_type_components(types, x.type_id),
-                type_parameters: x.type_id.get_json_type_parameters(types, x.type_id),
-            })
-            .collect::<Vec<_>>();
-
-        // The single `JsonTypeDeclaration` needed for the output
-        let output_type = JsonTypeDeclaration {
-            type_id: *self.initial_return_type,
-            type_field: self.initial_return_type.get_json_type_str(self.return_type),
-            components: self
-                .return_type
-                .get_json_type_components(types, self.return_type),
-            type_parameters: self
-                .return_type
-                .get_json_type_parameters(types, self.return_type),
-        };
-
-        // Add the new types to `types`
-        types.extend(input_types);
-        types.push(output_type);
-
-        // Generate the JSON data for the function
-        JsonABIFunction {
-            name: self.name.as_str().to_string(),
-            inputs: self
-                .parameters
-                .iter()
-                .map(|x| JsonTypeApplication {
-                    name: x.name.to_string(),
-                    type_id: *x.initial_type_id,
-                    type_arguments: x.initial_type_id.get_json_type_arguments(types, x.type_id),
-                })
-                .collect(),
-            output: JsonTypeApplication {
-                name: "".to_string(),
-                type_id: *self.initial_return_type,
-                type_arguments: self
-                    .initial_return_type
-                    .get_json_type_arguments(types, self.return_type),
-            },
-        }
     }
 }
 
 #[test]
 fn test_function_selector_behavior() {
     use crate::language::Visibility;
-    use sway_types::{integer_bits::IntegerBits, Ident};
+    use sway_types::{integer_bits::IntegerBits, Ident, Span};
+
+    let type_engine = TypeEngine::default();
+
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_no_span("foo"),
@@ -287,7 +198,7 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
     };
 
-    let selector_text = match decl.to_selector_name().value {
+    let selector_text = match decl.to_selector_name(&type_engine).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };
@@ -304,8 +215,8 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
-                initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
+                type_id: type_engine.insert_type(TypeInfo::Str(5)),
+                initial_type_id: type_engine.insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
             ty::TyFunctionParameter {
@@ -313,8 +224,8 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
-                initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
+                type_id: type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
+                initial_type_id: type_engine.insert_type(TypeInfo::Str(5)),
                 type_span: Span::dummy(),
             },
         ],
@@ -328,7 +239,7 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
     };
 
-    let selector_text = match decl.to_selector_name().value {
+    let selector_text = match decl.to_selector_name(&type_engine).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };

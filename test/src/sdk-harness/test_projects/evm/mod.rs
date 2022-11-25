@@ -14,7 +14,7 @@ async fn get_evm_test_instance() -> (EvmTestContract, ContractId) {
     )
     .await
     .unwrap();
-    let instance = EvmTestContract::new(id.to_string(), wallet);
+    let instance = EvmTestContract::new(id.clone(), wallet);
 
     (instance, id.into())
 }
@@ -23,16 +23,22 @@ async fn get_evm_test_instance() -> (EvmTestContract, ContractId) {
 async fn can_call_from_literal() {
     let (instance, _) = get_evm_test_instance().await;
 
-    let raw_address = [6; 32]; // hardcoded in the contract to test calling `from()` with a literal
     let result = instance
         .methods()
         .evm_address_from_literal()
         .call()
         .await
         .unwrap();
-    let returned_value = result.value.value;
-    assert_eq!(returned_value.0[0..12], [0; 12]);
-    assert_eq!(returned_value.0[12..32], raw_address[12..32]);
+
+    assert_eq!(
+        EvmAddress::from(
+            Bits256::from_hex_str(
+                "0x0606060606060606060606060606060606060606060606060606060606060606",
+            )
+            .unwrap()
+        ),
+        result.value
+    );
 }
 
 #[tokio::test]
@@ -46,7 +52,6 @@ async fn can_call_from_argument() {
         .call()
         .await
         .unwrap();
-    let returned_value = result.value.value;
-    assert_eq!(returned_value.0[0..12], [0; 12]);
-    assert_eq!(returned_value.0[12..32], raw_address[12..32]);
+
+    assert_eq!(EvmAddress::from(Bits256(raw_address)), result.value);
 }

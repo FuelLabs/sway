@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-961CA6069E122CF6'
+
+[[package]]
+name = 'raw_slice_ret'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-961CA6069E122CF6'
+dependencies = ['core']

@@ -24,34 +24,25 @@ pub use crate::{
     token::{lex, lex_commented},
 };
 
-use sway_ast::Module;
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-};
+use sway_ast::{Module, ModuleKind};
+use sway_error::handler::{ErrorEmitted, Handler};
 
 use std::{path::PathBuf, sync::Arc};
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Error)]
-#[error("Unable to parse: {}", self.0.iter().map(|x| x.to_string()).collect::<Vec<String>>().join("\n"))]
-pub struct ParseFileError(pub Vec<CompileError>);
-
-pub fn parse_file_standalone(
-    src: Arc<str>,
-    path: Option<Arc<PathBuf>>,
-) -> Result<Module, ParseFileError> {
-    let handler = Handler::default();
-    parse_file(&handler, src, path).map_err(|_| ParseFileError(handler.into_errors()))
-}
 
 pub fn parse_file(
     handler: &Handler,
     src: Arc<str>,
     path: Option<Arc<PathBuf>>,
 ) -> Result<Module, ErrorEmitted> {
-    let token_stream = lex(handler, &src, 0, src.len(), path)?;
-    match Parser::new(handler, &token_stream).parse_to_end() {
-        Ok((module, _parser_consumed)) => Ok(module),
-        Err(error) => Err(error),
-    }
+    let ts = lex(handler, &src, 0, src.len(), path)?;
+    Parser::new(handler, &ts).parse_to_end().map(|(m, _)| m)
+}
+
+pub fn parse_module_kind(
+    handler: &Handler,
+    src: Arc<str>,
+    path: Option<Arc<PathBuf>>,
+) -> Result<ModuleKind, ErrorEmitted> {
+    let ts = lex(handler, &src, 0, src.len(), path)?;
+    Parser::new(handler, &ts).parse()
 }

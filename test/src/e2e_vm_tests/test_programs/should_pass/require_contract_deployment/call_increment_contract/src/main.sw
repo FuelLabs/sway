@@ -4,7 +4,7 @@ use increment_abi::Incrementor;
 use std::assert::assert;
 
 fn main() -> bool {
-    let the_abi = abi(Incrementor, 0x5b20234e200cd396540e7fd184c28cc266b1a4ed545ee2aba47ec76345ef1071);
+    let the_abi = abi(Incrementor, 0x58e55bce44f715173b2c81c9c93d70649a40841a5767b4ccc074a6c68079f8e6);
     the_abi.increment(5);
     the_abi.increment(5);
     let result = the_abi.get();

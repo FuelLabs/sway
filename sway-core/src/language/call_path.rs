@@ -6,7 +6,7 @@ use sway_types::{span::Span, Spanned};
 
 /// in the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 /// `c` can be any type `T`, but in practice `c` is either an `Ident` or a `TypeInfo`.
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct CallPath<T = Ident> {
     pub prefixes: Vec<Ident>,
     pub suffix: T,
@@ -40,28 +40,20 @@ where
     }
 }
 
-impl<T> Spanned for CallPath<T>
-where
-    T: Spanned,
-{
+impl<T: Spanned> Spanned for CallPath<T> {
     fn span(&self) -> Span {
         if self.prefixes.is_empty() {
             self.suffix.span()
         } else {
-            let prefixes_span = self
-                .prefixes
-                .iter()
-                .fold(self.prefixes[0].span(), |acc, sp| {
-                    Span::join(acc, sp.span())
-                });
-            Span::join(prefixes_span, self.suffix.span())
+            let prefixes_spans = self.prefixes.iter().map(|x| x.span());
+            Span::join(Span::join_all(prefixes_spans), self.suffix.span())
         }
     }
 }
 
 impl CallPath {
-    /// shifts the last prefix into the suffix and removes the old suffix
-    /// noop if prefixes are empty
+    /// Shifts the last prefix into the suffix, and removes the old suffix.
+    /// Does nothing if prefixes are empty.
     pub fn rshift(&self) -> CallPath {
         if self.prefixes.is_empty() {
             self.clone()

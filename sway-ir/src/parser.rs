@@ -26,21 +26,25 @@ mod ir_builder {
     peg::parser! {
         pub(in crate::parser) grammar parser() for str {
             pub(in crate::parser) rule ir_descrs() -> IrAstModule
-                = _ s:script() eoi() {
-                    s
+                = _ sop:script_or_predicate() eoi() {
+                    sop
                 }
                 / _ c:contract() eoi() {
                     c
                 }
 
-            rule script() -> IrAstModule
-                = "script" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
+            rule script_or_predicate() -> IrAstModule
+                = kind:module_kind() "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
                     IrAstModule {
-                        kind: crate::module::Kind::Script,
+                        kind,
                         fn_decls,
                         metadata
                     }
                 }
+
+            rule module_kind() -> Kind
+                = "script" _ { Kind::Script }
+                / "predicate" _ { Kind::Predicate }
 
             rule contract() -> IrAstModule
                 = "contract" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
@@ -52,22 +56,33 @@ mod ir_builder {
                 }
 
             rule fn_decl() -> IrAstFnDecl
-                = "fn" _ name:id() _ selector:selector_id()? _ "(" _
-                      args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
-                          metadata:comma_metadata_idx()? "{" _
-                      locals:fn_local()*
-                      blocks:block_decl()*
-                  "}" _ {
+                = is_public:is_public() _ is_entry:is_entry() _ "fn" _
+                        name:id() _ selector:selector_id()? _ "(" _
+                        args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
+                            metadata:comma_metadata_idx()? "{" _
+                        locals:fn_local()*
+                        blocks:block_decl()*
+                    "}" _ {
                     IrAstFnDecl {
                         name,
                         args,
                         ret_type,
+                        is_public,
                         metadata,
                         locals,
                         blocks,
-                        selector
+                        selector,
+                        is_entry
                     }
                 }
+
+            rule is_public() -> bool
+                = "pub" _ { true }
+                / "" _ { false }
+
+            rule is_entry() -> bool
+                = "entry" _ { true }
+                / "" _ { false }
 
             rule selector_id() -> [u8; 4]
                 = "<" _ s:$(['0'..='9' | 'a'..='f' | 'A'..='F']*<8>) _ ">" _ {
@@ -150,6 +165,7 @@ mod ir_builder {
                 / op_int_to_ptr()
                 / op_load()
                 / op_log()
+                / op_mem_copy()
                 / op_nop()
                 / op_read_register()
                 / op_ret()
@@ -271,6 +287,11 @@ mod ir_builder {
             rule op_log() -> IrAstOperation
                 = "log" _ log_ty:ast_ty() log_val:id() comma() log_id:id() {
                     IrAstOperation::Log(log_ty, log_val, log_id)
+                }
+
+            rule op_mem_copy() -> IrAstOperation
+                = "mem_copy" _ dst_name:id() comma() src_name:id() comma() len:decimal() {
+                    IrAstOperation::MemCopy(dst_name, src_name, len)
                 }
 
             rule op_nop() -> IrAstOperation
@@ -443,6 +464,7 @@ mod ir_builder {
                 / array_ty()
                 / struct_ty()
                 / union_ty()
+                / mp:mut_ptr() ty:ast_ty() { IrAstTy::Pointer(Box::new(ty), mp) }
 
             rule array_ty() -> IrAstTy
                 = "[" _ ty:ast_ty() ";" _ c:decimal() "]" _ {
@@ -501,7 +523,8 @@ mod ir_builder {
                     IrMetadatum::Index(idx)
                 }
                 / ['"'] s:$(([^ '"' | '\\'] / ['\\'] ['\\' | '"' ])+) ['"'] __ {
-                    IrMetadatum::String(s.to_owned())
+                    // Metadata strings are printed with '\\' escaped on parsing we unescape it.
+                    IrMetadatum::String(s.to_owned().replace("\\\\", "\\"))
                 }
                 / tag:$(id_char0() id_char()*) __ els:metadata_item()* {
                     IrMetadatum::Struct(tag.to_owned(), els)
@@ -590,10 +613,12 @@ mod ir_builder {
         name: String,
         args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
         ret_type: IrAstTy,
+        is_public: bool,
         metadata: Option<MdIdxRef>,
         locals: Vec<(IrAstTy, String, bool, Option<IrAstOperation>)>,
         blocks: Vec<IrAstBlock>,
         selector: Option<[u8; 4]>,
+        is_entry: bool,
     }
 
     #[derive(Debug)]
@@ -638,6 +663,7 @@ mod ir_builder {
         IntToPtr(String, IrAstTy),
         Load(String),
         Log(IrAstTy, String, String),
+        MemCopy(String, String, u64),
         Nop,
         ReadRegister(String),
         Ret(IrAstTy, String),
@@ -744,6 +770,7 @@ mod ir_builder {
         Array(Box<IrAstTy>, u64),
         Union(Vec<IrAstTy>),
         Struct(Vec<IrAstTy>),
+        Pointer(Box<IrAstTy>, bool),
     }
 
     impl IrAstTy {
@@ -757,6 +784,10 @@ mod ir_builder {
                 IrAstTy::Array(..) => Type::Array(self.to_ir_aggregate_type(context)),
                 IrAstTy::Union(_) => Type::Union(self.to_ir_aggregate_type(context)),
                 IrAstTy::Struct(_) => Type::Struct(self.to_ir_aggregate_type(context)),
+                IrAstTy::Pointer(ty, is_mut) => {
+                    let ty = ty.to_ir_type(context);
+                    Type::Pointer(Pointer::new(context, ty, *is_mut, None))
+                }
             }
         }
 
@@ -846,7 +877,8 @@ mod ir_builder {
                 args,
                 ret_type,
                 fn_decl.selector,
-                false,
+                fn_decl.is_public,
+                fn_decl.is_entry,
                 convert_md_idx(&fn_decl.metadata),
             );
 
@@ -1151,6 +1183,14 @@ mod ir_builder {
                             )
                             .add_metadatum(context, opt_metadata)
                     }
+                    IrAstOperation::MemCopy(dst_name, src_name, len) => block
+                        .ins(context)
+                        .mem_copy(
+                            *val_map.get(&dst_name).unwrap(),
+                            *val_map.get(&src_name).unwrap(),
+                            len,
+                        )
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::Nop => block.ins(context).nop(),
                     IrAstOperation::ReadRegister(reg_name) => block
                         .ins(context)
@@ -1252,11 +1292,7 @@ mod ir_builder {
         context: &mut Context,
         ir_metadata: Vec<(MdIdxRef, IrMetadatum)>,
     ) -> HashMap<MdIdxRef, MetadataIndex> {
-        fn convert_md(
-            context: &mut Context,
-            md: IrMetadatum,
-            md_map: &mut HashMap<MdIdxRef, MetadataIndex>,
-        ) -> Metadatum {
+        fn convert_md(md: IrMetadatum, md_map: &mut HashMap<MdIdxRef, MetadataIndex>) -> Metadatum {
             match md {
                 IrMetadatum::Integer(i) => Metadatum::Integer(i),
                 IrMetadatum::Index(idx) => Metadatum::Index(
@@ -1269,7 +1305,7 @@ mod ir_builder {
                 IrMetadatum::Struct(tag, els) => Metadatum::Struct(
                     tag,
                     els.into_iter()
-                        .map(|el_md| convert_md(context, el_md, md_map))
+                        .map(|el_md| convert_md(el_md, md_map))
                         .collect(),
                 ),
                 IrMetadatum::List(idcs) => Metadatum::List(
@@ -1288,7 +1324,7 @@ mod ir_builder {
         let mut md_map = HashMap::new();
 
         for (ir_idx, ir_md) in ir_metadata {
-            let md = convert_md(context, ir_md, &mut md_map);
+            let md = convert_md(ir_md, &mut md_map);
             let md_idx = MetadataIndex(context.metadata.insert(md));
             md_map.insert(ir_idx, md_idx);
         }

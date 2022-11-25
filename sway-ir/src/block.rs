@@ -10,7 +10,7 @@
 //!
 //! Every [`Function`] has at least one block, the first of which is usually labeled `entry`.
 
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     context::Context,
@@ -216,12 +216,37 @@ impl Block {
         }
     }
 
-    /// For a particular successor (if it indeed is one), get the parameters passed.
+    /// For a particular successor (if it indeed is one), get the arguments passed.
     pub fn get_succ_params(&self, context: &Context, succ: &Block) -> Vec<Value> {
         self.successors(context)
             .iter()
             .find(|branch| &branch.block == succ)
             .map_or(vec![], |branch| branch.args.clone())
+    }
+
+    /// For a particular successor (if it indeed is one), get a mut ref to parameters passed.
+    pub fn get_succ_params_mut<'a>(
+        &'a self,
+        context: &'a mut Context,
+        succ: &Block,
+    ) -> Option<&'a mut Vec<Value>> {
+        match self.get_terminator_mut(context) {
+            Some(Instruction::ConditionalBranch {
+                true_block,
+                false_block,
+                ..
+            }) => {
+                if true_block.block == *succ {
+                    Some(&mut true_block.args)
+                } else if false_block.block == *succ {
+                    Some(&mut false_block.args)
+                } else {
+                    None
+                }
+            }
+            Some(Instruction::Branch(block)) if block.block == *succ => Some(&mut block.args),
+            _ => None,
+        }
     }
 
     /// Replace successor `old_succ` with `new_succ`.
@@ -295,9 +320,10 @@ impl Block {
     ///
     /// For every instruction within the block, any reference to `old_val` is replaced with
     /// `new_val`.
-    pub fn replace_value(&self, context: &mut Context, old_val: Value, new_val: Value) {
-        for ins in context.blocks[self.0].instructions.clone() {
-            ins.replace_instruction_value(context, old_val, new_val);
+    pub fn replace_values(&self, context: &mut Context, replace_map: &FxHashMap<Value, Value>) {
+        for ins_idx in 0..context.blocks[self.0].instructions.len() {
+            let ins = context.blocks[self.0].instructions[ins_idx];
+            ins.replace_instruction_values(context, replace_map);
         }
     }
 

@@ -1,0 +1,14 @@
+[package]
+name = "forc-tracing"
+version = "0.31.1"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "Tracing utility shared between forc crates."
+
+[dependencies]
+ansi_term = "0.12"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["ansi", "env-filter", "json"] }

@@ -6,7 +6,13 @@ use crate::{
     },
 };
 
-use std::{collections::BTreeSet, fmt};
+use sway_error::error::CompileError;
+use sway_types::Span;
+
+use std::{
+    collections::{BTreeSet, HashSet},
+    fmt,
+};
 
 use either::Either;
 
@@ -64,12 +70,13 @@ impl AbstractInstructionSet {
         //     MOVE t, a        MOVE b, a
         //     MOVE b, t   =>   USE  b
         //     USE  b
-
         loop {
             // Gather all the uses for each register.
-            let uses: BTreeSet<&VirtualRegister> =
-                self.ops.iter().fold(BTreeSet::new(), |mut acc, op| {
-                    acc.append(&mut op.use_registers());
+            let uses: HashSet<&VirtualRegister> =
+                self.ops.iter().fold(HashSet::new(), |mut acc, op| {
+                    for u in &op.use_registers() {
+                        acc.insert(u);
+                    }
                     acc
                 });
 
@@ -112,6 +119,37 @@ impl AbstractInstructionSet {
         });
 
         self
+    }
+
+    pub(crate) fn verify(self) -> Result<AbstractInstructionSet, CompileError> {
+        // At the moment the only verification we do is to make sure used registers are
+        // initialised.  Without doing dataflow analysis we still can't guarantee the init is
+        // _before_ the use, but future refactoring to convert abstract ops into SSA and BBs will
+        // make this possible or even make this check redundant.
+
+        macro_rules! add_virt_regs {
+            ($regs: expr, $set: expr) => {
+                let mut regs = $regs;
+                regs.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
+                $set.append(&mut regs);
+            };
+        }
+
+        let mut use_regs = BTreeSet::new();
+        let mut def_regs = BTreeSet::new();
+        for op in &self.ops {
+            add_virt_regs!(op.use_registers(), use_regs);
+            add_virt_regs!(op.def_registers(), def_regs);
+        }
+
+        if def_regs.is_superset(&use_regs) {
+            Ok(self)
+        } else {
+            Err(CompileError::Internal(
+                "Program erroneously uses uninitialized virtual registers.",
+                Span::dummy(),
+            ))
+        }
     }
 
     /// Assigns an allocatable register to each virtual register used by some instruction in the
@@ -189,7 +227,6 @@ impl RealizedAbstractInstructionSet {
                      opcode,
                      comment,
                      owning_span,
-                     offset: _,
                  }| {
                     AllocatedOp {
                         opcode,

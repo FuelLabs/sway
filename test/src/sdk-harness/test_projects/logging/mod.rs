@@ -9,18 +9,16 @@ async fn run_valid() {
 
     let wallet = launch_provider_and_get_wallet().await;
 
-    let mut tx = Transaction::Script {
-        gas_price: 0,
-        gas_limit: ConsensusParameters::DEFAULT.max_gas_per_tx,
-        maturity: 0,
-        receipts_root: Default::default(),
-        script: bin.unwrap(),
-        script_data: vec![],
-        inputs: vec![],
-        outputs: vec![],
-        witnesses: vec![],
-        metadata: None,
-    };
+    let mut tx = Transaction::script(
+        0,
+        ConsensusParameters::DEFAULT.max_gas_per_tx,
+        0,
+        bin.unwrap(),
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    );
 
     wallet.sign_transaction(&mut tx).await.unwrap();
 

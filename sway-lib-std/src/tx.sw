@@ -1,10 +1,7 @@
 //! Transaction field getters.
 library tx;
 
-use ::address::Address;
 use ::constants::ZERO_B256;
-use ::mem::read;
-use ::option::Option;
 use ::revert::revert;
 
 ////////////////////////////////////////
@@ -129,23 +126,23 @@ pub fn tx_witness_data_length(index: u64) -> u64 {
 
 // Get the witness data at `index`.
 pub fn tx_witness_data<T>(index: u64) -> T {
-    read::<T>(__gtf::<u64>(index, GTF_WITNESS_DATA))
+    __gtf::<raw_ptr>(index, GTF_WITNESS_DATA).read::<T>()
 }
 
 /// Get the transaction receipts root.
 /// Reverts if not a transaction-script.
 pub fn tx_receipts_root() -> b256 {
     match tx_type() {
-        Transaction::Script => read::<b256>(__gtf::<u64>(0, GTF_SCRIPT_RECEIPTS_ROOT)),
+        Transaction::Script => __gtf::<raw_ptr>(0, GTF_SCRIPT_RECEIPTS_ROOT).read::<b256>(),
         _ => revert(0),
     }
 }
 
 /// Get the transaction script start pointer.
 /// Reverts if not a transaction-script.
-pub fn tx_script_start_pointer() -> u64 {
+pub fn tx_script_start_pointer() -> raw_ptr {
     match tx_type() {
-        Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_SCRIPT),
+        Transaction::Script => __gtf::<raw_ptr>(0, GTF_SCRIPT_SCRIPT),
         _ => revert(0),
     }
 }
@@ -153,9 +150,9 @@ pub fn tx_script_start_pointer() -> u64 {
 /// Get the transaction script data start pointer.
 /// Reverts if not a transaction-script
 /// (transaction-create has no script data length),
-pub fn tx_script_data_start_pointer() -> u64 {
+pub fn tx_script_data_start_pointer() -> raw_ptr {
     match tx_type() {
-        Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA),
+        Transaction::Script => __gtf::<raw_ptr>(0, GTF_SCRIPT_SCRIPT_DATA),
         _ => {
             // transaction-create has no script data length
             revert(0);
@@ -167,14 +164,14 @@ pub fn tx_script_data_start_pointer() -> u64 {
 pub fn tx_script_data<T>() -> T {
     let ptr = tx_script_data_start_pointer();
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
-    read::<T>(tx_script_data_start_pointer())
+    ptr.read::<T>()
 }
 
 /// Get the script bytecode
 /// Must be cast to a u64 array, with sufficient length to contain the bytecode.
 /// Bytecode will be padded to next whole word.
 pub fn tx_script_bytecode<T>() -> T {
-    read::<T>(tx_script_start_pointer())
+    tx_script_start_pointer().read::<T>()
 }
 
 /// Get the hash of the script bytecode.
@@ -201,5 +198,5 @@ const TX_ID_OFFSET = 0;
 
 /// Get the id of the current transaction.
 pub fn tx_id() -> b256 {
-    read(TX_ID_OFFSET)
+    asm(ptr: TX_ID_OFFSET) { ptr: raw_ptr }.read()
 }

@@ -1,11 +1,10 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-504AD282DD5E5B18'
-dependencies = []
 
 [[package]]
 name = 'enum_in_fn_decl'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

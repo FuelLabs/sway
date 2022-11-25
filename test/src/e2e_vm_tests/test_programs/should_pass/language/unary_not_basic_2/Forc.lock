@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-7F8340D0C491D223'
-dependencies = []
 
 [[package]]
 name = 'std'
@@ -10,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'unary_not_basic_2'
-source = 'root'
+source = 'member'
 dependencies = ['std']

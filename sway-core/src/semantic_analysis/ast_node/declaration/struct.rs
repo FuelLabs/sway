@@ -1,11 +1,11 @@
+use sway_error::error::CompileError;
+
 use crate::{
     error::*,
     language::{parsed::*, ty},
     semantic_analysis::*,
     type_system::*,
 };
-use sway_error::error::CompileError;
-use sway_types::Ident;
 
 impl ty::TyStructDeclaration {
     pub(crate) fn type_check(
@@ -33,6 +33,12 @@ impl ty::TyStructDeclaration {
         // insert them into the namespace
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
+            if !type_parameter.trait_constraints.is_empty() {
+                errors.push(CompileError::WhereClauseNotYetSupported {
+                    span: type_parameter.trait_constraints_span,
+                });
+                return err(warnings, errors);
+            }
             new_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
@@ -64,41 +70,13 @@ impl ty::TyStructDeclaration {
 
         ok(decl, warnings, errors)
     }
-
-    pub(crate) fn expect_field(
-        &self,
-        field_to_access: &Ident,
-    ) -> CompileResult<&ty::TyStructField> {
-        let warnings = vec![];
-        let mut errors = vec![];
-        match self
-            .fields
-            .iter()
-            .find(|ty::TyStructField { name, .. }| name.as_str() == field_to_access.as_str())
-        {
-            Some(field) => ok(field, warnings, errors),
-            None => {
-                errors.push(CompileError::FieldNotFound {
-                    available_fields: self
-                        .fields
-                        .iter()
-                        .map(|ty::TyStructField { name, .. }| name.to_string())
-                        .collect::<Vec<_>>()
-                        .join("\n"),
-                    field_name: field_to_access.clone(),
-                    struct_name: self.name.clone(),
-                });
-                err(warnings, errors)
-            }
-        }
-    }
 }
 
 impl ty::TyStructField {
     pub(crate) fn type_check(mut ctx: TypeCheckContext, field: StructField) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let initial_type_id = insert_type(field.type_info);
+        let initial_type_id = ctx.type_engine.insert_type(field.type_info);
         let r#type = check!(
             ctx.resolve_type_with_self(
                 initial_type_id,
@@ -106,7 +84,7 @@ impl ty::TyStructField {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );

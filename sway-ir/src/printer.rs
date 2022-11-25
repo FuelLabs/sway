@@ -109,7 +109,7 @@ fn module_to_doc<'a>(
         match module.kind {
             Kind::Contract => "contract",
             Kind::Library => "library",
-            Kind::Predicate => "predicate ",
+            Kind::Predicate => "predicate",
             Kind::Script => "script",
         }
     )))
@@ -140,51 +140,50 @@ fn function_to_doc<'a>(
     namer: &mut Namer,
     function: &'a FunctionContent,
 ) -> Doc {
+    let public = if function.is_public { "pub " } else { "" };
+    let entry = if function.is_entry { "entry " } else { "" };
     Doc::line(
-        Doc::text(format!(
-            "{}fn {}",
-            if function.is_public { "pub " } else { "" },
-            function.name,
-        ))
-        .append(
-            function
-                .selector
-                .map(|bytes| {
-                    Doc::text(format!(
-                        "<{:02x}{:02x}{:02x}{:02x}>",
-                        bytes[0], bytes[1], bytes[2], bytes[3]
-                    ))
-                })
-                .unwrap_or(Doc::Empty),
-        )
-        .append(Doc::in_parens_comma_sep(
-            function
-                .arguments
-                .iter()
-                .map(|(name, arg_val)| {
-                    if let ValueContent {
-                        value: ValueDatum::Argument(BlockArgument { ty, .. }),
-                        metadata,
-                        ..
-                    } = &context.values[arg_val.0]
-                    {
-                        Doc::text(name)
-                            .append(
-                                Doc::Space.and(md_namer.md_idx_to_doc_no_comma(context, metadata)),
-                            )
-                            .append(Doc::text(format!(": {}", ty.as_string(context))))
-                    } else {
-                        unreachable!("Unexpected non argument value for function arguments.")
-                    }
-                })
-                .collect(),
-        ))
-        .append(Doc::text(format!(
-            " -> {}",
-            function.return_type.as_string(context)
-        )))
-        .append(md_namer.md_idx_to_doc(context, &function.metadata))
-        .append(Doc::text(" {")),
+        Doc::text(format!("{}{}fn {}", public, entry, function.name))
+            .append(
+                function
+                    .selector
+                    .map(|bytes| {
+                        Doc::text(format!(
+                            "<{:02x}{:02x}{:02x}{:02x}>",
+                            bytes[0], bytes[1], bytes[2], bytes[3]
+                        ))
+                    })
+                    .unwrap_or(Doc::Empty),
+            )
+            .append(Doc::in_parens_comma_sep(
+                function
+                    .arguments
+                    .iter()
+                    .map(|(name, arg_val)| {
+                        if let ValueContent {
+                            value: ValueDatum::Argument(BlockArgument { ty, .. }),
+                            metadata,
+                            ..
+                        } = &context.values[arg_val.0]
+                        {
+                            Doc::text(name)
+                                .append(
+                                    Doc::Space
+                                        .and(md_namer.md_idx_to_doc_no_comma(context, metadata)),
+                                )
+                                .append(Doc::text(format!(": {}", ty.as_string(context))))
+                        } else {
+                            unreachable!("Unexpected non argument value for function arguments.")
+                        }
+                    })
+                    .collect(),
+            ))
+            .append(Doc::text(format!(
+                " -> {}",
+                function.return_type.as_string(context)
+            )))
+            .append(md_namer.md_idx_to_doc(context, &function.metadata))
+            .append(Doc::text(" {")),
     )
     .append(Doc::indent(
         4,
@@ -620,6 +619,19 @@ fn instruction_to_doc<'a>(
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )),
+            Instruction::MemCopy {
+                dst_val,
+                src_val,
+                byte_len,
+            } => maybe_constant_to_doc(context, md_namer, namer, src_val).append(Doc::line(
+                Doc::text(format!(
+                    "mem_copy {}, {}, {}",
+                    namer.name(context, dst_val),
+                    namer.name(context, src_val),
+                    byte_len,
+                ))
+                .append(md_namer.md_idx_to_doc(context, metadata)),
+            )),
             Instruction::Nop => Doc::line(
                 Doc::text(format!("{} = nop", namer.name(context, ins_value)))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
@@ -961,7 +973,7 @@ impl MetadataNamer {
     }
 
     fn to_doc(&self, context: &Context) -> Doc {
-        fn md_to_string(context: &Context, md_namer: &MetadataNamer, md: &Metadatum) -> String {
+        fn md_to_string(md_namer: &MetadataNamer, md: &Metadatum) -> String {
             match md {
                 Metadatum::Integer(i) => i.to_string(),
                 Metadatum::Index(idx) => format!(
@@ -975,7 +987,7 @@ impl MetadataNamer {
                     format!(
                         "{tag} {}",
                         els.iter()
-                            .map(|el_md| md_to_string(context, md_namer, el_md))
+                            .map(|el_md| md_to_string(md_namer, el_md))
                             .collect::<Vec<_>>()
                             .join(" ")
                     )
@@ -1002,7 +1014,7 @@ impl MetadataNamer {
             .map(|(ref_idx, md_idx)| {
                 Doc::text_line(format!(
                     "!{ref_idx} = {}",
-                    md_to_string(context, self, &context.metadata[md_idx.0])
+                    md_to_string(self, &context.metadata[md_idx.0])
                 ))
             })
             .collect::<Vec<_>>();

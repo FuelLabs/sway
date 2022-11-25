@@ -2,19 +2,21 @@ use crate::{
     error::*,
     language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
-    Ident, Namespace,
+    transform::to_parsed_lang,
+    Ident, Namespace, TypeEngine,
 };
 
 use super::{
     items::{GlobImport, Items, SymbolMap},
     root::Root,
+    trait_map::TraitMap,
     ModuleName, Path,
 };
 
 use std::collections::BTreeMap;
 use sway_ast::ItemConst;
-use sway_error::error::CompileError;
 use sway_error::handler::Handler;
+use sway_error::{error::CompileError, handler::ErrorEmitted};
 use sway_parse::{lex, Parser};
 use sway_types::{span::Span, ConfigTimeConstant, Spanned};
 
@@ -26,7 +28,7 @@ use sway_types::{span::Span, ConfigTimeConstant, Spanned};
 ///
 /// A `Module` contains a set of all items that exist within the lexical scope via declaration or
 /// importing, along with a map of each of its submodules.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default)]
 pub struct Module {
     /// Submodules of the current module represented as an ordered map from each submodule's name
     /// to the associated `Module`.
@@ -42,80 +44,69 @@ pub struct Module {
 
 impl Module {
     pub fn default_with_constants(
+        type_engine: &TypeEngine,
         constants: BTreeMap<String, ConfigTimeConstant>,
     ) -> Result<Self, vec1::Vec1<CompileError>> {
-        let res = Module::default_with_constants_inner(constants);
-        match res.value {
-            Some(x) => Ok(x),
-            None => {
-                let mut errs = res.errors;
-                // it is an invariant that if `.value` is `None` then there's at least one
-                // error
-                assert!(!errs.is_empty());
-                let first_err = errs.pop().unwrap();
-                let mut errs_1 = vec1::vec1![first_err];
-                errs_1.append(&mut errs);
-                Err(errs_1)
-            }
-        }
+        let handler = <_>::default();
+        Module::default_with_constants_inner(&handler, type_engine, constants).map_err(|_| {
+            let (errors, warnings) = handler.consume();
+            assert!(warnings.is_empty());
+
+            // Invariant: `.value == None` => `!errors.is_empty()`.
+            vec1::Vec1::try_from_vec(errors).unwrap()
+        })
     }
 
     fn default_with_constants_inner(
+        handler: &Handler,
+        type_engine: &TypeEngine,
         constants: BTreeMap<String, ConfigTimeConstant>,
-    ) -> CompileResult<Self> {
+    ) -> Result<Self, ErrorEmitted> {
         // it would be nice to one day maintain a span from the manifest file, but
         // we don't keep that around so we just use the span from the generated const decl instead.
         let mut compiled_constants: SymbolMap = Default::default();
-        let mut ec: crate::convert_parse_tree::ErrorContext = Default::default();
-        let ec = &mut ec;
-        let mut warnings = vec![];
-        let mut errors = vec![];
         // this for loop performs a miniature compilation of each const item in the config
-        for (name, ConfigTimeConstant { r#type, value }) in constants.into_iter() {
+        for (
+            name,
+            ConfigTimeConstant {
+                r#type,
+                value,
+                public,
+            },
+        ) in constants.into_iter()
+        {
             // FIXME(Centril): Stop parsing. Construct AST directly instead!
             // parser config
-            let const_item = format!("const {name}: {type} = {value};");
+            let const_item = match public {
+                true => format!("pub const {name}: {type} = {value};"),
+                false => format!("const {name}: {type} = {value};"),
+            };
             let const_item_len = const_item.len();
             let input_arc = std::sync::Arc::from(const_item);
-            let handler = Handler::default();
-            let token_stream = lex(&handler, &input_arc, 0, const_item_len, None).unwrap();
-            let mut parser = Parser::new(&handler, &token_stream);
+            let token_stream = lex(handler, &input_arc, 0, const_item_len, None).unwrap();
+            let mut parser = Parser::new(handler, &token_stream);
             // perform the parse
-            let const_item: ItemConst = match parser.parse() {
-                Ok(o) => o,
-                Err(_emit_signal) => {
-                    // if an error was emitted, grab errors from the error context
-                    errors.append(&mut ec.errors.clone());
-                    warnings.append(&mut ec.warnings.clone());
-
-                    return err(warnings, errors);
-                }
-            };
+            let const_item: ItemConst = parser.parse()?;
             let const_item_span = const_item.span().clone();
 
             // perform the conversions from parser code to parse tree types
             let name = const_item.name.clone();
             let attributes = Default::default();
             // convert to const decl
-            let const_decl = match crate::convert_parse_tree::item_const_to_constant_declaration(
-                ec, const_item, attributes,
-            ) {
-                Ok(o) => o,
-                Err(_emit_signal) => {
-                    // if an error was emitted, grab errors from the error context
-                    errors.append(&mut ec.errors.clone());
-                    warnings.append(&mut ec.warnings.clone());
-
-                    return err(warnings, errors);
-                }
-            };
+            let const_decl = to_parsed_lang::item_const_to_constant_declaration(
+                handler,
+                type_engine,
+                const_item,
+                attributes,
+            )?;
 
             // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.
             if !matches!(const_decl.value.kind, ExpressionKind::Literal(_)) {
-                errors.push(CompileError::ConfigTimeConstantNotALiteral {
-                    span: const_item_span,
-                });
-                return err(warnings, errors);
+                return Err(
+                    handler.emit_err(CompileError::ConfigTimeConstantNotALiteral {
+                        span: const_item_span,
+                    }),
+                );
             }
 
             let ast_node = AstNode {
@@ -123,7 +114,7 @@ impl Module {
                 span: const_item_span.clone(),
             };
             let mut ns = Namespace::init_root(Default::default());
-            let type_check_ctx = TypeCheckContext::from_root(&mut ns);
+            let type_check_ctx = TypeCheckContext::from_root(&mut ns, type_engine);
             let typed_node = ty::TyAstNode::type_check(type_check_ctx, ast_node)
                 .unwrap(&mut vec![], &mut vec![]);
             // get the decl out of the typed node:
@@ -133,25 +124,19 @@ impl Module {
             let typed_decl = match typed_node.content {
                 ty::TyAstNodeContent::Declaration(decl) => decl,
                 _ => {
-                    errors.push(CompileError::ConfigTimeConstantNotAConstDecl {
-                        span: const_item_span,
-                    });
-                    return err(warnings, errors);
+                    return Err(
+                        handler.emit_err(CompileError::ConfigTimeConstantNotAConstDecl {
+                            span: const_item_span,
+                        }),
+                    );
                 }
             };
             compiled_constants.insert(name, typed_decl);
         }
-        ok(
-            Self {
-                items: Items {
-                    symbols: compiled_constants,
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-            warnings,
-            errors,
-        )
+
+        let mut ret = Self::default();
+        ret.items.symbols = compiled_constants;
+        Ok(ret)
     }
 
     /// Immutable access to this module's submodules.
@@ -204,7 +189,12 @@ impl Module {
     /// This is used when an import path contains an asterisk.
     ///
     /// Paths are assumed to be relative to `self`.
-    pub(crate) fn star_import(&mut self, src: &Path, dst: &Path) -> CompileResult<()> {
+    pub(crate) fn star_import(
+        &mut self,
+        src: &Path,
+        dst: &Path,
+        type_engine: &TypeEngine,
+    ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let src_ns = check!(
@@ -229,7 +219,9 @@ impl Module {
         }
 
         let dst_ns = &mut self[dst];
-        dst_ns.implemented_traits.extend(implemented_traits);
+        dst_ns
+            .implemented_traits
+            .extend(implemented_traits, type_engine);
         for symbol in symbols {
             dst_ns
                 .use_synonyms
@@ -245,7 +237,12 @@ impl Module {
     /// This is used when an import path contains an asterisk.
     ///
     /// Paths are assumed to be relative to `self`.
-    pub fn star_import_with_reexports(&mut self, src: &Path, dst: &Path) -> CompileResult<()> {
+    pub fn star_import_with_reexports(
+        &mut self,
+        src: &Path,
+        dst: &Path,
+        type_engine: &TypeEngine,
+    ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let src_ns = check!(
@@ -271,7 +268,9 @@ impl Module {
         }
 
         let dst_ns = &mut self[dst];
-        dst_ns.implemented_traits.extend(implemented_traits);
+        dst_ns
+            .implemented_traits
+            .extend(implemented_traits, type_engine);
         let mut try_add = |symbol, path| {
             dst_ns.use_synonyms.insert(symbol, (path, GlobImport::Yes));
         };
@@ -299,12 +298,13 @@ impl Module {
     /// import.
     pub(crate) fn self_import(
         &mut self,
+        type_engine: &TypeEngine,
         src: &Path,
         dst: &Path,
         alias: Option<Ident>,
     ) -> CompileResult<()> {
         let (last_item, src) = src.split_last().expect("guaranteed by grammar");
-        self.item_import(src, last_item, dst, alias)
+        self.item_import(type_engine, src, last_item, dst, alias)
     }
 
     /// Pull a single `item` from the given `src` module and import it into the `dst` module.
@@ -312,6 +312,7 @@ impl Module {
     /// Paths are assumed to be relative to `self`.
     pub(crate) fn item_import(
         &mut self,
+        type_engine: &TypeEngine,
         src: &Path,
         item: &Ident,
         dst: &Path,
@@ -325,7 +326,7 @@ impl Module {
             warnings,
             errors
         );
-        let mut impls_to_insert = vec![];
+        let mut impls_to_insert = TraitMap::default();
         match src_ns.symbols.get(item).cloned() {
             Some(decl) => {
                 let visibility = check!(
@@ -348,13 +349,16 @@ impl Module {
                         return ok((), warnings, errors);
                     }
                 }
-                let a = decl.return_type(&item.span()).value;
-                //  if this is an enum or struct, import its implementations
-                let mut res = match a {
-                    Some(a) => src_ns.implemented_traits.get_call_path_and_type_info(a),
-                    None => vec![],
-                };
-                impls_to_insert.append(&mut res);
+                let type_id = decl.return_type(&item.span(), type_engine).value;
+                //  if this is an enum or struct or function, import its implementations
+                if let Some(type_id) = type_id {
+                    impls_to_insert.extend(
+                        src_ns
+                            .implemented_traits
+                            .filter_by_type_item_import(type_id, type_engine),
+                        type_engine,
+                    );
+                }
                 // no matter what, import it this way though.
                 let dst_ns = &mut self[dst];
                 let mut add_synonym = |name| {
@@ -382,13 +386,9 @@ impl Module {
         };
 
         let dst_ns = &mut self[dst];
-        impls_to_insert
-            .into_iter()
-            .for_each(|((call_path, type_info), methods)| {
-                dst_ns
-                    .implemented_traits
-                    .insert(call_path, type_info, methods);
-            });
+        dst_ns
+            .implemented_traits
+            .extend(impls_to_insert, type_engine);
 
         ok((), warnings, errors)
     }

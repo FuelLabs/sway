@@ -1,7 +1,6 @@
 use crate::{
     language::{parsed::CodeBlock, *},
     type_system::TypeBinding,
-    TypeInfo,
 };
 use sway_types::{ident::Ident, Span, Spanned};
 
@@ -44,7 +43,7 @@ pub struct TupleIndexExpression {
 
 #[derive(Debug, Clone)]
 pub struct StructExpression {
-    pub call_path_binding: TypeBinding<CallPath<(TypeInfo, Span)>>,
+    pub call_path_binding: TypeBinding<CallPath>,
     pub fields: Vec<StructExpressionField>,
 }
 
@@ -72,6 +71,32 @@ pub struct MethodApplicationExpression {
 pub struct SubfieldExpression {
     pub prefix: Box<Expression>,
     pub field_to_access: Ident,
+}
+
+#[derive(Debug, Clone)]
+pub struct AmbiguousSuffix {
+    /// The ambiguous part of the suffix.
+    ///
+    /// For example, if we have `Foo::bar()`,
+    /// we don't know whether `Foo` is a module or a type,
+    /// so `before` would be `Foo` here with any type arguments.
+    pub before: TypeBinding<Ident>,
+    /// The final suffix, i.e., the function name.
+    ///
+    /// In the example above, this would be `bar`.
+    pub suffix: Ident,
+}
+
+impl Spanned for AmbiguousSuffix {
+    fn span(&self) -> Span {
+        Span::join(self.before.span(), self.suffix.span())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AmbiguousPathExpression {
+    pub call_path_binding: TypeBinding<CallPath<AmbiguousSuffix>>,
+    pub args: Vec<Expression>,
 }
 
 #[derive(Debug, Clone)]
@@ -124,6 +149,9 @@ pub enum ExpressionKind {
     /// when joined, the same as that stored in `expr.span`.
     Error(Box<[Span]>),
     Literal(Literal),
+    /// An ambiguous path where we don't know until type checking whether this
+    /// is a free function call or a UFCS (Rust term) style associated function call.
+    AmbiguousPathExpression(Box<AmbiguousPathExpression>),
     FunctionApplication(Box<FunctionApplicationExpression>),
     LazyOperator(LazyOperatorExpression),
     Variable(Ident),

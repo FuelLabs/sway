@@ -1,5 +1,5 @@
-use fuels::prelude::*;
-use fuels::tx::{AssetId, ContractId};
+use fuels::{prelude::*, tx::AssetId};
+use std::str::FromStr;
 
 abigen!(
     TestFuelCoinContract,
@@ -200,11 +200,11 @@ async fn can_mint_and_send_to_address() {
 
     assert_eq!(
         wallet
-            .get_spendable_coins(AssetId::from(asset_id_array), 1)
+            .get_spendable_resources(AssetId::from(asset_id_array), 1)
             .await
             .unwrap()[0]
-            .amount,
-        amount.into()
+            .amount(),
+        amount
     );
 }
 
@@ -227,11 +227,11 @@ async fn can_perform_generic_mint_to_with_address() {
 
     assert_eq!(
         wallet
-            .get_spendable_coins(AssetId::from(asset_id_array), 1)
+            .get_spendable_resources(AssetId::from(asset_id_array), 1)
             .await
             .unwrap()[0]
-            .amount,
-        amount.into()
+            .amount(),
+        amount
     );
 }
 
@@ -247,7 +247,7 @@ async fn can_perform_generic_mint_to_with_contract_id() {
         Some(amount_per_coin),
     );
 
-    let wallets = launch_custom_provider_and_get_wallets(config, None).await;
+    let wallets = launch_custom_provider_and_get_wallets(config, None, None).await;
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
     let balance_id = get_balance_contract_id(wallets[0].clone()).await;
     let amount = 55u64;
@@ -299,11 +299,11 @@ async fn can_perform_generic_transfer_to_address() {
 
     assert_eq!(
         wallet
-            .get_spendable_coins(AssetId::from(asset_id_array), 1)
+            .get_spendable_resources(AssetId::from(asset_id_array), 1)
             .await
             .unwrap()[0]
-            .amount,
-        amount.into()
+            .amount(),
+        amount
     );
 }
 
@@ -318,7 +318,7 @@ async fn can_perform_generic_transfer_to_contract() {
         Some(coins_per_wallet),
         Some(amount_per_coin),
     );
-    let wallets = launch_custom_provider_and_get_wallets(config, None).await;
+    let wallets = launch_custom_provider_and_get_wallets(config, None, None).await;
 
     let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
     let balance_id = get_balance_contract_id(wallets[0].clone()).await;
@@ -352,6 +352,88 @@ async fn can_perform_generic_transfer_to_contract() {
     assert_eq!(result.value, amount)
 }
 
+#[tokio::test]
+async fn can_send_message_output_with_data() {
+    let num_wallets = 1;
+    let coins_per_wallet = 1;
+    let amount_per_coin = 1_000_000;
+
+    let config = WalletsConfig::new(
+        Some(num_wallets),
+        Some(coins_per_wallet),
+        Some(amount_per_coin),
+    );
+
+    let wallets = launch_custom_provider_and_get_wallets(config, None, None).await;
+    let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
+
+    let amount = 33u64;
+    let recipient_address: Address = wallets[0].address().into();
+
+    let call_response = fuelcoin_instance
+        .methods()
+        .send_message(Bits256(*recipient_address), vec![100, 75, 50], amount)
+        .append_message_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    let message_receipt = call_response
+        .receipts
+        .iter()
+        .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
+        .unwrap();
+
+    assert_eq!(*fuelcoin_id, **message_receipt.sender().unwrap());
+    assert_eq!(&recipient_address, message_receipt.recipient().unwrap());
+    assert_eq!(amount, message_receipt.amount().unwrap());
+    assert_eq!(24, message_receipt.len().unwrap());
+    assert_eq!(
+        vec![0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 75, 0, 0, 0, 0, 0, 0, 0, 50],
+        message_receipt.data().unwrap()
+    );
+}
+
+#[tokio::test]
+async fn can_send_message_output_without_data() {
+    let num_wallets = 1;
+    let coins_per_wallet = 1;
+    let amount_per_coin = 1_000_000;
+
+    let config = WalletsConfig::new(
+        Some(num_wallets),
+        Some(coins_per_wallet),
+        Some(amount_per_coin),
+    );
+
+    let wallets = launch_custom_provider_and_get_wallets(config, None, None).await;
+    let (fuelcoin_instance, fuelcoin_id) = get_fuelcoin_instance(wallets[0].clone()).await;
+
+    let amount = 33u64;
+    let recipient_hex = "0x000000000000000000000000b46a7a1a23f3897cc83a94521a96da5c23bc58db";
+    let recipient_address = Address::from_str(&recipient_hex).unwrap();
+
+    let call_response = fuelcoin_instance
+        .methods()
+        .send_message(Bits256(*recipient_address), Vec::<u64>::new(), amount)
+        .append_message_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    let message_receipt = call_response
+        .receipts
+        .iter()
+        .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
+        .unwrap();
+
+    assert_eq!(*fuelcoin_id, **message_receipt.sender().unwrap());
+    assert_eq!(&recipient_address, message_receipt.recipient().unwrap());
+    assert_eq!(amount, message_receipt.amount().unwrap());
+    assert_eq!(0, message_receipt.len().unwrap());
+    assert_eq!(Vec::<u8>::new(), message_receipt.data().unwrap());
+}
+
 async fn get_fuelcoin_instance(wallet: WalletUnlocked) -> (TestFuelCoinContract, ContractId) {
     let fuelcoin_id = Contract::deploy(
         "test_projects/token_ops/out/debug/token_ops.bin",
@@ -364,7 +446,7 @@ async fn get_fuelcoin_instance(wallet: WalletUnlocked) -> (TestFuelCoinContract,
     .await
     .unwrap();
 
-    let fuelcoin_instance = TestFuelCoinContract::new(fuelcoin_id.to_string(), wallet);
+    let fuelcoin_instance = TestFuelCoinContract::new(fuelcoin_id.clone(), wallet);
 
     (fuelcoin_instance, fuelcoin_id.into())
 }

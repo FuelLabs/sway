@@ -51,6 +51,12 @@ pub enum CompileError {
     },
     #[error("Unimplemented feature: {0}")]
     Unimplemented(&'static str, Span),
+    #[error(
+        "Unimplemented feature: {0}\n\
+         help: {1}.\n\
+         "
+    )]
+    UnimplementedWithHelp(&'static str, &'static str, Span),
     #[error("{0}")]
     TypeError(TypeError),
     #[error("Error parsing input: {err:?}")]
@@ -235,6 +241,7 @@ pub enum CompileError {
     MethodNotFound {
         method_name: Ident,
         type_name: String,
+        span: Span,
     },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
@@ -272,6 +279,8 @@ pub enum CompileError {
     DeclIsNotATraitFn { actually: String, span: Span },
     #[error("This is a {actually}, not storage.")]
     DeclIsNotStorage { actually: String, span: Span },
+    #[error("This is a {actually}, not a constant")]
+    DeclIsNotAConstant { actually: String, span: Span },
     #[error(
         "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
          {available_fields}"
@@ -348,6 +357,12 @@ pub enum CompileError {
     UnableToInferGeneric { ty: String, span: Span },
     #[error("The generic type parameter \"{ty}\" is unconstrained.")]
     UnconstrainedGenericParameter { ty: String, span: Span },
+    #[error("Trait \"{trait_name}\" is not implemented for type \"{ty}\".")]
+    TraitConstraintNotSatisfied {
+        ty: String,
+        trait_name: String,
+        span: Span,
+    },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 12-bit immediate spot.")]
@@ -356,18 +371,6 @@ pub enum CompileError {
     Immediate18TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 24-bit immediate spot.")]
     Immediate24TooLarge { val: u64, span: Span },
-    #[error(
-        "The opcode \"ji\" is not valid in inline assembly. Try using function calls instead."
-    )]
-    DisallowedJi { span: Span },
-    #[error("The opcode \"jnei\" is not valid in inline assembly. Use an enclosing if expression instead.")]
-    DisallowedJnei { span: Span },
-    #[error("The opcode \"jnzi\" is not valid in inline assembly. Use an enclosing if expression instead.")]
-    DisallowedJnzi { span: Span },
-    #[error(
-        "The opcode \"lw\" is not valid in inline assembly. Try assigning a static value to a variable instead."
-    )]
-    DisallowedLw { span: Span },
     #[error(
         "This op expects {expected} register(s) as arguments, but you provided {received} register(s)."
     )]
@@ -410,21 +413,25 @@ pub enum CompileError {
     TraitNotFound { name: String, span: Span },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
     InvalidExpressionOnLhs { span: Span },
-    #[error(
-        "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
+    #[error("{} \"{method_name}\" expects {expected} {} but you provided {received}.",
+        if *dot_syntax_used { "Method" } else { "Function" },
+        if *expected == 1usize { "argument" } else {"arguments"},
     )]
     TooManyArgumentsForFunction {
         span: Span,
         method_name: Ident,
+        dot_syntax_used: bool,
         expected: usize,
         received: usize,
     },
-    #[error(
-        "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
+    #[error("{} \"{method_name}\" expects {expected} {} but you provided {received}.",
+        if *dot_syntax_used { "Method" } else { "Function" },
+        if *expected == 1usize { "argument" } else {"arguments"},
     )]
     TooFewArgumentsForFunction {
         span: Span,
         method_name: Ident,
+        dot_syntax_used: bool,
         expected: usize,
         received: usize,
     },
@@ -437,6 +444,18 @@ pub enum CompileError {
     },
     #[error("An ABI can only be implemented for the `Contract` type, so this implementation of an ABI for type \"{ty}\" is invalid.")]
     ImplAbiForNonContract { span: Span, ty: String },
+    #[error("Conflicting implementations of trait \"{trait_name}\" for type \"{type_implementing_for}\".")]
+    ConflictingImplsForTraitAndType {
+        trait_name: String,
+        type_implementing_for: String,
+        second_impl_span: Span,
+    },
+    #[error("Duplicate definitions for the method \"{func_name}\" for type \"{type_implementing_for}\".")]
+    DuplicateMethodsDefinedForType {
+        func_name: String,
+        type_implementing_for: String,
+        span: Span,
+    },
     #[error("The function \"{fn_name}\" in {interface_name} is defined with {num_parameters} parameters, but the provided implementation has {provided_parameters} parameters.")]
     IncorrectNumberOfInterfaceSurfaceFunctionParameters {
         fn_name: Ident,
@@ -483,6 +502,10 @@ pub enum CompileError {
     BurnFromExternalContext { span: Span },
     #[error("Contract storage cannot be used in an external context.")]
     ContractStorageFromExternalContext { span: Span },
+    #[error("The {opcode} opcode cannot be used in a predicate.")]
+    InvalidOpcodeFromPredicate { opcode: String, span: Span },
+    #[error("The {opcode} opcode cannot jump backwards in a predicate.")]
+    InvalidBackwardJumpFromPredicate { opcode: String, span: Span },
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
     #[error("Tuple index out of bounds; the arity is {count} but the index is {index}.")]
@@ -568,12 +591,6 @@ pub enum CompileError {
     AsteriskWithAlias { span: Span },
     #[error("A trait cannot be a subtrait of an ABI.")]
     AbiAsSupertrait { span: Span },
-    #[error("The trait \"{supertrait_name}\" is not implemented for type \"{type_name}\"")]
-    SupertraitImplMissing {
-        supertrait_name: String,
-        type_name: String,
-        span: Span,
-    },
     #[error(
         "Implementation of trait \"{supertrait_name}\" is required by this bound in \"{trait_name}\""
     )]
@@ -654,6 +671,22 @@ pub enum CompileError {
     ConfigTimeConstantNotALiteral { span: Span },
     #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident },
+    #[error("Returning a `raw_ptr` from `main()` is not allowed.")]
+    PointerReturnNotAllowedInMain { span: Span },
+    #[error(
+        "Returning a type containing `raw_slice` from `main()` is not allowed. \
+            Consider converting it into a flat `raw_slice` first."
+    )]
+    NestedSliceReturnNotAllowedInMain { span: Span },
+    #[error(
+        "Register \"{name}\" is initialized and later reassigned which is not allowed. \
+            Consider assigning to a different register inside the ASM block."
+    )]
+    InitializedRegisterReassignment { name: String, span: Span },
+    #[error("Control flow VM instructions are not allowed in assembly blocks.")]
+    DisallowedControlFlowInstruction { name: String, span: Span },
+    #[error("Calling private library method {name} is not allowed.")]
+    CallingPrivateLibraryMethod { name: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -672,6 +705,7 @@ impl Spanned for CompileError {
             NotAVariable { name, .. } => name.span(),
             NotAFunction { span, .. } => span.clone(),
             Unimplemented(_, span) => span.clone(),
+            UnimplementedWithHelp(_, _, span) => span.clone(),
             TypeError(err) => err.span(),
             ParseError { span, .. } => span.clone(),
             Internal(_, span) => span.clone(),
@@ -710,7 +744,7 @@ impl Spanned for CompileError {
             MethodOnNonValue { span, .. } => span.clone(),
             StructMissingField { span, .. } => span.clone(),
             StructDoesNotHaveField { span, .. } => span.clone(),
-            MethodNotFound { method_name, .. } => method_name.span(),
+            MethodNotFound { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
@@ -733,14 +767,11 @@ impl Spanned for CompileError {
             UnrecognizedOp { span, .. } => span.clone(),
             UnableToInferGeneric { span, .. } => span.clone(),
             UnconstrainedGenericParameter { span, .. } => span.clone(),
+            TraitConstraintNotSatisfied { span, .. } => span.clone(),
             Immediate06TooLarge { span, .. } => span.clone(),
             Immediate12TooLarge { span, .. } => span.clone(),
             Immediate18TooLarge { span, .. } => span.clone(),
             Immediate24TooLarge { span, .. } => span.clone(),
-            DisallowedJi { span, .. } => span.clone(),
-            DisallowedJnei { span, .. } => span.clone(),
-            DisallowedJnzi { span, .. } => span.clone(),
-            DisallowedLw { span, .. } => span.clone(),
             IncorrectNumberOfAsmRegisters { span, .. } => span.clone(),
             UnnecessaryImmediate { span, .. } => span.clone(),
             AmbiguousPath { span, .. } => span.clone(),
@@ -760,6 +791,10 @@ impl Spanned for CompileError {
             InvalidAbiType { span, .. } => span.clone(),
             NotAnAbi { span, .. } => span.clone(),
             ImplAbiForNonContract { span, .. } => span.clone(),
+            ConflictingImplsForTraitAndType {
+                second_impl_span, ..
+            } => second_impl_span.clone(),
+            DuplicateMethodsDefinedForType { span, .. } => span.clone(),
             IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span.clone(),
             ArgumentParameterTypeMismatch { span, .. } => span.clone(),
             RecursiveCall { span, .. } => span.clone(),
@@ -772,6 +807,8 @@ impl Spanned for CompileError {
             MintFromExternalContext { span, .. } => span.clone(),
             BurnFromExternalContext { span, .. } => span.clone(),
             ContractStorageFromExternalContext { span, .. } => span.clone(),
+            InvalidOpcodeFromPredicate { span, .. } => span.clone(),
+            InvalidBackwardJumpFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
@@ -791,6 +828,7 @@ impl Spanned for CompileError {
             DeclIsNotAnImplTrait { span, .. } => span.clone(),
             DeclIsNotATraitFn { span, .. } => span.clone(),
             DeclIsNotStorage { span, .. } => span.clone(),
+            DeclIsNotAConstant { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             ImpureInPureContext { span, .. } => span.clone(),
             ParameterMutabilityMismatch { span, .. } => span.clone(),
@@ -800,7 +838,6 @@ impl Spanned for CompileError {
             IntegerContainsInvalidDigit { span, .. } => span.clone(),
             AsteriskWithAlias { span, .. } => span.clone(),
             AbiAsSupertrait { span, .. } => span.clone(),
-            SupertraitImplMissing { span, .. } => span.clone(),
             SupertraitImplRequired { span, .. } => span.clone(),
             IfLetNonEnum { span, .. } => span.clone(),
             ContractCallParamRepeated { span, .. } => span.clone(),
@@ -829,6 +866,11 @@ impl Spanned for CompileError {
             ConfigTimeConstantNotAConstDecl { span } => span.clone(),
             ConfigTimeConstantNotALiteral { span } => span.clone(),
             RefMutableNotAllowedInMain { param_name } => param_name.span(),
+            PointerReturnNotAllowedInMain { span } => span.clone(),
+            NestedSliceReturnNotAllowedInMain { span } => span.clone(),
+            InitializedRegisterReassignment { span, .. } => span.clone(),
+            DisallowedControlFlowInstruction { span, .. } => span.clone(),
+            CallingPrivateLibraryMethod { span, .. } => span.clone(),
         }
     }
 }

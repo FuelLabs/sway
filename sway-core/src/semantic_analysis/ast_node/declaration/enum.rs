@@ -1,11 +1,11 @@
+use sway_error::error::CompileError;
+
 use crate::{
     error::*,
     language::{parsed::*, ty},
     semantic_analysis::*,
     type_system::*,
 };
-use sway_error::error::CompileError;
-use sway_types::Ident;
 
 impl ty::TyEnumDeclaration {
     pub fn type_check(ctx: TypeCheckContext, decl: EnumDeclaration) -> CompileResult<Self> {
@@ -30,6 +30,12 @@ impl ty::TyEnumDeclaration {
         // insert them into the namespace
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
+            if !type_parameter.trait_constraints.is_empty() {
+                errors.push(CompileError::WhereClauseNotYetSupported {
+                    span: type_parameter.trait_constraints_span,
+                });
+                return err(warnings, errors);
+            }
             new_type_parameters.push(check!(
                 TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 return err(warnings, errors),
@@ -60,29 +66,6 @@ impl ty::TyEnumDeclaration {
         };
         ok(decl, warnings, errors)
     }
-
-    pub(crate) fn expect_variant_from_name(
-        &self,
-        variant_name: &Ident,
-    ) -> CompileResult<&ty::TyEnumVariant> {
-        let warnings = vec![];
-        let mut errors = vec![];
-        match self
-            .variants
-            .iter()
-            .find(|x| x.name.as_str() == variant_name.as_str())
-        {
-            Some(variant) => ok(variant, warnings, errors),
-            None => {
-                errors.push(CompileError::UnknownEnumVariant {
-                    enum_name: self.name.clone(),
-                    variant_name: variant_name.clone(),
-                    span: self.span.clone(),
-                });
-                err(warnings, errors)
-            }
-        }
-    }
 }
 
 impl ty::TyEnumVariant {
@@ -92,7 +75,7 @@ impl ty::TyEnumVariant {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let initial_type_id = insert_type(variant.type_info);
+        let initial_type_id = ctx.type_engine.insert_type(variant.type_info);
         let enum_variant_type = check!(
             ctx.resolve_type_with_self(
                 initial_type_id,
@@ -100,7 +83,7 @@ impl ty::TyEnumVariant {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );

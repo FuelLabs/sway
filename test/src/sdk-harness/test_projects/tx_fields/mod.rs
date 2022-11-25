@@ -1,8 +1,10 @@
 use fuel_vm::fuel_crypto::Hasher;
-use fuel_vm::fuel_tx::ConsensusParameters;
-use fuel_vm::fuel_tx::Transaction as FuelTransaction;
-use fuels::prelude::*;
-use fuels::tx::{Bytes32, ContractId};
+use fuels::{
+    prelude::*,
+    tx::{
+        field::Script as ScriptField, Bytes32, ConsensusParameters, ContractId, UniqueIdentifier,
+    },
+};
 use std::str::FromStr;
 
 abigen!(
@@ -23,7 +25,7 @@ async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
     )
     .await
     .unwrap();
-    let instance = TxContractTest::new(contract_id.to_string(), wallet.clone());
+    let instance = TxContractTest::new(contract_id.clone(), wallet.clone());
 
     (instance, contract_id.into(), wallet)
 }
@@ -202,13 +204,11 @@ async fn can_get_script_bytecode_hash() {
         .await
         .unwrap()
         .tx;
-    let hash = match tx {
-        FuelTransaction::Script { script, .. } => {
-            // Make sure script is actually something fairly substantial
-            assert!(script.len() > 1);
-            Hasher::hash(&script)
-        }
-        _ => Hasher::hash(&vec![]),
+    let hash = {
+        let script = tx.script();
+        // Make sure script is actually something fairly substantial
+        assert!(script.len() > 1);
+        Hasher::hash(&script)
     };
 
     let result = contract_instance

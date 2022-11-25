@@ -1,9 +1,8 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-2F8090B18C264A91'
-dependencies = []
 
 [[package]]
 name = 'main_args_mutation'
-source = 'root'
+source = 'member'
 dependencies = ['core']

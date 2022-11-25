@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-F836694FA318B000'
-dependencies = []
 
 [[package]]
 name = 'std'
@@ -10,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'std_alloc_test'
-source = 'root'
+source = 'member'
 dependencies = ['std']

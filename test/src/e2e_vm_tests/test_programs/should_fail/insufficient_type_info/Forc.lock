@@ -1,11 +1,10 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-687D7B6A23A7C9DF'
-dependencies = []
 
 [[package]]
 name = 'insufficient_type_info'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

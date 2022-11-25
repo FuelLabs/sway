@@ -5,7 +5,7 @@ dependencies = ['core']
 
 [[package]]
 name = 'caller_auth_test'
-source = 'root'
+source = 'member'
 dependencies = [
     'auth_testing_abi',
     'std',
@@ -14,7 +14,6 @@ dependencies = [
 [[package]]
 name = 'core'
 source = 'path+from-root-F99221C76F6FEEFB'
-dependencies = []
 
 [[package]]
 name = 'std'

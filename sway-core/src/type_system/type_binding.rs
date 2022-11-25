@@ -5,8 +5,8 @@ use crate::{
     error::*,
     language::{ty, CallPath},
     semantic_analysis::TypeCheckContext,
-    type_system::{insert_type, EnforceTypeArguments},
-    TypeInfo,
+    type_system::EnforceTypeArguments,
+    CreateTypeId, TypeInfo,
 };
 
 use super::{ReplaceSelfType, TypeArgument, TypeId};
@@ -113,12 +113,12 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
         // resolve the type of the type info object
         let type_id = check!(
             ctx.resolve_type_with_self(
-                insert_type(type_info),
+                ctx.type_engine.insert_type(type_info),
                 &type_info_span,
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix)
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
@@ -145,10 +145,10 @@ impl TypeBinding<CallPath> {
 
         // replace the self types inside of the type arguments
         for type_argument in self.type_arguments.iter_mut() {
-            type_argument.replace_self_type(ctx.self_type());
+            type_argument.replace_self_type(ctx.type_engine, ctx.self_type());
             type_argument.type_id = check!(
                 ctx.resolve_type_without_self(type_argument.type_id, &type_argument.span, None),
-                insert_type(TypeInfo::ErrorRecovery),
+                ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );
@@ -179,17 +179,14 @@ impl TypeBinding<CallPath> {
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = de_insert_function(new_copy);
-
-                // add the new copy as a monomorphized copy of the original id
-                de_add_monomorphized_copy(original_id, new_id.clone());
+                let new_id = de_insert_function(new_copy).with_parent(original_id);
 
                 ty::TyDeclaration::FunctionDeclaration(new_id)
             }
             ty::TyDeclaration::EnumDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
-                    CompileResult::from(de_get_enum(original_id.clone(), &self.span())),
+                    CompileResult::from(de_get_enum(original_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -208,18 +205,21 @@ impl TypeBinding<CallPath> {
                     errors
                 );
 
+                // take any trait methods that apply to this type and copy them to the new type
+                ctx.namespace.insert_trait_implementation_for_type(
+                    ctx.type_engine,
+                    new_copy.create_type_id(ctx.type_engine),
+                );
+
                 // insert the new copy into the declaration engine
                 let new_id = de_insert_enum(new_copy);
-
-                // add the new copy as a monomorphized copy of the original id
-                de_add_monomorphized_copy(original_id, new_id.clone());
 
                 ty::TyDeclaration::EnumDeclaration(new_id)
             }
             ty::TyDeclaration::StructDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
-                    CompileResult::from(de_get_struct(original_id.clone(), &self.span())),
+                    CompileResult::from(de_get_struct(original_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -238,11 +238,14 @@ impl TypeBinding<CallPath> {
                     errors
                 );
 
+                // take any trait methods that apply to this type and copy them to the new type
+                ctx.namespace.insert_trait_implementation_for_type(
+                    ctx.type_engine,
+                    new_copy.create_type_id(ctx.type_engine),
+                );
+
                 // insert the new copy into the declaration engine
                 let new_id = de_insert_struct(new_copy);
-
-                // add the new copy as a monomorphized copy of the original id
-                de_add_monomorphized_copy(original_id, new_id.clone());
 
                 ty::TyDeclaration::StructDeclaration(new_id)
             }

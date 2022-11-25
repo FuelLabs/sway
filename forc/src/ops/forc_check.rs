@@ -1,10 +1,14 @@
 use crate::cli::CheckCommand;
 use anyhow::Result;
-use forc_pkg::{self as pkg, PackageManifestFile};
+use forc_pkg::{self as pkg};
+use pkg::manifest::ManifestFile;
 use std::path::PathBuf;
-use sway_core::{language::ty, CompileResult};
+use sway_core::{language::ty, CompileResult, TypeEngine};
 
-pub fn check(command: CheckCommand) -> Result<CompileResult<ty::TyProgram>> {
+pub fn check(
+    command: CheckCommand,
+    type_engine: &TypeEngine,
+) -> Result<CompileResult<ty::TyProgram>> {
     let CheckCommand {
         path,
         offline_mode: offline,
@@ -17,8 +21,16 @@ pub fn check(command: CheckCommand) -> Result<CompileResult<ty::TyProgram>> {
     } else {
         std::env::current_dir()?
     };
-    let manifest = PackageManifestFile::from_dir(&this_dir)?;
-    let plan = pkg::BuildPlan::from_lock_and_manifest(&manifest, locked, offline)?;
+    let manifest_file = ManifestFile::from_dir(&this_dir)?;
+    let member_manifests = manifest_file.member_manifests()?;
+    let lock_path = manifest_file.lock_path()?;
+    let plan =
+        pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
 
-    Ok(pkg::check(&plan, terse_mode)?.flat_map(|(_, tp)| CompileResult::new(tp, vec![], vec![])))
+    let mut v = pkg::check(&plan, terse_mode, type_engine)?;
+    let res = v
+        .pop()
+        .expect("there is guaranteed to be at least one elem in the vector")
+        .flat_map(|(_, tp)| CompileResult::new(tp, vec![], vec![]));
+    Ok(res)
 }

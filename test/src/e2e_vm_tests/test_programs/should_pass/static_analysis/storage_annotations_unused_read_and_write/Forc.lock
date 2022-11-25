@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-F9F255B625A3400C'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-F9F255B625A3400C'
+dependencies = ['core']
+
+[[package]]
+name = 'storage_annotations_unused_read_and_write'
+source = 'member'
+dependencies = ['std']

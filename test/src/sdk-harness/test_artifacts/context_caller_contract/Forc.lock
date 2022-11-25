@@ -1,6 +1,6 @@
 [[package]]
 name = 'context_caller_contract'
-source = 'root'
+source = 'member'
 dependencies = [
     'context_testing_abi',
     'std',
@@ -14,7 +14,6 @@ dependencies = ['std']
 [[package]]
 name = 'core'
 source = 'path+from-root-1CAC8651C9045C85'
-dependencies = []
 
 [[package]]
 name = 'std'

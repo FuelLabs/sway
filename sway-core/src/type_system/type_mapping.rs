@@ -1,3 +1,5 @@
+use std::fmt;
+
 use super::*;
 
 type SourceType = TypeId;
@@ -9,19 +11,62 @@ pub(crate) struct TypeMapping {
     mapping: Vec<(SourceType, DestinationType)>,
 }
 
+impl DisplayWithTypeEngine for TypeMapping {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
+        write!(
+            f,
+            "TypeMapping {{ {} }}",
+            self.mapping
+                .iter()
+                .map(|(source_type, dest_type)| {
+                    format!(
+                        "{} -> {}",
+                        type_engine.help_out(source_type),
+                        type_engine.help_out(dest_type)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+}
+
+impl fmt::Debug for TypeMapping {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "TypeMapping {{ {} }}",
+            self.mapping
+                .iter()
+                .map(|(source_type, dest_type)| { format!("{:?} -> {:?}", source_type, dest_type) })
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+}
+
 impl TypeMapping {
+    /// Returns `true` if the [TypeMapping] is empty.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.mapping.is_empty()
+    }
+
     /// Constructs a new [TypeMapping] from a list of [TypeParameter]s
     /// `type_parameters`. The [SourceType]s of the resulting [TypeMapping] are
     /// the [TypeId]s from `type_parameters` and the [DestinationType]s are the
     /// new [TypeId]s created from a transformation upon `type_parameters`.
-    pub(crate) fn from_type_parameters(type_parameters: &[TypeParameter]) -> TypeMapping {
+    pub(crate) fn from_type_parameters(
+        type_parameters: &[TypeParameter],
+        type_engine: &TypeEngine,
+    ) -> TypeMapping {
         let mapping = type_parameters
             .iter()
             .map(|x| {
                 (
                     x.type_id,
-                    insert_type(TypeInfo::UnknownGeneric {
+                    type_engine.insert_type(TypeInfo::UnknownGeneric {
                         name: x.name_ident.clone(),
+                        trait_constraints: VecSet(x.trait_constraints.clone()),
                     }),
                 )
             })
@@ -76,8 +121,15 @@ impl TypeMapping {
     /// `subset`. This [TypeMapping] can be used to complete monomorphization on
     /// methods, etc, that are implemented for the type of `superset` so that
     /// they can be used for `subset`.
-    pub(crate) fn from_superset_and_subset(superset: TypeId, subset: TypeId) -> TypeMapping {
-        match (look_up_type_id(superset), look_up_type_id(subset)) {
+    pub(crate) fn from_superset_and_subset(
+        type_engine: &TypeEngine,
+        superset: TypeId,
+        subset: TypeId,
+    ) -> TypeMapping {
+        match (
+            type_engine.look_up_type_id(superset),
+            type_engine.look_up_type_id(subset),
+        ) {
             (TypeInfo::UnknownGeneric { .. }, _) => TypeMapping {
                 mapping: vec![(superset, subset)],
             },
@@ -193,7 +245,7 @@ impl TypeMapping {
     /// and a list of [TypeId]s `type_arguments`. The [SourceType]s of the
     /// resulting [TypeMapping] are the [TypeId]s from `type_parameters` and the
     /// [DestinationType]s are the [TypeId]s from `type_arguments`.
-    fn from_type_parameters_and_type_arguments(
+    pub(crate) fn from_type_parameters_and_type_arguments(
         type_parameters: Vec<SourceType>,
         type_arguments: Vec<DestinationType>,
     ) -> TypeMapping {
@@ -214,73 +266,130 @@ impl TypeMapping {
     /// A match can be found in two different circumstances:
     /// - `type_id` is a [TypeInfo::Custom] or [TypeInfo::UnknownGeneric]
     ///
-    /// A match is created (i.e. a new `TypeId` is created) in these
+    /// A match is potentially created (i.e. a new `TypeId` is created) in these
     /// circumstances:
     /// - `type_id` is a [TypeInfo::Struct], [TypeInfo::Enum],
-    ///     [TypeInfo::Array], or [TypeInfo::Tuple]
-    /// - a new [TypeId] is created in these circumstances because `find_match`
-    ///     descends recursively, and you can't be sure that it hasn't found a
-    ///     match somewhere nested deeper in the type
-    /// - TODO: there is a performance gain to be made here by having
-    ///     `find_match` (or some `find_match_inner` return a `bool`). If that
-    ///     `bool` is false, you know that there is no match found, and you can
-    ///     be confident that even in the cases that otherwise would be creating
-    ///     a new match, that no new match needs to be created, because there
-    ///     were no nested matches
+    ///     [TypeInfo::Array], or [TypeInfo::Tuple] and one of the sub-types
+    ///     finds a match in a recursive call to `find_match`
     ///
-    /// A match cannot be found in any other circumstance
-    ///
-    pub(crate) fn find_match(&self, type_id: TypeId) -> Option<TypeId> {
-        let type_info = look_up_type_id(type_id);
+    /// A match cannot be found in any other circumstance.
+    pub(crate) fn find_match(&self, type_id: TypeId, type_engine: &TypeEngine) -> Option<TypeId> {
+        let type_info = type_engine.look_up_type_id(type_id);
         match type_info {
-            TypeInfo::Custom { .. } => iter_for_match(self, &type_info),
-            TypeInfo::UnknownGeneric { .. } => iter_for_match(self, &type_info),
+            TypeInfo::Custom { .. } => iter_for_match(type_engine, self, &type_info),
+            TypeInfo::UnknownGeneric { .. } => iter_for_match(type_engine, self, &type_info),
             TypeInfo::Struct {
-                mut fields,
+                fields,
                 name,
-                mut type_parameters,
+                type_parameters,
             } => {
-                fields.iter_mut().for_each(|field| field.copy_types(self));
-                type_parameters
-                    .iter_mut()
-                    .for_each(|type_param| type_param.copy_types(self));
-                Some(insert_type(TypeInfo::Struct {
-                    fields,
-                    name,
-                    type_parameters,
-                }))
+                let mut need_to_create_new = false;
+                let fields = fields
+                    .into_iter()
+                    .map(|mut field| {
+                        if let Some(type_id) = self.find_match(field.type_id, type_engine) {
+                            need_to_create_new = true;
+                            field.type_id = type_id;
+                        }
+                        field
+                    })
+                    .collect::<Vec<_>>();
+                let type_parameters = type_parameters
+                    .into_iter()
+                    .map(|mut type_param| {
+                        if let Some(type_id) = self.find_match(type_param.type_id, type_engine) {
+                            need_to_create_new = true;
+                            type_param.type_id = type_id;
+                        }
+                        type_param
+                    })
+                    .collect::<Vec<_>>();
+                if need_to_create_new {
+                    Some(type_engine.insert_type(TypeInfo::Struct {
+                        fields,
+                        name,
+                        type_parameters,
+                    }))
+                } else {
+                    None
+                }
             }
             TypeInfo::Enum {
-                mut variant_types,
+                variant_types,
                 name,
-                mut type_parameters,
+                type_parameters,
             } => {
-                variant_types
-                    .iter_mut()
-                    .for_each(|variant_type| variant_type.copy_types(self));
-                type_parameters
-                    .iter_mut()
-                    .for_each(|type_param| type_param.copy_types(self));
-                Some(insert_type(TypeInfo::Enum {
-                    variant_types,
-                    type_parameters,
-                    name,
-                }))
+                let mut need_to_create_new = false;
+                let variant_types = variant_types
+                    .into_iter()
+                    .map(|mut variant| {
+                        if let Some(type_id) = self.find_match(variant.type_id, type_engine) {
+                            need_to_create_new = true;
+                            variant.type_id = type_id;
+                        }
+                        variant
+                    })
+                    .collect::<Vec<_>>();
+                let type_parameters = type_parameters
+                    .into_iter()
+                    .map(|mut type_param| {
+                        if let Some(type_id) = self.find_match(type_param.type_id, type_engine) {
+                            need_to_create_new = true;
+                            type_param.type_id = type_id;
+                        }
+                        type_param
+                    })
+                    .collect::<Vec<_>>();
+                if need_to_create_new {
+                    Some(type_engine.insert_type(TypeInfo::Enum {
+                        variant_types,
+                        type_parameters,
+                        name,
+                    }))
+                } else {
+                    None
+                }
             }
             TypeInfo::Array(ary_ty_id, count, initial_elem_ty) => {
-                let ary_ty_id = match self.find_match(ary_ty_id) {
-                    Some(matching_id) => matching_id,
-                    None => ary_ty_id,
-                };
-                Some(insert_type(TypeInfo::Array(
-                    ary_ty_id,
-                    count,
-                    initial_elem_ty,
-                )))
+                self.find_match(ary_ty_id, type_engine).map(|matching_id| {
+                    type_engine.insert_type(TypeInfo::Array(matching_id, count, initial_elem_ty))
+                })
             }
-            TypeInfo::Tuple(mut fields) => {
-                fields.iter_mut().for_each(|field| field.copy_types(self));
-                Some(insert_type(TypeInfo::Tuple(fields)))
+            TypeInfo::Tuple(fields) => {
+                let mut need_to_create_new = false;
+                let fields = fields
+                    .into_iter()
+                    .map(|mut field| {
+                        if let Some(type_id) = self.find_match(field.type_id, type_engine) {
+                            need_to_create_new = true;
+                            field.type_id = type_id;
+                        }
+                        field
+                    })
+                    .collect::<Vec<_>>();
+                if need_to_create_new {
+                    Some(type_engine.insert_type(TypeInfo::Tuple(fields)))
+                } else {
+                    None
+                }
+            }
+            TypeInfo::Storage { fields } => {
+                let mut need_to_create_new = false;
+                let fields = fields
+                    .into_iter()
+                    .map(|mut field| {
+                        if let Some(type_id) = self.find_match(field.type_id, type_engine) {
+                            need_to_create_new = true;
+                            field.type_id = type_id;
+                        }
+                        field
+                    })
+                    .collect::<Vec<_>>();
+                if need_to_create_new {
+                    Some(type_engine.insert_type(TypeInfo::Storage { fields }))
+                } else {
+                    None
+                }
             }
             TypeInfo::Unknown
             | TypeInfo::Str(..)
@@ -290,40 +399,25 @@ impl TypeMapping {
             | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Numeric
+            | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
-            | TypeInfo::Storage { .. }
             | TypeInfo::ErrorRecovery => None,
         }
     }
-
-    /// Unifies the given `type_arguments` with the [DestinationType]s of the
-    /// [TypeMapping]
-    pub(crate) fn unify_with_type_arguments(
-        &self,
-        type_arguments: &[TypeArgument],
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        for ((_, destination_type), type_arg) in self.mapping.iter().zip(type_arguments.iter()) {
-            append!(
-                unify_right(
-                    type_arg.type_id,
-                    *destination_type,
-                    &type_arg.span,
-                    "Type argument is not assignable to generic type parameter.",
-                ),
-                warnings,
-                errors
-            );
-        }
-        ok((), warnings, errors)
-    }
 }
 
-fn iter_for_match(type_mapping: &TypeMapping, type_info: &TypeInfo) -> Option<TypeId> {
-    for (param, ty_id) in type_mapping.mapping.iter() {
-        if look_up_type_id(*param) == *type_info {
-            return Some(*ty_id);
+fn iter_for_match(
+    type_engine: &TypeEngine,
+    type_mapping: &TypeMapping,
+    type_info: &TypeInfo,
+) -> Option<TypeId> {
+    for (source_type, dest_type) in type_mapping.mapping.iter() {
+        if type_engine
+            .look_up_type_id(*source_type)
+            .eq(type_info, type_engine)
+        {
+            return Some(*dest_type);
         }
     }
     None

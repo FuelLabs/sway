@@ -1,11 +1,10 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-C495CD5BD093FF32'
-dependencies = []
 
 [[package]]
 name = 'ec_recover_and_match_predicate'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

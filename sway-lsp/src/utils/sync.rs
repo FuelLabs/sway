@@ -3,24 +3,16 @@ use dashmap::DashMap;
 use forc_pkg::{manifest::Dependency, PackageManifestFile};
 use notify::RecursiveMode;
 use notify_debouncer_mini::new_debouncer;
+use parking_lot::RwLock;
 use std::{
     collections::HashMap,
     fs::{self, File},
     io::{Read, Write},
     path::{Path, PathBuf},
-    sync::{Arc, LockResult, RwLock},
+    sync::Arc,
 };
 use tempfile::Builder;
 use tower_lsp::lsp_types::Url;
-
-/// Used to track if the language server has been initialised yet.
-/// We initialize the server with the temp directories during the first
-/// lsp protocol call to did_open.
-#[derive(Debug)]
-pub enum InitializedState {
-    Uninitialized,
-    Initialized,
-}
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub enum Directory {
@@ -32,7 +24,6 @@ pub enum Directory {
 pub struct SyncWorkspace {
     pub directories: DashMap<Directory, PathBuf>,
     pub notify_join_handle: RwLock<Option<tokio::task::JoinHandle<()>>>,
-    pub init_state: RwLock<InitializedState>,
 }
 
 impl SyncWorkspace {
@@ -42,7 +33,6 @@ impl SyncWorkspace {
         Self {
             directories: DashMap::new(),
             notify_join_handle: RwLock::new(None),
-            init_state: RwLock::new(InitializedState::Uninitialized),
         }
     }
 
@@ -97,7 +87,7 @@ impl SyncWorkspace {
         Ok(())
     }
 
-    pub(crate) fn clone_manifest_dir_to_temp(&self) -> Result<(), LanguageServerError> {
+    pub(crate) fn clone_manifest_dir_to_temp(&self) -> Result<(), DirectoryError> {
         copy_dir_contents(self.manifest_dir()?, self.temp_dir()?)
             .map_err(|_| DirectoryError::CopyContentsFailed)?;
 
@@ -176,21 +166,24 @@ impl SyncWorkspace {
                     });
 
                     // Store the join handle so we can clean up the thread on shutdown
-                    if let LockResult::Ok(mut join_handle) = self.notify_join_handle.write() {
+                    {
+                        let mut join_handle = self.notify_join_handle.write();
                         *join_handle = Some(handle);
                     }
                 }
             });
     }
 
-    fn manifest_dir(&self) -> Result<PathBuf, DirectoryError> {
+    /// Return the path to the projects manifest directory.
+    pub(crate) fn manifest_dir(&self) -> Result<PathBuf, DirectoryError> {
         self.directories
             .get(&Directory::Manifest)
             .map(|item| item.value().clone())
             .ok_or(DirectoryError::ManifestDirNotFound)
     }
 
-    fn temp_dir(&self) -> Result<PathBuf, DirectoryError> {
+    /// Return the path to the temporary directory that was created for the current session.
+    pub(crate) fn temp_dir(&self) -> Result<PathBuf, DirectoryError> {
         self.directories
             .get(&Directory::Temp)
             .map(|item| item.value().clone())
@@ -207,7 +200,7 @@ impl SyncWorkspace {
     }
 
     fn url_from_path(&self, path: &PathBuf) -> Result<Url, DirectoryError> {
-        Url::from_file_path(&path).map_err(|_| DirectoryError::UrlFromPathFailed {
+        Url::from_file_path(path).map_err(|_| DirectoryError::UrlFromPathFailed {
             path: path.to_string_lossy().to_string(),
         })
     }

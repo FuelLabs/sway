@@ -7,9 +7,8 @@ use crate::{
         ast_node::expression::typed_expression::{
             instantiate_if_expression, instantiate_lazy_operator,
         },
-        IsConstant, TypeCheckContext,
+        TypeCheckContext,
     },
-    type_system::insert_type,
     CompileError, CompileResult, TypeInfo,
 };
 
@@ -58,6 +57,8 @@ impl ty::TyMatchExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let type_engine = ctx.type_engine;
+
         let ty::TyMatchExpression { branches, .. } = self;
 
         // create the typed if expression object that we will be building on to
@@ -87,7 +88,7 @@ impl ty::TyMatchExpression {
                             LazyOp::And,
                             new_condition,
                             inner_condition,
-                            insert_type(TypeInfo::Boolean),
+                            type_engine.insert_type(TypeInfo::Boolean),
                             joined_span,
                         )
                     }
@@ -103,6 +104,7 @@ impl ty::TyMatchExpression {
                 (None, Some(conditional)) => {
                     check!(
                         instantiate_if_expression(
+                            ctx.type_engine,
                             conditional,
                             result.clone(),
                             Some(result), // TODO: this is a really bad hack and we should not do this
@@ -118,12 +120,12 @@ impl ty::TyMatchExpression {
                 (Some(prev_if_exp), None) => {
                     let conditional = ty::TyExpression {
                         expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
-                        return_type: insert_type(TypeInfo::Boolean),
-                        is_constant: IsConstant::No,
+                        return_type: type_engine.insert_type(TypeInfo::Boolean),
                         span: result_span.clone(),
                     };
                     check!(
                         instantiate_if_expression(
+                            ctx.type_engine,
                             conditional,
                             result,
                             Some(prev_if_exp),
@@ -139,6 +141,7 @@ impl ty::TyMatchExpression {
                 (Some(prev_if_exp), Some(conditional)) => {
                     check!(
                         instantiate_if_expression(
+                            ctx.type_engine,
                             conditional,
                             result,
                             Some(prev_if_exp),

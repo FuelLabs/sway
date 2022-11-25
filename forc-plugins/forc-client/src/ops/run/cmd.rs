@@ -1,4 +1,5 @@
 use clap::Parser;
+use fuel_gql_client::fuel_crypto::SecretKey;
 
 /// Run script project.
 /// Crafts a script transaction then sends it to a running node.
@@ -91,6 +92,17 @@ pub struct RunCommand {
     #[clap(long)]
     pub minify_json_storage_slots: bool,
 
+    /// Name of the build profile to use.
+    /// If it is not specified, forc will use debug build profile.
+    #[clap(long)]
+    pub build_profile: Option<String>,
+
+    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
+    ///
+    /// If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    #[clap(long)]
+    pub release: bool,
+
     /// Set the transaction gas limit. Defaults to the maximum gas limit.
     #[clap(long)]
     pub gas_limit: Option<u64>,
@@ -113,4 +125,7 @@ pub struct RunCommand {
     /// Do not sign the transaction
     #[clap(long)]
     pub unsigned: bool,
+
+    /// Set the key to be used for signing.
+    pub signing_key: Option<SecretKey>,
 }

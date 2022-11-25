@@ -64,7 +64,7 @@ impl Position {
 }
 
 /// Represents a span of the source code in a specific file.
-#[derive(Clone, Eq, PartialEq, PartialOrd, Hash)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Span {
     // The original source code.
     src: Arc<str>,
@@ -172,6 +172,13 @@ impl Span {
             end: cmp::max(s1.end, s2.end),
             path: s1.path,
         }
+    }
+
+    pub fn join_all(spans: impl IntoIterator<Item = Span>) -> Span {
+        spans
+            .into_iter()
+            .reduce(Span::join)
+            .unwrap_or_else(Span::dummy)
     }
 
     /// Returns the line and column start and end.

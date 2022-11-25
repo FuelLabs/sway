@@ -1,9 +1,8 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-21A8479818A041E3'
-dependencies = []
 
 [[package]]
 name = 'main_args_copy_copy'
-source = 'root'
+source = 'member'
 dependencies = ['core']

@@ -5,7 +5,7 @@ use crate::{
     error::{err, ok},
     language::{parsed::*, ty, CallPath},
     semantic_analysis::TypeCheckContext,
-    type_system::{insert_type, CreateTypeId, EnforceTypeArguments, TypeArgument},
+    type_system::{CreateTypeId, EnforceTypeArguments, TypeArgument},
     CompileError, CompileResult, TypeInfo,
 };
 
@@ -17,7 +17,7 @@ impl ty::TyScrutinee {
             Scrutinee::CatchAll { span } => {
                 let typed_scrutinee = ty::TyScrutinee {
                     variant: ty::TyScrutineeVariant::CatchAll,
-                    type_id: insert_type(TypeInfo::Unknown),
+                    type_id: ctx.type_engine.insert_type(TypeInfo::Unknown),
                     span,
                 };
                 ok(typed_scrutinee, warnings, errors)
@@ -25,7 +25,7 @@ impl ty::TyScrutinee {
             Scrutinee::Literal { value, span } => {
                 let typed_scrutinee = ty::TyScrutinee {
                     variant: ty::TyScrutineeVariant::Literal(value.clone()),
-                    type_id: insert_type(value.to_typeinfo()),
+                    type_id: ctx.type_engine.insert_type(value.to_typeinfo()),
                     span,
                 };
                 ok(typed_scrutinee, warnings, errors)
@@ -86,7 +86,7 @@ fn type_check_variable(
         // Variable isn't a constant, so so we turn it into a [ty::TyScrutinee::Variable].
         _ => ty::TyScrutinee {
             variant: ty::TyScrutineeVariant::Variable(name),
-            type_id: insert_type(TypeInfo::Unknown),
+            type_id: ctx.type_engine.insert_type(TypeInfo::Unknown),
             span,
         },
     };
@@ -186,7 +186,7 @@ fn type_check_struct(
 
     let typed_scrutinee = ty::TyScrutinee {
         variant: ty::TyScrutineeVariant::StructScrutinee(struct_decl.name.clone(), typed_fields),
-        type_id: struct_decl.create_type_id(),
+        type_id: struct_decl.create_type_id(ctx.type_engine),
         span,
     };
 
@@ -194,7 +194,7 @@ fn type_check_struct(
 }
 
 fn type_check_enum(
-    ctx: TypeCheckContext,
+    mut ctx: TypeCheckContext,
     call_path: CallPath<Ident>,
     value: Scrutinee,
     span: Span,
@@ -240,7 +240,7 @@ fn type_check_enum(
         warnings,
         errors
     );
-    let enum_type_id = enum_decl.create_type_id();
+    let enum_type_id = enum_decl.create_type_id(ctx.type_engine);
 
     // check to see if the variant exists and grab it if it does
     let variant = check!(
@@ -288,7 +288,7 @@ fn type_check_tuple(
             errors
         ));
     }
-    let type_id = insert_type(TypeInfo::Tuple(
+    let type_id = ctx.type_engine.insert_type(TypeInfo::Tuple(
         typed_elems
             .iter()
             .map(|x| TypeArgument {

@@ -1,11 +1,10 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-FEF37F026EFAF705'
-dependencies = []
 
 [[package]]
 name = 'liquidity_pool'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

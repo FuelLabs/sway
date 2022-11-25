@@ -10,11 +10,10 @@ use crate::{
         VirtualOp,
     },
     error::*,
+    fuel_prelude::fuel_asm::GTFArgs,
 };
 
 use sway_ir::*;
-
-use fuel_asm::GTFArgs;
 
 use either::Either;
 
@@ -53,20 +52,6 @@ use either::Either;
 
 impl<'ir> AsmBuilder<'ir> {
     pub(super) fn compile_call(&mut self, instr_val: &Value, function: &Function, args: &[Value]) {
-        if !function.get_return_type(self.context).is_copy_type() {
-            // To implement non-copy type return values we will transform functions to return their
-            // value via an 'out' argument, either during IR generation or possibly with an IR
-            // transformation.
-            //
-            // This hasn't been done yet and will be addressed in a future change.  Until then we
-            // will enforce functions returning non-copy type values are always inlined, and so
-            // we will not see them at this stage of the compiler.
-            unimplemented!(
-                "Can't do reference type return values yet (and should've been inlined). {}",
-                function.get_name(self.context)
-            )
-        }
-
         // Put the args into the args registers.
         for (idx, arg_val) in args.iter().enumerate() {
             if idx < compiler_constants::NUM_ARG_REGISTERS as usize {
@@ -116,17 +101,7 @@ impl<'ir> AsmBuilder<'ir> {
         self.reg_map.insert(*instr_val, ret_reg);
     }
 
-    pub(super) fn compile_ret_from_call(
-        &mut self,
-        instr_val: &Value,
-        ret_val: &Value,
-        ret_type: &Type,
-    ) {
-        if !ret_type.is_copy_type() {
-            // See above in compile_call().
-            unimplemented!("Can't do reference type return values yet. {ret_type:?}")
-        }
-
+    pub(super) fn compile_ret_from_call(&mut self, instr_val: &Value, ret_val: &Value) {
         // Move the result into the return value register.
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         let ret_reg = self.value_to_register(ret_val);
@@ -166,9 +141,7 @@ impl<'ir> AsmBuilder<'ir> {
             )));
         }
 
-        let func_has_selector = function.has_selector(self.context);
-        let func_is_main = function.get_name(self.context) == "main";
-        let func_is_entry = func_has_selector || func_is_main;
+        let func_is_entry = function.is_entry(self.context);
 
         // Insert a function label.
         let (start_label, end_label) = self.func_to_labels(&function);
@@ -195,6 +168,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         if func_is_entry {
             // Read the args from VM/transaction memory.
+            let func_is_main = function.get_name(self.context) == "main";
             self.compile_external_args(function, func_is_main)
         } else {
             // Make copies of the arg registers.
@@ -470,6 +444,10 @@ impl<'ir> AsmBuilder<'ir> {
                     Type::Unit | Type::Bool | Type::Uint(_) | Type::Pointer(_) => {
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
                         stack_base += 1;
+                    }
+                    Type::Slice => {
+                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
+                        stack_base += 2;
                     }
                     Type::B256 => {
                         // XXX Like strings, should we just reserve space for a pointer?

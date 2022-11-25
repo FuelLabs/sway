@@ -1,11 +1,10 @@
 use sway_error::error::CompileError;
 use sway_types::Span;
 
-use crate::{
-    error::*, language::ty, semantic_analysis::*, type_system::*, types::DeterministicallyAborts,
-};
+use crate::{error::*, language::ty, type_system::*, types::DeterministicallyAborts};
 
 pub(crate) fn instantiate_if_expression(
+    type_engine: &TypeEngine,
     condition: ty::TyExpression,
     then: ty::TyExpression,
     r#else: Option<ty::TyExpression>,
@@ -23,10 +22,10 @@ pub(crate) fn instantiate_if_expression(
         let ty_to_check = if r#else.is_some() {
             type_annotation
         } else {
-            insert_type(TypeInfo::Tuple(vec![]))
+            type_engine.insert_type(TypeInfo::Tuple(vec![]))
         };
         append!(
-            unify_with_self(
+            type_engine.unify_with_self(
                 then.return_type,
                 ty_to_check,
                 self_type,
@@ -48,7 +47,7 @@ pub(crate) fn instantiate_if_expression(
         if !else_deterministically_aborts {
             // if this does not deterministically_abort, check the block return type
             append!(
-                unify_with_self(
+                type_engine.unify_with_self(
                     r#else.return_type,
                     ty_to_check,
                     self_type,
@@ -65,10 +64,10 @@ pub(crate) fn instantiate_if_expression(
     let r#else_ret_ty = r#else
         .as_ref()
         .map(|x| x.return_type)
-        .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
+        .unwrap_or_else(|| type_engine.insert_type(TypeInfo::Tuple(Vec::new())));
     // if there is a type annotation, then the else branch must exist
     if !else_deterministically_aborts && !then_deterministically_aborts {
-        let (mut new_warnings, mut new_errors) = unify_with_self(
+        let (mut new_warnings, mut new_errors) = type_engine.unify_with_self(
             then.return_type,
             r#else_ret_ty,
             self_type,
@@ -77,10 +76,10 @@ pub(crate) fn instantiate_if_expression(
         );
         warnings.append(&mut new_warnings);
         if new_errors.is_empty() {
-            if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
+            if !type_engine.look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
                 errors.push(CompileError::NoElseBranch {
                     span: span.clone(),
-                    r#type: look_up_type_id(type_annotation).to_string(),
+                    r#type: type_engine.help_out(type_annotation).to_string(),
                 });
             }
         } else {
@@ -99,7 +98,6 @@ pub(crate) fn instantiate_if_expression(
             then: Box::new(then),
             r#else,
         },
-        is_constant: IsConstant::No,
         return_type,
         span,
     };

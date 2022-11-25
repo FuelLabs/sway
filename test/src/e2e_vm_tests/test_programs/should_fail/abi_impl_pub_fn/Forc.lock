@@ -1,4 +1,3 @@
 [[package]]
 name = 'abi_impl_pub_fn'
-source = 'root'
-dependencies = []
+source = 'member'

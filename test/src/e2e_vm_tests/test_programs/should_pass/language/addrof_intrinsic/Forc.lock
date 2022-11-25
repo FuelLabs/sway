@@ -1,12 +1,11 @@
 [[package]]
 name = 'addrof_intrinsic'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
 source = 'path+from-root-B3EAB3022B5FAD04'
-dependencies = []
 
 [[package]]
 name = 'std'

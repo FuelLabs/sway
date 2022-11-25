@@ -1,6 +1,6 @@
 [[package]]
 name = 'block'
-source = 'root'
+source = 'member'
 dependencies = [
     'block_test_abi',
     'std',
@@ -14,7 +14,6 @@ dependencies = ['std']
 [[package]]
 name = 'core'
 source = 'path+from-root-9A6BFB98DBD0352C'
-dependencies = []
 
 [[package]]
 name = 'std'

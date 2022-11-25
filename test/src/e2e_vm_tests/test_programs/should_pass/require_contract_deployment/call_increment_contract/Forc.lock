@@ -1,6 +1,6 @@
 [[package]]
 name = 'call_increment_contract'
-source = 'root'
+source = 'member'
 dependencies = [
     'increment_abi',
     'std',
@@ -9,7 +9,6 @@ dependencies = [
 [[package]]
 name = 'core'
 source = 'path+from-root-2711CA1D0E2938B8'
-dependencies = []
 
 [[package]]
 name = 'increment_abi'

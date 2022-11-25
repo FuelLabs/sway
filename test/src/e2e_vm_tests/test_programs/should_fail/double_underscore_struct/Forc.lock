@@ -1,4 +1,3 @@
 [[package]]
 name = 'double_underscore_struct'
-source = 'root'
-dependencies = []
+source = 'member'

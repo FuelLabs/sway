@@ -11,30 +11,72 @@ use sway_error::error::CompileError;
 use sway_ir::Context;
 use sway_types::span::Span;
 
-pub(crate) use purity::PurityChecker;
+pub(crate) use purity::{check_function_purity, PurityEnv};
 
-use crate::language::ty;
+use crate::{language::ty, TypeEngine};
 
-pub fn compile_program(program: ty::TyProgram) -> Result<Context, CompileError> {
-    let ty::TyProgram { kind, root, .. } = program;
+pub fn compile_program(
+    program: ty::TyProgram,
+    include_tests: bool,
+    type_engine: &TypeEngine,
+) -> Result<Context, CompileError> {
+    let test_fns = match include_tests {
+        true => program.test_fns().collect(),
+        false => vec![],
+    };
+
+    let ty::TyProgram {
+        kind,
+        root,
+        logged_types,
+        declarations,
+        ..
+    } = program;
+
+    let logged_types = logged_types
+        .into_iter()
+        .map(|(log_id, type_id)| (type_id, log_id))
+        .collect();
 
     let mut ctx = Context::default();
     match kind {
-        ty::TyProgramKind::Script {
+        // predicates and scripts have the same codegen, their only difference is static
+        // type-check time checks.
+        ty::TyProgramKind::Script { main_function } => compile::compile_script(
+            type_engine,
+            &mut ctx,
             main_function,
+            &root.namespace,
             declarations,
-        }
-        | ty::TyProgramKind::Predicate {
+            &logged_types,
+            test_fns,
+        ),
+        ty::TyProgramKind::Predicate { main_function } => compile::compile_predicate(
+            type_engine,
+            &mut ctx,
             main_function,
+            &root.namespace,
             declarations,
-            // predicates and scripts have the same codegen, their only difference is static
-            // type-check time checks.
-        } => compile::compile_script(&mut ctx, main_function, &root.namespace, declarations),
-        ty::TyProgramKind::Contract {
+            &logged_types,
+            test_fns,
+        ),
+        ty::TyProgramKind::Contract { abi_entries } => compile::compile_contract(
+            &mut ctx,
             abi_entries,
+            &root.namespace,
             declarations,
-        } => compile::compile_contract(&mut ctx, abi_entries, &root.namespace, declarations),
-        ty::TyProgramKind::Library { .. } => unimplemented!("compile library to ir"),
+            &logged_types,
+            test_fns,
+            type_engine,
+        ),
+        ty::TyProgramKind::Library { .. } => compile::compile_library(
+            type_engine,
+            &mut ctx,
+            &root.namespace,
+            declarations,
+            &logged_types,
+            test_fns,
+        ),
     }?;
     ctx.verify()
         .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))

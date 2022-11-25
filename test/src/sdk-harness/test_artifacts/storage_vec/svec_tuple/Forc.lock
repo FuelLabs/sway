@@ -1,7 +1,6 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-ADD23FE8604712AD'
-dependencies = []
 
 [[package]]
 name = 'std'
@@ -10,5 +9,5 @@ dependencies = ['core']
 
 [[package]]
 name = 'svec_tuple'
-source = 'root'
+source = 'member'
 dependencies = ['std']

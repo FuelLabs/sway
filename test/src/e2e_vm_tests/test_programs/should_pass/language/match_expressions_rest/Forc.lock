@@ -1,11 +1,10 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-E1D1F5F82094B853'
-dependencies = []
 
 [[package]]
 name = 'match_expressions_rest'
-source = 'root'
+source = 'member'
 dependencies = [
     'core',
     'std',

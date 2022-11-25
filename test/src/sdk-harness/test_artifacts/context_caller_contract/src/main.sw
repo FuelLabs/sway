@@ -1,7 +1,7 @@
 contract;
 
 use context_testing_abi::ContextTesting;
-use std::{context::call_frames::contract_id, token::mint};
+use std::{call_frames::contract_id, token::mint};
 
 abi ContextCaller {
     fn call_get_this_balance_with_coins(send_amount: u64, context_id: ContractId) -> u64;
@@ -22,7 +22,7 @@ impl ContextCaller for Contract {
         context_contract.get_this_balance {
             gas: 500_000,
             coins: send_amount,
-            asset_id: ~ContractId::into(contract_id()),
+            asset_id: ContractId::into(contract_id()),
         }(contract_id())
     }
 
@@ -33,7 +33,7 @@ impl ContextCaller for Contract {
         context_contract.get_balance_of_contract {
             gas: 500_000,
             coins: send_amount,
-            asset_id: ~ContractId::into(contract_id()),
+            asset_id: ContractId::into(contract_id()),
         }(contract_id(), target)
     }
 
@@ -44,7 +44,7 @@ impl ContextCaller for Contract {
         context_contract.get_amount {
             gas: 500_000,
             coins: send_amount,
-            asset_id: ~ContractId::into(contract_id()),
+            asset_id: ContractId::into(contract_id()),
         }()
     }
 
@@ -55,7 +55,7 @@ impl ContextCaller for Contract {
         context_contract.get_asset_id {
             gas: 500_000,
             coins: send_amount,
-            asset_id: ~ContractId::into(contract_id()),
+            asset_id: ContractId::into(contract_id()),
         }()
     }
 
@@ -66,7 +66,7 @@ impl ContextCaller for Contract {
         context_contract.get_gas {
             gas: 500_000,
             coins: send_amount,
-            asset_id: ~ContractId::into(contract_id()),
+            asset_id: ContractId::into(contract_id()),
         }()
     }
 
@@ -77,7 +77,7 @@ impl ContextCaller for Contract {
         context_contract.get_global_gas {
             gas: 500_000,
             coins: send_amount,
-            asset_id: ~ContractId::into(contract_id()),
+            asset_id: ContractId::into(contract_id()),
         }()
     }
 
@@ -88,7 +88,7 @@ impl ContextCaller for Contract {
         context_contract.receive_coins {
             gas: 500_000,
             coins: send_amount,
-            asset_id: ~ContractId::into(contract_id()),
+            asset_id: ContractId::into(contract_id()),
         }();
     }
 

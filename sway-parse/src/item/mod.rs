@@ -1,13 +1,13 @@
 use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::keywords::{
-    AbiToken, ClassToken, ConstToken, EnumToken, FnToken, ImplToken, MutToken,
+    AbiToken, ClassToken, ConstToken, DepToken, EnumToken, FnToken, ImplToken, MutToken,
     OpenAngleBracketToken, RefToken, SelfToken, StorageToken, StructToken, TraitToken, UseToken,
     WhereToken,
 };
 use sway_ast::{
-    FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait,
-    ItemUse, TypeField,
+    Dependency, FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct,
+    ItemTrait, ItemUse, TypeField,
 };
 use sway_error::parser_error::ParseErrorKind;
 
@@ -29,7 +29,9 @@ impl Parse for ItemKind {
 
         let mut visibility = parser.take();
 
-        let kind = if let Some(mut item) = parser.guarded_parse::<UseToken, ItemUse>()? {
+        let kind = if let Some(item) = parser.guarded_parse::<DepToken, Dependency>()? {
+            ItemKind::Dependency(item)
+        } else if let Some(mut item) = parser.guarded_parse::<UseToken, ItemUse>()? {
             item.visibility = visibility.take();
             ItemKind::Use(item)
         } else if let Some(mut item) = parser.guarded_parse::<ClassToken, ItemStruct>()? {
@@ -160,24 +162,17 @@ impl Parse for FnSignature {
 
 #[cfg(test)]
 mod tests {
-    use sway_error::handler::Handler;
-
     use super::*;
     use std::sync::Arc;
     use sway_ast::{AttributeDecl, CommaToken, Item, Punctuated};
     use sway_types::Ident;
 
     fn parse_item(input: &str) -> Item {
-        let handler = Handler::default();
-        let token_stream =
-            crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
-        let mut parser = Parser::new(&handler, &token_stream);
-        match Item::parse(&mut parser) {
-            Ok(item) => item,
-            Err(_) => {
-                panic!("Parse error: {:?}", handler.into_errors());
-            }
-        }
+        let handler = <_>::default();
+        let ts = crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
+        Parser::new(&handler, &ts)
+            .parse()
+            .unwrap_or_else(|_| panic!("Parse error: {:?}", handler.consume().0))
     }
 
     fn get_attribute_args(attrib: &AttributeDecl) -> &Punctuated<Ident, CommaToken> {

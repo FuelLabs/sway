@@ -1,4 +1,3 @@
 [[package]]
 name = 'unused_pub_free_fn'
-source = 'root'
-dependencies = []
+source = 'member'

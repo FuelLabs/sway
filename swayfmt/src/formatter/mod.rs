@@ -1,4 +1,5 @@
 use self::shape::Shape;
+use crate::parse::parse_file;
 use crate::utils::map::{
     comments::handle_comments, newline::handle_newlines, newline_style::apply_newline_style,
 };
@@ -61,7 +62,7 @@ impl Formatter {
         // which will reduce the number of reallocations
         let mut raw_formatted_code = String::with_capacity(src.len());
 
-        let module = sway_parse::parse_file_standalone(Arc::from(src), path.clone())?;
+        let module = parse_file(Arc::from(src), path.clone())?;
         module.format(&mut raw_formatted_code, self)?;
 
         let mut formatted_code = String::from(&raw_formatted_code);
@@ -494,7 +495,8 @@ where
 trait Person{ fn name( self )->String;fn age( self )->usize; }
 trait Student:Person {fn university(self) -> String;}
 trait Programmer {fn fav_language(self) -> String;}
-trait CompSciStudent: Programmer+Student {fn git_username(self) -> String;}"#;
+trait CompSciStudent: Programmer+Student {fn git_username(self) -> String;}
+trait TraitWithGenerics<T> where T: String {fn from(b: T) -> Self;}"#;
         let correct_sway_code = r#"library traits;
 
 trait Person {
@@ -509,6 +511,12 @@ trait Programmer {
 }
 trait CompSciStudent: Programmer + Student {
     fn git_username(self) -> String;
+}
+trait TraitWithGenerics<T>
+where
+    T: String
+{
+    fn from(b: T) -> Self;
 }
 "#;
         let mut formatter = Formatter::default();
@@ -528,9 +536,9 @@ struct Opts {
 }
 
 fn  main(       ) -> bool{
-    let default_gas  = 1_000_000_000_000           ;let fuelcoin_id = ~ContractId::from(0x018f59fe434b323a5054e7bb41de983f4926a3c5d3e4e1f9f33b5f0f0e611889);
+    let default_gas  = 1_000_000_000_000           ;let fuelcoin_id = ContractId::from(0x018f59fe434b323a5054e7bb41de983f4926a3c5d3e4e1f9f33b5f0f0e611889);
 
-    let balance_test_id = ~ContractId :: from( 0x597e5ddb1a6bec92a96a73e4f0bc6f6e3e7b21f5e03e1c812cd63cffac480463 ) ;
+    let balance_test_id = ContractId :: from( 0x597e5ddb1a6bec92a96a73e4f0bc6f6e3e7b21f5e03e1c812cd63cffac480463 ) ;
 
     let fuel_coin = abi(    TestFuelCoin, fuelcoin_id.into(       ) ) ;
 
@@ -576,9 +584,9 @@ struct Opts {
 
 fn main() -> bool {
     let default_gas = 1_000_000_000_000;
-    let fuelcoin_id = ~ContractId::from(0x018f59fe434b323a5054e7bb41de983f4926a3c5d3e4e1f9f33b5f0f0e611889);
+    let fuelcoin_id = ContractId::from(0x018f59fe434b323a5054e7bb41de983f4926a3c5d3e4e1f9f33b5f0f0e611889);
 
-    let balance_test_id = ~ContractId::from(0x597e5ddb1a6bec92a96a73e4f0bc6f6e3e7b21f5e03e1c812cd63cffac480463);
+    let balance_test_id = ContractId::from(0x597e5ddb1a6bec92a96a73e4f0bc6f6e3e7b21f5e03e1c812cd63cffac480463);
 
     let fuel_coin = abi(TestFuelCoin, fuelcoin_id.into());
 
@@ -901,8 +909,8 @@ trait Qux {
     fn is_baz_true(self) -> bool;
 }
 
-impl   Qux for 
-Foo 
+impl   Qux for
+Foo
 {fn is_baz_true(self) -> bool {
         self.baz
     }}"#;
@@ -1122,6 +1130,27 @@ fn struct_destructuring() {
     let TupleInStruct {
         nested_tuple: (a, (b, (c, d))),
     } = tuple_in_struct;
+}
+"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
+    }
+    #[test]
+    fn test_multiline_collections() {
+        let sway_code_to_format = r#"library test_multiline_collections;
+fn func_with_multiline_collections() {
+    let x = (
+        "hello",
+        "world",
+    );
+}
+"#;
+        let correct_sway_code = r#"library test_multiline_collections;
+fn func_with_multiline_collections() {
+    let x = ("hello", "world");
 }
 "#;
         let mut formatter = Formatter::default();

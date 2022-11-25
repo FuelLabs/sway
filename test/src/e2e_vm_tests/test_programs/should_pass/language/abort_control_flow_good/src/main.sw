@@ -1,6 +1,5 @@
 script;
 
-use std::chain::*;
 use std::revert::revert;
 
 enum Result<T, E> {

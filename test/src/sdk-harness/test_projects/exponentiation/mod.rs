@@ -109,7 +109,7 @@ async fn get_pow_test_instance(wallet: WalletUnlocked) -> (TestPowContract, Cont
     .await
     .unwrap();
 
-    let pow_instance = TestPowContract::new(pow_id.to_string(), wallet);
+    let pow_instance = TestPowContract::new(pow_id.clone(), wallet);
 
     (pow_instance, pow_id.into())
 }

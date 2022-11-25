@@ -2,7 +2,9 @@
 //!
 //! Function inlining is pretty hairy so these passes must be maintained with care.
 
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap};
+
+use rustc_hash::FxHashMap;
 
 use crate::{
     asm::AsmArg,
@@ -44,30 +46,33 @@ pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
     function: &Function,
     predicate: F,
 ) -> Result<bool, IrError> {
-    let mut modified = false;
-    loop {
-        // Find the next call site which passes the predicate.
-        let call_data = function
-            .instruction_iter(context)
-            .find_map(|(block, call_val)| match context.values[call_val.0].value {
-                ValueDatum::Instruction(Instruction::Call(inlined_function, _)) => predicate(
-                    context,
-                    &inlined_function,
-                    &call_val,
-                )
-                .then_some((block, call_val, inlined_function)),
-                _ => None,
-            });
-
-        match call_data {
-            Some((block, call_val, inlined_function)) => {
-                inline_function_call(context, *function, block, call_val, inlined_function)?;
-                modified = true;
+    // Find call sites which passes the predicate.
+    // We use a RefCell so that the inliner can modify the value
+    // when it moves other instructions (which could be in call_date) after an inline.
+    let call_data: FxHashMap<Value, RefCell<(Block, Function)>> = function
+        .instruction_iter(context)
+        .filter_map(|(block, call_val)| match context.values[call_val.0].value {
+            ValueDatum::Instruction(Instruction::Call(inlined_function, _)) => {
+                predicate(context, &inlined_function, &call_val)
+                    .then_some((call_val, RefCell::new((block, inlined_function))))
             }
-            None => break,
-        }
+            _ => None,
+        })
+        .collect();
+
+    for (call_site, call_site_in) in &call_data {
+        let (block, inlined_function) = *call_site_in.borrow();
+        inline_function_call(
+            context,
+            *function,
+            block,
+            *call_site,
+            inlined_function,
+            &call_data,
+        )?;
     }
-    Ok(modified)
+
+    Ok(!call_data.is_empty())
 }
 
 /// A utility to get a predicate which can be passed to inline_some_function_calls() based on
@@ -90,7 +95,8 @@ pub fn is_small_fn(
             | Type::Uint(_)
             | Type::B256
             | Type::String(_)
-            | Type::Pointer(_) => 1,
+            | Type::Pointer(_)
+            | Type::Slice => 1,
             Type::Array(aggregate) => {
                 let (ty, sz) = context.aggregates[aggregate.0].array_type();
                 count_type_elements(context, ty) * *sz as usize
@@ -139,6 +145,7 @@ pub fn inline_function_call(
     block: Block,
     call_site: Value,
     inlined_function: Function,
+    call_data: &FxHashMap<Value, RefCell<(Block, Function)>>,
 ) -> Result<(), IrError> {
     // Split the block at right after the call site.
     let call_site_idx = context.blocks[block.0]
@@ -147,6 +154,19 @@ pub fn inline_function_call(
         .position(|&v| v == call_site)
         .unwrap();
     let (pre_block, post_block) = block.split_at(context, call_site_idx + 1);
+    if post_block != block {
+        // We need to update call_data for every call_site that was in block.
+        for inst in post_block.instruction_iter(context).filter(|inst| {
+            matches!(
+                context.values[inst.0].value,
+                ValueDatum::Instruction(Instruction::Call(..))
+            )
+        }) {
+            if let Some(call_info) = call_data.get(&inst) {
+                call_info.borrow_mut().0 = post_block;
+            }
+        }
+    }
 
     // Remove the call from the pre_block instructions.  It's still in the context.values[] though.
     context.blocks[pre_block.0].instructions.pop();
@@ -295,7 +315,7 @@ fn inline_instruction(
                     .iter()
                     .map(|AsmArg { name, initializer }| AsmArg {
                         name: name.clone(),
-                        initializer: initializer.map(&map_value),
+                        initializer: initializer.map(map_value),
                     })
                     .collect();
 
@@ -414,6 +434,13 @@ fn inline_instruction(
             } => new_block
                 .ins(context)
                 .log(map_value(log_val), log_ty, map_value(log_id)),
+            Instruction::MemCopy {
+                dst_val,
+                src_val,
+                byte_len,
+            } => new_block
+                .ins(context)
+                .mem_copy(map_value(dst_val), map_value(src_val), byte_len),
             Instruction::Nop => new_block.ins(context).nop(),
             Instruction::ReadRegister(reg) => new_block.ins(context).read_register(reg),
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
