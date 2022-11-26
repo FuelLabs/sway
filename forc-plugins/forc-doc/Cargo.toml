@@ -19,6 +19,6 @@ opener = "0.5.0"
 sway-ast = { version = "0.31.1", path = "../../sway-ast" }
 sway-core = { version = "0.31.1", path = "../../sway-core" }
 sway-lsp = { version = "0.31.1", path = "../../sway-lsp" }
-swayfmt = { version = "0.31.1", path = "../../swayfmt" }
 sway-types = { version = "0.31.1", path = "../../sway-types" }
+swayfmt = { version = "0.31.1", path = "../../swayfmt" }
 
