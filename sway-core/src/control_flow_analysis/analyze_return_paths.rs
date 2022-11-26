@@ -20,7 +20,7 @@ impl ControlFlowGraph {
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
         for ast_entrypoint in module_nodes {
-            let l_leaves = connect_node(type_engine, ast_entrypoint, &mut graph, &leaves)?.0;
+            let l_leaves = connect_node(type_engine, ast_entrypoint, &mut graph, &leaves)?;
             if let NodeConnection::NextStep(nodes) = l_leaves {
                 leaves = nodes;
             }
@@ -126,7 +126,7 @@ fn connect_node(
     node: &ty::TyAstNode,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
-) -> Result<(NodeConnection, ReturnStatementNodes), CompileError> {
+) -> Result<NodeConnection, CompileError> {
     let span = node.span.clone();
     match &node.content {
         ty::TyAstNodeContent::Expression(ty::TyExpression {
@@ -138,7 +138,7 @@ fn connect_node(
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());
             }
-            Ok((NodeConnection::Return(this_index), vec![this_index]))
+            Ok(NodeConnection::Return(this_index))
         }
         ty::TyAstNodeContent::Expression(ty::TyExpression {
             expression: ty::TyExpressionVariant::WhileLoop { .. },
@@ -151,7 +151,7 @@ fn connect_node(
             for leaf in leaves {
                 graph.add_edge(*leaf, node, "while loop entry".into());
             }
-            Ok((NodeConnection::NextStep(vec![node]), vec![]))
+            Ok(NodeConnection::NextStep(vec![node]))
         }
         ty::TyAstNodeContent::Expression(ty::TyExpression { .. }) => {
             let entry = graph.add_node(node.into());
@@ -160,19 +160,11 @@ fn connect_node(
             for leaf in leaves {
                 graph.add_edge(*leaf, entry, "".into());
             }
-            Ok((NodeConnection::NextStep(vec![entry]), vec![]))
+            Ok(NodeConnection::NextStep(vec![entry]))
         }
-        ty::TyAstNodeContent::SideEffect => Ok((NodeConnection::NextStep(leaves.to_vec()), vec![])),
-        ty::TyAstNodeContent::Declaration(decl) => Ok((
-            NodeConnection::NextStep(connect_declaration(
-                type_engine,
-                node,
-                decl,
-                graph,
-                span,
-                leaves,
-            )?),
-            vec![],
+        ty::TyAstNodeContent::SideEffect => Ok(NodeConnection::NextStep(leaves.to_vec())),
+        ty::TyAstNodeContent::Declaration(decl) => Ok(NodeConnection::NextStep(
+            connect_declaration(type_engine, node, decl, graph, span, leaves)?,
         )),
     }
 }
@@ -321,14 +313,13 @@ fn depth_first_insertion_code_block(
     let mut leaves = leaves.to_vec();
     let mut return_nodes = vec![];
     for node in node_content.contents.iter() {
-        let (this_node, inner_returns) = connect_node(type_engine, node, graph, &leaves)?;
+        let this_node = connect_node(type_engine, node, graph, &leaves)?;
         match this_node {
             NodeConnection::NextStep(nodes) => leaves = nodes,
             NodeConnection::Return(node) => {
                 return_nodes.push(node);
             }
         }
-        return_nodes.extend(inner_returns);
     }
     Ok(return_nodes)
 }
