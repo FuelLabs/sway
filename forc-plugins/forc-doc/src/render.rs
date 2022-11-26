@@ -3,12 +3,14 @@ use std::{fmt::Write, path::PathBuf};
 use crate::{descriptor::DescriptorType, doc::Documentation};
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
+use sway_ast;
 use sway_core::language::ty::{
     TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyFunctionDeclaration, TyImplTrait,
     TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration,
 };
 use sway_core::transform::{AttributeKind, AttributesMap};
 use sway_lsp::utils::markdown::format_docs;
+use swayfmt::parse;
 
 pub(crate) struct HTMLString(pub(crate) String);
 pub(crate) type RenderedDocumentation = Vec<RenderedDocument>;
@@ -389,7 +391,7 @@ impl Renderable for TyStructDeclaration {
             span,
         } = &self;
         let name = name.as_str().to_string();
-        let code_span = span.as_str().to_string();
+        let code_span = parse::parse_format::<sway_ast::ItemStruct>(span.as_str());
         let struct_attributes = docs_to_html(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
@@ -408,7 +410,7 @@ impl Renderable for TyEnumDeclaration {
             span,
         } = &self;
         let name = name.as_str().to_string();
-        let code_span = span.as_str().to_string();
+        let code_span = parse::parse_format::<sway_ast::ItemEnum>(span.as_str());
         let enum_attributes = docs_to_html(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
@@ -429,7 +431,7 @@ impl Renderable for TyTraitDeclaration {
             type_parameters: _,
         } = &self;
         let name = name.as_str().to_string();
-        let code_span = span.as_str().to_string();
+        let code_span = parse::parse_format::<sway_ast::ItemTrait>(span.as_str());
         let trait_attributes = docs_to_html(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
@@ -447,7 +449,7 @@ impl Renderable for TyAbiDeclaration {
             span,
         } = &self;
         let name = name.as_str().to_string();
-        let code_span = span.as_str().to_string();
+        let code_span = parse::parse_format::<sway_ast::ItemAbi>(span.as_str());
         let abi_attributes = docs_to_html(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
@@ -463,7 +465,7 @@ impl Renderable for TyStorageDeclaration {
             attributes,
         } = &self;
         let name = "Contract Storage".to_string();
-        let code_span = span.as_str().to_string();
+        let code_span = parse::parse_format::<sway_ast::ItemStorage>(span.as_str());
         let storage_attributes = docs_to_html(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
@@ -483,7 +485,7 @@ impl Renderable for TyImplTrait {
             span,
         } = &self;
         let name = trait_name.suffix.as_str().to_string();
-        let code_span = span.as_str().to_string();
+        let code_span = parse::parse_format::<sway_ast::ItemImpl>(span.as_str());
         // let impl_trait_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
@@ -508,7 +510,7 @@ impl Renderable for TyFunctionDeclaration {
             visibility: _,
         } = &self;
         let name = name.as_str().to_string();
-        let code_span = span.as_str().to_string();
+        let code_span = parse::parse_format::<sway_ast::ItemFn>(span.as_str());
         let function_attributes = docs_to_html(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
@@ -526,7 +528,7 @@ impl Renderable for TyConstantDeclaration {
             span,
         } = &self;
         let name = name.as_str().to_string();
-        let code_span = span.as_str().to_string();
+        let code_span = parse::parse_format::<sway_ast::ItemConst>(span.as_str());
         let const_attributes = docs_to_html(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());

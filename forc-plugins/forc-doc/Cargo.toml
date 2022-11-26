@@ -16,7 +16,9 @@ forc-pkg = { version = "0.31.1", path = "../../forc-pkg" }
 forc-util = { version = "0.31.1", path = "../../forc-util"}
 horrorshow = "0.8.4"
 opener = "0.5.0"
+sway-ast = { version = "0.31.1", path = "../../sway-ast" }
 sway-core = { version = "0.31.1", path = "../../sway-core" }
+swayfmt = { version = "0.31.1", path = "../../swayfmt" }
 sway-lsp = { version = "0.31.1", path = "../../sway-lsp" }
 sway-types = { version = "0.31.1", path = "../../sway-types" }
 
