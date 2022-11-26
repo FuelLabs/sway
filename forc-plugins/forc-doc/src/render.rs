@@ -3,7 +3,6 @@ use std::{fmt::Write, path::PathBuf};
 use crate::{descriptor::DescriptorType, doc::Documentation};
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
-use sway_ast;
 use sway_core::language::ty::{
     TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyFunctionDeclaration, TyImplTrait,
     TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration,
