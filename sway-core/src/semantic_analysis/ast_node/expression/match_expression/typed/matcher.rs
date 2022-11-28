@@ -8,8 +8,7 @@ use crate::{
         },
         namespace::Namespace,
     },
-    type_system::unify,
-    CompileResult, Ident, TypeId,
+    CompileResult, Ident, TypeEngine, TypeId,
 };
 
 use sway_types::span::Span;
@@ -62,6 +61,7 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 /// ]
 /// ```
 pub(crate) fn matcher(
+    type_engine: &TypeEngine,
     exp: &ty::TyExpression,
     scrutinee: ty::TyScrutinee,
     namespace: &mut Namespace,
@@ -75,7 +75,11 @@ pub(crate) fn matcher(
     } = scrutinee;
 
     // unify the type of the scrutinee with the type of the expression
-    append!(unify(type_id, exp.return_type, &span, ""), warnings, errors);
+    append!(
+        type_engine.unify(type_id, exp.return_type, &span, ""),
+        warnings,
+        errors
+    );
 
     if !errors.is_empty() {
         return err(warnings, errors);
@@ -88,11 +92,15 @@ pub(crate) fn matcher(
         ty::TyScrutineeVariant::Constant(name, _, type_id) => {
             match_constant(exp, name, type_id, span)
         }
-        ty::TyScrutineeVariant::StructScrutinee(_, fields) => match_struct(exp, fields, namespace),
-        ty::TyScrutineeVariant::EnumScrutinee { value, variant, .. } => {
-            match_enum(exp, variant, *value, span, namespace)
+        ty::TyScrutineeVariant::StructScrutinee(_, fields) => {
+            match_struct(type_engine, exp, fields, namespace)
         }
-        ty::TyScrutineeVariant::Tuple(elems) => match_tuple(exp, elems, span, namespace),
+        ty::TyScrutineeVariant::EnumScrutinee { value, variant, .. } => {
+            match_enum(type_engine, exp, variant, *value, span, namespace)
+        }
+        ty::TyScrutineeVariant::Tuple(elems) => {
+            match_tuple(type_engine, exp, elems, span, namespace)
+        }
     }
 }
 
@@ -144,6 +152,7 @@ fn match_constant(
 }
 
 fn match_struct(
+    type_engine: &TypeEngine,
     exp: &ty::TyExpression,
     fields: Vec<ty::TyStructScrutineeField>,
     namespace: &mut Namespace,
@@ -159,7 +168,7 @@ fn match_struct(
     } in fields.into_iter()
     {
         let subfield = check!(
-            instantiate_struct_field_access(exp.clone(), field.clone(), field_span),
+            instantiate_struct_field_access(type_engine, exp.clone(), field.clone(), field_span),
             return err(warnings, errors),
             warnings,
             errors
@@ -172,7 +181,7 @@ fn match_struct(
             // or if the scrutinee has a more complex agenda
             Some(scrutinee) => {
                 let (mut new_match_req_map, mut new_match_decl_map) = check!(
-                    matcher(&subfield, scrutinee, namespace),
+                    matcher(type_engine, &subfield, scrutinee, namespace),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -187,6 +196,7 @@ fn match_struct(
 }
 
 fn match_enum(
+    type_engine: &TypeEngine,
     exp: &ty::TyExpression,
     variant: ty::TyEnumVariant,
     scrutinee: ty::TyScrutinee,
@@ -195,9 +205,10 @@ fn match_enum(
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let (mut match_req_map, unsafe_downcast) = instantiate_unsafe_downcast(exp, variant, span);
+    let (mut match_req_map, unsafe_downcast) =
+        instantiate_unsafe_downcast(type_engine, exp, variant, span);
     let (mut new_match_req_map, match_decl_map) = check!(
-        matcher(&unsafe_downcast, scrutinee, namespace),
+        matcher(type_engine, &unsafe_downcast, scrutinee, namespace),
         return err(warnings, errors),
         warnings,
         errors
@@ -207,6 +218,7 @@ fn match_enum(
 }
 
 fn match_tuple(
+    type_engine: &TypeEngine,
     exp: &ty::TyExpression,
     elems: Vec<ty::TyScrutinee>,
     span: Span,
@@ -218,13 +230,19 @@ fn match_tuple(
     let mut match_decl_map = vec![];
     for (pos, elem) in elems.into_iter().enumerate() {
         let tuple_index_access = check!(
-            instantiate_tuple_index_access(exp.clone(), pos, span.clone(), span.clone()),
+            instantiate_tuple_index_access(
+                type_engine,
+                exp.clone(),
+                pos,
+                span.clone(),
+                span.clone()
+            ),
             return err(warnings, errors),
             warnings,
             errors
         );
         let (mut new_match_req_map, mut new_match_decl_map) = check!(
-            matcher(&tuple_index_access, elem, namespace),
+            matcher(type_engine, &tuple_index_access, elem, namespace),
             return err(warnings, errors),
             warnings,
             errors
