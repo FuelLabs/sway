@@ -14,7 +14,7 @@ fn syntax() {
     // 12 has the same type as 42 (u64) therefore this is valid
     balances.0 = 12;
 
-    // true is a boolean and the tuple expects a u64 therefore this is invalid
+    // true is a Boolean and the tuple expects a u64 therefore this is invalid
     // balances.0 = true;
     // ANCHOR_END: internal_mutability
     // ANCHOR: mutability

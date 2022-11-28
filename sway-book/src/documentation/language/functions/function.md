@@ -1,6 +1,6 @@
 # Functions
 
-In this section we will define a function that takes two numerical inputs and returns a [boolean](../built-ins/boolean.md) value indicating whether they are equal. We will also take a look at how to use the function.
+In this section we will define a function that takes two numerical inputs and returns a [Boolean](../built-ins/boolean.md) value indicating whether they are equal. We will also take a look at how to use the function.
 
 ## Declaration
 

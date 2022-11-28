@@ -1,6 +1,6 @@
 # require
 
-The `require` function is automatically imported into every program from the [prelude](../../misc/prelude.md) and it takes an expression which must evaluate to a [boolean](../../language/built-ins/boolean.md). If the boolean is `true` then nothing will happen and the rest of the code will continue to run otherwise a log will be emitted and the virtual machine will revert.
+The `require` function is automatically imported into every program from the [prelude](../../misc/prelude.md) and it takes an expression which must evaluate to a [Boolean](../../language/built-ins/boolean.md). If the Boolean is `true` then nothing will happen and the rest of the code will continue to run otherwise a log will be emitted and the virtual machine will revert.
 
 ## Example
 
