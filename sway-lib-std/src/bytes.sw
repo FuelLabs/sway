@@ -1,3 +1,4 @@
+//! The bytes type is used when a colection of tightly-packed arbitrary bytes is needed.
 library bytes;
 
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
@@ -11,7 +12,7 @@ struct RawBytes {
 }
 
 impl RawBytes {
-    // Create a new `RawBytes` with zero capacity.
+    /// Create a new `RawBytes` with zero capacity.
     pub fn new() -> Self {
         Self {
             ptr: alloc_bytes(0),
@@ -19,9 +20,8 @@ impl RawBytes {
         }
     }
 
-    /// Creates a `RawBytes` (on the heap) with exactly the capacity for a
-    /// `[u8; capacity]`. This is equivalent to calling `RawBytes::new` when
-    /// `capacity` is `0`.
+    /// Creates a `RawBytes` (on the heap) with exactly the capacity (in bytes) specified.
+    /// This is equivalent to calling `RawBytes::new` when `capacity` is `0`.
     pub fn with_capacity(capacity: u64) -> Self {
         Self {
             ptr: alloc_bytes(capacity),
@@ -40,8 +40,8 @@ impl RawBytes {
     }
 
     /// Grow the capacity of the Bytes by doubling its current capacity. The
-    /// `realloc` function allocates memory on the heap and copies the data
-    /// from the old allocation to the new allocation
+    /// `realloc_bytes` function allocates memory on the heap and copies
+    /// the data from the old allocation to the new allocation.
     pub fn grow(ref mut self) {
         let new_cap = if self.cap == 0 { 1 } else { 2 * self.cap };
         self.ptr = realloc_bytes(self.ptr, self.cap, new_cap);
@@ -55,6 +55,20 @@ pub struct Bytes {
 }
 
 impl Bytes {
+    /// Constructs a new, empty `Bytes`.
+    ///
+    /// The Bytes will not allocate until elements are pushed onto it.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// let bytes = Bytes::new();
+    /// // does not allocate
+    /// assert(bytes.len() == 0);
+    /// assert(bytes.capacity() == 0);
+    /// ```
     pub fn new() -> Self {
         Bytes {
             buf: RawBytes::new(),
@@ -62,6 +76,25 @@ impl Bytes {
         }
     }
 
+    /// Constructs a new, empty `Bytes` with the specified capacity.
+    ///
+    /// The Bytes will be able to hold exactly `capacity` bytes without
+    /// reallocating. If `capacity` is 0, the Bytes will not allocate.
+    ///
+    /// It is important to note that although the returned Bytes has the
+    /// capacity specified, the vector will have a zero length.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// let bytes = Bytes::with_capacity(2);
+    /// // does not allocate
+    /// bytes.push(5);
+    /// // does not re-allocate
+    /// bytes.push(10);
+    /// ```
     pub fn with_capacity(capacity: u64) -> Self {
         Bytes {
             buf: RawBytes::with_capacity(capacity),
@@ -69,6 +102,20 @@ impl Bytes {
         }
     }
 
+    /// Appends an element to the back of a Bytes collection.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// let mut bytes = Bytes::new();
+    /// let a = 5u8;
+    /// let b = 7u8;
+    /// bytes.push(a);
+    /// bytes.push(b);
+    /// assert(bytes.len() == 2);
+    /// ```
     pub fn push(ref mut self, byte: u8) {
         // If there is insufficient capacity, grow the buffer.
         if self.len == self.buf.capacity() {
@@ -77,10 +124,8 @@ impl Bytes {
 
         // Get a pointer to the end of the buffer, where the new element will
         // be inserted.
-        let end = asm(ptr: self.buf.ptr, offset: self.len, new_ptr) {
-            add new_ptr ptr offset;
-            new_ptr: raw_ptr
-        };
+        let end = self.buf.ptr().add_uint_offset(self.len);
+
         // Write `item` at pointer `end`
         end.write_byte(byte);
 
@@ -88,13 +133,31 @@ impl Bytes {
         self.len += 1;
     }
 
+    /// Removes the last element from a Bytes and returns it, or [`None`] if it
+    /// is empty.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// let bytes = Bytes::new();
+    ///
+    /// let res = bytes.pop();
+    /// assert(res.is_none());
+    ///
+    /// bytes.push(5);
+    /// let res = bytes.pop();
+    /// assert(res.unwrap() == 5);
+    /// assert(bytes.is_empty());
+    /// ```
     pub fn pop(ref mut self) -> Option<u8> {
         if self.len == 0 {
             return Option::None;
         };
         // decrement length.
         self.len -= 1;
-        let target = self.buf.ptr.add_uint_offset(self.len);
+        let target = self.buf.ptr().add_uint_offset(self.len);
 
         Option::Some(target.read_byte())
     }
@@ -122,7 +185,7 @@ impl Bytes {
             return Option::None;
         };
 
-        let item_ptr = self.buf.ptr.add_uint_offset(index);
+        let item_ptr = self.buf.ptr().add_uint_offset(index);
 
         Option::Some(item_ptr.read_byte())
     }
@@ -312,13 +375,22 @@ impl Bytes {
     pub fn set(ref mut self, index: u64, value: u8) {
         assert(index < self.len);
 
-        // let index_ptr = self.buf.ptr().add::<T>(index);
         let index_ptr = self.buf.ptr().add_uint_offset(index);
 
         index_ptr.write_byte(value);
     }
 
-    // pub fn
+    /// Gets the capacity of the allocation.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// let bytes = Bytes::with_capacity(5);
+    /// let cap = bytes.capacity();
+    /// assert(cap == 5);
+    /// ```
     pub fn capacity(self) -> u64 {
         self.buf.cap
     }
@@ -327,10 +399,39 @@ impl Bytes {
         self.len
     }
 
+    /// Clears the Bytes, removing all values.
+    ///
+    /// Note that this method has no effect on the allocated capacity
+    /// of the Bytes.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std:bytes::Bytes;
+    ///
+    /// let bytes = Bytes::new();
+    /// bytes.push(5);
+    /// bytes.clear()
+    /// assert(bytes.is_empty());
+    /// ```
     pub fn clear(ref mut self) {
         self.len = 0;
     }
 
+    /// Returns `true` if the vector contains no elements.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std:bytes::Bytes;
+    ///
+    /// let bytes = Bytes::new();
+    /// assert(bytes.is_empty());
+    /// bytes.push(5);
+    /// assert(!bytes.is_empty());
+    /// bytes.clear()
+    /// assert(bytes.is_empty());
+    /// ```
     pub fn is_empty(self) -> bool {
         self.len == 0
     }
@@ -382,10 +483,8 @@ fn test_new_bytes() {
 }
 #[test()]
 fn test_push() {
+    let (_, a, b, c) = setup();
     let mut bytes = Bytes::new();
-    let a = 5u8;
-    let b = 7u8;
-    let c = 9u8;
     bytes.push(a);
     assert(bytes.len() == 1);
     bytes.push(b);
