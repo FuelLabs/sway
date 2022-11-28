@@ -289,6 +289,52 @@ impl Bytes {
         ret
     }
 
+    /// Swaps two elements.
+    ///
+    /// ### Arguments
+    ///
+    /// * element1_index - The index of the first element
+    /// * element2_index - The index of the second element
+    ///
+    /// ### Reverts
+    ///
+    /// * If `element1_index` or `element2_index` is greater than or equal to the length of Bytes.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// let bytes = Bytes::new();
+    /// let a = 5u8;
+    /// let b = 7u8;
+    /// let c = 9u8;
+    /// bytes.push(a);
+    /// bytes.push(b);
+    /// bytes.push(c);
+    ///
+    /// bytes.swap(0, 1);
+    ///
+    /// assert(bytes.get(0).unwrap() == b);
+    /// assert(bytes.get(1).unwrap() == a);
+    /// assert(bytes.get(2).unwrap() == c);
+    /// ```
+    pub fn swap(ref mut self, element1_index: u64, element2_index: u64) {
+        assert(element1_index < self.len);
+        assert(element2_index < self.len);
+
+        if element1_index == element2_index {
+            return;
+        }
+
+        let element1_ptr = ptr_add_offset(self.buf.ptr(), element1_index);
+        let element2_ptr = ptr_add_offset(self.buf.ptr(), element2_index);
+
+        let element1_val = element1_ptr.read_byte();
+        element2_ptr.copy_bytes_to(element1_ptr, 1);
+        element2_ptr.write_byte(element1_val);
+    }
+
     // pub fn
     pub fn capacity(self) -> u64 {
         self.buf.cap
@@ -306,7 +352,6 @@ impl Bytes {
         self.len == 0
     }
 }
-
 
 // Need to use seperate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
 // impl Bytes {
@@ -346,15 +391,26 @@ fn test_new_bytes() {
 }
 #[test()]
 fn test_push() {
-    let (mut bytes, _, _, _) = setup();
+    let mut bytes = Bytes::new();
+    let a = 5u8;
+    let b = 7u8;
+    let c = 9u8;
+    bytes.push(a);
+    assert(bytes.len() == 1);
+    bytes.push(b);
+    assert(bytes.len() == 2);
+    bytes.push(c);
     assert(bytes.len() == 3);
 }
 #[test()]
 fn test_pop() {
     let (mut bytes, _, _, _) = setup();
     assert(bytes.len() == 3);
+
     let first = bytes.pop();
+
     assert(first.unwrap() == 9u8);
+    assert(bytes.len() == 2);
 }
 #[test()]
 fn test_len() {
@@ -364,7 +420,10 @@ fn test_len() {
 #[test()]
 fn test_clear() {
     let (mut bytes, _, _, _) = setup();
+    assert(bytes.len() == 3);
+
     bytes.clear();
+
     assert(bytes.len() == 0);
 }
 #[test()]
@@ -406,6 +465,7 @@ fn test_capacity() {
 #[test()]
 fn test_get() {
     let (bytes, a, b, c) = setup();
+    assert(bytes.len() == 3);
     assert(bytes.get(0).unwrap() == a);
     assert(bytes.get(1).unwrap() == b);
     assert(bytes.get(2).unwrap() == c);
@@ -415,24 +475,45 @@ fn test_get() {
 #[test()]
 fn test_remove() {
     let (mut bytes, a, b, c) = setup();
+    assert(bytes.len() == 3);
+
     let item = bytes.remove(1);
+
+    assert(bytes.len() == 2);
     assert(item == b);
     assert(bytes.get(0).unwrap() == a);
     assert(bytes.get(1).unwrap() == c);
     assert(bytes.get(2).is_none());
-    assert(bytes.len() == 2);
 }
 
 #[test()]
 fn test_insert() {
     let (mut bytes, a, b, c) = setup();
     let d = 11u8;
+    assert(bytes.len() == 3);
+
     bytes.insert(1, d);
+
     assert(bytes.get(0).unwrap() == a);
     assert(bytes.get(1).unwrap() == d);
     assert(bytes.get(2).unwrap() == b);
     assert(bytes.get(3).unwrap() == c);
+    assert(bytes.len() == 4);
 }
+
+#[test()]
+fn test_swap() {
+    let (mut bytes, a, b, c) = setup();
+    assert(bytes.len() == 3);
+
+    bytes.swap(0, 1);
+
+    assert(bytes.get(0).unwrap() == b);
+    assert(bytes.get(1).unwrap() == a);
+    assert(bytes.get(2).unwrap() == c);
+    assert(bytes.len() == 3);
+}
+
 // #[test()]
 // fn test_from_vec_u8() {
 //     let mut vec = Vec::new();
