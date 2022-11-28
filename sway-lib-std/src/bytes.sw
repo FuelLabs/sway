@@ -50,6 +50,7 @@ pub fn realloc_bytes(ptr: raw_ptr, count: u64, new_count: u64) -> raw_ptr {
     }
 }
 
+// helper for adding a u64 offset to a raw_ptr
 fn ptr_with_offset(start: raw_ptr, offset: u64) -> raw_ptr {
     asm(ptr: start, offset: offset, new) {
         add new ptr offset;
@@ -179,6 +180,51 @@ impl Bytes {
         Option::Some(item_ptr.read_byte())
     }
 
+    /// Removes and returns the element at position `index` within the Bytes,
+    /// shifting all elements after it to the left.
+    ///
+    /// ### Reverts
+    ///
+    /// * If `index >= self.len`
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Byte;
+    ///
+    /// let bytes = Byte::new();
+    /// bytes.push(5);
+    /// bytes.push(10);
+    /// bytes.push(15);
+    /// let item = bytes.remove(1);
+    /// assert(item == 10);
+    /// assert(bytes.get(0).unwrap() == 5);
+    /// assert(bytes.get(1).unwrap() == 15);
+    /// assert(bytes.get(2).is_none());
+    /// ```
+    pub fn remove(ref mut self, index: u64) -> u8 {
+        // panic if index >= length
+        assert(index < self.len);
+        let start = self.buf.ptr();
+
+        // Read the value at `index`
+        let item_ptr = ptr_with_offset(start, index);
+        let ret = item_ptr.read_byte();
+
+        // Shift everything down to fill in that spot.
+        let mut i = index;
+        while i < self.len {
+            let idx_ptr = ptr_with_offset(start, i);
+            let next = ptr_with_offset(idx_ptr, 1);
+            next.copy_bytes_to(idx_ptr, 1);
+            i += 1;
+        }
+
+        // Decrease length.
+        self.len -= 1;
+        ret
+    }
+
     // pub fn
     pub fn capacity(self) -> u64 {
         self.buf.cap
@@ -227,6 +273,17 @@ impl Bytes {
 //     true
 // }
 //////////////////////////////////////////////////////////////
+fn setup() -> (Bytes, u8, u8, u8) {
+    let mut bytes = Bytes::new();
+    let a = 5u8;
+    let b = 7u8;
+    let c = 9u8;
+    bytes.push(a);
+    bytes.push(b);
+    bytes.push(c);
+    (bytes, a, b, c)
+}
+
 #[test()]
 fn test_new_bytes() {
     let bytes = Bytes::new();
@@ -234,36 +291,24 @@ fn test_new_bytes() {
 }
 #[test()]
 fn test_push() {
-    let mut bytes = Bytes::new();
-    bytes.push(5u8);
-    bytes.push(7u8);
-    bytes.push(9u8);
+    let (mut bytes, _, _, _) = setup();
     assert(bytes.len() == 3);
 }
 #[test()]
 fn test_pop() {
-    let mut bytes = Bytes::new();
-    bytes.push(5u8);
-    bytes.push(7u8);
-    bytes.push(9u8);
+    let (mut bytes, _, _, _) = setup();
     assert(bytes.len() == 3);
     let first = bytes.pop();
     assert(first.unwrap() == 9u8);
 }
 #[test()]
 fn test_len() {
-    let mut bytes = Bytes::new();
-    bytes.push(5u8);
-    bytes.push(7u8);
-    bytes.push(9u8);
+    let (mut bytes, _, _, _) = setup();
     assert(bytes.len() == 3);
 }
 #[test()]
 fn test_clear() {
-    let mut bytes = Bytes::new();
-    bytes.push(5u8);
-    bytes.push(7u8);
-    bytes.push(9u8);
+    let (mut bytes, _, _, _) = setup();
     bytes.clear();
     assert(bytes.len() == 0);
 }
@@ -305,17 +350,22 @@ fn test_capacity() {
 
 #[test()]
 fn test_get() {
-    let mut bytes = Bytes::new();
-    let a = 5u8;
-    let b = 7u8;
-    let c = 9u8;
-    bytes.push(a);
-    bytes.push(b);
-    bytes.push(c);
+    let (bytes, a, b, c) = setup();
     assert(bytes.get(0).unwrap() == a);
     assert(bytes.get(1).unwrap() == b);
     assert(bytes.get(2).unwrap() == c);
     assert(bytes.len() == 3);
+}
+
+#[test()]
+fn test_remove() {
+    let (mut bytes, a, b, c) = setup();
+    let item = bytes.remove(1);
+    assert(item == b);
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == c);
+    assert(bytes.get(2).is_none());
+    assert(bytes.len() == 2);
 }
 // #[test()]
 // fn test_from_vec_u8() {
