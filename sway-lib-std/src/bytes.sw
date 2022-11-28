@@ -6,23 +6,47 @@ use std::option::Option;
 use std::logging::log;
 use std::intrinsics::size_of_val;
 
-// HELPERS
-// @review word-alignment !?
 impl raw_ptr {
     /// Writes the given byte to the address.
     pub fn write_byte(self, val: u8) {
-        asm(ptr: self, val: val) {
+        let val_ptr = asm(r1: val) { r1: raw_ptr };
+        asm(ptr: self, val: val_ptr) {
             sb ptr val i0;
         };
     }
     /// reads a byte from the given address.
     pub fn read_byte(self) -> u8 {
-        log(777);
-        log(self);
         asm(r1: self, r2) {
             lb r2 r1 i0;
             r2: u8
         }
+    }
+
+    pub fn copy_bytes_to(self, dst: raw_ptr, count: u64) {
+        asm(dst: dst, src: self, len: count) {
+            mcp dst src len;
+        };
+    }
+}
+
+// HELPERS
+pub fn alloc_bytes(count: u64) -> raw_ptr {
+    asm(size: count, ptr) {
+        aloc size;
+        addi ptr hp i1;
+        ptr: raw_ptr
+    }
+}
+
+pub fn realloc_bytes(ptr: raw_ptr, count: u64, new_count: u64) -> raw_ptr {
+    if new_count > count {
+        let new_ptr = alloc_bytes(new_count);
+        if count > 0 {
+            ptr.copy_bytes_to(new_ptr, count);
+        };
+        new_ptr
+    } else {
+        ptr
     }
 }
 
@@ -35,7 +59,7 @@ impl RawBytes {
     // Create a new `RawBytes` with zero capacity.
     pub fn new() -> Self {
         Self {
-            ptr: alloc::<u8>(0),
+            ptr: alloc_bytes(0),
             cap: 0,
         }
     }
@@ -45,7 +69,7 @@ impl RawBytes {
     /// `capacity` is `0`.
     pub fn with_capacity(capacity: u64) -> Self {
         Self {
-            ptr: alloc::<u8>(capacity),
+            ptr: alloc_bytes(capacity),
             cap: capacity,
         }
     }
@@ -65,7 +89,7 @@ impl RawBytes {
     /// from the old allocation to the new allocation
     pub fn grow(ref mut self) {
         let new_cap = if self.cap == 0 { 1 } else { 2 * self.cap };
-        self.ptr = realloc::<u8>(self.ptr, self.cap, new_cap);
+        self.ptr = realloc_bytes(self.ptr, self.cap, new_cap);
         self.cap = new_cap;
     }
 }
@@ -90,7 +114,7 @@ impl Bytes {
         }
     }
 
-    pub fn push(ref mut self, item: u8) {
+    pub fn push(ref mut self, byte: u8) {
         // If there is insufficient capacity, grow the buffer.
         if self.len == self.buf.capacity() {
             self.buf.grow();
@@ -98,37 +122,29 @@ impl Bytes {
 
         // Get a pointer to the end of the buffer, where the new element will
         // be inserted.
-        // let end = self.buf.ptr().add::<u8>(self.len);
         let end = asm(ptr: self.buf.ptr, offset: self.len, new_ptr) {
             add new_ptr ptr offset;
             new_ptr: raw_ptr
         };
-
         // Write `item` at pointer `end`
-        end.write_byte(item);
+        end.write_byte(byte);
 
         // Increment length.
         self.len += 1;
     }
 
     pub fn pop(ref mut self) -> Option<u8> {
-        // log(111);
         if self.len == 0 {
-            log(999);
             return Option::None;
         };
 
         self.len -= 1;
-        log(888);
-        log(self.len); // 2
-        log(self.buf.ptr);// 67108808,
-        // let target = self.buf.ptr().add::<u8>(self.len);
+
         let target = asm(ptr: self.buf.ptr, offset: self.len, new_ptr) {
-            add new_ptr ptr offset;
+            // can't add a raw_ptr & integer, so do it in asm
+            sub new_ptr ptr offset;
             new_ptr: raw_ptr
         };
-
-        log(target);// 67108824
         // decrement length.
         Option::Some(target.read_byte())
     }
@@ -151,44 +167,32 @@ impl Bytes {
 }
 
 // Need to use seperate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
-impl Bytes {
-    // can use From trait when generic traits are in
-    pub fn from_vec_u8(ref mut raw: Vec<u8>) -> Self {
-        // log(222);
-        let mut bytes = Bytes::new();
-        let mut i = 0;
-        let length = raw.len();
-        assert(raw.len() == 3);
-        while i < length {
-            // log(1212);
-            // log(i);
-            // @review unsure the following unwrap is safe.
-            bytes.push(raw.get(i).unwrap());
-            bytes.len += 1;
-            i += 1;
-        };
-
-        bytes
-    }
-}
+// impl Bytes {
+//     // can use From trait when generic traits are in
+//     pub fn from_vec_u8(ref mut raw: Vec<u8>) -> Self {
+//         let mut bytes = Bytes::new();
+//         let mut i = 0;
+//         let length = raw.len();
+//         assert(raw.len() == 3);
+//         while i < length {
+//             // @review unsure the following unwrap is safe.
+//             bytes.push(raw.get(i).unwrap());
+//             bytes.len += 1;
+//             i += 1;
+//         };
+//         bytes
+//     }
+// }
 //////////////////////////////////////////////////////////////
 fn main() -> bool {
     let mut bytes = Bytes::new();
-    log(bytes);   // 0000000004000000_0000000000000000_0000000000000000
     bytes.push(1u8);
-    log(bytes); // 0000000003fffff8_0000000000000001_0000000000000001
-    //              elements^_____^          cap___^          len___^
-    bytes.push(2u8);
-    log(bytes);
-
-    bytes.push(3u8);
-    log(bytes);
-
-    assert(bytes.len() == 3);
-
-    let first = bytes.pop();
-    log(first.unwrap());
-    assert(first.unwrap() == 3u8);
+    // bytes.push(2u8);
+    // bytes.push(3u8);
+    // assert(bytes.len() == 3);
+    let val = bytes.pop().unwrap(); // 111
+    log(val);
+    assert(val == 1u8);
     true
 }
 
@@ -198,7 +202,6 @@ fn test_new_bytes() {
     let bytes = Bytes::new();
     assert(bytes.len() == 0);
 }
-
 #[test()]
 fn test_push() {
     let mut bytes = Bytes::new();
@@ -207,7 +210,6 @@ fn test_push() {
     bytes.push(9u8);
     assert(bytes.len() == 3);
 }
-
 #[test()]
 fn test_pop() {
     let mut bytes = Bytes::new();
@@ -215,11 +217,9 @@ fn test_pop() {
     bytes.push(7u8);
     bytes.push(9u8);
     assert(bytes.len() == 3);
-
     let first = bytes.pop();
     assert(first.unwrap() == 9u8);
 }
-
 #[test()]
 fn test_len() {
     let mut bytes = Bytes::new();
@@ -228,7 +228,6 @@ fn test_len() {
     bytes.push(9u8);
     assert(bytes.len() == 3);
 }
-
 #[test()]
 fn test_clear() {
     let mut bytes = Bytes::new();
@@ -238,7 +237,6 @@ fn test_clear() {
     bytes.clear();
     assert(bytes.len() == 0);
 }
-
 #[test()]
 fn test_packing() {
     let mut bytes = Bytes::new();
@@ -257,7 +255,6 @@ fn test_packing() {
     assert(bytes.capacity() == 16);
     assert(size_of_val(bytes.buf) == 16);
 }
-
 #[test()]
 fn test_capacity() {
     let mut bytes = Bytes::new();
@@ -275,13 +272,12 @@ fn test_capacity() {
     assert(bytes.capacity() == 8);
     assert(bytes.len() == 5);
 }
-
-#[test()]
-fn test_from_vec_u8() {
-    let mut vec = Vec::new();
-    vec.push(11u8);
-    vec.push(42u8);
-    vec.push(69u8);
-    let bytes = Bytes::from_vec_u8(vec);
-    assert(bytes.len == 3);
-}
+// #[test()]
+// fn test_from_vec_u8() {
+//     let mut vec = Vec::new();
+//     vec.push(11u8);
+//     vec.push(42u8);
+//     vec.push(69u8);
+//     let bytes = Bytes::from_vec_u8(vec);
+//     assert(bytes.len == 3);
+// }
