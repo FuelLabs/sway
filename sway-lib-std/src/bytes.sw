@@ -1,10 +1,10 @@
-script;
+library bytes;
 
-use std::{alloc::{alloc, realloc}, vec::Vec};
-use std::assert::assert;
-use std::option::Option;
-use std::logging::log;
-use std::intrinsics::size_of_val;
+use ::{alloc::{alloc, realloc}, vec::Vec};
+use ::assert::assert;
+use ::option::Option;
+use ::logging::log;
+use ::intrinsics::size_of_val;
 
 impl raw_ptr {
     /// Writes the given byte to the address.
@@ -47,6 +47,13 @@ pub fn realloc_bytes(ptr: raw_ptr, count: u64, new_count: u64) -> raw_ptr {
         new_ptr
     } else {
         ptr
+    }
+}
+
+fn ptr_with_offset(start: raw_ptr, offset: u64) -> raw_ptr {
+    asm(ptr: start, offset: offset, new) {
+        add new ptr offset;
+        new: raw_ptr
     }
 }
 
@@ -137,18 +144,42 @@ impl Bytes {
         if self.len == 0 {
             return Option::None;
         };
-
-        self.len -= 1;
-
-        let target = asm(ptr: self.buf.ptr, offset: self.len, new_ptr) {
-            // can't add a raw_ptr & integer, so do it in asm
-            sub new_ptr ptr offset;
-            new_ptr: raw_ptr
-        };
         // decrement length.
+        self.len -= 1;
+        let target = ptr_with_offset(self.buf.ptr, self.len);
+
         Option::Some(target.read_byte())
     }
 
+    /// Returns a byte at `index`, or None if `index` is out of
+    /// bounds.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Byte;
+    ///
+    /// let bytes = Bytes::new();
+    /// bytes.push(5u8);
+    /// bytes.push(10u8);
+    /// bytes.push(15u8);
+    /// let item = bytes.get(1).unwrap();
+    /// assert(item == 10u8);
+    /// let opt = bytes.get(10);
+    /// assert(opt.is_none()); // index out of bounds
+    /// ```
+    pub fn get(self, index: u64) -> Option<u8> {
+        // First check that index is within bounds.
+        if self.len <= index {
+            return Option::None;
+        };
+
+        let item_ptr = ptr_with_offset(self.buf.ptr, index);
+
+        Option::Some(item_ptr.read_byte())
+    }
+
+    // pub fn
     pub fn capacity(self) -> u64 {
         self.buf.cap
     }
@@ -184,18 +215,17 @@ impl Bytes {
 //     }
 // }
 //////////////////////////////////////////////////////////////
-fn main() -> bool {
-    let mut bytes = Bytes::new();
-    bytes.push(1u8);
-    // bytes.push(2u8);
-    // bytes.push(3u8);
-    // assert(bytes.len() == 3);
-    let val = bytes.pop().unwrap(); // 111
-    log(val);
-    assert(val == 1u8);
-    true
-}
-
+// fn main() -> bool {
+//     let mut bytes = Bytes::new();
+//     bytes.push(1u8);
+//     // bytes.push(2u8);
+//     // bytes.push(3u8);
+//     // assert(bytes.len() == 3);
+//     let val = bytes.pop().unwrap(); // 111
+//     log(val);
+//     assert(val == 1u8);
+//     true
+// }
 //////////////////////////////////////////////////////////////
 #[test()]
 fn test_new_bytes() {
@@ -271,6 +301,21 @@ fn test_capacity() {
     bytes.push(3u8);
     assert(bytes.capacity() == 8);
     assert(bytes.len() == 5);
+}
+
+#[test()]
+fn test_get() {
+    let mut bytes = Bytes::new();
+    let a = 5u8;
+    let b = 7u8;
+    let c = 9u8;
+    bytes.push(a);
+    bytes.push(b);
+    bytes.push(c);
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == b);
+    assert(bytes.get(2).unwrap() == c);
+    assert(bytes.len() == 3);
 }
 // #[test()]
 // fn test_from_vec_u8() {
