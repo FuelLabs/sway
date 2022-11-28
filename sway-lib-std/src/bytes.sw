@@ -335,6 +335,48 @@ impl Bytes {
         element2_ptr.write_byte(element1_val);
     }
 
+    /// Updates an element at position `index` with a new element `value`
+    ///
+    /// ### Arguments
+    ///
+    /// * index - The index of the element to be set
+    /// * value - The value of the element to be set
+    ///
+    /// ### Reverts
+    ///
+    /// * If `index` is greater than or equal to the length of Bytes.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// let bytes = Bytes::new();
+    /// let a = 5u8;
+    /// let b = 7u8;
+    /// let c = 9u8;
+    /// bytes.push(a);
+    /// bytes.push(b);
+    /// bytes.push(c);
+    ///
+    /// let d = 11u8;
+    ///
+    /// bytes.set(1, d);
+    ///
+    /// assert(bytes.len() == 3);
+    /// assert(bytes.get(0).unwrap() == a);
+    /// assert(bytes.get(1).unwrap() == d);
+    /// assert(bytes.get(2).unwrap() == c);
+    /// ```
+    pub fn set(ref mut self, index: u64, value: u8) {
+        assert(index < self.len);
+
+        // let index_ptr = self.buf.ptr().add::<T>(index);
+        let index_ptr = ptr_add_offset(self.buf.ptr(), index);
+
+        index_ptr.write_byte(value);
+    }
+
     // pub fn
     pub fn capacity(self) -> u64 {
         self.buf.cap
@@ -353,23 +395,6 @@ impl Bytes {
     }
 }
 
-// Need to use seperate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
-// impl Bytes {
-//     // can use From trait when generic traits are in
-//     pub fn from_vec_u8(ref mut raw: Vec<u8>) -> Self {
-//         let mut bytes = Bytes::new();
-//         let mut i = 0;
-//         let length = raw.len();
-//         assert(raw.len() == 3);
-//         while i < length {
-//             // @review unsure the following unwrap is safe.
-//             bytes.push(raw.get(i).unwrap());
-//             bytes.len += 1;
-//             i += 1;
-//         };
-//         bytes
-//     }
-// }
 ////////////////////////////////////////////////////////////////////
 // Tests
 ////////////////////////////////////////////////////////////////////
@@ -508,10 +533,24 @@ fn test_swap() {
 
     bytes.swap(0, 1);
 
+    assert(bytes.len() == 3);
     assert(bytes.get(0).unwrap() == b);
     assert(bytes.get(1).unwrap() == a);
     assert(bytes.get(2).unwrap() == c);
+}
+
+#[test()]
+fn test_set() {
+    let (mut bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
+    let d = 11u8;
+
+    bytes.set(1, d);
+
+    assert(bytes.len() == 3);
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == d);
+    assert(bytes.get(2).unwrap() == c);
 }
 
 // #[test()]
