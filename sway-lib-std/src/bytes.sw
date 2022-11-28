@@ -5,26 +5,6 @@ use ::assert::assert;
 use ::option::Option;
 use ::intrinsics::size_of_val;
 
-// l raw_ptr {
-//   // Writes the given byte to the address.
-//   pu fn write_byte(self, val: u8) {
-//       le val_ptr = asm(r1: val) { r1: raw_ptr };
-//       as(ptr: self, val: val_ptr) {
-//           sbptr val i0;
-//       };  }
-//  // reads a byte from the given address.
-//   pu fn read_byte(self) -> u8 {
-//      asm(r1: self, r2) {
-//          lb r2 r1 i0;
-//          r2: u8
-//      }
-//  }
-//
-// pub fn copy_bytes_to(self, dst: raw_ptr, count: u64) {
-//      asm(dst: dst, src: self, len: count) {
-//          mcp dst src len;
-//      };
-//  }
 // HELPERS
 pub fn alloc_bytes(count: u64) -> raw_ptr {
     asm(size: count, ptr) {
