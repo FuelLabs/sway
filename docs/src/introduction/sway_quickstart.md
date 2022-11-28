@@ -200,7 +200,7 @@ TransactionId(HexFormatted(7cef24ea33513733ab78c5daa5328d622d4b38187d0f0d1857b27
 
 Note the contract ID — you will need it if you want to build out a frontend to interact with this contract.
 
-If `forc-deploy` return `no such subcommand` error, try to install it manually <a href="https://github.com/FuelLabs/forc-client/releases" target="_blank"> here </a>
+If `forc-deploy` return `no such subcommand` error, try to install it manually [here](https://github.com/FuelLabs/forc-client/releases).
 
 ## Testing Your Contract
 
