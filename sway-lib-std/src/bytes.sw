@@ -404,12 +404,12 @@ fn test_push() {
 }
 #[test()]
 fn test_pop() {
-    let (mut bytes, _, _, _) = setup();
+    let (mut bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
 
     let first = bytes.pop();
 
-    assert(first.unwrap() == 9u8);
+    assert(first.unwrap() == c);
     assert(bytes.len() == 2);
 }
 #[test()]
