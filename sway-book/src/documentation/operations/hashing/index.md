@@ -1,6 +1,6 @@
 # Hashing
 
-The [`hashing module`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/hash.sw) contains the following functions:
+The [`hash module`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/hash.sw) contains the following functions:
 
 <!-- no toc -->
 - [`sha256`](sha256.md)

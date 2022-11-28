@@ -1,10 +1,10 @@
 # Assertions
 
-An assertion is a condition which must evaluate to the [boolean](../../language/built-ins/boolean.md) value of `true` and its purpose is to prevent undesirable computation when the condition is evaluated to `false`.
+An assertion is a condition which must evaluate to the [Boolean](../../language/built-ins/boolean.md) value of `true` and its purpose is to prevent undesirable computation when the condition is evaluated to `false`.
 
 For example, a function may only work if the condition `argument < 5` is `true`. We can use an assertion to enforce this condition by:
 
-- Crashing the program when `5 <= argument`
+- Forcing a revert in the program when `5 <= argument`
 - Handling the exception with additional code
 
 Handling exceptions may be done through [if expressions](../../language/control-flow/if-expressions.md) therefore the following sections will take a look at how we can make the virtual machine revert (safely crash).

@@ -7,7 +7,7 @@ In Sway there are two states that a variable can take:
 - Immutable
   - Can be read but cannot be changed after it has been declared
 - Mutable
-  - Can be read and can have its value changed if and only if the new value is of the same type
+  - Can be read and can have its value changed if and only if the new value is the same type
 
 By default all variables in Sway are immutable unless declared as mutable through the use of the `mut` keyword. This is one of the ways in which Sway encourages safe programming, and many modern languages have the same default.
 

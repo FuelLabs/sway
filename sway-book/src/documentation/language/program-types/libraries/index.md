@@ -29,6 +29,7 @@ The following structures can be marked as `pub`:
 - Structs
 - Enums
 - Functions
+- Traits
 
 ## Deployment
 

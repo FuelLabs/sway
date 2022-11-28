@@ -4,11 +4,11 @@ Logging is a way to record data as the program runs.
 
 The [standard library](https://github.com/FuelLabs/sway/tree/master/sway-lib-std) provides a [`logging`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/logging.sw) module which contains a [generic](../language/generics/index.md) `log` function that is used to log a variable of any type.
 
-Each call to `log` appends 1 of 2 types of a [`receipt`](https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md#receipt) to the list of receipts
+Each call to `log` appends 1 of 2 types of a [`receipt`](https://fuellabs.github.io/fuel-specs/master/protocol/abi/receipts.html) to the list of receipts
 
-- [`Log`](https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md#log-receipt)
+- [`Log`](https://fuellabs.github.io/fuel-specs/master/protocol/abi/receipts.html#log-receipt)
   - Generated for _non-reference_ types: `bool`, `u8`, `u16`, `u32`, and `u64`
-- [`LogData`](https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md#logdata-receipt)
+- [`LogData`](https://fuellabs.github.io/fuel-specs/master/protocol/abi/receipts.html#logdata-receipt)
   - Generated for _reference_ types
 
 The [Rust](https://fuellabs.github.io/fuels-rs/latest/) & [Typescript](https://fuellabs.github.io/fuels-ts/) SDKs may be used to decode the data.

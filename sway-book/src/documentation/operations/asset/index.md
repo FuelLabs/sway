@@ -1,6 +1,6 @@
 # Asset Operations
 
-A common application of a smart contract is the creation of an asset / token i.e. a crytocurrency.
+A common application of a smart contract is the creation of an asset / token i.e. a cryptocurrency.
 
 Managing a cryptocurrency is typically done via the following models:
 
