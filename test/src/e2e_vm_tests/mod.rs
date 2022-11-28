@@ -421,7 +421,11 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             disabled_tests.len()
         );
     }
-    Ok(())
+    if number_of_tests_failed != 0 {
+        Err(anyhow::Error::msg("Failed tests"))
+    } else {
+        Ok(())
+    }
 }
 
 fn discover_test_configs() -> Result<Vec<TestDescription>> {
