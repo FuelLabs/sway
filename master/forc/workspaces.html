@@ -150,7 +150,8 @@
 </ul>
 <h2 id="the-members-field"><a class="header" href="#the-members-field">The <code>members</code> field</a></h2>
 <p>The <code>members</code> field defines which packages are members of the workspace:</p>
-<pre><code class="language-toml">members = [&quot;member1&quot;, &quot;path/to/member2&quot;]
+<pre><code class="language-toml">[workspace]
+members = [&quot;member1&quot;, &quot;path/to/member2&quot;]
 </code></pre>
 <p>The <code>members</code> field accepts entries to be given in relative path with respect to the workspace root.
 Packages that are located within a workspace directory but are <em>not</em> contained within the <code>members</code> set are ignored.</p>
