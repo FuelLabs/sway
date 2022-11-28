@@ -38,14 +38,13 @@ use sway_types::{integer_bits::IntegerBits, Span};
 #[test]
 fn generic_enum_resolution() {
     use crate::{language::ty, span::Span, transform, Ident};
-    use std::collections::BTreeSet;
     let engine = TypeEngine::default();
 
     let sp = Span::dummy();
 
     let generic_type = engine.insert_type_always(TypeInfo::UnknownGeneric {
         name: Ident::new_with_override("T", sp.clone()),
-        trait_constraints: BTreeSet::new(),
+        trait_constraints: VecSet(Vec::new()),
     });
     let variant_types = vec![ty::TyEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
@@ -101,10 +100,10 @@ fn generic_enum_resolution() {
     } = engine.look_up_type_id(ty_1)
     {
         assert_eq!(name.as_str(), "Result");
-        assert_eq!(
+        assert!(matches!(
             engine.look_up_type_id(variant_types[0].type_id),
             TypeInfo::Boolean
-        );
+        ));
     } else {
         panic!()
     }
@@ -123,10 +122,10 @@ fn basic_numeric_unknown() {
     let (_, errors) = engine.unify(id, id2, &sp, "");
     assert!(errors.is_empty());
 
-    assert_eq!(
+    assert!(matches!(
         engine.to_typeinfo(id, &Span::dummy()).unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
-    );
+    ));
 }
 
 #[test]
@@ -142,10 +141,10 @@ fn unify_numerics() {
     let (_, errors) = engine.unify(id2, id, &sp, "");
     assert!(errors.is_empty());
 
-    assert_eq!(
+    assert!(matches!(
         engine.to_typeinfo(id, &Span::dummy()).unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
-    );
+    ));
 }
 
 #[test]
@@ -161,8 +160,8 @@ fn unify_numerics_2() {
     let (_, errors) = engine.unify(id, id2, &sp, "");
     assert!(errors.is_empty());
 
-    assert_eq!(
+    assert!(matches!(
         engine.to_typeinfo(id, &Span::dummy()).unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
-    );
+    ));
 }

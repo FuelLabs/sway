@@ -121,21 +121,22 @@ impl Literal {
 
     #[allow(clippy::wildcard_in_or_patterns)]
     pub(crate) fn handle_parse_int_error(
+        type_engine: &TypeEngine,
         e: ParseIntError,
         ty: TypeInfo,
         span: sway_types::Span,
     ) -> CompileError {
         match e.kind() {
             IntErrorKind::PosOverflow => CompileError::IntegerTooLarge {
-                ty: ty.to_string(),
+                ty: type_engine.help_out(ty).to_string(),
                 span,
             },
             IntErrorKind::NegOverflow => CompileError::IntegerTooSmall {
-                ty: ty.to_string(),
+                ty: type_engine.help_out(ty).to_string(),
                 span,
             },
             IntErrorKind::InvalidDigit => CompileError::IntegerContainsInvalidDigit {
-                ty: ty.to_string(),
+                ty: type_engine.help_out(ty).to_string(),
                 span,
             },
             IntErrorKind::Zero | IntErrorKind::Empty | _ => {

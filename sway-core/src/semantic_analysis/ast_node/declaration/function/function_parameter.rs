@@ -27,7 +27,7 @@ impl ty::TyFunctionParameter {
             type_span,
         } = parameter;
 
-        let initial_type_id = insert_type(type_info);
+        let initial_type_id = ctx.type_engine.insert_type(type_info);
 
         let type_id = check!(
             ctx.resolve_type_with_self(
@@ -36,7 +36,7 @@ impl ty::TyFunctionParameter {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -80,17 +80,18 @@ impl ty::TyFunctionParameter {
             type_span,
         } = parameter;
 
-        let initial_type_id = insert_type(type_info);
+        let initial_type_id = ctx.type_engine.insert_type(type_info);
 
         let type_id = check!(
             ctx.namespace.resolve_type_with_self(
+                ctx.type_engine,
                 initial_type_id,
-                insert_type(TypeInfo::SelfType),
+                ctx.type_engine.insert_type(TypeInfo::SelfType),
                 &type_span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );

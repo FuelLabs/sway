@@ -1,0 +1,8 @@
+[[package]]
+name = 'const_global_shadow'
+source = 'member'
+dependencies = ['core']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-37F288FECEE71F89'
