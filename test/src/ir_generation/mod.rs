@@ -266,6 +266,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
             total_test_count - run_test_count
         );
     }
+    // TODO: Make this return an Err once the panics above are converted to an error
     Ok(())
 }
 
