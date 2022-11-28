@@ -3,7 +3,6 @@ library bytes;
 use ::{alloc::{alloc, realloc}, vec::Vec};
 use ::assert::assert;
 use ::option::Option;
-use ::logging::log;
 use ::intrinsics::size_of_val;
 
 impl raw_ptr {
@@ -395,6 +394,31 @@ impl Bytes {
     }
 }
 
+// Need to use seperate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
+impl Bytes {
+    pub fn from_vec_u8(ref mut vec: Vec<u8>) -> Self {
+        let mut bytes = Bytes::new();
+        let mut i = 0;
+        let length = vec.len();
+        while i < length {
+            bytes.push(vec.get(i).unwrap());
+            i += 1;
+        };
+        bytes
+    }
+
+    pub fn into_vec_u8(self) -> Vec<u8> {
+        let mut vec = Vec::new();
+        let mut i = 0;
+        let length = self.len;
+        while i < length {
+            vec.push(self.get(i).unwrap());
+            i += 1;
+        };
+        vec
+    }
+}
+
 ////////////////////////////////////////////////////////////////////
 // Tests
 ////////////////////////////////////////////////////////////////////
@@ -553,12 +577,31 @@ fn test_set() {
     assert(bytes.get(2).unwrap() == c);
 }
 
-// #[test()]
-// fn test_from_vec_u8() {
-//     let mut vec = Vec::new();
-//     vec.push(11u8);
-//     vec.push(42u8);
-//     vec.push(69u8);
-//     let bytes = Bytes::from_vec_u8(vec);
-//     assert(bytes.len == 3);
-// }
+#[test()]
+fn test_from_vec_u8() {
+    let mut vec = Vec::new();
+    let (_, a, b, c) = setup();
+    vec.push(a);
+    vec.push(b);
+    vec.push(c);
+
+    let bytes = Bytes::from_vec_u8(vec);
+
+    assert(bytes.len == 3);
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == b);
+    assert(bytes.get(2).unwrap() == c);
+}
+
+#[test()]
+fn test_into_vec_u8() {
+    let (mut bytes, a, b, c) = setup();
+    assert(bytes.len() == 3);
+
+    let vec = bytes.into_vec_u8();
+
+    assert(vec.len() == 3);
+    assert(vec.get(0).unwrap() == a);
+    assert(vec.get(1).unwrap() == b);
+    assert(vec.get(2).unwrap() == c);
+}
