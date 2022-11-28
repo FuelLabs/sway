@@ -82,7 +82,7 @@ impl ty::TyExpression {
         );
         // check that the number of parameters and the number of the arguments is the same
         check!(
-            check_function_arguments_arity(arguments.len(), &method, &call_path),
+            check_function_arguments_arity(arguments.len(), &method, &call_path, false),
             return err(warnings, errors),
             warnings,
             errors

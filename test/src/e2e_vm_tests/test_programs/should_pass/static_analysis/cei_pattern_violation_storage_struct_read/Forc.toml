@@ -1,0 +1,9 @@
+[project]
+name = "cei_pattern_violation_storage_struct_read"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+implicit-std = false
+
+[dependencies]
+std = { path = "../../../../../../../sway-lib-std" }

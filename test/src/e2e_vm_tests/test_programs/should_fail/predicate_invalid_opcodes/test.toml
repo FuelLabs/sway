@@ -1,7 +1,5 @@
 category = "fail"
 
-# check: $()This function performs a storage read & write but does not have the required attribute(s).
-
 # check: bal r1 r2 r3;
 # nextln: $()The BAL opcode cannot be used in a predicate.
 
@@ -51,18 +49,6 @@ category = "fail"
 
 # check: smo r1 r2 r3 r4;
 # nextln: $()The SMO opcode cannot be used in a predicate.
-
-# check: srw r1 r2 r3;
-# nextln: $()The SRW opcode cannot be used in a predicate.
-
-# check: srwq r1 r2 r3 r4;
-# nextln: $()The SRWQ opcode cannot be used in a predicate.
-
-# check: sww r1 r2 r3;
-# nextln: $()The SWW opcode cannot be used in a predicate.
-
-# check: swwq r1 r2 r3 r4;
-# nextln: $()The SWWQ opcode cannot be used in a predicate.
 
 # check: time r1 r2;
 # nextln: $()The TIME opcode cannot be used in a predicate.
