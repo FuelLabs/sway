@@ -51,9 +51,17 @@ pub fn realloc_bytes(ptr: raw_ptr, count: u64, new_count: u64) -> raw_ptr {
 }
 
 // helper for adding a u64 offset to a raw_ptr
-fn ptr_with_offset(start: raw_ptr, offset: u64) -> raw_ptr {
+fn ptr_add_offset(start: raw_ptr, offset: u64) -> raw_ptr {
     asm(ptr: start, offset: offset, new) {
         add new ptr offset;
+        new: raw_ptr
+    }
+}
+
+// helper for subtracting a u64 offset from a raw_ptr
+fn ptr_sub_offset(start: raw_ptr, offset: u64) -> raw_ptr {
+    asm(ptr: start, offset: offset, new) {
+        sub new ptr offset;
         new: raw_ptr
     }
 }
@@ -147,7 +155,7 @@ impl Bytes {
         };
         // decrement length.
         self.len -= 1;
-        let target = ptr_with_offset(self.buf.ptr, self.len);
+        let target = ptr_add_offset(self.buf.ptr, self.len);
 
         Option::Some(target.read_byte())
     }
@@ -175,9 +183,65 @@ impl Bytes {
             return Option::None;
         };
 
-        let item_ptr = ptr_with_offset(self.buf.ptr, index);
+        let item_ptr = ptr_add_offset(self.buf.ptr, index);
 
         Option::Some(item_ptr.read_byte())
+    }
+
+    /// Inserts an element at position `index` within the Bytes, shifting all
+    /// elements after it to the right.
+    ///
+    /// ### Reverts
+    ///
+    /// * If `index > len`.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Byte;
+    ///
+    /// let vec = Vec::new();
+    /// let a = 11u8;
+    /// let b = 11u8;
+    /// let c = 11u8;
+    /// let d = 11u8;
+    /// vec.push(a);
+    /// vec.push(b);
+    /// vec.push(c);
+    /// bytes.insert(1, d);
+    ///
+    /// assert(bytes.get(0).unwrap() == a);
+    /// assert(bytes.get(1).unwrap() == d);
+    /// assert(bytes.get(2).unwrap() == b);
+    /// assert(bytes.get(3).unwrap() == c);
+    /// ```
+    pub fn insert(ref mut self, index: u64, element: u8) {
+        assert(index <= self.len);
+
+        // If there is insufficient capacity, grow the buffer.
+        if self.len == self.buf.cap {
+            self.buf.grow();
+        }
+
+        let start = self.buf.ptr();
+
+        // The spot to put the new value
+        let index_ptr = ptr_add_offset(start, index);
+
+        // Shift everything over to make space.
+        let mut i = self.len;
+        while i > index {
+            let idx_ptr = ptr_add_offset(start, i);
+            let previous = ptr_sub_offset(idx_ptr, 1);
+            previous.copy_bytes_to(idx_ptr, 1);
+            i -= 1;
+        }
+
+        // Write `element` at pointer `index`
+        index_ptr.write_byte(element);
+
+        // Increment length.
+        self.len += 1;
     }
 
     /// Removes and returns the element at position `index` within the Bytes,
@@ -207,15 +271,15 @@ impl Bytes {
         assert(index < self.len);
         let start = self.buf.ptr();
 
+        let item_ptr = ptr_add_offset(start, index);
         // Read the value at `index`
-        let item_ptr = ptr_with_offset(start, index);
         let ret = item_ptr.read_byte();
 
         // Shift everything down to fill in that spot.
         let mut i = index;
         while i < self.len {
-            let idx_ptr = ptr_with_offset(start, i);
-            let next = ptr_with_offset(idx_ptr, 1);
+            let idx_ptr = ptr_add_offset(start, i);
+            let next = ptr_add_offset(idx_ptr, 1);
             next.copy_bytes_to(idx_ptr, 1);
             i += 1;
         }
@@ -243,6 +307,7 @@ impl Bytes {
     }
 }
 
+
 // Need to use seperate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
 // impl Bytes {
 //     // can use From trait when generic traits are in
@@ -260,19 +325,9 @@ impl Bytes {
 //         bytes
 //     }
 // }
-//////////////////////////////////////////////////////////////
-// fn main() -> bool {
-//     let mut bytes = Bytes::new();
-//     bytes.push(1u8);
-//     // bytes.push(2u8);
-//     // bytes.push(3u8);
-//     // assert(bytes.len() == 3);
-//     let val = bytes.pop().unwrap(); // 111
-//     log(val);
-//     assert(val == 1u8);
-//     true
-// }
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+// Tests
+////////////////////////////////////////////////////////////////////
 fn setup() -> (Bytes, u8, u8, u8) {
     let mut bytes = Bytes::new();
     let a = 5u8;
@@ -366,6 +421,17 @@ fn test_remove() {
     assert(bytes.get(1).unwrap() == c);
     assert(bytes.get(2).is_none());
     assert(bytes.len() == 2);
+}
+
+#[test()]
+fn test_insert() {
+    let (mut bytes, a, b, c) = setup();
+    let d = 11u8;
+    bytes.insert(1, d);
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == d);
+    assert(bytes.get(2).unwrap() == b);
+    assert(bytes.get(3).unwrap() == c);
 }
 // #[test()]
 // fn test_from_vec_u8() {
