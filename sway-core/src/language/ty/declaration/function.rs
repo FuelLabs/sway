@@ -1,5 +1,5 @@
 use sha2::{Digest, Sha256};
-use sway_types::{Ident, JsonABIFunction, JsonTypeApplication, JsonTypeDeclaration, Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     declaration_engine::*,
@@ -255,13 +255,13 @@ impl TyFunctionDeclaration {
     pub(crate) fn generate_json_abi_function(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<JsonTypeDeclaration>,
-    ) -> JsonABIFunction {
-        // A list of all `JsonTypeDeclaration`s needed for inputs
+        types: &mut Vec<fuels_types::TypeDeclaration>,
+    ) -> fuels_types::ABIFunction {
+        // A list of all `fuels_types::TypeDeclaration`s needed for inputs
         let input_types = self
             .parameters
             .iter()
-            .map(|x| JsonTypeDeclaration {
+            .map(|x| fuels_types::TypeDeclaration {
                 type_id: x.initial_type_id.index(),
                 type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
                 components: x.initial_type_id.get_json_type_components(
@@ -275,8 +275,8 @@ impl TyFunctionDeclaration {
             })
             .collect::<Vec<_>>();
 
-        // The single `JsonTypeDeclaration` needed for the output
-        let output_type = JsonTypeDeclaration {
+        // The single `fuels_types::TypeDeclaration` needed for the output
+        let output_type = fuels_types::TypeDeclaration {
             type_id: self.initial_return_type.index(),
             type_field: self
                 .initial_return_type
@@ -298,12 +298,12 @@ impl TyFunctionDeclaration {
         types.push(output_type);
 
         // Generate the JSON data for the function
-        JsonABIFunction {
+        fuels_types::ABIFunction {
             name: self.name.as_str().to_string(),
             inputs: self
                 .parameters
                 .iter()
-                .map(|x| JsonTypeApplication {
+                .map(|x| fuels_types::TypeApplication {
                     name: x.name.to_string(),
                     type_id: x.initial_type_id.index(),
                     type_arguments: x.initial_type_id.get_json_type_arguments(
@@ -313,7 +313,7 @@ impl TyFunctionDeclaration {
                     ),
                 })
                 .collect(),
-            output: JsonTypeApplication {
+            output: fuels_types::TypeApplication {
                 name: "".to_string(),
                 type_id: self.initial_return_type.index(),
                 type_arguments: self.initial_return_type.get_json_type_arguments(
