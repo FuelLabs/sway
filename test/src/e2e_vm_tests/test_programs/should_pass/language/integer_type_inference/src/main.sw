@@ -65,7 +65,7 @@ impl FooU64 for u64 {
     fn foo_u64(self) {}
 }
 
-fn main() -> bool {
+fn main() {
     /* Make sure that the resulting types of constants are correct */
     X1.foo_u8();
     X2.foo_u8();
@@ -157,6 +157,4 @@ fn main() -> bool {
     v3.foo_u32();
     v4.foo_u64();
     v5.foo_u64();
-
-    true
 }
