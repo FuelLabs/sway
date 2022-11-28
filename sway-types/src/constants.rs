@@ -43,10 +43,14 @@ pub const DOC_ATTRIBUTE_NAME: &str = "doc";
 /// The attribute used for Sway in-language unit tests.
 pub const TEST_ATTRIBUTE_NAME: &str = "test";
 
+/// The valid attribute string used for payable functions.
+pub const PAYABLE_ATTRIBUTE_NAME: &str = "payable";
+
 /// The list of valid attributes.
 pub const VALID_ATTRIBUTE_NAMES: &[&str] = &[
     STORAGE_PURITY_ATTRIBUTE_NAME,
     DOC_ATTRIBUTE_NAME,
     TEST_ATTRIBUTE_NAME,
     INLINE_ATTRIBUTE_NAME,
+    PAYABLE_ATTRIBUTE_NAME,
 ];

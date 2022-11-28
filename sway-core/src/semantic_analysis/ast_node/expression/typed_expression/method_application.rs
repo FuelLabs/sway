@@ -8,8 +8,8 @@ use crate::{
 use ast_node::typed_expression::check_function_arguments_arity;
 use std::collections::{HashMap, VecDeque};
 use sway_error::error::CompileError;
-use sway_types::Spanned;
 use sway_types::{constants, integer_bits::IntegerBits};
+use sway_types::{constants::CONTRACT_CALL_COINS_PARAMETER_NAME, Spanned};
 use sway_types::{state::StateIndex, Span};
 
 #[allow(clippy::too_many_arguments)]
@@ -138,6 +138,26 @@ pub(crate) fn type_check_method_application(
                     });
                 }
             };
+        }
+
+        // check if method is non-payable but we do not know _statically_
+        // the amount of coins sent in the contract call is zero
+        // if the coins contract call parameter is not specified
+        // it's considered to be zero and hence no error needs to be reported
+        if let Some(coins_expr) = contract_call_params_map.get(CONTRACT_CALL_COINS_PARAMETER_NAME) {
+            if coins_analysis::possibly_nonzero_u64_expression(ctx.namespace, coins_expr)
+                && !method
+                    .attributes
+                    .contains_key(&crate::transform::AttributeKind::Payable)
+            {
+                errors.push(
+                    CompileError::PossiblyNonZeroAmountOfCoinsPassedToNonPayableContractMethod {
+                        fn_name: method.name,
+                        span,
+                    },
+                );
+                return err(warnings, errors);
+            }
         }
     }
 

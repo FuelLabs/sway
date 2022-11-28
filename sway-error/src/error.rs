@@ -687,6 +687,23 @@ pub enum CompileError {
     DisallowedControlFlowInstruction { name: String, span: Span },
     #[error("Calling private library method {name} is not allowed.")]
     CallingPrivateLibraryMethod { name: String, span: Span },
+    #[error("Possibly non-zero amount of coins transferred to non-payable contract method \"{fn_name}\".")]
+    PossiblyNonZeroAmountOfCoinsPassedToNonPayableContractMethod { fn_name: Ident, span: Span },
+    #[error(
+        "Payable attribute mismatch. The \"{fn_name}\" method implementation \
+         {} in its signature in {interface_name}.",
+        if *missing_impl_attribute {
+            "is missing #[payable] attribute specified"
+        } else {
+            "has extra #[payable] attribute not mentioned"
+        }
+    )]
+    TraitImplPayabilityMismatch {
+        fn_name: Ident,
+        interface_name: InterfaceName,
+        missing_impl_attribute: bool,
+        span: Span,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -871,6 +888,10 @@ impl Spanned for CompileError {
             InitializedRegisterReassignment { span, .. } => span.clone(),
             DisallowedControlFlowInstruction { span, .. } => span.clone(),
             CallingPrivateLibraryMethod { span, .. } => span.clone(),
+            PossiblyNonZeroAmountOfCoinsPassedToNonPayableContractMethod { span, .. } => {
+                span.clone()
+            }
+            TraitImplPayabilityMismatch { span, .. } => span.clone(),
         }
     }
 }

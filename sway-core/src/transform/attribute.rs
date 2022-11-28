@@ -40,6 +40,7 @@ pub enum AttributeKind {
     Storage,
     Inline,
     Test,
+    Payable,
 }
 
 /// Stores the attributes associated with the type.

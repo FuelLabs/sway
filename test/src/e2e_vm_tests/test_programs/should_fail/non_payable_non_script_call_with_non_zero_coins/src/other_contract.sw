@@ -1,6 +1,5 @@
 library other_contract;
 
 abi OtherContract {
-    #[payable]
-    fn external_call();
+    fn non_payable_method();
 }

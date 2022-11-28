@@ -755,6 +755,35 @@ fn type_check_trait_implementation(
             });
         }
 
+        // check there is no mismatch of payability attributes
+        // between the method signature and the method implementation
+        use crate::transform::AttributeKind::Payable;
+        let impl_method_signature_payable = impl_method_signature.attributes.contains_key(&Payable);
+        let impl_method_payable = impl_method.attributes.contains_key(&Payable);
+        match (impl_method_signature_payable, impl_method_payable) {
+            (true, false) =>
+            // implementation does not have payable attribute
+            {
+                errors.push(CompileError::TraitImplPayabilityMismatch {
+                    fn_name: impl_method.name.clone(),
+                    interface_name: interface_name(),
+                    missing_impl_attribute: true,
+                    span: impl_method.span.clone(),
+                })
+            }
+            (false, true) =>
+            // implementation has extra payable attribute, not mentioned by signature
+            {
+                errors.push(CompileError::TraitImplPayabilityMismatch {
+                    fn_name: impl_method.name.clone(),
+                    interface_name: interface_name(),
+                    missing_impl_attribute: false,
+                    span: impl_method.span.clone(),
+                })
+            }
+            (true, true) | (false, false) => (), // no payability mismatch
+        }
+
         // unify the return type of the implemented function and the return
         // type of the signature
         let (new_warnings, new_errors) = type_engine.unify_right_with_self(
