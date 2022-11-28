@@ -1,31 +1,11 @@
 library bytes;
 
-use ::{alloc::{alloc, realloc}, vec::Vec};
+use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
 use ::assert::assert;
 use ::option::Option;
 use ::intrinsics::size_of_val;
 
 // HELPERS
-pub fn alloc_bytes(count: u64) -> raw_ptr {
-    asm(size: count, ptr) {
-        aloc size;
-        addi ptr hp i1;
-        ptr: raw_ptr
-    }
-}
-
-pub fn realloc_bytes(ptr: raw_ptr, count: u64, new_count: u64) -> raw_ptr {
-    if new_count > count {
-        let new_ptr = alloc_bytes(new_count);
-        if count > 0 {
-            ptr.copy_bytes_to(new_ptr, count);
-        };
-        new_ptr
-    } else {
-        ptr
-    }
-}
-
 // helper for adding a u64 offset to a raw_ptr
 fn ptr_add_offset(start: raw_ptr, offset: u64) -> raw_ptr {
     asm(ptr: start, offset: offset, new) {
