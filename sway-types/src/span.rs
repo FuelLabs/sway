@@ -202,8 +202,8 @@ impl fmt::Debug for Span {
             .finish()
     }
     #[cfg(feature = "no-span-debug")]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "")
+    fn fmt(&self, _fmt: &mut fmt::Formatter) -> fmt::Result {
+        Ok(())
     }
 }
 
