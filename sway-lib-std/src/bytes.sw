@@ -605,3 +605,25 @@ fn test_into_vec_u8() {
     assert(vec.get(1).unwrap() == b);
     assert(vec.get(2).unwrap() == c);
 }
+
+#[test()]
+fn test_bytes_limits() {
+    let mut bytes = Bytes::new();
+    let max = 255u8;
+    let min = 0u8;
+    bytes.push(max);
+    bytes.push(min);
+    bytes.push(max);
+    bytes.push(min);
+    bytes.push(max);
+    bytes.push(min);
+
+    assert(bytes.len() == 6);
+    assert(bytes.capacity() == 8);
+    assert(bytes.get(0).unwrap() == max);
+    assert(bytes.get(1).unwrap() == min);
+    assert(bytes.get(2).unwrap() == max);
+    assert(bytes.get(3).unwrap() == min);
+    assert(bytes.get(4).unwrap() == max);
+    assert(bytes.get(5).unwrap() == min);
+}
