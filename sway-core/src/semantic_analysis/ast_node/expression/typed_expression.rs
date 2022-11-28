@@ -381,12 +381,12 @@ impl ty::TyExpression {
             Some(ty::TyDeclaration::VariableDeclaration(decl)) => {
                 let ty::TyVariableDeclaration {
                     name: decl_name,
-                    body,
                     mutability,
+                    return_type,
                     ..
                 } = &**decl;
                 ty::TyExpression {
-                    return_type: body.return_type,
+                    return_type: *return_type,
                     expression: ty::TyExpressionVariant::VariableExpression {
                         name: decl_name.clone(),
                         span: name.span(),
@@ -398,7 +398,7 @@ impl ty::TyExpression {
             Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
                 let ty::TyConstantDeclaration {
                     name: decl_name,
-                    value,
+                    return_type,
                     ..
                 } = check!(
                     CompileResult::from(de_get_constant(decl_id.clone(), &span)),
@@ -407,7 +407,7 @@ impl ty::TyExpression {
                     errors
                 );
                 ty::TyExpression {
-                    return_type: value.return_type,
+                    return_type,
                     // Although this isn't strictly a 'variable' expression we can treat it as one for
                     // this context.
                     expression: ty::TyExpressionVariant::VariableExpression {
