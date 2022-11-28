@@ -11,9 +11,17 @@ pub const ONE = "1";
 
 pub struct MyStruct {}
 
+impl MyStruct {
+    pub fn my_function() {}
+}
+
 pub enum MyEnum {
-    Variant: ()
+    Variant: (),
 }
 
 pub fn bar() {}
+
+pub trait MyTrait {
+    fn my_function();
+}
 // ANCHOR_END: library

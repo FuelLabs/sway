@@ -6,7 +6,7 @@ Associated functions could be standalone functions, but they are included in a s
 
 ## Declaration
 
-In this example we will take a look at a struct however an enum will work in the same way.
+In this example we will take a look at a struct; however, an enum will work in the same way.
 
 ```sway
 {{#include ../../../code/language/functions/src/lib.sw:struct_definition}}
