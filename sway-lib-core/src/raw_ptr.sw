@@ -72,4 +72,20 @@ impl raw_ptr {
             mcp dst src len;
         };
     }
+
+    /// Add a u64 offset to a raw_ptr
+    pub fn add_uint_offset(self, offset: u64) -> raw_ptr {
+        asm(ptr: self, offset: offset, new) {
+            add new ptr offset;
+            new: raw_ptr
+        }
+    }
+
+    /// Subtract a u64 offset from a raw_ptr
+    pub fn sub_uint_offset(self, offset: u64) -> raw_ptr {
+        asm(ptr: self, offset: offset, new) {
+            sub new ptr offset;
+            new: raw_ptr
+        }
+    }
 }

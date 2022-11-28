@@ -5,23 +5,6 @@ use ::assert::assert;
 use ::option::Option;
 use ::intrinsics::size_of_val;
 
-// HELPERS
-// helper for adding a u64 offset to a raw_ptr
-fn ptr_add_offset(start: raw_ptr, offset: u64) -> raw_ptr {
-    asm(ptr: start, offset: offset, new) {
-        add new ptr offset;
-        new: raw_ptr
-    }
-}
-
-// helper for subtracting a u64 offset from a raw_ptr
-fn ptr_sub_offset(start: raw_ptr, offset: u64) -> raw_ptr {
-    asm(ptr: start, offset: offset, new) {
-        sub new ptr offset;
-        new: raw_ptr
-    }
-}
-
 struct RawBytes {
     ptr: raw_ptr,
     cap: u64,
@@ -111,7 +94,7 @@ impl Bytes {
         };
         // decrement length.
         self.len -= 1;
-        let target = ptr_add_offset(self.buf.ptr, self.len);
+        let target = self.buf.ptr.add_uint_offset(self.len);
 
         Option::Some(target.read_byte())
     }
@@ -139,7 +122,7 @@ impl Bytes {
             return Option::None;
         };
 
-        let item_ptr = ptr_add_offset(self.buf.ptr, index);
+        let item_ptr = self.buf.ptr.add_uint_offset(index);
 
         Option::Some(item_ptr.read_byte())
     }
@@ -182,13 +165,13 @@ impl Bytes {
         let start = self.buf.ptr();
 
         // The spot to put the new value
-        let index_ptr = ptr_add_offset(start, index);
+        let index_ptr = start.add_uint_offset(index);
 
         // Shift everything over to make space.
         let mut i = self.len;
         while i > index {
-            let idx_ptr = ptr_add_offset(start, i);
-            let previous = ptr_sub_offset(idx_ptr, 1);
+            let idx_ptr = start.add_uint_offset(i);
+            let previous = idx_ptr.sub_uint_offset(1);
             previous.copy_bytes_to(idx_ptr, 1);
             i -= 1;
         }
@@ -227,15 +210,15 @@ impl Bytes {
         assert(index < self.len);
         let start = self.buf.ptr();
 
-        let item_ptr = ptr_add_offset(start, index);
+        let item_ptr = start.add_uint_offset(index);
         // Read the value at `index`
         let ret = item_ptr.read_byte();
 
         // Shift everything down to fill in that spot.
         let mut i = index;
         while i < self.len {
-            let idx_ptr = ptr_add_offset(start, i);
-            let next = ptr_add_offset(idx_ptr, 1);
+            let idx_ptr = start.add_uint_offset(i);
+            let next = idx_ptr.add_uint_offset(1);
             next.copy_bytes_to(idx_ptr, 1);
             i += 1;
         }
@@ -283,8 +266,10 @@ impl Bytes {
             return;
         }
 
-        let element1_ptr = ptr_add_offset(self.buf.ptr(), element1_index);
-        let element2_ptr = ptr_add_offset(self.buf.ptr(), element2_index);
+        let start = self.buf.ptr();
+
+        let element1_ptr = start.add_uint_offset(element1_index);
+        let element2_ptr = start.add_uint_offset(element2_index);
 
         let element1_val = element1_ptr.read_byte();
         element2_ptr.copy_bytes_to(element1_ptr, 1);
@@ -328,7 +313,7 @@ impl Bytes {
         assert(index < self.len);
 
         // let index_ptr = self.buf.ptr().add::<T>(index);
-        let index_ptr = ptr_add_offset(self.buf.ptr(), index);
+        let index_ptr = self.buf.ptr().add_uint_offset(index);
 
         index_ptr.write_byte(value);
     }
