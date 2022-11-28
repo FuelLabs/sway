@@ -1963,8 +1963,6 @@ dependencies = [
 [[package]]
 name = "fuel-vm"
 version = "0.22.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0dcee37cc71091466c4dcbd5feebd689573e34a404fef7f02946afd0923e200a"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
