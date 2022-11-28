@@ -5,7 +5,7 @@ use crate::{
     error::*,
     language::{ty, CallPath},
     semantic_analysis::TypeCheckContext,
-    type_system::{insert_type, EnforceTypeArguments},
+    type_system::EnforceTypeArguments,
     CreateTypeId, TypeInfo,
 };
 
@@ -113,12 +113,12 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
         // resolve the type of the type info object
         let type_id = check!(
             ctx.resolve_type_with_self(
-                insert_type(type_info),
+                ctx.type_engine.insert_type(type_info),
                 &type_info_span,
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix)
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
@@ -145,10 +145,10 @@ impl TypeBinding<CallPath> {
 
         // replace the self types inside of the type arguments
         for type_argument in self.type_arguments.iter_mut() {
-            type_argument.replace_self_type(ctx.self_type());
+            type_argument.replace_self_type(ctx.type_engine, ctx.self_type());
             type_argument.type_id = check!(
                 ctx.resolve_type_without_self(type_argument.type_id, &type_argument.span, None),
-                insert_type(TypeInfo::ErrorRecovery),
+                ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );
@@ -206,8 +206,10 @@ impl TypeBinding<CallPath> {
                 );
 
                 // take any trait methods that apply to this type and copy them to the new type
-                ctx.namespace
-                    .insert_trait_implementation_for_type(new_copy.create_type_id());
+                ctx.namespace.insert_trait_implementation_for_type(
+                    ctx.type_engine,
+                    new_copy.create_type_id(ctx.type_engine),
+                );
 
                 // insert the new copy into the declaration engine
                 let new_id = de_insert_enum(new_copy);
@@ -237,8 +239,10 @@ impl TypeBinding<CallPath> {
                 );
 
                 // take any trait methods that apply to this type and copy them to the new type
-                ctx.namespace
-                    .insert_trait_implementation_for_type(new_copy.create_type_id());
+                ctx.namespace.insert_trait_implementation_for_type(
+                    ctx.type_engine,
+                    new_copy.create_type_id(ctx.type_engine),
+                );
 
                 // insert the new copy into the declaration engine
                 let new_id = de_insert_struct(new_copy);

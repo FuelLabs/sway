@@ -57,7 +57,7 @@ impl ty::TyAbiDeclaration {
         for method in methods.into_iter() {
             let method = check!(
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
-                ty::TyFunctionDeclaration::error(method.clone()),
+                ty::TyFunctionDeclaration::error(method.clone(), ctx.type_engine),
                 warnings,
                 errors
             );

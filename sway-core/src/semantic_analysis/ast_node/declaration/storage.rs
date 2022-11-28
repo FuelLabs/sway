@@ -6,6 +6,7 @@ use crate::{
     },
     language::ty,
     metadata::MetadataManager,
+    TypeEngine,
 };
 use sway_error::error::CompileError;
 use sway_ir::{Context, Module};
@@ -14,6 +15,7 @@ use sway_types::state::StateIndex;
 impl ty::TyStorageDeclaration {
     pub(crate) fn get_initialized_storage_slots(
         &self,
+        type_engine: &TypeEngine,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
@@ -24,7 +26,13 @@ impl ty::TyStorageDeclaration {
             .iter()
             .enumerate()
             .map(|(i, f)| {
-                f.get_initialized_storage_slots(context, md_mgr, module, &StateIndex::new(i))
+                f.get_initialized_storage_slots(
+                    type_engine,
+                    context,
+                    md_mgr,
+                    module,
+                    &StateIndex::new(i),
+                )
             })
             .filter_map(|s| s.map_err(|e| errors.push(e)).ok())
             .flatten()
@@ -40,12 +48,14 @@ impl ty::TyStorageDeclaration {
 impl ty::TyStorageField {
     pub(crate) fn get_initialized_storage_slots(
         &self,
+        type_engine: &TypeEngine,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
         ix: &StateIndex,
     ) -> Result<Vec<StorageSlot>, CompileError> {
         compile_constant_expression_to_constant(
+            type_engine,
             context,
             md_mgr,
             module,

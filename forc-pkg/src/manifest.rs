@@ -9,7 +9,7 @@ use std::{
     sync::Arc,
 };
 
-use sway_core::{language::parsed::TreeType, parse};
+use sway_core::{language::parsed::TreeType, parse_tree_type};
 pub use sway_types::ConfigTimeConstant;
 use sway_utils::constants;
 
@@ -297,14 +297,14 @@ impl PackageManifestFile {
     /// Parse and return the associated project's program type.
     pub fn program_type(&self) -> Result<TreeType> {
         let entry_string = self.entry_string()?;
-        let parse_res = parse(entry_string, None);
-        match parse_res.value {
-            Some(parse_program) => Ok(parse_program.kind),
-            None => bail!(parsing_failed(&self.project.name, parse_res.errors)),
-        }
+        let parse_res = parse_tree_type(entry_string);
+        parse_res
+            .value
+            .ok_or_else(|| parsing_failed(&self.project.name, parse_res.errors))
     }
 
-    /// Given the current directory and expected program type, determines whether the correct program type is present.
+    /// Given the current directory and expected program type,
+    /// determines whether the correct program type is present.
     pub fn check_program_type(&self, expected_types: Vec<TreeType>) -> Result<()> {
         let parsed_type = self.program_type()?;
         if !expected_types.contains(&parsed_type) {
