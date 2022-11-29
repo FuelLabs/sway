@@ -105,11 +105,5 @@ fn main() -> bool {
     tro r1 r2 r3 r4;
   }
 
-  // While loop compiles to JI with backward offset
-  let mut i = 0;
-  while i < 30 {
-    i += 1;
-  }
-
   true
 }

@@ -12,9 +12,13 @@ use crate::{
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
     },
-    language::{ty, *},
+    language::{
+        ty::{self, ProjectionKind},
+        *,
+    },
     metadata::MetadataManager,
     type_system::{LogId, TypeId, TypeInfo},
+    types::DeterministicallyAborts,
     PartialEqWithTypeEngine, TypeEngine,
 };
 use declaration_engine::de_get_function;
@@ -348,9 +352,14 @@ impl<'te> FnCompiler<'te> {
                 self.compile_unsafe_downcast(context, md_mgr, exp, variant)
             }
             ty::TyExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, md_mgr, exp),
-            ty::TyExpressionVariant::WhileLoop { body, condition } => {
-                self.compile_while_loop(context, md_mgr, body, *condition, span_md_idx)
-            }
+            ty::TyExpressionVariant::WhileLoop { body, condition } => self.compile_while_loop(
+                context,
+                md_mgr,
+                body,
+                *condition,
+                span_md_idx,
+                ast_expr.span,
+            ),
             ty::TyExpressionVariant::Break => {
                 match self.block_to_break_to {
                     // If `self.block_to_break_to` is not None, then it has been set inside
@@ -1316,7 +1325,14 @@ impl<'te> FnCompiler<'te> {
         body: ty::TyCodeBlock,
         condition: ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
+        span: Span,
     ) -> Result<Value, CompileError> {
+        // Throw an error if the while loop is used in a predicate module.
+        let module = context.module_iter().next().unwrap();
+        if module.get_kind(context) == Kind::Predicate {
+            return Err(CompileError::DisallowedWhileInPredicate { span });
+        }
+
         // We're dancing around a bit here to make the blocks sit in the right order.  Ideally we
         // have the cond block, followed by the body block which may contain other blocks, and the
         // final block comes after any body block(s).
@@ -1472,8 +1488,9 @@ impl<'te> FnCompiler<'te> {
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
+        let body_deterministically_aborts = body.deterministically_aborts(false);
         let init_val = self.compile_expression(context, md_mgr, body)?;
-        if init_val.is_diverging(context) {
+        if init_val.is_diverging(context) || body_deterministically_aborts {
             return Ok(Some(init_val));
         }
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
@@ -1568,7 +1585,7 @@ impl<'te> FnCompiler<'te> {
             .expect("All local symbols must be in the lexical symbol map.");
 
         // First look for a local ptr with the required name
-        let val = match self.function.get_local_ptr(context, name) {
+        let mut val = match self.function.get_local_ptr(context, name) {
             Some(ptr) => {
                 let ptr_ty = *ptr.get_type(context);
                 self.current_block
@@ -1602,6 +1619,51 @@ impl<'te> FnCompiler<'te> {
                 .ins(context)
                 .store(val, reassign_val)
                 .add_metadatum(context, span_md_idx);
+        } else if ast_reassignment
+            .lhs_indices
+            .iter()
+            .any(|f| matches!(f, ProjectionKind::ArrayIndex { .. }))
+        {
+            let it = &mut ast_reassignment.lhs_indices.iter().peekable();
+            while let Some(ProjectionKind::ArrayIndex { index, .. }) = it.next() {
+                let index_val = self.compile_expression(context, md_mgr, *index.clone())?;
+                if index_val.is_diverging(context) {
+                    return Ok(index_val);
+                }
+
+                let ty = match val.get_stripped_ptr_type(context).unwrap() {
+                    Type::Array(aggregate) => aggregate,
+                    _otherwise => {
+                        let spans = ast_reassignment
+                            .lhs_indices
+                            .iter()
+                            .fold(ast_reassignment.lhs_base_name.span(), |acc, lhs| {
+                                Span::join(acc, lhs.span())
+                            });
+                        return Err(CompileError::Internal(
+                            "Array index reassignment to non-array.",
+                            spans,
+                        ));
+                    }
+                };
+
+                // When handling nested array indexing, we should keep extracting the first
+                // elements up until the last, and insert into the last element.
+                let is_last_index = it.peek().is_none();
+                if is_last_index {
+                    val = self
+                        .current_block
+                        .ins(context)
+                        .insert_element(val, ty, reassign_val, index_val)
+                        .add_metadatum(context, span_md_idx);
+                } else {
+                    val = self
+                        .current_block
+                        .ins(context)
+                        .extract_element(val, ty, index_val)
+                        .add_metadatum(context, span_md_idx);
+                }
+            }
         } else {
             // An aggregate.  Iterate over the field names from the left hand side and collect
             // field indices.  The struct type from the previous iteration is used to determine the
