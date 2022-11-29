@@ -1,7 +1,9 @@
 use crate::{
     config::InlayHintsConfig,
-    core::{session::Session, token::TypedAstToken},
-    utils::token::get_range_from_span,
+    core::{
+        session::Session,
+        token::{get_range_from_span, TypedAstToken},
+    },
 };
 use std::sync::Arc;
 use sway_core::{language::ty::TyDeclaration, type_system::TypeInfo};
@@ -67,7 +69,7 @@ pub(crate) fn inlay_hints(
             }
         })
         .map(|var| {
-            let range = crate::utils::token::get_range_from_span(&var.name.span());
+            let range = get_range_from_span(&var.name.span());
             let kind = InlayKind::TypeHint;
             let label = format!("{}", type_engine.help_out(var.type_ascription));
             let inlay_hint = InlayHint { range, kind, label };

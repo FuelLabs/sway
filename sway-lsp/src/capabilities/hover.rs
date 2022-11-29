@@ -1,12 +1,9 @@
 use crate::{
     core::{
         session::Session,
-        token::{Token, TypedAstToken},
+        token::{get_range_from_span, to_ident_key, Token, TypedAstToken},
     },
-    utils::{
-        attributes::doc_attributes, markdown, markup::Markup, token::get_range_from_span,
-        token::to_ident_key,
-    },
+    utils::{attributes::doc_attributes, markdown, markup::Markup},
 };
 use std::sync::Arc;
 use sway_core::{

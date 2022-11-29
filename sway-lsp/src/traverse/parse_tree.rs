@@ -1,12 +1,12 @@
 #![allow(dead_code)]
 use std::iter;
 
-use crate::{
-    core::{
-        token::{AstToken, SymbolKind, Token, TypeDefinition},
-        token_map::TokenMap,
+use crate::core::{
+    token::{
+        desugared_op, to_ident_key, type_info_to_symbol_kind, AstToken, SymbolKind, Token,
+        TypeDefinition,
     },
-    utils::token::{desugared_op, to_ident_key, type_info_to_symbol_kind},
+    token_map::TokenMap,
 };
 use sway_core::{
     language::{

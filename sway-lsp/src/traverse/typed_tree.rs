@@ -1,11 +1,8 @@
 #![allow(dead_code)]
 
-use crate::{
-    core::{
-        token::{TypeDefinition, TypedAstToken},
-        token_map::TokenMap,
-    },
-    utils::token::to_ident_key,
+use crate::core::{
+    token::{to_ident_key, TypeDefinition, TypedAstToken},
+    token_map::TokenMap,
 };
 use sway_core::{
     declaration_engine::{self, de_get_function},

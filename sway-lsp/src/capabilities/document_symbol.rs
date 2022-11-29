@@ -1,5 +1,4 @@
-use crate::core::token::{SymbolKind, Token};
-use crate::utils::token::get_range_from_span;
+use crate::core::token::{get_range_from_span, SymbolKind, Token};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{self, Location, SymbolInformation, Url};
 

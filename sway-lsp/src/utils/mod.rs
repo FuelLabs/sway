@@ -5,4 +5,3 @@ pub(crate) mod markup;
 pub(crate) mod sync;
 #[cfg(test)]
 pub(crate) mod test;
-pub(crate) mod token;

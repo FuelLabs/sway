@@ -1,7 +1,4 @@
-use crate::{
-    core::token::{Token, TypedAstToken},
-    utils,
-};
+use crate::core::token::{self, Token, TypedAstToken};
 use dashmap::DashMap;
 use sway_core::{declaration_engine, language::ty, type_system::TypeId, TypeEngine};
 use sway_types::{Ident, Span, Spanned};
@@ -62,7 +59,7 @@ impl TokenMap {
         I: Iterator<Item = (Ident, Token)>,
     {
         for (ident, _) in tokens {
-            let range = utils::token::get_range_from_span(&ident.span());
+            let range = token::get_range_from_span(&ident.span());
             if cursor_position >= range.start && cursor_position <= range.end {
                 return Some(ident);
             }
@@ -78,7 +75,7 @@ impl TokenMap {
     ) -> Option<(Ident, Token)> {
         let tokens = self.tokens_for_file(uri);
         match self.ident_at_position(position, tokens) {
-            Some(ident) => self.get(&utils::token::to_ident_key(&ident)).map(|item| {
+            Some(ident) => self.get(&token::to_ident_key(&ident)).map(|item| {
                 let ((ident, _), token) = item.pair();
                 (ident.clone(), token.clone())
             }),
@@ -92,11 +89,8 @@ impl TokenMap {
         type_engine: &TypeEngine,
         type_id: &TypeId,
     ) -> Option<ty::TyDeclaration> {
-        utils::token::ident_of_type_id(type_engine, type_id)
-            .and_then(|decl_ident| {
-                self.try_get(&utils::token::to_ident_key(&decl_ident))
-                    .try_unwrap()
-            })
+        token::ident_of_type_id(type_engine, type_id)
+            .and_then(|decl_ident| self.try_get(&token::to_ident_key(&decl_ident)).try_unwrap())
             .map(|item| item.value().clone())
             .and_then(|token| token.typed)
             .and_then(|typed_token| match typed_token {

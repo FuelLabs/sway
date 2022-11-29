@@ -4,10 +4,10 @@ use crate::{
         formatting::get_page_text_edit,
         runnable::{Runnable, RunnableType},
     },
-    core::{document::TextDocument, token_map::TokenMap},
+    core::{document::TextDocument, token::get_range_from_span, token_map::TokenMap},
     error::{DocumentError, LanguageServerError},
     traverse,
-    utils::{self, sync::SyncWorkspace},
+    utils::sync::SyncWorkspace,
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
@@ -252,7 +252,7 @@ impl Session {
         let token_ranges = self
             .token_map
             .all_references_of_token(&token, &self.type_engine.read())
-            .map(|(ident, _)| utils::token::get_range_from_span(&ident.span()))
+            .map(|(ident, _)| get_range_from_span(&ident.span()))
             .collect();
 
         Some(token_ranges)
@@ -267,7 +267,7 @@ impl Session {
             .token_at_position(&uri, position)
             .and_then(|(_, token)| token.declared_token_ident(&self.type_engine.read()))
             .and_then(|decl_ident| {
-                let range = utils::token::get_range_from_span(&decl_ident.span());
+                let range = get_range_from_span(&decl_ident.span());
                 decl_ident.span().path().and_then(|path| {
                     // We use ok() here because we don't care about propagating the error from from_file_path
                     Url::from_file_path(path.as_ref()).ok().and_then(|url| {
@@ -364,7 +364,7 @@ impl Session {
             ref main_function, ..
         } = typed_program.kind
         {
-            let main_fn_location = utils::token::get_range_from_span(&main_function.name.span());
+            let main_fn_location = get_range_from_span(&main_function.name.span());
             let runnable = Runnable::new(main_fn_location, typed_program.kind.tree_type());
             self.runnables.insert(RunnableType::MainFn, runnable);
         }

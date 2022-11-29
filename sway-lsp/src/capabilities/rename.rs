@@ -1,10 +1,11 @@
+use crate::core::{
+    session::Session,
+    token::{get_range_from_span, AstToken},
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
-
-use crate::core::{session::Session, token::AstToken};
-use crate::utils::token::get_range_from_span;
 
 pub fn rename(
     session: Arc<Session>,
