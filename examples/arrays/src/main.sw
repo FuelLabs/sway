@@ -25,6 +25,10 @@ fn main() {
     ];
 
     // Accessing an element of an array
-    let array_of_bools: [bool; 2] = [true, false];
+    let mut array_of_bools: [bool; 2] = [true, false];
     assert(array_of_bools[0]);
+
+    // Mutating the element of an array
+    array_of_bools[1] = true;
+    assert(array_of_bools[1]);
 }
