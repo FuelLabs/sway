@@ -18,6 +18,7 @@ use crate::{
     },
     metadata::MetadataManager,
     type_system::{LogId, TypeId, TypeInfo},
+    types::DeterministicallyAborts,
     PartialEqWithTypeEngine, TypeEngine,
 };
 use declaration_engine::de_get_function;
@@ -1487,8 +1488,9 @@ impl<'te> FnCompiler<'te> {
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
+        let body_deterministically_aborts = body.deterministically_aborts(false);
         let init_val = self.compile_expression(context, md_mgr, body)?;
-        if init_val.is_diverging(context) {
+        if init_val.is_diverging(context) || body_deterministically_aborts {
             return Ok(Some(init_val));
         }
         let local_name = self.lexical_map.insert(name.as_str().to_owned());

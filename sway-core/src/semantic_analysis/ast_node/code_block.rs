@@ -36,7 +36,7 @@ impl ty::TyCodeBlock {
         let block_type = evaluated_contents
             .iter()
             .find_map(|node| {
-                if node.deterministically_aborts() {
+                if node.deterministically_aborts(true) {
                     Some(ctx.type_engine.insert_type(TypeInfo::Unknown))
                 } else {
                     match node {
