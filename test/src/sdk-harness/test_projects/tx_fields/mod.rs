@@ -517,7 +517,7 @@ mod inputs {
                     .await
                     .unwrap();
                 let messages = wallet.get_messages().await?;
-                let message_id: [u8; 32] = *messages[0].message_id.0 .0;
+                let message_id: [u8; 32] = *messages[0].message_id.0.0;
                 ();
                 assert_eq!(result.value, Bits256(message_id));
                 Ok(())
