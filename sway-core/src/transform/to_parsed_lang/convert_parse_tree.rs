@@ -3281,42 +3281,44 @@ fn item_attrs_to_map(
 ) -> Result<AttributesMap, ErrorEmitted> {
     let mut attrs_map: HashMap<_, Vec<Attribute>> = HashMap::new();
     for attr_decl in attribute_list {
-        let attr = attr_decl.attribute.get();
-        let name = attr.name.as_str();
-        if !VALID_ATTRIBUTE_NAMES.contains(&name) {
-            handler.emit_warn(CompileWarning {
-                span: attr_decl.span().clone(),
-                warning_content: Warning::UnrecognizedAttribute {
-                    attrib_name: attr.name.clone(),
-                },
-            })
-        }
+        let attrs = attr_decl.attribute.get().into_iter();
+        for attr in attrs {
+            let name = attr.name.as_str();
+            if !VALID_ATTRIBUTE_NAMES.contains(&name) {
+                handler.emit_warn(CompileWarning {
+                    span: attr_decl.span().clone(),
+                    warning_content: Warning::UnrecognizedAttribute {
+                        attrib_name: attr.name.clone(),
+                    },
+                })
+            }
 
-        let args = attr
-            .args
-            .as_ref()
-            .map(|parens| parens.get().into_iter().cloned().collect())
-            .unwrap_or_else(Vec::new);
+            let args = attr
+                .args
+                .as_ref()
+                .map(|parens| parens.get().into_iter().cloned().collect())
+                .unwrap_or_else(Vec::new);
 
-        let attribute = Attribute {
-            name: attr.name.clone(),
-            args,
-            span: attr_decl.span(),
-        };
+            let attribute = Attribute {
+                name: attr.name.clone(),
+                args,
+                span: attr_decl.span(),
+            };
 
-        if let Some(attr_kind) = match name {
-            DOC_ATTRIBUTE_NAME => Some(AttributeKind::Doc),
-            STORAGE_PURITY_ATTRIBUTE_NAME => Some(AttributeKind::Storage),
-            INLINE_ATTRIBUTE_NAME => Some(AttributeKind::Inline),
-            TEST_ATTRIBUTE_NAME => Some(AttributeKind::Test),
-            _ => None,
-        } {
-            match attrs_map.get_mut(&attr_kind) {
-                Some(old_args) => {
-                    old_args.push(attribute);
-                }
-                None => {
-                    attrs_map.insert(attr_kind, vec![attribute]);
+            if let Some(attr_kind) = match name {
+                DOC_ATTRIBUTE_NAME => Some(AttributeKind::Doc),
+                STORAGE_PURITY_ATTRIBUTE_NAME => Some(AttributeKind::Storage),
+                INLINE_ATTRIBUTE_NAME => Some(AttributeKind::Inline),
+                TEST_ATTRIBUTE_NAME => Some(AttributeKind::Test),
+                _ => None,
+            } {
+                match attrs_map.get_mut(&attr_kind) {
+                    Some(old_args) => {
+                        old_args.push(attribute);
+                    }
+                    None => {
+                        attrs_map.insert(attr_kind, vec![attribute]);
+                    }
                 }
             }
         }

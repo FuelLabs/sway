@@ -8,7 +8,7 @@ use crate::{
 use std::fmt::Write;
 use sway_ast::{
     attribute::{Annotated, Attribute, AttributeDecl},
-    token::Delimiter,
+    token::{Delimiter, PunctKind},
 };
 use sway_types::Spanned;
 
@@ -40,41 +40,43 @@ impl Format for AttributeDecl {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let attr = self.attribute.get();
-        if attr.name.as_str() == "doc" {
-            if let Some(Some(doc_comment)) = attr
-                .args
-                .as_ref()
-                .map(|args| args.inner.final_value_opt.as_ref())
-            {
-                writeln!(formatted_code, "///{}", doc_comment.as_str().trim_end())?;
+        // `#`
+        write!(formatted_code, "{}", self.hash_token.span().as_str())?;
+        // `[`
+        Self::open_square_bracket(formatted_code, formatter)?;
+        for attr in self.attribute.get().into_iter() {
+            if attr.name.as_str() == "doc" {
+                if let Some(Some(doc_comment)) = attr
+                    .args
+                    .as_ref()
+                    .map(|args| args.inner.final_value_opt.as_ref())
+                {
+                    writeln!(formatted_code, "///{}", doc_comment.as_str().trim_end())?;
+                }
+            } else {
+                formatter.with_shape(
+                    formatter.shape.with_default_code_line(),
+                    |formatter| -> Result<(), FormatterError> {
+                        // name e.g. `storage`
+                        write!(formatted_code, "{}", attr.name.span().as_str())?;
+                        if let Some(args) = &attr.args {
+                            // `(`
+                            Self::open_parenthesis(formatted_code, formatter)?;
+                            // format and add args e.g. `read, write`
+                            args.get().format(formatted_code, formatter)?;
+                            // ')'
+                            Self::close_parenthesis(formatted_code, formatter)?;
+                        };
+                        write!(formatted_code, "{} ", PunctKind::Comma.as_char())?;
+                        Ok(())
+                    },
+                )?;
             }
-        } else {
-            formatter.with_shape(
-                formatter.shape.with_default_code_line(),
-                |formatter| -> Result<(), FormatterError> {
-                    // `#`
-                    write!(formatted_code, "{}", self.hash_token.span().as_str())?;
-                    // `[`
-                    Self::open_square_bracket(formatted_code, formatter)?;
-                    // name e.g. `storage`
-                    write!(formatted_code, "{}", attr.name.span().as_str())?;
-                    if let Some(args) = &attr.args {
-                        // `(`
-                        Self::open_parenthesis(formatted_code, formatter)?;
-                        // format and add args e.g. `read, write`
-                        args.get().format(formatted_code, formatter)?;
-                        // ')'
-                        Self::close_parenthesis(formatted_code, formatter)?;
-                    };
-                    // `]\n`
-                    Self::close_square_bracket(formatted_code, formatter)?;
-
-                    Ok(())
-                },
-            )?;
         }
-
+        formatted_code.pop();
+        formatted_code.pop();
+        // `]\n`
+        Self::close_square_bracket(formatted_code, formatter)?;
         Ok(())
     }
 }

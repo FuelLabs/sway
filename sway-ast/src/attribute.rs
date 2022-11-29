@@ -16,7 +16,7 @@ pub struct Annotated<T> {
 #[derive(Clone, Debug)]
 pub struct AttributeDecl {
     pub hash_token: HashToken,
-    pub attribute: SquareBrackets<Attribute>,
+    pub attribute: SquareBrackets<Punctuated<Attribute, CommaToken>>,
 }
 
 impl Spanned for AttributeDecl {

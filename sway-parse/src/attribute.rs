@@ -40,13 +40,13 @@ impl<T: Parse> Parse for Annotated<T> {
             attribute_list.push(AttributeDecl {
                 hash_token: HashToken::new(doc_comment.span.clone()),
                 attribute: SquareBrackets::new(
-                    Attribute {
+                    Punctuated::single(Attribute {
                         name: Ident::new_with_override("doc", doc_comment.span.clone()),
                         args: Some(Parens::new(
                             Punctuated::single(value),
                             doc_comment.content_span,
                         )),
-                    },
+                    }),
                     doc_comment.span,
                 ),
             });
