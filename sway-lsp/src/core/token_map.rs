@@ -55,6 +55,21 @@ impl TokenMap {
             })
     }
 
+    /// Given a cursor `Position`, return the `Ident` of a token in the
+    /// Iterator if one exists at that position.
+    pub(crate) fn ident_at_position<I>(&self, cursor_position: Position, tokens: I) -> Option<Ident>
+    where
+        I: Iterator<Item = (Ident, Token)>,
+    {
+        for (ident, _) in tokens {
+            let range = utils::token::get_range_from_span(&ident.span());
+            if cursor_position >= range.start && cursor_position <= range.end {
+                return Some(ident);
+            }
+        }
+        None
+    }
+
     /// Check if the code editor's cursor is currently over one of our collected tokens.
     pub(crate) fn token_at_position(
         &self,
@@ -62,7 +77,7 @@ impl TokenMap {
         position: Position,
     ) -> Option<(Ident, Token)> {
         let tokens = self.tokens_for_file(uri);
-        match utils::common::ident_at_position(position, tokens) {
+        match self.ident_at_position(position, tokens) {
             Some(ident) => self.get(&utils::token::to_ident_key(&ident)).map(|item| {
                 let ((ident, _), token) = item.pair();
                 (ident.clone(), token.clone())

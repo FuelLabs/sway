@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::core::token::Token;
-use crate::utils::common::get_range_from_span;
+use crate::utils::token::get_range_from_span;
 use sway_core::language::Literal;
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};

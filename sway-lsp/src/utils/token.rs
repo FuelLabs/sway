@@ -3,7 +3,8 @@ use sway_core::{
     type_system::{TypeId, TypeInfo},
     TypeEngine,
 };
-use sway_types::{ident::Ident, span::Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
+use tower_lsp::lsp_types::{Position, Range};
 
 // Check if the given method is a `core::ops` application desugared from short-hand syntax like / + * - etc.
 pub(crate) fn desugared_op(prefixes: &[Ident]) -> bool {
@@ -49,5 +50,22 @@ pub(crate) fn type_info_to_symbol_kind(
             type_info_to_symbol_kind(type_engine, &type_info)
         }
         _ => SymbolKind::Unknown,
+    }
+}
+
+/// Given a `Span`, convert into an `lsp_types::Range` and return.
+pub(crate) fn get_range_from_span(span: &Span) -> Range {
+    let start = span.start_pos().line_col();
+    let end = span.end_pos().line_col();
+
+    let start_line = start.0 as u32 - 1;
+    let start_character = start.1 as u32 - 1;
+
+    let end_line = end.0 as u32 - 1;
+    let end_character = end.1 as u32 - 1;
+
+    Range {
+        start: Position::new(start_line, start_character),
+        end: Position::new(end_line, end_character),
     }
 }

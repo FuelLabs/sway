@@ -2,7 +2,7 @@ use crate::core::{
     session::Session,
     token::{SymbolKind, Token},
 };
-use crate::utils::common::get_range_from_span;
+use crate::utils::token::get_range_from_span;
 use std::sync::{
     atomic::{AtomicU32, Ordering},
     Arc,

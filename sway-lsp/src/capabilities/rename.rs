@@ -4,7 +4,7 @@ use sway_types::Spanned;
 use tower_lsp::lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
 
 use crate::core::{session::Session, token::AstToken};
-use crate::utils::common::get_range_from_span;
+use crate::utils::token::get_range_from_span;
 
 pub fn rename(
     session: Arc<Session>,

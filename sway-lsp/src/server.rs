@@ -1,10 +1,8 @@
 pub use crate::error::DocumentError;
 use crate::{
     capabilities,
-    core::{
-        config::{Config, Warnings},
-        session::Session,
-    },
+    config::{Config, Warnings},
+    core::session::Session,
     error::{DirectoryError, LanguageServerError},
     utils::{debug, sync},
 };

@@ -1,5 +1,3 @@
-pub(crate) mod config;
-pub(crate) mod dependency;
 pub mod document;
 pub mod session;
 pub(crate) mod token;
