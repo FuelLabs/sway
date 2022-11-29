@@ -159,7 +159,7 @@ impl Backend {
     ) {
         let diagnostics_res = {
             let debug = &self.config.read().debug;
-            let tokens = session.tokens_for_file(uri);
+            let tokens = session.token_map.tokens_for_file(uri);
             match debug.show_collected_tokens_as_warnings {
                 Warnings::Default => diagnostics,
                 // If collected_tokens_as_warnings is Parsed or Typed,

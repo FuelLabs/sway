@@ -7,7 +7,7 @@ use crate::{
     core::{
         dependency,
         document::TextDocument,
-        token::{Token, TypeDefinition},
+        token::Token,
         token_map::TokenMap,
         {traverse_parse_tree, traverse_typed_tree},
     },
@@ -26,7 +26,7 @@ use sway_core::{
     },
     CompileResult, TypeEngine,
 };
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionResponse, Location, Position, Range,
@@ -95,7 +95,7 @@ impl Session {
 
     /// Check if the code editor's cursor is currently over one of our collected tokens.
     pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
-        let tokens = self.tokens_for_file(uri);
+        let tokens = self.token_map.tokens_for_file(uri);
         match utils::common::ident_at_position(position, tokens) {
             Some(ident) => self.token_map.get(&to_ident_key(&ident)).map(|item| {
                 let ((ident, _), token) = item.pair();
@@ -103,69 +103,6 @@ impl Session {
             }),
             None => None,
         }
-    }
-
-    /// Find all references in the session for a given token.
-    ///
-    /// This is useful for the highlighting and renaming LSP capabilities.
-    pub fn all_references_of_token<'s>(
-        &'s self,
-        token: &Token,
-    ) -> impl 's + Iterator<Item = (Ident, Token)> {
-        let current_type_id = self.declared_token_span(token);
-
-        self.token_map
-            .iter()
-            .filter(move |item| {
-                let ((_, _), token) = item.pair();
-                current_type_id == self.declared_token_span(token)
-            })
-            .map(|item| {
-                let ((ident, _), token) = item.pair();
-                (ident.clone(), token.clone())
-            })
-    }
-
-    /// Return a TokenMap with tokens belonging to the provided file path
-    pub fn tokens_for_file<'s>(
-        &'s self,
-        uri: &'s Url,
-    ) -> impl 's + Iterator<Item = (Ident, Token)> {
-        self.token_map
-            .iter()
-            .filter(|item| {
-                let (_, span) = item.key();
-                match span.path() {
-                    Some(path) => path.to_str() == Some(uri.path()),
-                    None => false,
-                }
-            })
-            .map(|item| {
-                let ((ident, _), token) = item.pair();
-                (ident.clone(), token.clone())
-            })
-    }
-
-    /// Return the `Ident` of the declaration of the provided token.
-    pub fn declared_token_ident(&self, token: &Token) -> Option<Ident> {
-        token.type_def.as_ref().and_then(|type_def| match type_def {
-            TypeDefinition::TypeId(type_id) => {
-                utils::token::ident_of_type_id(&self.type_engine.read(), type_id)
-            }
-            TypeDefinition::Ident(ident) => Some(ident.clone()),
-        })
-    }
-
-    /// Return the `Span` of the declaration of the provided token. This is useful for
-    /// performaing == comparisons on spans. We need to do this instead of comparing
-    /// the `Ident` because the `Ident` eq is only comparing the str name.
-    pub fn declared_token_span(&self, token: &Token) -> Option<Span> {
-        token.type_def.as_ref().and_then(|type_def| match type_def {
-            TypeDefinition::TypeId(type_id) => {
-                Some(utils::token::ident_of_type_id(&self.type_engine.read(), type_id)?.span())
-            }
-            TypeDefinition::Ident(ident) => Some(ident.span()),
-        })
     }
 
     /// Return a reference to the `TokenMap` of the current session.
@@ -396,7 +333,8 @@ impl Session {
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
         let (_, token) = self.token_at_position(url, position)?;
         let token_ranges = self
-            .all_references_of_token(&token)
+            .token_map()
+            .all_references_of_token(&token, &self.type_engine.read())
             .map(|(ident, _)| utils::common::get_range_from_span(&ident.span()))
             .collect();
 
@@ -409,7 +347,7 @@ impl Session {
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
         self.token_at_position(&uri, position)
-            .and_then(|(_, token)| self.declared_token_ident(&token))
+            .and_then(|(_, token)| token.declared_token_ident(&self.type_engine.read()))
             .and_then(|decl_ident| {
                 let range = utils::common::get_range_from_span(&decl_ident.span());
                 decl_ident.span().path().and_then(|path| {
@@ -430,7 +368,7 @@ impl Session {
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
-        let tokens = self.tokens_for_file(url);
+        let tokens = self.token_map.tokens_for_file(url);
         self.sync
             .to_workspace_url(url.clone())
             .map(|url| capabilities::document_symbol::to_symbol_information(tokens, url))

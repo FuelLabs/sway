@@ -21,7 +21,7 @@ use tower_lsp::lsp_types::{self, Position, Url};
 pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option<lsp_types::Hover> {
     let (ident, token) = session.token_at_position(&url, position)?;
     let range = get_range_from_span(&ident.span());
-    let (decl_ident, decl_token) = match session.declared_token_ident(&token) {
+    let (decl_ident, decl_token) = match token.declared_token_ident(&session.type_engine.read()) {
         Some(decl_ident) => {
             let decl_token = session
                 .token_map()

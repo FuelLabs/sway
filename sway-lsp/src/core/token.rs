@@ -1,3 +1,4 @@
+use crate::utils;
 use sway_core::{
     language::{
         parsed::{
@@ -8,8 +9,9 @@ use sway_core::{
         ty,
     },
     type_system::TypeId,
+    TypeEngine,
 };
-use sway_types::Ident;
+use sway_types::{Ident, Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub enum TypeDefinition {
@@ -36,6 +38,26 @@ impl Token {
             type_def: None,
             kind,
         }
+    }
+
+    /// Return the `Ident` of the declaration of the provided token.
+    pub fn declared_token_ident(&self, type_engine: &TypeEngine) -> Option<Ident> {
+        self.type_def.as_ref().and_then(|type_def| match type_def {
+            TypeDefinition::TypeId(type_id) => utils::token::ident_of_type_id(type_engine, type_id),
+            TypeDefinition::Ident(ident) => Some(ident.clone()),
+        })
+    }
+
+    /// Return the `Span` of the declaration of the provided token. This is useful for
+    /// performaing == comparisons on spans. We need to do this instead of comparing
+    /// the `Ident` because the `Ident` eq is only comparing the str name.
+    pub fn declared_token_span(&self, type_engine: &TypeEngine) -> Option<Span> {
+        self.type_def.as_ref().and_then(|type_def| match type_def {
+            TypeDefinition::TypeId(type_id) => {
+                Some(utils::token::ident_of_type_id(type_engine, type_id)?.span())
+            }
+            TypeDefinition::Ident(ident) => Some(ident.span()),
+        })
     }
 }
 
