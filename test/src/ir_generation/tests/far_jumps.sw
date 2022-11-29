@@ -47,40 +47,17 @@ fn b() -> bool {
 
 // regex: REG=\$r\d+
 
-// We want to see the blob and then no JNZI or JNEI.
-// check: blob
+// This test is solved via code relocation.  So a() and the blob should be moved to beyond the
+// control flow and keep the rest of b() in the sub 1MB space.
+
+// Some conditional flow.
+// check: jnzi
+
+// The guts of a() with the blob.
+// check: blob i262200
+// check: movi $(ret_reg=$REG) i1
+// check: move $$$$retv $ret_reg
+
+// Now we don't want to see any conditional control flow.
 // not: jnzi
 // not: jnei
-
-// The maximum offset available with 18 bits is 262144.  So JNZI can't jump to an address larger
-// than this.  Below those larger addresses are stored in the data section, and they're matched with
-// i2622xx (specifically i2622$()), giving a bit of leeway in case slight changes to code gen move
-// things around slightly.
-
-// Calling t() - save $reta from the data section, but we're still able to call directly with JI.
-// check: lw   $$$$reta data_0
-// check: ji   i2622$()
-
-// Some local control flow using addresses from the data section.
-// check: lw   $$$$tmp data_1
-// nextln: jne  $REG $$zero $$$$tmp
-
-// Calling t() again.
-// check: lw   $$$$reta data_2
-// check: ji   i2622$()
-
-// check: lw   $$$$tmp data_3
-// nextln: jne  $REG $$zero $$$$tmp
-
-// check: lw   $$$$reta data_4
-// check: ji   i2622$()
-
-// check: lw   $$$$reta data_5
-// check: ji   i2622$()
-
-// check: data_0 .word 2622$()
-// check: data_1 .word 2622$()
-// check: data_2 .word 2622$()
-// check: data_3 .word 2622$()
-// check: data_4 .word 2622$()
-// check: data_5 .word 2622$()
