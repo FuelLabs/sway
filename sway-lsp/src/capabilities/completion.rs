@@ -1,5 +1,7 @@
-use crate::core::{token::SymbolKind, token_map::TokenMap};
-use crate::utils::token::is_initial_declaration;
+use crate::core::{
+    token::{AstToken, SymbolKind, Token, TypedAstToken},
+    token_map::TokenMap,
+};
 use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind};
 
 pub fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
@@ -18,6 +20,23 @@ pub fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
     }
 
     completion_items
+}
+
+fn is_initial_declaration(token_type: &Token) -> bool {
+    match &token_type.typed {
+        Some(typed_ast_token) => {
+            matches!(
+                typed_ast_token,
+                TypedAstToken::TypedDeclaration(_) | TypedAstToken::TypedFunctionDeclaration(_)
+            )
+        }
+        None => {
+            matches!(
+                token_type.parsed,
+                AstToken::Declaration(_) | AstToken::FunctionDeclaration(_)
+            )
+        }
+    }
 }
 
 /// Given a `SymbolKind`, return the `lsp_types::CompletionItemKind` that corresponds to it.

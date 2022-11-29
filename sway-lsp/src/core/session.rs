@@ -7,12 +7,11 @@ use crate::{
     core::{
         dependency,
         document::TextDocument,
-        token::Token,
         token_map::TokenMap,
         {traverse_parse_tree, traverse_typed_tree},
     },
     error::{DocumentError, LanguageServerError},
-    utils::{self, sync::SyncWorkspace, token::to_ident_key},
+    utils::{self, sync::SyncWorkspace},
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
@@ -26,7 +25,7 @@ use sway_core::{
     },
     CompileResult, TypeEngine,
 };
-use sway_types::{Ident, Spanned};
+use sway_types::Spanned;
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, GotoDefinitionResponse, Location, Position, Range,
@@ -93,41 +92,9 @@ impl Session {
         self.sync.remove_temp_dir();
     }
 
-    /// Check if the code editor's cursor is currently over one of our collected tokens.
-    pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
-        let tokens = self.token_map.tokens_for_file(uri);
-        match utils::common::ident_at_position(position, tokens) {
-            Some(ident) => self.token_map.get(&to_ident_key(&ident)).map(|item| {
-                let ((ident, _), token) = item.pair();
-                (ident.clone(), token.clone())
-            }),
-            None => None,
-        }
-    }
-
     /// Return a reference to the `TokenMap` of the current session.
     pub fn token_map(&self) -> &TokenMap {
         &self.token_map
-    }
-
-    /// Store the text document in the session.
-    pub fn store_document(&self, text_document: TextDocument) -> Result<(), DocumentError> {
-        let uri = text_document.get_uri().to_string();
-        self.documents
-            .insert(uri.clone(), text_document)
-            .map_or(Ok(()), |_| {
-                Err(DocumentError::DocumentAlreadyStored { path: uri })
-            })
-    }
-
-    /// Remove the text document from the session.
-    pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
-        self.documents
-            .remove(url.path())
-            .ok_or_else(|| DocumentError::DocumentNotFound {
-                path: url.path().to_string(),
-            })
-            .map(|(_, text_document)| text_document)
     }
 
     pub fn parse_project(&self, uri: &Url) -> Result<Vec<Diagnostic>, LanguageServerError> {
@@ -281,59 +248,10 @@ impl Session {
             })
     }
 
-    /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
-    pub fn create_runnables(&self, typed_program: &ty::TyProgram) {
-        if let ty::TyProgramKind::Script {
-            ref main_function, ..
-        } = typed_program.kind
-        {
-            let main_fn_location = utils::common::get_range_from_span(&main_function.name.span());
-            let runnable = Runnable::new(main_fn_location, typed_program.kind.tree_type());
-            self.runnables.insert(RunnableType::MainFn, runnable);
-        }
-    }
-
-    /// Save the `ParseProgram` AST in the session.
-    pub fn save_parse_program(&self, parse_program: ParseProgram) {
-        let mut program = self.compiled_program.write();
-        program.parsed = Some(parse_program);
-    }
-
-    /// Save the `TyProgram` AST in the session.
-    pub fn save_typed_program(&self, typed_program: ty::TyProgram) {
-        let mut program = self.compiled_program.write();
-        program.typed = Some(typed_program);
-    }
-
-    pub fn contains_sway_file(&self, url: &Url) -> bool {
-        self.documents.contains_key(url.path())
-    }
-
-    pub fn handle_open_file(&self, uri: &Url) {
-        if !self.contains_sway_file(uri) {
-            if let Ok(text_document) = TextDocument::build_from_path(uri.path()) {
-                let _ = self.store_document(text_document);
-            }
-        }
-    }
-
-    pub fn update_text_document(
-        &self,
-        url: &Url,
-        changes: Vec<TextDocumentContentChangeEvent>,
-    ) -> Option<String> {
-        self.documents.get_mut(url.path()).map(|mut document| {
-            changes.iter().for_each(|change| {
-                document.apply_change(change);
-            });
-            document.get_text()
-        })
-    }
-
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
-        let (_, token) = self.token_at_position(url, position)?;
+        let (_, token) = self.token_map.token_at_position(url, position)?;
         let token_ranges = self
-            .token_map()
+            .token_map
             .all_references_of_token(&token, &self.type_engine.read())
             .map(|(ident, _)| utils::common::get_range_from_span(&ident.span()))
             .collect();
@@ -346,7 +264,8 @@ impl Session {
         uri: Url,
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
-        self.token_at_position(&uri, position)
+        self.token_map
+            .token_at_position(&uri, position)
             .and_then(|(_, token)| token.declared_token_ident(&self.type_engine.read()))
             .and_then(|decl_ident| {
                 let range = utils::common::get_range_from_span(&decl_ident.span());
@@ -393,6 +312,75 @@ impl Session {
             self.store_document(TextDocument::build_from_path(path)?)?;
         }
         Ok(())
+    }
+
+    pub fn contains_sway_file(&self, url: &Url) -> bool {
+        self.documents.contains_key(url.path())
+    }
+
+    pub fn handle_open_file(&self, uri: &Url) {
+        if !self.contains_sway_file(uri) {
+            if let Ok(text_document) = TextDocument::build_from_path(uri.path()) {
+                let _ = self.store_document(text_document);
+            }
+        }
+    }
+
+    pub fn update_text_document(
+        &self,
+        url: &Url,
+        changes: Vec<TextDocumentContentChangeEvent>,
+    ) -> Option<String> {
+        self.documents.get_mut(url.path()).map(|mut document| {
+            changes.iter().for_each(|change| {
+                document.apply_change(change);
+            });
+            document.get_text()
+        })
+    }
+
+    /// Remove the text document from the session.
+    pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
+        self.documents
+            .remove(url.path())
+            .ok_or_else(|| DocumentError::DocumentNotFound {
+                path: url.path().to_string(),
+            })
+            .map(|(_, text_document)| text_document)
+    }
+
+    /// Store the text document in the session.
+    fn store_document(&self, text_document: TextDocument) -> Result<(), DocumentError> {
+        let uri = text_document.get_uri().to_string();
+        self.documents
+            .insert(uri.clone(), text_document)
+            .map_or(Ok(()), |_| {
+                Err(DocumentError::DocumentAlreadyStored { path: uri })
+            })
+    }
+
+    /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
+    fn create_runnables(&self, typed_program: &ty::TyProgram) {
+        if let ty::TyProgramKind::Script {
+            ref main_function, ..
+        } = typed_program.kind
+        {
+            let main_fn_location = utils::common::get_range_from_span(&main_function.name.span());
+            let runnable = Runnable::new(main_fn_location, typed_program.kind.tree_type());
+            self.runnables.insert(RunnableType::MainFn, runnable);
+        }
+    }
+
+    /// Save the `ParseProgram` AST in the session.
+    fn save_parse_program(&self, parse_program: ParseProgram) {
+        let mut program = self.compiled_program.write();
+        program.parsed = Some(parse_program);
+    }
+
+    /// Save the `TyProgram` AST in the session.
+    fn save_typed_program(&self, typed_program: ty::TyProgram) {
+        let mut program = self.compiled_program.write();
+        program.typed = Some(typed_program);
     }
 }
 

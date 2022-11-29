@@ -12,7 +12,7 @@ pub fn rename(
     url: Url,
     position: Position,
 ) -> Option<WorkspaceEdit> {
-    let (_, token) = session.token_at_position(&url, position)?;
+    let (_, token) = session.token_map().token_at_position(&url, position)?;
     let mut edits = Vec::new();
 
     // todo: currently only supports single file rename
@@ -36,7 +36,7 @@ pub fn prepare_rename(
     url: Url,
     position: Position,
 ) -> Option<PrepareRenameResponse> {
-    let (ident, token) = session.token_at_position(&url, position)?;
+    let (ident, token) = session.token_map().token_at_position(&url, position)?;
     match token.parsed {
         AstToken::Reassignment(_) => None,
         _ => Some(PrepareRenameResponse::RangeWithPlaceholder {

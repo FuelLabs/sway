@@ -5,7 +5,7 @@ use crate::{
         token::{TypeDefinition, TypedAstToken},
         token_map::TokenMap,
     },
-    utils::token::{struct_declaration_of_type_id, to_ident_key},
+    utils::token::to_ident_key,
 };
 use sway_core::{
     declaration_engine::{self, de_get_function},
@@ -319,7 +319,7 @@ fn handle_expression(type_engine: &TypeEngine, expression: &ty::TyExpression, to
                     token.typed = Some(TypedAstToken::TypedExpression(field.value.clone()));
 
                     if let Some(struct_decl) =
-                        &struct_declaration_of_type_id(type_engine, &expression.return_type, tokens)
+                        &tokens.struct_declaration_of_type_id(type_engine, &expression.return_type)
                     {
                         for decl_field in &struct_decl.fields {
                             if decl_field.name == field.name {
@@ -446,11 +446,9 @@ fn handle_expression(type_engine: &TypeEngine, expression: &ty::TyExpression, to
                     if let Some(mut token) = tokens.get_mut(&to_ident_key(name)) {
                         token.typed =
                             Some(TypedAstToken::TypedReassignment((**reassignment).clone()));
-                        if let Some(struct_decl) = &struct_declaration_of_type_id(
-                            type_engine,
-                            &reassignment.lhs_type,
-                            tokens,
-                        ) {
+                        if let Some(struct_decl) = &tokens
+                            .struct_declaration_of_type_id(type_engine, &reassignment.lhs_type)
+                        {
                             for decl_field in &struct_decl.fields {
                                 if &decl_field.name == name {
                                     token.type_def =
