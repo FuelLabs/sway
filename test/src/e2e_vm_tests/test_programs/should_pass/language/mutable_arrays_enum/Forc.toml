@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "mutable_arrays_enum"
+entry = "main.sw"
+
+
+[dependencies]
+core = { path = "../../../../../../../sway-lib-core" }

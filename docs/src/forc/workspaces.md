@@ -16,6 +16,7 @@ Workspace manifests are declared within `Forc.toml` files and support the follow
 The `members` field defines which packages are members of the workspace:
 
 ```toml
+[workspace]
 members = ["member1", "path/to/member2"]
 ```
 
