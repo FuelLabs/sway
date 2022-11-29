@@ -73,7 +73,6 @@ pub enum TypedAstToken {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SymbolKind {
-    // Abi,
     Field,
     ValueParam,
     Function,
