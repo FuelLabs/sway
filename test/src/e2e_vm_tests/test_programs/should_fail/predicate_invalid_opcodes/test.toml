@@ -56,6 +56,4 @@ category = "fail"
 # check: tr r1 r2 r3;
 # nextln: $()The TR opcode cannot be used in a predicate.
 
-# check: $()The JI opcode cannot jump backwards in a predicate.
-
 
