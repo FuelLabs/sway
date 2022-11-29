@@ -190,6 +190,47 @@ impl Bytes {
         Option::Some(item_ptr.read_byte())
     }
 
+    /// Updates an element at position `index` with a new element `value`
+    ///
+    /// ### Arguments
+    ///
+    /// * index - The index of the element to be set
+    /// * value - The value of the element to be set
+    ///
+    /// ### Reverts
+    ///
+    /// * If `index` is greater than or equal to the length of Bytes.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// let bytes = Bytes::new();
+    /// let a = 5u8;
+    /// let b = 7u8;
+    /// let c = 9u8;
+    /// bytes.push(a);
+    /// bytes.push(b);
+    /// bytes.push(c);
+    ///
+    /// let d = 11u8;
+    ///
+    /// bytes.set(1, d);
+    ///
+    /// assert(bytes.len() == 3);
+    /// assert(bytes.get(0).unwrap() == a);
+    /// assert(bytes.get(1).unwrap() == d);
+    /// assert(bytes.get(2).unwrap() == c);
+    /// ```
+    pub fn set(ref mut self, index: u64, value: u8) {
+        assert(index < self.len);
+
+        let index_ptr = self.buf.ptr().add_uint_offset(index);
+
+        index_ptr.write_byte(value);
+    }
+
     /// Inserts an element at position `index` within the Bytes, shifting all
     /// elements after it to the right.
     ///
@@ -339,47 +380,6 @@ impl Bytes {
         element2_ptr.write_byte(element1_val);
     }
 
-    /// Updates an element at position `index` with a new element `value`
-    ///
-    /// ### Arguments
-    ///
-    /// * index - The index of the element to be set
-    /// * value - The value of the element to be set
-    ///
-    /// ### Reverts
-    ///
-    /// * If `index` is greater than or equal to the length of Bytes.
-    ///
-    /// ### Examples
-    ///
-    /// ```sway
-    /// use std::bytes::Bytes;
-    ///
-    /// let bytes = Bytes::new();
-    /// let a = 5u8;
-    /// let b = 7u8;
-    /// let c = 9u8;
-    /// bytes.push(a);
-    /// bytes.push(b);
-    /// bytes.push(c);
-    ///
-    /// let d = 11u8;
-    ///
-    /// bytes.set(1, d);
-    ///
-    /// assert(bytes.len() == 3);
-    /// assert(bytes.get(0).unwrap() == a);
-    /// assert(bytes.get(1).unwrap() == d);
-    /// assert(bytes.get(2).unwrap() == c);
-    /// ```
-    pub fn set(ref mut self, index: u64, value: u8) {
-        assert(index < self.len);
-
-        let index_ptr = self.buf.ptr().add_uint_offset(index);
-
-        index_ptr.write_byte(value);
-    }
-
     /// Gets the capacity of the allocation.
     ///
     /// ### Examples
@@ -506,6 +506,46 @@ impl Bytes {
             i += 1;
         };
         vec
+    }
+
+    pub fn split(self, index: u64) -> (Bytes, Bytes) {
+        // TODO: handle edge cases:
+        // index == 0 (also handles the self.len() == 1 case)
+        // index == self.len() - maybe we say index must be < self.len - 1
+        // @todo check rust impl for this type of thing
+        assert(index < self.len());
+        let mut first = Bytes::with_capacity(index);
+        let mut second = Bytes::with_capacity(self.len() - index);
+        let mut i = 0;
+        while i < index {
+            first.push(self.get(i).unwrap());
+            i += 1;
+        };
+
+        let mut i2 = index;
+        while i2 < self.len {
+            second.push(self.get(i2).unwrap());
+            i2 += 1;
+        };
+        (first, second)
+    }
+
+    pub fn join(ref mut self, other: self) -> Self {
+        let mut joined = Bytes::with_capacity(self.len + other.len);
+
+        let mut i = 0;
+        while i < self.len() {
+            joined.push(self.get(i).unwrap());
+            i += 1;
+        };
+
+        let mut i2 = 0;
+        while i2 < other.len() {
+            joined.push(other.get(i2).unwrap());
+            i2 += 1;
+        };
+
+        joined
     }
 }
 
@@ -738,4 +778,40 @@ fn test_bytes_limits() {
     assert(bytes.get(3).unwrap() == min);
     assert(bytes.get(4).unwrap() == max);
     assert(bytes.get(5).unwrap() == min);
+}
+
+#[test()]
+fn test_split() {
+    let (mut bytes, a, b, c) = setup();
+    assert(bytes.len() == 3);
+    let index = 1;
+    let (first, second) = bytes.split(index);
+    assert(first.capacity() == index);
+    assert(second.capacity() == bytes.len() - index);
+    assert(first.len() == 1);
+    assert(second.len() == 2);
+}
+
+#[test()]
+fn test_join() {
+    let (mut bytes, a, b, c) = setup();
+    let mut bytes2 = Bytes::new();
+    let d = 5u8;
+    let e = 7u8;
+    let f = 9u8;
+    bytes2.push(d);
+    bytes2.push(e);
+    bytes2.push(f);
+    assert(bytes.len() == 3);
+    assert(bytes2.len() == 3);
+
+    let mut joined = bytes.join(bytes2);
+    assert(joined.len() == bytes.len() + bytes2.len());
+    assert(joined.capacity() == 8);
+    assert(joined.pop().unwrap() == d);
+    // let values = [a, b, c, d, e, f];
+    // let mut i = 0;
+    // while 1 < 6 {
+    //     assert(joined.get(i).unwrap() == values[i]);
+    // };
 }
