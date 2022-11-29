@@ -348,9 +348,14 @@ impl<'te> FnCompiler<'te> {
                 self.compile_unsafe_downcast(context, md_mgr, exp, variant)
             }
             ty::TyExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, md_mgr, exp),
-            ty::TyExpressionVariant::WhileLoop { body, condition } => {
-                self.compile_while_loop(context, md_mgr, body, *condition, span_md_idx)
-            }
+            ty::TyExpressionVariant::WhileLoop { body, condition } => self.compile_while_loop(
+                context,
+                md_mgr,
+                body,
+                *condition,
+                span_md_idx,
+                ast_expr.span,
+            ),
             ty::TyExpressionVariant::Break => {
                 match self.block_to_break_to {
                     // If `self.block_to_break_to` is not None, then it has been set inside
@@ -1316,7 +1321,14 @@ impl<'te> FnCompiler<'te> {
         body: ty::TyCodeBlock,
         condition: ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
+        span: Span,
     ) -> Result<Value, CompileError> {
+        // Throw an error if the while loop is used in a predicate module.
+        let module = context.module_iter().next().unwrap();
+        if module.get_kind(context) == Kind::Predicate {
+            return Err(CompileError::DisallowedWhileInPredicate { span });
+        }
+
         // We're dancing around a bit here to make the blocks sit in the right order.  Ideally we
         // have the cond block, followed by the body block which may contain other blocks, and the
         // final block comes after any body block(s).
