@@ -8,19 +8,11 @@ enum FizzBuzzResult {
 }
 
 abi FizzBuzz {
-    fn fizzbuzz(input: u64) -> FizzBuzzResult;
-}
-
-impl FizzBuzz for Contract {
-    fn fizzbuzz(input: u64) -> FizzBuzzResult {
-        if input % 15 == 0 {
-            FizzBuzzResult::FizzBuzz
-        } else if input % 3 == 0 {
-            FizzBuzzResult::Fizz
-        } else if input % 5 == 0 {
-            FizzBuzzResult::Buzz
-        } else {
-            FizzBuzzResult::Other(input)
-        }
-    }
+    #[storage(read)]
+    fn fizzbuzz(input: u64, input2: u32) -> FizzBuzzResult;
+    #[storage(read, write)]
+    fn fizzbuzz2(input: u64, input3: FizzBuzzResult) -> FizzBuzzResult;
+    #[storage(write, read)]
+    fn fizzbuzz3(input: u64, input3: FizzBuzzResult) -> FizzBuzzResult;
+    fn fizzbuzz4(input: u64) -> FizzBuzzResult;
 }
