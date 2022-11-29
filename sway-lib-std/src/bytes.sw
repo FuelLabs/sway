@@ -598,20 +598,40 @@ fn test_push() {
 fn test_pop() {
     let (mut bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
+    bytes.push(42u8);
+    bytes.push(11u8);
+    bytes.push(69u8);
+    bytes.push(100u8);
+    bytes.push(200u8);
+    bytes.push(255u8);
+    bytes.push(180u8);
+    bytes.push(17u8);
+    bytes.push(19u8);
+    assert(bytes.len() == 12);
 
     let first = bytes.pop();
-    assert(first.unwrap() == c);
-    assert(bytes.len() == 2);
+    assert(first.unwrap() == 19u8);
+    assert(bytes.len() == 11);
 
     let second = bytes.pop();
-    assert(second.unwrap() == b);
-    assert(bytes.len() == 1);
+    assert(second.unwrap() == 17u8);
+    assert(bytes.len() == 10);
 
     let third = bytes.pop();
-    assert(third.unwrap() == a);
-    assert(bytes.len() == 0);
-
+    assert(third.unwrap() == 180u8);
+    assert(bytes.len() == 9);
+    bytes.pop();
+    bytes.pop();
+    bytes.pop();
+    bytes.pop();
+    bytes.pop();
+    bytes.pop();
+    assert(bytes.len() == 3);
+    assert(bytes.pop().unwrap() == c);
+    assert(bytes.pop().unwrap() == b);
+    assert(bytes.pop().unwrap() == a);
     assert(bytes.pop().is_none() == true);
+    assert(bytes.len() == 0);
 }
 #[test()]
 fn test_len() {
