@@ -800,6 +800,9 @@ impl DisplayWithTypeEngine for TyExpressionVariant {
                         ProjectionKind::TupleField { index, .. } => {
                             write!(&mut place, "{}", index).unwrap();
                         }
+                        ProjectionKind::ArrayIndex { index, .. } => {
+                            write!(&mut place, "{:#?}", index).unwrap();
+                        }
                     }
                 }
                 format!("reassignment to {}", place)
