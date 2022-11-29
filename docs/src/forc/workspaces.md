@@ -18,6 +18,7 @@ An empty workspace can be created with `forc new --workspace` or `forc init --wo
 The `members` field defines which packages are members of the workspace:
 
 ```toml
+[workspace]
 members = ["member1", "path/to/member2"]
 ```
 

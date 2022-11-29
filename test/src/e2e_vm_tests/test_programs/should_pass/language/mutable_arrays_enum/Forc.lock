@@ -1,0 +1,8 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-B216E59DF5F0BD4C'
+
+[[package]]
+name = 'mutable_arrays_enum'
+source = 'member'
+dependencies = ['core']

@@ -23,7 +23,8 @@ impl ty::TyProgram {
         initial_namespace: namespace::Module,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx = TypeCheckContext::from_root(&mut namespace, type_engine);
+        let ctx =
+            TypeCheckContext::from_root(&mut namespace, type_engine).with_kind(parsed.kind.clone());
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
         let mod_res = ty::TyModule::type_check(ctx, root);
