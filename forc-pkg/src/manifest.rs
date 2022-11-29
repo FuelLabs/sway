@@ -660,6 +660,12 @@ pub struct WorkspaceManifestFile {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct WorkspaceManifest {
+    workspace: Workspace,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "kebab-case")]
+pub struct Workspace {
     pub members: Vec<PathBuf>,
 }
 
@@ -692,14 +698,18 @@ impl WorkspaceManifestFile {
 
     /// Returns an iterator over relative paths of workspace members.
     pub fn members(&self) -> impl Iterator<Item = &PathBuf> + '_ {
-        self.members.iter()
+        self.workspace.members.iter()
     }
 
     /// Returns an iterator over workspace member root directories.
     ///
     /// This will always return canonical paths.
     pub fn member_paths(&self) -> Result<impl Iterator<Item = PathBuf> + '_> {
-        Ok(self.members.iter().map(|member| self.dir().join(member)))
+        Ok(self
+            .workspace
+            .members
+            .iter()
+            .map(|member| self.dir().join(member)))
     }
 
     /// Returns an iterator over workspace member package manifests.
@@ -764,7 +774,7 @@ impl WorkspaceManifest {
     ///
     /// This checks if the listed members in the `WorkspaceManifest` are indeed in the given `Forc.toml`'s directory.
     pub fn validate(&self, path: &Path) -> Result<()> {
-        for member in self.members.iter() {
+        for member in self.workspace.members.iter() {
             let member_path = path.join(member).join("Forc.toml");
             if !member_path.exists() {
                 bail!(
