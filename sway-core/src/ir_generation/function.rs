@@ -15,7 +15,7 @@ use crate::{
     language::{ty, *},
     metadata::MetadataManager,
     type_system::{LogId, TypeId, TypeInfo},
-    PartialEqWithTypeEngine, TypeEngine,
+    PartialEqWithTypeEngine, TypeEngine, types::DeterministicallyAborts,
 };
 use declaration_engine::de_get_function;
 use sway_ast::intrinsics::Intrinsic;
@@ -1472,8 +1472,9 @@ impl<'te> FnCompiler<'te> {
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
+        let body_deterministically_aborts = body.deterministically_aborts(false);
         let init_val = self.compile_expression(context, md_mgr, body)?;
-        if init_val.is_diverging(context) {
+        if init_val.is_diverging(context) || body_deterministically_aborts {
             return Ok(Some(init_val));
         }
         let local_name = self.lexical_map.insert(name.as_str().to_owned());

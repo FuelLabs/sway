@@ -394,7 +394,7 @@ impl CollectTypesMetadata for TyExpression {
 }
 
 impl DeterministicallyAborts for TyExpression {
-    fn deterministically_aborts(&self) -> bool {
+    fn deterministically_aborts(&self, fn_calls_inlined: bool) -> bool {
         use TyExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
@@ -402,39 +402,42 @@ impl DeterministicallyAborts for TyExpression {
                 arguments,
                 ..
             } => {
+                if !fn_calls_inlined {
+                    return false;
+                }
                 let function_decl = match de_get_function(function_decl_id.clone(), &self.span) {
                     Ok(decl) => decl,
                     Err(_e) => panic!("failed to get function"),
                 };
-                function_decl.body.deterministically_aborts()
-                    || arguments.iter().any(|(_, x)| x.deterministically_aborts())
+                function_decl.body.deterministically_aborts(fn_calls_inlined)
+                    || arguments.iter().any(|(_, x)| x.deterministically_aborts(fn_calls_inlined))
             }
-            Tuple { fields, .. } => fields.iter().any(|x| x.deterministically_aborts()),
-            Array { contents, .. } => contents.iter().any(|x| x.deterministically_aborts()),
-            CodeBlock(contents) => contents.deterministically_aborts(),
-            LazyOperator { lhs, .. } => lhs.deterministically_aborts(),
+            Tuple { fields, .. } => fields.iter().any(|x| x.deterministically_aborts(fn_calls_inlined)),
+            Array { contents, .. } => contents.iter().any(|x| x.deterministically_aborts(fn_calls_inlined)),
+            CodeBlock(contents) => contents.deterministically_aborts(fn_calls_inlined),
+            LazyOperator { lhs, .. } => lhs.deterministically_aborts(fn_calls_inlined),
             StructExpression { fields, .. } => {
-                fields.iter().any(|x| x.value.deterministically_aborts())
+                fields.iter().any(|x| x.value.deterministically_aborts(fn_calls_inlined))
             }
             EnumInstantiation { contents, .. } => contents
                 .as_ref()
-                .map(|x| x.deterministically_aborts())
+                .map(|x| x.deterministically_aborts(fn_calls_inlined))
                 .unwrap_or(false),
-            AbiCast { address, .. } => address.deterministically_aborts(),
+            AbiCast { address, .. } => address.deterministically_aborts(fn_calls_inlined),
             StructFieldAccess { .. }
             | Literal(_)
             | StorageAccess { .. }
             | VariableExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
-            IntrinsicFunction(kind) => kind.deterministically_aborts(),
+            IntrinsicFunction(kind) => kind.deterministically_aborts(fn_calls_inlined),
             ArrayIndex { prefix, index } => {
-                prefix.deterministically_aborts() || index.deterministically_aborts()
+                prefix.deterministically_aborts(fn_calls_inlined) || index.deterministically_aborts(fn_calls_inlined)
             }
             AsmExpression { registers, .. } => registers.iter().any(|x| {
                 x.initializer
                     .as_ref()
-                    .map(|x| x.deterministically_aborts())
+                    .map(|x| x.deterministically_aborts(fn_calls_inlined))
                     .unwrap_or(false)
             }),
             IfExp {
@@ -443,24 +446,24 @@ impl DeterministicallyAborts for TyExpression {
                 r#else,
                 ..
             } => {
-                condition.deterministically_aborts()
-                    || (then.deterministically_aborts()
+                condition.deterministically_aborts(fn_calls_inlined)
+                    || (then.deterministically_aborts(fn_calls_inlined)
                         && r#else
                             .as_ref()
-                            .map(|x| x.deterministically_aborts())
+                            .map(|x| x.deterministically_aborts(fn_calls_inlined))
                             .unwrap_or(false))
             }
             AbiName(_) => false,
-            EnumTag { exp } => exp.deterministically_aborts(),
-            UnsafeDowncast { exp, .. } => exp.deterministically_aborts(),
+            EnumTag { exp } => exp.deterministically_aborts(fn_calls_inlined),
+            UnsafeDowncast { exp, .. } => exp.deterministically_aborts(fn_calls_inlined),
             WhileLoop { condition, body } => {
-                condition.deterministically_aborts() || body.deterministically_aborts()
+                condition.deterministically_aborts(fn_calls_inlined) || body.deterministically_aborts(fn_calls_inlined)
             }
             Break => false,
             Continue => false,
-            Reassignment(reassignment) => reassignment.rhs.deterministically_aborts(),
+            Reassignment(reassignment) => reassignment.rhs.deterministically_aborts(fn_calls_inlined),
             StorageReassignment(storage_reassignment) => {
-                storage_reassignment.rhs.deterministically_aborts()
+                storage_reassignment.rhs.deterministically_aborts(fn_calls_inlined)
             }
             // TODO: Is this correct?
             // I'm not sure what this function is supposed to do exactly. It's called
