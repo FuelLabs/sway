@@ -4,13 +4,9 @@ use crate::{
         formatting::get_page_text_edit,
         runnable::{Runnable, RunnableType},
     },
-    core::{
-        dependency,
-        document::TextDocument,
-        token_map::TokenMap,
-        {traverse_parse_tree, traverse_typed_tree},
-    },
+    core::{dependency, document::TextDocument, token_map::TokenMap},
     error::{DocumentError, LanguageServerError},
+    traverse,
     utils::{self, sync::SyncWorkspace},
 };
 use dashmap::DashMap;
@@ -159,13 +155,13 @@ impl Session {
             if i == results_len - 1 {
                 // First, populate our token_map with un-typed ast nodes.
                 self.parse_ast_to_tokens(parse_program, |an, tm| {
-                    traverse_parse_tree::traverse_node(type_engine, an, tm)
+                    traverse::parse_tree::traverse_node(type_engine, an, tm)
                 });
 
                 // Next, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
                 self.parse_ast_to_typed_tokens(typed_program, |an, tm| {
-                    traverse_typed_tree::traverse_node(type_engine, an, tm)
+                    traverse::typed_tree::traverse_node(type_engine, an, tm)
                 });
 
                 self.save_parse_program(parse_program.to_owned().clone());
