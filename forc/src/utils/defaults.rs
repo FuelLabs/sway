@@ -16,7 +16,9 @@ name = "{project_name}"
 }
 
 pub(crate) fn default_workspace_manifest() -> String {
-    r#"members = []"#.to_string()
+    r#"[workspace]
+members = []"#
+        .to_string()
 }
 
 pub(crate) fn default_contract() -> String {

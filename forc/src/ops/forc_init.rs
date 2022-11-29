@@ -9,8 +9,7 @@ use sway_utils::constants;
 use tracing::{debug, info};
 
 #[derive(Debug)]
-/// Type of the project that is going to be initialized.
-enum ProjectType {
+enum InitType {
     Package(ProgramType),
     Workspace,
 }
@@ -77,38 +76,38 @@ pub fn init(command: InitCommand) -> Result<()> {
 
     validate_name(&project_name, "project name")?;
 
-    let project_type = match (
+    let init_type = match (
         command.contract,
         command.script,
         command.predicate,
         command.library,
         command.workspace,
     ) {
-        (_, false, false, false, false) => ProjectType::Package(ProgramType::Contract),
-        (false, true, false, false, false) => ProjectType::Package(ProgramType::Script),
-        (false, false, true, false, false) => ProjectType::Package(ProgramType::Predicate),
-        (false, false, false, true, false) => ProjectType::Package(ProgramType::Library),
-        (false, false, false, false, true) => ProjectType::Workspace,
+        (_, false, false, false, false) => InitType::Package(ProgramType::Contract),
+        (false, true, false, false, false) => InitType::Package(ProgramType::Script),
+        (false, false, true, false, false) => InitType::Package(ProgramType::Predicate),
+        (false, false, false, true, false) => InitType::Package(ProgramType::Library),
+        (false, false, false, false, true) => InitType::Workspace,
         _ => anyhow::bail!(
-            "Multiple types detected, please specify only one project type: \
+            "Multiple types detected, please specify only one init type: \
         \n Possible Types:\n - contract\n - script\n - predicate\n - library\n - workspace"
         ),
     };
 
     // Make a new directory for the project
-    let dir_to_create = match project_type {
-        ProjectType::Package(_) => project_dir.join("src"),
-        ProjectType::Workspace => project_dir.clone(),
+    let dir_to_create = match init_type {
+        InitType::Package(_) => project_dir.join("src"),
+        InitType::Workspace => project_dir.clone(),
     };
     fs::create_dir_all(dir_to_create)?;
 
     // Insert default manifest file
-    match project_type {
-        ProjectType::Workspace => fs::write(
+    match init_type {
+        InitType::Workspace => fs::write(
             Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
             defaults::default_workspace_manifest(),
         )?,
-        ProjectType::Package(ProgramType::Library) => fs::write(
+        InitType::Package(ProgramType::Library) => fs::write(
             Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
             defaults::default_pkg_manifest(&project_name, constants::LIB_ENTRY),
         )?,
@@ -118,26 +117,26 @@ pub fn init(command: InitCommand) -> Result<()> {
         )?,
     }
 
-    match project_type {
-        ProjectType::Package(ProgramType::Contract) => fs::write(
+    match init_type {
+        InitType::Package(ProgramType::Contract) => fs::write(
             Path::new(&project_dir)
                 .join("src")
                 .join(constants::MAIN_ENTRY),
             defaults::default_contract(),
         )?,
-        ProjectType::Package(ProgramType::Script) => fs::write(
+        InitType::Package(ProgramType::Script) => fs::write(
             Path::new(&project_dir)
                 .join("src")
                 .join(constants::MAIN_ENTRY),
             defaults::default_script(),
         )?,
-        ProjectType::Package(ProgramType::Library) => fs::write(
+        InitType::Package(ProgramType::Library) => fs::write(
             Path::new(&project_dir)
                 .join("src")
                 .join(constants::LIB_ENTRY),
             defaults::default_library(&project_name),
         )?,
-        ProjectType::Package(ProgramType::Predicate) => fs::write(
+        InitType::Package(ProgramType::Predicate) => fs::write(
             Path::new(&project_dir)
                 .join("src")
                 .join(constants::MAIN_ENTRY),
@@ -161,7 +160,7 @@ pub fn init(command: InitCommand) -> Result<()> {
         gitignore_path.canonicalize()?.display()
     );
 
-    debug!("\nSuccessfully created {project_type:?}: {project_name}",);
+    debug!("\nSuccessfully created {init_type:?}: {project_name}",);
 
     print_welcome_message();
 
