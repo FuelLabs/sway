@@ -394,7 +394,7 @@ impl CollectTypesMetadata for TyExpression {
 }
 
 impl DeterministicallyAborts for TyExpression {
-    fn deterministically_aborts(&self, fn_calls_inlined: bool) -> bool {
+    fn deterministically_aborts(&self, check_call_body: bool) -> bool {
         use TyExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
@@ -402,51 +402,49 @@ impl DeterministicallyAborts for TyExpression {
                 arguments,
                 ..
             } => {
-                if !fn_calls_inlined {
+                if !check_call_body {
                     return false;
                 }
                 let function_decl = match de_get_function(function_decl_id.clone(), &self.span) {
                     Ok(decl) => decl,
                     Err(_e) => panic!("failed to get function"),
                 };
-                function_decl
-                    .body
-                    .deterministically_aborts(fn_calls_inlined)
+                function_decl.body.deterministically_aborts(check_call_body)
                     || arguments
                         .iter()
-                        .any(|(_, x)| x.deterministically_aborts(fn_calls_inlined))
+                        .any(|(_, x)| x.deterministically_aborts(check_call_body))
             }
             Tuple { fields, .. } => fields
                 .iter()
-                .any(|x| x.deterministically_aborts(fn_calls_inlined)),
+                .any(|x| x.deterministically_aborts(check_call_body)),
             Array { contents, .. } => contents
                 .iter()
-                .any(|x| x.deterministically_aborts(fn_calls_inlined)),
-            CodeBlock(contents) => contents.deterministically_aborts(fn_calls_inlined),
-            LazyOperator { lhs, .. } => lhs.deterministically_aborts(fn_calls_inlined),
+                .any(|x| x.deterministically_aborts(check_call_body)),
+            CodeBlock(contents) => contents.deterministically_aborts(check_call_body),
+            LazyOperator { lhs, .. } => lhs.deterministically_aborts(check_call_body),
             StructExpression { fields, .. } => fields
                 .iter()
-                .any(|x| x.value.deterministically_aborts(fn_calls_inlined)),
+                .any(|x| x.value.deterministically_aborts(check_call_body)),
             EnumInstantiation { contents, .. } => contents
                 .as_ref()
-                .map(|x| x.deterministically_aborts(fn_calls_inlined))
+                .map(|x| x.deterministically_aborts(check_call_body))
                 .unwrap_or(false),
-            AbiCast { address, .. } => address.deterministically_aborts(fn_calls_inlined),
+            AbiCast { address, .. } => address.deterministically_aborts(check_call_body),
             StructFieldAccess { .. }
             | Literal(_)
             | StorageAccess { .. }
             | VariableExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
-            IntrinsicFunction(kind) => kind.deterministically_aborts(fn_calls_inlined),
+            IntrinsicFunction(kind) => kind.deterministically_aborts(check_call_body),
             ArrayIndex { prefix, index } => {
-                prefix.deterministically_aborts(fn_calls_inlined)
-                    || index.deterministically_aborts(fn_calls_inlined)
+                prefix.deterministically_aborts(check_call_body)
+                    || index.deterministically_aborts(check_call_body)
             }
             AsmExpression { registers, .. } => registers.iter().any(|x| {
                 x.initializer
                     .as_ref()
-                    .map(|x| x.deterministically_aborts(fn_calls_inlined))
+                    .map(|x| x.deterministically_aborts(check_call_body))
                     .unwrap_or(false)
             }),
             IfExp {
@@ -455,28 +453,28 @@ impl DeterministicallyAborts for TyExpression {
                 r#else,
                 ..
             } => {
-                condition.deterministically_aborts(fn_calls_inlined)
-                    || (then.deterministically_aborts(fn_calls_inlined)
+                condition.deterministically_aborts(check_call_body)
+                    || (then.deterministically_aborts(check_call_body)
                         && r#else
                             .as_ref()
-                            .map(|x| x.deterministically_aborts(fn_calls_inlined))
+                            .map(|x| x.deterministically_aborts(check_call_body))
                             .unwrap_or(false))
             }
             AbiName(_) => false,
-            EnumTag { exp } => exp.deterministically_aborts(fn_calls_inlined),
-            UnsafeDowncast { exp, .. } => exp.deterministically_aborts(fn_calls_inlined),
+            EnumTag { exp } => exp.deterministically_aborts(check_call_body),
+            UnsafeDowncast { exp, .. } => exp.deterministically_aborts(check_call_body),
             WhileLoop { condition, body } => {
-                condition.deterministically_aborts(fn_calls_inlined)
-                    || body.deterministically_aborts(fn_calls_inlined)
+                condition.deterministically_aborts(check_call_body)
+                    || body.deterministically_aborts(check_call_body)
             }
             Break => false,
             Continue => false,
             Reassignment(reassignment) => {
-                reassignment.rhs.deterministically_aborts(fn_calls_inlined)
+                reassignment.rhs.deterministically_aborts(check_call_body)
             }
             StorageReassignment(storage_reassignment) => storage_reassignment
                 .rhs
-                .deterministically_aborts(fn_calls_inlined),
+                .deterministically_aborts(check_call_body),
             // TODO: Is this correct?
             // I'm not sure what this function is supposed to do exactly. It's called
             // "deterministically_aborts" which I thought meant it checks for an abort/panic, but

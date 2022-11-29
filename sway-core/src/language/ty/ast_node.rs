@@ -98,12 +98,12 @@ impl CollectTypesMetadata for TyAstNode {
 }
 
 impl DeterministicallyAborts for TyAstNode {
-    fn deterministically_aborts(&self, fn_calls_inlined: bool) -> bool {
+    fn deterministically_aborts(&self, check_call_body: bool) -> bool {
         use TyAstNodeContent::*;
         match &self.content {
             Declaration(_) => false,
             Expression(exp) | ImplicitReturnExpression(exp) => {
-                exp.deterministically_aborts(fn_calls_inlined)
+                exp.deterministically_aborts(check_call_body)
             }
             SideEffect => false,
         }

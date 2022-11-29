@@ -42,9 +42,9 @@ impl ReplaceDecls for TyCodeBlock {
 }
 
 impl DeterministicallyAborts for TyCodeBlock {
-    fn deterministically_aborts(&self, fn_calls_inlined: bool) -> bool {
+    fn deterministically_aborts(&self, check_call_body: bool) -> bool {
         self.contents
             .iter()
-            .any(|x| x.deterministically_aborts(fn_calls_inlined))
+            .any(|x| x.deterministically_aborts(check_call_body))
     }
 }
