@@ -509,6 +509,21 @@ impl Bytes {
     }
 }
 
+impl core::ops::Eq for Bytes {
+    fn eq(self, other: Self) -> bool {
+        if self.len() == other.len() {
+            let mut i = self.len();
+            while i > 0 {
+                assert(self.get(i - 1).unwrap() == other.get(i - 1).unwrap());
+                i -= 1;
+            };
+            true
+        } else {
+            false
+        }
+    }
+}
+
 ////////////////////////////////////////////////////////////////////
 // Tests
 ////////////////////////////////////////////////////////////////////
