@@ -4,10 +4,12 @@ use crate::{
         formatting::get_page_text_edit,
         runnable::{Runnable, RunnableType},
     },
-    core::{document::TextDocument, token::get_range_from_span, token_map::TokenMap},
+    core::{
+        document::TextDocument, sync::SyncWorkspace, token::get_range_from_span,
+        token_map::TokenMap,
+    },
     error::{DocumentError, LanguageServerError},
     traverse,
-    utils::sync::SyncWorkspace,
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};

@@ -2,9 +2,9 @@ pub use crate::error::DocumentError;
 use crate::{
     capabilities,
     config::{Config, Warnings},
-    core::session::Session,
+    core::{session::Session, sync},
     error::{DirectoryError, LanguageServerError},
-    utils::{debug, sync},
+    utils::debug,
 };
 use dashmap::DashMap;
 use forc_pkg::manifest::PackageManifestFile;
