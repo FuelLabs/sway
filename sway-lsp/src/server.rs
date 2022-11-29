@@ -585,7 +585,7 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{doc_comments_dir, e2e_test_dir};
+    use crate::utils::test::{doc_comments_dir, e2e_test_dir};
     use serde_json::json;
     use serial_test::serial;
     use std::{borrow::Cow, fs, io::Read, path::PathBuf};

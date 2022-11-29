@@ -6,8 +6,6 @@ mod capabilities;
 mod core;
 pub mod error;
 mod server;
-#[cfg(test)]
-pub mod test_utils;
 mod traverse;
 pub mod utils;
 use server::Backend;
