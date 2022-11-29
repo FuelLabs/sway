@@ -15,8 +15,8 @@ struct S {
 impl TestAbi for Contract {
     #[storage(write)]
     fn deposit(amount: u64) {
-    // 1st tuple component is a code block with interaction
-    // 2nd tuple component is a code block with effect
+    // 1st struct field is a code block with interaction
+    // 2nd struct field is a code block with effect
         let s = S {
             field1:  {
                 // interaction
