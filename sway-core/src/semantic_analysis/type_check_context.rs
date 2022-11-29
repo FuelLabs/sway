@@ -1,5 +1,5 @@
 use crate::{
-    language::Purity,
+    language::{parsed::TreeType, Purity},
     namespace::Path,
     semantic_analysis::{ast_node::Mode, Namespace},
     type_system::{
@@ -46,6 +46,9 @@ pub struct TypeCheckContext<'a> {
     /// Tracks the purity of the context, e.g. whether or not we should be allowed to write to
     /// storage.
     purity: Purity,
+    /// Provides the kind of the module.
+    /// This is useful for example to throw an error when while loops are present in predicates.
+    kind: TreeType,
     /// The type engine storing types.
     pub(crate) type_engine: &'a TypeEngine,
 }
@@ -73,6 +76,7 @@ impl<'a> TypeCheckContext<'a> {
             self_type: type_engine.insert_type(TypeInfo::Contract),
             mode: Mode::NonAbi,
             purity: Purity::default(),
+            kind: TreeType::Contract,
         }
     }
 
@@ -92,6 +96,7 @@ impl<'a> TypeCheckContext<'a> {
             mode: self.mode,
             help_text: self.help_text,
             purity: self.purity,
+            kind: self.kind.clone(),
             type_engine: self.type_engine,
         }
     }
@@ -105,6 +110,7 @@ impl<'a> TypeCheckContext<'a> {
             mode: self.mode,
             help_text: self.help_text,
             purity: self.purity,
+            kind: self.kind,
             type_engine: self.type_engine,
         }
     }
@@ -150,6 +156,11 @@ impl<'a> TypeCheckContext<'a> {
         Self { purity, ..self }
     }
 
+    /// Map this `TypeCheckContext` instance to a new one with the given module kind.
+    pub(crate) fn with_kind(self, kind: TreeType) -> Self {
+        Self { kind, ..self }
+    }
+
     /// Map this `TypeCheckContext` instance to a new one with the given purity.
     pub(crate) fn with_self_type(self, self_type: TypeId) -> Self {
         Self { self_type, ..self }
@@ -172,6 +183,10 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn purity(&self) -> Purity {
         self.purity
+    }
+
+    pub(crate) fn kind(&self) -> TreeType {
+        self.kind.clone()
     }
 
     pub(crate) fn self_type(&self) -> TypeId {
