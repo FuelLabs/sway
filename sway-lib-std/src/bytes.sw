@@ -545,9 +545,18 @@ fn test_pop() {
     assert(bytes.len() == 3);
 
     let first = bytes.pop();
-
     assert(first.unwrap() == c);
     assert(bytes.len() == 2);
+
+    let second = bytes.pop();
+    assert(second.unwrap() == b);
+    assert(bytes.len() == 1);
+
+    let third = bytes.pop();
+    assert(third.unwrap() == a);
+    assert(bytes.len() == 0);
+
+    assert(bytes.pop().is_none() == true);
 }
 #[test()]
 fn test_len() {
