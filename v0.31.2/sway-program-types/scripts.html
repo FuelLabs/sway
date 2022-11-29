@@ -1,0 +1,204 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Scripts - The Sway Programming Language</title>
+        <!-- Custom HTML head -->
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">The Sway Programming Language</a></li><li class="chapter-item expanded "><a href="../introduction/index.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../introduction/installation.html"><strong aria-hidden="true">1.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../introduction/overview.html"><strong aria-hidden="true">1.2.</strong> Sway Quickstart</a></li><li class="chapter-item expanded "><a href="../introduction/fuel-toolchain.html"><strong aria-hidden="true">1.3.</strong> The Fuel Toolchain</a></li><li class="chapter-item expanded "><a href="../introduction/forc_project.html"><strong aria-hidden="true">1.4.</strong> A Forc Project</a></li><li class="chapter-item expanded "><a href="../introduction/standard_library.html"><strong aria-hidden="true">1.5.</strong> Standard Library</a></li></ol></li><li class="chapter-item expanded "><a href="../examples/index.html"><strong aria-hidden="true">2.</strong> Examples</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../examples/counter.html"><strong aria-hidden="true">2.1.</strong> Counter</a></li><li class="chapter-item expanded "><a href="../examples/subcurrency.html"><strong aria-hidden="true">2.2.</strong> Subcurrency</a></li><li class="chapter-item expanded "><a href="../examples/fizzbuzz.html"><strong aria-hidden="true">2.3.</strong> FizzBuzz</a></li><li class="chapter-item expanded "><a href="../examples/wallet_smart_contract.html"><strong aria-hidden="true">2.4.</strong> Wallet Smart Contract</a></li></ol></li><li class="chapter-item expanded "><a href="../sway-program-types/index.html"><strong aria-hidden="true">3.</strong> Program Types</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../sway-program-types/smart_contracts.html"><strong aria-hidden="true">3.1.</strong> Contracts</a></li><li class="chapter-item expanded "><a href="../sway-program-types/libraries.html"><strong aria-hidden="true">3.2.</strong> Libraries</a></li><li class="chapter-item expanded "><a href="../sway-program-types/scripts.html" class="active"><strong aria-hidden="true">3.3.</strong> Scripts</a></li><li class="chapter-item expanded "><a href="../sway-program-types/predicates.html"><strong aria-hidden="true">3.4.</strong> Predicates</a></li></ol></li><li class="chapter-item expanded "><a href="../basics/index.html"><strong aria-hidden="true">4.</strong> Sway Language Basics</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../basics/variables.html"><strong aria-hidden="true">4.1.</strong> Variables</a></li><li class="chapter-item expanded "><a href="../basics/built_in_types.html"><strong aria-hidden="true">4.2.</strong> Built-in Types</a></li><li class="chapter-item expanded "><a href="../basics/blockchain_types.html"><strong aria-hidden="true">4.3.</strong> Blockchain Types</a></li><li class="chapter-item expanded "><a href="../basics/functions.html"><strong aria-hidden="true">4.4.</strong> Functions</a></li><li class="chapter-item expanded "><a href="../basics/structs_tuples_and_enums.html"><strong aria-hidden="true">4.5.</strong> Structs, Tuples, and Enums</a></li><li class="chapter-item expanded "><a href="../basics/methods_and_associated_functions.html"><strong aria-hidden="true">4.6.</strong> Methods and Associated Functions</a></li><li class="chapter-item expanded "><a href="../basics/comments_and_logging.html"><strong aria-hidden="true">4.7.</strong> Comments and Logging</a></li><li class="chapter-item expanded "><a href="../basics/control_flow.html"><strong aria-hidden="true">4.8.</strong> Control Flow</a></li></ol></li><li class="chapter-item expanded "><a href="../blockchain-development/index.html"><strong aria-hidden="true">5.</strong> Blockchain Development with Sway</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../blockchain-development/hashing_and_cryptography.html"><strong aria-hidden="true">5.1.</strong> Hashing and Cryptography</a></li><li class="chapter-item expanded "><a href="../blockchain-development/storage.html"><strong aria-hidden="true">5.2.</strong> Contract Storage</a></li><li class="chapter-item expanded "><a href="../blockchain-development/purity.html"><strong aria-hidden="true">5.3.</strong> Function Purity</a></li><li class="chapter-item expanded "><a href="../blockchain-development/identifiers.html"><strong aria-hidden="true">5.4.</strong> Identifiers</a></li><li class="chapter-item expanded "><a href="../blockchain-development/native_assets.html"><strong aria-hidden="true">5.5.</strong> Native Assets</a></li><li class="chapter-item expanded "><a href="../blockchain-development/access_control.html"><strong aria-hidden="true">5.6.</strong> Access Control</a></li><li class="chapter-item expanded "><a href="../blockchain-development/calling_contracts.html"><strong aria-hidden="true">5.7.</strong> Calling Contracts</a></li></ol></li><li class="chapter-item expanded "><a href="../advanced/index.html"><strong aria-hidden="true">6.</strong> Advanced Concepts</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../advanced/generic_types.html"><strong aria-hidden="true">6.1.</strong> Generic Types</a></li><li class="chapter-item expanded "><a href="../advanced/traits.html"><strong aria-hidden="true">6.2.</strong> Traits</a></li><li class="chapter-item expanded "><a href="../advanced/assembly.html"><strong aria-hidden="true">6.3.</strong> Assembly</a></li></ol></li><li class="chapter-item expanded "><a href="../common-collections/index.html"><strong aria-hidden="true">7.</strong> Common Collections</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../common-collections/vec.html"><strong aria-hidden="true">7.1.</strong> Vectors on the Heap</a></li><li class="chapter-item expanded "><a href="../common-collections/storage_vec.html"><strong aria-hidden="true">7.2.</strong> Storage Vectors</a></li><li class="chapter-item expanded "><a href="../common-collections/storage_map.html"><strong aria-hidden="true">7.3.</strong> Storage Maps</a></li></ol></li><li class="chapter-item expanded "><a href="../testing/index.html"><strong aria-hidden="true">8.</strong> Testing</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../testing/unit-testing.html"><strong aria-hidden="true">8.1.</strong> Unit Testing</a></li><li class="chapter-item expanded "><a href="../testing/testing-with-rust.html"><strong aria-hidden="true">8.2.</strong> Testing with Rust</a></li></ol></li><li class="chapter-item expanded "><a href="../frontend/index.html"><strong aria-hidden="true">9.</strong> Application Frontend</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../frontend/typescript_sdk.html"><strong aria-hidden="true">9.1.</strong> TypeScript SDK</a></li></ol></li><li class="chapter-item expanded "><a href="../reference/index.html"><strong aria-hidden="true">10.</strong> Sway Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../reference/compiler_intrinsics.html"><strong aria-hidden="true">10.1.</strong> Compiler Intrinsics</a></li><li class="chapter-item expanded "><a href="../reference/style_guide.html"><strong aria-hidden="true">10.2.</strong> Style Guide</a></li><li class="chapter-item expanded "><a href="../reference/known_issues_and_workarounds.html"><strong aria-hidden="true">10.3.</strong> Known Issues and Workarounds</a></li><li class="chapter-item expanded "><a href="../reference/solidity_differences.html"><strong aria-hidden="true">10.4.</strong> Differences From Solidity</a></li><li class="chapter-item expanded "><a href="../reference/rust_differences.html"><strong aria-hidden="true">10.5.</strong> Differences From Rust</a></li><li class="chapter-item expanded "><a href="../reference/contributing_to_sway.html"><strong aria-hidden="true">10.6.</strong> Contributing To Sway</a></li></ol></li><li class="chapter-item expanded "><a href="../forc/index.html"><strong aria-hidden="true">11.</strong> Forc Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../forc/manifest_reference.html"><strong aria-hidden="true">11.1.</strong> Manifest Reference</a></li><li class="chapter-item expanded "><a href="../forc/workspaces.html"><strong aria-hidden="true">11.2.</strong> Workspaces</a></li><li class="chapter-item expanded "><a href="../forc/dependencies.html"><strong aria-hidden="true">11.3.</strong> Dependencies</a></li><li class="chapter-item expanded "><a href="../forc/commands/index.html"><strong aria-hidden="true">11.4.</strong> Commands</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../forc/commands/forc_addr2line.html"><strong aria-hidden="true">11.4.1.</strong> forc addr2line</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_build.html"><strong aria-hidden="true">11.4.2.</strong> forc build</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_check.html"><strong aria-hidden="true">11.4.3.</strong> forc check</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_clean.html"><strong aria-hidden="true">11.4.4.</strong> forc clean</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_completions.html"><strong aria-hidden="true">11.4.5.</strong> forc completions</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_init.html"><strong aria-hidden="true">11.4.6.</strong> forc init</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_new.html"><strong aria-hidden="true">11.4.7.</strong> forc new</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_parse-bytecode.html"><strong aria-hidden="true">11.4.8.</strong> forc parse-bytecode</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_plugins.html"><strong aria-hidden="true">11.4.9.</strong> forc plugins</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_test.html"><strong aria-hidden="true">11.4.10.</strong> forc test</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_update.html"><strong aria-hidden="true">11.4.11.</strong> forc update</a></li><li class="chapter-item expanded "><a href="../forc/commands/forc_template.html"><strong aria-hidden="true">11.4.12.</strong> forc template</a></li></ol></li><li class="chapter-item expanded "><a href="../forc/plugins/index.html"><strong aria-hidden="true">11.5.</strong> Plugins</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../forc/plugins/forc_client/index.html"><strong aria-hidden="true">11.5.1.</strong> forc client</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../forc/plugins/forc_client/forc_deploy.html"><strong aria-hidden="true">11.5.1.1.</strong> forc deploy</a></li><li class="chapter-item expanded "><a href="../forc/plugins/forc_client/forc_run.html"><strong aria-hidden="true">11.5.1.2.</strong> forc run</a></li></ol></li><li class="chapter-item expanded "><a href="../forc/plugins/forc_explore.html"><strong aria-hidden="true">11.5.2.</strong> forc explore</a></li><li class="chapter-item expanded "><a href="../forc/plugins/forc_fmt.html"><strong aria-hidden="true">11.5.3.</strong> forc fmt</a></li><li class="chapter-item expanded "><a href="../forc/plugins/forc_lsp.html"><strong aria-hidden="true">11.5.4.</strong> forc lsp</a></li></ol></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Sway Programming Language</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/FuelLabs/sway" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="scripts"><a class="header" href="#scripts">Scripts</a></h1>
+<p>A script is runnable bytecode on the chain which executes once to perform some task. It does not represent ownership of any resources and it cannot be called by a contract. A script can return a single value of any type.</p>
+<p>Scripts are state-aware in that while they have no persistent storage (because they only exist during the transaction) they can call contracts and act based upon the returned values and results.</p>
+<p>This example script calls a contract:</p>
+<pre><code class="language-sway">script;
+
+use std::constants::ZERO_B256;
+use wallet_abi::Wallet;
+
+fn main() {
+    let contract_address = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
+    let caller = abi(Wallet, contract_address);
+    let amount_to_send = 200;
+    let recipient_address = Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
+    caller.send_funds {
+        gas: 10000,
+        coins: 0,
+        asset_id: ZERO_B256,
+    }(amount_to_send, recipient_address);
+}
+</code></pre>
+<p>Scripts, similar to predicates, rely on a <code>main()</code> function as an entry point. You can call other functions defined in a script from the <code>main()</code> function or call another contract via an <a href="./smart_contracts.html#calling-a-smart-contract-from-a-script">abi cast</a>.</p>
+<p>An example use case for a script would be a router that trades funds through multiple DEXes to get the price for the input asset, or a script to re-adjust a Collateralized Debt Position via a flashloan.</p>
+<h2 id="scripts-and-the-sdks"><a class="header" href="#scripts-and-the-sdks">Scripts and the SDKs</a></h2>
+<p>Unlike EVM transactions which can call a contract directly (but can only call a single contract), Fuel transactions execute a script, which may call zero or more contracts. The Rust and TypeScript SDKs provide functions to call contract methods as if they were calling contracts directly. Under the hood, the SDKs wrap all contract calls with scripts that contain minimal code to simply make the call and forward script data as call parameters.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../sway-program-types/libraries.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                            <a rel="next" href="../sway-program-types/predicates.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../sway-program-types/libraries.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                    <a rel="next" href="../sway-program-types/predicates.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+    </body>
+</html>
