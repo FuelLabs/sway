@@ -64,7 +64,10 @@ impl DisplayWithTypeEngine for TyIntrinsicFunctionKind {
 impl DeterministicallyAborts for TyIntrinsicFunctionKind {
     fn deterministically_aborts(&self, fn_calls_inlined: bool) -> bool {
         matches!(self.kind, Intrinsic::Revert)
-            || self.arguments.iter().any(|x| x.deterministically_aborts(fn_calls_inlined))
+            || self
+                .arguments
+                .iter()
+                .any(|x| x.deterministically_aborts(fn_calls_inlined))
     }
 }
 

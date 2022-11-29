@@ -409,16 +409,24 @@ impl DeterministicallyAborts for TyExpression {
                     Ok(decl) => decl,
                     Err(_e) => panic!("failed to get function"),
                 };
-                function_decl.body.deterministically_aborts(fn_calls_inlined)
-                    || arguments.iter().any(|(_, x)| x.deterministically_aborts(fn_calls_inlined))
+                function_decl
+                    .body
+                    .deterministically_aborts(fn_calls_inlined)
+                    || arguments
+                        .iter()
+                        .any(|(_, x)| x.deterministically_aborts(fn_calls_inlined))
             }
-            Tuple { fields, .. } => fields.iter().any(|x| x.deterministically_aborts(fn_calls_inlined)),
-            Array { contents, .. } => contents.iter().any(|x| x.deterministically_aborts(fn_calls_inlined)),
+            Tuple { fields, .. } => fields
+                .iter()
+                .any(|x| x.deterministically_aborts(fn_calls_inlined)),
+            Array { contents, .. } => contents
+                .iter()
+                .any(|x| x.deterministically_aborts(fn_calls_inlined)),
             CodeBlock(contents) => contents.deterministically_aborts(fn_calls_inlined),
             LazyOperator { lhs, .. } => lhs.deterministically_aborts(fn_calls_inlined),
-            StructExpression { fields, .. } => {
-                fields.iter().any(|x| x.value.deterministically_aborts(fn_calls_inlined))
-            }
+            StructExpression { fields, .. } => fields
+                .iter()
+                .any(|x| x.value.deterministically_aborts(fn_calls_inlined)),
             EnumInstantiation { contents, .. } => contents
                 .as_ref()
                 .map(|x| x.deterministically_aborts(fn_calls_inlined))
@@ -432,7 +440,8 @@ impl DeterministicallyAborts for TyExpression {
             | TupleElemAccess { .. } => false,
             IntrinsicFunction(kind) => kind.deterministically_aborts(fn_calls_inlined),
             ArrayIndex { prefix, index } => {
-                prefix.deterministically_aborts(fn_calls_inlined) || index.deterministically_aborts(fn_calls_inlined)
+                prefix.deterministically_aborts(fn_calls_inlined)
+                    || index.deterministically_aborts(fn_calls_inlined)
             }
             AsmExpression { registers, .. } => registers.iter().any(|x| {
                 x.initializer
@@ -457,14 +466,17 @@ impl DeterministicallyAborts for TyExpression {
             EnumTag { exp } => exp.deterministically_aborts(fn_calls_inlined),
             UnsafeDowncast { exp, .. } => exp.deterministically_aborts(fn_calls_inlined),
             WhileLoop { condition, body } => {
-                condition.deterministically_aborts(fn_calls_inlined) || body.deterministically_aborts(fn_calls_inlined)
+                condition.deterministically_aborts(fn_calls_inlined)
+                    || body.deterministically_aborts(fn_calls_inlined)
             }
             Break => false,
             Continue => false,
-            Reassignment(reassignment) => reassignment.rhs.deterministically_aborts(fn_calls_inlined),
-            StorageReassignment(storage_reassignment) => {
-                storage_reassignment.rhs.deterministically_aborts(fn_calls_inlined)
+            Reassignment(reassignment) => {
+                reassignment.rhs.deterministically_aborts(fn_calls_inlined)
             }
+            StorageReassignment(storage_reassignment) => storage_reassignment
+                .rhs
+                .deterministically_aborts(fn_calls_inlined),
             // TODO: Is this correct?
             // I'm not sure what this function is supposed to do exactly. It's called
             // "deterministically_aborts" which I thought meant it checks for an abort/panic, but

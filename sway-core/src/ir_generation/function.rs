@@ -15,7 +15,8 @@ use crate::{
     language::{ty, *},
     metadata::MetadataManager,
     type_system::{LogId, TypeId, TypeInfo},
-    PartialEqWithTypeEngine, TypeEngine, types::DeterministicallyAborts,
+    types::DeterministicallyAborts,
+    PartialEqWithTypeEngine, TypeEngine,
 };
 use declaration_engine::de_get_function;
 use sway_ast::intrinsics::Intrinsic;

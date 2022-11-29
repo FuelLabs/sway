@@ -102,7 +102,9 @@ impl DeterministicallyAborts for TyAstNode {
         use TyAstNodeContent::*;
         match &self.content {
             Declaration(_) => false,
-            Expression(exp) | ImplicitReturnExpression(exp) => exp.deterministically_aborts(fn_calls_inlined),
+            Expression(exp) | ImplicitReturnExpression(exp) => {
+                exp.deterministically_aborts(fn_calls_inlined)
+            }
             SideEffect => false,
         }
     }
