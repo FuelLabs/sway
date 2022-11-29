@@ -89,7 +89,7 @@ pub fn init(command: InitCommand) -> Result<()> {
         (false, false, false, true, false) => InitType::Package(ProgramType::Library),
         (false, false, false, false, true) => InitType::Workspace,
         _ => anyhow::bail!(
-            "Multiple types detected, please specify only one init type: \
+            "Multiple types detected, please specify only one initialization type: \
         \n Possible Types:\n - contract\n - script\n - predicate\n - library\n - workspace"
         ),
     };
