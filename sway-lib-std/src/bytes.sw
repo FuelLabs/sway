@@ -126,7 +126,7 @@ impl Bytes {
         // be inserted.
         let end = self.buf.ptr().add_uint_offset(self.len);
 
-        // Write `item` at pointer `end`
+        // Write `byte` at pointer `end`
         end.write_byte(byte);
 
         // Increment length.
