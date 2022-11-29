@@ -1,4 +1,3 @@
-use dashmap::DashMap;
 use sway_core::{
     language::{
         parsed::{
@@ -10,9 +9,7 @@ use sway_core::{
     },
     type_system::TypeId,
 };
-use sway_types::{Ident, Span};
-
-pub type TokenMap = DashMap<(Ident, Span), Token>;
+use sway_types::Ident;
 
 #[derive(Debug, Clone)]
 pub enum TypeDefinition {

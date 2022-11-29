@@ -2,7 +2,10 @@
 use std::iter;
 
 use crate::{
-    core::token::{AstToken, SymbolKind, Token, TokenMap, TypeDefinition},
+    core::{
+        token::{AstToken, SymbolKind, Token, TypeDefinition},
+        token_map::TokenMap,
+    },
     utils::token::{desugared_op, to_ident_key, type_info_to_symbol_kind},
 };
 use sway_core::{

@@ -1,4 +1,7 @@
-use crate::core::token::{AstToken, SymbolKind, Token, TokenMap, TypedAstToken};
+use crate::core::{
+    token::{AstToken, SymbolKind, Token, TypedAstToken},
+    token_map::TokenMap,
+};
 use sway_core::{
     declaration_engine,
     language::ty,

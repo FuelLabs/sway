@@ -7,7 +7,8 @@ use crate::{
     core::{
         dependency,
         document::TextDocument,
-        token::{Token, TokenMap, TypeDefinition},
+        token::{Token, TypeDefinition},
+        token_map::TokenMap,
         {traverse_parse_tree, traverse_typed_tree},
     },
     error::{DocumentError, LanguageServerError},
@@ -55,7 +56,7 @@ impl Session {
     pub fn new() -> Self {
         Session {
             documents: DashMap::new(),
-            token_map: DashMap::new(),
+            token_map: TokenMap::new(),
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
             sync: SyncWorkspace::new(),

@@ -1,5 +1,8 @@
 use crate::{
-    core::token::{AstToken, SymbolKind, Token, TokenMap, TypeDefinition, TypedAstToken},
+    core::{
+        token::{AstToken, SymbolKind, Token, TypeDefinition, TypedAstToken},
+        token_map::TokenMap,
+    },
     utils::token::to_ident_key,
 };
 use sway_core::{

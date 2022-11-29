@@ -1,4 +1,4 @@
-use crate::core::token::{SymbolKind, TokenMap};
+use crate::core::{token::SymbolKind, token_map::TokenMap};
 use crate::utils::token::is_initial_declaration;
 use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind};
 

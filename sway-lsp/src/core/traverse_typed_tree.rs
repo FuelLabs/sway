@@ -1,7 +1,10 @@
 #![allow(dead_code)]
 
 use crate::{
-    core::token::{TokenMap, TypeDefinition, TypedAstToken},
+    core::{
+        token::{TypeDefinition, TypedAstToken},
+        token_map::TokenMap,
+    },
     utils::token::{struct_declaration_of_type_id, to_ident_key},
 };
 use sway_core::{
