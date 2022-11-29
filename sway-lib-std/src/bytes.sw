@@ -670,6 +670,10 @@ fn test_get() {
     assert(bytes.get(0).unwrap() == a);
     assert(bytes.get(1).unwrap() == b);
     assert(bytes.get(2).unwrap() == c);
+    // get is non-modifying
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == b);
+    assert(bytes.get(2).unwrap() == c);
     assert(bytes.len() == 3);
 }
 
@@ -795,6 +799,11 @@ fn test_split() {
 #[test()]
 fn test_join() {
     let (mut bytes, a, b, c) = setup();
+    assert(bytes.len() == 3);
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == b);
+    assert(bytes.get(2).unwrap() == c);
+
     let mut bytes2 = Bytes::new();
     let d = 5u8;
     let e = 7u8;
@@ -802,16 +811,18 @@ fn test_join() {
     bytes2.push(d);
     bytes2.push(e);
     bytes2.push(f);
-    assert(bytes.len() == 3);
     assert(bytes2.len() == 3);
+    assert(bytes2.get(0).unwrap() == d);
+    assert(bytes2.get(1).unwrap() == e);
+    assert(bytes2.get(2).unwrap() == f);
 
     let mut joined = bytes.join(bytes2);
     assert(joined.len() == bytes.len() + bytes2.len());
-    assert(joined.capacity() == 8);
-    assert(joined.pop().unwrap() == d);
-    // let values = [a, b, c, d, e, f];
-    // let mut i = 0;
-    // while 1 < 6 {
-    //     assert(joined.get(i).unwrap() == values[i]);
-    // };
+    assert(joined.capacity() == bytes.len() + bytes2.len());
+    let values = [a, b, c, d, e, f];
+    let mut i = 0;
+    while i < 6 {
+        assert(joined.get(i).unwrap() == values[i]);
+        i += 1;
+    };
 }
