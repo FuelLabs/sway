@@ -541,8 +541,8 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
-  install-and-upload-forc-binaries:
-    name: Install and upload forc binaries to release
+  build-and-release-forc-binaries:
+    name: Build and upload forc binaries to release
     runs-on: ${{ matrix.job.os }}
     if: github.event_name == 'release' && github.event.action == 'published'
     needs: publish
@@ -584,48 +584,17 @@ jobs:
       - uses: Swatinem/rust-cache@v1
         with:
           cache-on-failure: true
+          key: "${{ matrix.job.target }}"
 
-      - name: Apple M1 setup
-        if: ${{ matrix.job.target == 'aarch64-apple-darwin' }}
+      - name: Use Cross
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cross
+          cache-key: "${{ matrix.job.target }}"
+
+      - name: Build forc binaries 
         run: |
-          echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-          echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)" >> $GITHUB_ENV
-      - name: Linux ARM setup
-        if: ${{ matrix.job.target == 'aarch64-unknown-linux-gnu' }}
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-
-      - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc
-
-      - name: Install Forc-Fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-fmt
-
-      - name: Install Forc-LSP
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-lsp
-
-      - name: Install Forc-Client
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-client
-
-      - name: Install forc-doc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-doc
+          cross build --profile=release --target ${{ matrix.job.target }} --bins
 
       - name: Prep Assets
         id: prep_assets
@@ -637,8 +606,8 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for binary in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc; do
-            cp $(which ${binary}) ./forc-binaries
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc; do
+            cp "target/${{ matrix.job.target }}/release/$BINARY" ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries
 
