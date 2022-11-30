@@ -1,6 +1,6 @@
 [package]
 name = "forc-doc"
-version = "0.31.2"
+version = "0.31.3"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -12,13 +12,13 @@ description = "Build the documentation for the local package and all dependencie
 anyhow = "1.0.65"
 clap = { version = "4.0.18", features = ["derive"] }
 comrak = "0.15"
-forc-pkg = { version = "0.31.2", path = "../../forc-pkg" }
-forc-util = { version = "0.31.2", path = "../../forc-util"}
+forc-pkg = { version = "0.31.3", path = "../../forc-pkg" }
+forc-util = { version = "0.31.3", path = "../../forc-util"}
 horrorshow = "0.8.4"
 include_dir = "0.7.3"
 opener = "0.5.0"
-sway-ast = { version = "0.31.2", path = "../../sway-ast" }
-sway-core = { version = "0.31.2", path = "../../sway-core" }
-sway-lsp = { version = "0.31.2", path = "../../sway-lsp" }
-sway-types = { version = "0.31.2", path = "../../sway-types" }
-swayfmt = { version = "0.31.2", path = "../../swayfmt" }
+sway-ast = { version = "0.31.3", path = "../../sway-ast" }
+sway-core = { version = "0.31.3", path = "../../sway-core" }
+sway-lsp = { version = "0.31.3", path = "../../sway-lsp" }
+sway-types = { version = "0.31.3", path = "../../sway-types" }
+swayfmt = { version = "0.31.3", path = "../../swayfmt" }
