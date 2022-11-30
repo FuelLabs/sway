@@ -167,20 +167,14 @@ fn html_head(
     decl_ty: String,
     decl_name: String,
 ) -> Box<dyn RenderBox> {
-    // TODO: Find a way to dynamically create paths based on module_depth.
-    // This also applies to html_body(), sidebar() and navigation between pages as a whole.
-    let mut normalize = String::new();
-    let mut swaydoc = String::new();
-    let mut ayu = String::new();
-    if module_depth > 0 {
-        normalize.push_str("../normalize.css");
-        swaydoc.push_str("../swaydoc.css");
-        ayu.push_str("../ayu.css");
-    } else {
-        normalize.push_str("../doc/normalize.css");
-        swaydoc.push_str("../doc/swaydoc.css");
-        ayu.push_str("../doc/ayu.css");
-    }
+    let prefix = module_depth_to_path_prefix(module_depth);
+    let mut normalize = prefix.clone();
+    let mut swaydoc = prefix.clone();
+    let mut ayu = prefix;
+    normalize.push_str("normalize.css");
+    swaydoc.push_str("swaydoc.css");
+    ayu.push_str("ayu.css");
+
     box_html! {
         head {
             meta(charset="utf-8");
@@ -207,19 +201,12 @@ fn html_body(
     code_str: String,
     item_attrs: String,
 ) -> Box<dyn RenderBox> {
-    let href = if module_depth > 0 {
-        "../all.html"
-    } else {
-        "../doc/all.html"
-    }
-    .to_string();
+    let mut all_path = module_depth_to_path_prefix(module_depth);
+    all_path.push_str("all.html");
 
     box_html! {
         body(class=format!("swaydoc {decl_ty}")) {
-            : sidebar(module_depth, decl_name.clone(), href);
-            // create main
-            // create main content
-
+            : sidebar(module_depth, decl_name.clone(), all_path);
             // this is the main code block
             main {
                 div(class="width-limiter") {
@@ -281,11 +268,11 @@ fn html_body(
         }
     }
 }
-// crate level index.html
+/// crate level index.html
 fn _crate_index() -> Box<dyn RenderBox> {
     box_html! {}
 }
-// crate level, all items belonging to a crate
+/// crate level, all items belonging to a crate
 fn all_items(crate_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
     // TODO: find a better way to do this
     //
@@ -340,12 +327,12 @@ fn all_items(crate_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
             );
             meta(name="keywords", content="sway, swaylang, sway-lang");
             title: "List of all items in this crate";
-            link(rel="stylesheet", type="text/css", href="../doc/normalize.css");
-            link(rel="stylesheet", type="text/css", href="../doc/swaydoc.css", id="mainThemeStyle");
-            link(rel="stylesheet", type="text/css", href="../doc/ayu.css");
+            link(rel="stylesheet", type="text/css", href="normalize.css");
+            link(rel="stylesheet", type="text/css", href="swaydoc.css", id="mainThemeStyle");
+            link(rel="stylesheet", type="text/css", href="ayu.css");
         }
         body(class="swaydoc mod") {
-            : sidebar(0, format!("Crate {crate_name}"), "../doc/all.html".to_string());
+            : sidebar(0, format!("Crate {crate_name}"), "all.html".to_string());
             main {
                 div(class="width-limiter") {
                     div(class="sub-container") {
@@ -400,13 +387,14 @@ fn all_items(crate_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
         }
     }
 }
+/// Renders the items list from each item kind and adds the links to each file path
 fn all_items_list(title: String, list_items: Vec<(String, String)>) -> Box<dyn RenderBox> {
     box_html! {
         h3(id=format!("{title}")) { : title.clone(); }
         ul(class=format!("{} docblock", title.to_lowercase())) {
-            @ for (path_str, file_name) in list_items {
+            @ for (path_str, file_path) in list_items {
                 li {
-                    a(href=file_name) { : path_str; }
+                    a(href=file_path) { : path_str; }
                 }
             }
         }
@@ -418,17 +406,15 @@ fn all_items_list(title: String, list_items: Vec<(String, String)>) -> Box<dyn R
 fn _module_index() -> Box<dyn RenderBox> {
     box_html! {}
 }
+/// Sidebar component
 fn sidebar(
     module_depth: usize,
     location: String,
     href: String, /* sidebar_items */
 ) -> Box<dyn RenderBox> {
-    let logo_path = if module_depth > 0 {
-        "../sway-logo.svg"
-    } else {
-        "../doc/sway-logo.svg"
-    }
-    .to_string();
+    let mut logo_path = module_depth_to_path_prefix(module_depth);
+    logo_path.push_str("sway-logo.svg");
+
     box_html! {
         nav(class="sidebar") {
             a(class="sidebar-logo", href=href) {
@@ -449,6 +435,8 @@ fn sidebar(
         }
     }
 }
+/// Creates a String version of the path to an item, used in navigating from
+/// all.html to items.
 fn qualified_file_path(module_prefix: &Vec<String>, file_name: String) -> String {
     let mut file_path = PathBuf::new();
     for prefix in module_prefix {
@@ -458,8 +446,16 @@ fn qualified_file_path(module_prefix: &Vec<String>, file_name: String) -> String
 
     file_path.to_str().unwrap().to_string()
 }
-
-fn docs_to_html(attributes: &AttributesMap) -> String {
+/// Create a path prefix string for navigation from the `module_depth`
+fn module_depth_to_path_prefix(module_depth: usize) -> String {
+    let mut prefix = String::new();
+    for _ in 0..module_depth {
+        prefix.push_str("../")
+    }
+    prefix
+}
+/// Creates an HTML String from an [AttributesMap]
+fn attrsmap_to_html_string(attributes: &AttributesMap) -> String {
     let attributes = attributes.get(&AttributeKind::Doc);
     let mut docs = String::new();
 
@@ -499,7 +495,7 @@ impl Renderable for TyStructDeclaration {
         } = &self;
         let name = name.as_str().to_string();
         let code_str = parse::parse_format::<sway_ast::ItemStruct>(span.as_str());
-        let struct_attributes = docs_to_html(attributes);
+        let struct_attributes = attrsmap_to_html_string(attributes);
         box_html! {
             : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
             : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, struct_attributes);
@@ -518,7 +514,7 @@ impl Renderable for TyEnumDeclaration {
         } = &self;
         let name = name.as_str().to_string();
         let code_str = parse::parse_format::<sway_ast::ItemEnum>(span.as_str());
-        let enum_attributes = docs_to_html(attributes);
+        let enum_attributes = attrsmap_to_html_string(attributes);
         box_html! {
             : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
             : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, enum_attributes);
@@ -539,7 +535,7 @@ impl Renderable for TyTraitDeclaration {
         } = &self;
         let name = name.as_str().to_string();
         let code_str = parse::parse_format::<sway_ast::ItemTrait>(span.as_str());
-        let trait_attributes = docs_to_html(attributes);
+        let trait_attributes = attrsmap_to_html_string(attributes);
         box_html! {
             : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
             : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, trait_attributes);
@@ -557,7 +553,7 @@ impl Renderable for TyAbiDeclaration {
         } = &self;
         let name = name.as_str().to_string();
         let code_str = parse::parse_format::<sway_ast::ItemAbi>(span.as_str());
-        let abi_attributes = docs_to_html(attributes);
+        let abi_attributes = attrsmap_to_html_string(attributes);
         box_html! {
             : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
             : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, abi_attributes);
@@ -573,7 +569,7 @@ impl Renderable for TyStorageDeclaration {
         } = &self;
         let name = "Contract Storage".to_string();
         let code_str = parse::parse_format::<sway_ast::ItemStorage>(span.as_str());
-        let storage_attributes = docs_to_html(attributes);
+        let storage_attributes = attrsmap_to_html_string(attributes);
         box_html! {
             : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
             : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, storage_attributes);
@@ -618,7 +614,7 @@ impl Renderable for TyFunctionDeclaration {
         } = &self;
         let name = name.as_str().to_string();
         let code_str = parse::parse_format::<sway_ast::ItemFn>(span.as_str());
-        let function_attributes = docs_to_html(attributes);
+        let function_attributes = attrsmap_to_html_string(attributes);
         box_html! {
             : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
             : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, function_attributes);
@@ -637,7 +633,7 @@ impl Renderable for TyConstantDeclaration {
         } = &self;
         let name = name.as_str().to_string();
         let code_str = parse::parse_format::<sway_ast::ItemConst>(span.as_str());
-        let const_attributes = docs_to_html(attributes);
+        let const_attributes = attrsmap_to_html_string(attributes);
         box_html! {
             : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
             : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, const_attributes);
