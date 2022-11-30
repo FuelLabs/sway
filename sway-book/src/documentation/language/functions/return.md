@@ -4,9 +4,9 @@ In the previous sections we have seen how functions return values without going 
 
 There are two ways to return:
 
-<!-- no toc-->
-- [Explicitly](#explicit-return)
-- [Implicitly](#implicit-return)
+<!-- no toc -->
+- [Explicit Return](#explicit-return)
+- [Implicit Return](#implicit-return)
 
 When returning data from a function the return types must match up with the return types declared in the function signature. This means that if the first return type is a `u64` then the type of the first value being returned must also be a `u64`.
 
@@ -18,7 +18,7 @@ To return from a function explicitly we use the `return` keyword followed by the
 {{#include ../../../code/language/functions/src/explicit.sw:main}}
 ```
 
-A return expression is typically used at the end of a function however as long as the syntax is correct it can be used anywhere inside a function. This can be used as a mechanism to exit the function early if some condition is met.
+A return expression is typically used at the end of a function; however, it can be used earlier as a mechanism to exit a function early if some condition is met. 
 
 ```sway
 {{#include ../../../code/language/functions/src/explicit.sw:return_data}}
@@ -32,7 +32,7 @@ To return from a function implicitly we do not use the `return` keyword and we o
 {{#include ../../../code/language/functions/src/implicit.sw:main}}
 ```
 
-Similarly to the explicit usage of a `return` this will typically be used at the end of a function but it can also be used anywhere.
+An implicit return is a special case of the [explicit return](#explicit-return). It can only be used at the end of a function.
 
 ```sway
 {{#include ../../../code/language/functions/src/implicit.sw:return_data}}
