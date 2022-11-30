@@ -3,22 +3,22 @@ mod descriptor;
 mod doc;
 mod render;
 
+use crate::{
+    doc::{Document, Documentation},
+    render::{RenderedDocument, RenderedDocumentation},
+};
 use anyhow::{bail, Result};
 use clap::Parser;
 use cli::Command;
+use forc_pkg::{self as pkg};
+use forc_util::default_output_directory;
+use include_dir::{include_dir, Dir};
 use pkg::manifest::ManifestFile;
 use std::{
     process::Command as Process,
     {fs, path::PathBuf},
 };
 use sway_core::TypeEngine;
-
-use crate::{
-    doc::{Document, Documentation},
-    render::{RenderedDocument, RenderedDocumentation},
-};
-use forc_pkg::{self as pkg};
-use forc_util::default_output_directory;
 
 /// Main method for `forc doc`.
 pub fn main() -> Result<()> {
@@ -64,7 +64,7 @@ pub fn main() -> Result<()> {
     let rendered_docs: RenderedDocumentation =
         RenderedDocument::from_raw_docs(&raw_docs, project_name);
 
-    // write to outfile
+    // write contents to outfile
     for doc in rendered_docs {
         let mut doc_path = doc_path.clone();
         for prefix in doc.module_prefix {
@@ -74,6 +74,16 @@ pub fn main() -> Result<()> {
         fs::create_dir_all(&doc_path)?;
         doc_path.push(doc.file_name);
         fs::write(&doc_path, doc.file_contents.0.as_bytes())?;
+    }
+    // CSS, icons and logos
+    static ASSETS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/assets");
+    for file in ASSETS_DIR.files() {
+        let mut doc_path = doc_path.clone();
+        doc_path.push("assets");
+
+        fs::create_dir_all(&doc_path)?;
+        doc_path.push(file.path());
+        fs::write(&doc_path, file.contents())?;
     }
 
     // check if the user wants to open the doc in the browser

@@ -171,9 +171,9 @@ fn html_head(
     let mut normalize = prefix.clone();
     let mut swaydoc = prefix.clone();
     let mut ayu = prefix;
-    normalize.push_str("normalize.css");
-    swaydoc.push_str("swaydoc.css");
-    ayu.push_str("ayu.css");
+    normalize.push_str("assets/normalize.css");
+    swaydoc.push_str("assets/swaydoc.css");
+    ayu.push_str("assets/ayu.css");
 
     box_html! {
         head {
@@ -220,8 +220,8 @@ fn html_body(
                                         name="search",
                                         autocomplete="off",
                                         spellcheck="false",
-                                        // TODO: Add functionality.
-                                        placeholder="Search...",
+                                        // TODO: https://github.com/FuelLabs/sway/issues/3480
+                                        placeholder="Searchbar unimplemented, see issue #3480...",
                                         type="search"
                                     );
                                     div(id="help-button", title="help", tabindex="-1") {
@@ -238,7 +238,7 @@ fn html_body(
                                     // TODO: pass the decl ty info or match
                                     // for uppercase naming like: "Enum"
                                     : format!("{} ", &decl_ty);
-                                    // TODO: add anchors to a qualified path
+                                    // TODO: add qualified path anchors
                                     a(class=&decl_ty, href="#") {
                                         : &decl_name;
                                     }
@@ -258,7 +258,7 @@ fn html_body(
                                 }
                                 // this is the description
                                 div(class="docblock") {
-                                    p { : Raw(item_attrs) }
+                                    : Raw(item_attrs)
                                 }
                             }
                         }
@@ -327,9 +327,9 @@ fn all_items(crate_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
             );
             meta(name="keywords", content="sway, swaylang, sway-lang");
             title: "List of all items in this crate";
-            link(rel="stylesheet", type="text/css", href="normalize.css");
-            link(rel="stylesheet", type="text/css", href="swaydoc.css", id="mainThemeStyle");
-            link(rel="stylesheet", type="text/css", href="ayu.css");
+            link(rel="stylesheet", type="text/css", href="assets/normalize.css");
+            link(rel="stylesheet", type="text/css", href="assets/swaydoc.css", id="mainThemeStyle");
+            link(rel="stylesheet", type="text/css", href="assets/ayu.css");
         }
         body(class="swaydoc mod") {
             : sidebar(0, format!("Crate {crate_name}"), "all.html".to_string());
@@ -413,7 +413,7 @@ fn sidebar(
     href: String, /* sidebar_items */
 ) -> Box<dyn RenderBox> {
     let mut logo_path = module_depth_to_path_prefix(module_depth);
-    logo_path.push_str("sway-logo.svg");
+    logo_path.push_str("assets/sway-logo.svg");
 
     box_html! {
         nav(class="sidebar") {
