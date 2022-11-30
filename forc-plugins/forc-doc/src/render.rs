@@ -448,11 +448,7 @@ fn qualified_file_path(module_prefix: &Vec<String>, file_name: String) -> String
 }
 /// Create a path prefix string for navigation from the `module_depth`
 fn module_depth_to_path_prefix(module_depth: usize) -> String {
-    let mut prefix = String::new();
-    for _ in 0..module_depth {
-        prefix.push_str("../")
-    }
-    prefix
+    (0..module_depth).map(|_| "../").collect::<String>()
 }
 /// Creates an HTML String from an [AttributesMap]
 fn attrsmap_to_html_string(attributes: &AttributesMap) -> String {
