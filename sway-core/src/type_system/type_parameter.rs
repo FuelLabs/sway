@@ -7,7 +7,7 @@ use crate::{
 };
 
 use sway_error::error::CompileError;
-use sway_types::{ident::Ident, span::Span, JsonTypeDeclaration, Spanned};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 use std::{
     collections::BTreeMap,
@@ -158,13 +158,13 @@ impl TypeParameter {
     }
 
     /// Returns the initial type ID of a TypeParameter. Also updates the provided list of types to
-    /// append the current TypeParameter as a `JsonTypeDeclaration`.
+    /// append the current TypeParameter as a `fuels_types::TypeDeclaration`.
     pub(crate) fn get_json_type_parameter(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<JsonTypeDeclaration>,
+        types: &mut Vec<fuels_types::TypeDeclaration>,
     ) -> usize {
-        let type_parameter = JsonTypeDeclaration {
+        let type_parameter = fuels_types::TypeDeclaration {
             type_id: self.initial_type_id.index(),
             type_field: self
                 .initial_type_id

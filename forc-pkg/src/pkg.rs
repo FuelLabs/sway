@@ -42,7 +42,7 @@ use sway_core::{
     CompileResult, CompiledBytecode, FinalizedEntry,
 };
 use sway_error::error::CompileError;
-use sway_types::{Ident, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
+use sway_types::Ident;
 use sway_utils::constants;
 use tracing::{info, warn};
 use url::Url;
@@ -78,7 +78,7 @@ pub struct PinnedId(u64);
 /// The result of successfully compiling a package.
 #[derive(Debug, Clone)]
 pub struct BuiltPackage {
-    pub json_abi_program: JsonABIProgram,
+    pub json_abi_program: fuels_types::ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
     pub entries: Vec<FinalizedEntry>,
@@ -2123,7 +2123,7 @@ pub fn dependency_namespace(
 
                 // Construct namespace with contract id
                 let contract_dep_constant_name = "CONTRACT_ID";
-                let contract_id_value = format!("\"{dep_contract_id}\"");
+                let contract_id_value = format!("0x{dep_contract_id}");
                 let contract_id_constant = ConfigTimeConstant {
                     r#type: "b256".to_string(),
                     value: contract_id_value,
@@ -2580,22 +2580,30 @@ pub fn build(
 
 /// Standardize the JSON ABI data structure by eliminating duplicate types. This is an iterative
 /// process because every time two types are merged, new opportunities for more merging arise.
-fn standardize_json_abi_types(json_abi_program: &mut JsonABIProgram) {
+fn standardize_json_abi_types(json_abi_program: &mut fuels_types::ProgramABI) {
     loop {
         // If type with id_1 is a duplicate of type with id_2, then keep track of the mapping
         // between id_1 and id_2 in the HashMap below.
         let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();
 
-        // HashSet to eliminate duplicate type declarations.
-        let mut types_set: HashSet<JsonTypeDeclaration> = HashSet::new();
+        // A vector containing unique `fuels_types::TypeDeclaration`s.
+        //
+        // Two `fuels_types::TypeDeclaration` are deemed the same if the have the same
+        // `type_field`, `components`, and `type_parameters` (even if their `type_id`s are
+        // different).
+        let mut deduped_types: Vec<fuels_types::TypeDeclaration> = Vec::new();
 
-        // Insert values in the HashSet `types_set` if they haven't been inserted before.
-        // Otherwise, create an appropriate mapping in the HashMap `old_to_new_id`.
-        for decl in json_abi_program.types.iter_mut() {
-            if let Some(ty) = types_set.get(decl) {
+        // Insert values in `deduped_types` if they haven't been inserted before. Otherwise, create
+        // an appropriate mapping between type IDs in the HashMap `old_to_new_id`.
+        for decl in json_abi_program.types.iter() {
+            if let Some(ty) = deduped_types.iter().find(|d| {
+                d.type_field == decl.type_field
+                    && d.components == decl.components
+                    && d.type_parameters == decl.type_parameters
+            }) {
                 old_to_new_id.insert(decl.type_id, ty.type_id);
             } else {
-                types_set.insert(decl.clone());
+                deduped_types.push(decl.clone());
             }
         }
 
@@ -2605,26 +2613,13 @@ fn standardize_json_abi_types(json_abi_program: &mut JsonABIProgram) {
             break;
         }
 
-        // Convert the set into a vector and store it back in `json_abi_program.types`. We could
-        // convert the HashSet *directly* into a vector using `collect()`, but the order would not
-        // be deterministic. We could use `BTreeSet` instead of `HashSet` but the ordering in the
-        // BTreeSet would have to depend on the original type ID and we're trying to avoid that.
-        let mut filtered_types = vec![];
-        for t in json_abi_program.types.iter() {
-            if let Some(ty) = types_set.get(t) {
-                if ty.type_id == t.type_id {
-                    filtered_types.push((*ty).clone());
-                    types_set.remove(t);
-                }
-            }
-        }
-        json_abi_program.types = filtered_types;
+        json_abi_program.types = deduped_types;
 
-        // Update all `JsonTypeApplication`s and all `JsonTypeDeclaration`s
+        // Update all `fuels_types::TypeApplication`s and all `fuels_types::TypeDeclaration`s
         update_all_types(json_abi_program, &old_to_new_id);
     }
 
-    // Sort the `JsonTypeDeclaration`s
+    // Sort the `fuels_types::TypeDeclaration`s
     json_abi_program
         .types
         .sort_by(|t1, t2| t1.type_field.cmp(&t2.type_field));
@@ -2636,13 +2631,16 @@ fn standardize_json_abi_types(json_abi_program: &mut JsonABIProgram) {
         decl.type_id = ix;
     }
 
-    // Update all `JsonTypeApplication`s and all `JsonTypeDeclaration`s
+    // Update all `fuels_types::TypeApplication`s and all `fuels_types::TypeDeclaration`s
     update_all_types(json_abi_program, &old_to_new_id);
 }
 
-/// Recursively updates the type IDs used in a JsonABIProgram
-fn update_all_types(json_abi_program: &mut JsonABIProgram, old_to_new_id: &HashMap<usize, usize>) {
-    // Update all `JsonTypeApplication`s in every function
+/// Recursively updates the type IDs used in a fuels_types::ProgramABI
+fn update_all_types(
+    json_abi_program: &mut fuels_types::ProgramABI,
+    old_to_new_id: &HashMap<usize, usize>,
+) {
+    // Update all `fuels_types::TypeApplication`s in every function
     for func in json_abi_program.functions.iter_mut() {
         for input in func.inputs.iter_mut() {
             update_json_type_application(input, old_to_new_id);
@@ -2651,20 +2649,21 @@ fn update_all_types(json_abi_program: &mut JsonABIProgram, old_to_new_id: &HashM
         update_json_type_application(&mut func.output, old_to_new_id);
     }
 
-    // Update all `JsonTypeDeclaration`
+    // Update all `fuels_types::TypeDeclaration`
     for decl in json_abi_program.types.iter_mut() {
         update_json_type_declaration(decl, old_to_new_id);
     }
-
-    for logged_type in json_abi_program.logged_types.iter_mut() {
-        update_json_type_application(&mut logged_type.logged_type, old_to_new_id);
+    if let Some(logged_types) = &mut json_abi_program.logged_types {
+        for logged_type in logged_types.iter_mut() {
+            update_json_type_application(&mut logged_type.application, old_to_new_id);
+        }
     }
 }
 
-/// Recursively updates the type IDs used in a `JsonTypeApplication` given a HashMap from old to
-/// new IDs
+/// Recursively updates the type IDs used in a `fuels_types::TypeApplication` given a HashMap from
+/// old to new IDs
 fn update_json_type_application(
-    type_application: &mut JsonTypeApplication,
+    type_application: &mut fuels_types::TypeApplication,
     old_to_new_id: &HashMap<usize, usize>,
 ) {
     if let Some(new_id) = old_to_new_id.get(&type_application.type_id) {
@@ -2678,10 +2677,10 @@ fn update_json_type_application(
     }
 }
 
-/// Recursively updates the type IDs used in a `JsonTypeDeclaration` given a HashMap from old to
-/// new IDs
+/// Recursively updates the type IDs used in a `fuels_types::TypeDeclaration` given a HashMap from
+/// old to new IDs
 fn update_json_type_declaration(
-    type_declaration: &mut JsonTypeDeclaration,
+    type_declaration: &mut fuels_types::TypeDeclaration,
     old_to_new_id: &HashMap<usize, usize>,
 ) {
     if let Some(params) = &mut type_declaration.type_parameters {
