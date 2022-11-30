@@ -23,7 +23,7 @@ impl PartialEqWithTypeEngine for TyReassignment {
     fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
         self.lhs_base_name == rhs.lhs_base_name
             && self.lhs_type == rhs.lhs_type
-            && self.lhs_indices == rhs.lhs_indices
+            && self.lhs_indices.eq(&rhs.lhs_indices, type_engine)
             && self.rhs.eq(&rhs.rhs, type_engine)
     }
 }
@@ -48,10 +48,52 @@ impl ReplaceDecls for TyReassignment {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum ProjectionKind {
-    StructField { name: Ident },
-    TupleField { index: usize, index_span: Span },
+    StructField {
+        name: Ident,
+    },
+    TupleField {
+        index: usize,
+        index_span: Span,
+    },
+    ArrayIndex {
+        index: Box<TyExpression>,
+        index_span: Span,
+    },
+}
+
+impl EqWithTypeEngine for ProjectionKind {}
+impl PartialEqWithTypeEngine for ProjectionKind {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        match (self, other) {
+            (
+                ProjectionKind::StructField { name: l_name },
+                ProjectionKind::StructField { name: r_name },
+            ) => l_name == r_name,
+            (
+                ProjectionKind::TupleField {
+                    index: l_index,
+                    index_span: l_index_span,
+                },
+                ProjectionKind::TupleField {
+                    index: r_index,
+                    index_span: r_index_span,
+                },
+            ) => l_index == r_index && l_index_span == r_index_span,
+            (
+                ProjectionKind::ArrayIndex {
+                    index: l_index,
+                    index_span: l_index_span,
+                },
+                ProjectionKind::ArrayIndex {
+                    index: r_index,
+                    index_span: r_index_span,
+                },
+            ) => l_index.eq(r_index, type_engine) && l_index_span == r_index_span,
+            _ => false,
+        }
+    }
 }
 
 impl Spanned for ProjectionKind {
@@ -59,6 +101,7 @@ impl Spanned for ProjectionKind {
         match self {
             ProjectionKind::StructField { name } => name.span(),
             ProjectionKind::TupleField { index_span, .. } => index_span.clone(),
+            ProjectionKind::ArrayIndex { index_span, .. } => index_span.clone(),
         }
     }
 }
@@ -68,6 +111,7 @@ impl ProjectionKind {
         match self {
             ProjectionKind::StructField { name } => Cow::Borrowed(name.as_str()),
             ProjectionKind::TupleField { index, .. } => Cow::Owned(index.to_string()),
+            ProjectionKind::ArrayIndex { index, .. } => Cow::Owned(format!("{:#?}", index)),
         }
     }
 }

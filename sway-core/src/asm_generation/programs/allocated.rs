@@ -12,8 +12,9 @@ impl AllocatedProgram {
                 .collect(),
         };
 
-        let (realized_ops, mut label_offsets) =
-            abstract_ops.realize_labels(&mut self.data_section)?;
+        let (realized_ops, mut label_offsets) = abstract_ops
+            .relocate_control_flow(&self.data_section)
+            .realize_labels(&mut self.data_section)?;
         let ops = InstructionSet {
             ops: realized_ops.pad_to_even(),
         };
@@ -23,7 +24,10 @@ impl AllocatedProgram {
             .entries
             .into_iter()
             .map(|(selector, label, name)| {
-                let offset = label_offsets.remove(&label).expect("no offset for entry");
+                let offset = label_offsets
+                    .remove(&label)
+                    .expect("no offset for entry")
+                    .offs;
                 (selector, offset, name)
             })
             .collect();

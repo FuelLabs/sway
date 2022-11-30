@@ -1159,4 +1159,26 @@ fn func_with_multiline_collections() {
         assert_eq!(correct_sway_code, formatted_sway_code);
         assert!(test_stability(formatted_sway_code, formatter));
     }
+    #[test]
+    fn test_parameterless_attributes() {
+        let sway_code_to_format = r#"library my_lib;
+
+abi MyContract {
+    #[test]
+    fn foo();
+}
+"#;
+        let correct_sway_code = r#"library my_lib;
+
+abi MyContract {
+    #[test]
+    fn foo();
+}
+"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
+    }
 }
