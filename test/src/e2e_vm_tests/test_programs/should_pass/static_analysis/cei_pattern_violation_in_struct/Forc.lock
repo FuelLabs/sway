@@ -1,0 +1,13 @@
+[[package]]
+name = 'cei_pattern_violation_in_struct'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-DC10F9EB95613970'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-DC10F9EB95613970'
+dependencies = ['core']
