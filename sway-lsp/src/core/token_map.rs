@@ -9,7 +9,7 @@ use tower_lsp::lsp_types::{Position, Url};
 ///
 /// The TokenMap is a wrapper around a [DashMap], which is a concurrent HashMap.
 #[derive(Debug)]
-pub struct TokenMap(DashMap<(Ident, Span), Token>);
+pub(crate) struct TokenMap(DashMap<(Ident, Span), Token>);
 
 impl TokenMap {
     /// Create a new token map.

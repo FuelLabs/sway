@@ -30,17 +30,17 @@ use tower_lsp::lsp_types::{
     SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
 };
 
-pub type Documents = DashMap<String, TextDocument>;
-pub type ProjectDirectory = PathBuf;
+pub(crate) type Documents = DashMap<String, TextDocument>;
+pub(crate) type ProjectDirectory = PathBuf;
 
 #[derive(Default, Debug)]
-pub struct CompiledProgram {
+pub(crate) struct CompiledProgram {
     pub parsed: Option<ParseProgram>,
     pub typed: Option<ty::TyProgram>,
 }
 
 #[derive(Debug)]
-pub struct Session {
+pub(crate) struct Session {
     pub documents: Documents,
     pub token_map: TokenMap,
     pub runnables: DashMap<RunnableType, Runnable>,
@@ -50,7 +50,7 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Session {
             documents: DashMap::new(),
             token_map: TokenMap::new(),
@@ -61,7 +61,7 @@ impl Session {
         }
     }
 
-    pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
+    pub(crate) fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
         *self.type_engine.write() = <_>::default();
 
         let manifest_dir = PathBuf::from(uri.path());
@@ -72,14 +72,14 @@ impl Session {
         self.sync.clone_manifest_dir_to_temp()?;
 
         // iterate over the project dir, parse all sway files
-        let _ = self.parse_and_store_sway_files();
+        let _ = self.store_sway_files();
 
         self.sync.watch_and_sync_manifest();
 
         self.sync.manifest_dir().map_err(Into::into)
     }
 
-    pub fn shutdown(&self) {
+    pub(crate) fn shutdown(&self) {
         // shutdown the thread watching the manifest file
         let handle = self.sync.notify_join_handle.read();
         if let Some(join_handle) = &*handle {
@@ -91,11 +91,11 @@ impl Session {
     }
 
     /// Return a reference to the `TokenMap` of the current session.
-    pub fn token_map(&self) -> &TokenMap {
+    pub(crate) fn token_map(&self) -> &TokenMap {
         &self.token_map
     }
 
-    pub fn parse_project(&self, uri: &Url) -> Result<Vec<Diagnostic>, LanguageServerError> {
+    pub(crate) fn parse_project(&self, uri: &Url) -> Result<Vec<Diagnostic>, LanguageServerError> {
         self.token_map.clear();
         self.runnables.clear();
 
@@ -187,69 +187,7 @@ impl Session {
         Ok(diagnostics)
     }
 
-    /// Parse the `ParseProgram` AST to populate the token map with parsed AST nodes.
-    fn parse_ast_to_tokens(&self, parse_program: &ParseProgram, f: impl Fn(&AstNode, &TokenMap)) {
-        let root_nodes = parse_program.root.tree.root_nodes.iter();
-        let sub_nodes = parse_program
-            .root
-            .submodules
-            .iter()
-            .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes);
-
-        root_nodes
-            .chain(sub_nodes)
-            .for_each(|node| f(node, &self.token_map));
-    }
-
-    /// Parse the `TyProgram` AST to populate the token map with typed AST nodes.
-    pub fn parse_ast_to_typed_tokens(
-        &self,
-        typed_program: &ty::TyProgram,
-        f: impl Fn(&ty::TyAstNode, &TokenMap),
-    ) {
-        let root_nodes = typed_program.root.all_nodes.iter();
-        let sub_nodes = typed_program
-            .root
-            .submodules
-            .iter()
-            .flat_map(|(_, submodule)| &submodule.module.all_nodes);
-
-        root_nodes
-            .chain(sub_nodes)
-            .for_each(|node| f(node, &self.token_map));
-    }
-
-    /// Get a reference to the `ParseProgram` AST.
-    pub fn compile_res_to_parse_program<'a>(
-        &'a self,
-        parsed_result: &'a CompileResult<ParseProgram>,
-    ) -> Result<&'a ParseProgram, LanguageServerError> {
-        parsed_result.value.as_ref().ok_or_else(|| {
-            let diagnostics = capabilities::diagnostic::get_diagnostics(
-                &parsed_result.warnings,
-                &parsed_result.errors,
-            );
-            LanguageServerError::FailedToParse { diagnostics }
-        })
-    }
-
-    /// Get a reference to the `TyProgram` AST.
-    pub fn compile_res_to_typed_program<'a>(
-        &'a self,
-        ast_res: &'a CompileResult<ty::TyProgram>,
-    ) -> Result<&'a ty::TyProgram, LanguageServerError> {
-        ast_res
-            .value
-            .as_ref()
-            .ok_or(LanguageServerError::FailedToParse {
-                diagnostics: capabilities::diagnostic::get_diagnostics(
-                    &ast_res.warnings,
-                    &ast_res.errors,
-                ),
-            })
-    }
-
-    pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
+    pub(crate) fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
         let (_, token) = self.token_map.token_at_position(url, position)?;
         let token_ranges = self
             .token_map
@@ -260,7 +198,7 @@ impl Session {
         Some(token_ranges)
     }
 
-    pub fn token_definition_response(
+    pub(crate) fn token_definition_response(
         &self,
         uri: Url,
         position: Position,
@@ -281,20 +219,20 @@ impl Session {
             })
     }
 
-    pub fn completion_items(&self) -> Option<Vec<CompletionItem>> {
+    pub(crate) fn completion_items(&self) -> Option<Vec<CompletionItem>> {
         Some(capabilities::completion::to_completion_items(
             self.token_map(),
         ))
     }
 
-    pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
+    pub(crate) fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
         let tokens = self.token_map.tokens_for_file(url);
         self.sync
             .to_workspace_url(url.clone())
             .map(|url| capabilities::document_symbol::to_symbol_information(tokens, url))
     }
 
-    pub fn format_text(&self, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
+    pub(crate) fn format_text(&self, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
         let document =
             self.documents
                 .get(url.path())
@@ -306,28 +244,16 @@ impl Session {
             .map(|page_text_edit| vec![page_text_edit])
     }
 
-    pub fn parse_and_store_sway_files(&self) -> Result<(), LanguageServerError> {
-        let temp_dir = self.sync.temp_dir()?;
-        // Store the documents.
-        for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
-            self.store_document(TextDocument::build_from_path(path)?)?;
-        }
-        Ok(())
-    }
-
-    pub fn contains_sway_file(&self, url: &Url) -> bool {
-        self.documents.contains_key(url.path())
-    }
-
-    pub fn handle_open_file(&self, uri: &Url) {
-        if !self.contains_sway_file(uri) {
+    pub(crate) fn handle_open_file(&self, uri: &Url) {
+        if !self.documents.contains_key(uri.path()) {
             if let Ok(text_document) = TextDocument::build_from_path(uri.path()) {
                 let _ = self.store_document(text_document);
             }
         }
     }
 
-    pub fn update_text_document(
+    /// Update the document at the given [Url] with the Vec of changes returned by the client.
+    pub(crate) fn update_text_document(
         &self,
         url: &Url,
         changes: Vec<TextDocumentContentChangeEvent>,
@@ -341,7 +267,7 @@ impl Session {
     }
 
     /// Remove the text document from the session.
-    pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
+    pub(crate) fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
         self.documents
             .remove(url.path())
             .ok_or_else(|| DocumentError::DocumentNotFound {
@@ -357,6 +283,68 @@ impl Session {
             .insert(uri.clone(), text_document)
             .map_or(Ok(()), |_| {
                 Err(DocumentError::DocumentAlreadyStored { path: uri })
+            })
+    }
+
+    /// Parse the [ParseProgram] AST to populate the [TokenMap] with parsed AST nodes.
+    fn parse_ast_to_tokens(&self, parse_program: &ParseProgram, f: impl Fn(&AstNode, &TokenMap)) {
+        let root_nodes = parse_program.root.tree.root_nodes.iter();
+        let sub_nodes = parse_program
+            .root
+            .submodules
+            .iter()
+            .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes);
+
+        root_nodes
+            .chain(sub_nodes)
+            .for_each(|node| f(node, &self.token_map));
+    }
+
+    /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
+    fn parse_ast_to_typed_tokens(
+        &self,
+        typed_program: &ty::TyProgram,
+        f: impl Fn(&ty::TyAstNode, &TokenMap),
+    ) {
+        let root_nodes = typed_program.root.all_nodes.iter();
+        let sub_nodes = typed_program
+            .root
+            .submodules
+            .iter()
+            .flat_map(|(_, submodule)| &submodule.module.all_nodes);
+
+        root_nodes
+            .chain(sub_nodes)
+            .for_each(|node| f(node, &self.token_map));
+    }
+
+    /// Get a reference to the [ParseProgram] AST.
+    fn compile_res_to_parse_program<'a>(
+        &'a self,
+        parsed_result: &'a CompileResult<ParseProgram>,
+    ) -> Result<&'a ParseProgram, LanguageServerError> {
+        parsed_result.value.as_ref().ok_or_else(|| {
+            let diagnostics = capabilities::diagnostic::get_diagnostics(
+                &parsed_result.warnings,
+                &parsed_result.errors,
+            );
+            LanguageServerError::FailedToParse { diagnostics }
+        })
+    }
+
+    /// Get a reference to the [ty::TyProgram] AST.
+    fn compile_res_to_typed_program<'a>(
+        &'a self,
+        ast_res: &'a CompileResult<ty::TyProgram>,
+    ) -> Result<&'a ty::TyProgram, LanguageServerError> {
+        ast_res
+            .value
+            .as_ref()
+            .ok_or(LanguageServerError::FailedToParse {
+                diagnostics: capabilities::diagnostic::get_diagnostics(
+                    &ast_res.warnings,
+                    &ast_res.errors,
+                ),
             })
     }
 
@@ -382,6 +370,16 @@ impl Session {
     fn save_typed_program(&self, typed_program: ty::TyProgram) {
         let mut program = self.compiled_program.write();
         program.typed = Some(typed_program);
+    }
+
+    /// Populate [Documents] with sway files found in the workspace.
+    fn store_sway_files(&self) -> Result<(), LanguageServerError> {
+        let temp_dir = self.sync.temp_dir()?;
+        // Store the documents.
+        for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
+            self.store_document(TextDocument::build_from_path(path)?)?;
+        }
+        Ok(())
     }
 }
 

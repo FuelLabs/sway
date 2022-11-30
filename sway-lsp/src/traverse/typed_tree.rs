@@ -11,7 +11,7 @@ use sway_core::{
 };
 use sway_types::{ident::Ident, Spanned};
 
-pub fn traverse_node(type_engine: &TypeEngine, node: &ty::TyAstNode, tokens: &TokenMap) {
+pub(crate) fn traverse_node(type_engine: &TypeEngine, node: &ty::TyAstNode, tokens: &TokenMap) {
     match &node.content {
         ty::TyAstNodeContent::Declaration(declaration) => {
             handle_declaration(type_engine, declaration, tokens)

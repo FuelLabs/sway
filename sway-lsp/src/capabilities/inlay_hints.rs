@@ -12,12 +12,12 @@ use tower_lsp::lsp_types::{self, Range, Url};
 
 // Future PR's will add more kinds
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum InlayKind {
+pub(crate) enum InlayKind {
     TypeHint,
 }
 
 #[derive(Debug)]
-pub struct InlayHint {
+pub(crate) struct InlayHint {
     pub range: Range,
     pub kind: InlayKind,
     pub label: String,

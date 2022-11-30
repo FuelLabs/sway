@@ -4,7 +4,10 @@ use sway_error::error::CompileError;
 use sway_error::warning::CompileWarning;
 use sway_types::{LineCol, Spanned};
 
-pub fn get_diagnostics(warnings: &[CompileWarning], errors: &[CompileError]) -> Vec<Diagnostic> {
+pub(crate) fn get_diagnostics(
+    warnings: &[CompileWarning],
+    errors: &[CompileError],
+) -> Vec<Diagnostic> {
     let errors = errors.iter().map(|error| Diagnostic {
         range: get_range(error.span().line_col()),
         severity: Some(DiagnosticSeverity::ERROR),

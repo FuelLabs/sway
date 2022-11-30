@@ -2,7 +2,7 @@ use sway_core::language::parsed::TreeType;
 use tower_lsp::lsp_types::Range;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
-pub enum RunnableType {
+pub(crate) enum RunnableType {
     /// This is the main_fn entry point for the predicate or script.
     MainFn,
     /// Place holder for when we have in language testing supported.
@@ -11,7 +11,7 @@ pub enum RunnableType {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct Runnable {
+pub(crate) struct Runnable {
     /// The location in the file where the runnable button should be displayed
     pub range: Range,
     /// The program kind of the current file
@@ -19,7 +19,7 @@ pub struct Runnable {
 }
 
 impl Runnable {
-    pub fn new(range: Range, tree_type: TreeType) -> Self {
+    pub(crate) fn new(range: Range, tree_type: TreeType) -> Self {
         Self { range, tree_type }
     }
 }

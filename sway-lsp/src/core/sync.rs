@@ -15,13 +15,13 @@ use tempfile::Builder;
 use tower_lsp::lsp_types::Url;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
-pub enum Directory {
+pub(crate) enum Directory {
     Manifest,
     Temp,
 }
 
 #[derive(Debug)]
-pub struct SyncWorkspace {
+pub(crate) struct SyncWorkspace {
     pub directories: DashMap<Directory, PathBuf>,
     pub notify_join_handle: RwLock<Option<tokio::task::JoinHandle<()>>>,
 }
