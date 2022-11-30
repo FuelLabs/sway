@@ -9,6 +9,7 @@ use sway_core::language::ty::{
 };
 use sway_core::transform::{AttributeKind, AttributesMap};
 use sway_lsp::utils::markdown::format_docs;
+use swayfmt::parse;
 
 pub(crate) struct HTMLString(pub(crate) String);
 pub(crate) type RenderedDocumentation = Vec<RenderedDocument>;
@@ -181,7 +182,7 @@ fn html_body(
     module_depth: usize,
     decl_ty: String,
     decl_name: String,
-    code_span: String,
+    code_str: String,
     item_attrs: String,
 ) -> Box<dyn RenderBox> {
     let href = if module_depth > 0 {
@@ -200,7 +201,7 @@ fn html_body(
             // this is the main code block
             div(class="docblock item-decl") {
                 pre(class=format!("sway {decl_ty}")) {
-                    code { : code_span; }
+                    code { : code_str; }
                 }
             }
             // expand or hide description of main code block
@@ -389,11 +390,11 @@ impl Renderable for TyStructDeclaration {
             span,
         } = &self;
         let name = name.as_str().to_string();
-        let code_span = span.as_str().to_string();
+        let code_str = parse::parse_format::<sway_ast::ItemStruct>(span.as_str());
         let struct_attributes = docs_to_html(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, struct_attributes);
+            : html_body(module_depth,decl_ty.clone(), name.clone(), code_str, struct_attributes);
         }
     }
 }
@@ -408,11 +409,11 @@ impl Renderable for TyEnumDeclaration {
             span,
         } = &self;
         let name = name.as_str().to_string();
-        let code_span = span.as_str().to_string();
+        let code_str = parse::parse_format::<sway_ast::ItemEnum>(span.as_str());
         let enum_attributes = docs_to_html(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, enum_attributes);
+            : html_body(module_depth,decl_ty.clone(), name.clone(), code_str, enum_attributes);
         }
     }
 }
@@ -429,11 +430,11 @@ impl Renderable for TyTraitDeclaration {
             type_parameters: _,
         } = &self;
         let name = name.as_str().to_string();
-        let code_span = span.as_str().to_string();
+        let code_str = parse::parse_format::<sway_ast::ItemTrait>(span.as_str());
         let trait_attributes = docs_to_html(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, trait_attributes);
+            : html_body(module_depth,decl_ty.clone(), name.clone(), code_str, trait_attributes);
         }
     }
 }
@@ -447,11 +448,11 @@ impl Renderable for TyAbiDeclaration {
             span,
         } = &self;
         let name = name.as_str().to_string();
-        let code_span = span.as_str().to_string();
+        let code_str = parse::parse_format::<sway_ast::ItemAbi>(span.as_str());
         let abi_attributes = docs_to_html(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, abi_attributes);
+            : html_body(module_depth,decl_ty.clone(), name.clone(), code_str, abi_attributes);
         }
     }
 }
@@ -463,11 +464,11 @@ impl Renderable for TyStorageDeclaration {
             attributes,
         } = &self;
         let name = "Contract Storage".to_string();
-        let code_span = span.as_str().to_string();
+        let code_str = parse::parse_format::<sway_ast::ItemStorage>(span.as_str());
         let storage_attributes = docs_to_html(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, storage_attributes);
+            : html_body(module_depth,decl_ty.clone(), name.clone(), code_str, storage_attributes);
         }
     }
 }
@@ -483,11 +484,11 @@ impl Renderable for TyImplTrait {
             span,
         } = &self;
         let name = trait_name.suffix.as_str().to_string();
-        let code_span = span.as_str().to_string();
+        let code_str = parse::parse_format::<sway_ast::ItemImpl>(span.as_str());
         // let impl_trait_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, "".to_string());
+            : html_body(module_depth,decl_ty.clone(), name.clone(), code_str, "".to_string());
         }
     }
 }
@@ -508,11 +509,11 @@ impl Renderable for TyFunctionDeclaration {
             visibility: _,
         } = &self;
         let name = name.as_str().to_string();
-        let code_span = span.as_str().to_string();
+        let code_str = parse::parse_format::<sway_ast::ItemFn>(span.as_str());
         let function_attributes = docs_to_html(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, function_attributes);
+            : html_body(module_depth,decl_ty.clone(), name.clone(), code_str, function_attributes);
         }
     }
 }
@@ -527,11 +528,11 @@ impl Renderable for TyConstantDeclaration {
             span,
         } = &self;
         let name = name.as_str().to_string();
-        let code_span = span.as_str().to_string();
+        let code_str = parse::parse_format::<sway_ast::ItemConst>(span.as_str());
         let const_attributes = docs_to_html(attributes);
         box_html! {
             : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth, decl_ty.clone(), name.clone(), code_span, const_attributes);
+            : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, const_attributes);
         }
     }
 }
