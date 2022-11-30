@@ -3351,6 +3351,7 @@ fn main() {
 <ul>
 <li><a href="forc/workspaces.html#the-members-field"><code>members</code></a> - Packages to include in the workspace.</li>
 </ul>
+<p>An empty workspace can be created with <code>forc new --workspace</code> or <code>forc init --workspace</code>.</p>
 <h2 id="the-members-field"><a class="header" href="#the-members-field">The <code>members</code> field</a></h2>
 <p>The <code>members</code> field defines which packages are members of the workspace:</p>
 <pre><code class="language-toml">[workspace]
@@ -3672,7 +3673,9 @@ creates a basic contract program</p>
 <p><code>--script</code> </p>
 <p>Create a package with a script target (src/main.sw)</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
-<p>Use verbose output<!-- markdownlint-disable MD041 --></p>
+<p>Use verbose output</p>
+<p><code>--workspace</code> </p>
+<p>Adding this flag creates an empty workspace<!-- markdownlint-disable MD041 --></p>
 <h2 id="example-3"><a class="header" href="#example-3">EXAMPLE</a></h2>
 <pre><code class="language-console">$ mkdir my-fuel-project
 $ cd my-fuel-project
@@ -3711,7 +3714,9 @@ creates a basic contract program</p>
 <p><code>--script</code> </p>
 <p>Adding this flag creates an empty script program</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
-<p>Use verbose output<!-- markdownlint-disable MD041 --></p>
+<p>Use verbose output</p>
+<p><code>--workspace</code> </p>
+<p>Adding this flag creates an empty workspace<!-- markdownlint-disable MD041 --></p>
 <h2 id="example-4"><a class="header" href="#example-4">EXAMPLE</a></h2>
 <pre><code class="language-console">$ forc new my-fuel-project
 $ cd my-fuel-project
