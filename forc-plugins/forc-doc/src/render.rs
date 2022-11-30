@@ -160,19 +160,41 @@ fn page_from(rendered_content: Box<dyn RenderBox>) -> String {
 }
 
 /// Basic HTML header component
-fn html_head(location: String, decl_ty: String, decl_name: String) -> Box<dyn RenderBox> {
+fn html_head(
+    module_depth: usize,
+    location: String,
+    decl_ty: String,
+    decl_name: String,
+) -> Box<dyn RenderBox> {
+    // TODO: Find a way to dynamically create paths based on module_depth.
+    // This also applies to html_body(), sidebar() and navigation between pages as a whole.
+    let mut normalize = String::new();
+    let mut swaydoc = String::new();
+    let mut ayu = String::new();
+    if module_depth > 0 {
+        normalize.push_str("../normalize.css");
+        swaydoc.push_str("../swaydoc.css");
+        ayu.push_str("../ayu.css");
+    } else {
+        normalize.push_str("../doc/normalize.css");
+        swaydoc.push_str("../doc/swaydoc.css");
+        ayu.push_str("../doc/ayu.css");
+    }
     box_html! {
         head {
             meta(charset="utf-8");
             meta(name="viewport", content="width=device-width, initial-scale=1.0");
-            meta(name="generator", content="forcdoc");
+            meta(name="generator", content="swaydoc");
             meta(
                 name="description",
                 content=format!("API documentation for the Sway `{decl_name}` {decl_ty} in `{location}`.")
             );
             meta(name="keywords", content=format!("sway, swaylang, sway-lang, {decl_name}"));
             title: format!("{decl_name} in {location} - Sway");
-            // TODO: Add links for CSS & Fonts
+            link(rel="stylesheet", type="text/css", href=normalize);
+            link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
+            link(rel="stylesheet", type="text/css", href=ayu);
+            // TODO: Add links for fonts
         }
     }
 }
@@ -192,25 +214,67 @@ fn html_body(
     .to_string();
 
     box_html! {
-        body(class=format!("forcdoc {decl_ty}")) {
-            : sidebar(decl_name, href);
+        body(class=format!("swaydoc {decl_ty}")) {
+            : sidebar(module_depth, decl_name.clone(), href);
             // create main
             // create main content
 
             // this is the main code block
-            div(class="docblock item-decl") {
-                pre(class=format!("sway {decl_ty}")) {
-                    code { : code_span; }
-                }
-            }
-            // expand or hide description of main code block
-            details(class="forcdoc-toggle top-doc", open) {
-                summary(class="hideme") {
-                    span { : "Expand description" }
-                }
-                // this is the description
-                div(class="docblock") {
-                    p { : Raw(item_attrs) }
+            main {
+                div(class="width-limiter") {
+                    div(class="sub-container") {
+                        nav(class="sub") {
+                            form(class="search-form") {
+                                div(class="search-container") {
+                                    span;
+                                    input(
+                                        class="search-input",
+                                        name="search",
+                                        autocomplete="off",
+                                        spellcheck="false",
+                                        // TODO: Add functionality.
+                                        placeholder="Search...",
+                                        type="search"
+                                    );
+                                    div(id="help-button", title="help", tabindex="-1") {
+                                        button(type="button") { : "?" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    section(id="main-content", class="content") {
+                        div(class="main-heading") {
+                            h1(class="fqn") {
+                                span(class="in-band") {
+                                    // TODO: pass the decl ty info or match
+                                    // for uppercase naming like: "Enum"
+                                    : format!("{} ", &decl_ty);
+                                    // TODO: add anchors to a qualified path
+                                    a(class=&decl_ty, href="#") {
+                                        : &decl_name;
+                                    }
+                                }
+                            }
+                        }
+                        div(class="docblock item-decl") {
+                            pre(class=format!("sway {}", &decl_ty)) {
+                                code { : code_span; }
+                            }
+                        }
+                        @ if !item_attrs.is_empty() {
+                            // expand or hide description of main code block
+                            details(class="swaydoc-toggle top-doc", open) {
+                                summary(class="hideme") {
+                                    span { : "Expand description" }
+                                }
+                                // this is the description
+                                div(class="docblock") {
+                                    p { : Raw(item_attrs) }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -268,40 +332,68 @@ fn all_items(crate_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
         head {
             meta(charset="utf-8");
             meta(name="viewport", content="width=device-width, initial-scale=1.0");
-            meta(name="generator", content="forcdoc");
+            meta(name="generator", content="swaydoc");
             meta(
                 name="description",
                 content="List of all items in this crate"
             );
             meta(name="keywords", content="sway, swaylang, sway-lang");
             title: "List of all items in this crate";
+            link(rel="stylesheet", type="text/css", href="../doc/normalize.css");
+            link(rel="stylesheet", type="text/css", href="../doc/swaydoc.css", id="mainThemeStyle");
+            link(rel="stylesheet", type="text/css", href="../doc/ayu.css");
         }
-        body(class="forcdoc mod") {
-            : sidebar(format!("Crate {crate_name}"), "../doc/all.html".to_string());
-            section(id="main-content", class="content") {
-                h1(class="fqn") {
-                    span(class="in-band") { : "List of all items" }
-                }
-                @ if !storage_items.is_empty() {
-                    : all_items_list("Contract Storage".to_string(), storage_items);
-                }
-                @ if !abi_items.is_empty() {
-                    : all_items_list("Abi".to_string(), abi_items);
-                }
-                @ if !trait_items.is_empty() {
-                    : all_items_list("Traits".to_string(), trait_items);
-                }
-                @ if !struct_items.is_empty() {
-                    : all_items_list("Structs".to_string(), struct_items);
-                }
-                @ if !enum_items.is_empty() {
-                    : all_items_list("Enums".to_string(), enum_items);
-                }
-                @ if !fn_items.is_empty() {
-                    : all_items_list("Functions".to_string(), fn_items);
-                }
-                @ if !const_items.is_empty() {
-                    : all_items_list("Constants".to_string(), const_items);
+        body(class="swaydoc mod") {
+            : sidebar(0, format!("Crate {crate_name}"), "../doc/all.html".to_string());
+            main {
+                div(class="width-limiter") {
+                    div(class="sub-container") {
+                        nav(class="sub") {
+                            form(class="search-form") {
+                                div(class="search-container") {
+                                    span;
+                                    input(
+                                        class="search-input",
+                                        name="search",
+                                        autocomplete="off",
+                                        spellcheck="false",
+                                        // TODO: Add functionality.
+                                        placeholder="Search...",
+                                        type="search"
+                                    );
+                                    div(id="help-button", title="help", tabindex="-1") {
+                                        button(type="button") { : "?" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    section(id="main-content", class="content") {
+                        h1(class="fqn") {
+                            span(class="in-band") { : "List of all items" }
+                        }
+                        @ if !storage_items.is_empty() {
+                            : all_items_list("Contract Storage".to_string(), storage_items);
+                        }
+                        @ if !abi_items.is_empty() {
+                            : all_items_list("Abi".to_string(), abi_items);
+                        }
+                        @ if !trait_items.is_empty() {
+                            : all_items_list("Traits".to_string(), trait_items);
+                        }
+                        @ if !struct_items.is_empty() {
+                            : all_items_list("Structs".to_string(), struct_items);
+                        }
+                        @ if !enum_items.is_empty() {
+                            : all_items_list("Enums".to_string(), enum_items);
+                        }
+                        @ if !fn_items.is_empty() {
+                            : all_items_list("Functions".to_string(), fn_items);
+                        }
+                        @ if !const_items.is_empty() {
+                            : all_items_list("Constants".to_string(), const_items);
+                        }
+                    }
                 }
             }
         }
@@ -326,17 +418,33 @@ fn _module_index() -> Box<dyn RenderBox> {
     box_html! {}
 }
 fn sidebar(
+    module_depth: usize,
     location: String,
-    href: String, /* sidebar_items: Option<Vec<String>>, */
+    href: String, /* sidebar_items */
 ) -> Box<dyn RenderBox> {
+    let logo_path = if module_depth > 0 {
+        "../sway-logo.svg"
+    } else {
+        "../doc/sway-logo.svg"
+    }
+    .to_string();
     box_html! {
         nav(class="sidebar") {
             a(class="sidebar-logo", href=href) {
                 div(class="logo-container") {
-                    img(class="sway-logo", src="../sway-logo.svg", alt="logo");
+                    img(class="sway-logo", src=logo_path, alt="logo");
                 }
             }
-            h2(class="location") { : location; }
+            h2(class="location") {
+                a(href="#") { : location; }
+            }
+            div(class="sidebar-elems") {
+                section {
+                    // TODO: add connections between item contents and
+                    // sidebar nav. This will be dynamic e.g. "Variants"
+                    // for Enum, and "Fields" for Structs
+                }
+            }
         }
     }
 }
@@ -392,8 +500,8 @@ impl Renderable for TyStructDeclaration {
         let code_span = span.as_str().to_string();
         let struct_attributes = docs_to_html(attributes);
         box_html! {
-            : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, struct_attributes);
+            : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module_depth, decl_ty.clone(), name.clone(), code_span, struct_attributes);
         }
     }
 }
@@ -411,8 +519,8 @@ impl Renderable for TyEnumDeclaration {
         let code_span = span.as_str().to_string();
         let enum_attributes = docs_to_html(attributes);
         box_html! {
-            : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, enum_attributes);
+            : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module_depth, decl_ty.clone(), name.clone(), code_span, enum_attributes);
         }
     }
 }
@@ -432,8 +540,8 @@ impl Renderable for TyTraitDeclaration {
         let code_span = span.as_str().to_string();
         let trait_attributes = docs_to_html(attributes);
         box_html! {
-            : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, trait_attributes);
+            : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module_depth, decl_ty.clone(), name.clone(), code_span, trait_attributes);
         }
     }
 }
@@ -450,8 +558,8 @@ impl Renderable for TyAbiDeclaration {
         let code_span = span.as_str().to_string();
         let abi_attributes = docs_to_html(attributes);
         box_html! {
-            : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, abi_attributes);
+            : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module_depth, decl_ty.clone(), name.clone(), code_span, abi_attributes);
         }
     }
 }
@@ -466,8 +574,8 @@ impl Renderable for TyStorageDeclaration {
         let code_span = span.as_str().to_string();
         let storage_attributes = docs_to_html(attributes);
         box_html! {
-            : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, storage_attributes);
+            : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module_depth, decl_ty.clone(), name.clone(), code_span, storage_attributes);
         }
     }
 }
@@ -486,8 +594,8 @@ impl Renderable for TyImplTrait {
         let code_span = span.as_str().to_string();
         // let impl_trait_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
-            : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, "".to_string());
+            : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module_depth, decl_ty.clone(), name.clone(), code_span, "".to_string());
         }
     }
 }
@@ -511,8 +619,8 @@ impl Renderable for TyFunctionDeclaration {
         let code_span = span.as_str().to_string();
         let function_attributes = docs_to_html(attributes);
         box_html! {
-            : html_head(module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth,decl_ty.clone(), name.clone(), code_span, function_attributes);
+            : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
+            : html_body(module_depth, decl_ty.clone(), name.clone(), code_span, function_attributes);
         }
     }
 }
@@ -529,7 +637,7 @@ impl Renderable for TyConstantDeclaration {
         let code_span = span.as_str().to_string();
         let const_attributes = docs_to_html(attributes);
         box_html! {
-            : html_head(module.clone(), decl_ty.clone(), name.clone());
+            : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
             : html_body(module_depth, decl_ty.clone(), name.clone(), code_span, const_attributes);
         }
     }
