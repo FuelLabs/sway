@@ -11,6 +11,8 @@ Workspace manifests are declared within `Forc.toml` files and support the follow
 
 * [`members`](#the-members-field) - Packages to include in the workspace.
 
+An empty workspace can be created with `forc new --workspace` or `forc init --workspace`.
+
 ## The `members` field
 
 The `members` field defines which packages are members of the workspace:
