@@ -632,6 +632,7 @@ impl Renderable for TyConstantDeclaration {
             value: _,
             attributes,
             visibility: _,
+            return_type: _,
             span,
         } = &self;
         let name = name.as_str().to_string();

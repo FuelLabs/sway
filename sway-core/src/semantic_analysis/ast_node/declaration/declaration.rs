@@ -50,11 +50,21 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
+
+                // Integers are special in the sense that we can't only rely on the type of `body`
+                // to get the type of the variable. The type of the variable *has* to follow
+                // `type_ascription` if `type_ascription` is a concrete integer type that does not
+                // conflict with the type of `body` (i.e. passes the type checking above).
+                let return_type = match type_engine.look_up_type_id(type_ascription) {
+                    TypeInfo::UnsignedInteger(_) => type_ascription,
+                    _ => body.return_type,
+                };
                 let typed_var_decl =
                     ty::TyDeclaration::VariableDeclaration(Box::new(ty::TyVariableDeclaration {
                         name: name.clone(),
                         body,
                         mutability: ty::VariableMutability::new_from_ref_mut(false, is_mutable),
+                        return_type,
                         type_ascription,
                         type_ascription_span,
                     }));
@@ -70,24 +80,26 @@ impl ty::TyDeclaration {
                 span,
                 ..
             }) => {
-                let result = {
-                    let type_id = check!(
-                        ctx.resolve_type_with_self(
-                            type_engine.insert_type(type_ascription),
-                            &span,
-                            EnforceTypeArguments::No,
-                            None
-                        ),
-                        type_engine.insert_type(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors,
-                    );
-                    let ctx = ctx.by_ref().with_type_annotation(type_id).with_help_text(
+                let type_ascription = check!(
+                    ctx.resolve_type_with_self(
+                        type_engine.insert_type(type_ascription),
+                        &span,
+                        EnforceTypeArguments::No,
+                        None
+                    ),
+                    type_engine.insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                );
+
+                let mut ctx = ctx
+                    .by_ref()
+                    .with_type_annotation(type_ascription)
+                    .with_help_text(
                         "This declaration's type annotation does not match up with the assigned \
-                            expression's type.",
+                        expression's type.",
                     );
-                    ty::TyExpression::type_check(ctx, value)
-                };
+                let result = ty::TyExpression::type_check(ctx.by_ref(), value);
 
                 if !is_screaming_snake_case(name.as_str()) {
                     warnings.push(CompileWarning {
@@ -104,10 +116,19 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
+                // Integers are special in the sense that we can't only rely on the type of `body`
+                // to get the type of the variable. The type of the variable *has* to follow
+                // `type_ascription` if `type_ascription` is a concrete integer type that does not
+                // conflict with the type of `body` (i.e. passes the type checking above).
+                let return_type = match type_engine.look_up_type_id(type_ascription) {
+                    TypeInfo::UnsignedInteger(_) => type_ascription,
+                    _ => value.return_type,
+                };
                 let decl = ty::TyConstantDeclaration {
                     name: name.clone(),
                     value,
                     visibility,
+                    return_type,
                     attributes,
                     span,
                 };
