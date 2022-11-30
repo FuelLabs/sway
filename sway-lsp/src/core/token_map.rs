@@ -4,15 +4,20 @@ use sway_core::{declaration_engine, language::ty, type_system::TypeId, TypeEngin
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Url};
 
+/// The TokenMap is the main data structure of the language server.
+/// It stores all of the tokens that have been parsed and typechecked by the sway compiler.
+///
+/// The TokenMap is a wrapper around a [DashMap], which is a concurrent HashMap.
 #[derive(Debug)]
 pub struct TokenMap(DashMap<(Ident, Span), Token>);
 
 impl TokenMap {
+    /// Create a new token map.
     pub(crate) fn new() -> TokenMap {
         TokenMap(DashMap::new())
     }
 
-    /// Return a Iterator for tokens belonging to the provided file path
+    /// Return an Iterator of tokens belonging to the provided [Url].
     pub(crate) fn tokens_for_file<'s>(
         &'s self,
         uri: &'s Url,
@@ -52,7 +57,7 @@ impl TokenMap {
             })
     }
 
-    /// Given a cursor `Position`, return the `Ident` of a token in the
+    /// Given a cursor [Position], return the [Ident] of a token in the
     /// Iterator if one exists at that position.
     pub(crate) fn ident_at_position<I>(&self, cursor_position: Position, tokens: I) -> Option<Ident>
     where
@@ -83,7 +88,10 @@ impl TokenMap {
         }
     }
 
-    /// Uses the TypeId to find the associated TypedDeclaration in the TokenMap.
+    /// Uses the [TypeId] to find the associated [ty::TyDeclaration] in the TokenMap.
+    ///
+    /// This is useful when dealing with tokens that are of the [sway_core::language::ty::TyExpression] type in the AST.
+    /// For example, we can then use the `return_type` field which is a [TypeId] to retrieve the declaration Token.
     pub(crate) fn declaration_of_type_id(
         &self,
         type_engine: &TypeEngine,
@@ -99,7 +107,7 @@ impl TokenMap {
             })
     }
 
-    /// Returns the TypedStructDeclaration associated with the TypeId if it
+    /// Returns the [ty::TyStructDeclaration] associated with the TypeId if it
     /// exists within the TokenMap.
     pub(crate) fn struct_declaration_of_type_id(
         &self,
