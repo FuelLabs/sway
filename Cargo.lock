@@ -1740,9 +1740,11 @@ dependencies = [
  "forc-util",
  "horrorshow",
  "opener",
+ "sway-ast",
  "sway-core",
  "sway-lsp",
  "sway-types",
+ "swayfmt",
 ]
 
 [[package]]
