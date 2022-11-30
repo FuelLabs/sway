@@ -338,6 +338,15 @@ impl Items {
                     full_name_for_error.push_str(&index.to_string());
                     full_span_for_error = Span::join(full_span_for_error, index_span.clone());
                 }
+                (
+                    TypeInfo::Array(elem_ty, _count, _),
+                    ty::ProjectionKind::ArrayIndex { index_span, .. },
+                ) => {
+                    parent_rover = symbol;
+                    symbol = elem_ty;
+                    symbol_span = index_span.clone();
+                    full_span_for_error = index_span.clone();
+                }
                 (actually, ty::ProjectionKind::StructField { .. }) => {
                     errors.push(CompileError::FieldAccessOnNonStruct {
                         span: full_span_for_error,
@@ -347,6 +356,14 @@ impl Items {
                 }
                 (actually, ty::ProjectionKind::TupleField { .. }) => {
                     errors.push(CompileError::NotATuple {
+                        name: full_name_for_error,
+                        span: full_span_for_error,
+                        actually: type_engine.help_out(actually).to_string(),
+                    });
+                    return err(warnings, errors);
+                }
+                (actually, ty::ProjectionKind::ArrayIndex { .. }) => {
+                    errors.push(CompileError::NotIndexable {
                         name: full_name_for_error,
                         span: full_span_for_error,
                         actually: type_engine.help_out(actually).to_string(),

@@ -253,6 +253,12 @@ pub enum CompileError {
         span: Span,
         actually: String,
     },
+    #[error("\"{name}\" is a {actually}, which is not an indexable expression.")]
+    NotIndexable {
+        name: String,
+        span: Span,
+        actually: String,
+    },
     #[error("\"{name}\" is a {actually}, not an enum.")]
     NotAnEnum {
         name: String,
@@ -687,6 +693,8 @@ pub enum CompileError {
     DisallowedControlFlowInstruction { name: String, span: Span },
     #[error("Calling private library method {name} is not allowed.")]
     CallingPrivateLibraryMethod { name: String, span: Span },
+    #[error("Using \"while\" in a predicate is not allowed.")]
+    DisallowedWhileInPredicate { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -748,6 +756,7 @@ impl Spanned for CompileError {
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
+            NotIndexable { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
             FieldNotFound { field_name, .. } => field_name.span(),
             SymbolNotFound { name, .. } => name.span(),
@@ -871,6 +880,7 @@ impl Spanned for CompileError {
             InitializedRegisterReassignment { span, .. } => span.clone(),
             DisallowedControlFlowInstruction { span, .. } => span.clone(),
             CallingPrivateLibraryMethod { span, .. } => span.clone(),
+            DisallowedWhileInPredicate { span } => span.clone(),
         }
     }
 }

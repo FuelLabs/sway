@@ -1,0 +1,8 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-59287BAA38E86311'
+
+[[package]]
+name = 'predicate_while_dep'
+source = 'member'
+dependencies = ['core']
